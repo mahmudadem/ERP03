@@ -1,0 +1,167 @@
+{
+  // ERP03 OpenCode Multi-Agent Configuration
+  // Orchestrator delegates to specialized subagents for analysis, implementation, and review.
+  //
+  // Model strategy (Go plan):
+  //   - GLM-5.1:         orchestrator, builders (need strongest reasoning/code generation)
+  //   - DeepSeek V4 Pro:  architects, reviewer (need strong reasoning for analysis)
+  //   - Qwen3.5 Plus:    explorer, api-contract, test-runner (lighter tasks, budget-friendly)
+
+  "$schema": "https://opencode.ai/config.schema.json",
+
+  "model": "opencode-go/glm-5.1",
+
+  "agent": {
+    "orchestrator": {
+      "name": "ERP03 Orchestrator",
+      "mode": "primary",
+      "model": "opencode-go/glm-5.1",
+      "description": "Primary agent that understands user requests, inspects project context, breaks work into stages, delegates analysis to read-only subagents, assigns implementation to builder subagents after approval, and produces a final summary.",
+      "prompt": "{file:.opencode/prompts/orchestrator-workflow.md}",
+      "permission": {
+        "edit": "ask",
+        "bash": "ask",
+        "task": {
+          "*": "deny",
+          "erp-repo-explorer": "allow",
+          "erp-backend-architect": "allow",
+          "erp-frontend-architect": "allow",
+          "erp-api-contract": "allow",
+          "erp-backend-builder": "allow",
+          "erp-frontend-builder": "allow",
+          "erp-reviewer": "allow",
+          "erp-test-runner": "allow"
+        }
+      }
+    },
+
+    "erp-repo-explorer": {
+      "name": "ERP03 Repo Explorer",
+      "mode": "subagent",
+      "model": "opencode-go/qwen3.5-plus",
+      "description": "Read-only repository exploration. Finds relevant files, maps dependencies, identifies patterns, reports exact paths. No edits.",
+      "prompt": "{file:.opencode/prompts/sub-repo-explorer.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status": "allow",
+          "git diff": "allow",
+          "git log": "allow",
+          "*": "ask"
+        }
+      }
+    },
+
+    "erp-backend-architect": {
+      "name": "ERP03 Backend Architect",
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-pro",
+      "description": "Read-only backend architecture analysis. Checks Clean Architecture, DI, repositories, routes, Firebase, Prisma-readiness, auth, tenant context. No edits.",
+      "prompt": "{file:.opencode/prompts/sub-backend-architect.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status": "allow",
+          "git diff": "allow",
+          "git log": "allow",
+          "*": "ask"
+        }
+      }
+    },
+
+    "erp-frontend-architect": {
+      "name": "ERP03 Frontend Architect",
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-pro",
+      "description": "Read-only frontend architecture analysis. Checks routing, contexts, API client, permissions, modules, sidebar, Super Admin isolation, RTL/theme. No edits.",
+      "prompt": "{file:.opencode/prompts/sub-frontend-architect.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status": "allow",
+          "git diff": "allow",
+          "git log": "allow",
+          "*": "ask"
+        }
+      }
+    },
+
+    "erp-api-contract": {
+      "name": "ERP03 API Contract Checker",
+      "mode": "subagent",
+      "model": "opencode-go/qwen3.5-plus",
+      "description": "Read-only API contract analysis. Checks routes, DTOs, frontend API calls, backend handlers, request/response alignment. No edits.",
+      "prompt": "{file:.opencode/prompts/sub-api-contract.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status": "allow",
+          "git diff": "allow",
+          "*": "ask"
+        }
+      }
+    },
+
+    "erp-backend-builder": {
+      "name": "ERP03 Backend Builder",
+      "mode": "subagent",
+      "model": "opencode-go/glm-5.1",
+      "description": "Backend implementation agent. Can edit backend files only after orchestrator gives clear scope. Must follow existing patterns. No frontend edits.",
+      "prompt": "{file:.opencode/prompts/sub-backend-builder.md}",
+      "permission": {
+        "edit": "ask",
+        "bash": "ask"
+      }
+    },
+
+    "erp-frontend-builder": {
+      "name": "ERP03 Frontend Builder",
+      "mode": "subagent",
+      "model": "opencode-go/glm-5.1",
+      "description": "Frontend implementation agent. Can edit frontend files only after orchestrator gives clear scope. Must follow existing patterns. No backend edits.",
+      "prompt": "{file:.opencode/prompts/sub-frontend-builder.md}",
+      "permission": {
+        "edit": "ask",
+        "bash": "ask"
+      }
+    },
+
+    "erp-reviewer": {
+      "name": "ERP03 Reviewer",
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-pro",
+      "description": "Strict read-only code reviewer. Checks diffs for bugs, broken imports, TypeScript errors, security issues, RBAC mistakes, tenant isolation issues, architecture violations, and unrelated changes. No edits.",
+      "prompt": "{file:.opencode/prompts/sub-reviewer.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status": "allow",
+          "git diff": "allow",
+          "git log": "allow",
+          "*": "ask"
+        }
+      }
+    },
+
+    "erp-test-runner": {
+      "name": "ERP03 Test Runner",
+      "mode": "subagent",
+      "model": "opencode-go/qwen3.5-plus",
+      "description": "Runs approved verification commands. Suggested: git status, git diff, npm run build, npm run typecheck, npm run test. Does not edit files. Summarizes failures clearly.",
+      "prompt": "{file:.opencode/prompts/sub-test-runner.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status": "allow",
+          "git diff": "allow",
+          "npm run build": "allow",
+          "npm run typecheck": "allow",
+          "npm run test": "allow",
+          "*": "ask"
+        }
+      }
+    }
+  },
+
+  "mcp": {}
+}

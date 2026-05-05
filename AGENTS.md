@@ -106,3 +106,109 @@ As the CTO, you MUST add timing to all jobs and tasks to organize the work effec
 - **Planning:** When proposing a new task or plan, always provide an explicit time estimate.
 - **Task Management:** When updating `ACTIVE.md` or `ROADMAP.md` with new jobs, always include the estimated time required for each task or subtask.
 - **Tracking:** Track the actual time spent on tasks and log this in `JOURNAL.md` and your Completion Reports.
+
+---
+
+## OpenCode Multi-Agent System
+
+This project uses an OpenCode multi-agent workflow defined in `opencode.jsonc`. The orchestrator is the primary agent and delegates to specialized subagents.
+
+### CRITICAL: Clarification-First Protocol
+
+**The orchestrator MUST NOT start implementation until every step and the final goal are super clear.**
+
+1. **Clarify first.** If anything in the user's request is ambiguous, ask questions. Do NOT assume.
+2. **Conflict check.** Before planning, check if the proposed change conflicts with existing architecture. If it does, STOP and tell the user before proceeding.
+3. **Recommend agents.** After clarity, recommend whether multi-agent delegation is needed and which agents to use. Wait for user approval.
+
+### Agent Roles
+
+| Agent | Role | Can Edit? |
+|-------|------|----------|
+| `orchestrator` | Understands requests, asks clarifying questions, detects conflicts, recommends agent strategy, delegates, plans, assigns builders, reviews results | Yes (project-wide) |
+| `erp-repo-explorer` | Read-only repository exploration, file finding, dependency mapping | No |
+| `erp-backend-architect` | Read-only backend architecture + conflict detection | No |
+| `erp-frontend-architect` | Read-only frontend architecture + conflict detection | No |
+| `erp-api-contract` | Read-only API contract verification between frontend and backend | No |
+| `erp-backend-builder` | Backend implementation after orchestrator approval | Backend only |
+| `erp-frontend-builder` | Frontend implementation after orchestrator approval | Frontend only |
+| `erp-reviewer` | Read-only code review of diffs | No |
+| `erp-test-runner` | Read-only verification (build/test/lint) | No |
+
+### Orchestrator Workflow
+
+0. **Clarify** — Ask questions, resolve ambiguities, confirm goal understanding
+1. **Conflict Check** — Delegate to architects to detect conflicts with existing arch
+2. **Recommend Agents** — Propose which subagents to use, get user approval
+3. **Restate** the user goal
+4. **Inspect** relevant files (ACTIVE.md, JOURNAL.md, VISION.md)
+5. **Analyze** — Delegate parallel read-only analysis to architect subagents
+6. **Plan** with exact files, acceptance criteria, risks — get user approval
+7. **Assign** implementation to ONE builder per file area (never overlap)
+8. **Review** via `erp-reviewer`
+9. **Verify** via `erp-test-runner`
+10. **Document** for three audiences (see Documentation Structure below)
+11. **Summarize** final results
+
+### Architecture Red Lines
+
+- **DO NOT start if anything is unclear — ASK FIRST**
+- **DO NOT start if there's an architecture conflict — REPORT IT FIRST**
+- Never mix Super Admin and tenant/company flows
+- Never bypass DI to instantiate repositories directly
+- Never put Firestore-specific code in domain/application layers
+- Controllers must be thin — delegate to use cases
+- Repository interfaces in `backend/src/repository/interfaces/`
+- Firestore implementations in `backend/src/infrastructure/firestore/repositories/`
+- Register new repos in `backend/src/infrastructure/di/bindRepositories.ts`
+- Never hardcode plans, bundles, modules, or permissions
+- Voucher Designer: UI/schema only, no dynamic posting scripts
+- Dynamic Engine: postponed unless explicitly requested
+- Only ONE builder edits a file area at a time
+
+### Operational Safety Rules
+
+1. **No Commit on Failure** — If any builder, reviewer, or test-runner step fails, do NOT commit. Revert or stash changes, report the failure, and wait for user instructions.
+
+2. **Git Commit Protocol** — Never commit without asking the user first. Commit messages must reference the task from ACTIVE.md using conventional format (e.g., `feat(sales): add invoice PDF export [ACTIVE-42]`).
+
+3. **Secrets Red Line** — Never read, display, or commit files containing secrets (.env, .env.*, serviceAccount*.json, *-secret*, *-credentials*, *-key.pem, API keys, tokens, passwords). If a secret is accidentally seen, ABORT and tell the user immediately.
+
+4. **Task Size Cap** — If a task touches more than 8 files across more than 3 directories, the orchestrator MUST break it into smaller subtasks and get user approval for the breakdown.
+
+5. **Incremental Commits** — After each subtask completes the full cycle (builder → reviewer → test-runner → approved), commit before starting the next subtask. Do NOT batch everything into one giant commit.
+
+6. **Rollback Plan** — Before any implementation, note the current git status (branch, uncommitted changes). If something goes wrong, `git checkout -- .` can revert changes. Always know the rollback point.
+
+7. **i18n Completeness** — Any new user-facing string in the frontend MUST be added to i18n translation files (`frontend/src/i18n/`), NOT hardcoded in components. The reviewer must check for this.
+
+8. **Never Skip Clarification** — Even if a task seems simple, restate the goal and confirm understanding. Do not assume the user wants the same approach as a previous task.
+
+### Documentation Structure
+
+Every completed task MUST produce documentation for three audiences:
+
+| Audience | Location | Purpose | Format |
+|----------|----------|---------|--------|
+| Solo Developer (product owner) | `JOURNAL.md` + `ACTIVE.md` | Track progress, decisions, next steps | Technical log with timestamps |
+| Future Developers | `docs/architecture/` | Understand how and why things were built | Technical docs: architecture decisions, file maps, API contracts |
+| End Users | `docs/user-guide/` | Understand how to use features | Plain language: what the feature does, how to use it, step-by-step |
+
+Documentation rules:
+- **Solo Developer docs**: Update `JOURNAL.md` and `ACTIVE.md` after every task. Include what was done, time spent, decisions made, and what's next.
+- **Future Developer docs**: Create/update in `docs/architecture/` when changes affect architecture, data models, API contracts, or shared patterns. Include: what changed, why, file map, migration notes.
+- **End User docs**: Create/update in `docs/user-guide/` when features are added or UI changes. Include: feature name, what it does, how to use it (step by step), who can access it.
+- Completion reports in `1-TODO/done/` should contain BOTH technical and end-user sections.
+
+### Prompt Files
+
+Detailed agent instructions live in `.opencode/prompts/`:
+- `orchestrator-workflow.md` — orchestrator's step-by-step process (includes clarification protocol)
+- `sub-repo-explorer.md` — repo explorer instructions
+- `sub-backend-architect.md` — backend architecture checklist
+- `sub-frontend-architect.md` — frontend architecture checklist
+- `sub-api-contract.md` — API contract verification process
+- `sub-backend-builder.md` — backend implementation rules
+- `sub-frontend-builder.md` — frontend implementation rules
+- `sub-reviewer.md` — code review checklist
+- `sub-test-runner.md` — verification commands and output format
