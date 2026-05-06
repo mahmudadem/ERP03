@@ -59,14 +59,7 @@ export class ExecuteAiToolUseCase {
    * This delegates to the permission checker's underlying use case.
    */
   private async getUserPermissions(userId: string, companyId: string): Promise<string[]> {
-    const getPermsUseCase = (this.permissionChecker as any).getPermissionsUC;
-    if (getPermsUseCase && typeof getPermsUseCase.execute === 'function') {
-      const result = await getPermsUseCase.execute({ userId, companyId });
-      return result || [];
-    }
-    // Fallback: use the permission checker itself
-    // If we can't get explicit permissions, the tool registry will check
-    // each required permission individually
-    return [];
+    // Use the proper public method instead of bypassing encapsulation
+    return this.permissionChecker.getAllPermissions(userId, companyId);
   }
 }

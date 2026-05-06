@@ -993,6 +993,79 @@
         "createTemplate": "Sablon Olustur",
         "edit": "Duzenle"
       }
+    },
+    "aiTools": {
+      "title": "AI Araç Kataloğu",
+      "description": "AI asistan araçlarını, etkinleştirme politikalarını ve model yapılandırmalarını yönetin",
+      "filters": {
+        "module": "Tüm Modüller",
+        "category": "Tüm Kategoriler",
+        "status": "Tüm Durumlar",
+        "mode": "Tüm Modlar",
+        "search": "Araçları ara..."
+      },
+      "columns": {
+        "name": "Ad",
+        "namespace": "Ad Alanı",
+        "module": "Modül",
+        "category": "Kategori",
+        "mode": "Mod",
+        "status": "Durum",
+        "riskLevel": "Risk Seviyesi",
+        "dataSensitivity": "Hassasiyet",
+        "permissions": "Gerekli İzinler",
+        "requiredModules": "Gerekli Modüller",
+        "actions": "İşlemler"
+      },
+      "actions": {
+        "enable": "Etkinleştir",
+        "disable": "Devre Dışı Bırak",
+        "sync": "Kataloğu Senkronize Et",
+        "viewDetails": "Detaylar"
+      },
+      "statuses": {
+        "active": "Aktif",
+        "disabled": "Devre Dışı",
+        "unavailable": "Kullanılamaz",
+        "deprecated": "Kullanım Dışı"
+      },
+      "modes": {
+        "read-only": "Salt Okunur",
+        "proposal": "Teklif",
+        "write": "Yazma (ENGELLENDİ)"
+      },
+      "riskLevels": {
+        "low": "Düşük",
+        "medium": "Orta",
+        "high": "Yüksek",
+        "blocked": "ENGELLENDİ"
+      },
+      "sensitivity": {
+        "low": "Düşük",
+        "medium": "Orta",
+        "high": "Yüksek"
+      },
+      "detail": {
+        "title": "AI Aracı: {{name}}",
+        "description": "Açıklama",
+        "namespace": "Ad Alanı",
+        "module": "Modül",
+        "category": "Kategori",
+        "mode": "Mod",
+        "status": "Durum",
+        "permissions": "Gerekli İzinler",
+        "requiredModules": "Gerekli Modüller",
+        "inputSchema": "Girdi Şeması",
+        "outputSchema": "Çıktı Şeması",
+        "enablementPolicy": "Etkinleştirme Politikası",
+        "modelPolicy": "Model Politikası",
+        "unavailableReason": "Bu araç şu nedenle kullanılamaz: {{reason}}",
+        "blockedWarning": "Bu bir YAZMA aracıdır ve güvenlik nedeniyle kalıcı olarak engellenmiştir."
+      },
+      "sync": {
+        "success": "Katalog başarıyla senkronize edildi. {{count}} yeni araç eklendi.",
+        "error": "Katalog senkronizasyonu başarısız oldu."
+      }
     }
   },
   "onboarding": {
@@ -1359,7 +1432,8 @@
         "modules": "Moduller",
         "permissions": "Izinler",
         "bundles": "Paketler",
-        "plans": "Planlar"
+        "plans": "Planlar",
+        "aiTools": "AI Araçları"
       }
     }
   },

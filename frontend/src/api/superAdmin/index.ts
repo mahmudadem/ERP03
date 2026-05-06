@@ -137,6 +137,50 @@ export interface Plan {
   updatedAt: Date;
 }
 
+// AI Tool Catalog Types
+export interface AiTool {
+  name: string;
+  namespace: string;
+  module: string;
+  category: string;
+  mode: 'read-only' | 'proposal' | 'write';
+  status: 'active' | 'disabled' | 'unavailable' | 'deprecated';
+  riskLevel: 'low' | 'medium' | 'high' | 'blocked';
+  dataSensitivity: 'low' | 'medium' | 'high';
+  description?: string;
+  requiredPermissions?: string[];
+  requiredModules?: string[];
+  inputSchema?: Record<string, any>;
+  outputSchema?: Record<string, any>;
+  unavailableReason?: string;
+  enabled?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface AiToolEnablementPolicy {
+  id: string;
+  toolName: string;
+  enabled: boolean;
+  allowedRoles?: string[];
+  allowedCompanies?: string[];
+  maxUsagePerDay?: number;
+  conditions?: Record<string, any>;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface AiModelToolPolicy {
+  id: string;
+  modelId: string;
+  modelName: string;
+  toolName: string;
+  allowed: boolean;
+  conditions?: Record<string, any>;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 // ===== API Functions =====
 
 export const superAdminApi = {
@@ -245,6 +289,34 @@ export const superAdminApi = {
 
   revokeModuleFromCompany: (companyId: string, moduleKey: string): Promise<void> =>
     client.delete(`/super-admin/companies/${companyId}/entitlements/modules/${moduleKey}`),
+
+  // AI Tool Catalog
+  getAiTools: (filters?: { module?: string; category?: string; status?: string; mode?: string }) =>
+    client.get('/platform/ai-tools', { params: filters }),
+
+  getAiTool: (toolName: string) =>
+    client.get(`/platform/ai-tools/${toolName}`),
+
+  enableAiTool: (toolName: string) =>
+    client.patch(`/platform/ai-tools/${toolName}/enable`),
+
+  disableAiTool: (toolName: string) =>
+    client.patch(`/platform/ai-tools/${toolName}/disable`),
+
+  syncAiToolCatalog: () =>
+    client.post('/platform/ai-tools/sync'),
+
+  getAiToolEnablementPolicies: () =>
+    client.get('/platform/ai-tool-policies'),
+
+  updateAiToolEnablementPolicy: (toolId: string, data: any) =>
+    client.patch(`/platform/ai-tool-policies/${toolId}`, data),
+
+  getAiModelToolPolicies: () =>
+    client.get('/platform/ai-model-tool-policies'),
+
+  updateAiModelToolPolicy: (policyId: string, data: any) =>
+    client.patch(`/platform/ai-model-tool-policies/${policyId}`, data),
 };
 
 export * from './voucherTypes';

@@ -111,9 +111,30 @@ import { SettingsResolver } from '../../application/common/services/SettingsReso
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
 import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
+import { AiToolCatalogUseCase } from '../../application/ai-assistant/use-cases/AiToolCatalogUseCase';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
 import { GetProfitAndLossTool } from '../../application/ai-assistant/tools/GetProfitAndLossTool';
 import { GetBalanceSheetTool } from '../../application/ai-assistant/tools/GetBalanceSheetTool';
+import { GetCashFlowTool } from '../../application/ai-assistant/tools/GetCashFlowTool';
+import { GetAgingReceivablesTool } from '../../application/ai-assistant/tools/GetAgingReceivablesTool';
+import { GetAgingPayablesTool } from '../../application/ai-assistant/tools/GetAgingPayablesTool';
+import { GetGeneralLedgerSummaryTool } from '../../application/ai-assistant/tools/GetGeneralLedgerSummaryTool';
+import { GetAccountStatementSummaryTool } from '../../application/ai-assistant/tools/GetAccountStatementSummaryTool';
+import { GetChartOfAccountsSummaryTool } from '../../application/ai-assistant/tools/GetChartOfAccountsSummaryTool';
+import { GetAccountBalanceTool } from '../../application/ai-assistant/tools/GetAccountBalanceTool';
+import { GetFiscalYearStatusTool } from '../../application/ai-assistant/tools/GetFiscalYearStatusTool';
+import { GetSalesSummaryTool } from '../../application/ai-assistant/tools/GetSalesSummaryTool';
+import { GetTopCustomersTool } from '../../application/ai-assistant/tools/GetTopCustomersTool';
+import { GetPurchaseSummaryTool } from '../../application/ai-assistant/tools/GetPurchaseSummaryTool';
+import { GetTopSuppliersTool } from '../../application/ai-assistant/tools/GetTopSuppliersTool';
+import { GetFinancialOverviewTool } from '../../application/ai-assistant/tools/GetFinancialOverviewTool';
+import { GetMonthlyComparisonTool } from '../../application/ai-assistant/tools/GetMonthlyComparisonTool';
+import { IAiToolCatalogRepository } from '../../repository/interfaces/ai-assistant/IAiToolCatalogRepository';
+import { IAiToolEnablementRepository } from '../../repository/interfaces/ai-assistant/IAiToolEnablementRepository';
+import { IAiModelToolPolicyRepository } from '../../repository/interfaces/ai-assistant/IAiModelToolPolicyRepository';
+import { FirestoreAiToolCatalogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolCatalogRepository';
+import { FirestoreAiToolEnablementRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolEnablementRepository';
+import { FirestoreAiModelToolPolicyRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelToolPolicyRepository';
 import { PermissionChecker } from '../../application/rbac/PermissionChecker';
 
 // SUPER ADMIN
@@ -731,6 +752,25 @@ export const diContainer = {
       : new FirestoreAiUsageLogRepository(getDb());
   },
 
+  // AI ASSISTANT - Tool Catalog (platform-level, Super Admin managed)
+  get aiToolCatalogRepository(): IAiToolCatalogRepository {
+    // Always Firestore for platform-level data (system_metadata/ai_tools)
+    return new FirestoreAiToolCatalogRepository(getDb());
+  },
+  get aiToolEnablementRepository(): IAiToolEnablementRepository {
+    return new FirestoreAiToolEnablementRepository(getDb());
+  },
+  get aiModelToolPolicyRepository(): IAiModelToolPolicyRepository {
+    return new FirestoreAiModelToolPolicyRepository(getDb());
+  },
+  get aiToolCatalogUseCase(): AiToolCatalogUseCase {
+    return new AiToolCatalogUseCase(
+      this.aiToolCatalogRepository,
+      this.aiToolEnablementRepository,
+      this.aiModelToolPolicyRepository,
+    );
+  },
+
   // AI ASSISTANT SERVICES
   get encryptionService(): IEncryptionService {
     return new AesEncryptionService();
@@ -738,7 +778,7 @@ export const diContainer = {
   get httpClient(): IHttpClient {
     return _httpClient ??= new AxiosHttpClient();
   },
-  get aiToolRegistry(): AiToolRegistry {
+get aiToolRegistry(): AiToolRegistry {
     // Register all AI tools here with their dependencies
     return new AiToolRegistry([
       new GetTrialBalanceSummaryTool(
@@ -756,6 +796,76 @@ export const diContainer = {
         this.accountRepository,
         this.permissionChecker,
         this.companyRepository,
+      ),
+      new GetCashFlowTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.companyRepository,
+        this.permissionChecker,
+      ),
+      new GetAgingReceivablesTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.permissionChecker,
+      ),
+      new GetAgingPayablesTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.permissionChecker,
+      ),
+      new GetGeneralLedgerSummaryTool(
+        this.ledgerRepository,
+        this.permissionChecker,
+      ),
+      new GetAccountStatementSummaryTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.companyRepository,
+        this.permissionChecker,
+      ),
+      new GetChartOfAccountsSummaryTool(
+        this.accountRepository,
+        this.permissionChecker,
+      ),
+      new GetAccountBalanceTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.permissionChecker,
+      ),
+      new GetFiscalYearStatusTool(
+        this.fiscalYearRepository,
+        this.permissionChecker,
+      ),
+      new GetSalesSummaryTool(
+        this.salesInvoiceRepository,
+        this.partyRepository,
+        this.permissionChecker,
+      ),
+      new GetTopCustomersTool(
+        this.salesInvoiceRepository,
+        this.partyRepository,
+        this.permissionChecker,
+      ),
+      new GetPurchaseSummaryTool(
+        this.purchaseInvoiceRepository,
+        this.partyRepository,
+        this.permissionChecker,
+      ),
+      new GetTopSuppliersTool(
+        this.purchaseInvoiceRepository,
+        this.partyRepository,
+        this.permissionChecker,
+      ),
+      new GetFinancialOverviewTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.companyRepository,
+        this.permissionChecker,
+      ),
+      new GetMonthlyComparisonTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.permissionChecker,
       ),
     ]);
   },

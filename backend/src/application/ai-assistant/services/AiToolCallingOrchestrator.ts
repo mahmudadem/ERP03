@@ -17,8 +17,9 @@
  *
  * INTENT DETECTION:
  * - Uses simple keyword matching (English, Arabic, Turkish)
+ * - Keywords are defined in tool-intents.config.ts
  * - Maps recognized intents to registered tool names
- * - Multiple tools can be matched for a single message (future)
+ * - Multiple tools can be matched for a single message
  * - If no intent is detected, returns null (normal chat continues)
  *
  * SECURITY:
@@ -32,60 +33,7 @@
 import { AiToolRegistry } from './AiToolRegistry';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
 import { AiToolResult } from '../../../domain/ai-assistant/tools/AiTool';
-
-/**
- * Supported tool intents with keyword patterns.
- * Each intent maps to a registered tool name.
- * Keywords are matched case-insensitively against the user message.
- */
-const TOOL_INTENTS: Array<{
-  toolName: string;
-  keywords: string[];
-}> = [
-  {
-    toolName: 'accounting.getTrialBalanceSummary',
-    keywords: [
-      // English
-      'trial balance', 'balance summary', 'accounting summary',
-      'debit credit summary', 'closing balance', 'account balances',
-      'financial summary', 'total debit', 'total credit',
-      // Arabic
-      'ميزان المراجعة', 'ميزان مراجعة', 'ملخص الميزان',
-      'ميزانية', 'رصيد', 'أرصدة',
-      // Turkish
-      'deneme bilançosu', 'mizan', 'genel Mizan',
-      'borç alacak özeti', 'hesap özeti',
-    ],
-  },
-  {
-    toolName: 'accounting.getProfitAndLoss',
-    keywords: [
-      // English
-      'profit and loss', 'profit & loss', 'p&l', 'income statement',
-      'net profit', 'gross profit', 'revenue and expenses',
-      // Arabic
-      'الأرباح والخسائر', 'ارباح وخسائر', 'قائمة الدخل',
-      'صافي الربح', 'الإيرادات والمصروفات',
-      // Turkish
-      'kar zarar', 'gelir tablosu', 'net kar',
-      'gelir ve gider',
-    ],
-  },
-  {
-    toolName: 'accounting.getBalanceSheet',
-    keywords: [
-      // English
-      'balance sheet', 'statement of financial position',
-      'assets and liabilities', 'assets liabilities equity',
-      // Arabic
-      'الميزانية العمومية', 'قائمة المركز المالي',
-      'الأصول والخصوم', 'الاصول والخصوم',
-      // Turkish
-      'bilanço', 'finansal durum tablosu',
-      'varlıklar ve borçlar',
-    ],
-  },
-];
+import { getToolIntents, ToolIntent } from '../config/tool-intents.config';
 
 export interface ToolCallingResult {
   /** The tool that was invoked */
@@ -150,14 +98,16 @@ export class AiToolCallingOrchestrator {
 
   /**
    * Detect which tool intents match the user's message.
-   * Uses simple case-insensitive keyword matching.
-   * Returns an array of matching intents (usually 0 or 1 for now).
+   * Uses simple case-insensitive keyword matching from the intent config.
+   * Returns an array of matching intents (may be empty or have multiple matches).
+   * Only returns intents for tools that are actually registered in the registry.
    */
   detectIntents(message: string): Array<{ toolName: string; keywords: string[] }> {
     const lowerMessage = message.toLowerCase();
+    const toolIntents = getToolIntents();
     const matches: Array<{ toolName: string; keywords: string[] }> = [];
 
-    for (const intent of TOOL_INTENTS) {
+    for (const intent of toolIntents) {
       // Check if any keyword is found in the message
       const matched = intent.keywords.some(keyword =>
         lowerMessage.includes(keyword.toLowerCase())
@@ -200,6 +150,8 @@ export class AiToolCallingOrchestrator {
           `2. If any data appears missing, incomplete, or zero when it shouldn't be, say "The data is currently unavailable" rather than making up numbers.\n` +
           `3. This is READ-ONLY data. No financial action has been performed. Do NOT suggest that any posting, approval, voucher creation, or modification was done.\n` +
           `4. Explain the data clearly and help the user understand what they see.\n` +
+          `5. Do NOT invent missing accounts, vouchers, customers, suppliers, items, or employees.\n` +
+          `6. If the data appears truncated or incomplete, mention the limitation rather than guessing.\n` +
           `\nData:\n${JSON.stringify(result.data, null, 2)}\n` +
           `\n[END TOOL RESULT: ${toolName}]`
         );
@@ -250,11 +202,7 @@ export class AiToolCallingOrchestrator {
     const hasWildcard = await this.permissionChecker.hasPermission(userId, companyId, '*');
     if (hasWildcard) return ['*'];
 
-    const getPermsUseCase = (this.permissionChecker as any).getPermissionsUC;
-    if (getPermsUseCase && typeof getPermsUseCase.execute === 'function') {
-      const result = await getPermsUseCase.execute({ userId, companyId });
-      return result || [];
-    }
-    return [];
+    // Use the proper public method instead of bypassing encapsulation
+    return this.permissionChecker.getAllPermissions(userId, companyId);
   }
 }

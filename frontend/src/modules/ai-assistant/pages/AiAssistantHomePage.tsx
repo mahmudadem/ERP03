@@ -8,10 +8,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, User, Trash2, AlertCircle, Plus, MessageSquare, Clock } from 'lucide-react';
+import { Send, Bot, User, Trash2, AlertCircle, Plus, MessageSquare, Clock, Sparkles, Database } from 'lucide-react';
 import { aiAssistantApi, SendChatMessageResponse, ChatMessageDTO, AiToolCallResultDTO } from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
 interface DisplayMessage {
   id: string;
@@ -265,9 +266,28 @@ export const AiAssistantHomePage: React.FC = () => {
 
   // Get a preview of the message content (first line, truncated)
   const getPreview = (content: string, maxLength: number = 60) => {
-    const firstLine = content.split('\n')[0];
+    // Strip markdown, AI prefixes, and grab first readable line
+    const cleanContent = content.replace(/^(AI:\s*)+/i, '').replace(/[*#`|>]/g, '').trim();
+    const firstLine = cleanContent.split('\n')[0] || t('chat.emptyMessage', 'Message');
     return firstLine.length > maxLength ? firstLine.substring(0, maxLength) + '...' : firstLine;
   };
+
+  const handleQuickAction = (promptText: string) => {
+    setInput(promptText);
+    if (inputRef.current) {
+      inputRef.current.focus();
+      // Auto-trigger send after small delay to let state update
+      setTimeout(() => {
+        handleSend();
+      }, 50);
+    }
+  };
+
+  const quickActions = [
+    { label: t('chat.quickTb', 'Trial Balance'), prompt: t('chat.quickTbPrompt', 'Show me the trial balance summary') },
+    { label: t('chat.quickPnl', 'Profit & Loss'), prompt: t('chat.quickPnlPrompt', 'Generate a profit and loss report') },
+    { label: t('chat.quickBs', 'Balance Sheet'), prompt: t('chat.quickBsPrompt', 'What is the current balance sheet?') },
+  ];
 
   if (!canChat) {
     return (
@@ -326,10 +346,10 @@ export const AiAssistantHomePage: React.FC = () => {
                   <div className="flex items-start gap-2">
                     <MessageSquare className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm text-gray-700 truncate">
+                      <div className="text-sm text-gray-700 truncate font-medium">
                         {conv.lastMessage.role === 'user'
                           ? getPreview(conv.lastMessage.content)
-                          : 'AI: ' + getPreview(conv.lastMessage.content)
+                          : getPreview(conv.lastMessage.content)
                         }
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
@@ -393,52 +413,70 @@ export const AiAssistantHomePage: React.FC = () => {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
           {messages.length === 0 && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center py-12">
-                <Bot className="w-16 h-16 text-indigo-200 mx-auto mb-4" />
-                <h2 className="text-xl font-medium text-gray-700 mb-2">
+            <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-4">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <Sparkles className="w-10 h-10 text-indigo-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-3 tracking-tight">
                   {t('chat.welcome', 'Welcome to AI Assistant')}
                 </h2>
-                <p className="text-sm text-gray-400 max-w-md">
+                <p className="text-base text-gray-500">
                   {t('chat.welcomeDesc', 'Ask questions about your ERP data, get explanations, summaries, and suggestions. The assistant is advisory-only and cannot modify business records.')}
                 </p>
+              </div>
+              
+              <div className="w-full flex flex-wrap justify-center gap-3">
+                {quickActions.map((action, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setInput(action.prompt);
+                      if (inputRef.current) inputRef.current.focus();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-full hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-sm font-medium text-gray-600 hover:text-indigo-600"
+                  >
+                    <Sparkles className="w-4 h-4 opacity-50" />
+                    {action.label}
+                  </button>
+                ))}
               </div>
             </div>
           )}
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               {msg.role === 'assistant' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-indigo-600" />
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 shadow-sm flex items-center justify-center mt-1">
+                  <Sparkles className="w-5 h-5 text-indigo-600" />
                 </div>
               )}
               <div
-                className={`max-w-[75%] rounded-lg px-4 py-2.5 ${
+                className={`max-w-[85%] sm:max-w-[75%] px-5 py-3.5 shadow-sm ${
                   msg.role === 'user'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white border border-gray-200 text-gray-800'
+                    ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl rounded-tr-sm'
+                    : 'bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-tl-sm'
                 }`}
               >
                 <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {msg.content}
+                  {msg.role === 'assistant' ? (
+                     <MarkdownRenderer content={msg.content} />
+                  ) : (
+                     <div dir="auto">{msg.content}</div>
+                  )}
                 </div>
                 {msg.role === 'assistant' && msg.toolResults && msg.toolResults.length > 0 && (
                   <AiToolResultsPanel toolResults={msg.toolResults} />
                 )}
                 {msg.isMock && msg.role === 'assistant' && (
-                  <div className="text-xs text-gray-400 mt-2 pt-1 border-t border-gray-100">
+                  <div className="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-100 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
                     {t('chat.mockLabel', 'Mock response — for development only')}
                   </div>
                 )}
               </div>
-              {msg.role === 'user' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              )}
             </div>
           ))}
           {isLoading && (
@@ -459,34 +497,45 @@ export const AiAssistantHomePage: React.FC = () => {
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-white border-t">
-          {error && (
-            <div className="mb-2 px-3 py-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">
-              {error}
+        <div className="p-4 sm:p-6 bg-gradient-to-t from-gray-50/80 to-transparent sticky bottom-0 z-10">
+          <div className="max-w-4xl mx-auto w-full relative">
+            {error && (
+              <div className="mb-3 px-4 py-2.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 shadow-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+            <div className="relative bg-white border border-gray-300 rounded-3xl shadow-sm focus-within:shadow-md focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={t('chat.placeholder', 'Ask about your ERP data...')}
+                disabled={isLoading}
+                rows={1}
+                dir="auto"
+                className="block w-full max-h-[200px] min-h-[64px] py-5 pr-[72px] pl-6 rtl:pl-[72px] rtl:pr-6 bg-transparent border-none outline-none focus:ring-0 resize-none disabled:opacity-50 text-sm md:text-base leading-relaxed overflow-y-auto m-0 rounded-3xl"
+                style={{ boxShadow: 'none' }}
+              />
+              <div className="absolute right-2 rtl:right-auto rtl:left-2 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                <button
+                  onClick={handleSend}
+                  disabled={isLoading || !input.trim()}
+                  className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 hover:shadow-lg disabled:opacity-40 disabled:hover:shadow-none disabled:cursor-not-allowed transition-all flex items-center justify-center"
+                >
+                  <Send className="w-5 h-5 rtl:-scale-x-100" />
+                </button>
+              </div>
             </div>
-          )}
-          <div className="flex gap-2">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('chat.placeholder', 'Type your message...')}
-              disabled={isLoading}
-              rows={1}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none disabled:opacity-50 text-sm"
-            />
-            <button
-              onClick={handleSend}
-              disabled={isLoading || !input.trim()}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+            <p className="text-[11px] text-gray-500 mt-2.5 text-center font-medium">
+              {t('chat.disclaimer', 'AI responses are advisory-only. They cannot create, modify, or delete business records.')}
+            </p>
           </div>
-          <p className="text-xs text-gray-400 mt-1">
-            {t('chat.disclaimer', 'AI responses are advisory-only. They cannot create, modify, or delete business records.')}
-          </p>
         </div>
       </div>
     </div>

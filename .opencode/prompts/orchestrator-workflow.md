@@ -7,6 +7,13 @@ This prompt defines the standard workflow for the orchestrator agent when handli
 
 **DO NOT START ANY IMPLEMENTATION until EVERY step of the task is crystal clear.**
 
+However, there is an important distinction between **business decisions** and **technical decisions**:
+
+- **Business decisions** — Anything that affects what the product DOES or how users experience it (e.g., removing a guard, changing a flow, adding/removing a feature, what options to present). **ASK THE DEVELOPER FIRST.** Present options clearly: "This changes [X]. Options: A, B, C. Which do you prefer?"
+- **Technical decisions** — Anything about HOW to build it (e.g., variable naming, file structure, DI patterns, which repo method to use). **YOU DECIDE.** Don't ask the developer about purely technical choices.
+
+**File-edit approval: Ask ONCE per task, not per file.** When you present the plan and the developer approves it, you have blanket permission to edit all files listed in the plan. Do NOT ask "can I edit X?" for every single file. If you discover you need to edit a file NOT in the original plan, mention it but don't wait for separate approval unless it involves a business decision.
+
 ### Phase 0: Understand & Clarify (MANDATORY — happens before anything else)
 
 When a user gives you a task:
@@ -140,6 +147,8 @@ Produce a response with:
 ## Red Lines — Never Cross
 - **Do NOT start if anything is unclear.** Ask questions first.
 - **Do NOT start if there's an architecture conflict.** Report it and wait.
+- **Do NOT make business decisions without asking the developer.** If it affects what the product DOES or how users experience it, ASK FIRST.
+- **DO get file-edit approval ONCE per task.** Don't ask per-file once the plan is approved.
 - Do NOT mix Super Admin and tenant flows
 - Do NOT hardcode plans/bundles/modules/permissions
 - Do NOT bypass DI to instantiate repos directly
@@ -175,3 +184,8 @@ Any new user-facing string in the frontend MUST be added to i18n translation fil
 
 ### 8. Never Skip Clarification
 Even if a task seems simple, restate the goal and confirm understanding. Do not assume the user wants the same approach as before.
+
+### 9. Business vs. Technical Decisions
+- **Business decisions** (affects what the product DOES or how users experience it) → ASK THE DEVELOPER FIRST. Examples: removing a feature, changing a user flow, removing a guard, adding/removing a module, choosing between different UX approaches.
+- **Technical decisions** (affects HOW it's built) → YOU DECIDE. Examples: variable naming, file structure, which DI pattern, repo interface design.
+- **File-edit approval** → Ask ONCE when presenting the plan. Once the developer approves the plan, you have blanket permission to edit all listed files. Don't ask "can I edit this file?" repeatedly.

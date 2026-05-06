@@ -10,8 +10,8 @@
       "description": "Primary agent that understands user requests, inspects project context, breaks work into stages, delegates analysis to read-only subagents, assigns implementation to builder subagents after approval, and produces a final summary.",
       "prompt": "{file:.opencode/prompts/orchestrator-workflow.md}",
       "permission": {
-        "edit": "ask",
-        "bash": "ask",
+        "edit": "allow",
+        "bash": "allow",
         "task": {
           "*": "deny",
           "erp-repo-explorer": "allow",
@@ -33,12 +33,7 @@
       "prompt": "{file:.opencode/prompts/sub-repo-explorer.md}",
       "permission": {
         "edit": "deny",
-        "bash": {
-          "*": "ask",
-          "git status *": "allow",
-          "git diff *": "allow",
-          "git log *": "allow"
-        }
+        "bash": "allow"
       }
     },
 
@@ -49,12 +44,7 @@
       "prompt": "{file:.opencode/prompts/sub-backend-architect.md}",
       "permission": {
         "edit": "deny",
-        "bash": {
-          "*": "ask",
-          "git status *": "allow",
-          "git diff *": "allow",
-          "git log *": "allow"
-        }
+        "bash": "allow"
       }
     },
 
@@ -65,12 +55,7 @@
       "prompt": "{file:.opencode/prompts/sub-frontend-architect.md}",
       "permission": {
         "edit": "deny",
-        "bash": {
-          "*": "ask",
-          "git status *": "allow",
-          "git diff *": "allow",
-          "git log *": "allow"
-        }
+        "bash": "allow"
       }
     },
 
@@ -81,11 +66,7 @@
       "prompt": "{file:.opencode/prompts/sub-api-contract.md}",
       "permission": {
         "edit": "deny",
-        "bash": {
-          "*": "ask",
-          "git status *": "allow",
-          "git diff *": "allow"
-        }
+        "bash": "allow"
       }
     },
 
@@ -95,8 +76,8 @@
       "description": "Backend implementation agent. Can edit backend files only after orchestrator gives clear scope. Must follow existing patterns.",
       "prompt": "{file:.opencode/prompts/sub-backend-builder.md}",
       "permission": {
-        "edit": "ask",
-        "bash": "ask"
+        "edit": "allow",
+        "bash": "allow"
       }
     },
 
@@ -106,8 +87,8 @@
       "description": "Frontend implementation agent. Can edit frontend files only after orchestrator gives clear scope. Must follow existing patterns.",
       "prompt": "{file:.opencode/prompts/sub-frontend-builder.md}",
       "permission": {
-        "edit": "ask",
-        "bash": "ask"
+        "edit": "allow",
+        "bash": "allow"
       }
     },
 
@@ -118,12 +99,7 @@
       "prompt": "{file:.opencode/prompts/sub-reviewer.md}",
       "permission": {
         "edit": "deny",
-        "bash": {
-          "*": "ask",
-          "git status *": "allow",
-          "git diff *": "allow",
-          "git log *": "allow"
-        }
+        "bash": "allow"
       }
     },
 
@@ -134,14 +110,7 @@
       "prompt": "{file:.opencode/prompts/sub-test-runner.md}",
       "permission": {
         "edit": "deny",
-        "bash": {
-          "*": "ask",
-          "git status *": "allow",
-          "git diff *": "allow",
-          "npm run build*": "allow",
-          "npm run typecheck*": "allow",
-          "npm run test*": "allow"
-        }
+        "bash": "allow"
       }
     }
   }

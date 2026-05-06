@@ -993,6 +993,79 @@
         "createTemplate": "Create Template",
         "edit": "Edit"
       }
+    },
+    "aiTools": {
+      "title": "AI Tool Catalog",
+      "description": "Manage AI assistant tools, enablement policies, and model configurations",
+      "filters": {
+        "module": "All Modules",
+        "category": "All Categories",
+        "status": "All Statuses",
+        "mode": "All Modes",
+        "search": "Search tools..."
+      },
+      "columns": {
+        "name": "Name",
+        "namespace": "Namespace",
+        "module": "Module",
+        "category": "Category",
+        "mode": "Mode",
+        "status": "Status",
+        "riskLevel": "Risk Level",
+        "dataSensitivity": "Sensitivity",
+        "permissions": "Required Permissions",
+        "requiredModules": "Required Modules",
+        "actions": "Actions"
+      },
+      "actions": {
+        "enable": "Enable",
+        "disable": "Disable",
+        "sync": "Sync Catalog",
+        "viewDetails": "Details"
+      },
+      "statuses": {
+        "active": "Active",
+        "disabled": "Disabled",
+        "unavailable": "Unavailable",
+        "deprecated": "Deprecated"
+      },
+      "modes": {
+        "read-only": "Read Only",
+        "proposal": "Proposal",
+        "write": "Write (BLOCKED)"
+      },
+      "riskLevels": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "blocked": "BLOCKED"
+      },
+      "sensitivity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "detail": {
+        "title": "AI Tool: {{name}}",
+        "description": "Description",
+        "namespace": "Namespace",
+        "module": "Module",
+        "category": "Category",
+        "mode": "Mode",
+        "status": "Status",
+        "permissions": "Required Permissions",
+        "requiredModules": "Required Modules",
+        "inputSchema": "Input Schema",
+        "outputSchema": "Output Schema",
+        "enablementPolicy": "Enablement Policy",
+        "modelPolicy": "Model Policy",
+        "unavailableReason": "This tool is unavailable because: {{reason}}",
+        "blockedWarning": "This is a WRITE tool and is permanently blocked for safety."
+      },
+      "sync": {
+        "success": "Catalog synced successfully. {{count}} new tools added.",
+        "error": "Failed to sync catalog."
+      }
     }
   },
   "onboarding": {
@@ -1273,7 +1346,8 @@
         "modules": "Modules",
         "permissions": "Permissions",
         "bundles": "Bundles",
-        "plans": "Plans"
+        "plans": "Plans",
+        "aiTools": "AI Tools"
       }
     }
   },

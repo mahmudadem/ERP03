@@ -6,12 +6,14 @@ import systemPermissionsRoutes from '../routes/system.permissions.routes';
 import systemRolesRoutes from '../routes/system.roles.routes';
 import systemModuleSettingsRoutes from '../routes/system.moduleSettings.routes';
 import systemRoutes from '../routes/system.routes';
+import aiToolCatalogRoutes from '../routes/ai-tool-catalog.routes';
 
 const router = Router();
 
 router.use('/super-admin', superAdminRoutes);
 router.use('/super-admin/templates', superAdminTemplatesRoutes);
 router.use('/super-admin/voucher-types', superAdminVoucherTypesRoutes);
+router.use('/platform', aiToolCatalogRoutes);
 router.use(systemPermissionsRoutes);
 router.use(systemRolesRoutes);
 router.use(systemModuleSettingsRoutes);

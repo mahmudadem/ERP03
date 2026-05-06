@@ -4,6 +4,213 @@
 
 ---
 
+## 2026-05-06 (Wed) — ~6h
+**Task:** AI Tool System — Full Catalog, Real Implementations, Super Admin Management
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+
+### Phase 1: AI Tool Catalog Domain
+Created full catalog architecture for managing AI tools system-wide:
+- **AiToolDefinition** entity: id, name, namespace, moduleId, category, status, mode (read-only/proposal/write), riskLevel, dataSensitivity, permissions, requiredModules
+- **AiToolEnablementPolicy** entity: per-tool enablement controls (global, plan, company, module, provider, model, role) with DENY-takes-precedence logic
+- **AiModelToolPolicy** entity: per-provider/model tool policies (default: read-only only, no write tools ever, deterministic mapping required)
+- **Repository interfaces**: `IAiToolCatalogRepository`, `IAiToolEnablementRepository`, `IAiModelToolPolicyRepository`
+- **Firestore implementations**: All three repositories with platform-level paths under `system_metadata/`
+
+### Phase 2: Super Admin Backend Endpoints
+Created `AiToolCatalogController` with 10 endpoints for managing the tool catalog:
+- List/get/update/enable/disable tool definitions
+- List/patch enablement policies
+- List/patch model tool policies
+- Sync catalog seed to DB
+- **AiToolCatalogUseCase** with safety enforcement: WRITE TOOLS CAN NEVER BE ENABLED
+- Routes registered at `/platform/ai-tools`, `/platform/ai-tool-policies`, `/platform/ai-model-tool-policies`
+
+### Phase 3: Full AI Tool Catalog
+Created `AiToolCatalogSeed.ts` with **100+ tool definitions** across 13 categories:
+- Accounting (Accounts, Vouchers, Reports, Period/Validation, Proposals)
+- Inventory, Sales, Purchases
+- CRM (all unavailable), HR (all unavailable)
+- Reports/BI, Audit, Platform
+- 7 BLOCKED write-pattern entries that can NEVER be enabled
+
+### Phase 4: 14 Real Tool Implementations
+Created 14 new tool classes following the existing pattern:
+1. `GetCashFlowTool` — Cash flow statement
+2. `GetAgingReceivablesTool` — AR aging report
+3. `GetAgingPayablesTool` — AP aging report
+4. `GetGeneralLedgerSummaryTool` — GL summary
+5. `GetAccountStatementSummaryTool` — Single account statement
+6. `GetChartOfAccountsSummaryTool` — COA summary
+7. `GetAccountBalanceTool` — Single account balance
+8. `GetFiscalYearStatusTool` — Fiscal year/period status
+9. `GetSalesSummaryTool` — Sales summary + top customers
+10. `GetTopCustomersTool` — Top customers by revenue
+11. `GetPurchaseSummaryTool` — Purchase summary + top suppliers
+12. `GetTopSuppliersTool` — Top suppliers by spend
+13. `GetFinancialOverviewTool` — Meta-tool combining P&L+BS+Cash+Aging
+14. `GetMonthlyComparisonTool` — Monthly P&L trends
+
+All 17 tools registered in `bindRepositories.ts` DI.
+
+### Phase 5: Comprehensive Intent Detection
+- Extracted `TOOL_INTENTS` from orchestrator into `tool-intents.config.ts`
+- Expanded from 3 intents to 30+ intents covering all active tools
+- Multilanguage: English + Arabic + Turkish keywords for every tool
+- Fixed architecture violation: added `getAllPermissions()` to `PermissionChecker`, removed `(as any)` hack
+- Enhanced AI safety rules in `formatToolResultsForContext`
+
+### Module Permission Updates
+- AI Assistant: 6 new permissions (tools.view, tools.manage, usage.view, health.test, model-policy.view/manage)
+- Sales: Added `sales.invoices.view/manage`
+- Purchases: Added `purchases.invoices.view/manage`
+- Inventory: Added `inventory.stockLevels.view`
+
+**Files Created (22+):**
+- Domain: AiToolDefinition.ts, AiToolEnablementPolicy.ts, AiModelToolPolicy.ts
+- Repositories: IAiToolCatalogRepository.ts, IAiToolEnablementRepository.ts, IAiModelToolPolicyRepository.ts
+- Firestore: FirestoreAiToolCatalogRepository.ts, FirestoreAiToolEnablementRepository.ts, FirestoreAiModelToolPolicyRepository.ts
+- Use Cases: AiToolCatalogUseCase.ts
+- Controller: AiToolCatalogController.ts
+- Routes: ai-tool-catalog.routes.ts
+- Catalog: AiToolCatalogSeed.ts
+- Config: tool-intents.config.ts
+- Tools (14): GetCashFlowTool, GetAgingReceivablesTool, GetAgingPayablesTool, GetGeneralLedgerSummaryTool, GetAccountStatementSummaryTool, GetChartOfAccountsSummaryTool, GetAccountBalanceTool, GetFiscalYearStatusTool, GetSalesSummaryTool, GetTopCustomersTool, GetPurchaseSummaryTool, GetTopSuppliersTool, GetFinancialOverviewTool, GetMonthlyComparisonTool
+
+**Files Modified (10):**
+- bindRepositories.ts — 17 tools registered in DI, 3 new repos, catalog use case
+- AiToolCallingOrchestrator.ts — Import config, fix PermissionChecker, enhanced safety rules
+- ExecuteAiToolUseCase.ts — Fix PermissionChecker bypass
+- PermissionChecker.ts — Add getAllPermissions() method
+- platform.router.ts — Register AI tool catalog routes
+- AiAssistantModule.ts — 6 new permissions
+- SalesModule.ts — 2 new permissions
+- PurchaseModule.ts — 2 new permissions
+- InventoryModule.ts — 1 new permission
+- seedOnboardingData.ts — 6 new AI assistant permissions
+
+**Verification:**
+- ✅ `backend`: npx tsc --noEmit — zero errors
+- ✅ `frontend`: npx tsc --noEmit — zero errors
+- ✅ 99 AI assistant tests passing
+
+**Key Decisions:**
+- Tool definitions use a static seed file (`AiToolCatalogSeed.ts`) that is the single source of truth
+- DB overrides only affect status and enabledByDefault — mode, permissions, and riskLevel are immutable from seed
+- WRITE tools (mode='write') are ALWAYS blocked — no override can enable them
+- Intent detection is deterministic keyword matching (EN/AR/TR) — no AI function calling
+- All tools return `DATA_UNAVAILABLE` if underlying data/service is missing
+- Super Admin can enable/disable tools globally, by plan, by company, by provider/model
+- Model tool policy defaults: read-only only, no write, deterministic mapping required
+
+**Result:** ✅ Phases 1-5 complete — Full AI Tool System backend ready
+**Next:** Phase 6-7 (Frontend), Phase 8 (Tests), Phase 9 (Verification), Phase 10 (Documentation)
+
+---
+
+## 2026-05-06 (Wed) — 8h
+**Task:** AI Tool System — Tests, Frontend, Full Verification
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+
+### Phase 8: Comprehensive Tests (327 total)
+
+Created 3 new test files covering the entire tool catalog system:
+
+1. **AiToolCatalog.test.ts** (24 tests)
+   - AiToolDefinition: creation, isExecutable, isBlocked, toJSON/fromJSON round-trip
+   - AiToolEnablementPolicy: global enable/disable, plan/company/module/provider/role deny precedence
+   - AiModelToolPolicy: read-only allow, write ALWAYS blocked, policy checks
+   - AiToolCatalogSeed: no executable write tools, all blocked entries, active tools executable, unique names, unavailable tools have reasons
+
+2. **AiToolCatalogUseCase.test.ts** (21 tests)
+   - List catalog with filters (module, category, status, mode)
+   - Get single tool from seed
+   - DB override merges (status mutable, mode/permissions/riskLevel immutable)
+   - Enable/disable tool status
+   - THROW on enabling blocked/write tools
+   - Enablement policy: DENY precedence at all levels
+   - Model tool policy: write tools ALWAYS forced false
+   - Sync catalog to DB (creates new, doesn't overwrite existing overrides)
+
+3. **AiToolCatalogSmoke.test.ts** (148 tests)
+   - All 17 tools: instantiation, name, requiredPermission, module, description, execute() shape
+   - Permission-denied behavior for each tool (empty permissions → PERMISSION_DENIED)
+   - AiTool interface compliance for each tool
+   - Registry integration: register all 17, getToolDescriptions, duplicate rejection
+   - Module grouping verification
+   - Cross-tool uniqueness (names, permissions, naming pattern)
+
+### Phase 6-7: Frontend — Super Admin AI Tool Catalog
+
+Created Super Admin pages for managing the AI tool catalog:
+
+1. **AiToolCatalogPage.tsx** — Main catalog page
+   - Filterable table: module, category, status, mode, search
+   - Enable/Disable toggle per tool
+   - Status badges: active=green, disabled=gray, unavailable=orange, deprecated=red, BLOCKED=red+skull
+   - Mode badges: read-only=blue, proposal=yellow, write=red+BLOCKED
+   - Risk level badges: low=green, medium=yellow, high=orange, blocked=red
+   - Data sensitivity badges: low=green, medium=yellow, high=red
+   - Sync Catalog button
+   - Auto-refresh on page load
+
+2. **AiToolDetailPage.tsx** — Detail page
+   - Tool name, description, namespace, module, category, mode, status
+   - Required permissions and modules lists
+   - Input/output schema display
+   - Enablement policy section
+   - Model policy section
+
+3. **Route registration** in `routes.config.ts`:
+   - `/super-admin/ai-tools` (catalog page)
+   - `/super-admin/ai-tools/:toolName` (detail page, hidden from menu)
+
+4. **Sidebar** update in `SuperAdminShell.tsx`:
+   - Added "AI Tools" nav item with Wrench icon
+
+5. **API client** update in `superAdmin/index.ts`:
+   - getAiTools, getAiTool, enableAiTool, disableAiTool, syncAiToolCatalog
+   - getAiToolEnablementPolicies, updateAiToolEnablementPolicy
+   - getAiModelToolPolicies, updateAiModelToolPolicy
+
+6. **i18n translations** in en/ar/tr:
+   - Full `superAdmin.aiTools` namespace with all labels, badges, actions, detail fields
+
+### Phase 9: Full Verification ✅
+
+- Backend TypeScript: `npx tsc --noEmit` — zero errors
+- Frontend TypeScript: `npx tsc --noEmit` — zero errors
+- All 327 AI assistant + catalog tests pass
+
+**Files Created (3 — Tests):**
+- `backend/src/tests/domain/ai-assistant/AiToolCatalog.test.ts` (24 tests)
+- `backend/src/tests/application/ai-assistant/AiToolCatalogUseCase.test.ts` (21 tests)
+- `backend/src/tests/application/ai-assistant/AiToolCatalogSmoke.test.ts` (148 tests)
+
+**Files Created (2 — Frontend):**
+- `frontend/src/modules/super-admin/pages/AiToolCatalogPage.tsx`
+- `frontend/src/modules/super-admin/pages/AiToolDetailPage.tsx`
+
+**Files Modified (3 — Frontend):**
+- `frontend/src/router/routes.config.ts` — 2 new routes
+- `frontend/src/layout/SuperAdminShell.tsx` — 1 new nav item
+- `frontend/src/api/superAdmin/index.ts` — 9 new API methods
+- `frontend/src/locales/en/common.json` — aiTools i18n
+- `frontend/src/locales/ar/common.json` — aiTools i18n
+- `frontend/src/locales/tr/common.json` — aiTools i18n
+
+**Verification:**
+- ✅ Backend TypeScript: zero errors
+- ✅ Frontend TypeScript: zero errors
+- ✅ 327 AI assistant + catalog tests: all pass
+- ✅ 148 smoke tests: all 17 tools verified
+- ✅ Super Admin catalog page: routes registered, sidebar entry added
+
+**Result:** ✅ All phases complete — Full AI Tool System ready for smoke testing
+
 ## 2026-05-06 (Wed) — Stabilization pass — 35 min
 **Task:** Harden AI Assistant tools + analytics release slice
 **Agent:** OpenCode (CTO Mode)

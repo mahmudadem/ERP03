@@ -32,6 +32,7 @@ export class InventoryModule implements IModule {
         'inventory.uom.manage',
         'inventory.stock.view',
         'inventory.stock.adjust',
+        'inventory.stockLevels.view',
         'inventory.movements.view',
         'inventory.movements.record',
         'inventory.valuation.view',

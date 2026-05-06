@@ -113,14 +113,14 @@
     "notifications": "الإشعارات",
     "generalSettings": "الإعدادات العامة",
     "companySettings": "إعدادات الشركة",
-    "tradingAccount": "???? ????????",
-    "journal": "???????",
-    "aging": "????? ?????",
-    "bankReconciliation": "?????? ?????",
-    "costCenterSummary": "???? ???? ???????",
-    "budgetVsActual": "???????? ????? ??????",
-    "aiAssistant": "????? ????????? ??????",
-    "chat": "?????"
+    "tradingAccount": "المتاجرة",
+    "journal": "دفتر اليومية",
+    "aging": "أعمار الذمم",
+    "bankReconciliation": "تسوية بنكية",
+    "costCenterSummary": "ملخص مراكز التكلفة",
+    "budgetVsActual": "الموازنة مقابل الفعلي",
+    "aiAssistant": "مساعد الذكاء الاصطناعي",
+    "chat": "محادثة"
   },
   "reportContainer": {
     "refresh": "تحديث",
@@ -993,6 +993,79 @@
         "createTemplate": "إنشاء قالب",
         "edit": "يحرر"
       }
+    },
+    "aiTools": {
+      "title": "كتالوج أدوات الذكاء الاصطناعي",
+      "description": "إدارة أدوات مساعد الذكاء الاصطناعي وسياسات التمكين وتكوينات النماذج",
+      "filters": {
+        "module": "جميع الوحدات",
+        "category": "جميع الفئات",
+        "status": "جميع الحالات",
+        "mode": "جميع الأوضاع",
+        "search": "البحث عن أدوات..."
+      },
+      "columns": {
+        "name": "الاسم",
+        "namespace": "مساحة الاسم",
+        "module": "الوحدة",
+        "category": "الفئة",
+        "mode": "الوضع",
+        "status": "الحالة",
+        "riskLevel": "مستوى المخاطر",
+        "dataSensitivity": "الحساسية",
+        "permissions": "الأذونات المطلوبة",
+        "requiredModules": "الوحدات المطلوبة",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "enable": "تمكين",
+        "disable": "تعطيل",
+        "sync": "مزامنة الكتالوج",
+        "viewDetails": "التفاصيل"
+      },
+      "statuses": {
+        "active": "نشط",
+        "disabled": "معطل",
+        "unavailable": "غير متاح",
+        "deprecated": "مهمل"
+      },
+      "modes": {
+        "read-only": "للقراءة فقط",
+        "proposal": "اقتراح",
+        "write": "كتابة (محظور)"
+      },
+      "riskLevels": {
+        "low": "منخفض",
+        "medium": "متوسط",
+        "high": "مرتفع",
+        "blocked": "محظور"
+      },
+      "sensitivity": {
+        "low": "منخفض",
+        "medium": "متوسط",
+        "high": "مرتفع"
+      },
+      "detail": {
+        "title": "أداة الذكاء الاصطناعي: {{name}}",
+        "description": "الوصف",
+        "namespace": "مساحة الاسم",
+        "module": "الوحدة",
+        "category": "الفئة",
+        "mode": "الوضع",
+        "status": "الحالة",
+        "permissions": "الأذونات المطلوبة",
+        "requiredModules": "الوحدات المطلوبة",
+        "inputSchema": "مخطط الإدخال",
+        "outputSchema": "مخطط الإخراج",
+        "enablementPolicy": "سياسة التمكين",
+        "modelPolicy": "سياسة النموذج",
+        "unavailableReason": "هذه الأداة غير متاحة لأن: {{reason}}",
+        "blockedWarning": "هذه أداة كتابة وهي محظورة نهائيًا للسلامة."
+      },
+      "sync": {
+        "success": "تمت مزامنة الكتالوج بنجاح. تمت إضافة {{count}} أدوات جديدة.",
+        "error": "فشلت مزامنة الكتالوج."
+      }
     }
   },
   "onboarding": {
@@ -1351,15 +1424,16 @@
       "logout": "تسجيل الخروج",
       "confirmLogout": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
       "systemAdminPanel": "لوحة إدارة النظام",
-      "nav": {
-        "overview": "ملخص",
+"nav": {
+        "overview": "نظرة عامة",
         "users": "إدارة المستخدمين",
-        "companies": "شركات",
+        "companies": "الشركات",
         "businessDomains": "مجالات الأعمال",
-        "modules": "وحدات",
+        "modules": "الوحدات",
         "permissions": "الأذونات",
-        "bundles": "حزم",
-        "plans": "الخطط"
+        "bundles": "الحزم",
+        "plans": "الخطط",
+        "aiTools": "أدوات الذكاء الاصطناعي"
       }
     }
   },

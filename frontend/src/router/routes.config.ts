@@ -84,6 +84,8 @@ const BundlesManagerPage = lazy(() => import('../modules/super-admin/pages/Bundl
 const PermissionsManagerPage = lazy(() => import('../modules/super-admin/pages/PermissionsManagerPage').then(m => ({ default: m.PermissionsManagerPage })));
 const ModulesManagerPage = lazy(() => import('../modules/super-admin/pages/ModulesManagerPage').then(m => ({ default: m.ModulesManagerPage })));
 const PlansManagerPage = lazy(() => import('../modules/super-admin/pages/PlansManagerPage').then(m => ({ default: m.PlansManagerPage })));
+const AiToolCatalogPage = lazy(() => import('../modules/super-admin/pages/AiToolCatalogPage').then(m => ({ default: m.AiToolCatalogPage })));
+const AiToolDetailPage = lazy(() => import('../modules/super-admin/pages/AiToolDetailPage').then(m => ({ default: m.AiToolDetailPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
 
 // Company Wizard (user-level)
@@ -236,6 +238,8 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/bundles-manager', label: 'Bundles', component: BundlesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions-registry', label: 'Permissions Registry', component: PermissionsManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/modules-registry', label: 'Modules Registry', component: ModulesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/ai-tools', label: 'AI Tools', component: AiToolCatalogPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/ai-tools/:toolName', label: 'AI Tool Detail', component: AiToolDetailPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/plans', label: 'Plans', component: PlansManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions', label: 'Module Permissions', component: ModulePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions/:moduleId', label: 'Edit Module Permissions', component: EditModulePermissionsPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },

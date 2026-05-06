@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { superAdminApi, SuperAdminCompany } from '../../../api/superAdmin';
 import { Button } from '../../../components/ui/Button';
 import { errorHandler } from '../../../services/errorHandler';
@@ -22,6 +23,7 @@ import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
 
 export default function CompaniesListPage() {
   const { t } = useTranslation('common');
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState<SuperAdminCompany[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -133,9 +135,14 @@ export default function CompaniesListPage() {
                     {company.createdAt ? formatCompanyDate(company.createdAt, null) : '-'}
                   </td>
                   <td className={tableCellClass}>
-                    <Button variant="secondary" size="sm" onClick={() => handleImpersonate(company.id)}>
-                      {t('superAdmin.companies.actions.impersonate')}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => handleImpersonate(company.id)}>
+                        {t('superAdmin.companies.actions.impersonate')}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/super-admin/companies/${company.id}/entitlements`)}>
+                        {t('superAdmin.companies.actions.manageModules', { defaultValue: 'Modules' })}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

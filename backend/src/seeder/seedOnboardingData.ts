@@ -187,6 +187,12 @@ const MODULE_DEFINITIONS = [
       { id: 'ai-assistant.settings.view', label: 'View AI Settings', enabled: true },
       { id: 'ai-assistant.settings.manage', label: 'Manage AI Settings', enabled: true },
       { id: 'ai-assistant.settings.health', label: 'Test Provider Connectivity', enabled: true },
+      { id: 'ai-assistant.tools.view', label: 'View AI Tool Catalog', enabled: true },
+      { id: 'ai-assistant.tools.manage', label: 'Manage AI Tool Enablement', enabled: true },
+      { id: 'ai-assistant.usage.view', label: 'View AI Usage Analytics', enabled: true },
+      { id: 'ai-assistant.health.test', label: 'Test AI Provider Health', enabled: true },
+      { id: 'ai-assistant.model-policy.view', label: 'View AI Model Tool Policies', enabled: true },
+      { id: 'ai-assistant.model-policy.manage', label: 'Manage AI Model Tool Policies', enabled: true },
       { id: 'ai-assistant.tools.accounting.trial-balance', label: 'AI Accounting: Trial Balance Summary', enabled: true },
     ],
     autoAttachToRoles: ['owner', 'admin']

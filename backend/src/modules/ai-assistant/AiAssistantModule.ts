@@ -34,6 +34,12 @@ export class AiAssistantModule implements IModule {
         'ai-assistant.settings.manage',
         'ai-assistant.settings.health',
         'ai-assistant.tools.accounting.trial-balance',
+        'ai-assistant.tools.view',
+        'ai-assistant.tools.manage',
+        'ai-assistant.usage.view',
+        'ai-assistant.health.test',
+        'ai-assistant.model-policy.view',
+        'ai-assistant.model-policy.manage',
     ];
 
     getManifest(): ModuleManifest {
