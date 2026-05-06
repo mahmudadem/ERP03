@@ -23,6 +23,7 @@ export interface SendChatMessageResponse {
     provider: string;
     model: string;
     tokenCount?: number;
+    metadata?: Record<string, unknown>;
     createdAt: string;
   };
   provider: string;
@@ -38,6 +39,7 @@ export interface GetConversationMessagesResponse {
     provider: string;
     model?: string;
     tokenCount?: number;
+    metadata?: Record<string, unknown>;
     createdAt: string;
   }>;
 }
@@ -88,6 +90,7 @@ export class AiAssistantDTOMapper {
       provider: message.provider,
       model: message.model || null,
       tokenCount: message.tokenCount || null,
+      metadata: message.metadata || null,
       createdAt: message.createdAt?.toISOString?.() || message.createdAt,
     };
   }

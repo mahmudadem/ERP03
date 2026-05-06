@@ -4,6 +4,91 @@
 
 ---
 
+## 2026-05-06 (Wed) — Stabilization pass — 35 min
+**Task:** Harden AI Assistant tools + analytics release slice
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+1. Added backend tests for new accounting tools and analytics use case:
+   - `AiAssistantAccountingToolsAndAnalytics.test.ts` (new)
+   - Covers P&L tool, Balance Sheet tool, usage analytics aggregation and limit clamping.
+2. Added chat metadata persistence test:
+   - Updated `SendChatMessageUseCase.test.ts`
+   - Verifies assistant metadata now includes `toolResults` and keeps provider metadata.
+3. Ran stabilization verification:
+   - `backend`: `npx tsc --noEmit` ✅
+   - `frontend`: `npx tsc --noEmit` ✅
+   - `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant` ✅
+     - 7 suites, 99 tests, all passing.
+
+**Outcome:**
+The new AI assistant functionality (Trial Balance/P&L/Balance Sheet structured output + usage analytics) now has direct regression coverage and is in a stable, test-verified state.
+
+---
+
+## 2026-05-06 (Wed) — Items 1/2/3 execution — 1h 20m
+**Task:** AI Assistant enhancements (more tools + structured chat data + usage analytics dashboard)
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+
+1. **Added two new read-only accounting AI tools**
+   - `GetProfitAndLossTool` (`accounting.getProfitAndLoss`)
+   - `GetBalanceSheetTool` (`accounting.getBalanceSheet`)
+   - Registered both in DI tool registry and added deterministic intent keywords (EN/AR/TR).
+
+2. **Extended chat pipeline to include structured tool results in metadata**
+   - `SendChatMessageUseCase` now preserves `toolResults` in assistant message metadata.
+   - API DTO now returns message metadata.
+   - Frontend chat now renders structured cards/tables using `AiToolResultsPanel`.
+
+3. **Implemented usage analytics dashboard**
+   - New backend use case: `GetUsageAnalyticsUseCase`.
+   - New endpoint: `GET /tenant/ai-assistant/settings/usage`.
+   - New frontend settings tab: **Analytics** showing key metrics and recent requests table.
+
+4. **Localization updates**
+   - Added AI chat + analytics strings in `en/ar/tr` locale files.
+
+5. **Verification**
+   - Backend TypeScript compile: ✅
+   - Frontend TypeScript compile: ✅
+   - AI tool-calling test suite: ✅ (15/15 passing)
+
+**Result:**
+- Trial Balance, P&L, and Balance Sheet can now be called deterministically from chat.
+- Tool data is surfaced as structured UI (not only plain text).
+- Admins can monitor usage/performance in the settings analytics tab.
+
+---
+
+## 2026-05-06 (Wed) — Smoke Test Fixes — 30 min
+**Task:** AI Assistant tool calling — smoke test and bug fixes
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+
+1. **Added debug logging** to `AiToolCallingOrchestrator.detectAndExecute()` and `SendChatMessageUseCase` to trace tool orchestration flow.
+
+2. **Fixed CORS bug** — `x-silent-error` custom header was blocked by preflight:
+   - Root cause: `cors()` middleware and manual CORS fallback didn't include `x-silent-error` in `allowedHeaders`.
+   - Fix: Added header to both `server/index.ts` and `src/index.ts`.
+
+3. **Fixed DI bug — wrong repository injected into PermissionChecker** (the critical one):
+   - Symptom: AI fabricated data because the tool execution crashed silently with `this.companyUserRepo.getByUserAndCompany is not a function`.
+   - Root cause: `bindRepositories.ts` line 759 passed `this.companyUserRepository` (core interface: only has `getUserMembership`) instead of `this.rbacCompanyUserRepository` (RBAC interface: has `getByUserAndCompany`).
+   - The crash was caught by the `try/catch` in `SendChatMessageUseCase` (line 126), which let the chat continue WITHOUT tool data, causing the AI to invent numbers.
+   - Fix: Changed `this.companyUserRepository` → `this.rbacCompanyUserRepository` in the `permissionChecker` DI binding.
+
+4. **Smoke test passed** — "Show me the trial balance" now returns real data:
+   - Total Debit: 664,037 / Total Credit: 664,037 / Balanced
+   - Real account codes (10101, 10201, 20101, etc.) with real balances
+   - AI correctly explains the data and directs users to the Trial Balance report screen
+
+**Key Learning:** When DI injects the wrong interface implementation, TypeScript won't always catch it if both interfaces exist with similar but different method signatures. The core `ICompanyUserRepository` and RBAC `ICompanyUserRepository` are different interfaces with different methods. Always verify DI bindings match the exact interface the use case expects.
+
+---
+
 ## 2026-05-06 (Wed) — 2h
 **Task:** AI Assistant — Chat-Integrated Tool Calling + Health Check Cooldown
 **Agent:** OpenCode (CTO Mode)

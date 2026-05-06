@@ -9,6 +9,7 @@ import { Request, Response, NextFunction } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { SendChatMessageUseCase } from '../../../application/ai-assistant/use-cases/SendChatMessageUseCase';
 import { AiSettingsUseCase } from '../../../application/ai-assistant/use-cases/AiSettingsUseCase';
+import { GetUsageAnalyticsUseCase } from '../../../application/ai-assistant/use-cases/GetUsageAnalyticsUseCase';
 import { CheckProviderHealthUseCase } from '../../../application/ai-assistant/use-cases/CheckProviderHealthUseCase';
 import { ExecuteAiToolUseCase } from '../../../application/ai-assistant/use-cases/ExecuteAiToolUseCase';
 import { validateSendChatMessageInput, validateUpdateAiSettingsInput } from '../../validators/ai-assistant.validators';
@@ -194,6 +195,27 @@ export class AiAssistantController {
         maxRequestsPerDay: req.body.maxRequestsPerDay,
         isEnabled: req.body.isEnabled,
       });
+
+      (res as any).status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /ai-assistant/settings/usage
+   * Get AI usage analytics for the current company.
+   */
+  static async getUsageAnalytics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const limit = Number(req.query.limit || 50);
+
+      const useCase = new GetUsageAnalyticsUseCase(diContainer.aiUsageLogRepository);
+      const result = await useCase.execute({ companyId, limit });
 
       (res as any).status(200).json({
         success: true,

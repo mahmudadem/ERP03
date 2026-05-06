@@ -37,7 +37,7 @@ import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProvid
 import { ProviderFactory } from '../providers/ProviderFactory';
 import { AiProviderRequest } from '../providers/IAiProvider';
 import { AiRateLimiterService } from '../services/AiRateLimiterService';
-import { AiToolCallingOrchestrator } from '../services/AiToolCallingOrchestrator';
+import { AiToolCallingOrchestrator, ToolCallingResult } from '../services/AiToolCallingOrchestrator';
 import { ProviderError } from '../../../errors/ProviderErrors';
 import { ApiError } from '../../../api/errors/ApiError';
 
@@ -109,6 +109,7 @@ export class SendChatMessageUseCase {
 
     // 7. Detect and execute tools if the message matches any known intents
     let toolContextMessage: string | null = null;
+    let toolResultsForMetadata: ToolCallingResult[] = [];
 
     if (this.toolOrchestrator) {
       try {
@@ -119,8 +120,10 @@ export class SendChatMessageUseCase {
         );
 
         if (toolResults && toolResults.length > 0) {
+          toolResultsForMetadata = toolResults;
           // Format tool results for inclusion in the AI context
           toolContextMessage = this.toolOrchestrator.formatToolResultsForContext(toolResults);
+          console.log(`[AI Assistant] Tool context injected: ${toolResults.length} tool(s) invoked, context length=${toolContextMessage.length}`);
         }
       } catch (error) {
         // Tool execution failure should NOT block the chat flow.
@@ -192,7 +195,10 @@ export class SendChatMessageUseCase {
         content: response.content,
         provider: response.provider,
         model: response.model,
-        metadata: response.metadata,
+        metadata: {
+          ...(response.metadata || {}),
+          toolResults: toolResultsForMetadata,
+        },
       });
       // Set token count after creation since create() doesn't accept it
       assistantMessage.tokenCount = response.tokenCount;

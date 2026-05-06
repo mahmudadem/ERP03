@@ -57,6 +57,34 @@ const TOOL_INTENTS: Array<{
       'borç alacak özeti', 'hesap özeti',
     ],
   },
+  {
+    toolName: 'accounting.getProfitAndLoss',
+    keywords: [
+      // English
+      'profit and loss', 'profit & loss', 'p&l', 'income statement',
+      'net profit', 'gross profit', 'revenue and expenses',
+      // Arabic
+      'الأرباح والخسائر', 'ارباح وخسائر', 'قائمة الدخل',
+      'صافي الربح', 'الإيرادات والمصروفات',
+      // Turkish
+      'kar zarar', 'gelir tablosu', 'net kar',
+      'gelir ve gider',
+    ],
+  },
+  {
+    toolName: 'accounting.getBalanceSheet',
+    keywords: [
+      // English
+      'balance sheet', 'statement of financial position',
+      'assets and liabilities', 'assets liabilities equity',
+      // Arabic
+      'الميزانية العمومية', 'قائمة المركز المالي',
+      'الأصول والخصوم', 'الاصول والخصوم',
+      // Turkish
+      'bilanço', 'finansal durum tablosu',
+      'varlıklar ve borçlar',
+    ],
+  },
 ];
 
 export interface ToolCallingResult {
@@ -88,6 +116,7 @@ export class AiToolCallingOrchestrator {
     params?: Record<string, unknown>,
   ): Promise<ToolCallingResult[] | null> {
     const matchedIntents = this.detectIntents(message);
+    console.log(`[AI Assistant] Tool orchestration: message="${message.substring(0, 80)}", matchedIntents=${matchedIntents.length > 0 ? matchedIntents.map(i => i.toolName).join(',') : 'none'}`);
 
     if (matchedIntents.length === 0) {
       return null; // No tool needed — normal chat continues
@@ -95,16 +124,20 @@ export class AiToolCallingOrchestrator {
 
     // Get user permissions for context
     const permissions = await this.getUserPermissions(userId, companyId);
+    console.log(`[AI Assistant] Tool orchestration: userId=${userId}, companyId=${companyId}, permissions=${permissions.length > 5 ? permissions.length + ' permissions' : permissions.join(',')}`);
+
     const context = { companyId, userId, permissions };
 
     const results: ToolCallingResult[] = [];
 
     for (const intent of matchedIntents) {
+      console.log(`[AI Assistant] Executing tool: ${intent.toolName}`);
       const result = await this.toolRegistry.executeTool(
         intent.toolName,
         context,
         params,
       );
+      console.log(`[AI Assistant] Tool ${intent.toolName} result: success=${result.success}, errorCode=${result.errorCode || 'none'}`);
 
       results.push({
         toolName: intent.toolName,

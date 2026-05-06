@@ -25,7 +25,7 @@ export const api = functions.https.onRequest(async (req: any, res: any) => {
     // Add CORS headers manually since the Express app (which has the cors middleware) is not ready yet
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-company-id');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-company-id, x-silent-error');
     
     // If it's a preflight request, return 204
     if (req.method === 'OPTIONS') {

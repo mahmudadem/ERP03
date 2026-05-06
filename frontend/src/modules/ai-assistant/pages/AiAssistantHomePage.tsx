@@ -9,8 +9,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, Bot, User, Trash2, AlertCircle, Plus, MessageSquare, Clock } from 'lucide-react';
-import { aiAssistantApi, SendChatMessageResponse, ChatMessageDTO } from '../../../api/aiAssistantApi';
+import { aiAssistantApi, SendChatMessageResponse, ChatMessageDTO, AiToolCallResultDTO } from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
+import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
 
 interface DisplayMessage {
   id: string;
@@ -18,6 +19,7 @@ interface DisplayMessage {
   content: string;
   timestamp: string;
   isMock?: boolean;
+  toolResults?: AiToolCallResultDTO[];
 }
 
 interface ConversationSummary {
@@ -39,6 +41,23 @@ export const AiAssistantHomePage: React.FC = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const canChat = hasPermission('ai-assistant.chat.use');
+
+  const extractToolResults = useCallback((metadata: unknown): AiToolCallResultDTO[] => {
+    const meta = metadata as Record<string, unknown> | null;
+    if (!meta || !Array.isArray(meta.toolResults)) return [];
+
+    return (meta.toolResults as Array<Record<string, unknown>>)
+      .map((entry) => ({
+        toolName: String(entry.toolName || ''),
+        result: {
+          success: Boolean((entry.result as any)?.success),
+          data: ((entry.result as any)?.data || null) as Record<string, unknown> | null,
+          error: (entry.result as any)?.error,
+          errorCode: (entry.result as any)?.errorCode,
+        },
+      }))
+      .filter(item => !!item.toolName);
+  }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -67,6 +86,7 @@ export const AiAssistantHomePage: React.FC = () => {
         content: msg.content,
         timestamp: msg.createdAt,
         isMock: msg.provider === 'mock',
+        toolResults: extractToolResults(msg.metadata),
       }));
       setConversationId(convId);
       setMessages(historyMessages);
@@ -136,6 +156,7 @@ export const AiAssistantHomePage: React.FC = () => {
         content: response.assistantMessage.content,
         timestamp: response.assistantMessage.createdAt,
         isMock: response.provider === 'mock',
+        toolResults: extractToolResults(response.assistantMessage.metadata),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -177,7 +198,7 @@ export const AiAssistantHomePage: React.FC = () => {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, isLoading, conversationId, t, refreshConversations]);
+  }, [input, isLoading, conversationId, t, refreshConversations, extractToolResults]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -404,6 +425,9 @@ export const AiAssistantHomePage: React.FC = () => {
                 <div className="text-sm whitespace-pre-wrap leading-relaxed">
                   {msg.content}
                 </div>
+                {msg.role === 'assistant' && msg.toolResults && msg.toolResults.length > 0 && (
+                  <AiToolResultsPanel toolResults={msg.toolResults} />
+                )}
                 {msg.isMock && msg.role === 'assistant' && (
                   <div className="text-xs text-gray-400 mt-2 pt-1 border-t border-gray-100">
                     {t('chat.mockLabel', 'Mock response — for development only')}

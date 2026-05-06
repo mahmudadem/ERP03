@@ -163,6 +163,50 @@ describe('SendChatMessageUseCase', () => {
       expect(savedConfig.dailyRequestCount).toBe(1);
       expect(savedConfig.dailyRequestDate).toBe(AiProviderConfig.getTodayDateString());
     });
+
+    it('should persist toolResults in assistant message metadata', async () => {
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const mockOrchestrator = {
+        detectAndExecute: jest.fn().mockResolvedValue([
+          {
+            toolName: 'accounting.getTrialBalanceSummary',
+            result: {
+              success: true,
+              data: {
+                totalDebit: 100,
+                totalCredit: 100,
+                isBalanced: true,
+              },
+            },
+          },
+        ]),
+        formatToolResultsForContext: jest.fn().mockReturnValue('[TOOL RESULT MOCK]'),
+        getToolDescriptionsForPrompt: jest.fn().mockReturnValue('Available tools: ...'),
+      } as any;
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo,
+        settingsRepo,
+        encryptionService,
+        createMockHttpClient(),
+        undefined,
+        mockOrchestrator,
+      );
+
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'show me trial balance',
+      });
+
+      expect(mockOrchestrator.detectAndExecute).toHaveBeenCalled();
+      expect((result.assistantMessage.metadata as any)?.toolResults).toBeDefined();
+      expect((result.assistantMessage.metadata as any)?.toolResults).toHaveLength(1);
+      // Keep provider metadata too (from MockProvider)
+      expect((result.assistantMessage.metadata as any)?.isMock).toBe(true);
+    });
   });
 
   describe('input validation', () => {

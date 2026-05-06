@@ -16,7 +16,18 @@ export interface ChatMessageDTO {
   provider: string;
   model?: string | null;
   tokenCount?: number | null;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
+}
+
+export interface AiToolCallResultDTO {
+  toolName: string;
+  result: {
+    success: boolean;
+    data: Record<string, unknown> | null;
+    error?: string;
+    errorCode?: string;
+  };
 }
 
 export interface SendChatMessagePayload {
@@ -41,6 +52,28 @@ export interface AiSettingsDTO {
   isEnabled: boolean;
   hasApiKey: boolean;
   updatedAt: string;
+}
+
+export interface AiUsageAnalyticsResponse {
+  summary: {
+    todayRequests: number;
+    successCount: number;
+    failureCount: number;
+    avgLatencyMs: number;
+    totalTokens: number;
+    providerBreakdown: Array<{ providerType: string; count: number }>;
+  };
+  recentLogs: Array<{
+    id: string;
+    userId: string;
+    providerType: string;
+    model: string;
+    status: 'success' | 'failure';
+    totalTokens: number;
+    latencyMs: number;
+    errorCode?: string;
+    createdAt: string;
+  }>;
 }
 
 export interface UpdateAiSettingsPayload {
@@ -96,5 +129,12 @@ export const aiAssistantApi = {
   updateSettings: async (payload: UpdateAiSettingsPayload): Promise<{ config: AiSettingsDTO }> => {
     const response = await client.put('/tenant/ai-assistant/settings', payload);
     return response as unknown as { config: AiSettingsDTO };
+  },
+
+  getUsageAnalytics: async (limit: number = 50): Promise<AiUsageAnalyticsResponse> => {
+    const response = await client.get('/tenant/ai-assistant/settings/usage', {
+      params: { limit },
+    });
+    return response as unknown as AiUsageAnalyticsResponse;
   },
 };

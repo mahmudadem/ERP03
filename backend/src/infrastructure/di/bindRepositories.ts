@@ -112,6 +112,8 @@ import { ModuleActivationService } from '../../application/system/services/Modul
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
 import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
+import { GetProfitAndLossTool } from '../../application/ai-assistant/tools/GetProfitAndLossTool';
+import { GetBalanceSheetTool } from '../../application/ai-assistant/tools/GetBalanceSheetTool';
 import { PermissionChecker } from '../../application/rbac/PermissionChecker';
 
 // SUPER ADMIN
@@ -744,6 +746,17 @@ export const diContainer = {
         this.accountRepository,
         this.permissionChecker,
       ),
+      new GetProfitAndLossTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.permissionChecker,
+      ),
+      new GetBalanceSheetTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.permissionChecker,
+        this.companyRepository,
+      ),
     ]);
   },
   get aiToolCallingOrchestrator(): AiToolCallingOrchestrator {
@@ -758,7 +771,7 @@ export const diContainer = {
     const { GetCurrentUserPermissionsForCompanyUseCase } = require('../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase');
     const getPermsUC = new GetCurrentUserPermissionsForCompanyUseCase(
       this.userRepository,
-      this.companyUserRepository,
+      this.rbacCompanyUserRepository,
       this.companyRoleRepository,
     );
     return new PermissionChecker(getPermsUC);
