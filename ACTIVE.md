@@ -2,7 +2,7 @@
 
 **Task:** AI Assistant Module v2 — Guarded Tool Runtime + Proposal Sandbox Integration  
 **Started:** 2026-05-07  
-**Status:** ✅ COMPLETE — review fixes applied, typechecks clean, targeted AI tests passing  
+**Status:** ✅ COMPLETE — manual-test Firestore metadata bug fixed; awaiting follow-up commit approval  
 **Agent/IDE:** OpenCode (CTO Mode)  
 **Branch:** `feat/ai-proposal-sandbox`
 
@@ -64,6 +64,14 @@ Commands run on 2026-05-07:
 - `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/AiRuntimeGuard.test.ts src/tests/application/ai-assistant/OpenAICompatibleProvider.test.ts src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts src/tests/application/ai-assistant/AiProposalSandbox.test.ts` ✅
   - 4 suites passed
   - 103 tests passed
+- Manual-test detour fix after trying “Show me the trial balance summary”:
+  - Root cause: Firestore rejected `metadata.toolCallResults: undefined` on chat message persistence.
+  - Fix: omit empty `toolCallResults`/`proposal` metadata keys in `SendChatMessageUseCase` and strip nested `undefined` values at the Firestore chat repository boundary.
+  - `backend`: `npm run typecheck` ✅
+  - `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/FirestoreAiChatRepository.test.ts src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts` ✅
+    - 2 suites passed
+    - 16 tests passed
+  - `backend`: `npm run build` ✅ — updates local `backend/lib` runtime output for Firebase emulator manual testing; do not commit generated `backend/lib` artifacts.
 
 Reviewer status:
 - `erp-reviewer` final meaningful review: ✅ PASS
@@ -86,7 +94,7 @@ Reviewer status:
 | Item | Description | Priority |
 |------|-------------|----------|
 | Full regression run | Run complete backend/frontend test/build suite before merge | High before merge |
-| Commit | Commit after developer approval only | High |
+| Follow-up commit | Commit Firestore metadata serialization fix after developer approval | High |
 | Prisma AI repos | Add Prisma implementations for AI Proposal repositories when SQL mode is prioritized | Future |
 | Human-approved execution | Future path: accept proposal → execute through proper use cases with approval | Future |
 | Typed tool-result UI | Replace remaining local `as any` display casts with stronger frontend tool-result types | Low |
@@ -96,6 +104,6 @@ Reviewer status:
 
 ## 👉 Recommended Next Move
 
-Review the changed files, then approve a git commit. Suggested commit format:
+Manual test the chat prompt again, then approve the follow-up git commit. Suggested commit format:
 
-`feat(ai-assistant): add guarded runtime v2 [ACTIVE-70]`
+`fix(ai-assistant): sanitize chat metadata before Firestore writes [ACTIVE-70]`

@@ -1,6 +1,32 @@
-import { Firestore } from 'firebase-admin/firestore';
+import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { IAiChatRepository } from '../../../../repository/interfaces/ai-assistant/IAiChatRepository';
 import { AiChatMessage } from '../../../../domain/ai-assistant/entities/AiChatMessage';
+
+const stripUndefinedDeep = (value: any): any => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stripUndefinedDeep(item))
+      .filter((item) => item !== undefined);
+  }
+  if (value instanceof Date || value instanceof Timestamp) {
+    return value;
+  }
+  if (typeof value !== 'object') {
+    return value;
+  }
+
+  const output: Record<string, any> = {};
+  Object.entries(value).forEach(([key, entry]) => {
+    const normalized = stripUndefinedDeep(entry);
+    if (normalized !== undefined) {
+      output[key] = normalized;
+    }
+  });
+
+  return output;
+};
 
 /**
  * FirestoreAiChatRepository
@@ -20,7 +46,7 @@ export class FirestoreAiChatRepository implements IAiChatRepository {
 
   async create(message: AiChatMessage): Promise<AiChatMessage> {
     const docRef = this.getCollection(message.companyId).doc(message.id);
-    await docRef.set(message.toJSON());
+    await docRef.set(stripUndefinedDeep(message.toJSON()));
     return message;
   }
 

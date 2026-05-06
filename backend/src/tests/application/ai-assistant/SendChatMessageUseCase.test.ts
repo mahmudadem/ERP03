@@ -204,6 +204,7 @@ describe('SendChatMessageUseCase', () => {
       expect(mockOrchestrator.detectAndExecute).toHaveBeenCalled();
       expect((result.assistantMessage.metadata as any)?.toolResults).toBeDefined();
       expect((result.assistantMessage.metadata as any)?.toolResults).toHaveLength(1);
+      expect(Object.prototype.hasOwnProperty.call(result.assistantMessage.metadata || {}, 'toolCallResults')).toBe(false);
       // Keep provider metadata too (from MockProvider)
       expect((result.assistantMessage.metadata as any)?.isMock).toBe(true);
     });

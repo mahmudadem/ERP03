@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-05-07 (Thu) — ~20m manual-test detour
+**Task:** AI Assistant Runtime v2 — Firestore chat metadata serialization fix  
+**Agent:** OpenCode (CTO Mode)  
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Happened:**
+
+Manual browser testing with “Show me the trial balance summary” exposed a Firestore persistence error:
+
+> Value for argument "data" is not a valid Firestore document. Cannot use "undefined" as a Firestore value (found in field "metadata.toolCallResults").
+
+**Classification:** Type B detour — blocker for AI chat manual testing, quick technical fix, no business decision required.
+
+**Root Cause:**
+- Deterministic tool execution produced `metadata.toolResults`.
+- Structured model tool-call result summaries were empty, so `metadata.toolCallResults` was explicitly set to `undefined`.
+- `FirestoreAiChatRepository.create()` wrote `message.toJSON()` directly without the `stripUndefinedDeep` protection used by other Firestore mappers.
+
+**Fix Applied:**
+- `SendChatMessageUseCase.ts`: omit empty `toolCallResults` and `proposal` metadata keys instead of writing `undefined`.
+- `FirestoreAiChatRepository.ts`: added Firestore-boundary `stripUndefinedDeep` and wrapped chat message writes.
+- Added test coverage:
+  - `FirestoreAiChatRepository.test.ts`: verifies nested `undefined` values are stripped before Firestore `set()`.
+  - `SendChatMessageUseCase.test.ts`: verifies deterministic tool path no longer emits an empty `toolCallResults` property.
+
+**Verification:**
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/FirestoreAiChatRepository.test.ts src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts` ✅
+  - 2 suites passed
+  - 16 tests passed
+- `backend`: `npm run build` ✅ — local runtime output regenerated for Firebase emulator/browser retest. Generated `backend/lib` artifacts should remain uncommitted.
+
+**Result:** ✅ Fix ready. Needs follow-up commit after developer approval.  
+**Next:** Restart/reload the backend emulator if needed, re-test “Show me the trial balance summary” in browser, then commit as `fix(ai-assistant): sanitize chat metadata before Firestore writes [ACTIVE-70]`.
+
+---
+
 ## 2026-05-07 (Thu) — ~1h finalization
 **Task:** AI Assistant Module v2 — Guarded Tool Runtime + Proposal Sandbox Integration  
 **Agent:** OpenCode (CTO Mode)  

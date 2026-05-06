@@ -83,6 +83,20 @@ The AI model remains untrusted. It can request structured tool calls, but the ba
 - Strengthen frontend structured tool-result display typing later.
 - Future human-approved execution must go through proper use cases and approval rules; do not enable direct AI writes.
 
+### Manual-Test Detour: Firestore Metadata Serialization
+
+During manual browser testing, “Show me the trial balance summary” failed because Firestore rejected `undefined` inside `metadata.toolCallResults`.
+
+Fix:
+- `SendChatMessageUseCase.ts` now omits empty `toolCallResults` and `proposal` metadata keys instead of writing `undefined`.
+- `FirestoreAiChatRepository.ts` now strips nested `undefined` values before Firestore `set()`, matching the project’s Firestore mapper convention.
+- Added targeted regression tests for both the use-case metadata shape and Firestore repository sanitization.
+
+Verification:
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/FirestoreAiChatRepository.test.ts src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts` ✅ — 2 suites, 16 tests.
+- `backend`: `npm run build` ✅ — local runtime output regenerated for Firebase emulator/browser retest; generated `backend/lib` artifacts are not intended for commit.
+
 ## End-User View
 
 ### What Changed

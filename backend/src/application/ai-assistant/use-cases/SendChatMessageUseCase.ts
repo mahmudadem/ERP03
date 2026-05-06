@@ -525,8 +525,8 @@ export class SendChatMessageUseCase {
           runtimeWarnings,
           toolCallsRequested,
           toolResults: [...toolResultsForMetadata, ...structuredToolResultsForMetadata],
-          toolCallResults: toolResultSummaries.length > 0 ? toolResultSummaries : undefined,
-          proposal: proposalResultForMetadata,
+          ...(toolResultSummaries.length > 0 ? { toolCallResults: toolResultSummaries } : {}),
+          ...(proposalResultForMetadata ? { proposal: proposalResultForMetadata } : {}),
         },
       });
       assistantMessage.tokenCount = finalResponse.tokenCount;
@@ -556,7 +556,7 @@ export class SendChatMessageUseCase {
           runtimeWarnings,
           toolCallsRequested,
           toolResults: toolResultSummaries.length > 0 ? toolResultSummaries : [],
-          proposal: proposalResultForMetadata ?? undefined,
+          ...(proposalResultForMetadata ? { proposal: proposalResultForMetadata } : {}),
         },
       };
 
