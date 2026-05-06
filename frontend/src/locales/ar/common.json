@@ -120,7 +120,8 @@
     "costCenterSummary": "ملخص مراكز التكلفة",
     "budgetVsActual": "الموازنة مقابل الفعلي",
     "aiAssistant": "مساعد الذكاء الاصطناعي",
-    "chat": "محادثة"
+    "chat": "محادثة",
+    "aiProposals": "مقترحات الذكاء الاصطناعي"
   },
   "reportContainer": {
     "refresh": "تحديث",
@@ -450,6 +451,42 @@
     }
   },
   "superAdmin": {
+    "aiProposalPolicies": {
+      "loading": "جارٍ التحميل...",
+      "title": "سياسات مقترحات الذكاء الاصطناعي",
+      "subtitle": "تحكم في أنواع مقترحات الذكاء الاصطناعي المفعلة وحدد الحدود.",
+      "globalSettings": "الإعدادات العامة",
+      "proposalSystemEnabled": "نظام المقترحات مفعل",
+      "proposalSystemEnabledHelp": "المفتاح الرئيسي لبيئة مقترحات الذكاء الاصطناعي الآمنة",
+      "requireReview": "تتطلب المراجعة",
+      "requireReviewHelp": "يجب مراجعة المقترحات قبل قبولها",
+      "businessExecution": "تنفيذ الأعمال",
+      "businessExecutionHelp": "يجب ألا تنفذ المقترحات أي إجراءات أعمال حقيقية مطلقًا",
+      "alwaysFalseLocked": "دائمًا خطأ (مقفل)",
+      "dailyLimits": "الحدود اليومية",
+      "maxPerCompanyDay": "الحد الأقصى لكل شركة/يوم",
+      "maxPerUserDay": "الحد الأقصى لكل مستخدم/يوم",
+      "proposalTypeControls": "التحكم في أنواع المقترحات",
+      "proposalTypeControlsHelp": "فعّل أو عطّل أنواع مقترحات محددة. الأنواع المعطلة لها الأولوية.",
+      "systemSummary": "ملخص النظام",
+      "registeredTypes": "الأنواع المسجلة",
+      "disabledTypes": "الأنواع المعطلة",
+      "companyOverrides": "تجاوزات الشركات",
+      "status": {
+        "enabled": "مفعل",
+        "disabled": "معطل",
+        "required": "مطلوب",
+        "optional": "اختياري"
+      },
+      "errors": {
+        "load": "فشل تحميل سياسات المقترحات",
+        "businessExecutionLocked": "يجب أن تكون allowBusinessExecution دائمًا false",
+        "update": "فشل تحديث السياسة"
+      },
+      "messages": {
+        "updated": "تم تحديث السياسة بنجاح"
+      }
+    },
     "plans": {
       "loading": "تحميل...",
       "title": "إدارة الخطط",

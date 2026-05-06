@@ -4,6 +4,176 @@
 
 ---
 
+## 2026-05-07 (Thu) — ~1h finalization
+**Task:** AI Assistant Module v2 — Guarded Tool Runtime + Proposal Sandbox Integration  
+**Agent:** OpenCode (CTO Mode)  
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What I Did:**
+
+Finalized the AI Assistant v2 implementation and review-fix pass after the main runtime work was already staged in the working tree.
+
+### Runtime/Architecture Final State
+- Provider-agnostic tool contract support is in place.
+- Structured model-requested tool calls are guarded by backend Runtime Guard before execution.
+- Existing deterministic tool fallback remains available for providers/models without structured tool support.
+- Custom/unknown/text-only models surface warnings and safe runtime status metadata.
+- Base/domain AI skill templates are prompt guidance only and do not bypass RBAC, tenant context, or tool guards.
+- Proposal Sandbox remains non-executing: accepting proposals does not post vouchers or create ERP records.
+
+### Review Fixes Applied
+- Fixed AI Proposal tenant pages to use `useTranslation('aiAssistant')` and `proposals.*` keys.
+- Replaced hardcoded proposal status/risk labels with translated enum labels.
+- Added missing `sidebar.aiProposals` labels in EN/AR/TR common locale files.
+- Fixed chat proposal-card status/risk i18n.
+- Converted Super Admin AI Proposal Policy page to full EN/AR/TR i18n.
+- Added missing AI chat quick-action, empty-message, delete, and history-toggle locale keys.
+- Removed dead `handleQuickAction` helper without changing quick-action UX.
+- Trimmed optional rejection reason before sending rejection status update.
+
+### Review / Verification
+- `erp-reviewer` found i18n gaps; all blocker/high/medium findings were fixed.
+- Final meaningful reviewer pass returned **PASS** with only low/pre-existing notes.
+- A final reviewer retry returned an empty result due to subagent/tool hiccup; I proceeded with direct verification.
+- `frontend`: `npm run typecheck` ✅
+- `backend`: `npm run typecheck` ✅
+- `backend`: targeted AI tests ✅ — 4 suites, 103 tests passed
+
+### Documentation
+- Updated `ACTIVE.md` with final status and next recommendation.
+- Added completion report: `1-TODO/done/70-ai-assistant-runtime-v2.md`.
+- Added architecture doc: `docs/architecture/ai-assistant-runtime-v2.md`.
+- Added end-user guide: `docs/user-guide/ai-assistant-runtime-v2.md`.
+
+**Result:** ✅ Complete and ready for developer review/commit approval.  
+**Next:** Commit only after explicit developer approval. Suggested commit: `feat(ai-assistant): add guarded runtime v2 [ACTIVE-70]`.
+
+---
+
+## 2026-05-06 (Wed) — ~4h
+**Task:** AI Proposal + Draft Sandbox — Full Implementation (9 Phases)
+**Agent:** OpenCode (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What I Did:**
+
+Implemented the complete AI Proposal Sandbox — a safe, reviewable proposal system that allows the AI Assistant to create draft suggestions without mutating real ERP business data. This is NOT execution, NOT posting, NOT approval, and NOT creating real records.
+
+### Phase 1: Domain Model
+- Created `AiProposal` entity with 7 proposal types, 5 statuses, risk levels, missing info support
+- Created `AiProposalPolicy` entity with global + per-company policies, DENY precedence, always-safe
+- Created `IAiProposalRepository` + `IAiProposalPolicyRepository` interfaces
+- Created `FirestoreAiProposalRepository` + `FirestoreAiProposalPolicyRepository` implementations
+- Created 5 use cases: Create, List, Get, UpdateStatus, Archive
+- Registered all in DI container
+
+### Phase 2: Proposal Policies
+- `allowBusinessExecution` is ALWAYS false — enforced at entity constructor level
+- DENY takes precedence: if a type is in `disabledProposalTypes`, it's always blocked
+- Per-company override with global merge
+- Daily limits enforced (per-company and per-user)
+- `requireReview` = true by default
+- 5 new permissions added to AiAssistantModule
+
+### Phase 3: Proposal Generation Services
+- 7 registered generators: JournalEntry, CorrectionEntry, AccountMapping, VoucherDraft, Reorder, CollectionFollowUp, ManagementInsight
+- `AiProposalGeneratorRegistry` with deterministic intent detection (EN/AR)
+- All generators produce sanitized `proposedData` — not raw DB documents
+- Generators include `warnings`, `missingInfo`, `confidence` scoring
+
+### Phase 4: Chat Integration
+- Extended `SendChatMessageUseCase` to accept proposal generator registry
+- When user asks for draft/suggestion (e.g., "اقترح قيد"), creates sandbox proposal
+- AI response includes: "I created a reviewable proposal in the AI Sandbox. No ERP data was changed."
+- "create voucher" is still rejected — proposal intents are separate from write intents
+- Chat message metadata includes proposal reference for UI rendering
+
+### Phase 5: Frontend Tenant UI
+- `/ai-assistant/proposals` — Filterable proposal list (type, status, module)
+- `/ai-assistant/proposals/:proposalId` — Detail page with accept/reject/archive
+- Disabled "Execute (Not Available)" button placeholder
+- Proposal card in chat UI with "AI Proposal · Sandbox · No ERP changes" badge
+- Full i18n (EN/AR/TR) for all proposal strings
+
+### Phase 6: Super Admin UI
+- `/super-admin/ai-proposal-policies` — Policy management page
+- Enable/disable proposal types, set daily limits
+- `allowBusinessExecution` locked to false (cannot be overridden)
+- Registered types summary display
+
+### Phase 7: API Endpoints
+- 5 tenant endpoints: list, get, create, update status, archive
+- 3 Super Admin endpoints: get policy, update policy, summary
+- All permission-gated, company-scoped, safe
+
+### Phase 8: Tests
+- 47 new tests covering:
+  - AiProposal entity (11 tests): creation, validation, status transitions, JSON safety, round-trip
+  - AiProposalPolicy (9 tests): defaults, allowBusinessExecution enforcement, DENY precedence, limits, merge
+  - Use cases (5 tests): create, list, get with company scope, update status, archive
+  - Generators (12 tests): all 7 generators, intent detection EN/AR, unregistered type rejection
+  - Safety (5 tests): acceptance does not execute, policy always false, no API key exposure, not auto-executable
+- All 374 AI assistant tests pass (327 existing + 47 new)
+- Backend build: zero errors
+- Frontend build: zero errors
+
+### Phase 9: Documentation
+- Created `docs/AI_PROPOSAL_SANDBOX.md` with full architecture, safety model, API, and file map
+
+**Files Created (24 backend, 3 frontend):**
+
+Backend:
+- Domain: AiProposal.ts, AiProposalPolicy.ts
+- Repositories: IAiProposalRepository.ts, IAiProposalPolicyRepository.ts, FirestoreAiProposalRepository.ts, FirestoreAiProposalPolicyRepository.ts
+- Use Cases: CreateAiProposalUseCase.ts, ListAiProposalsUseCase.ts, GetAiProposalUseCase.ts, UpdateAiProposalStatusUseCase.ts, ArchiveAiProposalUseCase.ts
+- Proposals: AiProposalGenerator.ts, AiProposalGeneratorRegistry.ts, JournalEntryProposalGenerator.ts, CorrectionEntryProposalGenerator.ts, AccountMappingProposalGenerator.ts, VoucherDraftProposalGenerator.ts, ReorderProposalGenerator.ts, CollectionFollowUpProposalGenerator.ts, ManagementInsightProposalGenerator.ts, index.ts
+- API: ai-proposal-policies.routes.ts
+- Tests: AiProposalSandbox.test.ts
+
+Frontend:
+- AiProposalListPage.tsx, AiProposalDetailPage.tsx, AiProposalPolicyPage.tsx
+
+**Files Modified (13 backend, 8 frontend):**
+
+Backend:
+- domain/ai-assistant/entities/index.ts — Exports
+- repository/interfaces/ai-assistant/index.ts — Exports
+- infrastructure/di/bindRepositories.ts — DI bindings
+- modules/ai-assistant/AiAssistantModule.ts — 5 permissions
+- seeder/seedOnboardingData.ts — 5 permissions
+- application/ai-assistant/use-cases/SendChatMessageUseCase.ts — Proposal integration
+- api/controllers/ai-assistant/AiAssistantController.ts — Proposal endpoints
+- api/routes/ai-assistant.routes.ts — Proposal routes
+- api/server/platform.router.ts — Proposal policy routes
+
+Frontend:
+- api/aiAssistantApi.ts — Proposal types + methods
+- router/routes.config.ts — 2 tenant routes + 1 super admin route
+- layout/SuperAdminShell.tsx — Nav item
+- hooks/useSidebarConfig.ts — Label mapping
+- modules/ai-assistant/pages/AiAssistantHomePage.tsx — Proposal card
+- locales/{en,ar,tr}/common.json — Sidebar labels
+- locales/{en,ar,tr}/aiAssistant.json — Full proposal i18n
+
+**Key Decisions:**
+- Proposals are stored at `companies/{companyId}/ai-assistant/Data/proposals/{proposalId}`
+- Policies: global at `system_metadata/ai_proposal_policies/global`, company at `companies/{companyId}/ai-assistant/Data/proposal_policy`
+- Proposal generators are deterministic templates — not free-form AI JSON creation
+- `allowBusinessExecution` enforced at entity constructor — throws if set to true
+- `fromJSON` always forces `allowBusinessExecution = false` — never reads from stored data
+- Accepting a proposal only changes status — does not execute any business action
+- "Execute" button is visible but disabled — placeholder for future human-approved execution
+- Chat integration creates proposals before AI responds, includes proposal in context
+
+**Verification:**
+- ✅ 374 AI assistant + proposal tests: all pass
+- ✅ Backend TypeScript: zero errors
+- ✅ Frontend TypeScript: zero errors
+
+**Result:** ✅ All 9 phases complete — AI Proposal Sandbox fully implemented
+
+---
+
 ## 2026-05-06 (Wed) — ~6h
 **Task:** AI Tool System — Full Catalog, Real Implementations, Super Admin Management
 **Agent:** OpenCode (CTO Mode)

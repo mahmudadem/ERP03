@@ -266,6 +266,60 @@ describe('OpenAICompatibleProvider', () => {
       expect(JSON.stringify(response.metadata)).not.toContain(validConfig.apiKey);
     });
 
+    it('should send provider tool contracts and parse structured tool calls', async () => {
+      mockHttp.setResponse({
+        id: 'chatcmpl-tool-call',
+        object: 'chat.completion',
+        created: Date.now(),
+        model: 'gpt-4o',
+        choices: [{
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: null,
+            tool_calls: [{
+              id: 'call-123',
+              type: 'function',
+              function: {
+                name: 'accounting_getTrialBalanceSummary',
+                arguments: '{"asOfDate":"2026-05-06"}',
+              },
+            }],
+          },
+          finish_reason: 'tool_calls',
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 },
+      });
+
+      const provider = new OpenAICompatibleProvider(validConfig, mockHttp);
+      const response = await provider.chat({
+        messages: [{ role: 'user', content: 'Show trial balance' }],
+        tools: [{
+          name: 'accounting_getTrialBalanceSummary',
+          originalName: 'accounting.getTrialBalanceSummary',
+          description: 'Get trial balance summary',
+          whenToUse: 'Use for trial balance report questions',
+          operationType: 'READ',
+          moduleId: 'accounting',
+          requiredPermissions: ['accounting.reports.trialBalance.view'],
+          inputSchema: { type: 'object', properties: { asOfDate: { type: 'string' } } },
+          parameters: { type: 'object', properties: { asOfDate: { type: 'string' } } },
+          outputSchema: { type: 'object' },
+          examples: ['Show trial balance'],
+          safetyNotes: ['Read-only tool. No data is modified.'],
+          safeForAutoInvoke: true,
+        }],
+      });
+
+      const req = mockHttp.getLastRequest()!;
+      const body = req.body as any;
+      expect(body.tools).toHaveLength(1);
+      expect(body.tools[0].function.name).toBe('accounting_getTrialBalanceSummary');
+      expect(response.content).toBeNull();
+      expect(response.toolCalls).toEqual([{ id: 'call-123', name: 'accounting_getTrialBalanceSummary', arguments: { asOfDate: '2026-05-06' } }]);
+      expect(JSON.stringify(response)).not.toContain(validConfig.apiKey);
+    });
+
     it('should NOT include Authorization header for Ollama (local-no-key)', async () => {
       mockHttp.setResponse(createChatResponse('test'));
 

@@ -8,11 +8,21 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, User, Trash2, AlertCircle, Plus, MessageSquare, Clock, Sparkles, Database } from 'lucide-react';
-import { aiAssistantApi, SendChatMessageResponse, ChatMessageDTO, AiToolCallResultDTO } from '../../../api/aiAssistantApi';
+import { Send, Bot, User, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench } from 'lucide-react';
+import {
+  aiAssistantApi,
+  SendChatMessageResponse,
+  ChatMessageDTO,
+  AiToolCallResultDTO,
+  AiProposalDTO,
+  ChatRuntimeMetadataDTO,
+  ChatRuntimeModelProfileDTO,
+  ChatMessageMetadata,
+} from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { Link } from 'react-router-dom';
 
 interface DisplayMessage {
   id: string;
@@ -20,7 +30,17 @@ interface DisplayMessage {
   content: string;
   timestamp: string;
   isMock?: boolean;
+  provider?: string;
+  model?: string | null;
   toolResults?: AiToolCallResultDTO[];
+  proposal?: AiProposalDTO | null;
+  runtimeWarnings?: string[];
+  modelProfile?: ChatRuntimeModelProfileDTO;
+  runtimeStatus?: string;
+  selectedSkills?: string[];
+  allowedToolIds?: string[];
+  toolCallsRequested?: string[];
+  toolCallResults?: ChatRuntimeMetadataDTO['toolResults'];
 }
 
 interface ConversationSummary {
@@ -43,11 +63,31 @@ export const AiAssistantHomePage: React.FC = () => {
 
   const canChat = hasPermission('ai-assistant.chat.use');
 
+  const extractRuntimeMetadata = useCallback((metadata: unknown, responseRuntimeMeta?: ChatRuntimeMetadataDTO): Partial<DisplayMessage> => {
+    const meta = (metadata || {}) as ChatMessageMetadata;
+    const runtimeMeta = responseRuntimeMeta;
+
+    const modelProfile = runtimeMeta?.modelProfile || meta.modelProfile;
+    const runtimeWarnings = runtimeMeta?.runtimeWarnings || meta.runtimeWarnings || [];
+    const toolCallsRequested = runtimeMeta?.toolCallsRequested || meta.toolCallsRequested || [];
+    const toolCallResults = runtimeMeta?.toolResults || meta.toolCallResults || [];
+
+    return {
+      runtimeStatus: runtimeMeta?.runtimeStatus || meta.runtimeStatus,
+      selectedSkills: runtimeMeta?.selectedSkills || meta.selectedSkills || [],
+      allowedToolIds: runtimeMeta?.allowedToolIds || meta.allowedToolIds || [],
+      modelProfile,
+      runtimeWarnings,
+      toolCallsRequested,
+      toolCallResults,
+    };
+  }, []);
+
   const extractToolResults = useCallback((metadata: unknown): AiToolCallResultDTO[] => {
-    const meta = metadata as Record<string, unknown> | null;
+    const meta = metadata as ChatMessageMetadata | null;
     if (!meta || !Array.isArray(meta.toolResults)) return [];
 
-    return (meta.toolResults as Array<Record<string, unknown>>)
+    return (meta.toolResults as unknown as Array<Record<string, unknown>>)
       .map((entry) => ({
         toolName: String(entry.toolName || ''),
         result: {
@@ -81,20 +121,27 @@ export const AiAssistantHomePage: React.FC = () => {
   const loadConversation = useCallback(async (convId: string) => {
     try {
       const result = await aiAssistantApi.getConversationMessages(convId);
-      const historyMessages: DisplayMessage[] = (result.messages || []).map((msg: ChatMessageDTO) => ({
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
-        timestamp: msg.createdAt,
-        isMock: msg.provider === 'mock',
-        toolResults: extractToolResults(msg.metadata),
-      }));
+      const historyMessages: DisplayMessage[] = (result.messages || []).map((msg: ChatMessageDTO) => {
+        const runtime = extractRuntimeMetadata(msg.metadata);
+        return {
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content,
+          timestamp: msg.createdAt,
+          isMock: msg.provider === 'mock',
+          provider: msg.provider,
+          model: msg.model,
+          toolResults: extractToolResults(msg.metadata),
+          proposal: (msg.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
+          ...runtime,
+        };
+      });
       setConversationId(convId);
       setMessages(historyMessages);
     } catch {
       console.warn('[AI Assistant] Could not load conversation');
     }
-  }, []);
+  }, [extractRuntimeMetadata, extractToolResults]);
 
   // Initial load: conversation list + most recent conversation
   useEffect(() => {
@@ -157,7 +204,11 @@ export const AiAssistantHomePage: React.FC = () => {
         content: response.assistantMessage.content,
         timestamp: response.assistantMessage.createdAt,
         isMock: response.provider === 'mock',
+        provider: response.provider,
+        model: response.model,
         toolResults: extractToolResults(response.assistantMessage.metadata),
+        proposal: (response.assistantMessage.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
+        ...extractRuntimeMetadata(response.assistantMessage.metadata, response.runtimeMeta),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -199,7 +250,7 @@ export const AiAssistantHomePage: React.FC = () => {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, isLoading, conversationId, t, refreshConversations, extractToolResults]);
+  }, [input, isLoading, conversationId, t, refreshConversations, extractToolResults, extractRuntimeMetadata]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -272,15 +323,26 @@ export const AiAssistantHomePage: React.FC = () => {
     return firstLine.length > maxLength ? firstLine.substring(0, maxLength) + '...' : firstLine;
   };
 
-  const handleQuickAction = (promptText: string) => {
-    setInput(promptText);
-    if (inputRef.current) {
-      inputRef.current.focus();
-      // Auto-trigger send after small delay to let state update
-      setTimeout(() => {
-        handleSend();
-      }, 50);
+  const getVisibleRuntimeWarnings = (msg: DisplayMessage): string[] => {
+    const warnings = [...(msg.runtimeWarnings || [])];
+    const warningMessage = msg.modelProfile?.warningMessage;
+    if (warningMessage && !warnings.includes(warningMessage)) {
+      warnings.push(warningMessage);
     }
+    return warnings.filter(Boolean);
+  };
+
+  const isClarificationMessage = (msg: DisplayMessage): boolean => {
+    if (msg.runtimeStatus === 'clarification') return true;
+    if (msg.proposal?.missingInfo && msg.proposal.missingInfo.length > 0) return true;
+    const lower = msg.content.toLowerCase();
+    return lower.includes('i need additional information') || lower.includes('please provide');
+  };
+
+  const formatModelProvider = (msg: DisplayMessage): string => {
+    const provider = msg.provider || msg.modelProfile?.provider || 'ai';
+    const model = msg.model || msg.modelProfile?.modelName || 'model';
+    return t('chat.modelLabel', 'Model: {{model}} · {{provider}}', { model, provider });
   };
 
   const quickActions = [
@@ -362,7 +424,7 @@ export const AiAssistantHomePage: React.FC = () => {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv.conversationId); }}
                       className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
-                      title="Delete"
+                      title={t('chat.deleteConversation', 'Delete')}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -382,7 +444,7 @@ export const AiAssistantHomePage: React.FC = () => {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors lg:hidden"
-              title={sidebarOpen ? 'Hide history' : 'Show history'}
+              title={sidebarOpen ? t('chat.hideHistory', 'Hide history') : t('chat.showHistory', 'Show history')}
             >
               <MessageSquare className="w-5 h-5" />
             </button>
@@ -395,7 +457,7 @@ export const AiAssistantHomePage: React.FC = () => {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="hidden lg:flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-              title={sidebarOpen ? 'Hide history' : 'Show history'}
+              title={sidebarOpen ? t('chat.hideHistory', 'Hide history') : t('chat.showHistory', 'Show history')}
             >
               <MessageSquare className="w-4 h-4" />
             </button>
@@ -467,8 +529,84 @@ export const AiAssistantHomePage: React.FC = () => {
                      <div dir="auto">{msg.content}</div>
                   )}
                 </div>
+
+                {msg.role === 'assistant' && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                    {(msg.provider || msg.model || msg.modelProfile) && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1 text-gray-600 border border-gray-100">
+                        <Info className="w-3 h-3" />
+                        {formatModelProvider(msg)}
+                      </span>
+                    )}
+                    {msg.modelProfile?.status && msg.modelProfile.status !== 'recommended' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700 border border-amber-100">
+                        <AlertTriangle className="w-3 h-3" />
+                        {msg.modelProfile.status === 'custom'
+                          ? t('chat.customModelWarning', 'Custom model — results may vary')
+                          : t('chat.untestedModelWarning', 'Untested model — response quality not verified')}
+                      </span>
+                    )}
+                    {msg.modelProfile?.textOnlyMode && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-slate-600 border border-slate-100">
+                        <Bot className="w-3 h-3" />
+                        {t('chat.textOnlyMode', 'Text-only mode')}
+                      </span>
+                    )}
+                    {((msg.toolResults && msg.toolResults.length > 0) || (msg.toolCallsRequested && msg.toolCallsRequested.length > 0)) && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-indigo-700 border border-indigo-100">
+                        <Wrench className="w-3 h-3" />
+                        {t('chat.toolsUsed', 'Tools used')}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {msg.role === 'assistant' && getVisibleRuntimeWarnings(msg).length > 0 && (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <div className="flex items-center gap-1.5 font-medium mb-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {t('chat.runtimeWarning', 'Runtime warning')}
+                    </div>
+                    <ul className="list-disc pl-5 rtl:pl-0 rtl:pr-5 space-y-1">
+                      {getVisibleRuntimeWarnings(msg).map((warning, index) => (
+                        <li key={`${msg.id}-warning-${index}`}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {msg.role === 'assistant' && isClarificationMessage(msg) && (
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                    <div className="flex items-center gap-1.5 font-medium mb-1">
+                      <Info className="w-3.5 h-3.5" />
+                      {t('chat.clarificationTitle', 'AI needs more information')}
+                    </div>
+                    <div>{t('chat.clarificationPrompt', 'Please provide the requested details before any tool execution or proposal can continue.')}</div>
+                  </div>
+                )}
+
                 {msg.role === 'assistant' && msg.toolResults && msg.toolResults.length > 0 && (
                   <AiToolResultsPanel toolResults={msg.toolResults} />
+                )}
+                {/* Proposal Card */}
+                {msg.role === 'assistant' && msg.proposal && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">
+                        {t('proposals.sandboxBadge', 'AI Proposal · Sandbox · No ERP changes')}
+                      </span>
+                    </div>
+                    <Link
+                      to={`/ai-assistant/proposals/${msg.proposal.id}`}
+                      className="text-sm text-blue-600 hover:underline font-medium"
+                    >
+                      {msg.proposal.title}
+                    </Link>
+                    <p className="text-xs text-blue-600 mt-1">
+                      {t(`proposals.status.${msg.proposal.status}`, msg.proposal.status)} · {t('proposals.table.risk', 'Risk')}: {t(`proposals.risk.${msg.proposal.riskLevel}`, msg.proposal.riskLevel)}
+                    </p>
+                  </div>
                 )}
                 {msg.isMock && msg.role === 'assistant' && (
                   <div className="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-100 flex items-center gap-1">
@@ -485,6 +623,10 @@ export const AiAssistantHomePage: React.FC = () => {
                 <Bot className="w-4 h-4 text-indigo-600" />
               </div>
               <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                  <Database className="w-3.5 h-3.5 text-indigo-500" />
+                  {t('chat.toolUseInProgress', 'Analyzing request and checking safe tools...')}
+                </div>
                 <div className="flex gap-1">
                   <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />

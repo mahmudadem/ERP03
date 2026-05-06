@@ -194,6 +194,12 @@ const MODULE_DEFINITIONS = [
       { id: 'ai-assistant.model-policy.view', label: 'View AI Model Tool Policies', enabled: true },
       { id: 'ai-assistant.model-policy.manage', label: 'Manage AI Model Tool Policies', enabled: true },
       { id: 'ai-assistant.tools.accounting.trial-balance', label: 'AI Accounting: Trial Balance Summary', enabled: true },
+      // Proposal Sandbox permissions
+      { id: 'ai-assistant.proposals.view', label: 'View AI Proposals', enabled: true },
+      { id: 'ai-assistant.proposals.create', label: 'Create AI Proposals', enabled: true },
+      { id: 'ai-assistant.proposals.review', label: 'Review AI Proposals', enabled: true },
+      { id: 'ai-assistant.proposals.manage', label: 'Manage AI Proposals', enabled: true },
+      { id: 'ai-assistant.proposals.archive', label: 'Archive AI Proposals', enabled: true },
     ],
     autoAttachToRoles: ['owner', 'admin']
   }

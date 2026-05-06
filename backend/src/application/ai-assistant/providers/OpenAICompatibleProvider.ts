@@ -9,6 +9,14 @@
  * It uses the OpenAI Chat Completions API format (POST /v1/chat/completions)
  * and the Models API for availability checks (GET /v1/models).
  *
+ * v2 Extension:
+ * - Maps provider-agnostic tool contracts (AiProviderToolContract) to
+ *   OpenAI's `tools` parameter format for function/tool calling.
+ * - Parses OpenAI `message.tool_calls` responses into provider-agnostic
+ *   `AiProviderToolCallRequest` objects.
+ * - Handles the case where content is null/empty when tool calls are present.
+ * - Never exposes API keys, endpoints, or secrets in responses or metadata.
+ *
  * HTTP client is injected via IHttpClient interface for testability.
  *
  * Security:
@@ -17,7 +25,15 @@
  * - Error messages are sanitized to prevent information leakage
  */
 
-import { IAiProvider, AiProviderRequest, AiProviderResponse } from './IAiProvider';
+import {
+  IAiProvider,
+  AiProviderRequest,
+  AiProviderResponse,
+  AiProviderToolContract,
+  AiProviderToolCallRequest,
+  AiProviderCapabilities,
+  AiProviderRuntimeMeta,
+} from './IAiProvider';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { ProviderError } from '../../../errors/ProviderErrors';
 
@@ -30,6 +46,26 @@ export interface OpenAICompatibleConfig {
   timeoutMs?: number;       // Request timeout in milliseconds (default: 30000)
 }
 
+/** Shape of an OpenAI function/tool definition in the request */
+interface OpenAIToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+/** Shape of an OpenAI tool call in the response */
+interface OpenAIToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string; // JSON string
+  };
+}
+
 /** Shape of the OpenAI Chat Completions API response */
 interface OpenAIChatResponse {
   id?: string;
@@ -40,7 +76,8 @@ interface OpenAIChatResponse {
     index: number;
     message: {
       role: string;
-      content: string;
+      content: string | null;
+      tool_calls?: OpenAIToolCall[];
     };
     finish_reason?: string;
   }>;
@@ -59,6 +96,13 @@ interface OpenAIModelsResponse {
 export class OpenAICompatibleProvider implements IAiProvider {
   readonly providerId = 'openai_compatible';
   readonly providerName = 'OpenAI-Compatible Provider';
+
+  private static readonly SUPPORTED_CAPABILITIES: AiProviderCapabilities = {
+    supportsToolCalling: true,
+    supportsStructuredOutput: true,
+    maxToolCallsPerRequest: 0, // unlimited
+    allowsEmptyContentWithToolCalls: true,
+  };
 
   private config: OpenAICompatibleConfig;
   private httpClient: IHttpClient;
@@ -95,6 +139,10 @@ export class OpenAICompatibleProvider implements IAiProvider {
     this.httpClient = httpClient;
   }
 
+  getCapabilities(): AiProviderCapabilities {
+    return { ...OpenAICompatibleProvider.SUPPORTED_CAPABILITIES };
+  }
+
   async chat(request: AiProviderRequest): Promise<AiProviderResponse> {
     const url = this.buildUrl('/chat/completions');
     const isLocalProvider = this.config.apiKey === 'local-no-key';
@@ -107,7 +155,7 @@ export class OpenAICompatibleProvider implements IAiProvider {
       headers['OpenAI-Organization'] = this.config.organization;
     }
 
-    const requestBody = {
+    const requestBody: Record<string, unknown> = {
       model: this.config.model,
       messages: request.messages.map(m => ({
         role: m.role,
@@ -117,6 +165,11 @@ export class OpenAICompatibleProvider implements IAiProvider {
       temperature: request.temperature ?? 0.7,
       stream: false,
     };
+
+    // Map provider-agnostic tool contracts to OpenAI tools format
+    if (request.tools && request.tools.length > 0) {
+      requestBody.tools = this.mapToolsToOpenAIFormat(request.tools);
+    }
 
     let response: OpenAIChatResponse;
 
@@ -134,7 +187,7 @@ export class OpenAICompatibleProvider implements IAiProvider {
       if (error instanceof ProviderError) {
         throw error;
       }
-      // Wrap unexpected errors
+      // Wrap unexpected errors — NEVER include API keys or endpoint URLs
       throw new ProviderError(
         `Unexpected error from AI provider. Please try again later.`
       );
@@ -148,20 +201,45 @@ export class OpenAICompatibleProvider implements IAiProvider {
     }
 
     const choice = response.choices[0];
-    const content = choice.message?.content;
+    const message = choice.message;
 
-    if (content === null || content === undefined) {
-        // Allow empty string — some models return '' for no-op answers
-        throw new ProviderError(
-          `AI provider returned an invalid response format. Model: ${this.config.model}.`
-        );
-      }
+    // Parse tool calls from OpenAI response format
+    const toolCalls = this.parseToolCallsFromResponse(message?.tool_calls);
+
+    // Content may be null/empty when tool calls are present — allow this safely
+    const content = message?.content ?? null;
+
+    // If both content and tool calls are absent, this is invalid
+    if (content === null && (!toolCalls || toolCalls.length === 0)) {
+      throw new ProviderError(
+        `AI provider returned an invalid response format. Model: ${this.config.model}.`
+      );
+    }
+
+    // Build runtime metadata (no secrets or API keys)
+    const runtimeMeta: AiProviderRuntimeMeta = {
+      modelUsed: response.model || this.config.model,
+      capabilities: {
+        supportsToolCalling: true,
+        allowsEmptyContentWithToolCalls: true,
+      },
+    };
+
+    if (toolCalls && toolCalls.length > 0) {
+      runtimeMeta.warnings = [];
+    }
+
+    if (choice.finish_reason === 'length') {
+      runtimeMeta.truncated = true;
+    }
 
     return {
       content,
       model: response.model || this.config.model,
       provider: 'openai_compatible',
       tokenCount: response.usage?.total_tokens,
+      toolCalls,
+      runtimeMeta,
       metadata: {
         providerId: 'openai_compatible',
         model: response.model || this.config.model,
@@ -171,7 +249,7 @@ export class OpenAICompatibleProvider implements IAiProvider {
           completionTokens: response.usage.completion_tokens,
           totalTokens: response.usage.total_tokens,
         } : undefined,
-        // NOTE: apiKey is NEVER included in metadata
+        // NOTE: apiKey, apiEndpoint NEVER included in metadata
       },
     };
   }
@@ -205,6 +283,122 @@ export class OpenAICompatibleProvider implements IAiProvider {
   /** Update configuration (e.g., when company changes their BYOK settings) */
   updateConfig(config: Partial<OpenAICompatibleConfig>): void {
     this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Map provider-agnostic tool contracts to OpenAI function/tool calling format.
+   *
+   * OpenAI format:
+   * {
+   *   type: 'function',
+   *   function: {
+   *     name: string,
+   *     description: string,
+   *     parameters: { ... JSON Schema ... }
+   *   }
+   * }
+   *
+   * Note: We include moduleId in the description prefix so the model
+   * can make better routing decisions, but we never include
+   * requiredPermissions or internal implementation details.
+   */
+  private mapToolsToOpenAIFormat(tools: AiProviderToolContract[]): OpenAIToolDefinition[] {
+    return tools.map(tool => {
+      // Prefix description with operation type context for better model routing
+      const enrichedDescription = this.buildToolDescription(tool);
+
+      return {
+        type: 'function' as const,
+        function: {
+          name: tool.name,
+          description: enrichedDescription,
+          parameters: tool.parameters,
+        },
+      };
+    });
+  }
+
+  /**
+   * Build an enriched tool description that includes safety context
+   * without exposing internal implementation details.
+   */
+  private buildToolDescription(tool: AiProviderToolContract): string {
+    const parts: string[] = [];
+
+    // Module context
+    parts.push(`[${tool.moduleId}]`);
+
+    // Operation type context — helps the model understand what this tool does
+    if (tool.operationType === 'READ') {
+      parts.push('Read-only data retrieval.');
+    } else if (tool.operationType === 'PROPOSAL') {
+      parts.push('Creates a reviewable proposal. No data is changed.');
+    } else if (tool.operationType === 'DRAFT') {
+      parts.push('Creates a draft for human review. No data is changed.');
+    } else {
+      // CREATE/UPDATE/DELETE/POST/APPROVE — these should never be exposed
+      // to AI in production, but if they are, clearly mark them as blocked.
+      parts.push('BLOCKED: This operation requires human approval and cannot be performed by AI.');
+    }
+
+    parts.push(tool.description);
+
+    // Required permissions hint (without exposing internal permission strings)
+    if (tool.requiredPermissions.length > 0) {
+      parts.push(`Requires ${tool.requiredPermissions.length} permission(s).`);
+    }
+
+    return parts.join(' ');
+  }
+
+  /**
+   * Parse OpenAI tool calls from the response into provider-agnostic format.
+   *
+   * OpenAI returns tool_calls as:
+   * [
+   *   {
+   *     id: 'call_abc123',
+   *     type: 'function',
+   *     function: {
+   *       name: 'function_name',
+   *       arguments: '{"arg1": "value1"}' // JSON string
+   *     }
+   *   }
+   * ]
+   *
+   * We parse the arguments JSON string into a proper object.
+   * If parsing fails, we skip the tool call and log a warning.
+   */
+  private parseToolCallsFromResponse(toolCalls?: OpenAIToolCall[]): AiProviderToolCallRequest[] | undefined {
+    if (!toolCalls || toolCalls.length === 0) {
+      return undefined;
+    }
+
+    const parsed: AiProviderToolCallRequest[] = [];
+
+    for (const tc of toolCalls) {
+      try {
+        const args = JSON.parse(tc.function.arguments);
+        parsed.push({
+          id: tc.id,
+          name: tc.function.name,
+          arguments: args,
+        });
+      } catch {
+        // If arguments can't be parsed, include with empty object
+        // rather than dropping the tool call entirely
+        console.warn(
+          `[AI Assistant] Failed to parse tool call arguments for '${tc.function.name}'. Arguments omitted from logs for safety.`
+        );
+        parsed.push({
+          id: tc.id,
+          name: tc.function.name,
+          arguments: {},
+        });
+      }
+    }
+
+    return parsed.length > 0 ? parsed : undefined;
   }
 
   /**

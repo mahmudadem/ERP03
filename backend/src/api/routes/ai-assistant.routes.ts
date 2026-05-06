@@ -39,4 +39,11 @@ router.get('/conversations', permissionGuard('ai-assistant.chat.use'), AiAssista
 router.get('/conversations/:conversationId/messages', permissionGuard('ai-assistant.chat.use'), AiAssistantController.getConversationMessages);
 router.delete('/conversations/:conversationId', permissionGuard('ai-assistant.chat.use'), AiAssistantController.deleteConversation);
 
+// Proposal Sandbox endpoints — reviewable AI proposals, no real ERP data changes
+router.get('/proposals', permissionGuard('ai-assistant.proposals.view'), AiAssistantController.listProposals);
+router.get('/proposals/:proposalId', permissionGuard('ai-assistant.proposals.view'), AiAssistantController.getProposal);
+router.post('/proposals', permissionGuard('ai-assistant.proposals.create'), AiAssistantController.createProposal);
+router.patch('/proposals/:proposalId/status', permissionGuard('ai-assistant.proposals.review'), AiAssistantController.updateProposalStatus);
+router.patch('/proposals/:proposalId/archive', permissionGuard('ai-assistant.proposals.archive'), AiAssistantController.archiveProposal);
+
 export default router;

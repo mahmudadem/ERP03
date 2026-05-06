@@ -1,112 +1,101 @@
 # 🎯 Current Focus
 
-**Task:** AI Tool System — Full Catalog, Real Implementations, Super Admin Management, Tests
-**Started:** 2026-05-06
-**Status:** ✅ COMPLETE — All phases done, 327 tests passing, builds clean
-**Agent/IDE:** OpenCode (CTO Mode)
+**Task:** AI Assistant Module v2 — Guarded Tool Runtime + Proposal Sandbox Integration  
+**Started:** 2026-05-07  
+**Status:** ✅ COMPLETE — review fixes applied, typechecks clean, targeted AI tests passing  
+**Agent/IDE:** OpenCode (CTO Mode)  
+**Branch:** `feat/ai-proposal-sandbox`
 
 ---
 
-## ✅ What Was Done This Session
+## ✅ What Was Completed
 
-### Phase 1: AI Tool Catalog Domain ✅
-- AiToolDefinition entity (100+ definitions, status/mode/risk/sensitivity)
-- AiToolEnablementPolicy entity (global/plan/company/module/provider/model/role controls)
-- AiModelToolPolicy entity (per provider/model, write=always blocked)
-- 3 repository interfaces + 3 Firestore implementations
-- Super Admin controller with 10 endpoints
+AI Assistant v2 is now implemented as a guarded, provider-agnostic runtime that extends the existing AI Assistant, Tool System v1, and AI Proposal Sandbox.
 
-### Phase 2: Super Admin Backend ✅
-- AiToolCatalogController + routes at `/platform/ai-tools`
-- AiToolCatalogUseCase with safety enforcement (write tools can NEVER be enabled)
-- Platform-level API: list, get, enable, disable, sync, policies
+### Backend Runtime ✅
+- Added provider-agnostic AI tool contract/domain types.
+- Extended provider interfaces to support structured tool calls and model capability metadata.
+- Added Runtime Guard validation before any model-requested tool can execute.
+- Added model capability catalog for known/custom/text-only models.
+- Added AI audit service wrapper for non-blocking runtime audit events.
+- Extended existing `AiToolCallingOrchestrator` rather than introducing a second orchestrator.
+- Preserved deterministic fallback for providers/models without structured tool support.
+- Kept write/proposal/draft requests out of direct execution; they clarify or create sandbox proposals only.
 
-### Phase 3: Full Catalog Seed (100+ definitions) ✅
-- 13 categories, 7 blocked write patterns
-- Accounting, Inventory, Sales, Purchases, CRM, HR, Reports, Audit, Platform
+### Skill Templates ✅
+- Added always-applied Base Skill instructions.
+- Added safe domain skill templates.
+- Skills are prompt/playbook guidance only; they do not execute tools or bypass permissions.
 
-### Phase 4: 14 New Tool Implementations (17 total) ✅
-- Cash Flow, AR/AP Aging, GL Summary, Account Statement, COA, Account Balance
-- Fiscal Year Status, Sales Summary, Top Customers, Purchase Summary, Top Suppliers
-- Financial Overview (meta-tool), Monthly Comparison
-- All registered in DI with proper deps
+### Frontend Runtime UI ✅
+- Chat now displays runtime model/provider status, warnings, text-only mode, clarification cards, tool-use status, and proposal-created state.
+- Proposal list/detail pages now use the correct `aiAssistant` i18n namespace.
+- Chat proposal cards translate proposal status and risk labels.
+- Super Admin AI Proposal Policy page now has full EN/AR/TR i18n coverage.
+- Sidebar `aiProposals` labels exist in all three common locale files.
 
-### Phase 5: Comprehensive Intent Detection ✅
-- 30+ intent patterns in `tool-intents.config.ts` (EN/AR/TR)
-- Fixed PermissionChecker bypass architecture violation
-- Enhanced AI safety rules (6 rules instead of 4)
-
-### Phase 6-7: Frontend ✅
-- Super Admin AI Tool Catalog page (`/super-admin/ai-tools`)
-- AI Tool Detail page (`/super-admin/ai-tools/:toolName`)
-- Filterable table with status/mode/risk badges
-- Enable/Disable toggle, Sync Catalog button
-- i18n strings (en/ar/tr)
-
-### Phase 8: Tests ✅
-- AiToolCatalog domain entity tests (24 tests)
-- AiToolCatalogUseCase tests (21 tests)
-- AiToolCatalogSmoke tests (148 tests — all 17 tools verified)
-- All existing tests still pass (327 total)
-
-### Phase 9: Verification ✅
-- Backend TypeScript: zero errors
-- Frontend TypeScript: zero errors
-- 327 AI assistant + catalog tests: all pass
-
-### Phase 10: Documentation ✅
-- ACTIVE.md updated
-- JOURNAL.md updated
-- docs/AI_ASSISTANT_STATE.md updated with full architecture
+### Review Fixes ✅
+- Fixed reviewer i18n blockers in tenant proposal pages.
+- Fixed reviewer i18n gaps in chat proposal cards and Super Admin proposal policy UI.
+- Added missing chat quick-action and empty-message locale keys.
+- Removed dead quick-action helper code without changing quick-action UX.
+- i18n tooltip strings for delete/history controls are now translated.
 
 ---
 
-## 🔑 Key Safety Rules
+## 🔐 Safety Guarantees
 
-1. **WRITE TOOLS CAN NEVER BE ENABLED** — enforced at AiToolCatalogUseCase
-2. **Mode/permissions/riskLevel are IMMUTABLE from seed** — DB overrides only affect status
-3. **DENY takes precedence over ALLOW** at every enablement level
-4. **allowWriteTools is ALWAYS false** — model policy forces this
-5. **requireExplicitUserIntent = true, requireDeterministicMapping = true**
-6. **All tools are company-scoped, permission-gated, read-only**
-
----
-
-## 🧪 Smoke Test Checklist
-
-When you're back, here's what to smoke test:
-
-### Backend
-1. `cd backend && npx tsc --noEmit` — should be zero errors
-2. `cd backend && npx jest --runInBand src/tests/application/ai-assistant/ src/tests/domain/ai-assistant/` — should be 327 tests all pass
-
-### Frontend
-1. `cd frontend && npx tsc --noEmit` — should be zero errors
-2. Navigate to `/super-admin/ai-tools` — should show tool catalog table
-3. Filter by module "accounting" — should show ~30 accounting tools
-4. Filter by status "active" — should show ~35 active tools
-5. Click "Sync Catalog" — should sync seed to DB
-6. Click a tool name — should show detail page
-7. Try enabling a BLOCKED write tool — should fail with error
-
-### Chat Integration
-1. Send "Show me the trial balance" → should invoke `accounting.getTrialBalanceSummary`
-2. Send "الأرباح والخسائر" → should invoke `accounting.getProfitAndLoss`
-3. Send "cash flow" → should invoke `accounting.getCashFlowSummary`
-4. Send "top customers" → should invoke `sales.getTopCustomers`
-5. Send "financial overview" → should invoke `reports.getFinancialOverview`
-6. Send "most profitable month" → should invoke `reports.getMonthlyPerformanceSummary`
-7. Send "hello" → should NOT invoke any tool
+1. **Model output is untrusted.** Structured tool calls are requests only; backend guard decides.
+2. **No direct AI writes.** Runtime Guard blocks write/proposal/draft tool execution.
+3. **Tenant isolation enforced.** Model-supplied `companyId`/`userId` is rejected; tenant context is server-owned.
+4. **RBAC enforced.** Tool execution still requires registered permissions.
+5. **Provider-agnostic.** OpenAI-style tool contracts are generated from ERP-owned tool definitions.
+6. **Fallback-safe.** Unknown/custom/text-only models use deterministic/text-only behavior with warnings.
+7. **Proposal Sandbox remains non-executing.** Accepting a proposal does not create ERP records, post vouchers, or execute business actions.
 
 ---
 
-## 📋 Remaining Work (Future)
+## ✅ Verification
+
+Commands run on 2026-05-07:
+
+- `frontend`: `npm run typecheck` ✅
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/AiRuntimeGuard.test.ts src/tests/application/ai-assistant/OpenAICompatibleProvider.test.ts src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts src/tests/application/ai-assistant/AiProposalSandbox.test.ts` ✅
+  - 4 suites passed
+  - 103 tests passed
+
+Reviewer status:
+- `erp-reviewer` final meaningful review: ✅ PASS
+- Last reviewer retry returned empty due to subagent/tool hiccup; direct verification passed afterward.
+
+---
+
+## 📚 Documentation Created / Updated
+
+- `JOURNAL.md`
+- `ACTIVE.md`
+- `1-TODO/done/70-ai-assistant-runtime-v2.md`
+- `docs/architecture/ai-assistant-runtime-v2.md`
+- `docs/user-guide/ai-assistant-runtime-v2.md`
+
+---
+
+## 📋 Remaining Work / Future
 
 | Item | Description | Priority |
 |------|-------------|----------|
-| Date-range params in chat | Allow users to specify date ranges in tool calls (e.g., "P&L for January") | Medium |
-| Tool result cards in frontend | Render structured cards for new tool types (cash flow, aging, etc.) | Medium |
-| Proposal tool enablement | Allow Super Admin to enable proposal tools with explicit safety review | Low |
-| HR/CRM tool stubs | Implement HR and CRM tools when those modules are built | Low |
-| Audit tool stubs | Implement audit tools when audit module is built | Low |
-| Free-form AI function calling | Let the AI model decide which tools to invoke (requires careful safety review) | Future |
+| Full regression run | Run complete backend/frontend test/build suite before merge | High before merge |
+| Commit | Commit after developer approval only | High |
+| Prisma AI repos | Add Prisma implementations for AI Proposal repositories when SQL mode is prioritized | Future |
+| Human-approved execution | Future path: accept proposal → execute through proper use cases with approval | Future |
+| Typed tool-result UI | Replace remaining local `as any` display casts with stronger frontend tool-result types | Low |
+| Date/time locale policy | Use company-configured locale for date/time display if/when global locale policy exists | Low |
+
+---
+
+## 👉 Recommended Next Move
+
+Review the changed files, then approve a git commit. Suggested commit format:
+
+`feat(ai-assistant): add guarded runtime v2 [ACTIVE-70]`

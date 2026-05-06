@@ -120,7 +120,8 @@
     "costCenterSummary": "Maliyet Merkezi ?zeti",
     "budgetVsActual": "B?t?e ve Ger?ekle?en",
     "aiAssistant": "AI Asistani",
-    "chat": "Sohbet"
+    "chat": "Sohbet",
+    "aiProposals": "AI Önerileri"
   },
   "reportContainer": {
     "refresh": "Yenile",
@@ -450,6 +451,42 @@
     }
   },
   "superAdmin": {
+    "aiProposalPolicies": {
+      "loading": "Yükleniyor...",
+      "title": "AI Öneri Politikaları",
+      "subtitle": "Hangi AI öneri türlerinin etkin olduğunu kontrol edin ve limitleri belirleyin.",
+      "globalSettings": "Genel Ayarlar",
+      "proposalSystemEnabled": "Öneri Sistemi Etkin",
+      "proposalSystemEnabledHelp": "AI öneri sandbox'u için ana anahtar",
+      "requireReview": "İnceleme Zorunlu",
+      "requireReviewHelp": "Öneriler kabulden önce incelenmelidir",
+      "businessExecution": "İş Yürütme",
+      "businessExecutionHelp": "Öneriler gerçek iş işlemlerini ASLA yürütmemelidir",
+      "alwaysFalseLocked": "HER ZAMAN FALSE (Kilitli)",
+      "dailyLimits": "Günlük Limitler",
+      "maxPerCompanyDay": "Şirket/Gün Başına Maksimum",
+      "maxPerUserDay": "Kullanıcı/Gün Başına Maksimum",
+      "proposalTypeControls": "Öneri Türü Kontrolleri",
+      "proposalTypeControlsHelp": "Belirli öneri türlerini etkinleştirin veya devre dışı bırakın. Devre dışı türler önceliklidir.",
+      "systemSummary": "Sistem Özeti",
+      "registeredTypes": "Kayıtlı Türler",
+      "disabledTypes": "Devre Dışı Türler",
+      "companyOverrides": "Şirket Geçersiz Kılmaları",
+      "status": {
+        "enabled": "Etkin",
+        "disabled": "Devre Dışı",
+        "required": "Zorunlu",
+        "optional": "İsteğe Bağlı"
+      },
+      "errors": {
+        "load": "Öneri politikaları yüklenemedi",
+        "businessExecutionLocked": "allowBusinessExecution her zaman false olmalıdır",
+        "update": "Politika güncellenemedi"
+      },
+      "messages": {
+        "updated": "Politika başarıyla güncellendi"
+      }
+    },
     "plans": {
       "loading": "Yukleniyor...",
       "title": "Plan Yonetimi",

@@ -54,6 +54,11 @@ export class AiAssistantController {
         diContainer.httpClient,
         diContainer.aiUsageLogRepository,
         diContainer.aiToolCallingOrchestrator,
+        diContainer.aiProposalGeneratorRegistry,
+        diContainer.createAiProposalUseCase,
+        diContainer.aiRuntimeGuard,
+        diContainer.aiAuditService,
+        diContainer.aiSkillRegistry,
       );
 
       const result = await useCase.execute({
@@ -70,6 +75,8 @@ export class AiAssistantController {
           assistantMessage: AiAssistantDTOMapper.toChatMessageResponse(result.assistantMessage),
           provider: result.provider,
           model: result.model,
+          // Stage 2: optional runtime metadata — backward compatible
+          ...(result.runtimeMeta ? { runtimeMeta: result.runtimeMeta } : {}),
         },
       });
     } catch (error) {
@@ -278,6 +285,161 @@ export class AiAssistantController {
         userId,
         toolName,
         params,
+      });
+
+      (res as any).status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ================================================================
+  // PROPOSAL SANDBOX ENDPOINTS
+  // These endpoints manage AI proposals in the sandbox.
+  // Proposals are safe, reviewable drafts — no real ERP data changes.
+  // ================================================================
+
+  /**
+   * GET /ai-assistant/proposals
+   * List proposals for the current company.
+   */
+  static async listProposals(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const { type, status, moduleId, userId, limit, offset } = req.query;
+
+      const useCase = diContainer.listAiProposalsUseCase;
+      const result = await useCase.execute({
+        companyId,
+        type: type as string | undefined,
+        status: status as string | undefined,
+        moduleId: moduleId as string | undefined,
+        userId: userId as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+
+      (res as any).status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /ai-assistant/proposals/:proposalId
+   * Get a single proposal by ID.
+   */
+  static async getProposal(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const { proposalId } = req.params;
+
+      const useCase = diContainer.getAiProposalUseCase;
+      const result = await useCase.execute({
+        companyId,
+        proposalId,
+      });
+
+      (res as any).status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /ai-assistant/proposals
+   * Create a new proposal in the sandbox.
+   */
+  static async createProposal(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const userId = AiAssistantController.getUserId(req);
+      const { type, title, summary, rationale, inputContextSummary, proposedData, warnings, riskLevel, moduleId, requiredPermissions, missingInfo, confidence, sourceChatMessageId } = req.body;
+
+      const useCase = diContainer.createAiProposalUseCase;
+      const result = await useCase.execute({
+        companyId,
+        userId,
+        sourceChatMessageId,
+        type,
+        title,
+        summary,
+        rationale,
+        inputContextSummary,
+        proposedData,
+        warnings,
+        riskLevel,
+        moduleId,
+        requiredPermissions,
+        missingInfo,
+        confidence,
+      });
+
+      (res as any).status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PATCH /ai-assistant/proposals/:proposalId/status
+   * Update proposal status (accept, reject, submit for review).
+   * Accepting does NOT execute any business action.
+   */
+  static async updateProposalStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const userId = AiAssistantController.getUserId(req);
+      const { proposalId } = req.params;
+      const { newStatus, rejectionReason } = req.body;
+
+      if (!newStatus) {
+        return next(ApiError.badRequest('newStatus is required'));
+      }
+
+      const useCase = diContainer.updateAiProposalStatusUseCase;
+      const result = await useCase.execute({
+        companyId,
+        proposalId,
+        newStatus,
+        reviewedBy: userId,
+        rejectionReason,
+      });
+
+      (res as any).status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PATCH /ai-assistant/proposals/:proposalId/archive
+   * Archive a proposal. No ERP data is deleted.
+   */
+  static async archiveProposal(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const { proposalId } = req.params;
+
+      const useCase = diContainer.archiveAiProposalUseCase;
+      const result = await useCase.execute({
+        companyId,
+        proposalId,
       });
 
       (res as any).status(200).json({

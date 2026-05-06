@@ -120,7 +120,8 @@
     "costCenterSummary": "Cost Center Summary",
     "budgetVsActual": "Budget vs Actual",
     "aiAssistant": "AI Assistant",
-    "chat": "Chat"
+    "chat": "Chat",
+    "aiProposals": "AI Proposals"
   },
   "reportContainer": {
     "refresh": "Refresh",
@@ -450,6 +451,42 @@
     }
   },
   "superAdmin": {
+    "aiProposalPolicies": {
+      "loading": "Loading...",
+      "title": "AI Proposal Policies",
+      "subtitle": "Control which AI proposal types are enabled and set limits.",
+      "globalSettings": "Global Settings",
+      "proposalSystemEnabled": "Proposal System Enabled",
+      "proposalSystemEnabledHelp": "Master switch for the AI proposal sandbox",
+      "requireReview": "Require Review",
+      "requireReviewHelp": "Proposals must be reviewed before acceptance",
+      "businessExecution": "Business Execution",
+      "businessExecutionHelp": "Proposals must NEVER execute real business actions",
+      "alwaysFalseLocked": "ALWAYS FALSE (Locked)",
+      "dailyLimits": "Daily Limits",
+      "maxPerCompanyDay": "Max Per Company/Day",
+      "maxPerUserDay": "Max Per User/Day",
+      "proposalTypeControls": "Proposal Type Controls",
+      "proposalTypeControlsHelp": "Enable or disable specific proposal types. Disabled types take precedence.",
+      "systemSummary": "System Summary",
+      "registeredTypes": "Registered Types",
+      "disabledTypes": "Disabled Types",
+      "companyOverrides": "Company Overrides",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "required": "Required",
+        "optional": "Optional"
+      },
+      "errors": {
+        "load": "Failed to load proposal policies",
+        "businessExecutionLocked": "allowBusinessExecution must ALWAYS be false",
+        "update": "Failed to update policy"
+      },
+      "messages": {
+        "updated": "Policy updated successfully"
+      }
+    },
     "plans": {
       "loading": "Loading...",
       "title": "Plans Management",

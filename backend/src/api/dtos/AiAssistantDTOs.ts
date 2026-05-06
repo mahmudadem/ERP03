@@ -7,6 +7,31 @@ export interface SendChatMessageRequest {
   conversationId?: string;
 }
 
+export interface RuntimeMetadata {
+  aiRunId: string;
+  conversationId: string;
+  runtimeStatus: string;
+  selectedSkills: string[];
+  allowedToolIds: string[];
+  modelProfile: {
+    provider: string;
+    modelName: string;
+    status: string;
+    supportsToolCalling: boolean;
+    textOnlyMode: boolean;
+    warningLevel: string;
+    warningMessage: string;
+  };
+  runtimeWarnings: string[];
+  toolCallsRequested: string[];
+  toolResults: Array<{
+    toolName: string;
+    approved: boolean;
+    rejectionReason?: string;
+  }>;
+  proposal?: Record<string, unknown>;
+}
+
 export interface SendChatMessageResponse {
   userMessage: {
     id: string;
@@ -28,6 +53,8 @@ export interface SendChatMessageResponse {
   };
   provider: string;
   model: string;
+  /** Stage 2: Runtime metadata (optional, backward compatible) */
+  runtimeMeta?: RuntimeMetadata;
 }
 
 export interface GetConversationMessagesResponse {

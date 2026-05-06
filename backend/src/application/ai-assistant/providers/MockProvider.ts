@@ -4,23 +4,49 @@
  * Returns contextual mock responses that echo the user's message.
  * This allows development and testing without any external API keys.
  *
+ * v2 Extension:
+ * - Supports tool contracts in requests (added to request type, but mock
+ *   does not execute them).
+ * - If tools are present in the request, includes runtime metadata
+ *   indicating mock text-only behavior and tool availability.
+ * - Never includes tool calls in responses (mock is text-only).
+ * - Response content may be null if tool calls were expected but mock
+ *   cannot produce them — the caller should handle this gracefully.
+ *
  * Safety: MockProvider responses are clearly labeled as mock/placeholder
  * and cannot mutate any business records.
  */
 
-import { IAiProvider, AiProviderRequest, AiProviderResponse } from './IAiProvider';
+import {
+  IAiProvider,
+  AiProviderRequest,
+  AiProviderResponse,
+  AiProviderCapabilities,
+  AiProviderRuntimeMeta,
+} from './IAiProvider';
 
 export class MockProvider implements IAiProvider {
   readonly providerId = 'mock';
   readonly providerName = 'Mock AI Provider';
 
-  private static readonly MOCK_SYSTEM_PREFIX = 
+  private static readonly CAPABILITIES: AiProviderCapabilities = {
+    supportsToolCalling: false,
+    supportsStructuredOutput: false,
+    maxToolCallsPerRequest: 0,
+    allowsEmptyContentWithToolCalls: false,
+  };
+
+  private static readonly MOCK_SYSTEM_PREFIX =
     '[Mock AI Assistant — this is a simulated response for development. ' +
     'No real AI is being used.]\n\n';
 
-  private static readonly SAFETY_SUFFIX = 
+  private static readonly SAFETY_SUFFIX =
     '\n\n---\n*Note: The AI Assistant is advisory-only and cannot create, ' +
     'modify, approve, or delete any business records.*';
+
+  getCapabilities(): AiProviderCapabilities {
+    return { ...MockProvider.CAPABILITIES };
+  }
 
   async chat(request: AiProviderRequest): Promise<AiProviderResponse> {
     // Simulate a small processing delay for realism
@@ -35,14 +61,37 @@ export class MockProvider implements IAiProvider {
     // Generate a contextual mock response
     const mockResponse = this.generateMockResponse(userContent);
 
+    // Build runtime metadata
+    const runtimeMeta: AiProviderRuntimeMeta = {
+      modelUsed: 'mock-assistant',
+      capabilities: {
+        supportsToolCalling: false,
+        allowsEmptyContentWithToolCalls: false,
+      },
+    };
+
+    // If tools were provided, note that mock cannot use them
+    if (request.tools && request.tools.length > 0) {
+      runtimeMeta.warnings = [
+        `Mock provider does not support tool calling. ` +
+        `${request.tools.length} tool(s) were provided but will not be invoked. ` +
+        `Use a real provider (OpenAI, etc.) for tool calling support.`,
+      ];
+    }
+
     return {
       content: MockProvider.MOCK_SYSTEM_PREFIX + mockResponse + MockProvider.SAFETY_SUFFIX,
       model: 'mock-assistant',
       provider: 'mock',
       tokenCount: Math.ceil(userContent.length / 4) + Math.ceil(mockResponse.length / 4),
+      // Mock provider never returns tool calls
+      toolCalls: undefined,
+      runtimeMeta,
       metadata: {
         isMock: true,
         simulatedAt: new Date().toISOString(),
+        toolsProvided: request.tools?.length ?? 0,
+        // NOTE: No tool call results — mock is text-only
       },
     };
   }

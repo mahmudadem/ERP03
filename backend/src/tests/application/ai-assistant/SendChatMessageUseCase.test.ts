@@ -207,6 +207,64 @@ describe('SendChatMessageUseCase', () => {
       // Keep provider metadata too (from MockProvider)
       expect((result.assistantMessage.metadata as any)?.isMock).toBe(true);
     });
+
+    it('should prefer one sufficient deterministic tool result over multiple matches', async () => {
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const firstToolResult = {
+        toolName: 'accounting.getTrialBalanceSummary',
+        result: { success: true, data: { totalDebit: 100, totalCredit: 100 } },
+      };
+      const secondToolResult = {
+        toolName: 'accounting.getBalanceSheet',
+        result: { success: true, data: { totalAssets: 100 } },
+      };
+      const mockOrchestrator = {
+        buildAllowedToolContracts: jest.fn().mockResolvedValue({ contracts: [], nameMapping: new Map(), allowedToolIds: [] }),
+        detectAndExecute: jest.fn().mockResolvedValue([firstToolResult, secondToolResult]),
+        formatToolResultsForContext: jest.fn().mockReturnValue('[ONE TOOL RESULT]'),
+        getToolDescriptionsForPrompt: jest.fn().mockReturnValue('Available tools: ...'),
+      } as any;
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo,
+        settingsRepo,
+        encryptionService,
+        createMockHttpClient(),
+        undefined,
+        mockOrchestrator,
+      );
+
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'show trial balance and balance sheet',
+      });
+
+      expect(mockOrchestrator.formatToolResultsForContext).toHaveBeenCalledWith([firstToolResult]);
+      expect((result.assistantMessage.metadata as any)?.toolResults).toHaveLength(1);
+      expect((result.assistantMessage.metadata as any)?.toolResults[0].toolName).toBe('accounting.getTrialBalanceSummary');
+    });
+
+    it('should include custom untested model warning metadata', async () => {
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      mockConfig.model = 'unknown-custom-model';
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'Hello',
+      });
+
+      const metadata = result.assistantMessage.metadata as any;
+      expect(metadata.modelProfile.status).toBe('custom');
+      expect(metadata.modelProfile.warningLevel).toBe('danger');
+      expect(metadata.runtimeWarnings.length).toBeGreaterThan(0);
+    });
   });
 
   describe('input validation', () => {

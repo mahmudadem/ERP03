@@ -86,6 +86,7 @@ const ModulesManagerPage = lazy(() => import('../modules/super-admin/pages/Modul
 const PlansManagerPage = lazy(() => import('../modules/super-admin/pages/PlansManagerPage').then(m => ({ default: m.PlansManagerPage })));
 const AiToolCatalogPage = lazy(() => import('../modules/super-admin/pages/AiToolCatalogPage').then(m => ({ default: m.AiToolCatalogPage })));
 const AiToolDetailPage = lazy(() => import('../modules/super-admin/pages/AiToolDetailPage').then(m => ({ default: m.AiToolDetailPage })));
+const AiProposalPolicyPage = lazy(() => import('../modules/super-admin/pages/AiProposalPolicyPage').then(m => ({ default: m.AiProposalPolicyPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
 
 // Company Wizard (user-level)
@@ -240,6 +241,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/modules-registry', label: 'Modules Registry', component: ModulesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools', label: 'AI Tools', component: AiToolCatalogPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools/:toolName', label: 'AI Tool Detail', component: AiToolDetailPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/ai-proposal-policies', label: 'AI Proposal Policies', component: AiProposalPolicyPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/plans', label: 'Plans', component: PlansManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions', label: 'Module Permissions', component: ModulePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions/:moduleId', label: 'Edit Module Permissions', component: EditModulePermissionsPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
@@ -332,6 +334,8 @@ export const routesConfig: AppRoute[] = [
   // AI ASSISTANT
   { path: '/ai-assistant', label: 'AI Assistant', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantHomePage')), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.chat.use' },
   { path: '/ai-assistant/settings', label: 'AI Settings', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSettingsPage').then(m => ({ default: m.AiAssistantSettingsPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view' },
+  { path: '/ai-assistant/proposals', label: 'AI Proposals', component: lazy(() => import('../modules/ai-assistant/pages/AiProposalListPage').then(m => ({ default: m.AiProposalListPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.proposals.view', hideInMenu: false },
+  { path: '/ai-assistant/proposals/:proposalId', label: 'Proposal Detail', component: lazy(() => import('../modules/ai-assistant/pages/AiProposalDetailPage').then(m => ({ default: m.AiProposalDetailPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.proposals.view', hideInMenu: true },
 
   // USER PROFILE
   { path: '/profile', label: 'My Profile', component: lazy(() => import('../modules/core/pages/ProfilePage')), section: 'CORE', hideInMenu: true },

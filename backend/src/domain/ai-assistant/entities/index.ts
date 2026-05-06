@@ -4,3 +4,8 @@ export * from './AiUsageLog';
 export * from './AiToolDefinition';
 export * from './AiToolEnablementPolicy';
 export * from './AiModelToolPolicy';
+export * from './AiProposal';
+export * from './AiProposalPolicy';
+
+// Re-export provider-agnostic tool contract types used by AiToolDefinition.toProviderToolContract()
+export type { AiToolOperationType, AiProviderToolContract } from '../tools/AiToolContract';

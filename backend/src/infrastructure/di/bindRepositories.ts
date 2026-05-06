@@ -110,8 +110,11 @@ import { PrismaAiUsageLogRepository } from '../prisma/repositories/ai-assistant/
 import { SettingsResolver } from '../../application/common/services/SettingsResolver';
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
-import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
-import { AiToolCatalogUseCase } from '../../application/ai-assistant/use-cases/AiToolCatalogUseCase';
+  import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
+  import { AiRuntimeGuard } from '../../application/ai-assistant/services/AiRuntimeGuard';
+  import { AiAuditService } from '../../application/ai-assistant/services/AiAuditService';
+  import { AiModelCapabilityCatalog } from '../../application/ai-assistant/services/AiModelCapabilityCatalog';
+  import { AiToolCatalogUseCase } from '../../application/ai-assistant/use-cases/AiToolCatalogUseCase';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
 import { GetProfitAndLossTool } from '../../application/ai-assistant/tools/GetProfitAndLossTool';
 import { GetBalanceSheetTool } from '../../application/ai-assistant/tools/GetBalanceSheetTool';
@@ -136,6 +139,19 @@ import { FirestoreAiToolCatalogRepository } from '../firestore/repositories/ai-a
 import { FirestoreAiToolEnablementRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolEnablementRepository';
 import { FirestoreAiModelToolPolicyRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelToolPolicyRepository';
 import { PermissionChecker } from '../../application/rbac/PermissionChecker';
+
+// AI ASSISTANT — Proposal Sandbox
+import { IAiProposalRepository } from '../../repository/interfaces/ai-assistant/IAiProposalRepository';
+import { IAiProposalPolicyRepository } from '../../repository/interfaces/ai-assistant/IAiProposalPolicyRepository';
+import { FirestoreAiProposalRepository } from '../firestore/repositories/ai-assistant/FirestoreAiProposalRepository';
+import { FirestoreAiProposalPolicyRepository } from '../firestore/repositories/ai-assistant/FirestoreAiProposalPolicyRepository';
+import { CreateAiProposalUseCase } from '../../application/ai-assistant/use-cases/CreateAiProposalUseCase';
+import { ListAiProposalsUseCase } from '../../application/ai-assistant/use-cases/ListAiProposalsUseCase';
+import { GetAiProposalUseCase } from '../../application/ai-assistant/use-cases/GetAiProposalUseCase';
+import { UpdateAiProposalStatusUseCase } from '../../application/ai-assistant/use-cases/UpdateAiProposalStatusUseCase';
+import { ArchiveAiProposalUseCase } from '../../application/ai-assistant/use-cases/ArchiveAiProposalUseCase';
+import { AiProposalGeneratorRegistry } from '../../application/ai-assistant/proposals/AiProposalGeneratorRegistry';
+  import { AiSkillRegistry } from '../../application/ai-assistant/skills/AiSkillRegistry';
 
 // SUPER ADMIN
 import { IBusinessDomainRepository } from '../../repository/interfaces/super-admin/IBusinessDomainRepository';
@@ -288,6 +304,10 @@ const moduleActivationService = DB_TYPE === 'SQL'
   ? new ModuleActivationService(new PrismaCompanyModuleRepository(getPrismaClient()))
   : new ModuleActivationService(new FirestoreCompanyModuleRepository(getDb()));
 let _httpClient: AxiosHttpClient | undefined;
+let _aiToolRegistry: AiToolRegistry | undefined;
+let _aiRuntimeGuard: AiRuntimeGuard | undefined;
+let _aiToolCallingOrchestrator: AiToolCallingOrchestrator | undefined;
+let _aiSkillRegistry: AiSkillRegistry | undefined;
 
 export const diContainer = {
   // CORE
@@ -771,6 +791,38 @@ export const diContainer = {
     );
   },
 
+  // AI ASSISTANT — Proposal Sandbox
+  get aiProposalRepository(): IAiProposalRepository {
+    return new FirestoreAiProposalRepository(getDb());
+  },
+  get aiProposalPolicyRepository(): IAiProposalPolicyRepository {
+    return new FirestoreAiProposalPolicyRepository(getDb());
+  },
+  get createAiProposalUseCase(): CreateAiProposalUseCase {
+    return new CreateAiProposalUseCase(
+      this.aiProposalRepository,
+      this.aiProposalPolicyRepository,
+    );
+  },
+  get listAiProposalsUseCase(): ListAiProposalsUseCase {
+    return new ListAiProposalsUseCase(this.aiProposalRepository);
+  },
+  get getAiProposalUseCase(): GetAiProposalUseCase {
+    return new GetAiProposalUseCase(this.aiProposalRepository);
+  },
+  get updateAiProposalStatusUseCase(): UpdateAiProposalStatusUseCase {
+    return new UpdateAiProposalStatusUseCase(
+      this.aiProposalRepository,
+      this.aiProposalPolicyRepository,
+    );
+  },
+  get archiveAiProposalUseCase(): ArchiveAiProposalUseCase {
+    return new ArchiveAiProposalUseCase(this.aiProposalRepository);
+  },
+  get aiProposalGeneratorRegistry(): AiProposalGeneratorRegistry {
+    return new AiProposalGeneratorRegistry();
+  },
+
   // AI ASSISTANT SERVICES
   get encryptionService(): IEncryptionService {
     return new AesEncryptionService();
@@ -778,9 +830,10 @@ export const diContainer = {
   get httpClient(): IHttpClient {
     return _httpClient ??= new AxiosHttpClient();
   },
-get aiToolRegistry(): AiToolRegistry {
+  get aiToolRegistry(): AiToolRegistry {
+    if (_aiToolRegistry) return _aiToolRegistry;
     // Register all AI tools here with their dependencies
-    return new AiToolRegistry([
+    _aiToolRegistry = new AiToolRegistry([
       new GetTrialBalanceSummaryTool(
         this.ledgerRepository,
         this.accountRepository,
@@ -868,12 +921,31 @@ get aiToolRegistry(): AiToolRegistry {
         this.permissionChecker,
       ),
     ]);
+    return _aiToolRegistry;
   },
   get aiToolCallingOrchestrator(): AiToolCallingOrchestrator {
-    return new AiToolCallingOrchestrator(
+    return _aiToolCallingOrchestrator ??= new AiToolCallingOrchestrator(
+      this.aiToolRegistry,
+      this.permissionChecker,
+      this.aiRuntimeGuard,
+    );
+  },
+
+  // AI ASSISTANT — Stage 2 Services
+  get aiRuntimeGuard(): AiRuntimeGuard {
+    return _aiRuntimeGuard ??= new AiRuntimeGuard(
       this.aiToolRegistry,
       this.permissionChecker,
     );
+  },
+  get aiAuditService(): AiAuditService {
+    return new AiAuditService(this.auditLogRepository);
+  },
+  get aiSkillRegistry(): AiSkillRegistry {
+    return _aiSkillRegistry ??= new AiSkillRegistry();
+  },
+  get aiModelCapabilityCatalog(): typeof AiModelCapabilityCatalog {
+    return AiModelCapabilityCatalog;
   },
 
   // AI ASSISTANT - Permission Checker for tool access

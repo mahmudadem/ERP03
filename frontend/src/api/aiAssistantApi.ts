@@ -8,6 +8,52 @@
 import client from './client';
 
 // Types
+export interface ChatRuntimeModelProfileDTO {
+  provider: string;
+  modelName: string;
+  status: 'recommended' | 'tested' | 'experimental' | 'custom' | string;
+  supportsToolCalling: boolean;
+  textOnlyMode: boolean;
+  warningLevel: 'none' | 'info' | 'warning' | 'danger' | string;
+  warningMessage: string;
+}
+
+export interface ChatRuntimeMetadataDTO {
+  aiRunId: string;
+  conversationId: string;
+  runtimeStatus: string;
+  selectedSkills: string[];
+  allowedToolIds: string[];
+  modelProfile: ChatRuntimeModelProfileDTO;
+  runtimeWarnings: string[];
+  toolCallsRequested: string[];
+  toolResults?: Array<{
+    toolName: string;
+    approved: boolean;
+    rejectionReason?: string;
+  }>;
+  proposal?: Record<string, unknown>;
+}
+
+export interface ChatMessageMetadata {
+  aiRunId?: string;
+  conversationId?: string;
+  runtimeStatus?: string;
+  selectedSkills?: string[];
+  allowedToolIds?: string[];
+  modelProfile?: ChatRuntimeModelProfileDTO;
+  runtimeWarnings?: string[];
+  toolCallsRequested?: string[];
+  toolCallResults?: Array<{
+    toolName: string;
+    approved: boolean;
+    rejectionReason?: string;
+  }>;
+  toolResults?: AiToolCallResultDTO[];
+  proposal?: AiProposalDTO | null;
+  [key: string]: unknown;
+}
+
 export interface ChatMessageDTO {
   id: string;
   conversationId: string;
@@ -16,7 +62,7 @@ export interface ChatMessageDTO {
   provider: string;
   model?: string | null;
   tokenCount?: number | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: ChatMessageMetadata | null;
   createdAt: string;
 }
 
@@ -40,6 +86,7 @@ export interface SendChatMessageResponse {
   assistantMessage: ChatMessageDTO;
   provider: string;
   model: string;
+  runtimeMeta?: ChatRuntimeMetadataDTO;
 }
 
 export interface AiSettingsDTO {
@@ -76,6 +123,17 @@ export interface AiUsageAnalyticsResponse {
   }>;
 }
 
+export interface ProviderHealthResponse {
+  provider: string;
+  model: string;
+  ready?: boolean;
+  networkOk?: boolean;
+  inferenceOk?: boolean;
+  latencyMs?: number;
+  success?: boolean;
+  error?: string;
+}
+
 export interface UpdateAiSettingsPayload {
   provider?: 'mock' | 'openai_compatible' | 'ollama';
   model?: string;
@@ -84,6 +142,49 @@ export interface UpdateAiSettingsPayload {
   maxTokensPerRequest?: number;
   maxRequestsPerDay?: number;
   isEnabled?: boolean;
+}
+
+// Proposal Sandbox Types
+export type AiProposalType =
+  | 'accounting.voucherDraft'
+  | 'accounting.journalEntryProposal'
+  | 'accounting.correctionEntryProposal'
+  | 'accounting.accountMappingProposal'
+  | 'inventory.reorderProposal'
+  | 'sales.collectionFollowUpProposal'
+  | 'reports.managementInsightProposal';
+
+export type AiProposalStatus = 'draft' | 'pending_review' | 'accepted' | 'rejected' | 'archived';
+export type AiProposalRiskLevel = 'low' | 'medium' | 'high';
+
+export interface AiProposalDTO {
+  id: string;
+  companyId: string;
+  userId: string;
+  sourceChatMessageId: string | null;
+  type: AiProposalType;
+  status: AiProposalStatus;
+  title: string;
+  summary: string;
+  rationale: string;
+  inputContextSummary: string;
+  proposedData: Record<string, unknown>;
+  warnings: string[];
+  riskLevel: AiProposalRiskLevel;
+  moduleId: string;
+  requiredPermissions: string[];
+  missingInfo: string[] | null;
+  confidence: number | null;
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  rejectionReason: string | null;
+}
+
+export interface AiProposalListResponse {
+  proposals: AiProposalDTO[];
+  total: number;
 }
 
 export const aiAssistantApi = {
@@ -136,5 +237,45 @@ export const aiAssistantApi = {
       params: { limit },
     });
     return response as unknown as AiUsageAnalyticsResponse;
+  },
+
+  checkProviderHealth: async (): Promise<ProviderHealthResponse> => {
+    const response = await client.post('/tenant/ai-assistant/settings/health');
+    return response as unknown as ProviderHealthResponse;
+  },
+
+  // Proposal Sandbox
+  listProposals: async (params?: {
+    type?: string;
+    status?: string;
+    moduleId?: string;
+    userId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AiProposalListResponse> => {
+    const response = await client.get('/tenant/ai-assistant/proposals', { params });
+    return response as unknown as AiProposalListResponse;
+  },
+
+  getProposal: async (proposalId: string): Promise<{ proposal: AiProposalDTO; notice?: string }> => {
+    const response = await client.get(`/tenant/ai-assistant/proposals/${proposalId}`);
+    return response as unknown as { proposal: AiProposalDTO; notice?: string };
+  },
+
+  updateProposalStatus: async (
+    proposalId: string,
+    newStatus: AiProposalStatus,
+    rejectionReason?: string,
+  ): Promise<{ proposal: AiProposalDTO; notice: string }> => {
+    const response = await client.patch(`/tenant/ai-assistant/proposals/${proposalId}/status`, {
+      newStatus,
+      rejectionReason,
+    });
+    return response as unknown as { proposal: AiProposalDTO; notice: string };
+  },
+
+  archiveProposal: async (proposalId: string): Promise<{ proposal: AiProposalDTO }> => {
+    const response = await client.patch(`/tenant/ai-assistant/proposals/${proposalId}/archive`);
+    return response as unknown as { proposal: AiProposalDTO };
   },
 };

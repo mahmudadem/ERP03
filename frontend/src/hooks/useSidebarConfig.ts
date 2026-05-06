@@ -88,7 +88,8 @@ export const useSidebarConfig = () => {
     Features: 'sidebar.features',
     Bundles: 'sidebar.bundles',
     'AI Assistant': 'sidebar.aiAssistant',
-    Chat: 'sidebar.chat'
+    Chat: 'sidebar.chat',
+    'AI Proposals': 'sidebar.aiProposals'
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });

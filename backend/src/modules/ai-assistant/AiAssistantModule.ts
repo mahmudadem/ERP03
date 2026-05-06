@@ -40,6 +40,12 @@ export class AiAssistantModule implements IModule {
         'ai-assistant.health.test',
         'ai-assistant.model-policy.view',
         'ai-assistant.model-policy.manage',
+        // Proposal Sandbox permissions
+        'ai-assistant.proposals.view',
+        'ai-assistant.proposals.create',
+        'ai-assistant.proposals.review',
+        'ai-assistant.proposals.manage',
+        'ai-assistant.proposals.archive',
     ];
 
     getManifest(): ModuleManifest {
