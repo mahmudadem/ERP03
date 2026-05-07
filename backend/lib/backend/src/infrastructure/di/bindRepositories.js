@@ -68,8 +68,52 @@ const FirestoreCompanyAdminRepository_1 = require("../firestore/company-admin/Fi
 const PrismaCompanyAdminRepository_1 = require("../prisma/company-admin/PrismaCompanyAdminRepository");
 const FirestoreCompanyModuleRepository_1 = require("../firestore/repositories/company/FirestoreCompanyModuleRepository");
 const FirestoreCapabilityRegistryRepository_1 = require("../firestore/repositories/company/FirestoreCapabilityRegistryRepository");
+const AesEncryptionService_1 = require("../crypto/AesEncryptionService");
+const AxiosHttpClient_1 = require("../http/AxiosHttpClient");
+const FirestoreAiChatRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiChatRepository");
+const FirestoreAiSettingsRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiSettingsRepository");
+const FirestoreAiUsageLogRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiUsageLogRepository");
+const PrismaAiChatRepository_1 = require("../prisma/repositories/ai-assistant/PrismaAiChatRepository");
+const PrismaAiSettingsRepository_1 = require("../prisma/repositories/ai-assistant/PrismaAiSettingsRepository");
+const PrismaAiUsageLogRepository_1 = require("../prisma/repositories/ai-assistant/PrismaAiUsageLogRepository");
 const SettingsResolver_1 = require("../../application/common/services/SettingsResolver");
 const ModuleActivationService_1 = require("../../application/system/services/ModuleActivationService");
+const AiToolRegistry_1 = require("../../application/ai-assistant/services/AiToolRegistry");
+const AiToolCallingOrchestrator_1 = require("../../application/ai-assistant/services/AiToolCallingOrchestrator");
+const AiRuntimeGuard_1 = require("../../application/ai-assistant/services/AiRuntimeGuard");
+const AiAuditService_1 = require("../../application/ai-assistant/services/AiAuditService");
+const AiModelCapabilityCatalog_1 = require("../../application/ai-assistant/services/AiModelCapabilityCatalog");
+const AiToolCatalogUseCase_1 = require("../../application/ai-assistant/use-cases/AiToolCatalogUseCase");
+const GetTrialBalanceSummaryTool_1 = require("../../application/ai-assistant/tools/GetTrialBalanceSummaryTool");
+const GetProfitAndLossTool_1 = require("../../application/ai-assistant/tools/GetProfitAndLossTool");
+const GetBalanceSheetTool_1 = require("../../application/ai-assistant/tools/GetBalanceSheetTool");
+const GetCashFlowTool_1 = require("../../application/ai-assistant/tools/GetCashFlowTool");
+const GetAgingReceivablesTool_1 = require("../../application/ai-assistant/tools/GetAgingReceivablesTool");
+const GetAgingPayablesTool_1 = require("../../application/ai-assistant/tools/GetAgingPayablesTool");
+const GetGeneralLedgerSummaryTool_1 = require("../../application/ai-assistant/tools/GetGeneralLedgerSummaryTool");
+const GetAccountStatementSummaryTool_1 = require("../../application/ai-assistant/tools/GetAccountStatementSummaryTool");
+const GetChartOfAccountsSummaryTool_1 = require("../../application/ai-assistant/tools/GetChartOfAccountsSummaryTool");
+const GetAccountBalanceTool_1 = require("../../application/ai-assistant/tools/GetAccountBalanceTool");
+const GetFiscalYearStatusTool_1 = require("../../application/ai-assistant/tools/GetFiscalYearStatusTool");
+const GetSalesSummaryTool_1 = require("../../application/ai-assistant/tools/GetSalesSummaryTool");
+const GetTopCustomersTool_1 = require("../../application/ai-assistant/tools/GetTopCustomersTool");
+const GetPurchaseSummaryTool_1 = require("../../application/ai-assistant/tools/GetPurchaseSummaryTool");
+const GetTopSuppliersTool_1 = require("../../application/ai-assistant/tools/GetTopSuppliersTool");
+const GetFinancialOverviewTool_1 = require("../../application/ai-assistant/tools/GetFinancialOverviewTool");
+const GetMonthlyComparisonTool_1 = require("../../application/ai-assistant/tools/GetMonthlyComparisonTool");
+const FirestoreAiToolCatalogRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiToolCatalogRepository");
+const FirestoreAiToolEnablementRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiToolEnablementRepository");
+const FirestoreAiModelToolPolicyRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiModelToolPolicyRepository");
+const PermissionChecker_1 = require("../../application/rbac/PermissionChecker");
+const FirestoreAiProposalRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiProposalRepository");
+const FirestoreAiProposalPolicyRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiProposalPolicyRepository");
+const CreateAiProposalUseCase_1 = require("../../application/ai-assistant/use-cases/CreateAiProposalUseCase");
+const ListAiProposalsUseCase_1 = require("../../application/ai-assistant/use-cases/ListAiProposalsUseCase");
+const GetAiProposalUseCase_1 = require("../../application/ai-assistant/use-cases/GetAiProposalUseCase");
+const UpdateAiProposalStatusUseCase_1 = require("../../application/ai-assistant/use-cases/UpdateAiProposalStatusUseCase");
+const ArchiveAiProposalUseCase_1 = require("../../application/ai-assistant/use-cases/ArchiveAiProposalUseCase");
+const AiProposalGeneratorRegistry_1 = require("../../application/ai-assistant/proposals/AiProposalGeneratorRegistry");
+const AiSkillRegistry_1 = require("../../application/ai-assistant/skills/AiSkillRegistry");
 const FirestoreBusinessDomainRepository_1 = require("../firestore/repositories/super-admin/FirestoreBusinessDomainRepository");
 const FirestorePermissionRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestorePermissionRegistryRepository");
 const FirestoreModuleRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreModuleRegistryRepository");
@@ -178,6 +222,11 @@ const settingsResolverSQL = new SettingsResolverSQL_1.SettingsResolverSQL();
 const moduleActivationService = DB_TYPE === 'SQL'
     ? new ModuleActivationService_1.ModuleActivationService(new PrismaCompanyModuleRepository_1.PrismaCompanyModuleRepository((0, prismaClient_1.getPrismaClient)()))
     : new ModuleActivationService_1.ModuleActivationService(new FirestoreCompanyModuleRepository_1.FirestoreCompanyModuleRepository(getDb()));
+let _httpClient;
+let _aiToolRegistry;
+let _aiRuntimeGuard;
+let _aiToolCallingOrchestrator;
+let _aiSkillRegistry;
 exports.diContainer = {
     // CORE
     get companyRepository() {
@@ -602,6 +651,115 @@ exports.diContainer = {
         return DB_TYPE === 'SQL'
             ? new PrismaTransactionManager_1.PrismaTransactionManager((0, prismaClient_1.getPrismaClient)())
             : new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb());
+    },
+    // POLICY SYSTEM
+    get aiChatRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaAiChatRepository_1.PrismaAiChatRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreAiChatRepository_1.FirestoreAiChatRepository(getDb());
+    },
+    get aiSettingsRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaAiSettingsRepository_1.PrismaAiSettingsRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreAiSettingsRepository_1.FirestoreAiSettingsRepository(getDb());
+    },
+    get aiUsageLogRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaAiUsageLogRepository_1.PrismaAiUsageLogRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreAiUsageLogRepository_1.FirestoreAiUsageLogRepository(getDb());
+    },
+    // AI ASSISTANT - Tool Catalog (platform-level, Super Admin managed)
+    get aiToolCatalogRepository() {
+        // Always Firestore for platform-level data (system_metadata/ai_tools)
+        return new FirestoreAiToolCatalogRepository_1.FirestoreAiToolCatalogRepository(getDb());
+    },
+    get aiToolEnablementRepository() {
+        return new FirestoreAiToolEnablementRepository_1.FirestoreAiToolEnablementRepository(getDb());
+    },
+    get aiModelToolPolicyRepository() {
+        return new FirestoreAiModelToolPolicyRepository_1.FirestoreAiModelToolPolicyRepository(getDb());
+    },
+    get aiToolCatalogUseCase() {
+        return new AiToolCatalogUseCase_1.AiToolCatalogUseCase(this.aiToolCatalogRepository, this.aiToolEnablementRepository, this.aiModelToolPolicyRepository);
+    },
+    // AI ASSISTANT — Proposal Sandbox
+    get aiProposalRepository() {
+        return new FirestoreAiProposalRepository_1.FirestoreAiProposalRepository(getDb());
+    },
+    get aiProposalPolicyRepository() {
+        return new FirestoreAiProposalPolicyRepository_1.FirestoreAiProposalPolicyRepository(getDb());
+    },
+    get createAiProposalUseCase() {
+        return new CreateAiProposalUseCase_1.CreateAiProposalUseCase(this.aiProposalRepository, this.aiProposalPolicyRepository);
+    },
+    get listAiProposalsUseCase() {
+        return new ListAiProposalsUseCase_1.ListAiProposalsUseCase(this.aiProposalRepository);
+    },
+    get getAiProposalUseCase() {
+        return new GetAiProposalUseCase_1.GetAiProposalUseCase(this.aiProposalRepository);
+    },
+    get updateAiProposalStatusUseCase() {
+        return new UpdateAiProposalStatusUseCase_1.UpdateAiProposalStatusUseCase(this.aiProposalRepository, this.aiProposalPolicyRepository);
+    },
+    get archiveAiProposalUseCase() {
+        return new ArchiveAiProposalUseCase_1.ArchiveAiProposalUseCase(this.aiProposalRepository);
+    },
+    get aiProposalGeneratorRegistry() {
+        return new AiProposalGeneratorRegistry_1.AiProposalGeneratorRegistry();
+    },
+    // AI ASSISTANT SERVICES
+    get encryptionService() {
+        return new AesEncryptionService_1.AesEncryptionService();
+    },
+    get httpClient() {
+        return _httpClient !== null && _httpClient !== void 0 ? _httpClient : (_httpClient = new AxiosHttpClient_1.AxiosHttpClient());
+    },
+    get aiToolRegistry() {
+        if (_aiToolRegistry)
+            return _aiToolRegistry;
+        // Register all AI tools here with their dependencies
+        _aiToolRegistry = new AiToolRegistry_1.AiToolRegistry([
+            new GetTrialBalanceSummaryTool_1.GetTrialBalanceSummaryTool(this.ledgerRepository, this.accountRepository, this.permissionChecker),
+            new GetProfitAndLossTool_1.GetProfitAndLossTool(this.ledgerRepository, this.accountRepository, this.permissionChecker),
+            new GetBalanceSheetTool_1.GetBalanceSheetTool(this.ledgerRepository, this.accountRepository, this.permissionChecker, this.companyRepository),
+            new GetCashFlowTool_1.GetCashFlowTool(this.ledgerRepository, this.accountRepository, this.companyRepository, this.permissionChecker),
+            new GetAgingReceivablesTool_1.GetAgingReceivablesTool(this.ledgerRepository, this.accountRepository, this.permissionChecker),
+            new GetAgingPayablesTool_1.GetAgingPayablesTool(this.ledgerRepository, this.accountRepository, this.permissionChecker),
+            new GetGeneralLedgerSummaryTool_1.GetGeneralLedgerSummaryTool(this.ledgerRepository, this.permissionChecker),
+            new GetAccountStatementSummaryTool_1.GetAccountStatementSummaryTool(this.ledgerRepository, this.accountRepository, this.companyRepository, this.permissionChecker),
+            new GetChartOfAccountsSummaryTool_1.GetChartOfAccountsSummaryTool(this.accountRepository, this.permissionChecker),
+            new GetAccountBalanceTool_1.GetAccountBalanceTool(this.ledgerRepository, this.accountRepository, this.permissionChecker),
+            new GetFiscalYearStatusTool_1.GetFiscalYearStatusTool(this.fiscalYearRepository, this.permissionChecker),
+            new GetSalesSummaryTool_1.GetSalesSummaryTool(this.salesInvoiceRepository, this.partyRepository, this.permissionChecker),
+            new GetTopCustomersTool_1.GetTopCustomersTool(this.salesInvoiceRepository, this.partyRepository, this.permissionChecker),
+            new GetPurchaseSummaryTool_1.GetPurchaseSummaryTool(this.purchaseInvoiceRepository, this.partyRepository, this.permissionChecker),
+            new GetTopSuppliersTool_1.GetTopSuppliersTool(this.purchaseInvoiceRepository, this.partyRepository, this.permissionChecker),
+            new GetFinancialOverviewTool_1.GetFinancialOverviewTool(this.ledgerRepository, this.accountRepository, this.companyRepository, this.permissionChecker),
+            new GetMonthlyComparisonTool_1.GetMonthlyComparisonTool(this.ledgerRepository, this.accountRepository, this.permissionChecker),
+        ]);
+        return _aiToolRegistry;
+    },
+    get aiToolCallingOrchestrator() {
+        return _aiToolCallingOrchestrator !== null && _aiToolCallingOrchestrator !== void 0 ? _aiToolCallingOrchestrator : (_aiToolCallingOrchestrator = new AiToolCallingOrchestrator_1.AiToolCallingOrchestrator(this.aiToolRegistry, this.permissionChecker, this.aiRuntimeGuard));
+    },
+    // AI ASSISTANT — Stage 2 Services
+    get aiRuntimeGuard() {
+        return _aiRuntimeGuard !== null && _aiRuntimeGuard !== void 0 ? _aiRuntimeGuard : (_aiRuntimeGuard = new AiRuntimeGuard_1.AiRuntimeGuard(this.aiToolRegistry, this.permissionChecker));
+    },
+    get aiAuditService() {
+        return new AiAuditService_1.AiAuditService(this.auditLogRepository);
+    },
+    get aiSkillRegistry() {
+        return _aiSkillRegistry !== null && _aiSkillRegistry !== void 0 ? _aiSkillRegistry : (_aiSkillRegistry = new AiSkillRegistry_1.AiSkillRegistry());
+    },
+    get aiModelCapabilityCatalog() {
+        return AiModelCapabilityCatalog_1.AiModelCapabilityCatalog;
+    },
+    // AI ASSISTANT - Permission Checker for tool access
+    get permissionChecker() {
+        const { GetCurrentUserPermissionsForCompanyUseCase } = require('../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase');
+        const getPermsUC = new GetCurrentUserPermissionsForCompanyUseCase(this.userRepository, this.rbacCompanyUserRepository, this.companyRoleRepository);
+        return new PermissionChecker_1.PermissionChecker(getPermsUC);
     },
     // POLICY SYSTEM
     get policyRegistry() {

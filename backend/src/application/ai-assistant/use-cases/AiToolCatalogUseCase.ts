@@ -47,6 +47,7 @@ export class AiToolCatalogUseCase {
     category?: string;
     status?: string;
     mode?: string;
+    implemented?: string;
   }): Promise<AiToolDefinition[]> {
     // Start with seed definitions
     let definitions = [...AI_TOOL_CATALOG];
@@ -79,6 +80,7 @@ export class AiToolCatalogUseCase {
           seed.riskLevel, // Risk level is ALWAYS from seed (safety)
           seed.dataSensitivity, // Sensitivity is ALWAYS from seed (safety)
           seed.unavailabilityReason,
+          seed.implemented, // Implemented is ALWAYS from seed (truth from code)
           seed.createdAt,
           dbOverride.updatedAt,
         );
@@ -98,6 +100,11 @@ export class AiToolCatalogUseCase {
     }
     if (filters?.mode) {
       definitions = definitions.filter(d => d.mode === filters.mode);
+    }
+    if (filters?.implemented === 'true') {
+      definitions = definitions.filter(d => d.implemented);
+    } else if (filters?.implemented === 'false') {
+      definitions = definitions.filter(d => !d.implemented);
     }
 
     return definitions;
@@ -132,6 +139,7 @@ export class AiToolCatalogUseCase {
         seed.riskLevel,
         seed.dataSensitivity,
         seed.unavailabilityReason,
+        seed.implemented,
         seed.createdAt,
         dbOverride.updatedAt,
       );
@@ -178,6 +186,7 @@ export class AiToolCatalogUseCase {
       seed.riskLevel,
       seed.dataSensitivity,
       seed.unavailabilityReason,
+      seed.implemented,
       seed.createdAt,
       new Date(),
     );

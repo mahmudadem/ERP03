@@ -1039,6 +1039,7 @@
         "category": "جميع الفئات",
         "status": "جميع الحالات",
         "mode": "جميع الأوضاع",
+        "implementation": "جميع حالات التنفيذ",
         "search": "البحث عن أدوات..."
       },
       "columns": {
@@ -1050,6 +1051,7 @@
         "status": "الحالة",
         "riskLevel": "مستوى المخاطر",
         "dataSensitivity": "الحساسية",
+        "implemented": "التنفيذ",
         "permissions": "الأذونات المطلوبة",
         "requiredModules": "الوحدات المطلوبة",
         "actions": "الإجراءات"
@@ -1082,9 +1084,18 @@
         "medium": "متوسط",
         "high": "مرتفع"
       },
+      "implementationStatus": {
+        "implemented": "مُنفَّذ",
+        "planned": "مخطط"
+      },
       "detail": {
         "title": "أداة الذكاء الاصطناعي: {{name}}",
+        "about": "حول هذه الأداة",
         "description": "الوصف",
+        "whenToUse": "متى تستخدم",
+        "examples": "أمثلة على المطالبات",
+        "safetyNotes": "ملاحظات السلامة",
+        "properties": "الخصائص",
         "namespace": "مساحة الاسم",
         "module": "الوحدة",
         "category": "الفئة",
@@ -1097,7 +1108,9 @@
         "enablementPolicy": "سياسة التمكين",
         "modelPolicy": "سياسة النموذج",
         "unavailableReason": "هذه الأداة غير متاحة لأن: {{reason}}",
-        "blockedWarning": "هذه أداة كتابة وهي محظورة نهائيًا للسلامة."
+        "blockedWarning": "هذه أداة كتابة وهي محظورة نهائيًا للسلامة.",
+        "notAvailable": "غير محدد",
+        "readOnly": "للقراءة فقط"
       },
       "sync": {
         "success": "تمت مزامنة الكتالوج بنجاح. تمت إضافة {{count}} أدوات جديدة.",

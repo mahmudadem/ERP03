@@ -24,6 +24,18 @@ class PermissionChecker {
             return isParent;
         });
     }
+    /**
+     * Get all permissions for a user in a company.
+     * Used by AI tool orchestration to build the ToolExecutionContext.
+     */
+    async getAllPermissions(userId, companyId) {
+        const perms = await this.getPermissionsUC.execute({ userId, companyId });
+        if (!perms)
+            return [];
+        if (perms.includes('*'))
+            return ['*'];
+        return perms;
+    }
 }
 exports.PermissionChecker = PermissionChecker;
 //# sourceMappingURL=PermissionChecker.js.map

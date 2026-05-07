@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.asyncHandler = exports.errorHandler = void 0;
 const AppError_1 = require("./AppError");
 const ErrorCodes_1 = require("./ErrorCodes");
+const ProviderErrors_1 = require("./ProviderErrors");
 function isFirestoreTransactionError(err) {
     const msg = err.message || '';
     return (msg.includes('all reads to be executed before all writes') ||
@@ -19,6 +20,17 @@ function errorHandler(err, req, res, next) {
         method: req.method,
     });
     if (err instanceof AppError_1.AppError) {
+        // Provider errors have specific HTTP status codes that don't follow the
+        // severity mapping (e.g., 503 for unavailable, 429 for rate limit).
+        // Handle them with their own status mapping.
+        if (err instanceof ProviderErrors_1.ProviderError) {
+            const statusCode = getProviderErrorStatus(err);
+            const response = {
+                success: false,
+                error: err.toJSON(),
+            };
+            return res.status(statusCode).json(response);
+        }
         const response = {
             success: false,
             error: err.toJSON(),
@@ -71,6 +83,23 @@ function getStatusCode(severity) {
             return 500;
         default:
             return 500;
+    }
+}
+/**
+ * Map ProviderError subclasses to correct HTTP status codes.
+ * These don't follow the generic severity mapping — each type has a specific status.
+ */
+function getProviderErrorStatus(err) {
+    switch (err.code) {
+        case ErrorCodes_1.ErrorCode.AI_PROVIDER_UNAVAILABLE:
+            return 503;
+        case ErrorCodes_1.ErrorCode.AI_PROVIDER_AUTH_ERROR:
+            return 401;
+        case ErrorCodes_1.ErrorCode.AI_PROVIDER_RATE_LIMIT:
+            return 429;
+        case ErrorCodes_1.ErrorCode.AI_PROVIDER_ERROR:
+        default:
+            return 502;
     }
 }
 /**

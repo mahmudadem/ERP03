@@ -57,6 +57,11 @@ var ErrorCode;
     ErrorCode["INFRA_TIMEOUT"] = "INFRA_004";
     ErrorCode["INFRA_TRANSACTION_CONFLICT"] = "INFRA_005";
     ErrorCode["INFRA_UNKNOWN_ERROR"] = "INFRA_999";
+    // ========== AI PROVIDER ==========
+    ErrorCode["AI_PROVIDER_ERROR"] = "AI_001";
+    ErrorCode["AI_PROVIDER_UNAVAILABLE"] = "AI_002";
+    ErrorCode["AI_PROVIDER_AUTH_ERROR"] = "AI_003";
+    ErrorCode["AI_PROVIDER_RATE_LIMIT"] = "AI_004";
     // ========== SALES BUSINESS LOGIC ==========
     ErrorCode["SALES_TRANSITION_BLOCKED"] = "SALES_001";
     // ========== PURCHASES BUSINESS LOGIC ==========

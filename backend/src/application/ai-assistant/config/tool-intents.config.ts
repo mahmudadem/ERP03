@@ -1,21 +1,19 @@
 /**
- * AiToolIntentConfig - Comprehensive multilanguage keyword mapping for AI tool detection
+ * AiToolIntentConfig - Multilanguage keyword mapping for AI tool detection
  *
- * This file defines ALL intent keywords for ALL registered tools.
- * Each tool has keywords in English, Arabic, and Turkish.
+ * SAFETY: Only tools with a REAL implementation class registered in DI
+ * should have entries here. Unimplemented tools cause the orchestrator
+ * to skip them, resulting in NO tool data — which causes the AI to
+ * HALLUCINATE financial figures. This is a critical safety risk.
  *
- * DESIGN PRINCIPLES:
+ * RULES:
  * - Keywords should be specific enough to avoid false positives
  * - Common financial terms should map to the most specific tool
  * - "ميزان" (mizan) → trial balance, NOT balance sheet
  * - "ميزانية" (mizaniya) → balance sheet, NOT trial balance
  * - Substring matching is greedy — more specific keywords should be listed first
  * - The orchestrator checks ALL matching intents and may invoke multiple tools
- *
- * MAINTAINABILITY:
- * - Add new tools by adding a new entry to TOOL_INTENTS
- * - Add new languages by extending each entry's keywords array
- * - Keep keywords grouped by language with comments
+ * - NEVER add entries for tools without a real implementation class
  */
 
 export interface ToolIntent {
@@ -24,9 +22,17 @@ export interface ToolIntent {
 }
 
 /**
- * Complete intent mapping for all registered AI tools.
- * Only tools that have a real implementation should be here.
- * Unavailable or blocked tools should NOT have entries.
+ * Intent mapping for IMPLEMENTED AI tools only.
+ *
+ * When adding a new implementation:
+ * 1. Create the tool class in tools/ and register it in DI
+ * 2. Add it to IMPLEMENTED_TOOL_NAMES in AiToolCatalogSeed.ts
+ * 3. Add an intent entry HERE with EN/AR/TR keywords
+ *
+ * When removing an implementation:
+ * 1. Remove it from DI and IMPLEMENTED_TOOL_NAMES
+ * 2. Remove the intent entry HERE
+ * 3. Keep the catalog seed entry (status can stay active)
  */
 export const TOOL_INTENTS: ToolIntent[] = [
   // ─── ACCOUNTING — Reports ─────────────────────────────────────────────────
@@ -38,6 +44,7 @@ export const TOOL_INTENTS: ToolIntent[] = [
       'trial balance', 'balance summary', 'accounting summary',
       'debit credit summary', 'closing balance', 'account balances',
       'financial summary', 'total debit', 'total credit',
+      // Arabic
       'ميزان المراجعة', 'ميزان مراجعة', 'ملخص الميزان',
       'ميزان', 'أرصدة',
       // Turkish
@@ -188,70 +195,6 @@ export const TOOL_INTENTS: ToolIntent[] = [
     ],
   },
 
-  // ─── INVENTORY ─────────────────────────────────────────────────────────────
-
-  {
-    toolName: 'inventory.getItemStockBalance',
-    keywords: [
-      // English
-      'stock balance', 'inventory balance', 'item stock', 'quantity on hand',
-      'how much stock', 'current stock',
-      // Arabic
-      'رصيد المخزون', 'رصيد المخزن', 'كمية المخزون',
-      'كم المخزون', 'المخزون الحالي',
-      // Turkish
-      'stok bakiyesi', 'stok miktarı', 'mevcut stok',
-    ],
-  },
-  {
-    toolName: 'inventory.getLowStockItems',
-    keywords: [
-      // English
-      'low stock', 'stock alert', 'reorder point', 'below minimum',
-      'stock shortage', 'items running low',
-      // Arabic
-      'نقص المخزون', 'مخزون منخفض', 'تنبيه مخزون',
-      'مخزون غير كافي',
-      // Turkish
-      'düşük stok', 'stok uyarısı', 'stok azalması',
-    ],
-  },
-  {
-    toolName: 'inventory.getOutOfStockItems',
-    keywords: [
-      // English
-      'out of stock', 'zero stock', 'out of stock items', 'no stock',
-      // Arabic
-      'نفذ المخزون', 'مخزون فارغ', 'بدون مخزون',
-      // Turkish
-      'stok tükendi', 'sıfır stok', 'stoksuz',
-    ],
-  },
-  {
-    toolName: 'inventory.getInventoryValuationSummary',
-    keywords: [
-      // English
-      'inventory valuation', 'stock value', 'inventory value',
-      'value of inventory', 'total inventory value',
-      // Arabic
-      'تقييم المخزون', 'قيمة المخزون', 'قيمة المخزونات',
-      // Turkish
-      'stok değerleme', 'stok değeri', 'envanter değeri',
-    ],
-  },
-  {
-    toolName: 'inventory.searchItems',
-    keywords: [
-      // English
-      'search items', 'find item', 'item lookup', 'product search',
-      'search product', 'find product',
-      // Arabic
-      'بحث عن صنف', 'البحث عن منتج', 'بحث منتج',
-      // Turkish
-      'ürün arama', 'ürün bul', 'stok ara',
-    ],
-  },
-
   // ─── SALES ─────────────────────────────────────────────────────────────────
 
   {
@@ -281,30 +224,6 @@ export const TOOL_INTENTS: ToolIntent[] = [
       'en iyi müşteriler', 'en büyük müşteriler', 'müşteri sıralaması',
     ],
   },
-  {
-    toolName: 'sales.getUnpaidInvoices',
-    keywords: [
-      // English
-      'unpaid invoices', 'outstanding invoices', 'open invoices',
-      'unpaid sales', 'invoices due',
-      // Arabic
-      'فواتير غير مدفوعة', 'فواتير مستحقة', 'فواتير مفتوحة',
-      // Turkish
-      'ödenecek faturalar', 'açık faturalar', 'tahsil edilmemiş',
-    ],
-  },
-  {
-    toolName: 'sales.getOverdueCustomerInvoices',
-    keywords: [
-      // English
-      'overdue invoices', 'past due invoices', 'late invoices',
-      'overdue customer', 'past due customer',
-      // Arabic
-      'فواتير متأخرة', 'فواتير متأخرة الدفع', 'عملاء متأخرين',
-      // Turkish
-      'gecikmiş faturalar', 'vadesi geçmiş faturalar',
-    ],
-  },
 
   // ─── PURCHASES ─────────────────────────────────────────────────────────────
 
@@ -331,20 +250,6 @@ export const TOOL_INTENTS: ToolIntent[] = [
       'أفضل الموردين', 'أكبر الموردين', 'ترتيب الموردين',
       // Turkish
       'en iyi tedarikçiler', 'en büyük tedarikçiler', 'tedarikçi sıralaması',
-    ],
-  },
-  {
-    toolName: 'purchase.getUnpaidSupplierInvoices',
-    keywords: [
-      // English
-      'unpaid purchase invoices', 'unpaid supplier invoices',
-      'outstanding payables', 'bills to pay',
-      // Arabic
-      'فواتير موردين غير مدفوعة', 'فواتير شراء مستحقة',
-      'ذمم دائنة مستحقة',
-      // Turkish
-      'ödenecek satın alma faturaları', 'tedarikçi faturaları',
-      'ödenmemiş faturalar',
     ],
   },
 
@@ -380,50 +285,16 @@ export const TOOL_INTENTS: ToolIntent[] = [
       'en kârlı ay', 'aylık gelir',
     ],
   },
-  {
-    toolName: 'reports.getCashPositionSummary',
-    keywords: [
-      // English
-      'cash position', 'how much cash', 'available cash',
-      'cash on hand', 'bank balance',
-      // Arabic
-      'وضع السيولة', 'كم النقد المتاح', 'الرصيد النقدي',
-      // Turkish
-      'nakit pozisyonu', 'mevcut nakit', 'nakit durumu',
-    ],
-  },
-  {
-    toolName: 'reports.getReceivablesPayablesOverview',
-    keywords: [
-      // English
-      'receivables and payables', 'AR AP overview', 'receivables payables',
-      'what we owe and what we are owed', 'money in money out',
-      // Arabic
-      'الذمم المدينة والدائنة', 'ملخص المديونية', 'ما لنا وما علينا',
-      // Turkish
-      'alacaklar ve borçlar', 'alacak borç özeti',
-    ],
-  },
-  {
-    toolName: 'reports.comparePeriodPerformance',
-    keywords: [
-      // English
-      'compare period', 'compare periods', 'period comparison',
-      'this month vs last month', 'this year vs last year',
-      'year over year', 'YoY', 'MoM', 'period over period',
-      // Arabic
-      'مقارنة الفترات', 'هذا الشهر مقابل الشهر الماضي',
-      'هذه السنة مقابل السنة الماضية',
-      // Turkish
-      'dönem karşılaştırması', 'bu ay geçen ay',
-      'yıl üzerinden karşılaştırma',
-    ],
-  },
 ];
 
 /**
- * Get all intent definitions.
+ * Get all intent definitions for IMPLEMENTED tools only.
  * Used by AiToolCallingOrchestrator to detect user intents.
+ *
+ * IMPORTANT: This list MUST only contain tools that have a real
+ * implementation class registered in the DI container. Adding
+ * entries for unimplemented tools causes the AI to hallucinate
+ * financial data when no tool executes — a critical safety risk.
  */
 export function getToolIntents(): ToolIntent[] {
   return TOOL_INTENTS;

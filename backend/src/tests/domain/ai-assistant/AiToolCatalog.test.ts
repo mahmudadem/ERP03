@@ -184,6 +184,138 @@ describe('AiToolDefinition', () => {
     expect(tool.isExecutable).toBe(false);
     expect(tool.status).toBe('deprecated');
   });
+
+  it('should default implemented to false', () => {
+    const tool = new AiToolDefinition(
+      'accounting.searchAccounts',
+      'accounting.searchAccounts',
+      'accounting',
+      'accounting',
+      'Search accounts',
+      'accounting' as AiToolCategory,
+      'active' as AiToolStatus,
+      'read-only' as AiToolMode,
+      ['accounting.accounts.view'],
+      ['accounting'],
+      {},
+      {},
+      true,
+      true,
+      true,
+      'low' as AiToolRiskLevel,
+      'medium' as AiToolDataSensitivity,
+    );
+
+    expect(tool.implemented).toBe(false);
+  });
+
+  it('should set implemented to true explicitly', () => {
+    const tool = new AiToolDefinition(
+      'accounting.getTrialBalanceSummary',
+      'accounting.getTrialBalanceSummary',
+      'accounting',
+      'accounting',
+      'Get trial balance summary',
+      'accounting' as AiToolCategory,
+      'active' as AiToolStatus,
+      'read-only' as AiToolMode,
+      ['accounting.reports.trialBalance.view'],
+      ['accounting'],
+      {},
+      {},
+      true,
+      true,
+      true,
+      'low' as AiToolRiskLevel,
+      'medium' as AiToolDataSensitivity,
+      undefined,
+      true,
+    );
+
+    expect(tool.implemented).toBe(true);
+  });
+
+  it('should include implemented in toJSON output', () => {
+    const tool = new AiToolDefinition(
+      'accounting.getProfitAndLoss',
+      'accounting.getProfitAndLoss',
+      'accounting',
+      'accounting',
+      'Get P&L',
+      'accounting' as AiToolCategory,
+      'active' as AiToolStatus,
+      'read-only' as AiToolMode,
+      ['accounting.reports.profitAndLoss.view'],
+      ['accounting'],
+      {},
+      {},
+      true,
+      true,
+      true,
+      'low' as AiToolRiskLevel,
+      'medium' as AiToolDataSensitivity,
+      undefined,
+      true,
+    );
+
+    const json = tool.toJSON();
+    expect(json.implemented).toBe(true);
+  });
+
+  it('should round-trip implemented field through fromJSON', () => {
+    const tool = new AiToolDefinition(
+      'accounting.getCashFlowSummary',
+      'accounting.getCashFlowSummary',
+      'accounting',
+      'accounting',
+      'Get cash flow',
+      'accounting' as AiToolCategory,
+      'active' as AiToolStatus,
+      'read-only' as AiToolMode,
+      ['accounting.reports.cashFlow.view'],
+      ['accounting'],
+      {},
+      {},
+      true,
+      true,
+      true,
+      'low' as AiToolRiskLevel,
+      'medium' as AiToolDataSensitivity,
+      undefined,
+      true,
+    );
+
+    const json = tool.toJSON();
+    const restored = AiToolDefinition.fromJSON(json);
+    expect(restored.implemented).toBe(true);
+  });
+
+  it('should default implemented to false in fromJSON when missing', () => {
+    const json = {
+      id: 'test.tool',
+      name: 'test.tool',
+      namespace: 'accounting',
+      moduleId: 'accounting',
+      description: 'Test tool',
+      category: 'accounting',
+      status: 'active',
+      mode: 'read-only',
+      requiredPermissions: [],
+      requiredModules: ['accounting'],
+      inputSchema: {},
+      outputSchema: {},
+      enabledByDefault: true,
+      supportsChatInvocation: true,
+      supportsManualExecution: true,
+      riskLevel: 'low',
+      dataSensitivity: 'medium',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const restored = AiToolDefinition.fromJSON(json);
+    expect(restored.implemented).toBe(false);
+  });
 });
 
 describe('AiToolEnablementPolicy', () => {
@@ -410,6 +542,46 @@ describe('AiToolCatalogSeed', () => {
       expect(t.unavailabilityReason).toBeTruthy();
     });
   });
+
+  it('should mark implemented tools with implemented=true', () => {
+    const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
+
+    const implementedTools = AI_TOOL_CATALOG.filter((t: AiToolDefinition) => t.implemented === true);
+    expect(implementedTools.length).toBe(17);
+
+    const implementedNames = implementedTools.map((t: AiToolDefinition) => t.name);
+    expect(implementedNames).toContain('accounting.getTrialBalanceSummary');
+    expect(implementedNames).toContain('accounting.getProfitAndLoss');
+    expect(implementedNames).toContain('accounting.getBalanceSheet');
+    expect(implementedNames).toContain('reports.getFinancialOverview');
+    expect(implementedNames).toContain('sales.getSalesSummary');
+    expect(implementedNames).toContain('purchase.getPurchaseSummary');
+  });
+
+  it('should mark non-implemented tools with implemented=false', () => {
+    const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
+
+    const plannedTools = AI_TOOL_CATALOG.filter((t: AiToolDefinition) => t.implemented !== true);
+    expect(plannedTools.length).toBeGreaterThan(0);
+
+    plannedTools.forEach((t: AiToolDefinition) => {
+      expect(t.implemented).toBe(false);
+    });
+  });
+
+  it('should NOT mark blocked/unavailable tools as implemented', () => {
+    const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
+
+    const blocked = AI_TOOL_CATALOG.filter((t: AiToolDefinition) => t.isBlocked);
+    blocked.forEach((t: AiToolDefinition) => {
+      expect(t.implemented).toBe(false);
+    });
+
+    const unavailable = AI_TOOL_CATALOG.filter((t: AiToolDefinition) => t.status === 'unavailable');
+    unavailable.forEach((t: AiToolDefinition) => {
+      expect(t.implemented).toBe(false);
+    });
+  });
 });
 
 describe('Tool Intent Config', () => {
@@ -417,7 +589,7 @@ describe('Tool Intent Config', () => {
     const { getToolIntents } = require('../../../application/ai-assistant/config/tool-intents.config');
 
     const intents = getToolIntents();
-    expect(intents.length).toBeGreaterThanOrEqual(20);
+    expect(intents.length).toBeGreaterThanOrEqual(17);
 
     // Each intent should have at least one keyword per language group
     intents.forEach((intent: { toolName: string; keywords: string[] }) => {
@@ -433,6 +605,24 @@ describe('Tool Intent Config', () => {
     const names = intents.map((i: { toolName: string }) => i.toolName);
     const uniqueNames = new Set(names);
     expect(names.length).toBe(uniqueNames.size);
+  });
+
+  it('should ONLY have intents for tools with real implementations', () => {
+    // SAFETY: Every intent entry must correspond to a tool that has a real
+    // implementation class in DI. Unimplemented tools cause the AI to hallucinate
+    // financial data because matchedIntents returns the tool name but the
+    // registry has no implementation, so no data is provided.
+    const { getToolIntents } = require('../../../application/ai-assistant/config/tool-intents.config');
+    const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
+
+    const intents = getToolIntents();
+    const implementedToolNames = new Set(
+      AI_TOOL_CATALOG.filter((t: any) => t.implemented === true).map((t: any) => t.name),
+    );
+
+    intents.forEach((intent: { toolName: string }) => {
+      expect(implementedToolNames.has(intent.toolName)).toBe(true);
+    });
   });
 
   it('should have Arabic keywords for accounting reports', () => {

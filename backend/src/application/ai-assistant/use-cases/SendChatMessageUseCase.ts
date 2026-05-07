@@ -237,13 +237,18 @@ export class SendChatMessageUseCase {
           userId,
         );
 
-        if (toolResults && toolResults.length > 0) {
+if (toolResults && toolResults.length > 0) {
           // Prefer one sufficient deterministic tool by default
           // If multiple match, use the first sufficient one
           const sufficientToolResults = toolResults.slice(0, 1);
           toolResultsForMetadata = sufficientToolResults;
           toolContextMessage = this.toolOrchestrator.formatToolResultsForContext(sufficientToolResults);
           console.log(`[AI Assistant] Deterministic tool context injected: ${sufficientToolResults.length} tool(s), context length=${toolContextMessage.length}`);
+        }
+        // When no tool data was retrieved (null or empty), inject a NO_DATA warning
+        // to prevent the AI from hallucinating financial figures.
+        if (!toolContextMessage) {
+          toolContextMessage = '[NO TOOL DATA AVAILABLE]\nNo ERP data was retrieved for this query. You MUST NOT fabricate, estimate, or invent any financial figures, account balances, invoice amounts, stock quantities, or other business data. If you don\'t have real data, tell the user clearly: "I don\'t have that data available right now. Please check the relevant ERP module for accurate information." NEVER present guessed numbers as if they came from the system.';
         }
       } catch (error) {
         console.warn(
@@ -724,6 +729,12 @@ RULES YOU MUST FOLLOW:
 4. For accounting, voucher, payment, and inventory questions — always advise the user to use the proper module for actual transactions.
 5. Never provide API endpoints or direct database operations.
 6. If a user asks you to perform an action, explain HOW to do it in the ERP UI instead of doing it yourself.
+
+CRITICAL: NEVER FABRICATE DATA
+7. If no tool data is provided in this conversation, you MUST NOT invent, estimate, or fabricate any financial figures, account balances, invoice amounts, stock quantities, or other business data.
+8. If you do not have real data from a tool result, say clearly: "I don't have that data available right now. Please check the [relevant module] screen in the ERP for the most accurate information."
+9. NEVER present guessed or hallucinated numbers as if they came from the system. Zero data is better than wrong data.
+10. If a tool returns empty, zero, or unexpected results, present the data exactly as returned and suggest the user verify in the ERP module.
 
 You are helpful, professional, and knowledgeable about business processes including:
 - Accounting (chart of accounts, journal entries, financial reports)

@@ -20,6 +20,8 @@ class PurchaseModule {
             'purchase.settings.manage',
             'purchase.orders.view',
             'purchase.orders.manage',
+            'purchases.invoices.view',
+            'purchases.invoices.manage',
         ];
     }
     getManifest() {

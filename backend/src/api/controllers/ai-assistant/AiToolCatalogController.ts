@@ -28,6 +28,7 @@ export class AiToolCatalogController {
         category: req.query.category as string | undefined,
         status: req.query.status as string | undefined,
         mode: req.query.mode as string | undefined,
+        implemented: req.query.implemented as string | undefined,
       };
       const tools = await useCase.listCatalog(filters);
       res.json({ success: true, data: tools.map(t => t.toJSON()) });

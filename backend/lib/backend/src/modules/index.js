@@ -12,6 +12,7 @@ const AccountingModule_1 = require("./accounting/AccountingModule");
 const InventoryModule_1 = require("./inventory/InventoryModule");
 const PurchaseModule_1 = require("./purchase/PurchaseModule");
 const SalesModule_1 = require("./sales/SalesModule");
+const AiAssistantModule_1 = require("./ai-assistant/AiAssistantModule");
 function registerAllModules() {
     const registry = ModuleRegistry_1.ModuleRegistry.getInstance();
     // Register modules
@@ -19,7 +20,7 @@ function registerAllModules() {
     registry.register(new InventoryModule_1.InventoryModule());
     registry.register(new PurchaseModule_1.PurchaseModule());
     registry.register(new SalesModule_1.SalesModule());
-    // Add more modules here as they are created
+    registry.register(new AiAssistantModule_1.AiAssistantModule());
     console.log(`Registered ${registry.getAllModules().length} modules`);
 }
 exports.registerAllModules = registerAllModules;

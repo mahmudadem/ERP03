@@ -1039,6 +1039,7 @@
         "category": "Tüm Kategoriler",
         "status": "Tüm Durumlar",
         "mode": "Tüm Modlar",
+        "implementation": "Tüm Uygulamalar",
         "search": "Araçları ara..."
       },
       "columns": {
@@ -1050,6 +1051,7 @@
         "status": "Durum",
         "riskLevel": "Risk Seviyesi",
         "dataSensitivity": "Hassasiyet",
+        "implemented": "Uygulama",
         "permissions": "Gerekli İzinler",
         "requiredModules": "Gerekli Modüller",
         "actions": "İşlemler"
@@ -1082,9 +1084,18 @@
         "medium": "Orta",
         "high": "Yüksek"
       },
+      "implementationStatus": {
+        "implemented": "Uygulandı",
+        "planned": "Planlanmış"
+      },
       "detail": {
         "title": "AI Aracı: {{name}}",
+        "about": "Bu Araç Hakkında",
         "description": "Açıklama",
+        "whenToUse": "Ne Zaman Kullanılır",
+        "examples": "Örnek Komutlar",
+        "safetyNotes": "Güvenlik Notları",
+        "properties": "Özellikler",
         "namespace": "Ad Alanı",
         "module": "Modül",
         "category": "Kategori",
@@ -1097,7 +1108,9 @@
         "enablementPolicy": "Etkinleştirme Politikası",
         "modelPolicy": "Model Politikası",
         "unavailableReason": "Bu araç şu nedenle kullanılamaz: {{reason}}",
-        "blockedWarning": "Bu bir YAZMA aracıdır ve güvenlik nedeniyle kalıcı olarak engellenmiştir."
+        "blockedWarning": "Bu bir YAZMA aracıdır ve güvenlik nedeniyle kalıcı olarak engellenmiştir.",
+        "notAvailable": "Belirtilmemiş",
+        "readOnly": "Salt okunur"
       },
       "sync": {
         "success": "Katalog başarıyla senkronize edildi. {{count}} yeni araç eklendi.",

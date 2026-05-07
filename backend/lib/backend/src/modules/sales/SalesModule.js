@@ -20,6 +20,8 @@ class SalesModule {
             'sales.settings.manage',
             'sales.orders.view',
             'sales.orders.manage',
+            'sales.invoices.view',
+            'sales.invoices.manage',
         ];
     }
     getManifest() {

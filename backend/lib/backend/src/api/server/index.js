@@ -15,7 +15,7 @@ const impersonationMiddleware_1 = require("../middlewares/impersonationMiddlewar
 const app = (0, express_1.default)();
 // Global Middlewares
 // Increase limit for Base64 logo uploads
-app.use((0, cors_1.default)({ origin: true }));
+app.use((0, cors_1.default)({ origin: true, allowedHeaders: ['Content-Type', 'Authorization', 'x-company-id', 'x-silent-error'] }));
 app.use(express_1.default.json({ limit: '5mb' }));
 // Apply Impersonation Middleware first (checks X-Impersonation-Token header)
 app.use(impersonationMiddleware_1.impersonationMiddleware);

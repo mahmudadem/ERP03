@@ -86,6 +86,7 @@ export interface AiToolDefinitionProps {
   riskLevel: AiToolRiskLevel;       // Security risk level
   dataSensitivity: AiToolDataSensitivity; // Data sensitivity classification
   unavailabilityReason?: string;    // Why the tool is unavailable (e.g., "HR module not implemented")
+  implemented: boolean;              // Whether a real tool class is registered in the DI container
   createdAt: Date;
   updatedAt: Date;
 }
@@ -110,6 +111,7 @@ export class AiToolDefinition implements AiToolDefinitionProps {
     public riskLevel: AiToolRiskLevel,
     public dataSensitivity: AiToolDataSensitivity,
     public unavailabilityReason?: string,
+    public implemented: boolean = false,
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
   ) {}
@@ -311,6 +313,8 @@ export class AiToolDefinition implements AiToolDefinitionProps {
       readOnly: this.mode === 'read-only',
       requiredPermissions: this.requiredPermissions,
       requiredModules: this.requiredModules,
+      inputSchema: this.inputSchema,
+      outputSchema: this.outputSchema,
       enabledByDefault: this.enabledByDefault,
       supportsChatInvocation: this.supportsChatInvocation,
       supportsManualExecution: this.supportsManualExecution,
@@ -319,6 +323,7 @@ export class AiToolDefinition implements AiToolDefinitionProps {
       isExecutable: this.isExecutable,
       isBlocked: this.isBlocked,
       unavailabilityReason: this.unavailabilityReason,
+      implemented: this.implemented,
       // v2 extensions
       operationType: this.operationType,
       safeForAutoInvoke: this.safeForAutoInvoke,
@@ -352,6 +357,7 @@ export class AiToolDefinition implements AiToolDefinitionProps {
       data.riskLevel as AiToolRiskLevel,
       data.dataSensitivity as AiToolDataSensitivity,
       data.unavailabilityReason as string | undefined,
+      (data.implemented as boolean) ?? false,
       new Date(data.createdAt as string),
       new Date(data.updatedAt as string),
     );

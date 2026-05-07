@@ -11,10 +11,14 @@ const system_permissions_routes_1 = __importDefault(require("../routes/system.pe
 const system_roles_routes_1 = __importDefault(require("../routes/system.roles.routes"));
 const system_moduleSettings_routes_1 = __importDefault(require("../routes/system.moduleSettings.routes"));
 const system_routes_1 = __importDefault(require("../routes/system.routes"));
+const ai_tool_catalog_routes_1 = __importDefault(require("../routes/ai-tool-catalog.routes"));
+const ai_proposal_policies_routes_1 = __importDefault(require("../routes/ai-proposal-policies.routes"));
 const router = (0, express_1.Router)();
 router.use('/super-admin', super_admin_routes_1.default);
 router.use('/super-admin/templates', super_admin_templates_routes_1.default);
 router.use('/super-admin/voucher-types', super_admin_voucher_types_routes_1.default);
+router.use('/platform', ai_tool_catalog_routes_1.default);
+router.use('/platform', ai_proposal_policies_routes_1.default);
 router.use(system_permissions_routes_1.default);
 router.use(system_roles_routes_1.default);
 router.use(system_moduleSettings_routes_1.default);

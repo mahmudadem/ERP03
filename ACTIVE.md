@@ -1,14 +1,52 @@
 # 🎯 Current Focus
 
-**Task:** AI Assistant Module v2 — Guarded Tool Runtime + Proposal Sandbox Integration  
+**Task:** AI Tool Catalog — Implemented Flag + Anti-Hallucination Safety Fix  
 **Started:** 2026-05-07  
-**Status:** ✅ COMPLETE — manual-test Firestore metadata bug fixed; awaiting follow-up commit approval  
+**Status:** ✅ COMPLETE — awaiting commit approval  
 **Agent/IDE:** OpenCode (CTO Mode)  
 **Branch:** `feat/ai-proposal-sandbox`
 
 ---
 
 ## ✅ What Was Completed
+
+### 1. Implemented Flag on AI Tool Catalog
+- Added `implemented: boolean` field to `AiToolDefinition` entity (default `false`)
+- Marked 17 real tools as `implemented: true` in `AiToolCatalogSeed`
+- Super Admin catalog page: new Implementation column (green "Implemented" / gray "Planned" badge), filter dropdown, stats bar
+- Super Admin detail page: Implementation badge in Properties panel
+- Full i18n (EN/AR/TR) for implemented/planned labels
+- `implemented` is immutable from DB — always comes from seed (like mode/riskLevel)
+
+### 2. Tool Detail Page Enhancement
+- Added "About This Tool" panel with description, whenToUse, example prompts, safety notes
+- Added "Read-only" badges on Properties, Input Schema, Output Schema panels
+- All data sourced from `toJSON()` computed fields (whenToUse, safetyNotes, examples)
+- Fixed `accounting.getAccountingPeriodStatus` seed: replaced `noInput/noOutput` with proper schemas
+- Frontend `AiTool` type extended with v2 fields
+
+### 3. Critical: Anti-Hallucination Safety Fix
+- **Problem:** Unimplemented tool keywords matched queries like "unpaid invoices" but produced no data → AI hallucinated realistic financial figures ($29,040 fake AR aging)
+- Removed 11 unimplemented intent entries from `tool-intents.config.ts` (inventory 5, sales 2, purchases 1, reports 3)
+- Kept only 17 entries for tools with real implementations
+- Added NO_DATA_AVAILABLE context injection when no tool data is retrieved
+- Added rules 7-10 to system prompt: "NEVER fabricate financial figures"
+- Strengthened base skill safety rules
+- Added test: intent entries must only reference implemented tools
+
+### 4. Firestore Undefined Fix
+- `FirestoreAiToolCatalogRepository.save()` now strips `undefined` values before Firestore write
+- Prevents `unavailabilityReason: undefined` error on `POST /platform/ai-tools/sync`
+
+---
+
+## 📋 Remaining Work / Future
+
+| Item | Description | Priority |
+|------|-------------|----------|
+| Commit | Commit after developer approval | High |
+| Option B Phase 4 | Admin UI for editing keywords per tool (no code deploy needed) | Medium |
+| Full regression run | Run complete backend/frontend test/build suite before merge | High before merge |
 
 AI Assistant v2 is now implemented as a guarded, provider-agnostic runtime that extends the existing AI Assistant, Tool System v1, and AI Proposal Sandbox.
 

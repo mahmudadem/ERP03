@@ -11,6 +11,11 @@
  * - READ-ONLY tools are the only executable tools.
  * - UNAVAILABLE tools have status 'unavailable' with a reason.
  * - Each tool has a namespace matching its module for policy management.
+ *
+ * IMPLEMENTED TOOLS:
+ * - Only tools with a real implementation class registered in DI are marked
+ *   `implemented = true`. All others are catalog-only definitions.
+ * - Super Admin can see which tools are implemented vs planned.
  */
 
 import {
@@ -44,6 +49,32 @@ const S_H: AiToolDataSensitivity = 'high';
 
 const noInput: Record<string, unknown> = { type: 'object', properties: {} };
 const noOutput: Record<string, unknown> = { type: 'object', properties: {} };
+
+// ─── Implemented Tools ────────────────────────────────────────────────────────
+//
+// Tool names that have a REAL implementation class registered in the DI container.
+// All other tools are catalog-only definitions (they appear in the admin UI but
+// return UNKNOWN_TOOL if invoked).
+//
+const IMPLEMENTED_TOOL_NAMES = new Set<string>([
+  'accounting.getTrialBalanceSummary',
+  'accounting.getProfitAndLoss',
+  'accounting.getBalanceSheet',
+  'accounting.getCashFlowSummary',
+  'accounting.getAgingReceivables',
+  'accounting.getAgingPayables',
+  'accounting.getGeneralLedgerSummary',
+  'accounting.getAccountStatementSummary',
+  'accounting.getChartOfAccountsSummary',
+  'accounting.getAccountBalance',
+  'accounting.getAccountingPeriodStatus',
+  'sales.getSalesSummary',
+  'sales.getTopCustomers',
+  'purchase.getPurchaseSummary',
+  'purchase.getTopSuppliers',
+  'reports.getFinancialOverview',
+  'reports.getMonthlyPerformanceSummary',
+]);
 
 // ─── ACCOUNTING — Accounts / COA ─────────────────────────────────────────────
 
@@ -296,13 +327,15 @@ const accountingReportTools: AiToolDefinition[] = [
 // ─── ACCOUNTING — Period / Validation ────────────────────────────────────────
 
 const accountingValidationTools: AiToolDefinition[] = [
-  new AiToolDefinition(
-    'accounting.getAccountingPeriodStatus', 'accounting.getAccountingPeriodStatus', 'accounting', 'accounting',
-    'Get the status of the current accounting period and fiscal year.',
-    'accounting', active, read_only,
-    ['accounting.reports.view'], ['accounting'],
-    noInput, noOutput, false, true, true, R, S_M,
-  ),
+new AiToolDefinition(
+      'accounting.getAccountingPeriodStatus', 'accounting.getAccountingPeriodStatus', 'accounting', 'accounting',
+      'Get the status of the current accounting period and fiscal year.',
+      'accounting', active, read_only,
+      ['accounting.reports.view'], ['accounting'],
+      { type: 'object', properties: { asOfDate: { type: 'string', description: 'Optional date to check period status for (ISO 8601)' } } },
+      { type: 'object', properties: { fiscalYearId: { type: 'string' }, periodName: { type: 'string' }, startDate: { type: 'string' }, endDate: { type: 'string' }, status: { type: 'string', enum: ['open', 'closed', 'pending'] }, isLocked: { type: 'boolean' } } },
+      false, true, true, R, S_M,
+    ),
   new AiToolDefinition(
     'accounting.validatePeriodConsistency', 'accounting.validatePeriodConsistency', 'accounting', 'accounting',
     'Validate period consistency: check for unbalanced entries, missing exchange rates, and date anomalies.',
@@ -912,6 +945,13 @@ export const AI_TOOL_CATALOG: AiToolDefinition[] = [
   ...platformTools,
   ...blockedWritePatterns,
 ];
+
+// Mark implemented tools — those with a real backend class registered in DI.
+for (const tool of AI_TOOL_CATALOG) {
+  if (IMPLEMENTED_TOOL_NAMES.has(tool.name)) {
+    tool.implemented = true;
+  }
+}
 
 /**
  * Get a catalog definition by tool name.

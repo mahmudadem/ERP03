@@ -72,6 +72,7 @@ export const AiToolCatalogPage: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterMode, setFilterMode] = useState('');
+  const [filterImplemented, setFilterImplemented] = useState('');
 
   useEffect(() => {
     loadTools();
@@ -85,6 +86,7 @@ export const AiToolCatalogPage: React.FC = () => {
       if (filterCategory) filters.category = filterCategory;
       if (filterStatus) filters.status = filterStatus;
       if (filterMode) filters.mode = filterMode;
+      if (filterImplemented) filters.implemented = filterImplemented;
       const res = await superAdminApi.getAiTools(filters);
       setTools(unwrap<AiTool[]>(res));
     } catch (error: any) {
@@ -137,8 +139,10 @@ export const AiToolCatalogPage: React.FC = () => {
     if (filterCategory) result = result.filter((t) => t.category === filterCategory);
     if (filterStatus) result = result.filter((t) => t.status === filterStatus);
     if (filterMode) result = result.filter((t) => t.mode === filterMode);
+    if (filterImplemented === 'true') result = result.filter((t) => t.implemented === true);
+    if (filterImplemented === 'false') result = result.filter((t) => t.implemented !== true);
     return result;
-  }, [tools, filterModule, filterCategory, filterStatus, filterMode]);
+  }, [tools, filterModule, filterCategory, filterStatus, filterMode, filterImplemented]);
 
   const {
     data: searchedTools,
@@ -157,6 +161,8 @@ export const AiToolCatalogPage: React.FC = () => {
     disabled: tools.filter((t) => t.status === 'disabled').length,
     unavailable: tools.filter((t) => t.status === 'unavailable').length,
     blocked: tools.filter((t) => t.mode === 'write').length,
+    implemented: tools.filter((t) => t.implemented === true).length,
+    planned: tools.filter((t) => t.implemented !== true).length,
   }), [tools]);
 
   const isToolBlocked = (tool: AiTool) => tool.mode === 'write' && (tool as any).riskLevel === 'blocked';
@@ -174,7 +180,7 @@ export const AiToolCatalogPage: React.FC = () => {
       <SuperAdminHeader
         title={t('superAdmin.aiTools.title', { defaultValue: 'AI Tool Catalog' })}
         description={t('superAdmin.aiTools.description', { defaultValue: 'Manage AI assistant tools, enablement policies, and model configurations' })}
-        meta={`Active ${stats.active} | Disabled ${stats.disabled} | Unavailable ${stats.unavailable} | Blocked ${stats.blocked}`}
+        meta={`Active ${stats.active} | Disabled ${stats.disabled} | Unavailable ${stats.unavailable} | Blocked ${stats.blocked} | Implemented ${stats.implemented} | Planned ${stats.planned}`}
         actions={
           <div className="flex flex-wrap gap-2">
             <button
@@ -247,6 +253,15 @@ export const AiToolCatalogPage: React.FC = () => {
             <option value="proposal">{t('superAdmin.aiTools.modes.proposal', { defaultValue: 'Proposal' })}</option>
             <option value="write">{t('superAdmin.aiTools.modes.write', { defaultValue: 'Write (BLOCKED)' })}</option>
           </select>
+          <select
+            value={filterImplemented}
+            onChange={(e) => setFilterImplemented(e.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">{t('superAdmin.aiTools.filters.implementation', { defaultValue: 'All Implementations' })}</option>
+            <option value="true">{t('superAdmin.aiTools.implementationStatus.implemented', { defaultValue: 'Implemented' })}</option>
+            <option value="false">{t('superAdmin.aiTools.implementationStatus.planned', { defaultValue: 'Planned' })}</option>
+          </select>
         </div>
 
         <SuperAdminTable>
@@ -308,6 +323,13 @@ export const AiToolCatalogPage: React.FC = () => {
                 {t('superAdmin.aiTools.columns.dataSensitivity', { defaultValue: 'Sensitivity' })}
                 <SortIcon direction={sortConfig.field === 'dataSensitivity' ? sortConfig.direction : null} />
               </th>
+              <th
+                className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                onClick={() => handleSort('implemented')}
+              >
+                {t('superAdmin.aiTools.columns.implemented', { defaultValue: 'Implementation' })}
+                <SortIcon direction={sortConfig.field === 'implemented' ? sortConfig.direction : null} />
+              </th>
               <th className={tableHeadCellClass}>
                 {t('superAdmin.aiTools.columns.requiredModules', { defaultValue: 'Required Modules' })}
               </th>
@@ -319,7 +341,7 @@ export const AiToolCatalogPage: React.FC = () => {
           <tbody className="divide-y divide-slate-100 bg-white">
             {searchedTools.length === 0 ? (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={11}>
                   <SuperAdminEmptyState
                     title={searchQuery ? 'No tools found matching search' : t('superAdmin.aiTools.title', { defaultValue: 'No AI tools found' })}
                   />
@@ -378,6 +400,17 @@ export const AiToolCatalogPage: React.FC = () => {
                       <SuperAdminBadge tone={sensitivityTone(tool.dataSensitivity)}>
                         {t(`superAdmin.aiTools.sensitivity.${tool.dataSensitivity}`, { defaultValue: tool.dataSensitivity })}
                       </SuperAdminBadge>
+                    </td>
+                    <td className={tableCellClass}>
+                      {tool.implemented ? (
+                        <SuperAdminBadge tone="green">
+                          {t('superAdmin.aiTools.implementationStatus.implemented', { defaultValue: 'Implemented' })}
+                        </SuperAdminBadge>
+                      ) : (
+                        <SuperAdminBadge tone="slate">
+                          {t('superAdmin.aiTools.implementationStatus.planned', { defaultValue: 'Planned' })}
+                        </SuperAdminBadge>
+                      )}
                     </td>
                     <td className={tableCellClass}>
                       <div className="flex flex-wrap gap-1">

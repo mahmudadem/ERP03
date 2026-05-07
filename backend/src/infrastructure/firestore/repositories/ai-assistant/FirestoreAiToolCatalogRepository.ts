@@ -45,7 +45,14 @@ export class FirestoreAiToolCatalogRepository implements IAiToolCatalogRepositor
   }
 
   async save(definition: AiToolDefinition): Promise<void> {
-    await this.getCollection().doc(definition.id).set(definition.toJSON());
+    const data = definition.toJSON();
+    const clean: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        clean[key] = value;
+      }
+    }
+    await this.getCollection().doc(definition.id).set(clean);
   }
 
   async delete(toolId: string): Promise<void> {

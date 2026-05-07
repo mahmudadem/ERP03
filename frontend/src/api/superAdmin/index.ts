@@ -153,7 +153,17 @@ export interface AiTool {
   inputSchema?: Record<string, any>;
   outputSchema?: Record<string, any>;
   unavailableReason?: string;
+  implemented?: boolean;
   enabled?: boolean;
+  isExecutable?: boolean;
+  isBlocked?: boolean;
+  safeForAutoInvoke?: boolean;
+  operationType?: string;
+  whenToUse?: string;
+  safetyNotes?: string[];
+  examples?: string[];
+  maxRows?: number;
+  maxResults?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

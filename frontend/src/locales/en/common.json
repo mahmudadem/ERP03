@@ -1039,6 +1039,7 @@
         "category": "All Categories",
         "status": "All Statuses",
         "mode": "All Modes",
+        "implementation": "All Implementations",
         "search": "Search tools..."
       },
       "columns": {
@@ -1050,6 +1051,7 @@
         "status": "Status",
         "riskLevel": "Risk Level",
         "dataSensitivity": "Sensitivity",
+        "implemented": "Implementation",
         "permissions": "Required Permissions",
         "requiredModules": "Required Modules",
         "actions": "Actions"
@@ -1082,9 +1084,18 @@
         "medium": "Medium",
         "high": "High"
       },
+      "implementationStatus": {
+        "implemented": "Implemented",
+        "planned": "Planned"
+      },
       "detail": {
         "title": "AI Tool: {{name}}",
+        "about": "About This Tool",
         "description": "Description",
+        "whenToUse": "When to Use",
+        "examples": "Example Prompts",
+        "safetyNotes": "Safety Notes",
+        "properties": "Properties",
         "namespace": "Namespace",
         "module": "Module",
         "category": "Category",
@@ -1097,7 +1108,9 @@
         "enablementPolicy": "Enablement Policy",
         "modelPolicy": "Model Policy",
         "unavailableReason": "This tool is unavailable because: {{reason}}",
-        "blockedWarning": "This is a WRITE tool and is permanently blocked for safety."
+        "blockedWarning": "This is a WRITE tool and is permanently blocked for safety.",
+        "notAvailable": "Not specified",
+        "readOnly": "Read-only"
       },
       "sync": {
         "success": "Catalog synced successfully. {{count}} new tools added.",

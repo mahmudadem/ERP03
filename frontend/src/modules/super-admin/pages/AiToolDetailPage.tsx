@@ -54,9 +54,12 @@ const statusTone = (status: string): 'slate' | 'green' | 'amber' | 'red' | 'blue
   }
 };
 
-const JsonBlock: React.FC<{ data: any }> = ({ data }) => {
-  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
-    return <span className="text-sm text-slate-400">—</span>;
+const JsonBlock: React.FC<{ data: any; fallback?: string }> = ({ data, fallback }) => {
+  if (!data) {
+    return <span className="text-sm text-slate-400">{fallback || 'Not specified'}</span>;
+  }
+  if (typeof data === 'object' && Object.keys(data).length === 0) {
+    return <span className="text-sm text-slate-400">{fallback || 'Not specified'}</span>;
   }
   return (
     <pre className="max-h-64 overflow-auto rounded-md bg-slate-50 p-3 text-xs text-slate-700">
@@ -197,12 +200,68 @@ export const AiToolDetailPage: React.FC = () => {
         </div>
       )}
 
+      {/* Description & Usage */}
+      {tool.description && (
+        <SuperAdminPanel>
+          <div className="border-b border-[var(--sa-border)] px-5 py-4">
+            <h2 className="text-base font-semibold text-[var(--sa-text)]">
+              {t('superAdmin.aiTools.detail.about', { defaultValue: 'About This Tool' })}
+            </h2>
+          </div>
+          <div className="p-5 space-y-4">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">
+                {t('superAdmin.aiTools.detail.description', { defaultValue: 'Description' })}
+              </dt>
+              <dd className="mt-1 text-sm text-[var(--sa-text)]">{tool.description}</dd>
+            </div>
+            {tool.whenToUse && (
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">
+                  {t('superAdmin.aiTools.detail.whenToUse', { defaultValue: 'When to Use' })}
+                </dt>
+                <dd className="mt-1 text-sm text-[var(--sa-text)]">{tool.whenToUse}</dd>
+              </div>
+            )}
+            {tool.examples && tool.examples.length > 0 && (
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">
+                  {t('superAdmin.aiTools.detail.examples', { defaultValue: 'Example Prompts' })}
+                </dt>
+                <dd className="mt-1">
+                  <ul className="list-disc pl-5 space-y-1">
+                    {tool.examples.map((ex, i) => (
+                      <li key={i} className="text-sm text-slate-700 font-mono">{ex}</li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            )}
+            {tool.safetyNotes && tool.safetyNotes.length > 0 && (
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">
+                  {t('superAdmin.aiTools.detail.safetyNotes', { defaultValue: 'Safety Notes' })}
+                </dt>
+                <dd className="mt-1">
+                  <ul className="list-disc pl-5 space-y-1">
+                    {tool.safetyNotes.map((note, i) => (
+                      <li key={i} className="text-sm text-slate-700">{note}</li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            )}
+          </div>
+        </SuperAdminPanel>
+      )}
+
       {/* Tool Properties */}
       <SuperAdminPanel>
-        <div className="border-b border-[var(--sa-border)] px-5 py-4">
+        <div className="border-b border-[var(--sa-border)] px-5 py-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-[var(--sa-text)]">
-            {t('superAdmin.aiTools.detail.description', { defaultValue: 'Properties' })}
+            {t('superAdmin.aiTools.detail.properties', { defaultValue: 'Properties' })}
           </h2>
+          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{t('superAdmin.aiTools.detail.readOnly', { defaultValue: 'Read-only' })}</span>
         </div>
         <div className="p-5">
           <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -281,6 +340,22 @@ export const AiToolDetailPage: React.FC = () => {
                 </SuperAdminBadge>
               </dd>
             </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">
+                {t('superAdmin.aiTools.columns.implemented', { defaultValue: 'Implementation' })}
+              </dt>
+              <dd className="mt-1">
+                {tool.implemented ? (
+                  <SuperAdminBadge tone="green">
+                    {t('superAdmin.aiTools.implementationStatus.implemented', { defaultValue: 'Implemented' })}
+                  </SuperAdminBadge>
+                ) : (
+                  <SuperAdminBadge tone="slate">
+                    {t('superAdmin.aiTools.implementationStatus.planned', { defaultValue: 'Planned' })}
+                  </SuperAdminBadge>
+                )}
+              </dd>
+            </div>
           </dl>
         </div>
       </SuperAdminPanel>
@@ -321,28 +396,30 @@ export const AiToolDetailPage: React.FC = () => {
         </SuperAdminPanel>
       )}
 
-      {/* Input/Output Schemas */}
+      {/* Input Schema */}
       <SuperAdminPanel>
-        <div className="border-b border-[var(--sa-border)] px-5 py-4">
-          <h2 className="text-base font-semibold text-[var(--sa-text)]">
-            {t('superAdmin.aiTools.detail.inputSchema', { defaultValue: 'Input Schema' })}
-          </h2>
-        </div>
-        <div className="p-5">
-          <JsonBlock data={tool.inputSchema} />
-        </div>
-      </SuperAdminPanel>
+          <div className="border-b border-[var(--sa-border)] px-5 py-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[var(--sa-text)]">
+              {t('superAdmin.aiTools.detail.inputSchema', { defaultValue: 'Input Schema' })}
+            </h2>
+            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{t('superAdmin.aiTools.detail.readOnly', { defaultValue: 'Read-only' })}</span>
+          </div>
+          <div className="p-5">
+            <JsonBlock data={tool.inputSchema} />
+          </div>
+        </SuperAdminPanel>
 
-      <SuperAdminPanel>
-        <div className="border-b border-[var(--sa-border)] px-5 py-4">
-          <h2 className="text-base font-semibold text-[var(--sa-text)]">
-            {t('superAdmin.aiTools.detail.outputSchema', { defaultValue: 'Output Schema' })}
-          </h2>
-        </div>
-        <div className="p-5">
-          <JsonBlock data={tool.outputSchema} />
-        </div>
-      </SuperAdminPanel>
+        <SuperAdminPanel>
+          <div className="border-b border-[var(--sa-border)] px-5 py-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[var(--sa-text)]">
+              {t('superAdmin.aiTools.detail.outputSchema', { defaultValue: 'Output Schema' })}
+            </h2>
+            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{t('superAdmin.aiTools.detail.readOnly', { defaultValue: 'Read-only' })}</span>
+          </div>
+          <div className="p-5">
+            <JsonBlock data={tool.outputSchema} />
+          </div>
+        </SuperAdminPanel>
 
       {/* Enablement Policy */}
       <SuperAdminPanel>

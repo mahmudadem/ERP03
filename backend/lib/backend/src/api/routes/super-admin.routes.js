@@ -9,6 +9,7 @@ const BusinessDomainRegistryController_1 = require("../controllers/super-admin/B
 const BundleRegistryController_1 = require("../controllers/super-admin/BundleRegistryController");
 const PlanRegistryController_1 = require("../controllers/super-admin/PlanRegistryController");
 const RoleTemplateRegistryController_1 = require("../controllers/super-admin/RoleTemplateRegistryController");
+const SuperAdminEntitlementsController_1 = require("../controllers/super-admin/SuperAdminEntitlementsController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const assertSuperAdmin_1 = require("../middlewares/assertSuperAdmin");
 const router = (0, express_1.Router)();
@@ -20,6 +21,10 @@ router.patch('/users/:userId/promote', SuperAdminController_1.SuperAdminControll
 router.patch('/users/:userId/demote', SuperAdminController_1.SuperAdminController.demoteUser);
 // Company management
 router.get('/companies', SuperAdminController_1.SuperAdminController.listAllCompanies);
+// Company Entitlements (module access management)
+router.get('/companies/:companyId/entitlements', SuperAdminEntitlementsController_1.SuperAdminEntitlementsController.listModules);
+router.post('/companies/:companyId/entitlements/modules', SuperAdminEntitlementsController_1.SuperAdminEntitlementsController.grantModule);
+router.delete('/companies/:companyId/entitlements/modules/:moduleKey', SuperAdminEntitlementsController_1.SuperAdminEntitlementsController.revokeModule);
 // System overview
 router.get('/overview', SuperAdminController_1.SuperAdminController.getSystemOverview);
 // Permission Registry
