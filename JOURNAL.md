@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-05-07 (Thu) — ~45m
+**Task:** AI Tool Catalog — Migrate chat keywords to editable catalog + admin UI  
+**Agent:** OpenCode (CTO Mode)  
+**Branch:** `feat/ai-proposal-sandbox`  
+**Commit:** `dbc4b881`
+
+**What Was Done:**
+
+Completed Option B Phase 2-4: migrated chat keywords from static config to the seed catalog with admin-editable DB overrides.
+
+**Changes:**
+- `AiToolDefinition.ts`: Added `chatKeywords: string[]` field, constructor param, `toJSON()`/`fromJSON()` serialization.
+- `AiToolCatalogSeed.ts`: Created `TOOL_KEYWORDS` map with EN/AR/TR keywords for all 17 implemented tools. Post-processing loop merges keywords into seed entries.
+- `AiToolCallingOrchestrator.ts`: `detectIntents()` now reads from `AI_TOOL_CATALOG` instead of `tool-intents.config.ts`.
+- `AiToolCatalogUseCase.ts`: Added `updateChatKeywords()` method. Fixed 3 constructor calls missing `chatKeywords` param.
+- `tool-intents.config.ts`: **Deleted** — keywords now live in the catalog seed.
+- `AiToolCatalogController.ts` + routes: Added `PATCH /platform/ai-tools/:toolName/keywords` endpoint.
+- `frontend/src/api/superAdmin/index.ts`: Added `updateAiToolKeywords()` API method.
+- `AiToolDetailPage.tsx`: Added "Chat Keywords" section with edit/save UI (textarea, save/cancel, status indicator).
+- `i18n`: Added keyword editing keys for EN/AR/TR.
+- `AiToolDefinition.toJSON()`: Fixed missing `inputSchema`/`outputSchema` — schemas now visible on detail page for audit.
+- `AiToolCatalog.test.ts`: Rewrote intent tests as chatKeywords tests (removed deleted config dependency).
+
+**Safety:** Non-implemented tools have no keywords — prevents AI from matching queries to tools without data (anti-hallucination).
+
+**Tests:** 397/397 pass (14 suites). Backend builds clean. Frontend typechecks clean.
+
+**Next:** Full regression run before merge, or move to next roadmap item.
+
+---
+
 ## 2026-05-07 (Thu) — ~20m manual-test detour
 **Task:** AI Assistant Runtime v2 — Firestore chat metadata serialization fix  
 **Agent:** OpenCode (CTO Mode)  

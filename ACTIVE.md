@@ -2,7 +2,7 @@
 
 **Task:** AI Tool Catalog — Implemented Flag + Anti-Hallucination Safety Fix  
 **Started:** 2026-05-07  
-**Status:** ✅ COMPLETE — awaiting commit approval  
+**Status:** ✅ COMPLETE — committed (dbc4b881)  
 **Agent/IDE:** OpenCode (CTO Mode)  
 **Branch:** `feat/ai-proposal-sandbox`
 
@@ -44,9 +44,9 @@
 
 | Item | Description | Priority |
 |------|-------------|----------|
-| Commit | Commit after developer approval | High |
-| Option B Phase 4 | Admin UI for editing keywords per tool (no code deploy needed) | Medium |
 | Full regression run | Run complete backend/frontend test/build suite before merge | High before merge |
+| Option B Phase 4 | Admin UI for editing keywords per tool (no code deploy needed) | ✅ DONE |
+| Commit | Commit after developer approval | ✅ DONE |
 
 AI Assistant v2 is now implemented as a guarded, provider-agnostic runtime that extends the existing AI Assistant, Tool System v1, and AI Proposal Sandbox.
 
@@ -127,21 +127,6 @@ Reviewer status:
 
 ---
 
-## 📋 Remaining Work / Future
-
-| Item | Description | Priority |
-|------|-------------|----------|
-| Full regression run | Run complete backend/frontend test/build suite before merge | High before merge |
-| Follow-up commit | Commit Firestore metadata serialization fix after developer approval | High |
-| Prisma AI repos | Add Prisma implementations for AI Proposal repositories when SQL mode is prioritized | Future |
-| Human-approved execution | Future path: accept proposal → execute through proper use cases with approval | Future |
-| Typed tool-result UI | Replace remaining local `as any` display casts with stronger frontend tool-result types | Low |
-| Date/time locale policy | Use company-configured locale for date/time display if/when global locale policy exists | Low |
-
----
-
 ## 👉 Recommended Next Move
 
-Manual test the chat prompt again, then approve the follow-up git commit. Suggested commit format:
-
-`fix(ai-assistant): sanitize chat metadata before Firestore writes [ACTIVE-70]`
+Run a full project regression before merge (`backend` + `frontend` full suites), then push branch and open PR.

@@ -215,3 +215,23 @@ Detailed agent instructions live in `.opencode/prompts/`:
 - `sub-frontend-builder.md` — frontend implementation rules
 - `sub-reviewer.md` — code review checklist
 - `sub-test-runner.md` — verification commands and output format
+
+## graphify (Supplementary — does NOT replace the workflow above)
+
+This project has a graphify knowledge graph at `graphify-out/`.
+
+**Hierarchy:** ACTIVE.md → JOURNAL.md → VISION.md remain the **primary** source of truth for task status and project direction. The graphify graph is a **supplementary tool** for understanding code structure and cross-module relationships. It does NOT replace reading source files when implementing features.
+
+**When to use graphify:**
+- Cross-module architecture questions ("how does Sales connect to Accounting?") → `graphify query "<question>"` or `graphify path "<A>" "<B>"`
+- Exploring unfamiliar parts of the codebase → `graphify explain "<concept>"`
+- Quick orientation on god nodes and community structure → read `graphify-out/GRAPH_REPORT.md`
+
+**When NOT to use graphify:**
+- Finding a specific function, class, or file → use grep/glob (faster, exact)
+- Understanding task status or what to work on next → read ACTIVE.md
+- Implementation work → read the actual source files, not the graph
+
+**Maintenance:**
+- After modifying code files in a session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+- The graph is committed to git so all agents share the same map
