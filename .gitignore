@@ -27,3 +27,11 @@ dist-ssr
 graphify-out/manifest.json
 graphify-out/cost.json
 graphify-out/cache/
+
+# Git hooks (local)
+.git/hooks/post-commit.bat
+.git/hooks/post-merge.bat
+.git/hooks/post-checkout.bat
+
+# Build artifacts
+backend/lib/
