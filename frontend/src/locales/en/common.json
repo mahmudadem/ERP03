@@ -1060,7 +1060,10 @@
         "enable": "Enable",
         "disable": "Disable",
         "sync": "Sync Catalog",
-        "viewDetails": "Details"
+        "viewDetails": "Details",
+        "edit": "Edit",
+        "save": "Save",
+        "cancel": "Cancel"
       },
       "statuses": {
         "active": "Active",
@@ -1103,6 +1106,7 @@
         "status": "Status",
         "permissions": "Required Permissions",
         "requiredModules": "Required Modules",
+        "chatKeywords": "Chat Keywords",
         "inputSchema": "Input Schema",
         "outputSchema": "Output Schema",
         "enablementPolicy": "Enablement Policy",
@@ -1111,6 +1115,12 @@
         "blockedWarning": "This is a WRITE tool and is permanently blocked for safety.",
         "notAvailable": "Not specified",
         "readOnly": "Read-only"
+      },
+      "keywords": {
+        "saved": "Keywords saved successfully",
+        "help": "One keyword per line. Supports English, Arabic, and Turkish. Keywords are matched case-insensitively.",
+        "placeholder": "Enter one keyword per line...",
+        "none": "No keywords configured. Click Edit to add."
       },
       "sync": {
         "success": "Catalog synced successfully. {{count}} new tools added.",

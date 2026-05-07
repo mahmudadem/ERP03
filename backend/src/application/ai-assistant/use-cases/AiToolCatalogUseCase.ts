@@ -81,6 +81,7 @@ export class AiToolCatalogUseCase {
           seed.dataSensitivity, // Sensitivity is ALWAYS from seed (safety)
           seed.unavailabilityReason,
           seed.implemented, // Implemented is ALWAYS from seed (truth from code)
+          seed.chatKeywords, // Keywords from seed (DB override can update)
           seed.createdAt,
           dbOverride.updatedAt,
         );
@@ -140,6 +141,7 @@ export class AiToolCatalogUseCase {
         seed.dataSensitivity,
         seed.unavailabilityReason,
         seed.implemented,
+        seed.chatKeywords,
         seed.createdAt,
         dbOverride.updatedAt,
       );
@@ -187,6 +189,7 @@ export class AiToolCatalogUseCase {
       seed.dataSensitivity,
       seed.unavailabilityReason,
       seed.implemented,
+      seed.chatKeywords,
       seed.createdAt,
       new Date(),
     );
@@ -208,6 +211,55 @@ export class AiToolCatalogUseCase {
    */
   async disableTool(toolName: string, updatedBy: string): Promise<AiToolDefinition> {
     return this.updateToolStatus(toolName, 'disabled', updatedBy);
+  }
+
+  /**
+   * Update a tool's chat keywords.
+   * Keywords are stored in the DB override and merged with the seed at runtime.
+   * SAFETY: Only tools that are implemented can have keywords.
+   */
+  async updateChatKeywords(
+    toolName: string,
+    keywords: string[],
+    updatedBy: string,
+  ): Promise<AiToolDefinition> {
+    const seed = getCatalogDefinition(toolName);
+    if (!seed) {
+      throw new Error(`Unknown tool: ${toolName}`);
+    }
+
+    // SAFETY: Only implemented tools can have keywords
+    if (!seed.implemented) {
+      throw new Error(`Cannot set keywords for non-implemented tool: ${toolName}. Implement the tool first.`);
+    }
+
+    const definition = new AiToolDefinition(
+      seed.id,
+      seed.name,
+      seed.namespace,
+      seed.moduleId,
+      seed.description,
+      seed.category,
+      seed.status,
+      seed.mode,
+      seed.requiredPermissions,
+      seed.requiredModules,
+      seed.inputSchema,
+      seed.outputSchema,
+      seed.enabledByDefault,
+      seed.supportsChatInvocation,
+      seed.supportsManualExecution,
+      seed.riskLevel,
+      seed.dataSensitivity,
+      seed.unavailabilityReason,
+      seed.implemented,
+      keywords,
+      seed.createdAt,
+      new Date(),
+    );
+
+    await this.catalogRepo.save(definition);
+    return definition;
   }
 
   // ─── Enablement Policy Operations ────────────────────────────────────

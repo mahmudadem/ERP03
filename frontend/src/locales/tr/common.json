@@ -1060,7 +1060,10 @@
         "enable": "Etkinleştir",
         "disable": "Devre Dışı Bırak",
         "sync": "Kataloğu Senkronize Et",
-        "viewDetails": "Detaylar"
+        "viewDetails": "Detaylar",
+        "edit": "Düzenle",
+        "save": "Kaydet",
+        "cancel": "İptal"
       },
       "statuses": {
         "active": "Aktif",
@@ -1103,6 +1106,7 @@
         "status": "Durum",
         "permissions": "Gerekli İzinler",
         "requiredModules": "Gerekli Modüller",
+        "chatKeywords": "Sohbet Anahtar Kelimeleri",
         "inputSchema": "Girdi Şeması",
         "outputSchema": "Çıktı Şeması",
         "enablementPolicy": "Etkinleştirme Politikası",
@@ -1111,6 +1115,12 @@
         "blockedWarning": "Bu bir YAZMA aracıdır ve güvenlik nedeniyle kalıcı olarak engellenmiştir.",
         "notAvailable": "Belirtilmemiş",
         "readOnly": "Salt okunur"
+      },
+      "keywords": {
+        "saved": "Anahtar kelimeler başarıyla kaydedildi",
+        "help": "Her satıra bir anahtar kelime. İngilizce, Arapça ve Türkçe destekler. Anahtar kelimeler büyük/küçük harf duyarsız eşleştirilir.",
+        "placeholder": "Her satıra bir anahtar kelime girin...",
+        "none": "Anahtar kelime yapılandırılmadı. Eklemek için Düzenle'ye tıklayın."
       },
       "sync": {
         "success": "Katalog başarıyla senkronize edildi. {{count}} yeni araç eklendi.",

@@ -87,6 +87,7 @@ export interface AiToolDefinitionProps {
   dataSensitivity: AiToolDataSensitivity; // Data sensitivity classification
   unavailabilityReason?: string;    // Why the tool is unavailable (e.g., "HR module not implemented")
   implemented: boolean;              // Whether a real tool class is registered in the DI container
+  chatKeywords: string[];            // Keywords for deterministic chat intent detection (EN/AR/TR)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -112,6 +113,7 @@ export class AiToolDefinition implements AiToolDefinitionProps {
     public dataSensitivity: AiToolDataSensitivity,
     public unavailabilityReason?: string,
     public implemented: boolean = false,
+    public chatKeywords: string[] = [],
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
   ) {}
@@ -324,6 +326,7 @@ export class AiToolDefinition implements AiToolDefinitionProps {
       isBlocked: this.isBlocked,
       unavailabilityReason: this.unavailabilityReason,
       implemented: this.implemented,
+      chatKeywords: this.chatKeywords,
       // v2 extensions
       operationType: this.operationType,
       safeForAutoInvoke: this.safeForAutoInvoke,
@@ -358,6 +361,7 @@ export class AiToolDefinition implements AiToolDefinitionProps {
       data.dataSensitivity as AiToolDataSensitivity,
       data.unavailabilityReason as string | undefined,
       (data.implemented as boolean) ?? false,
+      (data.chatKeywords as string[]) ?? [],
       new Date(data.createdAt as string),
       new Date(data.updatedAt as string),
     );

@@ -76,6 +76,149 @@ const IMPLEMENTED_TOOL_NAMES = new Set<string>([
   'reports.getMonthlyPerformanceSummary',
 ]);
 
+// ─── Chat Keywords ────────────────────────────────────────────────────────────
+//
+// Keywords for deterministic chat intent detection. Each entry maps a tool name
+// to an array of EN/AR/TR keywords. These are used by AiToolCallingOrchestrator
+// to detect user intents from chat messages.
+//
+// SAFETY: Only implemented tools should have keywords. Unimplemented tools
+// cause the AI to hallucinate when no data is provided.
+//
+const TOOL_KEYWORDS: Record<string, string[]> = {
+  'accounting.getTrialBalanceSummary': [
+    'trial balance', 'balance summary', 'accounting summary',
+    'debit credit summary', 'closing balance', 'account balances',
+    'financial summary', 'total debit', 'total credit',
+    'ميزان المراجعة', 'ميزان مراجعة', 'ملخص الميزان',
+    'ميزان', 'أرصدة',
+    'deneme bilançosu', 'mizan', 'genel mizan',
+    'borç alacak özeti', 'hesap özeti',
+  ],
+  'accounting.getProfitAndLoss': [
+    'profit and loss', 'profit & loss', 'p&l', 'income statement',
+    'net profit', 'gross profit', 'revenue and expenses',
+    'profitability', 'revenue', 'expenses summary',
+    'الأرباح والخسائر', 'ارباح وخسائر', 'قائمة الدخل',
+    'صافي الربح', 'الإيرادات والمصروفات', 'إيرادات ومصروفات',
+    'kar zarar', 'gelir tablosu', 'net kar',
+    'gelir ve gider', 'kârlılık',
+  ],
+  'accounting.getBalanceSheet': [
+    'balance sheet', 'statement of financial position',
+    'assets and liabilities', 'assets liabilities equity',
+    'الميزانية العمومية', 'قائمة المركز المالي',
+    'الأصول والخصوم', 'الاصول والخصوم', 'ميزانية عمومية',
+    'bilanço', 'finansal durum tablosu',
+    'varlıklar ve borçlar', 'bilanço tablosu',
+  ],
+  'accounting.getCashFlowSummary': [
+    'cash flow', 'cashflow', 'cash position', 'cash movement',
+    'operating cash', 'investing cash', 'financing cash',
+    'cash summary', 'liquidity',
+    'التدفقات النقدية', 'تدفق نقدي', 'السيولة',
+    'حركة النقد', 'التدفق النقدي',
+    'nakit akışı', 'nakit akış', 'nakit pozisyonu',
+    'likidite', 'nakit özeti',
+  ],
+  'accounting.getAgingReceivables': [
+    'aging receivables', 'accounts receivable aging', 'AR aging',
+    'receivables aging', 'customer aging', 'aged receivables',
+    'receivables summary', 'outstanding receivables',
+    'أعمار الذمم المدينة', 'عملاء متأخرين',
+    'تحصيلات متأخرة', 'ذمم مدينة',
+    'alacak yaşlandırma', 'alacak yaşlandırma raporu',
+    'alacaklar özeti', 'gecikmiş alacaklar',
+  ],
+  'accounting.getAgingPayables': [
+    'aging payables', 'accounts payable aging', 'AP aging',
+    'payables aging', 'supplier aging', 'vendor aging',
+    'aged payables', 'outstanding payables',
+    'أعمار الذمم الدائنة', 'موردين متأخرين',
+    'دفعات متأخرة', 'ذمم دائنة',
+    'borç yaşlandırma', 'borç yaşlandırma raporu',
+    'borçlar özeti', 'gecikmiş borçlar',
+  ],
+  'accounting.getGeneralLedgerSummary': [
+    'general ledger summary', 'GL summary', 'ledger summary',
+    'all accounts summary', 'full ledger',
+    'ملخص دفتر الأستاذ العام', 'دفتر الأستاذ', 'الأستاذ العام',
+    'genel muhasebe özeti', 'büyük defter özeti', 'muhasebe özeti',
+  ],
+  'accounting.getChartOfAccountsSummary': [
+    'chart of accounts', 'COA', 'account list', 'accounts summary',
+    'all accounts', 'account structure',
+    'دليل الحسابات', 'شجرة الحسابات', 'قائمة الحسابات',
+    'ملخص الحسابات', 'هيكل الحسابات',
+    'hesap planı', 'hesap listesi', 'hesap özeti',
+    'hesap ağacı', 'muhasebe hesapları',
+  ],
+  'accounting.getAccountBalance': [
+    'account balance', 'balance of account', 'what is the balance',
+    'how much is in', 'account total',
+    'رصيد حساب', 'رصيد الحساب', 'كم الرصيد',
+    'hesap bakiyesi', 'hesap bakiye', 'bakiye',
+  ],
+  'accounting.getAccountStatementSummary': [
+    'account statement', 'statement summary', 'account activity',
+    'account detail', 'ledger for account',
+    'كشف حساب', 'ملخص كشف حساب', 'حركة حساب',
+    'hesap ekstresi', 'hesap hareketleri', 'hesap detayı',
+  ],
+  'accounting.getAccountingPeriodStatus': [
+    'fiscal year', 'accounting period', 'period status',
+    'current period', 'fiscal period',
+    'السنة المالية', 'الفترة المحاسبية', 'الفترة الحالية',
+    'mali yıl', 'muhasebe dönemi', 'dönem durumu',
+  ],
+  'sales.getSalesSummary': [
+    'sales summary', 'sales overview', 'total sales',
+    'revenue summary', 'sales report',
+    'ملخص المبيعات', 'إجمالي المبيعات', 'تقرير المبيعات',
+    'نظرة عامة على المبيعات',
+    'satış özeti', 'satış raporu', 'toplam satış',
+    'satış genel bakış',
+  ],
+  'sales.getTopCustomers': [
+    'top customers', 'best customers', 'largest customers',
+    'customers by revenue', 'customer ranking',
+    'أفضل الزبائن', 'أكبر العملاء', 'العملاء الأكثر شراءً',
+    'ترتيب العملاء',
+    'en iyi müşteriler', 'en büyük müşteriler', 'müşteri sıralaması',
+  ],
+  'purchase.getPurchaseSummary': [
+    'purchase summary', 'purchase overview', 'total purchases',
+    'spending summary', 'purchase report',
+    'ملخص المشتريات', 'إجمالي المشتريات', 'تقرير المشتريات',
+    'نظرة عامة على المشتريات',
+    'satın alma özeti', 'satın alma raporu', 'toplam alımlar',
+  ],
+  'purchase.getTopSuppliers': [
+    'top suppliers', 'top vendors', 'biggest suppliers',
+    'suppliers by spend', 'vendor ranking',
+    'أفضل الموردين', 'أكبر الموردين', 'ترتيب الموردين',
+    'en iyi tedarikçiler', 'en büyük tedarikçiler', 'tedarikçi sıralaması',
+  ],
+  'reports.getFinancialOverview': [
+    'financial overview', 'financial position', 'company position',
+    'financial health', 'financial snapshot', 'how is the company doing',
+    'company overview', 'business overview',
+    'نظرة مالية عامة', 'المركز المالي', 'وضع الشركة',
+    'صحة الشركة المالية', 'ملخص مالي شامل',
+    'finansal genel bakış', 'finansal durum', 'şirket durumu',
+    'finansal sağlık', 'iş genel bakış',
+  ],
+  'reports.getMonthlyPerformanceSummary': [
+    'monthly comparison', 'monthly performance', 'month over month',
+    'monthly trend', 'monthly P&L', 'compare months',
+    'most profitable month', 'best month', 'monthly revenue',
+    'مقارنة شهرية', 'أداء شهري', 'شهر على شهر',
+    'توجه شهري', 'أفضل شهر', 'أكثر شهر مربح',
+    'aylık karşılaştırma', 'aylık performans', 'aylık trend',
+    'en kârlı ay', 'aylık gelir',
+  ],
+};
+
 // ─── ACCOUNTING — Accounts / COA ─────────────────────────────────────────────
 
 const accountingAccountTools: AiToolDefinition[] = [
@@ -946,10 +1089,11 @@ export const AI_TOOL_CATALOG: AiToolDefinition[] = [
   ...blockedWritePatterns,
 ];
 
-// Mark implemented tools — those with a real backend class registered in DI.
+// Mark implemented tools and apply chat keywords.
 for (const tool of AI_TOOL_CATALOG) {
   if (IMPLEMENTED_TOOL_NAMES.has(tool.name)) {
     tool.implemented = true;
+    tool.chatKeywords = TOOL_KEYWORDS[tool.name] || [];
   }
 }
 

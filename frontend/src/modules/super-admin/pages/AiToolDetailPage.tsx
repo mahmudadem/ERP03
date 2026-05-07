@@ -77,6 +77,9 @@ export const AiToolDetailPage: React.FC = () => {
   const [modelPolicies, setModelPolicies] = useState<AiModelToolPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingTool, setTogglingTool] = useState(false);
+  const [editingKeywords, setEditingKeywords] = useState(false);
+  const [keywordsInput, setKeywordsInput] = useState('');
+  const [savingKeywords, setSavingKeywords] = useState(false);
 
   useEffect(() => {
     if (toolName) {
@@ -123,6 +126,27 @@ export const AiToolDetailPage: React.FC = () => {
       errorHandler.showError(error);
     } finally {
       setTogglingTool(false);
+    }
+  };
+
+  const handleStartEditKeywords = () => {
+    setKeywordsInput((tool?.chatKeywords || []).join('\n'));
+    setEditingKeywords(true);
+  };
+
+  const handleSaveKeywords = async () => {
+    if (!tool) return;
+    try {
+      setSavingKeywords(true);
+      const keywords = keywordsInput.split('\n').map(k => k.trim()).filter(Boolean);
+      await superAdminApi.updateAiToolKeywords(tool.name, keywords);
+      errorHandler.showSuccess(t('superAdmin.aiTools.keywords.saved', { defaultValue: 'Keywords saved' }));
+      await loadTool();
+      setEditingKeywords(false);
+    } catch (error: any) {
+      errorHandler.showError(error);
+    } finally {
+      setSavingKeywords(false);
     }
   };
 
@@ -392,6 +416,67 @@ export const AiToolDetailPage: React.FC = () => {
                 <span key={mod} className="rounded bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">{mod}</span>
               ))}
             </div>
+          </div>
+        </SuperAdminPanel>
+      )}
+
+      {/* Chat Keywords */}
+      {tool.implemented && (
+        <SuperAdminPanel>
+          <div className="border-b border-[var(--sa-border)] px-5 py-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[var(--sa-text)]">
+              {t('superAdmin.aiTools.detail.chatKeywords', { defaultValue: 'Chat Keywords' })}
+            </h2>
+            {!editingKeywords && (
+              <button
+                onClick={handleStartEditKeywords}
+                className="text-sm text-blue-700 hover:text-blue-900 hover:underline"
+              >
+                {t('superAdmin.aiTools.actions.edit', { defaultValue: 'Edit' })}
+              </button>
+            )}
+          </div>
+          <div className="p-5">
+            {editingKeywords ? (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500">
+                  {t('superAdmin.aiTools.keywords.help', { defaultValue: 'One keyword per line. Supports English, Arabic, and Turkish. Keywords are matched case-insensitively.' })}
+                </p>
+                <textarea
+                  value={keywordsInput}
+                  onChange={(e) => setKeywordsInput(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-md border border-slate-300 p-3 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder={t('superAdmin.aiTools.keywords.placeholder', { defaultValue: 'Enter one keyword per line...' })}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveKeywords}
+                    disabled={savingKeywords}
+                    className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {savingKeywords ? '...' : t('superAdmin.aiTools.actions.save', { defaultValue: 'Save' })}
+                  </button>
+                  <button
+                    onClick={() => setEditingKeywords(false)}
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    {t('superAdmin.aiTools.actions.cancel', { defaultValue: 'Cancel' })}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex flex-wrap gap-2">
+                  {(tool.chatKeywords || []).map((kw, i) => (
+                    <span key={i} className="rounded bg-slate-100 px-2.5 py-1 text-xs font-mono text-slate-700">{kw}</span>
+                  ))}
+                </div>
+                {(tool.chatKeywords || []).length === 0 && (
+                  <p className="text-sm text-slate-400">{t('superAdmin.aiTools.keywords.none', { defaultValue: 'No keywords configured. Click Edit to add.' })}</p>
+                )}
+              </div>
+            )}
           </div>
         </SuperAdminPanel>
       )}

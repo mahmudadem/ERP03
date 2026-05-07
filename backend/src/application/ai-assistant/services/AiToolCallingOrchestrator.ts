@@ -17,7 +17,7 @@
  *
  * INTENT DETECTION:
  * - Uses simple keyword matching (English, Arabic, Turkish)
- * - Keywords are defined in tool-intents.config.ts
+ * - Keywords are defined in AiToolCatalogSeed.ts (chatKeywords field on each tool)
  * - Maps recognized intents to registered tool names
  * - Multiple tools can be matched for a single message
  * - If no intent is detected, returns null (normal chat continues)
@@ -47,7 +47,7 @@ import {
   AiProviderToolContract,
   AiProviderToolCallRequest,
 } from '../../../domain/ai-assistant/tools/AiToolContract';
-import { getToolIntents, ToolIntent } from '../config/tool-intents.config';
+import { AI_TOOL_CATALOG } from '../catalog/AiToolCatalogSeed';
 import { AiRuntimeGuard, GuardDecision } from './AiRuntimeGuard';
 import { getCatalogDefinition, getExecutableDefinitions } from '../catalog/AiToolCatalogSeed';
 
@@ -135,19 +135,21 @@ export class AiToolCallingOrchestrator {
    */
   detectIntents(message: string): Array<{ toolName: string; keywords: string[] }> {
     const lowerMessage = message.toLowerCase();
-    const toolIntents = getToolIntents();
     const matches: Array<{ toolName: string; keywords: string[] }> = [];
 
-    for (const intent of toolIntents) {
+    for (const toolDef of AI_TOOL_CATALOG) {
+      // Only check tools that have chat keywords defined
+      if (!toolDef.chatKeywords || toolDef.chatKeywords.length === 0) continue;
+
       // Check if any keyword is found in the message
-      const matched = intent.keywords.some(keyword =>
+      const matched = toolDef.chatKeywords.some(keyword =>
         lowerMessage.includes(keyword.toLowerCase())
       );
 
       if (matched) {
         // Also verify the tool is actually registered
-        if (this.toolRegistry.get(intent.toolName)) {
-          matches.push(intent);
+        if (this.toolRegistry.get(toolDef.name)) {
+          matches.push({ toolName: toolDef.name, keywords: toolDef.chatKeywords });
         }
       }
     }

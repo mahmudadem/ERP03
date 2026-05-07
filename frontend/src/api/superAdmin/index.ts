@@ -162,6 +162,7 @@ export interface AiTool {
   whenToUse?: string;
   safetyNotes?: string[];
   examples?: string[];
+  chatKeywords?: string[];
   maxRows?: number;
   maxResults?: number;
   createdAt?: Date;
@@ -312,6 +313,9 @@ export const superAdminApi = {
 
   disableAiTool: (toolName: string) =>
     client.patch(`/platform/ai-tools/${toolName}/disable`),
+
+  updateAiToolKeywords: (toolName: string, keywords: string[]) =>
+    client.patch(`/platform/ai-tools/${toolName}/keywords`, { keywords }),
 
   syncAiToolCatalog: () =>
     client.post('/platform/ai-tools/sync'),

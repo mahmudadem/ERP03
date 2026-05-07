@@ -47,6 +47,13 @@ router.patch('/ai-tools/:toolName/enable', AiToolCatalogController.enableTool);
 router.patch('/ai-tools/:toolName/disable', AiToolCatalogController.disableTool);
 
 /**
+ * PATCH /platform/ai-tools/:toolName/keywords
+ * Update a tool's chat keywords.
+ * Body: { keywords: string[] }
+ */
+router.patch('/ai-tools/:toolName/keywords', AiToolCatalogController.updateChatKeywords);
+
+/**
  * POST /platform/ai-tools/sync
  * Sync static catalog seed into the DB.
  */

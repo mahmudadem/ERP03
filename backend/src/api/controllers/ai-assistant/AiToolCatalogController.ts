@@ -113,6 +113,28 @@ export class AiToolCatalogController {
     }
   }
 
+  /**
+   * PATCH /platform/ai-tools/:toolName/keywords
+   * Update a tool's chat keywords.
+   */
+  static async updateChatKeywords(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { toolName } = req.params;
+      const userId = AiToolCatalogController.getUserId(req);
+      const keywords = (req.body as any)?.keywords as string[] | undefined;
+
+      if (!Array.isArray(keywords)) {
+        throw new Error('Request body must include "keywords" array');
+      }
+
+      const useCase = diContainer.aiToolCatalogUseCase;
+      const updated = await useCase.updateChatKeywords(toolName, keywords, userId);
+      res.json({ success: true, data: updated.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // ─── Enablement Policies ───────────────────────────────────────────────
 
   /**

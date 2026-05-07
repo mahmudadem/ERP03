@@ -584,63 +584,43 @@ describe('AiToolCatalogSeed', () => {
   });
 });
 
-describe('Tool Intent Config', () => {
-  it('should have intents for all active tool names', () => {
-    const { getToolIntents } = require('../../../application/ai-assistant/config/tool-intents.config');
+describe('Tool Chat Keywords', () => {
+  it('should have chatKeywords for all implemented tools', () => {
+    const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
 
-    const intents = getToolIntents();
-    expect(intents.length).toBeGreaterThanOrEqual(17);
+    const implementedTools = AI_TOOL_CATALOG.filter((t: any) => t.implemented === true);
+    expect(implementedTools.length).toBeGreaterThanOrEqual(17);
 
-    // Each intent should have at least one keyword per language group
-    intents.forEach((intent: { toolName: string; keywords: string[] }) => {
-      expect(intent.toolName).toBeTruthy();
-      expect(intent.keywords.length).toBeGreaterThan(0);
+    implementedTools.forEach((tool: any) => {
+      expect(tool.chatKeywords).toBeTruthy();
+      expect(Array.isArray(tool.chatKeywords)).toBe(true);
+      expect(tool.chatKeywords.length).toBeGreaterThan(0);
     });
   });
 
-  it('should not have duplicate tool names in intents', () => {
-    const { getToolIntents } = require('../../../application/ai-assistant/config/tool-intents.config');
-
-    const intents = getToolIntents();
-    const names = intents.map((i: { toolName: string }) => i.toolName);
-    const uniqueNames = new Set(names);
-    expect(names.length).toBe(uniqueNames.size);
-  });
-
-  it('should ONLY have intents for tools with real implementations', () => {
-    // SAFETY: Every intent entry must correspond to a tool that has a real
-    // implementation class in DI. Unimplemented tools cause the AI to hallucinate
-    // financial data because matchedIntents returns the tool name but the
-    // registry has no implementation, so no data is provided.
-    const { getToolIntents } = require('../../../application/ai-assistant/config/tool-intents.config');
+  it('should NOT have chatKeywords for non-implemented tools', () => {
     const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
 
-    const intents = getToolIntents();
-    const implementedToolNames = new Set(
-      AI_TOOL_CATALOG.filter((t: any) => t.implemented === true).map((t: any) => t.name),
-    );
-
-    intents.forEach((intent: { toolName: string }) => {
-      expect(implementedToolNames.has(intent.toolName)).toBe(true);
+    const nonImplementedTools = AI_TOOL_CATALOG.filter((t: any) => t.implemented !== true);
+    nonImplementedTools.forEach((tool: any) => {
+      expect(!tool.chatKeywords || tool.chatKeywords.length === 0).toBe(true);
     });
   });
 
   it('should have Arabic keywords for accounting reports', () => {
-    const { getToolIntents } = require('../../../application/ai-assistant/config/tool-intents.config');
+    const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
 
-    const intents = getToolIntents();
-    const tbIntent = intents.find((i: { toolName: string }) => i.toolName === 'accounting.getTrialBalanceSummary');
-    expect(tbIntent).toBeTruthy();
-    expect(tbIntent.keywords.some((k: string) => /[\u0600-\u06FF]/.test(k))).toBe(true);
+    const tb = AI_TOOL_CATALOG.find((t: any) => t.name === 'accounting.getTrialBalanceSummary');
+    expect(tb).toBeTruthy();
+    expect(tb.chatKeywords.some((k: string) => /[\u0600-\u06FF]/.test(k))).toBe(true);
   });
 
   it('should have Turkish keywords for accounting reports', () => {
-    const { getToolIntents } = require('../../../application/ai-assistant/config/tool-intents.config');
+    const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
 
-    const intents = getToolIntents();
-    const tbIntent = intents.find((i: { toolName: string }) => i.toolName === 'accounting.getTrialBalanceSummary');
-    expect(tbIntent).toBeTruthy();
+    const tb = AI_TOOL_CATALOG.find((t: any) => t.name === 'accounting.getTrialBalanceSummary');
+    expect(tb).toBeTruthy();
     // Turkish keywords contain special chars like ç, ş, ö, ü, ğ, ı
-    expect(tbIntent.keywords.some((k: string) => /[çşöüğıİ]/.test(k))).toBe(true);
+    expect(tb.chatKeywords.some((k: string) => /[çşöüğıİ]/.test(k))).toBe(true);
   });
 });
