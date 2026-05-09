@@ -85,6 +85,31 @@ describe('AiRuntimeGuard', () => {
     expect(decision.rejectionCode).toBe('TOOL_NOT_ALLOWED_FOR_RUN');
   });
 
+  it('rejects tool calls when the run certification gate is closed', async () => {
+    const guard = new AiRuntimeGuard(registry, permissionChecker(true) as any);
+    const run = guard.createRun({
+      companyId: 'company-1',
+      userId: 'user-1',
+      conversationId: 'conv-1',
+      allowedToolIds: ['accounting.getTrialBalanceSummary'],
+      providerModel: 'openai_compatible/gpt-4o',
+      certification: {
+        allowed: false,
+        code: 'MODEL_PROFILE_NOT_CERTIFIED',
+        reason: 'This model profile is not certified for this ERP module/workflow. Please select a certified profile or run company certification.',
+      },
+    });
+
+    const decision = await guard.validateToolCall(run.aiRunId, {
+      id: 'call-1',
+      name: 'accounting_getTrialBalanceSummary',
+      arguments: {},
+    }, new Map([['accounting_getTrialBalanceSummary', 'accounting.getTrialBalanceSummary']]));
+
+    expect(decision.approved).toBe(false);
+    expect(decision.rejectionCode).toBe('MODEL_PROFILE_NOT_CERTIFIED');
+  });
+
   it('rejects tools outside the current user permissions', async () => {
     const guard = new AiRuntimeGuard(registry, permissionChecker(false, []) as any);
     const run = guard.createRun({
@@ -228,6 +253,54 @@ describe('AiModelCapabilityCatalog', () => {
     expect(profile.textOnlyMode).toBe(true);
     expect(profile.supportsToolCalling).toBe(false);
     expect(profile.warningMessage).toContain('unknown');
+  });
+
+  it('recognizes provider-prefixed OpenAI-compatible model aliases', () => {
+    const profile = AiModelCapabilityCatalog.getProfile('openai_compatible', 'openai/gpt-4o-mini');
+
+    expect(profile.status).toBe('recommended');
+    expect(profile.supportsToolCalling).toBe(true);
+    expect(profile.supportsStructuredJson).toBe(true);
+    expect(profile.textOnlyMode).toBe(false);
+    expect(profile.warningLevel).toBe('none');
+    expect(AiModelCapabilityCatalog.supportsToolCalling('openai_compatible', 'openai/gpt-4o-mini')).toBe(true);
+  });
+
+  it('registers requested free models as known experimental text-plan profiles', () => {
+    const models = [
+      'google/gemma-4-31b-it:free',
+      'openai/gpt-oss-20b:free',
+      'z-ai/glm-4.5-air:free',
+      'tencent/hy3-preview:free',
+    ];
+
+    for (const model of models) {
+      const profile = AiModelCapabilityCatalog.getProfile('openai_compatible', model);
+
+      expect(profile.status).toBe('experimental');
+      expect(profile.warningLevel).not.toBe('danger');
+      expect(profile.supportsToolCalling).toBe(false);
+      expect(profile.supportsStructuredJson).toBe(true);
+      expect(profile.textOnlyMode).toBe(true);
+      expect(profile.warningMessage).toContain('ERP_TOOL_PLAN');
+      expect(AiModelCapabilityCatalog.supportsToolCalling('openai_compatible', model)).toBe(false);
+    }
+  });
+
+  it('marks Tencent HY3 preview as a finance/reporting test profile', () => {
+    const profile = AiModelCapabilityCatalog.getProfile('openai_compatible', 'tencent/hy3-preview:free');
+
+    expect(profile.recommendedUseCases).toContain('finance-test');
+    expect(profile.recommendedUseCases).toContain('accounting-test');
+    expect(profile.warningLevel).toBe('info');
+  });
+
+  it('uses provider-prefixed aliases for pattern fallback too', () => {
+    const profile = AiModelCapabilityCatalog.getProfile('openai_compatible', 'anthropic/claude-3-5-sonnet');
+
+    expect(profile.status).toBe('tested');
+    expect(profile.supportsToolCalling).toBe(true);
+    expect(profile.textOnlyMode).toBe(false);
   });
 
   it('keeps known text-only models from using tool calling', () => {

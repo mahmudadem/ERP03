@@ -43,7 +43,7 @@ export interface OpenAICompatibleConfig {
   model: string;            // e.g., 'gpt-4o', 'gpt-3.5-turbo', 'llama3'
   maxTokens?: number;       // Max tokens per request (default: 4096)
   organization?: string;    // OpenAI org ID (optional)
-  timeoutMs?: number;       // Request timeout in milliseconds (default: 30000)
+  timeoutMs?: number;       // Request timeout in milliseconds (default: 120000)
 }
 
 /** Shape of an OpenAI function/tool definition in the request */
@@ -97,6 +97,8 @@ export class OpenAICompatibleProvider implements IAiProvider {
   readonly providerId = 'openai_compatible';
   readonly providerName = 'OpenAI-Compatible Provider';
 
+  private static readonly DEFAULT_CHAT_TIMEOUT_MS = 120_000;
+
   private static readonly SUPPORTED_CAPABILITIES: AiProviderCapabilities = {
     supportsToolCalling: true,
     supportsStructuredOutput: true,
@@ -132,7 +134,7 @@ export class OpenAICompatibleProvider implements IAiProvider {
 
     this.config = {
       maxTokens: config.maxTokens ?? 4096,
-      timeoutMs: config.timeoutMs ?? 30000,
+      timeoutMs: config.timeoutMs ?? OpenAICompatibleProvider.DEFAULT_CHAT_TIMEOUT_MS,
       ...config,
     };
 

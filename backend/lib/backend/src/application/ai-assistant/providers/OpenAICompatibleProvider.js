@@ -52,7 +52,7 @@ class OpenAICompatibleProvider {
         if (!config.apiKey) {
             throw new Error('API key is required for OpenAI-compatible provider');
         }
-        this.config = Object.assign({ maxTokens: (_a = config.maxTokens) !== null && _a !== void 0 ? _a : 4096, timeoutMs: (_b = config.timeoutMs) !== null && _b !== void 0 ? _b : 30000 }, config);
+        this.config = Object.assign({ maxTokens: (_a = config.maxTokens) !== null && _a !== void 0 ? _a : 4096, timeoutMs: (_b = config.timeoutMs) !== null && _b !== void 0 ? _b : OpenAICompatibleProvider.DEFAULT_CHAT_TIMEOUT_MS }, config);
         this.httpClient = httpClient;
     }
     getCapabilities() {
@@ -293,6 +293,7 @@ class OpenAICompatibleProvider {
     }
 }
 exports.OpenAICompatibleProvider = OpenAICompatibleProvider;
+OpenAICompatibleProvider.DEFAULT_CHAT_TIMEOUT_MS = 120000;
 OpenAICompatibleProvider.SUPPORTED_CAPABILITIES = {
     supportsToolCalling: true,
     supportsStructuredOutput: true,

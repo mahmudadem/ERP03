@@ -20,6 +20,9 @@ __exportStar(require("./IAiUsageLogRepository"), exports);
 __exportStar(require("./IAiToolCatalogRepository"), exports);
 __exportStar(require("./IAiToolEnablementRepository"), exports);
 __exportStar(require("./IAiModelToolPolicyRepository"), exports);
+__exportStar(require("./IAiModelProfileRepository"), exports);
+__exportStar(require("./IAiProviderRepository"), exports);
+__exportStar(require("./IAiModelCertificationRepository"), exports);
 __exportStar(require("./IAiProposalRepository"), exports);
 __exportStar(require("./IAiProposalPolicyRepository"), exports);
 //# sourceMappingURL=index.js.map

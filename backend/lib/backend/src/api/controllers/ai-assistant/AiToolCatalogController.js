@@ -32,10 +32,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AiToolCatalogController = void 0;
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const ApiError_1 = require("../../errors/ApiError");
+const AiCertificationCategory_1 = require("../../../domain/ai-assistant/entities/AiCertificationCategory");
 class AiToolCatalogController {
     static getUserId(req) {
-        var _a;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        var _a, _b;
+        const userId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) || ((_b = req.user) === null || _b === void 0 ? void 0 : _b.id);
         if (!userId)
             throw ApiError_1.ApiError.unauthorized('User not authenticated');
         return userId;
@@ -131,6 +132,27 @@ class AiToolCatalogController {
             next(error);
         }
     }
+    /**
+     * PATCH /platform/ai-tools/:toolName/keywords
+     * Update a tool's chat keywords.
+     */
+    static async updateChatKeywords(req, res, next) {
+        var _a;
+        try {
+            const { toolName } = req.params;
+            const userId = AiToolCatalogController.getUserId(req);
+            const keywords = (_a = req.body) === null || _a === void 0 ? void 0 : _a.keywords;
+            if (!Array.isArray(keywords)) {
+                throw new Error('Request body must include "keywords" array');
+            }
+            const useCase = bindRepositories_1.diContainer.aiToolCatalogUseCase;
+            const updated = await useCase.updateChatKeywords(toolName, keywords, userId);
+            res.json({ success: true, data: updated.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     // ─── Enablement Policies ───────────────────────────────────────────────
     /**
      * GET /platform/ai-tool-policies
@@ -213,6 +235,249 @@ class AiToolCatalogController {
         }
         catch (error) {
             next(error);
+        }
+    }
+    // ─── Model Profiles ───────────────────────────────────────────────────
+    static async listProviders(req, res, next) {
+        try {
+            const providers = await bindRepositories_1.diContainer.aiProviderRegistryUseCase.listProviders();
+            res.json({ success: true, data: providers.map(provider => provider.toJSON()) });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getProvider(req, res, next) {
+        try {
+            const provider = await bindRepositories_1.diContainer.aiProviderRegistryUseCase.getProvider(req.params.providerId);
+            res.json({ success: true, data: provider.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async createProvider(req, res, next) {
+        try {
+            const provider = await bindRepositories_1.diContainer.aiProviderRegistryUseCase.upsertProvider(req.body);
+            res.status(201).json({ success: true, data: provider.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateProvider(req, res, next) {
+        try {
+            const existing = await bindRepositories_1.diContainer.aiProviderRegistryUseCase.getProvider(req.params.providerId);
+            const provider = await bindRepositories_1.diContainer.aiProviderRegistryUseCase.upsertProvider(Object.assign(Object.assign(Object.assign({}, existing.toJSON()), req.body), { id: req.params.providerId }));
+            res.json({ success: true, data: provider.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async enableProvider(req, res, next) {
+        try {
+            const provider = await bindRepositories_1.diContainer.aiProviderRegistryUseCase.setEnabled(req.params.providerId, true);
+            res.json({ success: true, data: provider.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async disableProvider(req, res, next) {
+        try {
+            const provider = await bindRepositories_1.diContainer.aiProviderRegistryUseCase.setEnabled(req.params.providerId, false);
+            res.json({ success: true, data: provider.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async listModelProfiles(req, res, next) {
+        try {
+            const profiles = await bindRepositories_1.diContainer.aiModelProfileUseCase.listProfiles({
+                provider: req.query.provider,
+                status: req.query.status,
+                tag: req.query.tag,
+            });
+            res.json({ success: true, data: profiles.map(profile => profile.toJSON()) });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getModelProfile(req, res, next) {
+        try {
+            const profile = await bindRepositories_1.diContainer.aiModelProfileUseCase.getProfileById(req.params.profileId);
+            if (!profile) {
+                throw ApiError_1.ApiError.notFound(`AI model profile '${req.params.profileId}' not found`);
+            }
+            res.json({ success: true, data: profile.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async createModelProfile(req, res, next) {
+        try {
+            AiToolCatalogController.validateModelProfilePayload(req.body);
+            const profile = await bindRepositories_1.diContainer.aiModelProfileUseCase.upsertProfile(req.body);
+            res.status(201).json({ success: true, data: profile.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateModelProfile(req, res, next) {
+        var _a, _b;
+        try {
+            AiToolCatalogController.validateModelProfilePayload(req.body);
+            const profile = await bindRepositories_1.diContainer.aiModelProfileUseCase.upsertProfile(Object.assign(Object.assign({}, req.body), { provider: (_a = req.body.provider) !== null && _a !== void 0 ? _a : req.params.profileId.split(':')[0], modelName: (_b = req.body.modelName) !== null && _b !== void 0 ? _b : req.params.profileId.split(':').slice(1).join(':') }));
+            res.json({ success: true, data: profile.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async deleteModelProfile(req, res, next) {
+        try {
+            await bindRepositories_1.diContainer.aiModelProfileUseCase.deleteProfile(req.params.profileId);
+            res.json({ success: true, data: { deleted: true } });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async syncModelProfiles(req, res, next) {
+        try {
+            const synced = await bindRepositories_1.diContainer.aiModelProfileUseCase.syncBuiltInProfiles();
+            res.json({ success: true, data: { synced, message: `${synced} model profiles synced to DB` } });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async runModelProfileDiagnostics(req, res, next) {
+        try {
+            const { companyId } = req.body;
+            if (!companyId || typeof companyId !== 'string') {
+                throw ApiError_1.ApiError.badRequest('companyId is required');
+            }
+            const profile = await bindRepositories_1.diContainer.aiModelProfileUseCase.getProfileById(req.params.profileId);
+            if (!profile) {
+                throw ApiError_1.ApiError.notFound(`AI model profile '${req.params.profileId}' not found`);
+            }
+            const { CheckProviderHealthUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/ai-assistant/use-cases/CheckProviderHealthUseCase')));
+            const useCase = new CheckProviderHealthUseCase(bindRepositories_1.diContainer.aiSettingsRepository, bindRepositories_1.diContainer.encryptionService, bindRepositories_1.diContainer.httpClient, bindRepositories_1.diContainer.aiModelProfileUseCase);
+            const result = await useCase.execute({
+                companyId,
+                providerOverride: profile.provider,
+                modelOverride: profile.modelName,
+            });
+            res.json({ success: true, data: result });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async listModelProfileCertifications(req, res, next) {
+        try {
+            const results = await bindRepositories_1.diContainer.aiModelCertificationUseCase.listResultsForProfile(req.params.profileId);
+            res.json({ success: true, data: results.map(result => result.toJSON()) });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async recordGlobalCertification(req, res, next) {
+        try {
+            const userId = AiToolCatalogController.getUserId(req);
+            const result = await bindRepositories_1.diContainer.aiModelCertificationUseCase.recordManualCertification(Object.assign(Object.assign({}, req.body), { scope: 'GLOBAL', modelProfileId: req.params.profileId, testedBy: req.body.testedBy || userId, approvedBy: req.body.approvedBy || userId }));
+            res.status(201).json({ success: true, data: result.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async runGlobalCertification(req, res, next) {
+        try {
+            const userId = AiToolCatalogController.getUserId(req);
+            const { profileHash, category, moduleId, skillId } = req.body;
+            if (!profileHash)
+                throw ApiError_1.ApiError.badRequest('profileHash is required');
+            if (!category || !(0, AiCertificationCategory_1.isAiCertificationCategory)(category))
+                throw ApiError_1.ApiError.badRequest('valid category is required');
+            const result = await bindRepositories_1.diContainer.aiModelCertificationUseCase.runShellCertification({
+                scope: 'GLOBAL',
+                modelProfileId: req.params.profileId,
+                profileHash,
+                category,
+                moduleId,
+                skillId,
+                testedBy: userId,
+                approvedBy: userId,
+            });
+            res.status(201).json({ success: true, data: result.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async expireCertification(req, res, next) {
+        try {
+            const userId = AiToolCatalogController.getUserId(req);
+            const result = await bindRepositories_1.diContainer.aiModelCertificationUseCase.expireCertification(req.params.certificationId, userId);
+            res.json({ success: true, data: result.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async listValidCertifiedProfiles(req, res, next) {
+        try {
+            const category = req.query.category;
+            if (category && !(0, AiCertificationCategory_1.isAiCertificationCategory)(category))
+                throw ApiError_1.ApiError.badRequest('Invalid category');
+            const data = await bindRepositories_1.diContainer.aiModelCertificationUseCase.listValidCertifiedProfiles({
+                scope: req.query.scope,
+                category: category,
+                moduleId: req.query.moduleId,
+            });
+            res.json({ success: true, data });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static validateModelProfilePayload(body) {
+        const statuses = ['recommended', 'tested', 'experimental', 'custom'];
+        const warningLevels = ['none', 'info', 'warning', 'danger'];
+        if (!body || typeof body !== 'object') {
+            throw ApiError_1.ApiError.badRequest('Request body is required');
+        }
+        if (!body.provider || typeof body.provider !== 'string') {
+            throw ApiError_1.ApiError.badRequest('provider is required');
+        }
+        if (!body.modelName || typeof body.modelName !== 'string') {
+            throw ApiError_1.ApiError.badRequest('modelName is required');
+        }
+        if (!statuses.includes(body.status)) {
+            throw ApiError_1.ApiError.badRequest(`status must be one of: ${statuses.join(', ')}`);
+        }
+        if (typeof body.supportsToolCalling !== 'boolean') {
+            throw ApiError_1.ApiError.badRequest('supportsToolCalling must be boolean');
+        }
+        if (typeof body.supportsStructuredJson !== 'boolean') {
+            throw ApiError_1.ApiError.badRequest('supportsStructuredJson must be boolean');
+        }
+        if (typeof body.textOnlyMode !== 'boolean') {
+            throw ApiError_1.ApiError.badRequest('textOnlyMode must be boolean');
+        }
+        if (!Number.isFinite(Number(body.maxContextTokens)) || Number(body.maxContextTokens) < 1) {
+            throw ApiError_1.ApiError.badRequest('maxContextTokens must be a positive number');
+        }
+        if (body.warningLevel && !warningLevels.includes(body.warningLevel)) {
+            throw ApiError_1.ApiError.badRequest(`warningLevel must be one of: ${warningLevels.join(', ')}`);
         }
     }
 }

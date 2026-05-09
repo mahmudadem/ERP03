@@ -48,6 +48,7 @@ class AiSettingsUseCase {
      * Encrypts the API key before storage, then invalidates the provider cache.
      */
     async updateSettings(input) {
+        var _a;
         const { companyId } = input;
         // Get existing config or create default
         let config = await this.settingsRepository.getConfig(companyId);
@@ -68,13 +69,22 @@ class AiSettingsUseCase {
                 `The system will fall back to mock provider until a key is provided.`);
         }
         // Apply updates to the entity (in plaintext)
+        const requestedMode = (_a = input.mode) !== null && _a !== void 0 ? _a : (input.selectedModelProfileId && input.selectedProfileHash
+            ? 'certified_profile'
+            : undefined);
         config.updateConfig({
             provider: input.provider,
+            mode: requestedMode,
+            providerId: input.providerId,
+            selectedModelProfileId: input.selectedModelProfileId,
+            selectedProfileHash: input.selectedProfileHash,
             model: input.model,
             apiKey: input.apiKey,
             apiEndpoint: input.apiEndpoint,
             maxTokensPerRequest: input.maxTokensPerRequest,
             maxRequestsPerDay: input.maxRequestsPerDay,
+            conversationContextMode: input.conversationContextMode,
+            includePreviousToolResults: input.includePreviousToolResults,
             isEnabled: input.isEnabled,
         });
         // Encrypt apiKey before saving to repository

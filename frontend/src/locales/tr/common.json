@@ -1126,6 +1126,89 @@
         "success": "Katalog başarıyla senkronize edildi. {{count}} yeni araç eklendi.",
         "error": "Katalog senkronizasyonu başarısız oldu."
       }
+    },
+    "aiModels": {
+      "title": "AI Model Profilleri",
+      "description": "Model güven durumunu, çalışma bayraklarını, etiketleri ve tanılama geçmişini yönetin.",
+      "loading": "AI model profilleri yükleniyor",
+      "meta": "Toplam {{total}} | Önerilen {{recommended}} | Test edildi {{tested}} | Tanılama geçti {{passed}}",
+      "search": "Modelleri ara...",
+      "empty": "AI model profili bulunamadı",
+      "confirmDelete": "{{model}} model profili silinsin mi?",
+      "columns": {
+        "model": "Model",
+        "status": "Durum",
+        "tools": "Çalışma",
+        "diagnostics": "Tanılama",
+        "tags": "Etiketler",
+        "actions": "İşlemler"
+      },
+      "actions": {
+        "new": "Yeni Model",
+        "sync": "Varsayılanları Senkronize Et",
+        "edit": "Düzenle",
+        "delete": "Sil",
+        "save": "Model Profilini Kaydet",
+        "saving": "Kaydediliyor...",
+        "runDiagnostics": "Tanılamayı çalıştır",
+        "testing": "Test ediliyor..."
+      },
+      "messages": {
+        "created": "Model profili oluşturuldu",
+        "updated": "Model profili güncellendi",
+        "deleted": "Model profili silindi",
+        "synced": "{{count}} varsayılan model profili senkronize edildi",
+        "diagnosticsRan": "Model tanılaması tamamlandı"
+      },
+      "status": {
+        "recommended": "Önerilen",
+        "tested": "Test edildi",
+        "experimental": "Deneysel",
+        "custom": "Özel"
+      },
+      "warningLevel": {
+        "none": "Yok",
+        "info": "Bilgi",
+        "warning": "Uyarı",
+        "danger": "Tehlike"
+      },
+      "diagnostics": {
+        "never-tested": "Hiç test edilmedi",
+        "passed": "Geçti",
+        "failed": "Başarısız"
+      },
+      "flags": {
+        "native": "Yerel araçlar",
+        "textOnly": "Sadece metin",
+        "json": "JSON"
+      },
+      "form": {
+        "createTitle": "Model Profili Oluştur",
+        "editTitle": "Model Profilini Düzenle",
+        "provider": "Sağlayıcı",
+        "modelName": "Model adı",
+        "status": "Durum",
+        "maxContextTokens": "Maksimum bağlam tokenları",
+        "warningLevel": "Uyarı seviyesi",
+        "tags": "Etiketler",
+        "useCases": "Kullanım alanları",
+        "warningMessage": "Uyarı mesajı",
+        "nativeTools": "Yerel araçlar",
+        "structuredJson": "Yapılandırılmış JSON",
+        "textOnly": "Sadece metin modu"
+      },
+      "diagnosticsPanel": {
+        "title": "Tanılamayı Çalıştır",
+        "company": "Şirket ayarlarını kullan",
+        "chatReady": "Sohbet hazır",
+        "chatNotReady": "Sohbet hazır değil",
+        "checks": {
+          "network": "Sağlayıcı bağlantısı",
+          "inference": "Model yanıtı",
+          "nativeToolCalling": "Yerel araç çağırma",
+          "textPlan": "Korumalı metin planı"
+        }
+      }
     }
   },
   "onboarding": {
@@ -1493,7 +1576,8 @@
         "permissions": "Izinler",
         "bundles": "Paketler",
         "plans": "Planlar",
-        "aiTools": "AI Araçları"
+        "aiTools": "AI Araçları",
+        "aiModels": "AI Modelleri"
       }
     }
   },

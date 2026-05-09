@@ -29,6 +29,10 @@ router.put('/settings', permissionGuard('ai-assistant.settings.manage'), AiAssis
 // Settings — test provider connectivity (consumes real tokens for external providers)
 router.post('/settings/health', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.checkProviderHealth);
 router.get('/settings/usage', permissionGuard('ai-assistant.settings.view'), AiAssistantController.getUsageAnalytics);
+router.post('/settings/custom-model-profiles', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.createTenantCustomModelProfile);
+router.post('/settings/custom-model-profiles/:profileId/diagnostics', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.runTenantCustomModelDiagnostics);
+router.post('/settings/custom-model-profiles/:profileId/certifications/run', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.runTenantCustomModelCertification);
+router.get('/certified-profiles', permissionGuard('ai-assistant.settings.view'), AiAssistantController.listTenantCertifiedProfiles);
 
 // Tools — execute read-only AI tools (permission-gated per tool)
 router.post('/tools/execute', permissionGuard('ai-assistant.chat.use'), AiAssistantController.executeTool);

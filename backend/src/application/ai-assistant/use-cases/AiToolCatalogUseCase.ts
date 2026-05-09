@@ -81,7 +81,7 @@ export class AiToolCatalogUseCase {
           seed.dataSensitivity, // Sensitivity is ALWAYS from seed (safety)
           seed.unavailabilityReason,
           seed.implemented, // Implemented is ALWAYS from seed (truth from code)
-          seed.chatKeywords, // Keywords from seed (DB override can update)
+          dbOverride.chatKeywords ?? seed.chatKeywords, // DB override preferred, fallback to seed
           seed.createdAt,
           dbOverride.updatedAt,
         );
@@ -141,7 +141,7 @@ export class AiToolCatalogUseCase {
         seed.dataSensitivity,
         seed.unavailabilityReason,
         seed.implemented,
-        seed.chatKeywords,
+        dbOverride.chatKeywords ?? seed.chatKeywords,
         seed.createdAt,
         dbOverride.updatedAt,
       );
@@ -233,6 +233,9 @@ export class AiToolCatalogUseCase {
       throw new Error(`Cannot set keywords for non-implemented tool: ${toolName}. Implement the tool first.`);
     }
 
+    // Load existing DB override to preserve status/enabledByDefault
+    const existingOverride = await this.catalogRepo.getById(seed.id);
+
     const definition = new AiToolDefinition(
       seed.id,
       seed.name,
@@ -240,13 +243,13 @@ export class AiToolCatalogUseCase {
       seed.moduleId,
       seed.description,
       seed.category,
-      seed.status,
+      existingOverride?.status ?? seed.status, // Preserve DB override status
       seed.mode,
       seed.requiredPermissions,
       seed.requiredModules,
       seed.inputSchema,
       seed.outputSchema,
-      seed.enabledByDefault,
+      existingOverride?.enabledByDefault ?? seed.enabledByDefault, // Preserve DB override
       seed.supportsChatInvocation,
       seed.supportsManualExecution,
       seed.riskLevel,

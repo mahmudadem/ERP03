@@ -4,5 +4,8 @@ export * from './IAiUsageLogRepository';
 export * from './IAiToolCatalogRepository';
 export * from './IAiToolEnablementRepository';
 export * from './IAiModelToolPolicyRepository';
+export * from './IAiModelProfileRepository';
+export * from './IAiProviderRepository';
+export * from './IAiModelCertificationRepository';
 export * from './IAiProposalRepository';
 export * from './IAiProposalPolicyRepository';

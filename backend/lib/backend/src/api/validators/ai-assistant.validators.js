@@ -61,6 +61,15 @@ function validateUpdateAiSettingsInput(body) {
             throw ApiError_1.ApiError.badRequest('maxRequestsPerDay must be a positive number');
         }
     }
+    if (body.conversationContextMode !== undefined) {
+        const validContextModes = ['minimal', 'balanced', 'deep'];
+        if (!validContextModes.includes(body.conversationContextMode)) {
+            throw ApiError_1.ApiError.badRequest(`conversationContextMode must be one of: ${validContextModes.join(', ')}`);
+        }
+    }
+    if (body.includePreviousToolResults !== undefined && typeof body.includePreviousToolResults !== 'boolean') {
+        throw ApiError_1.ApiError.badRequest('includePreviousToolResults must be a boolean');
+    }
     if (body.isEnabled !== undefined && typeof body.isEnabled !== 'boolean') {
         throw ApiError_1.ApiError.badRequest('isEnabled must be a boolean');
     }

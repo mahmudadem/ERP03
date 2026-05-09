@@ -7,6 +7,9 @@
 
 import client from './client';
 
+const AI_CHAT_TIMEOUT_MS = 120_000;
+const AI_DIAGNOSTICS_TIMEOUT_MS = 180_000;
+
 // Types
 export interface ChatRuntimeModelProfileDTO {
   provider: string;
@@ -96,6 +99,8 @@ export interface AiSettingsDTO {
   apiEndpoint: string | null;
   maxTokensPerRequest: number | null;
   maxRequestsPerDay: number | null;
+  conversationContextMode?: 'minimal' | 'balanced' | 'deep';
+  includePreviousToolResults?: boolean;
   isEnabled: boolean;
   hasApiKey: boolean;
   updatedAt: string;
@@ -132,6 +137,40 @@ export interface ProviderHealthResponse {
   latencyMs?: number;
   success?: boolean;
   error?: string;
+  reason?: string;
+  modelProfile?: {
+    provider: string;
+    modelName: string;
+    status: string;
+    supportsToolCalling: boolean;
+    supportsStructuredJson: boolean;
+    textOnlyMode: boolean;
+    warningLevel: string;
+    warningMessage: string;
+    recommendedUseCases: string[];
+  };
+  toolDiagnostics?: {
+    erpToolsReady: boolean;
+    recommendedMode: 'native-tool-calling' | 'text-plan' | 'text-only' | 'unavailable' | string;
+    nativeToolCalling: {
+      attempted: boolean;
+      ok: boolean;
+      supportedByProvider: boolean;
+      expectedByCatalog: boolean;
+      detail?: string;
+    };
+    textPlan: {
+      attempted: boolean;
+      ok: boolean;
+      detail?: string;
+    };
+  };
+  checks?: Array<{
+    id: 'network' | 'inference' | 'nativeToolCalling' | 'textPlan' | string;
+    status: 'passed' | 'failed' | 'skipped' | string;
+    ok: boolean;
+    detail?: string;
+  }>;
 }
 
 export interface UpdateAiSettingsPayload {
@@ -141,6 +180,8 @@ export interface UpdateAiSettingsPayload {
   apiEndpoint?: string;
   maxTokensPerRequest?: number;
   maxRequestsPerDay?: number;
+  conversationContextMode?: 'minimal' | 'balanced' | 'deep';
+  includePreviousToolResults?: boolean;
   isEnabled?: boolean;
 }
 
@@ -192,6 +233,7 @@ export const aiAssistantApi = {
   sendMessage: async (payload: SendChatMessagePayload): Promise<SendChatMessageResponse> => {
     const response = await client.post('/tenant/ai-assistant/chat', payload, {
       headers: { 'X-Silent-Error': 'true' }, // Suppress global error toast — handled inline in chat
+      timeout: AI_CHAT_TIMEOUT_MS,
     });
     // Response interceptor already unwraps { success, data } envelope
     return response as unknown as SendChatMessageResponse;
@@ -240,7 +282,9 @@ export const aiAssistantApi = {
   },
 
   checkProviderHealth: async (): Promise<ProviderHealthResponse> => {
-    const response = await client.post('/tenant/ai-assistant/settings/health');
+    const response = await client.post('/tenant/ai-assistant/settings/health', undefined, {
+      timeout: AI_DIAGNOSTICS_TIMEOUT_MS,
+    });
     return response as unknown as ProviderHealthResponse;
   },
 

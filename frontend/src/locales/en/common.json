@@ -1126,6 +1126,89 @@
         "success": "Catalog synced successfully. {{count}} new tools added.",
         "error": "Failed to sync catalog."
       }
+    },
+    "aiModels": {
+      "title": "AI Model Profiles",
+      "description": "Manage model trust status, runtime flags, tags, and diagnostic history.",
+      "loading": "Loading AI model profiles",
+      "meta": "Total {{total}} | Recommended {{recommended}} | Tested {{tested}} | Diagnostics passed {{passed}}",
+      "search": "Search models...",
+      "empty": "No AI model profiles found",
+      "confirmDelete": "Delete model profile {{model}}?",
+      "columns": {
+        "model": "Model",
+        "status": "Status",
+        "tools": "Runtime",
+        "diagnostics": "Diagnostics",
+        "tags": "Tags",
+        "actions": "Actions"
+      },
+      "actions": {
+        "new": "New Model",
+        "sync": "Sync Defaults",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save Model Profile",
+        "saving": "Saving...",
+        "runDiagnostics": "Run diagnostics",
+        "testing": "Testing..."
+      },
+      "messages": {
+        "created": "Model profile created",
+        "updated": "Model profile updated",
+        "deleted": "Model profile deleted",
+        "synced": "{{count}} default model profiles synced",
+        "diagnosticsRan": "Model diagnostics completed"
+      },
+      "status": {
+        "recommended": "Recommended",
+        "tested": "Tested",
+        "experimental": "Experimental",
+        "custom": "Custom"
+      },
+      "warningLevel": {
+        "none": "None",
+        "info": "Info",
+        "warning": "Warning",
+        "danger": "Danger"
+      },
+      "diagnostics": {
+        "never-tested": "Never tested",
+        "passed": "Passed",
+        "failed": "Failed"
+      },
+      "flags": {
+        "native": "Native tools",
+        "textOnly": "Text only",
+        "json": "JSON"
+      },
+      "form": {
+        "createTitle": "Create Model Profile",
+        "editTitle": "Edit Model Profile",
+        "provider": "Provider",
+        "modelName": "Model name",
+        "status": "Status",
+        "maxContextTokens": "Max context tokens",
+        "warningLevel": "Warning level",
+        "tags": "Tags",
+        "useCases": "Use cases",
+        "warningMessage": "Warning message",
+        "nativeTools": "Native tools",
+        "structuredJson": "Structured JSON",
+        "textOnly": "Text-only mode"
+      },
+      "diagnosticsPanel": {
+        "title": "Run Diagnostics",
+        "company": "Use company settings",
+        "chatReady": "Chat ready",
+        "chatNotReady": "Chat not ready",
+        "checks": {
+          "network": "Provider connection",
+          "inference": "Model response",
+          "nativeToolCalling": "Native tool calling",
+          "textPlan": "Guarded text-plan fallback"
+        }
+      }
     }
   },
   "onboarding": {
@@ -1407,7 +1490,8 @@
         "permissions": "Permissions",
         "bundles": "Bundles",
         "plans": "Plans",
-        "aiTools": "AI Tools"
+        "aiTools": "AI Tools",
+        "aiModels": "AI Models"
       }
     }
   },

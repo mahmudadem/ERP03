@@ -208,7 +208,9 @@ class InMemoryStockMovementRepository implements IStockMovementRepository {
   async getMovement(id: string): Promise<StockMovement | null> {
     return this.movements.find((movement) => movement.id === id) || null;
   }
-
+  async hasAnyMovements(companyId: string): Promise<boolean> {
+    return this.movements.some((m) => m.companyId === companyId);
+  }
   async deleteMovement(companyId: string, id: string): Promise<void> {
     const index = this.movements.findIndex((movement) => movement.companyId === companyId && movement.id === id);
     if (index >= 0) {

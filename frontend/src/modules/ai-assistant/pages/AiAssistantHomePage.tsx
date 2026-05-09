@@ -345,6 +345,19 @@ export const AiAssistantHomePage: React.FC = () => {
     return t('chat.modelLabel', 'Model: {{model}} · {{provider}}', { model, provider });
   };
 
+  const formatModelStatus = (status: string): string => {
+    switch (status) {
+      case 'tested':
+        return t('chat.testedModel', 'Tested model');
+      case 'experimental':
+        return t('chat.experimentalModel', 'Experimental model');
+      case 'custom':
+        return t('chat.customModelWarning', 'Custom model — results may vary');
+      default:
+        return t('chat.untestedModelWarning', 'Untested model — response quality not verified');
+    }
+  };
+
   const quickActions = [
     { label: t('chat.quickTb', 'Trial Balance'), prompt: t('chat.quickTbPrompt', 'Show me the trial balance summary') },
     { label: t('chat.quickPnl', 'Profit & Loss'), prompt: t('chat.quickPnlPrompt', 'Generate a profit and loss report') },
@@ -541,9 +554,7 @@ export const AiAssistantHomePage: React.FC = () => {
                     {msg.modelProfile?.status && msg.modelProfile.status !== 'recommended' && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700 border border-amber-100">
                         <AlertTriangle className="w-3 h-3" />
-                        {msg.modelProfile.status === 'custom'
-                          ? t('chat.customModelWarning', 'Custom model — results may vary')
-                          : t('chat.untestedModelWarning', 'Untested model — response quality not verified')}
+                        {formatModelStatus(msg.modelProfile.status)}
                       </span>
                     )}
                     {msg.modelProfile?.textOnlyMode && (

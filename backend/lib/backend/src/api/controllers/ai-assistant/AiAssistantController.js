@@ -16,6 +16,10 @@ const ExecuteAiToolUseCase_1 = require("../../../application/ai-assistant/use-ca
 const ai_assistant_validators_1 = require("../../validators/ai-assistant.validators");
 const AiAssistantDTOs_1 = require("../../dtos/AiAssistantDTOs");
 const ApiError_1 = require("../../../api/errors/ApiError");
+const AiModelRoutingGuard_1 = require("../../../application/ai-assistant/services/AiModelRoutingGuard");
+const AiToolCatalogSeed_1 = require("../../../application/ai-assistant/catalog/AiToolCatalogSeed");
+const AiProviderConfig_1 = require("../../../domain/ai-assistant/entities/AiProviderConfig");
+const AiCertificationCategory_1 = require("../../../domain/ai-assistant/entities/AiCertificationCategory");
 class AiAssistantController {
     static getCompanyId(req) {
         var _a;
@@ -43,7 +47,7 @@ class AiAssistantController {
             const companyId = AiAssistantController.getCompanyId(req);
             const userId = AiAssistantController.getUserId(req);
             const { message, conversationId } = req.body;
-            const useCase = new SendChatMessageUseCase_1.SendChatMessageUseCase(bindRepositories_1.diContainer.aiChatRepository, bindRepositories_1.diContainer.aiSettingsRepository, bindRepositories_1.diContainer.encryptionService, bindRepositories_1.diContainer.httpClient, bindRepositories_1.diContainer.aiUsageLogRepository, bindRepositories_1.diContainer.aiToolCallingOrchestrator, bindRepositories_1.diContainer.aiProposalGeneratorRegistry, bindRepositories_1.diContainer.createAiProposalUseCase, bindRepositories_1.diContainer.aiRuntimeGuard, bindRepositories_1.diContainer.aiAuditService, bindRepositories_1.diContainer.aiSkillRegistry);
+            const useCase = new SendChatMessageUseCase_1.SendChatMessageUseCase(bindRepositories_1.diContainer.aiChatRepository, bindRepositories_1.diContainer.aiSettingsRepository, bindRepositories_1.diContainer.encryptionService, bindRepositories_1.diContainer.httpClient, bindRepositories_1.diContainer.aiUsageLogRepository, bindRepositories_1.diContainer.aiToolCallingOrchestrator, bindRepositories_1.diContainer.aiProposalGeneratorRegistry, bindRepositories_1.diContainer.createAiProposalUseCase, bindRepositories_1.diContainer.aiRuntimeGuard, bindRepositories_1.diContainer.aiAuditService, bindRepositories_1.diContainer.aiSkillRegistry, bindRepositories_1.diContainer.aiModelProfileUseCase, bindRepositories_1.diContainer.aiModelRoutingGuard);
             const result = await useCase.execute({
                 companyId,
                 userId,
@@ -159,6 +163,8 @@ class AiAssistantController {
                 apiEndpoint: req.body.apiEndpoint,
                 maxTokensPerRequest: req.body.maxTokensPerRequest,
                 maxRequestsPerDay: req.body.maxRequestsPerDay,
+                conversationContextMode: req.body.conversationContextMode,
+                includePreviousToolResults: req.body.includePreviousToolResults,
                 isEnabled: req.body.isEnabled,
             });
             res.status(200).json({
@@ -198,12 +204,109 @@ class AiAssistantController {
     static async checkProviderHealth(req, res, next) {
         try {
             const companyId = AiAssistantController.getCompanyId(req);
-            const useCase = new CheckProviderHealthUseCase_1.CheckProviderHealthUseCase(bindRepositories_1.diContainer.aiSettingsRepository, bindRepositories_1.diContainer.encryptionService, bindRepositories_1.diContainer.httpClient);
+            const useCase = new CheckProviderHealthUseCase_1.CheckProviderHealthUseCase(bindRepositories_1.diContainer.aiSettingsRepository, bindRepositories_1.diContainer.encryptionService, bindRepositories_1.diContainer.httpClient, bindRepositories_1.diContainer.aiModelProfileUseCase);
             const result = await useCase.execute(companyId);
             res.status(200).json({
                 success: true,
                 data: result,
             });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async createTenantCustomModelProfile(req, res, next) {
+        try {
+            const companyId = AiAssistantController.getCompanyId(req);
+            const userId = AiAssistantController.getUserId(req);
+            const body = req.body || {};
+            if (!body.providerId || !body.provider || !body.modelId) {
+                throw ApiError_1.ApiError.badRequest('providerId, provider, and modelId are required');
+            }
+            const profile = await bindRepositories_1.diContainer.aiModelProfileUseCase.createTenantCustomProfile({
+                tenantId: companyId,
+                providerId: body.providerId,
+                provider: body.provider,
+                modelId: body.modelId,
+                displayName: body.displayName,
+                baseUrl: body.baseUrl,
+                temperature: body.temperature,
+                maxOutputTokens: body.maxOutputTokens,
+                jsonMode: body.jsonMode,
+                toolMode: body.toolMode,
+                timeoutMs: body.timeoutMs,
+                retryPolicy: body.retryPolicy,
+                safetyPolicyId: body.safetyPolicyId,
+                systemPromptPolicyId: body.systemPromptPolicyId,
+                dataFilterPolicyId: body.dataFilterPolicyId,
+                createdBy: userId,
+            });
+            res.status(201).json({ success: true, data: profile.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async runTenantCustomModelDiagnostics(req, res, next) {
+        try {
+            const companyId = AiAssistantController.getCompanyId(req);
+            const profile = await bindRepositories_1.diContainer.aiModelProfileUseCase.getProfileById(req.params.profileId);
+            if (!profile)
+                throw ApiError_1.ApiError.notFound(`AI model profile '${req.params.profileId}' not found`);
+            if (profile.scope !== 'TENANT' || profile.tenantId !== companyId) {
+                throw ApiError_1.ApiError.forbidden('Tenant model profile does not belong to this company');
+            }
+            const useCase = new CheckProviderHealthUseCase_1.CheckProviderHealthUseCase(bindRepositories_1.diContainer.aiSettingsRepository, bindRepositories_1.diContainer.encryptionService, bindRepositories_1.diContainer.httpClient, bindRepositories_1.diContainer.aiModelProfileUseCase);
+            const result = await useCase.execute({
+                companyId,
+                providerOverride: profile.provider,
+                modelOverride: profile.modelId,
+            });
+            res.status(200).json({ success: true, data: result });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async runTenantCustomModelCertification(req, res, next) {
+        try {
+            const companyId = AiAssistantController.getCompanyId(req);
+            const userId = AiAssistantController.getUserId(req);
+            const { profileHash, category, moduleId, skillId } = req.body || {};
+            if (!profileHash)
+                throw ApiError_1.ApiError.badRequest('profileHash is required');
+            if (!category || !(0, AiCertificationCategory_1.isAiCertificationCategory)(category))
+                throw ApiError_1.ApiError.badRequest('valid category is required');
+            const result = await bindRepositories_1.diContainer.aiModelCertificationUseCase.runShellCertification({
+                scope: 'TENANT',
+                tenantId: companyId,
+                modelProfileId: req.params.profileId,
+                profileHash,
+                category,
+                moduleId,
+                skillId,
+                testedBy: userId,
+                approvedBy: userId,
+            });
+            res.status(201).json({ success: true, data: result.toJSON() });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async listTenantCertifiedProfiles(req, res, next) {
+        try {
+            const companyId = AiAssistantController.getCompanyId(req);
+            const category = req.query.category;
+            if (category && !(0, AiCertificationCategory_1.isAiCertificationCategory)(category))
+                throw ApiError_1.ApiError.badRequest('Invalid category');
+            const data = await bindRepositories_1.diContainer.aiModelCertificationUseCase.listValidCertifiedProfiles({
+                scope: req.query.scope || 'TENANT',
+                tenantId: companyId,
+                category: category,
+                moduleId: req.query.moduleId,
+            });
+            res.status(200).json({ success: true, data });
         }
         catch (error) {
             next(error);
@@ -221,6 +324,17 @@ class AiAssistantController {
             const { toolName, params } = req.body;
             if (!toolName || typeof toolName !== 'string') {
                 return next(ApiError_1.ApiError.badRequest('toolName is required and must be a string'));
+            }
+            const config = await bindRepositories_1.diContainer.aiSettingsRepository.getConfig(companyId);
+            const catalogDef = (0, AiToolCatalogSeed_1.getCatalogDefinition)(toolName);
+            const guardDecision = await bindRepositories_1.diContainer.aiModelRoutingGuard.validateSensitiveWorkflow({
+                tenantId: companyId,
+                config: config || AiProviderConfig_1.AiProviderConfig.defaultForCompany(companyId),
+                category: (0, AiModelRoutingGuard_1.certificationCategoryForModule)(catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.moduleId),
+                moduleId: catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.moduleId,
+            });
+            if (!guardDecision.allowed) {
+                return next(ApiError_1.ApiError.forbidden(guardDecision.reason || 'This model profile is not certified for this ERP module/workflow. Please select a certified profile or run company certification.'));
             }
             const useCase = new ExecuteAiToolUseCase_1.ExecuteAiToolUseCase(bindRepositories_1.diContainer.aiToolRegistry, bindRepositories_1.diContainer.permissionChecker);
             const result = await useCase.execute({

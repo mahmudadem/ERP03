@@ -86,6 +86,7 @@ const ModulesManagerPage = lazy(() => import('../modules/super-admin/pages/Modul
 const PlansManagerPage = lazy(() => import('../modules/super-admin/pages/PlansManagerPage').then(m => ({ default: m.PlansManagerPage })));
 const AiToolCatalogPage = lazy(() => import('../modules/super-admin/pages/AiToolCatalogPage').then(m => ({ default: m.AiToolCatalogPage })));
 const AiToolDetailPage = lazy(() => import('../modules/super-admin/pages/AiToolDetailPage').then(m => ({ default: m.AiToolDetailPage })));
+const AiModelProfilesPage = lazy(() => import('../modules/super-admin/pages/AiModelProfilesPage').then(m => ({ default: m.AiModelProfilesPage })));
 const AiProposalPolicyPage = lazy(() => import('../modules/super-admin/pages/AiProposalPolicyPage').then(m => ({ default: m.AiProposalPolicyPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
 
@@ -241,6 +242,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/modules-registry', label: 'Modules Registry', component: ModulesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools', label: 'AI Tools', component: AiToolCatalogPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools/:toolName', label: 'AI Tool Detail', component: AiToolDetailPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/ai-models', label: 'AI Models', component: AiModelProfilesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-proposal-policies', label: 'AI Proposal Policies', component: AiProposalPolicyPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/plans', label: 'Plans', component: PlansManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions', label: 'Module Permissions', component: ModulePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },

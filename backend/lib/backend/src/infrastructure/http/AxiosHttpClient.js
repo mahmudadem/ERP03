@@ -7,7 +7,7 @@
  * (no API key leaks).
  *
  * Features:
- * - Configurable timeout per request (defaults to 30s)
+ * - Configurable timeout per request (defaults to 30s; AI providers usually pass a longer timeout)
  * - Safe error messages (strips API keys, tokens from URLs)
  * - Proper header management (Authorization, Content-Type)
  * - Network error classification (unreachable, auth, rate limit, server error)

@@ -52,7 +52,7 @@ function modeToOperationType(mode, toolName) {
     }
 }
 class AiToolDefinition {
-    constructor(id, name, namespace, moduleId, description, category, status, mode, requiredPermissions, requiredModules, inputSchema, outputSchema, enabledByDefault, supportsChatInvocation, supportsManualExecution, riskLevel, dataSensitivity, unavailabilityReason, implemented = false, createdAt = new Date(), updatedAt = new Date()) {
+    constructor(id, name, namespace, moduleId, description, category, status, mode, requiredPermissions, requiredModules, inputSchema, outputSchema, enabledByDefault, supportsChatInvocation, supportsManualExecution, riskLevel, dataSensitivity, unavailabilityReason, implemented = false, chatKeywords = [], createdAt = new Date(), updatedAt = new Date()) {
         this.id = id;
         this.name = name;
         this.namespace = namespace;
@@ -72,6 +72,7 @@ class AiToolDefinition {
         this.dataSensitivity = dataSensitivity;
         this.unavailabilityReason = unavailabilityReason;
         this.implemented = implemented;
+        this.chatKeywords = chatKeywords;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -263,6 +264,7 @@ class AiToolDefinition {
             isBlocked: this.isBlocked,
             unavailabilityReason: this.unavailabilityReason,
             implemented: this.implemented,
+            chatKeywords: this.chatKeywords,
             // v2 extensions
             operationType: this.operationType,
             safeForAutoInvoke: this.safeForAutoInvoke,
@@ -276,8 +278,8 @@ class AiToolDefinition {
         };
     }
     static fromJSON(data) {
-        var _a;
-        return new AiToolDefinition(data.id, data.name, data.namespace, data.moduleId, data.description, data.category, data.status, data.mode, data.requiredPermissions, data.requiredModules, data.inputSchema, data.outputSchema, data.enabledByDefault, data.supportsChatInvocation, data.supportsManualExecution, data.riskLevel, data.dataSensitivity, data.unavailabilityReason, (_a = data.implemented) !== null && _a !== void 0 ? _a : false, new Date(data.createdAt), new Date(data.updatedAt));
+        var _a, _b;
+        return new AiToolDefinition(data.id, data.name, data.namespace, data.moduleId, data.description, data.category, data.status, data.mode, data.requiredPermissions, data.requiredModules, data.inputSchema, data.outputSchema, data.enabledByDefault, data.supportsChatInvocation, data.supportsManualExecution, data.riskLevel, data.dataSensitivity, data.unavailabilityReason, (_a = data.implemented) !== null && _a !== void 0 ? _a : false, (_b = data.chatKeywords) !== null && _b !== void 0 ? _b : [], new Date(data.createdAt), new Date(data.updatedAt));
     }
 }
 exports.AiToolDefinition = AiToolDefinition;

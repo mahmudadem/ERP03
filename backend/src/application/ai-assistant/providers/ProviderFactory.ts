@@ -22,6 +22,7 @@ import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 
 // Cache providers per company to avoid re-creating on every request
 const providerCache = new Map<string, IAiProvider>();
+const AI_PROVIDER_CHAT_TIMEOUT_MS = 120_000;
 
 export class ProviderFactory {
   /**
@@ -92,6 +93,7 @@ export class ProviderFactory {
         apiEndpoint: config.apiEndpoint || 'https://api.openai.com/v1',
         model: config.model || 'gpt-3.5-turbo',
         maxTokens: config.maxTokensPerRequest || 4096,
+        timeoutMs: AI_PROVIDER_CHAT_TIMEOUT_MS,
       }, httpClient);
     } catch (error) {
       console.warn(
@@ -113,6 +115,7 @@ export class ProviderFactory {
         apiEndpoint: config.apiEndpoint || 'http://localhost:11434/v1',
         model: config.model || 'llama3',
         maxTokens: config.maxTokensPerRequest || 4096,
+        timeoutMs: AI_PROVIDER_CHAT_TIMEOUT_MS,
       }, httpClient);
     } catch (error) {
       console.warn(

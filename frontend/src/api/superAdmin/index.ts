@@ -1,4 +1,5 @@
 import client from '../client';
+import type { ProviderHealthResponse } from '../aiAssistantApi';
 
 // ===== Types =====
 
@@ -192,6 +193,40 @@ export interface AiModelToolPolicy {
   updatedAt?: Date;
 }
 
+export type AiModelStatus = 'recommended' | 'tested' | 'experimental' | 'custom';
+export type AiModelWarningLevel = 'none' | 'info' | 'warning' | 'danger';
+export type AiModelDiagnosticStatus = 'never-tested' | 'passed' | 'failed';
+export type AiModelRuntimeMode = 'native-tool-calling' | 'text-plan' | 'text-only' | 'unavailable';
+
+export interface AiModelProfile {
+  id: string;
+  provider: string;
+  modelName: string;
+  status: AiModelStatus;
+  supportsToolCalling: boolean;
+  supportsStructuredJson: boolean;
+  maxContextTokens: number;
+  recommendedUseCases: string[];
+  tags: string[];
+  warningLevel: AiModelWarningLevel;
+  textOnlyMode: boolean;
+  warningMessage: string;
+  lastDiagnosticStatus: AiModelDiagnosticStatus;
+  lastDiagnosticMode?: AiModelRuntimeMode;
+  lastDiagnosticAt?: string;
+  lastDiagnosticCompanyId?: string;
+  lastDiagnosticDetail?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type { ProviderHealthResponse };
+
+export type UpsertAiModelProfilePayload = Omit<
+  AiModelProfile,
+  'id' | 'lastDiagnosticStatus' | 'lastDiagnosticMode' | 'lastDiagnosticAt' | 'lastDiagnosticCompanyId' | 'lastDiagnosticDetail' | 'createdAt' | 'updatedAt'
+>;
+
 // ===== API Functions =====
 
 export const superAdminApi = {
@@ -331,6 +366,28 @@ export const superAdminApi = {
 
   updateAiModelToolPolicy: (policyId: string, data: any) =>
     client.patch(`/platform/ai-model-tool-policies/${policyId}`, data),
+
+  getAiModelProfiles: (filters?: { provider?: string; status?: string; tag?: string }) =>
+    client.get('/platform/ai-model-profiles', { params: filters }),
+
+  createAiModelProfile: (data: UpsertAiModelProfilePayload) =>
+    client.post('/platform/ai-model-profiles', data),
+
+  updateAiModelProfile: (profileId: string, data: UpsertAiModelProfilePayload) =>
+    client.patch(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}`, data),
+
+  deleteAiModelProfile: (profileId: string) =>
+    client.delete(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}`),
+
+  syncAiModelProfiles: () =>
+    client.post('/platform/ai-model-profiles/sync'),
+
+  runAiModelProfileDiagnostics: (profileId: string, companyId: string): Promise<ProviderHealthResponse> =>
+    client.post(
+      `/platform/ai-model-profiles/${encodeURIComponent(profileId)}/diagnostics`,
+      { companyId },
+      { timeout: 180_000 },
+    ),
 };
 
 export * from './voucherTypes';

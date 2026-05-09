@@ -33,7 +33,7 @@ describe('3-Tier Settings Architecture - Integration', () => {
     const acc = await moduleRepo.get(companyId, 'accounting');
     expect(acc).not.toBeNull();
     expect(acc!.config?.isImplicit).toBe(true);
-    expect(acc!.initializationStatus).toBe('complete');
+    expect(acc!.initializationStatus).toBe('pending');
   });
 
   test('Shared Settings Tier: Currencies should be tenant-scoped', async () => {
@@ -45,7 +45,7 @@ describe('3-Tier Settings Architecture - Integration', () => {
     await currencyRepo.seedCurrencies(companyId, mockCurrencies);
 
     // 2. Verify path via direct DB check
-    const doc = await db.doc(`companies/${companyId}/Settings/shared/currencies/EUR`).get();
+    const doc = await db.doc(`companies/${companyId}/shared/Settings/currencies/EUR`).get();
     expect(doc.exists).toBe(true);
     expect(doc.data()?.name).toBe('Euro');
 

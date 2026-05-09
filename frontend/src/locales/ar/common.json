@@ -1126,6 +1126,89 @@
         "success": "تمت مزامنة الكتالوج بنجاح. تمت إضافة {{count}} أدوات جديدة.",
         "error": "فشلت مزامنة الكتالوج."
       }
+    },
+    "aiModels": {
+      "title": "ملفات نماذج الذكاء الاصطناعي",
+      "description": "إدارة حالة الثقة بالنماذج وإعدادات التشغيل والوسوم وسجل التشخيص.",
+      "loading": "جارٍ تحميل ملفات النماذج",
+      "meta": "الإجمالي {{total}} | موصى به {{recommended}} | مختبر {{tested}} | نجح التشخيص {{passed}}",
+      "search": "البحث في النماذج...",
+      "empty": "لا توجد ملفات نماذج ذكاء اصطناعي",
+      "confirmDelete": "حذف ملف النموذج {{model}}؟",
+      "columns": {
+        "model": "النموذج",
+        "status": "الحالة",
+        "tools": "التشغيل",
+        "diagnostics": "التشخيص",
+        "tags": "الوسوم",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "new": "نموذج جديد",
+        "sync": "مزامنة الافتراضيات",
+        "edit": "تعديل",
+        "delete": "حذف",
+        "save": "حفظ ملف النموذج",
+        "saving": "جارٍ الحفظ...",
+        "runDiagnostics": "تشغيل التشخيص",
+        "testing": "جارٍ الاختبار..."
+      },
+      "messages": {
+        "created": "تم إنشاء ملف النموذج",
+        "updated": "تم تحديث ملف النموذج",
+        "deleted": "تم حذف ملف النموذج",
+        "synced": "تمت مزامنة {{count}} ملفات نماذج افتراضية",
+        "diagnosticsRan": "اكتمل تشخيص النموذج"
+      },
+      "status": {
+        "recommended": "موصى به",
+        "tested": "مختبر",
+        "experimental": "تجريبي",
+        "custom": "مخصص"
+      },
+      "warningLevel": {
+        "none": "لا يوجد",
+        "info": "معلومة",
+        "warning": "تحذير",
+        "danger": "خطر"
+      },
+      "diagnostics": {
+        "never-tested": "لم يختبر",
+        "passed": "نجح",
+        "failed": "فشل"
+      },
+      "flags": {
+        "native": "أدوات أصلية",
+        "textOnly": "نص فقط",
+        "json": "JSON"
+      },
+      "form": {
+        "createTitle": "إنشاء ملف نموذج",
+        "editTitle": "تعديل ملف نموذج",
+        "provider": "المزود",
+        "modelName": "اسم النموذج",
+        "status": "الحالة",
+        "maxContextTokens": "أقصى رموز للسياق",
+        "warningLevel": "مستوى التحذير",
+        "tags": "الوسوم",
+        "useCases": "حالات الاستخدام",
+        "warningMessage": "رسالة التحذير",
+        "nativeTools": "أدوات أصلية",
+        "structuredJson": "JSON منظم",
+        "textOnly": "وضع النص فقط"
+      },
+      "diagnosticsPanel": {
+        "title": "تشغيل التشخيص",
+        "company": "استخدام إعدادات الشركة",
+        "chatReady": "المحادثة جاهزة",
+        "chatNotReady": "المحادثة غير جاهزة",
+        "checks": {
+          "network": "اتصال المزود",
+          "inference": "استجابة النموذج",
+          "nativeToolCalling": "استدعاء الأدوات الأصلي",
+          "textPlan": "خطة النص المحمية"
+        }
+      }
     }
   },
   "onboarding": {
@@ -1493,7 +1576,8 @@
         "permissions": "الأذونات",
         "bundles": "الحزم",
         "plans": "الخطط",
-        "aiTools": "أدوات الذكاء الاصطناعي"
+        "aiTools": "أدوات الذكاء الاصطناعي",
+        "aiModels": "نماذج الذكاء الاصطناعي"
       }
     }
   },

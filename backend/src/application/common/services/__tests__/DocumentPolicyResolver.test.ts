@@ -10,10 +10,10 @@ describe('DocumentPolicyResolver', () => {
     expect(DocumentPolicyResolver.accountingModeToLegacyInventoryMethod('PERPETUAL')).toBe('PERPETUAL');
   });
 
-  it('blocks simple workflow with perpetual accounting', () => {
+  it('does not block simple workflow with perpetual accounting (handled at use-case level)', () => {
     expect(() =>
       DocumentPolicyResolver.enforceWorkflowAccountingCompatibility('SIMPLE', 'PERPETUAL')
-    ).toThrow(/invoice-driven/i);
+    ).not.toThrow();
   });
 
   it('allows invoice-driven sales invoice stock recognition even without delivery note', () => {

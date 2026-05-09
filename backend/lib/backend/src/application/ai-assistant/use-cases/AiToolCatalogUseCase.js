@@ -42,6 +42,7 @@ class AiToolCatalogUseCase {
         const dbMap = new Map(dbDefinitions.map(d => [d.id, d]));
         // Merge: DB overrides take precedence for status changes
         definitions = definitions.map(seed => {
+            var _a;
             const dbOverride = dbMap.get(seed.id);
             if (dbOverride) {
                 // DB override can change status but NOT mode, permissions, or safety properties
@@ -51,6 +52,7 @@ class AiToolCatalogUseCase {
                 seed.supportsChatInvocation, seed.supportsManualExecution, seed.riskLevel, // Risk level is ALWAYS from seed (safety)
                 seed.dataSensitivity, // Sensitivity is ALWAYS from seed (safety)
                 seed.unavailabilityReason, seed.implemented, // Implemented is ALWAYS from seed (truth from code)
+                (_a = dbOverride.chatKeywords) !== null && _a !== void 0 ? _a : seed.chatKeywords, // DB override preferred, fallback to seed
                 seed.createdAt, dbOverride.updatedAt);
             }
             return seed;
@@ -80,13 +82,14 @@ class AiToolCatalogUseCase {
      * Get a single tool definition by name.
      */
     async getCatalogEntry(toolName) {
+        var _a;
         const seed = (0, AiToolCatalogSeed_1.getCatalogDefinition)(toolName);
         if (!seed)
             return null;
         // Check DB override
         const dbOverride = await this.catalogRepo.getById(seed.id);
         if (dbOverride) {
-            return new AiToolDefinition_1.AiToolDefinition(seed.id, seed.name, seed.namespace, seed.moduleId, seed.description, seed.category, dbOverride.status, seed.mode, seed.requiredPermissions, seed.requiredModules, seed.inputSchema, seed.outputSchema, dbOverride.enabledByDefault, seed.supportsChatInvocation, seed.supportsManualExecution, seed.riskLevel, seed.dataSensitivity, seed.unavailabilityReason, seed.implemented, seed.createdAt, dbOverride.updatedAt);
+            return new AiToolDefinition_1.AiToolDefinition(seed.id, seed.name, seed.namespace, seed.moduleId, seed.description, seed.category, dbOverride.status, seed.mode, seed.requiredPermissions, seed.requiredModules, seed.inputSchema, seed.outputSchema, dbOverride.enabledByDefault, seed.supportsChatInvocation, seed.supportsManualExecution, seed.riskLevel, seed.dataSensitivity, seed.unavailabilityReason, seed.implemented, (_a = dbOverride.chatKeywords) !== null && _a !== void 0 ? _a : seed.chatKeywords, seed.createdAt, dbOverride.updatedAt);
         }
         return seed;
     }
@@ -103,7 +106,7 @@ class AiToolCatalogUseCase {
         if (seed.isBlocked && newStatus === 'active') {
             throw new Error(`Cannot enable blocked/write tool: ${toolName}. Write tools are permanently blocked for safety.`);
         }
-        const definition = new AiToolDefinition_1.AiToolDefinition(seed.id, seed.name, seed.namespace, seed.moduleId, seed.description, seed.category, newStatus, seed.mode, seed.requiredPermissions, seed.requiredModules, seed.inputSchema, seed.outputSchema, seed.enabledByDefault, seed.supportsChatInvocation, seed.supportsManualExecution, seed.riskLevel, seed.dataSensitivity, seed.unavailabilityReason, seed.implemented, seed.createdAt, new Date());
+        const definition = new AiToolDefinition_1.AiToolDefinition(seed.id, seed.name, seed.namespace, seed.moduleId, seed.description, seed.category, newStatus, seed.mode, seed.requiredPermissions, seed.requiredModules, seed.inputSchema, seed.outputSchema, seed.enabledByDefault, seed.supportsChatInvocation, seed.supportsManualExecution, seed.riskLevel, seed.dataSensitivity, seed.unavailabilityReason, seed.implemented, seed.chatKeywords, seed.createdAt, new Date());
         await this.catalogRepo.save(definition);
         return definition;
     }
@@ -119,6 +122,29 @@ class AiToolCatalogUseCase {
      */
     async disableTool(toolName, updatedBy) {
         return this.updateToolStatus(toolName, 'disabled', updatedBy);
+    }
+    /**
+     * Update a tool's chat keywords.
+     * Keywords are stored in the DB override and merged with the seed at runtime.
+     * SAFETY: Only tools that are implemented can have keywords.
+     */
+    async updateChatKeywords(toolName, keywords, updatedBy) {
+        var _a, _b;
+        const seed = (0, AiToolCatalogSeed_1.getCatalogDefinition)(toolName);
+        if (!seed) {
+            throw new Error(`Unknown tool: ${toolName}`);
+        }
+        // SAFETY: Only implemented tools can have keywords
+        if (!seed.implemented) {
+            throw new Error(`Cannot set keywords for non-implemented tool: ${toolName}. Implement the tool first.`);
+        }
+        // Load existing DB override to preserve status/enabledByDefault
+        const existingOverride = await this.catalogRepo.getById(seed.id);
+        const definition = new AiToolDefinition_1.AiToolDefinition(seed.id, seed.name, seed.namespace, seed.moduleId, seed.description, seed.category, (_a = existingOverride === null || existingOverride === void 0 ? void 0 : existingOverride.status) !== null && _a !== void 0 ? _a : seed.status, // Preserve DB override status
+        seed.mode, seed.requiredPermissions, seed.requiredModules, seed.inputSchema, seed.outputSchema, (_b = existingOverride === null || existingOverride === void 0 ? void 0 : existingOverride.enabledByDefault) !== null && _b !== void 0 ? _b : seed.enabledByDefault, // Preserve DB override
+        seed.supportsChatInvocation, seed.supportsManualExecution, seed.riskLevel, seed.dataSensitivity, seed.unavailabilityReason, seed.implemented, keywords, seed.createdAt, new Date());
+        await this.catalogRepo.save(definition);
+        return definition;
     }
     // ─── Enablement Policy Operations ────────────────────────────────────
     /**

@@ -14,7 +14,7 @@
 
 import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assistant/IAiSettingsRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
-import { AiProviderConfig, AiProviderType } from '../../../domain/ai-assistant/entities/AiProviderConfig';
+import { AiConversationContextMode, AiProviderConfig, AiProviderType, AiTenantModelMode } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { ProviderFactory } from '../providers/ProviderFactory';
 import { ApiError } from '../../../api/errors/ApiError';
 
@@ -25,11 +25,17 @@ export interface GetSettingsOutput {
 export interface UpdateSettingsInput {
   companyId: string;
   provider?: AiProviderType;
+  mode?: AiTenantModelMode;
+  providerId?: string;
+  selectedModelProfileId?: string;
+  selectedProfileHash?: string;
   model?: string;
   apiKey?: string;
   apiEndpoint?: string;
   maxTokensPerRequest?: number;
   maxRequestsPerDay?: number;
+  conversationContextMode?: AiConversationContextMode;
+  includePreviousToolResults?: boolean;
   isEnabled?: boolean;
 }
 
@@ -92,13 +98,25 @@ export class AiSettingsUseCase {
     }
 
     // Apply updates to the entity (in plaintext)
+    const requestedMode = input.mode ?? (
+      input.selectedModelProfileId && input.selectedProfileHash
+        ? 'certified_profile'
+        : undefined
+    );
+
     config.updateConfig({
       provider: input.provider,
+      mode: requestedMode,
+      providerId: input.providerId,
+      selectedModelProfileId: input.selectedModelProfileId,
+      selectedProfileHash: input.selectedProfileHash,
       model: input.model,
       apiKey: input.apiKey,
       apiEndpoint: input.apiEndpoint,
       maxTokensPerRequest: input.maxTokensPerRequest,
       maxRequestsPerDay: input.maxRequestsPerDay,
+      conversationContextMode: input.conversationContextMode,
+      includePreviousToolResults: input.includePreviousToolResults,
       isEnabled: input.isEnabled,
     });
 

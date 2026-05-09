@@ -112,9 +112,13 @@ import { ModuleActivationService } from '../../application/system/services/Modul
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
   import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
   import { AiRuntimeGuard } from '../../application/ai-assistant/services/AiRuntimeGuard';
+  import { AiModelRoutingGuard } from '../../application/ai-assistant/services/AiModelRoutingGuard';
   import { AiAuditService } from '../../application/ai-assistant/services/AiAuditService';
   import { AiModelCapabilityCatalog } from '../../application/ai-assistant/services/AiModelCapabilityCatalog';
   import { AiToolCatalogUseCase } from '../../application/ai-assistant/use-cases/AiToolCatalogUseCase';
+  import { AiModelProfileUseCase } from '../../application/ai-assistant/use-cases/AiModelProfileUseCase';
+  import { AiProviderRegistryUseCase } from '../../application/ai-assistant/use-cases/AiProviderRegistryUseCase';
+  import { AiModelCertificationUseCase } from '../../application/ai-assistant/use-cases/AiModelCertificationUseCase';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
 import { GetProfitAndLossTool } from '../../application/ai-assistant/tools/GetProfitAndLossTool';
 import { GetBalanceSheetTool } from '../../application/ai-assistant/tools/GetBalanceSheetTool';
@@ -135,9 +139,15 @@ import { GetMonthlyComparisonTool } from '../../application/ai-assistant/tools/G
 import { IAiToolCatalogRepository } from '../../repository/interfaces/ai-assistant/IAiToolCatalogRepository';
 import { IAiToolEnablementRepository } from '../../repository/interfaces/ai-assistant/IAiToolEnablementRepository';
 import { IAiModelToolPolicyRepository } from '../../repository/interfaces/ai-assistant/IAiModelToolPolicyRepository';
+import { IAiModelProfileRepository } from '../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
+import { IAiProviderRepository } from '../../repository/interfaces/ai-assistant/IAiProviderRepository';
+import { IAiModelCertificationRepository } from '../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { FirestoreAiToolCatalogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolCatalogRepository';
 import { FirestoreAiToolEnablementRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolEnablementRepository';
 import { FirestoreAiModelToolPolicyRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelToolPolicyRepository';
+import { FirestoreAiModelProfileRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelProfileRepository';
+import { FirestoreAiProviderRepository } from '../firestore/repositories/ai-assistant/FirestoreAiProviderRepository';
+import { FirestoreAiModelCertificationRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelCertificationRepository';
 import { PermissionChecker } from '../../application/rbac/PermissionChecker';
 
 // AI ASSISTANT — Proposal Sandbox
@@ -306,6 +316,7 @@ const moduleActivationService = DB_TYPE === 'SQL'
 let _httpClient: AxiosHttpClient | undefined;
 let _aiToolRegistry: AiToolRegistry | undefined;
 let _aiRuntimeGuard: AiRuntimeGuard | undefined;
+let _aiModelRoutingGuard: AiModelRoutingGuard | undefined;
 let _aiToolCallingOrchestrator: AiToolCallingOrchestrator | undefined;
 let _aiSkillRegistry: AiSkillRegistry | undefined;
 
@@ -783,11 +794,32 @@ export const diContainer = {
   get aiModelToolPolicyRepository(): IAiModelToolPolicyRepository {
     return new FirestoreAiModelToolPolicyRepository(getDb());
   },
+  get aiModelProfileRepository(): IAiModelProfileRepository {
+    return new FirestoreAiModelProfileRepository(getDb());
+  },
+  get aiProviderRepository(): IAiProviderRepository {
+    return new FirestoreAiProviderRepository(getDb());
+  },
+  get aiModelCertificationRepository(): IAiModelCertificationRepository {
+    return new FirestoreAiModelCertificationRepository(getDb());
+  },
   get aiToolCatalogUseCase(): AiToolCatalogUseCase {
     return new AiToolCatalogUseCase(
       this.aiToolCatalogRepository,
       this.aiToolEnablementRepository,
       this.aiModelToolPolicyRepository,
+    );
+  },
+  get aiModelProfileUseCase(): AiModelProfileUseCase {
+    return new AiModelProfileUseCase(this.aiModelProfileRepository);
+  },
+  get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
+    return new AiProviderRegistryUseCase(this.aiProviderRepository);
+  },
+  get aiModelCertificationUseCase(): AiModelCertificationUseCase {
+    return new AiModelCertificationUseCase(
+      this.aiModelProfileRepository,
+      this.aiModelCertificationRepository,
     );
   },
 
@@ -943,6 +975,12 @@ export const diContainer = {
   },
   get aiSkillRegistry(): AiSkillRegistry {
     return _aiSkillRegistry ??= new AiSkillRegistry();
+  },
+  get aiModelRoutingGuard(): AiModelRoutingGuard {
+    return _aiModelRoutingGuard ??= new AiModelRoutingGuard(
+      this.aiModelProfileRepository,
+      this.aiModelCertificationRepository,
+    );
   },
   get aiModelCapabilityCatalog(): typeof AiModelCapabilityCatalog {
     return AiModelCapabilityCatalog;

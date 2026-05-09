@@ -13,7 +13,18 @@
  * - This is application layer — no infrastructure dependencies
  */
 
-export type ModelStatus = 'recommended' | 'tested' | 'experimental' | 'custom';
+import { AiModelProfile as EditableAiModelProfile } from '../../../domain/ai-assistant/entities/AiModelProfile';
+
+export type ModelStatus =
+  | 'recommended'
+  | 'tested'
+  | 'experimental'
+  | 'custom'
+  | 'blocked'
+  | 'deprecated'
+  | 'text_only'
+  | 'uncertified'
+  | 'legacy_unverified';
 export type ModelWarningLevel = 'none' | 'info' | 'warning' | 'danger';
 
 export interface AiModelProfile {
@@ -119,6 +130,46 @@ const KNOWN_PROFILES: Record<string, Partial<AiModelProfile>> = {
     textOnlyMode: true,
     warningMessage: 'OpenRouter auto-routing does not guarantee tool calling support. Using text-only mode.',
   },
+  'openai_compatible:google/gemma-4-31b-it:free': {
+    status: 'experimental',
+    supportsToolCalling: false,
+    supportsStructuredJson: true,
+    maxContextTokens: 32768,
+    recommendedUseCases: ['general', 'reporting-test', 'text-plan-tools'],
+    warningLevel: 'warning',
+    textOnlyMode: true,
+    warningMessage: 'Gemma free model is registered for testing. Native tool calling is not verified; using guarded ERP_TOOL_PLAN text-plan mode.',
+  },
+  'openai_compatible:openai/gpt-oss-20b:free': {
+    status: 'experimental',
+    supportsToolCalling: false,
+    supportsStructuredJson: true,
+    maxContextTokens: 32768,
+    recommendedUseCases: ['general', 'reporting-test', 'text-plan-tools'],
+    warningLevel: 'warning',
+    textOnlyMode: true,
+    warningMessage: 'GPT-OSS free model is registered for testing. Native tool calling is not verified; using guarded ERP_TOOL_PLAN text-plan mode.',
+  },
+  'openai_compatible:z-ai/glm-4.5-air:free': {
+    status: 'experimental',
+    supportsToolCalling: false,
+    supportsStructuredJson: true,
+    maxContextTokens: 32768,
+    recommendedUseCases: ['general', 'analysis-test', 'text-plan-tools'],
+    warningLevel: 'warning',
+    textOnlyMode: true,
+    warningMessage: 'GLM free model is registered for testing. Native tool calling is not verified; using guarded ERP_TOOL_PLAN text-plan mode.',
+  },
+  'openai_compatible:tencent/hy3-preview:free': {
+    status: 'experimental',
+    supportsToolCalling: false,
+    supportsStructuredJson: true,
+    maxContextTokens: 32768,
+    recommendedUseCases: ['finance-test', 'accounting-test', 'reporting-test', 'text-plan-tools'],
+    warningLevel: 'info',
+    textOnlyMode: true,
+    warningMessage: 'Tencent HY3 preview free model is registered for finance/reporting testing. Native tool calling is not verified; using guarded ERP_TOOL_PLAN text-plan mode.',
+  },
 
   // ─── Ollama Models ────────────────────────────────────────────────────
   'ollama:llama3': {
@@ -194,28 +245,31 @@ export class AiModelCapabilityCatalog {
   static getProfile(provider: string, modelName: string | null | undefined): AiModelProfile {
     const normalizedProvider = (provider || '').toLowerCase().trim();
     const normalizedModel = (modelName || '').toLowerCase().trim();
-    const key = `${normalizedProvider}:${normalizedModel}`;
+    const modelCandidates = AiModelCapabilityCatalog.getModelNameCandidates(normalizedModel);
 
     // 1. Exact match
-    const known = KNOWN_PROFILES[key];
-    if (known) {
-      return {
-        provider: normalizedProvider,
-        modelName: modelName || '',
-        status: known.status ?? 'custom',
-        supportsToolCalling: known.supportsToolCalling ?? false,
-        supportsStructuredJson: known.supportsStructuredJson ?? false,
-        maxContextTokens: known.maxContextTokens ?? 4096,
-        recommendedUseCases: known.recommendedUseCases ?? ['general'],
-        warningLevel: known.warningLevel ?? 'info',
-        textOnlyMode: known.textOnlyMode ?? true,
-        warningMessage: known.warningMessage ?? '',
-      };
+    for (const candidate of modelCandidates) {
+      const key = `${normalizedProvider}:${candidate}`;
+      const known = KNOWN_PROFILES[key];
+      if (known) {
+        return {
+          provider: normalizedProvider,
+          modelName: modelName || '',
+          status: known.status ?? 'custom',
+          supportsToolCalling: known.supportsToolCalling ?? false,
+          supportsStructuredJson: known.supportsStructuredJson ?? false,
+          maxContextTokens: known.maxContextTokens ?? 4096,
+          recommendedUseCases: known.recommendedUseCases ?? ['general'],
+          warningLevel: known.warningLevel ?? 'info',
+          textOnlyMode: known.textOnlyMode ?? true,
+          warningMessage: known.warningMessage ?? '',
+        };
+      }
     }
 
     // 2. Pattern fallback
     for (const rule of PATTERN_RULES) {
-      if (rule.pattern.test(normalizedModel)) {
+      if (modelCandidates.some(candidate => rule.pattern.test(candidate))) {
         const base = rule.partial;
         const isExperimental = base.status === 'experimental';
         return {
@@ -263,6 +317,26 @@ export class AiModelCapabilityCatalog {
   }
 
   /**
+   * Build model-name aliases used for capability lookup.
+   *
+   * Some OpenAI-compatible routers store model IDs with a provider prefix such
+   * as `openai/gpt-4o-mini`. The runtime capability catalog is keyed by the
+   * actual model family (`gpt-4o-mini`), so we check both forms before falling
+   * back to conservative custom-model behavior.
+   */
+  private static getModelNameCandidates(normalizedModel: string): string[] {
+    if (!normalizedModel) return [''];
+
+    const candidates = [normalizedModel];
+    const slashParts = normalizedModel.split('/').map(part => part.trim()).filter(Boolean);
+    if (slashParts.length > 1) {
+      candidates.push(slashParts[slashParts.length - 1]);
+    }
+
+    return Array.from(new Set(candidates));
+  }
+
+  /**
    * Get all known model profiles.
    */
   static getAllKnownProfiles(): AiModelProfile[] {
@@ -278,5 +352,23 @@ export class AiModelCapabilityCatalog {
       textOnlyMode: partial.textOnlyMode ?? true,
       warningMessage: partial.warningMessage ?? '',
     }));
+  }
+
+  static getAllKnownProfilesAsEntities(): EditableAiModelProfile[] {
+    return AiModelCapabilityCatalog.getAllKnownProfiles().map(profile => new EditableAiModelProfile(
+      EditableAiModelProfile.makeId(profile.provider, profile.modelName),
+      profile.provider,
+      profile.modelName,
+      profile.status,
+      profile.supportsToolCalling,
+      profile.supportsStructuredJson,
+      profile.maxContextTokens,
+      profile.recommendedUseCases,
+      profile.recommendedUseCases,
+      profile.warningLevel,
+      profile.textOnlyMode,
+      profile.warningMessage,
+      'never-tested',
+    ));
   }
 }

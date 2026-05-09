@@ -1,12 +1,11 @@
 /**
- * AiToolCallingOrchestrator - Inspects user messages and invokes read-only tools
+ * AiToolCallingOrchestrator - Tool context, hinting, and guarded execution
  *
- * This orchestrator determines whether a user's message requires tool data,
- * executes the appropriate tool via AiToolRegistry, and formats the result
- * for inclusion in the AI provider's context.
+ * This orchestrator builds safe tool context for the model and executes only
+ * model-requested tool calls after Runtime Guard approval.
  *
  * DESIGN PRINCIPLES:
- * - Tool selection is DETERMINISTIC (keyword matching), NOT free-form AI selection.
+ * - Tool selection is AI-led. Keywords are hints, not execution triggers.
  * - Only registered, permission-checked, read-only tools can be invoked.
  * - Tool results are NEVER raw DB documents — always sanitized DTOs.
  * - The AI provider receives tool data as context and is instructed to:
@@ -15,12 +14,11 @@
  *   - State clearly if data is unavailable
  *   - NOT suggest any financial action was performed
  *
- * INTENT DETECTION:
+ * KEYWORD HINTING:
  * - Uses simple keyword matching (English, Arabic, Turkish)
  * - Keywords are defined in AiToolCatalogSeed.ts (chatKeywords field on each tool)
- * - Maps recognized intents to registered tool names
- * - Multiple tools can be matched for a single message
- * - If no intent is detected, returns null (normal chat continues)
+ * - Matches are sent to the model as candidate hints to check first
+ * - Keyword matches never execute tools directly
  *
  * STAGE 2 EXTENSIONS:
  * - buildAllowedToolContracts(): Builds provider tool contracts for a user/run
@@ -50,6 +48,8 @@ import {
 import { AI_TOOL_CATALOG } from '../catalog/AiToolCatalogSeed';
 import { AiRuntimeGuard, GuardDecision } from './AiRuntimeGuard';
 import { getCatalogDefinition, getExecutableDefinitions } from '../catalog/AiToolCatalogSeed';
+import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
+import { AiModelRoutingGuard, certificationCategoryForModule } from './AiModelRoutingGuard';
 
 export interface ToolCallingResult {
   /** The tool that was invoked */
@@ -58,6 +58,18 @@ export interface ToolCallingResult {
   result: AiToolResult;
   /** Tool call ID from the provider (if available from structured tool calls) */
   toolCallId?: string;
+}
+
+/**
+ * Keyword hint passed into the model planning context.
+ * This is advisory only; it must never trigger backend execution by itself.
+ */
+export interface ToolKeywordHint {
+  toolName: string;
+  providerToolName: string;
+  matchedKeywords: string[];
+  score: number;
+  description: string;
 }
 
 /**
@@ -82,6 +94,10 @@ export class AiToolCallingOrchestrator {
   /**
    * Inspect a user message and determine if any tools should be invoked.
    * Returns tool results to inject into the AI context, or null if no tools match.
+   *
+   * @deprecated Chat should use AI-led structured/text-plan tool calls. This
+   * deterministic path is retained only for compatibility with old tests/admin
+   * diagnostics and should not be called from SendChatMessageUseCase.
    *
    * @param message - The user's message
    * @param companyId - The authenticated company ID
@@ -134,27 +150,132 @@ export class AiToolCallingOrchestrator {
    * Only returns intents for tools that are actually registered in the registry.
    */
   detectIntents(message: string): Array<{ toolName: string; keywords: string[] }> {
+    return this.getKeywordHints(message).map(hint => ({
+      toolName: hint.toolName,
+      keywords: hint.matchedKeywords,
+    }));
+  }
+
+  /**
+   * Build keyword hints for the model to check first.
+   *
+   * These hints are not execution decisions. They are high-recall routing
+   * context that helps the model understand likely tool families while still
+   * leaving final intent/parameter planning to the model.
+   */
+  getKeywordHints(
+    message: string,
+    allowedToolIds?: string[],
+    maxHints: number = 8,
+  ): ToolKeywordHint[] {
     const lowerMessage = message.toLowerCase();
-    const matches: Array<{ toolName: string; keywords: string[] }> = [];
+    const allowed = allowedToolIds && allowedToolIds.length > 0
+      ? new Set(allowedToolIds)
+      : undefined;
+    const hints: ToolKeywordHint[] = [];
 
     for (const toolDef of AI_TOOL_CATALOG) {
+      if (allowed && !allowed.has(toolDef.name)) continue;
+
       // Only check tools that have chat keywords defined
       if (!toolDef.chatKeywords || toolDef.chatKeywords.length === 0) continue;
 
-      // Check if any keyword is found in the message
-      const matched = toolDef.chatKeywords.some(keyword =>
+      const matchedKeywords = toolDef.chatKeywords.filter(keyword =>
         lowerMessage.includes(keyword.toLowerCase())
       );
 
-      if (matched) {
+      if (matchedKeywords.length > 0) {
         // Also verify the tool is actually registered
         if (this.toolRegistry.get(toolDef.name)) {
-          matches.push({ toolName: toolDef.name, keywords: toolDef.chatKeywords });
+          hints.push({
+            toolName: toolDef.name,
+            providerToolName: toolDef.name.replace(/\./g, '_'),
+            matchedKeywords,
+            score: matchedKeywords.length,
+            description: toolDef.description,
+          });
         }
       }
     }
 
-    return matches;
+    return hints
+      .sort((a, b) => b.score - a.score || a.toolName.localeCompare(b.toolName))
+      .slice(0, maxHints);
+  }
+
+  /**
+   * Build the model-facing planning context from allowed tool contracts.
+   *
+   * The model receives:
+   * - keyword hints to check first
+   * - all allowed executable tool cards
+   * - input/output schemas
+   * - strict instructions that backend validation is final
+   *
+   * This lets the AI do the reasoning while the backend keeps the safety gate.
+   */
+  buildToolPlanningContext(
+    userMessage: string,
+    contracts: AiProviderToolContract[],
+    options?: {
+      keywordHints?: ToolKeywordHint[];
+      textPlanMode?: boolean;
+      maxToolCalls?: number;
+    },
+  ): string {
+    if (!contracts || contracts.length === 0) return '';
+
+    const contractNames = new Set(contracts.map(c => c.originalName));
+    const hints = options?.keywordHints ?? this.getKeywordHints(userMessage, Array.from(contractNames));
+
+    const toolCards = contracts.map(contract => {
+      const def = getCatalogDefinition(contract.originalName);
+      return {
+        tool: contract.originalName,
+        providerTool: contract.name,
+        module: contract.moduleId,
+        description: def?.description ?? contract.description,
+        whenToUse: contract.whenToUse,
+        inputSchema: contract.inputSchema,
+        outputSchema: contract.outputSchema ?? {},
+        keywords: (def?.chatKeywords ?? []).slice(0, 24),
+        examples: contract.examples.slice(0, 3),
+        safetyNotes: contract.safetyNotes.slice(0, 3),
+      };
+    });
+
+    const planningRules = [
+      'Keyword hints are suggestions to check first, not final decisions.',
+      'Treat each request as part of the ongoing conversation. Use the current message, recent conversation context, available tool descriptions, schemas, and prior tool results to decide the plan.',
+      'If prior conversation context or prior tool results already satisfy the current request, answer from that context instead of requesting another tool.',
+      'If a required value can be obtained from another available read-only lookup/report tool, call that helper first.',
+      'If the user intent or required extra information is missing, contradictory, or ambiguous, ask the user a short clarification instead of guessing.',
+      'Never invent ERP numbers. Only use values returned by tool results.',
+      'Never include companyId, userId, role, permission, tenant, or module claims in tool arguments.',
+      `Use at most ${options?.maxToolCalls ?? 5} tool calls for this answer.`,
+    ];
+
+    const textPlanRules = options?.textPlanMode
+      ? [
+          'This provider/model may not support native function calling. If you need ERP data, respond ONLY with this exact block and no extra prose:',
+          '[ERP_TOOL_PLAN]',
+          '{"calls":[{"tool":"providerToolName_or_originalToolName","arguments":{},"reason":"short reason"}]}',
+          '[/ERP_TOOL_PLAN]',
+          'If no tool is needed, answer normally without an ERP_TOOL_PLAN block.',
+        ]
+      : [
+          'Native tool calling is available. Prefer provider function calls when ERP data is needed.',
+          'If the provider cannot emit native calls but you still need ERP data, you may use the ERP_TOOL_PLAN block format.',
+        ];
+
+    return `[ERP TOOL PLANNING CONTEXT]\n` +
+      `The backend will validate every requested tool call before execution. The model only proposes a plan.\n\n` +
+      `USER MESSAGE:\n${userMessage}\n\n` +
+      `KEYWORD HINTS TO CHECK FIRST:\n${JSON.stringify(hints, null, 2)}\n\n` +
+      `AVAILABLE ALLOWED TOOL CARDS:\n${JSON.stringify(toolCards, null, 2)}\n\n` +
+      `PLANNING RULES:\n${planningRules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}\n\n` +
+      `TOOL CALL FORMAT RULES:\n${textPlanRules.map(rule => `- ${rule}`).join('\n')}\n` +
+      `[END ERP TOOL PLANNING CONTEXT]`;
   }
 
   /**
@@ -219,13 +340,12 @@ export class AiToolCallingOrchestrator {
       `- "${t.name}" (${t.module}): ${t.description}`
     );
 
-    return `You have access to the following data tools through the ERP system. ` +
-      `When a user asks about these topics, you can provide answers using the data ` +
-      `that was automatically retrieved for their question.\n\n` +
+    return `You have access to the following read-only ERP data tools. ` +
+      `Use tool calls or ERP_TOOL_PLAN only when real ERP data is needed. ` +
+      `Do not assume that keyword matches are final intent.\n\n` +
       `Available tools:\n${lines.join('\n')}\n\n` +
-      `IMPORTANT: You do NOT invoke these tools yourself. They are invoked automatically ` +
-      `based on the user's question. If tool data is provided in this conversation, ` +
-      `use it in your response following the data usage rules provided with the data.`;
+      `IMPORTANT: The backend validates all requested tools before execution. ` +
+      `If tool data is provided in this conversation, use it exactly and never invent missing values.`;
   }
 
   /**
@@ -259,6 +379,10 @@ export class AiToolCallingOrchestrator {
   async buildAllowedToolContracts(
     userId: string,
     companyId: string,
+    options?: {
+      providerConfig?: AiProviderConfig;
+      routingGuard?: AiModelRoutingGuard;
+    },
   ): Promise<{
     contracts: AiProviderToolContract[];
     nameMapping: Map<string, string>;
@@ -285,6 +409,16 @@ export class AiToolCallingOrchestrator {
 
       // Must not be blocked
       if (def.isBlocked) continue;
+
+      if (options?.providerConfig && options.routingGuard) {
+        const routingDecision = await options.routingGuard.validateSensitiveWorkflow({
+          tenantId: companyId,
+          config: options.providerConfig,
+          category: certificationCategoryForModule(def.moduleId),
+          moduleId: def.moduleId,
+        });
+        if (!routingDecision.allowed) continue;
+      }
 
       // User must have the required permission
       const requiredPermission = def.requiredPermissions[0];

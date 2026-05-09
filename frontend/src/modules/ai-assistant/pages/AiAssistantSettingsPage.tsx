@@ -18,14 +18,34 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, Key, Globe, ToggleLeft, AlertTriangle, Sparkles, Server, BarChart3 } from 'lucide-react';
+import type { TFunction } from 'i18next';
+import {
+  Shield,
+  Key,
+  Globe,
+  ToggleLeft,
+  AlertTriangle,
+  Sparkles,
+  Server,
+  BarChart3,
+  Activity,
+  CheckCircle2,
+  CircleMinus,
+  XCircle,
+} from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
-import { aiAssistantApi, AiSettingsDTO, AiUsageAnalyticsResponse } from '../../../api/aiAssistantApi';
+import {
+  aiAssistantApi,
+  AiSettingsDTO,
+  AiUsageAnalyticsResponse,
+  ProviderHealthResponse,
+} from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type AiProviderType = 'mock' | 'openai_compatible' | 'ollama';
+type ConversationContextMode = 'minimal' | 'balanced' | 'deep';
 
 interface ProviderPreset {
   id: string;
@@ -64,6 +84,32 @@ const PRESET_DESC_FALLBACKS: Record<string, string> = {
   custom: 'Use any OpenAI-compatible endpoint manually.',
 };
 
+const DIAGNOSTIC_CHECK_FALLBACKS: Record<string, string> = {
+  network: 'Provider connection',
+  inference: 'Model response',
+  nativeToolCalling: 'Native tool calling',
+  textPlan: 'Guarded text-plan fallback',
+};
+
+const DIAGNOSTIC_MODE_FALLBACKS: Record<string, string> = {
+  'native-tool-calling': 'Native tool calling',
+  'text-plan': 'Guarded text-plan',
+  'text-only': 'Text only',
+  unavailable: 'Unavailable',
+};
+
+const getDiagnosticStatusClasses = (status: string): string => {
+  if (status === 'passed') return 'bg-green-100 text-green-800 border-green-200';
+  if (status === 'failed') return 'bg-red-100 text-red-800 border-red-200';
+  return 'bg-gray-100 text-gray-700 border-gray-200';
+};
+
+const getDiagnosticStatusIcon = (status: string) => {
+  if (status === 'passed') return CheckCircle2;
+  if (status === 'failed') return XCircle;
+  return CircleMinus;
+};
+
 // ── Helper: resolve loaded settings back to preset id ──────────────────────────
 
 function resolvePresetId(provider: string, apiEndpoint: string): string {
@@ -99,9 +145,14 @@ export const AiAssistantSettingsPage: React.FC = () => {
   const [apiEndpoint, setApiEndpoint] = useState('');
   const [maxTokens, setMaxTokens] = useState(4096);
   const [maxRequestsPerDay, setMaxRequestsPerDay] = useState(100);
+  const [conversationContextMode, setConversationContextMode] = useState<ConversationContextMode>('balanced');
+  const [includePreviousToolResults, setIncludePreviousToolResults] = useState(true);
   const [isEnabled, setIsEnabled] = useState(true);
   const [usageAnalytics, setUsageAnalytics] = useState<AiUsageAnalyticsResponse | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
+  const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(null);
+  const [healthTesting, setHealthTesting] = useState(false);
+  const [healthError, setHealthError] = useState<string | null>(null);
 
   // ── Derived state (rerender-derived-state-no-effect) ────────────────────────
 
@@ -133,6 +184,8 @@ export const AiAssistantSettingsPage: React.FC = () => {
         setApiEndpoint(config.apiEndpoint || '');
         setMaxTokens(config.maxTokensPerRequest || 4096);
         setMaxRequestsPerDay(config.maxRequestsPerDay || 100);
+        setConversationContextMode(config.conversationContextMode || 'balanced');
+        setIncludePreviousToolResults(config.includePreviousToolResults !== false);
         setIsEnabled(config.isEnabled);
         setPresetId(resolvePresetId(config.provider, config.apiEndpoint || ''));
       } catch (err: any) {
@@ -176,6 +229,8 @@ export const AiAssistantSettingsPage: React.FC = () => {
 
     setPresetId(newPresetId);
     setProvider(preset.providerType);
+    setHealthResult(null);
+    setHealthError(null);
 
     if (newPresetId === 'custom') {
       setApiEndpoint('');
@@ -190,12 +245,16 @@ export const AiAssistantSettingsPage: React.FC = () => {
     try {
       setSaving(true);
       setError(null);
+      setHealthResult(null);
+      setHealthError(null);
 
       const payload: Record<string, any> = {
         provider,
         model: model || undefined,
         maxTokensPerRequest: maxTokens || 4096,
         maxRequestsPerDay: maxRequestsPerDay || 100,
+        conversationContextMode,
+        includePreviousToolResults,
         isEnabled,
       };
 
@@ -214,7 +273,26 @@ export const AiAssistantSettingsPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, isEnabled]);
+  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, conversationContextMode, includePreviousToolResults, isEnabled]);
+
+  const handleRunDiagnostics = useCallback(async () => {
+    try {
+      setHealthTesting(true);
+      setHealthError(null);
+      const result = await aiAssistantApi.checkProviderHealth();
+      setHealthResult(result);
+    } catch (err: any) {
+      setHealthResult(null);
+      setHealthError(
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        t('settings.diagnosticsFailed', 'Failed to run AI diagnostics')
+      );
+    } finally {
+      setHealthTesting(false);
+    }
+  }, [t]);
 
   // ── Computed: has changes ──────────────────────────────────────────────────
 
@@ -223,10 +301,13 @@ export const AiAssistantSettingsPage: React.FC = () => {
     (settings.model || '') !== model ||
     settings.maxTokensPerRequest !== maxTokens ||
     settings.maxRequestsPerDay !== maxRequestsPerDay ||
+    (settings.conversationContextMode || 'balanced') !== conversationContextMode ||
+    (settings.includePreviousToolResults !== false) !== includePreviousToolResults ||
     settings.isEnabled !== isEnabled ||
     (provider !== 'mock' && apiKey !== '') ||
     (provider !== 'mock' && (settings.apiEndpoint || '') !== apiEndpoint)
   );
+  const hasUnsavedChanges = Boolean(hasChanges);
 
   // ── Early return: no permission (js-early-exit) ────────────────────────────
 
@@ -447,6 +528,108 @@ export const AiAssistantSettingsPage: React.FC = () => {
                 />
               </div>
             </div>
+
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+              <div className="mb-3">
+                <h4 className="text-sm font-medium text-gray-700">
+                  {t('settings.contextTitle', 'Conversation Context')}
+                </h4>
+                <p className="mt-1 text-xs text-gray-500">
+                  {t('settings.contextDesc', 'Controls how much previous chat and ERP tool data is sent to the model. More context improves follow-up answers but may consume more tokens from your API key.')}
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label htmlFor="conversation-context-mode" className="block text-sm text-gray-600 mb-1">
+                    {t('settings.contextMode', 'Context depth')}
+                  </label>
+                  <select
+                    id="conversation-context-mode"
+                    value={conversationContextMode}
+                    onChange={(e) => setConversationContextMode(e.target.value as ConversationContextMode)}
+                    disabled={!canManage}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white disabled:bg-gray-100"
+                  >
+                    <option value="minimal">{t('settings.contextModeMinimal', 'Minimal - lowest token cost')}</option>
+                    <option value="balanced">{t('settings.contextModeBalanced', 'Balanced - recommended')}</option>
+                    <option value="deep">{t('settings.contextModeDeep', 'Deep - best continuity, higher cost')}</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {t(`settings.contextMode${conversationContextMode.charAt(0).toUpperCase() + conversationContextMode.slice(1)}Desc`)}
+                  </p>
+                </div>
+
+                <label className="flex items-start gap-3 rounded-md border border-gray-200 bg-white p-3">
+                  <input
+                    type="checkbox"
+                    checked={includePreviousToolResults}
+                    onChange={(e) => setIncludePreviousToolResults(e.target.checked)}
+                    disabled={!canManage}
+                    className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-700">
+                      {t('settings.includePreviousToolResults', 'Include previous tool results')}
+                    </span>
+                    <span className="mt-1 block text-xs text-gray-500">
+                      {t('settings.includePreviousToolResultsDesc', 'Lets follow-up questions reuse ERP data already fetched in this chat. Turn off for lower token usage.')}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Model Diagnostics */}
+          <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <Activity className="mt-0.5 h-5 w-5 flex-shrink-0 text-indigo-600" />
+                <div>
+                  <h3 className="text-sm font-medium text-gray-800">
+                    {t('settings.diagnosticsTitle', 'Model diagnostics')}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {t('settings.diagnosticsDesc', 'Tests the saved provider with safe prompts. No ERP data is sent.')}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {t('settings.diagnosticsTokenNote', 'This sends a few provider requests and may consume tokens.')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRunDiagnostics}
+                disabled={!canManage || healthTesting || hasUnsavedChanges}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {healthTesting ? (
+                  <div className="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                ) : (
+                  <Activity className="h-4 w-4" />
+                )}
+                {healthTesting
+                  ? t('settings.diagnosticsRunning', 'Testing...')
+                  : t('settings.runDiagnostics', 'Run diagnostics')}
+              </button>
+            </div>
+
+            {hasUnsavedChanges && (
+              <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                {t('settings.saveBeforeDiagnostics', 'Save settings before testing this provider and model.')}
+              </div>
+            )}
+
+            {healthError && (
+              <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {healthError}
+              </div>
+            )}
+
+            {healthResult && !hasUnsavedChanges && (
+              <ModelDiagnosticsResult result={healthResult} t={t} />
+            )}
           </div>
 
           {/* Current Config Info */}
@@ -575,6 +758,141 @@ export const AiAssistantSettingsPage: React.FC = () => {
         </SettingsSection>
       )}
     </ModuleSettingsLayout>
+  );
+};
+
+const ModelDiagnosticsResult: React.FC<{
+  result: ProviderHealthResponse;
+  t: TFunction;
+}> = ({ result, t }) => {
+  const checks = result.checks ?? [
+    {
+      id: 'network',
+      status: result.networkOk ? 'passed' : 'failed',
+      ok: Boolean(result.networkOk),
+      detail: result.reason,
+    },
+    {
+      id: 'inference',
+      status: result.inferenceOk ? 'passed' : 'failed',
+      ok: Boolean(result.inferenceOk),
+      detail: result.error,
+    },
+  ];
+
+  const toolDiagnostics = result.toolDiagnostics;
+  const recommendedMode = toolDiagnostics?.recommendedMode ?? 'unavailable';
+  const profile = result.modelProfile;
+
+  return (
+    <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+      <div className="flex flex-wrap gap-2">
+        <DiagnosticPill
+          status={result.ready ? 'passed' : 'failed'}
+          label={result.ready
+            ? t('settings.diagnosticsChatReady', 'Chat ready')
+            : t('settings.diagnosticsChatNotReady', 'Chat not ready')}
+        />
+        <DiagnosticPill
+          status={toolDiagnostics?.erpToolsReady ? 'passed' : 'failed'}
+          label={toolDiagnostics?.erpToolsReady
+            ? t('settings.diagnosticsToolsReady', 'ERP tools ready')
+            : t('settings.diagnosticsToolsLimited', 'ERP tools limited')}
+        />
+        <span className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
+          {t('settings.diagnosticRecommendedMode', 'Recommended mode')}: {' '}
+          {t(
+            `settings.diagnosticModes.${recommendedMode}`,
+            DIAGNOSTIC_MODE_FALLBACKS[recommendedMode] ?? recommendedMode
+          )}
+        </span>
+      </div>
+
+      {profile && (
+        <div className="grid gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm sm:grid-cols-2">
+          <DiagnosticFact
+            label={t('settings.diagnosticCatalogStatus', 'Catalog status')}
+            value={t(`settings.modelStatuses.${profile.status}`, profile.status)}
+          />
+          <DiagnosticFact
+            label={t('settings.diagnosticNativeCatalog', 'Native in catalog')}
+            value={profile.supportsToolCalling ? t('settings.yes', 'Yes') : t('settings.no', 'No')}
+          />
+          <DiagnosticFact
+            label={t('settings.diagnosticStructuredJson', 'Structured JSON')}
+            value={profile.supportsStructuredJson ? t('settings.yes', 'Yes') : t('settings.no', 'No')}
+          />
+          <DiagnosticFact
+            label={t('settings.diagnosticTextOnly', 'Catalog text-only mode')}
+            value={profile.textOnlyMode ? t('settings.yes', 'Yes') : t('settings.no', 'No')}
+          />
+          {profile.warningMessage && (
+            <div className="text-xs text-amber-700 sm:col-span-2">
+              {profile.warningMessage}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="divide-y divide-gray-100 rounded-md border border-gray-200">
+        {checks.map((check) => (
+          <DiagnosticCheckRow
+            key={check.id}
+            label={t(
+              `settings.diagnosticChecks.${check.id}`,
+              DIAGNOSTIC_CHECK_FALLBACKS[check.id] ?? check.id
+            )}
+            status={check.status}
+            detail={check.detail}
+            t={t}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const DiagnosticPill: React.FC<{ status: string; label: string }> = ({ status, label }) => {
+  const Icon = getDiagnosticStatusIcon(status);
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${getDiagnosticStatusClasses(status)}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </span>
+  );
+};
+
+const DiagnosticFact: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div>
+    <div className="text-xs text-gray-500">{label}</div>
+    <div className="mt-0.5 font-medium text-gray-800">{value}</div>
+  </div>
+);
+
+const DiagnosticCheckRow: React.FC<{
+  label: string;
+  status: string;
+  detail?: string;
+  t: TFunction;
+}> = ({ label, status, detail, t }) => {
+  const Icon = getDiagnosticStatusIcon(status);
+  return (
+    <div className="flex items-start gap-3 bg-white px-3 py-3">
+      <Icon className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
+        status === 'passed' ? 'text-green-600' : status === 'failed' ? 'text-red-600' : 'text-gray-400'
+      }`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-gray-800">{label}</span>
+          <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${getDiagnosticStatusClasses(status)}`}>
+            {t(`settings.diagnosticStatus.${status}`, status)}
+          </span>
+        </div>
+        {detail && (
+          <p className="mt-1 break-words text-xs text-gray-500">{detail}</p>
+        )}
+      </div>
+    </div>
   );
 };
 

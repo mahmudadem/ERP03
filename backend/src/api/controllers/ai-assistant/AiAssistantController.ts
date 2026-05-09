@@ -17,6 +17,10 @@ import { AiAssistantDTOMapper } from '../../dtos/AiAssistantDTOs';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { ApiError } from '../../../api/errors/ApiError';
+import { certificationCategoryForModule } from '../../../application/ai-assistant/services/AiModelRoutingGuard';
+import { getCatalogDefinition } from '../../../application/ai-assistant/catalog/AiToolCatalogSeed';
+import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
+import { isAiCertificationCategory } from '../../../domain/ai-assistant/entities/AiCertificationCategory';
 
 export class AiAssistantController {
   private static getCompanyId(req: Request): string {
@@ -59,6 +63,8 @@ export class AiAssistantController {
         diContainer.aiRuntimeGuard,
         diContainer.aiAuditService,
         diContainer.aiSkillRegistry,
+        diContainer.aiModelProfileUseCase,
+        diContainer.aiModelRoutingGuard,
       );
 
       const result = await useCase.execute({
@@ -200,6 +206,8 @@ export class AiAssistantController {
         apiEndpoint: req.body.apiEndpoint,
         maxTokensPerRequest: req.body.maxTokensPerRequest,
         maxRequestsPerDay: req.body.maxRequestsPerDay,
+        conversationContextMode: req.body.conversationContextMode,
+        includePreviousToolResults: req.body.includePreviousToolResults,
         isEnabled: req.body.isEnabled,
       });
 
@@ -247,6 +255,7 @@ export class AiAssistantController {
         diContainer.aiSettingsRepository,
         diContainer.encryptionService,
         diContainer.httpClient,
+        diContainer.aiModelProfileUseCase,
       );
 
       const result = await useCase.execute(companyId);
@@ -255,6 +264,109 @@ export class AiAssistantController {
         success: true,
         data: result,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createTenantCustomModelProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const userId = AiAssistantController.getUserId(req);
+      const body = req.body || {};
+      if (!body.providerId || !body.provider || !body.modelId) {
+        throw ApiError.badRequest('providerId, provider, and modelId are required');
+      }
+
+      const profile = await diContainer.aiModelProfileUseCase.createTenantCustomProfile({
+        tenantId: companyId,
+        providerId: body.providerId,
+        provider: body.provider,
+        modelId: body.modelId,
+        displayName: body.displayName,
+        baseUrl: body.baseUrl,
+        temperature: body.temperature,
+        maxOutputTokens: body.maxOutputTokens,
+        jsonMode: body.jsonMode,
+        toolMode: body.toolMode,
+        timeoutMs: body.timeoutMs,
+        retryPolicy: body.retryPolicy,
+        safetyPolicyId: body.safetyPolicyId,
+        systemPromptPolicyId: body.systemPromptPolicyId,
+        dataFilterPolicyId: body.dataFilterPolicyId,
+        createdBy: userId,
+      });
+
+      (res as any).status(201).json({ success: true, data: profile.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async runTenantCustomModelDiagnostics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const profile = await diContainer.aiModelProfileUseCase.getProfileById(req.params.profileId);
+      if (!profile) throw ApiError.notFound(`AI model profile '${req.params.profileId}' not found`);
+      if (profile.scope !== 'TENANT' || profile.tenantId !== companyId) {
+        throw ApiError.forbidden('Tenant model profile does not belong to this company');
+      }
+
+      const useCase = new CheckProviderHealthUseCase(
+        diContainer.aiSettingsRepository,
+        diContainer.encryptionService,
+        diContainer.httpClient,
+        diContainer.aiModelProfileUseCase,
+      );
+      const result = await useCase.execute({
+        companyId,
+        providerOverride: profile.provider as any,
+        modelOverride: profile.modelId,
+      });
+      (res as any).status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async runTenantCustomModelCertification(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const userId = AiAssistantController.getUserId(req);
+      const { profileHash, category, moduleId, skillId } = req.body || {};
+      if (!profileHash) throw ApiError.badRequest('profileHash is required');
+      if (!category || !isAiCertificationCategory(category)) throw ApiError.badRequest('valid category is required');
+
+      const result = await diContainer.aiModelCertificationUseCase.runShellCertification({
+        scope: 'TENANT',
+        tenantId: companyId,
+        modelProfileId: req.params.profileId,
+        profileHash,
+        category,
+        moduleId,
+        skillId,
+        testedBy: userId,
+        approvedBy: userId,
+      });
+
+      (res as any).status(201).json({ success: true, data: result.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listTenantCertifiedProfiles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const category = req.query.category as string | undefined;
+      if (category && !isAiCertificationCategory(category)) throw ApiError.badRequest('Invalid category');
+      const data = await diContainer.aiModelCertificationUseCase.listValidCertifiedProfiles({
+        scope: (req.query.scope as any) || 'TENANT',
+        tenantId: companyId,
+        category: category as any,
+        moduleId: req.query.moduleId as string | undefined,
+      });
+      (res as any).status(200).json({ success: true, data });
     } catch (error) {
       next(error);
     }
@@ -273,6 +385,20 @@ export class AiAssistantController {
 
       if (!toolName || typeof toolName !== 'string') {
         return next(ApiError.badRequest('toolName is required and must be a string'));
+      }
+
+      const config = await diContainer.aiSettingsRepository.getConfig(companyId);
+      const catalogDef = getCatalogDefinition(toolName);
+      const guardDecision = await diContainer.aiModelRoutingGuard.validateSensitiveWorkflow({
+        tenantId: companyId,
+        config: config || AiProviderConfig.defaultForCompany(companyId),
+        category: certificationCategoryForModule(catalogDef?.moduleId),
+        moduleId: catalogDef?.moduleId,
+      });
+      if (!guardDecision.allowed) {
+        return next(ApiError.forbidden(
+          guardDecision.reason || 'This model profile is not certified for this ERP module/workflow. Please select a certified profile or run company certification.',
+        ));
       }
 
       const useCase = new ExecuteAiToolUseCase(

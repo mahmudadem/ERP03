@@ -40,6 +40,70 @@ class MockHttpClient {
 
 const createMockHttpClient = (): IHttpClient => new MockHttpClient() as unknown as IHttpClient;
 
+class SequenceHttpClient {
+  request = jest.fn(async (config: any) => {
+    const response = this.responses.shift();
+    if (!response) {
+      throw new Error('No queued HTTP response');
+    }
+    this.requests.push(config);
+    return {
+      data: response,
+      status: 200,
+      headers: {},
+    };
+  });
+
+  requests: any[] = [];
+
+  constructor(private responses: any[]) {}
+}
+
+const createOpenAiConfig = (
+  model: string,
+  companyId = 'company-1',
+) => new AiProviderConfig(
+  companyId,
+  'openai_compatible',
+  model,
+  'plain:test-api-key',
+  'https://ai.example/v1',
+  4096,
+  100,
+  0,
+  undefined,
+  true,
+);
+
+const createToolContract = (name: string, parameters: Record<string, unknown> = { type: 'object', properties: {} }) => ({
+  name: name.replace(/\./g, '_'),
+  originalName: name,
+  description: `Use ${name}`,
+  whenToUse: `Use ${name}`,
+  operationType: 'READ',
+  moduleId: name.split('.')[0],
+  requiredPermissions: ['*'],
+  inputSchema: parameters,
+  parameters,
+  outputSchema: { type: 'object', properties: {} },
+  examples: [],
+  safetyNotes: ['Read-only tool. No data is modified.'],
+  safeForAutoInvoke: true,
+});
+
+const createRunContext = () => ({
+  aiRunId: 'run-test-1',
+  companyId: 'company-1',
+  userId: 'user-1',
+  conversationId: 'conv-test',
+  createdAt: Date.now(),
+  expiresAt: Date.now() + 300000,
+  maxToolCalls: 5,
+  toolCallsUsed: 0,
+  allowedToolIds: ['accounting.getTrialBalanceSummary'],
+  providerModel: 'openai_compatible/test',
+});
+
 // Mock chat repository — create returns the message passed to it
 const createMockChatRepo = (): IAiChatRepository => ({
   create: jest.fn((msg: any) => Promise.resolve(msg)),
@@ -164,25 +228,15 @@ describe('SendChatMessageUseCase', () => {
       expect(savedConfig.dailyRequestDate).toBe(AiProviderConfig.getTodayDateString());
     });
 
-    it('should persist toolResults in assistant message metadata', async () => {
+    it('should not auto-execute keyword matches before the model requests a tool', async () => {
       const mockConfig = AiProviderConfig.defaultForCompany('company-1');
       settingsRepo = createMockSettingsRepo(mockConfig);
 
       const mockOrchestrator = {
-        detectAndExecute: jest.fn().mockResolvedValue([
-          {
-            toolName: 'accounting.getTrialBalanceSummary',
-            result: {
-              success: true,
-              data: {
-                totalDebit: 100,
-                totalCredit: 100,
-                isBalanced: true,
-              },
-            },
-          },
-        ]),
-        formatToolResultsForContext: jest.fn().mockReturnValue('[TOOL RESULT MOCK]'),
+        detectAndExecute: jest.fn(),
+        buildAllowedToolContracts: jest.fn().mockResolvedValue({ contracts: [], nameMapping: new Map(), allowedToolIds: [] }),
+        getKeywordHints: jest.fn().mockReturnValue([]),
+        buildToolPlanningContext: jest.fn().mockReturnValue(''),
         getToolDescriptionsForPrompt: jest.fn().mockReturnValue('Available tools: ...'),
       } as any;
 
@@ -201,51 +255,205 @@ describe('SendChatMessageUseCase', () => {
         message: 'show me trial balance',
       });
 
-      expect(mockOrchestrator.detectAndExecute).toHaveBeenCalled();
-      expect((result.assistantMessage.metadata as any)?.toolResults).toBeDefined();
-      expect((result.assistantMessage.metadata as any)?.toolResults).toHaveLength(1);
+      expect(mockOrchestrator.detectAndExecute).not.toHaveBeenCalled();
+      expect((result.assistantMessage.metadata as any)?.toolResults).toEqual([]);
       expect(Object.prototype.hasOwnProperty.call(result.assistantMessage.metadata || {}, 'toolCallResults')).toBe(false);
-      // Keep provider metadata too (from MockProvider)
       expect((result.assistantMessage.metadata as any)?.isMock).toBe(true);
     });
 
-    it('should prefer one sufficient deterministic tool result over multiple matches', async () => {
-      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
-      settingsRepo = createMockSettingsRepo(mockConfig);
+    it('should execute guarded ERP_TOOL_PLAN calls for unknown/text-only models', async () => {
+      const config = createOpenAiConfig('openai/gpt-oss-120b:free');
+      settingsRepo = createMockSettingsRepo(config);
+      const httpClient = new SequenceHttpClient([
+        {
+          model: 'openai/gpt-oss-120b:free',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: '[ERP_TOOL_PLAN]{"calls":[{"tool":"accounting_getTrialBalanceSummary","arguments":{"asOfDate":"2026-05-08"},"reason":"trial balance requested"}]}[/ERP_TOOL_PLAN]',
+            },
+            finish_reason: 'stop',
+          }],
+          usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 },
+        },
+        {
+          model: 'openai/gpt-oss-120b:free',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'The trial balance is balanced. Total debit and total credit are both 100.',
+            },
+            finish_reason: 'stop',
+          }],
+          usage: { prompt_tokens: 80, completion_tokens: 20, total_tokens: 100 },
+        },
+      ]);
 
-      const firstToolResult = {
-        toolName: 'accounting.getTrialBalanceSummary',
-        result: { success: true, data: { totalDebit: 100, totalCredit: 100 } },
-      };
-      const secondToolResult = {
-        toolName: 'accounting.getBalanceSheet',
-        result: { success: true, data: { totalAssets: 100 } },
-      };
       const mockOrchestrator = {
-        buildAllowedToolContracts: jest.fn().mockResolvedValue({ contracts: [], nameMapping: new Map(), allowedToolIds: [] }),
-        detectAndExecute: jest.fn().mockResolvedValue([firstToolResult, secondToolResult]),
-        formatToolResultsForContext: jest.fn().mockReturnValue('[ONE TOOL RESULT]'),
-        getToolDescriptionsForPrompt: jest.fn().mockReturnValue('Available tools: ...'),
+        buildAllowedToolContracts: jest.fn().mockResolvedValue({
+          contracts: [createToolContract('accounting.getTrialBalanceSummary', { type: 'object', properties: { asOfDate: { type: 'string' } } })],
+          nameMapping: new Map([['accounting_getTrialBalanceSummary', 'accounting.getTrialBalanceSummary']]),
+          allowedToolIds: ['accounting.getTrialBalanceSummary'],
+        }),
+        getKeywordHints: jest.fn().mockReturnValue([{ toolName: 'accounting.getTrialBalanceSummary', matchedKeywords: ['trial balance'] }]),
+        buildToolPlanningContext: jest.fn().mockReturnValue('[ERP TOOL PLANNING CONTEXT]'),
+        executeStructuredToolCalls: jest.fn().mockResolvedValue([{
+          toolName: 'accounting.getTrialBalanceSummary',
+          toolCallId: 'text_plan_call_1',
+          approved: true,
+          result: { success: true, data: { totalDebit: 100, totalCredit: 100, isBalanced: true } },
+        }]),
+        formatStructuredResultsForProviderContext: jest.fn().mockReturnValue('[TOOL RESULT: accounting.getTrialBalanceSummary]'),
+      } as any;
+
+      const runtimeGuard = {
+        createRun: jest.fn(() => createRunContext()),
       } as any;
 
       const useCase = new SendChatMessageUseCase(
         chatRepo,
         settingsRepo,
         encryptionService,
-        createMockHttpClient(),
+        httpClient as unknown as IHttpClient,
         undefined,
         mockOrchestrator,
+        undefined,
+        undefined,
+        runtimeGuard,
       );
 
       const result = await useCase.execute({
         companyId: 'company-1',
         userId: 'user-1',
-        message: 'show trial balance and balance sheet',
+        message: 'show me trial balance',
       });
 
-      expect(mockOrchestrator.formatToolResultsForContext).toHaveBeenCalledWith([firstToolResult]);
-      expect((result.assistantMessage.metadata as any)?.toolResults).toHaveLength(1);
-      expect((result.assistantMessage.metadata as any)?.toolResults[0].toolName).toBe('accounting.getTrialBalanceSummary');
+      expect(httpClient.requests).toHaveLength(2);
+      expect((httpClient.requests[0].body as any).tools).toBeUndefined();
+      expect(mockOrchestrator.executeStructuredToolCalls).toHaveBeenCalledWith(
+        'run-test-1',
+        [{ id: 'text_plan_call_1', name: 'accounting_getTrialBalanceSummary', arguments: { asOfDate: '2026-05-08' } }],
+        expect.any(Map),
+        'company-1',
+        'user-1',
+      );
+      expect((result.assistantMessage.metadata as any).toolCallsRequested).toEqual(['accounting_getTrialBalanceSummary']);
+      expect((result.assistantMessage.metadata as any).toolResults).toHaveLength(1);
+      expect(result.assistantMessage.content).toContain('trial balance is balanced');
+    });
+
+    it('should allow native tool-capable models to chain multiple guarded tool calls', async () => {
+      const config = createOpenAiConfig('gpt-4o');
+      settingsRepo = createMockSettingsRepo(config);
+      const httpClient = new SequenceHttpClient([
+        {
+          model: 'gpt-4o',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: null,
+              tool_calls: [{
+                id: 'call-1',
+                type: 'function',
+                function: { name: 'accounting_getChartOfAccountsSummary', arguments: '{}' },
+              }],
+            },
+            finish_reason: 'tool_calls',
+          }],
+          usage: { prompt_tokens: 100, completion_tokens: 5, total_tokens: 105 },
+        },
+        {
+          model: 'gpt-4o',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: null,
+              tool_calls: [{
+                id: 'call-2',
+                type: 'function',
+                function: { name: 'accounting_getAccountStatementSummary', arguments: '{"accountCode":"1000"}' },
+              }],
+            },
+            finish_reason: 'tool_calls',
+          }],
+          usage: { prompt_tokens: 120, completion_tokens: 5, total_tokens: 125 },
+        },
+        {
+          model: 'gpt-4o',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'Cash account 1000 has a closing balance of 250.',
+            },
+            finish_reason: 'stop',
+          }],
+          usage: { prompt_tokens: 100, completion_tokens: 15, total_tokens: 115 },
+        },
+      ]);
+
+      const mockOrchestrator = {
+        buildAllowedToolContracts: jest.fn().mockResolvedValue({
+          contracts: [
+            createToolContract('accounting.getChartOfAccountsSummary'),
+            createToolContract('accounting.getAccountStatementSummary', { type: 'object', properties: { accountCode: { type: 'string' } } }),
+          ],
+          nameMapping: new Map([
+            ['accounting_getChartOfAccountsSummary', 'accounting.getChartOfAccountsSummary'],
+            ['accounting_getAccountStatementSummary', 'accounting.getAccountStatementSummary'],
+          ]),
+          allowedToolIds: ['accounting.getChartOfAccountsSummary', 'accounting.getAccountStatementSummary'],
+        }),
+        getKeywordHints: jest.fn().mockReturnValue([{ toolName: 'accounting.getAccountStatementSummary', matchedKeywords: ['account statement'] }]),
+        buildToolPlanningContext: jest.fn().mockReturnValue('[ERP TOOL PLANNING CONTEXT]'),
+        executeStructuredToolCalls: jest.fn()
+          .mockResolvedValueOnce([{
+            toolName: 'accounting.getChartOfAccountsSummary',
+            toolCallId: 'call-1',
+            approved: true,
+            result: { success: true, data: { topAccounts: [{ code: '1000', name: 'Cash' }] } },
+          }])
+          .mockResolvedValueOnce([{
+            toolName: 'accounting.getAccountStatementSummary',
+            toolCallId: 'call-2',
+            approved: true,
+            result: { success: true, data: { accountCode: '1000', closingBalance: 250 } },
+          }]),
+        formatStructuredResultsForProviderContext: jest.fn()
+          .mockReturnValueOnce('[TOOL RESULT: accounting.getChartOfAccountsSummary]')
+          .mockReturnValueOnce('[TOOL RESULT: accounting.getAccountStatementSummary]'),
+      } as any;
+
+      const runtimeGuard = {
+        createRun: jest.fn(() => ({ ...createRunContext(), allowedToolIds: ['accounting.getChartOfAccountsSummary', 'accounting.getAccountStatementSummary'] })),
+      } as any;
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo,
+        settingsRepo,
+        encryptionService,
+        httpClient as unknown as IHttpClient,
+        undefined,
+        mockOrchestrator,
+        undefined,
+        undefined,
+        runtimeGuard,
+      );
+
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'show account statement for Cash',
+      });
+
+      expect(httpClient.requests).toHaveLength(3);
+      expect((httpClient.requests[0].body as any).tools).toHaveLength(2);
+      expect(mockOrchestrator.executeStructuredToolCalls).toHaveBeenCalledTimes(2);
+      expect((result.assistantMessage.metadata as any).toolCallsRequested).toEqual([
+        'accounting_getChartOfAccountsSummary',
+        'accounting_getAccountStatementSummary',
+      ]);
+      expect((result.assistantMessage.metadata as any).toolResults).toHaveLength(2);
+      expect(result.assistantMessage.content).toContain('closing balance of 250');
     });
 
     it('should include custom untested model warning metadata', async () => {
@@ -265,6 +473,136 @@ describe('SendChatMessageUseCase', () => {
       expect(metadata.modelProfile.status).toBe('custom');
       expect(metadata.modelProfile.warningLevel).toBe('danger');
       expect(metadata.runtimeWarnings.length).toBeGreaterThan(0);
+    });
+
+    it('should inject recent tool result metadata so follow-up messages keep conversation context', async () => {
+      const config = createOpenAiConfig('gpt-4o-mini');
+      settingsRepo = createMockSettingsRepo(config);
+      const httpClient = new SequenceHttpClient([
+        {
+          model: 'gpt-4o-mini',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'cash syp1 has a credit-side balance based on the previous trial balance data.',
+            },
+            finish_reason: 'stop',
+          }],
+          usage: { prompt_tokens: 140, completion_tokens: 20, total_tokens: 160 },
+        },
+      ]);
+
+      const chatRepoWithHistory: IAiChatRepository = {
+        ...createMockChatRepo(),
+        getConversationMessages: jest.fn(() => Promise.resolve([
+          {
+            role: 'user',
+            content: 'Show me the trial balance summary',
+          } as any,
+          {
+            role: 'assistant',
+            content: 'Here is the trial balance summary.',
+            metadata: {
+              toolResults: [{
+                toolName: 'accounting.getTrialBalanceSummary',
+                result: {
+                  success: true,
+                  data: {
+                    totalDebit: 668837,
+                    totalCredit: 668837,
+                    accounts: [
+                      { code: '10301', name: 'cash syp1', balance: -15934 },
+                    ],
+                  },
+                },
+              }],
+            },
+          } as any,
+        ])),
+      };
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepoWithHistory,
+        settingsRepo,
+        encryptionService,
+        httpClient as unknown as IHttpClient,
+      );
+
+      await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        conversationId: 'conv-existing',
+        message: 'اشرح cash syp1',
+      });
+
+      const sentMessages = (httpClient.requests[0].body as any).messages;
+      const systemPrompt = sentMessages[0].content;
+
+      expect(systemPrompt).toContain('Treat every user message as part of one ongoing conversation');
+      expect(systemPrompt).toContain('RECENT ERP DATA FROM THIS CONVERSATION');
+      expect(systemPrompt).toContain('accounting.getTrialBalanceSummary');
+      expect(systemPrompt).toContain('cash syp1');
+      expect(systemPrompt).toContain('10301');
+      expect(systemPrompt).toContain('Ask the user a short clarification question only when');
+      expect(sentMessages.map((m: any) => m.content)).toContain('Here is the trial balance summary.');
+    });
+
+    it('should respect settings that disable previous tool result context injection', async () => {
+      const config = createOpenAiConfig('gpt-4o-mini');
+      config.updateConfig({ includePreviousToolResults: false });
+      settingsRepo = createMockSettingsRepo(config);
+      const httpClient = new SequenceHttpClient([
+        {
+          model: 'gpt-4o-mini',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'I need more detail to answer that.',
+            },
+            finish_reason: 'stop',
+          }],
+          usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 },
+        },
+      ]);
+
+      const chatRepoWithHistory: IAiChatRepository = {
+        ...createMockChatRepo(),
+        getConversationMessages: jest.fn(() => Promise.resolve([
+          {
+            role: 'assistant',
+            content: 'Here is the trial balance summary.',
+            metadata: {
+              toolResults: [{
+                toolName: 'accounting.getTrialBalanceSummary',
+                result: {
+                  success: true,
+                  data: { accounts: [{ code: '10301', name: 'cash syp1', balance: -15934 }] },
+                },
+              }],
+            },
+          } as any,
+        ])),
+      };
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepoWithHistory,
+        settingsRepo,
+        encryptionService,
+        httpClient as unknown as IHttpClient,
+      );
+
+      await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        conversationId: 'conv-existing',
+        message: 'اشرح cash syp1',
+      });
+
+      const sentMessages = (httpClient.requests[0].body as any).messages;
+      const systemPrompt = sentMessages[0].content;
+
+      expect(systemPrompt).not.toContain('RECENT ERP DATA FROM THIS CONVERSATION');
+      expect(systemPrompt).not.toContain('10301');
     });
   });
 

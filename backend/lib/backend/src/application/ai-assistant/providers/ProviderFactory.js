@@ -20,6 +20,7 @@ const MockProvider_1 = require("./MockProvider");
 const OpenAICompatibleProvider_1 = require("./OpenAICompatibleProvider");
 // Cache providers per company to avoid re-creating on every request
 const providerCache = new Map();
+const AI_PROVIDER_CHAT_TIMEOUT_MS = 120000;
 class ProviderFactory {
     /**
      * Get or create the appropriate AI provider for a company.
@@ -76,6 +77,7 @@ class ProviderFactory {
                 apiEndpoint: config.apiEndpoint || 'https://api.openai.com/v1',
                 model: config.model || 'gpt-3.5-turbo',
                 maxTokens: config.maxTokensPerRequest || 4096,
+                timeoutMs: AI_PROVIDER_CHAT_TIMEOUT_MS,
             }, httpClient);
         }
         catch (error) {
@@ -95,6 +97,7 @@ class ProviderFactory {
                 apiEndpoint: config.apiEndpoint || 'http://localhost:11434/v1',
                 model: config.model || 'llama3',
                 maxTokens: config.maxTokensPerRequest || 4096,
+                timeoutMs: AI_PROVIDER_CHAT_TIMEOUT_MS,
             }, httpClient);
         }
         catch (error) {

@@ -4,6 +4,313 @@
 
 ---
 
+## 2026-05-09 (Sat) — ~2h 20m
+**Task:** AI Model Management — Certification workflows and APIs, Increment 2
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Added Super Admin provider registry use case and APIs for list/create/update/get/enable/disable provider metadata.
+- Added certification engine shell for deterministic structural checks and manual certification recording. It does not claim deep ERP accounting correctness.
+- Added certification use case for manual GLOBAL certification, shell-run GLOBAL/TENANT certification, listing profile certifications, expiring certifications, and querying valid certified profiles.
+- Added Super Admin GLOBAL certification endpoints for model profiles.
+- Added Company Admin tenant custom model profile creation, diagnostics, shell certification, and tenant certified-profile query endpoints.
+- Added valid certified profile query for future Recommended Certified Models UI.
+- Added dev seed helper `backend/src/scripts/seedAiCertifiedProfileDev.ts` to create one provider/profile/manual certification for local routing tests without storing API keys.
+- Preserved `legacy_unverified` behavior for existing free-text tenant settings; no old setting is silently certified.
+- Preserved Proposal/Draft Sandbox safety and direct business execution blocking.
+
+**Verification:**
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/AiProviderRegistryUseCase.test.ts src/tests/application/ai-assistant/AiModelCertificationUseCase.test.ts src/tests/application/ai-assistant/AiModelRoutingGuard.test.ts src/tests/application/ai-assistant/AiRuntimeGuard.test.ts src/tests/api/assertSuperAdmin.test.ts` ✅ — 5 suites, 32 tests
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts src/tests/application/ai-assistant/CheckProviderHealthUseCase.test.ts src/tests/application/ai-assistant/AiToolCalling.test.ts` ✅ — 3 suites, 38 tests
+- `backend`: `npm run build` ✅
+
+**Result:** ✅ Increment 2 complete — certification backend/API foundation is usable.
+**Next:** Increment 3 should add the frontend Recommended Certified Models modal, tenant custom model UX, Super Admin certification UI, and browser QA. Estimate: 5-7h.
+
+---
+
+## 2026-05-09 (Sat) — ~2h
+**Task:** AI Model Management — Backend trust foundation, Increment 1
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Added backend foundations for Provider -> Runtime Model Profile -> Certification Result -> Routing Guard.
+- Added `AiProvider`, fixed certification categories, and `AiModelCertificationResult` domain entities.
+- Extended `AiModelProfile` into an exact runtime profile with scope, tenant, providerId, modelId, endpoint fingerprint, runtime settings, profileHash, revision, enabled state, and extended safety statuses.
+- Added deterministic profileHash generation from runtime-relevant fields so provider, endpoint, and runtime setting changes invalidate old certification.
+- Extended tenant AI settings with `mode`, `providerId`, `selectedModelProfileId`, and `selectedProfileHash`; existing/free-text settings default to `legacy_unverified`.
+- Added Firestore repositories and repository interfaces for providers and model certification results.
+- Added `AiModelRoutingGuard` and wired it into chat/tool routing so sensitive ERP tool contracts are only exposed when selected profileId/hash has valid certification.
+- Added a second guard inside `AiRuntimeGuard` so even if a model requests a tool, closed certification gates reject execution.
+- Kept `AiModelCapabilityCatalog` as a non-authoritative hint/catalog source; it no longer authorizes sensitive routing.
+- Preserved proposal/draft sandbox behavior and direct write/post execution blocking.
+
+**Verification:**
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run test -- --runInBand src/tests/domain/ai-assistant/AiModelProfile.test.ts src/tests/domain/ai-assistant/AiProviderConfig.test.ts src/tests/application/ai-assistant/AiModelRoutingGuard.test.ts src/tests/application/ai-assistant/AiRuntimeGuard.test.ts` ✅ — 4 suites, 53 tests
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts src/tests/application/ai-assistant/CheckProviderHealthUseCase.test.ts src/tests/application/ai-assistant/AiToolCalling.test.ts` ✅ — 3 suites, 38 tests
+- `backend`: `npm run build` ✅
+
+**Result:** ✅ Increment 1 complete — unsafe model-name trust gap is closed for backend tool routing.
+**Next:** Increment 2 should add actual certification execution/API flows, provider registry APIs, manual Super Admin certification entry if needed, and migration tooling for old profiles/settings.
+
+---
+
+## 2026-05-09 (Sat) — ~35m
+**Task:** Local dev environment over Tailscale
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Configured the local development setup for access from other Tailscale devices at `100.72.126.75`.
+- Confirmed root `firebase.json` is the active Firebase config and root Functions source is `backend/`.
+- Ensured Firebase emulators bind to `0.0.0.0` for Auth, Firestore, Functions, Realtime Database, Storage, and Emulator UI.
+- Added `frontend/.env.development.local` with remote dev overrides for emulator mode, API base URL, Auth emulator, Firestore emulator, and Realtime Database emulator. No secret values were printed.
+- Updated frontend Firebase config to accept `VITE_FIRESTORE_EMULATOR_HOST=host:port`, while preserving the older `VITE_FIREBASE_FIRESTORE_EMULATOR_HOST` fallback.
+- Updated frontend Realtime Database emulator handling to use port `9001` and avoid hardcoded `127.0.0.1:9000` when emulators are enabled.
+- Added `frontend` script `dev:remote` for Vite on `0.0.0.0:5173`.
+- Added root script `emulators:remote` for emulator import/export startup.
+- Added completion report `1-TODO/done/76-tailscale-dev-environment.md`.
+
+**Verification:**
+- `firebase.json` JSON parse ✅
+- `frontend`: `npm run build` ✅
+- `frontend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm run typecheck` ✅
+- `backend/functions`: `npm run build` ❌ pre-existing unrelated package/version issue; root `firebase.json` points Functions to `backend/`, not `backend/functions/`.
+
+**Result:** ✅ Done for the active local dev environment.
+**Next:** Start Firebase emulators and Vite remote dev server, then test from another Tailscale device. If URLs do not load, check Windows Firewall inbound rules for ports `5173`, `4000`, `5001`, `9099`, `8080`, `9001`, and `9199`.
+
+---
+
+## 2026-05-09 (Sat) — ~1h 20m
+**Task:** AI Assistant — Editable model profile management
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Diagnosed why a model could pass diagnostics but still show as untested/text-only in chat: diagnostics proved live behavior, while chat relied on separate model capability/trust metadata.
+- Added Firestore-backed editable AI model profiles with repository pattern and DI registration.
+- Added `AiModelProfileUseCase` so chat and diagnostics resolve model profiles DB-first, with the old static catalog kept as seed/fallback only.
+- Added Super Admin platform APIs to list, create, update, delete, and sync model profiles.
+- Added Super Admin UI at `/super-admin/ai-models` for status, tags, warnings, text-only mode, native tool-calling support, structured JSON support, max context tokens, and recommended use cases.
+- Added Super Admin diagnostics on the model profile page. The platform admin selects a company, and the backend tests the selected model profile using that company's saved provider credentials without exposing API keys.
+- Updated diagnostics to persist the last diagnostic result/mode/time on the model profile.
+- Updated chat model badges so tested and experimental models are no longer displayed as untested.
+- Added completion report `1-TODO/done/75-ai-model-profile-management.md`.
+- Updated AI Assistant architecture and user-guide docs.
+- Detour fix: encoded internal model-profile document IDs so model names containing `/` or `:` can be saved in Firestore.
+
+**Verification:**
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/CheckProviderHealthUseCase.test.ts src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts` ✅ — 2 suites, 22 tests
+- `backend`: `npm run test -- --runInBand src/tests/domain/ai-assistant/AiModelProfile.test.ts src/tests/application/ai-assistant/CheckProviderHealthUseCase.test.ts` ✅ — 2 suites, 5 tests
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/CheckProviderHealthUseCase.test.ts src/tests/domain/ai-assistant/AiModelProfile.test.ts` ✅ — 2 suites, 6 tests
+- `backend`: `npm run typecheck` ✅
+- `frontend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+- `frontend`: `npm run build` ✅
+
+**Result:** ✅ Done — ready for browser QA in Super Admin AI Models, AI Settings diagnostics, and AI Chat.
+**Next:** Sync default model profiles, edit the new tested model profile, then rerun diagnostics and chat to confirm the runtime badge/mode follows the persisted profile.
+
+---
+
+## 2026-05-09 (Sat) — ~45m
+**Task:** AI Assistant — Conversation context cost settings
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Added settings-driven conversation context budgets so companies using their own AI API key can control token cost.
+- Added `conversationContextMode` (`minimal`, `balanced`, `deep`) and `includePreviousToolResults` to AI provider config persistence and settings update flow.
+- Updated `SendChatMessageUseCase` to bound provider chat history, truncate large messages, limit previous tool-result prompt context, and warn when context was trimmed.
+- Added AI Settings UI controls with EN/AR/TR i18n.
+- Added tests for provider-config defaults/update behavior and disabling previous tool-result context injection.
+- Added completion report `1-TODO/done/74-ai-assistant-context-cost-settings.md`.
+- Updated AI Assistant architecture and user-guide docs.
+
+**Verification:**
+- `backend`: `npm run test -- --runInBand src/tests/domain/ai-assistant/AiProviderConfig.test.ts src/tests/application/ai-assistant/AiSettingsUseCase.test.ts src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts` ✅ — 3 suites, 52 tests
+- `backend`: `npm run typecheck` ✅
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+- `backend`: `npm run build` ✅
+
+**Result:** ✅ Done — ready for manual browser testing in AI Settings and Chat.
+**Next:** In browser, save each context mode once, then retest the Trial Balance Arabic follow-up flow with Balanced mode and previous tool results enabled.
+
+---
+
+## 2026-05-09 (Sat) — ~30m
+**Task:** AI Assistant — Conversation context first rules
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Evaluated manual `gpt-4o-mini` chat behavior and confirmed follow-up messages were being handled too independently.
+- Updated the always-active base orchestration skill so the model treats each user message as part of one ongoing conversation.
+- Added broad context-first rules: understand intent before answering/tooling, reuse prior conversation/tool data when sufficient, fetch minimum additional read-only data when needed, and clarify before answering when intent or required extra information is ambiguous.
+- Added compact previous tool-result metadata injection in `SendChatMessageUseCase` via `[RECENT ERP DATA FROM THIS CONVERSATION]`, so data displayed in tool cards can be reused by later model turns.
+- Updated AI tool planning rules to consider current message, recent conversation context, prior tool results, and schemas together.
+- Added completion report `1-TODO/done/73-ai-assistant-conversation-context.md`.
+- Updated AI Assistant architecture and user-guide docs.
+
+**Verification:**
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts src/tests/application/ai-assistant/AiToolCalling.test.ts` ✅ — 2 suites, 32 tests
+- `backend`: `npm run typecheck` ✅
+
+**Result:** ✅ Done — restart/reload backend before browser retest.
+**Next:** Retest the same Trial Balance Arabic follow-up flow with `gpt-4o-mini`, especially account follow-ups like `cash syp1` during the current fiscal year.
+
+---
+
+## 2026-05-08 (Fri) — ~15m
+**Task:** AI Assistant — Chat timeout detour
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Diagnosed `timeout of 30000ms exceeded` during AI chat as the frontend Axios timeout and backend AI provider timeout being too short for slower/free models.
+- Kept the global ERP API timeout at 30 seconds.
+- Increased AI chat frontend timeout to 120 seconds.
+- Increased AI diagnostics frontend timeout to 180 seconds.
+- Increased backend OpenAI-compatible chat provider timeout to 120 seconds.
+
+**Verification:**
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/OpenAICompatibleProvider.test.ts src/tests/application/ai-assistant/CheckProviderHealthUseCase.test.ts` ✅ — 33 tests
+- `backend`: `npm run typecheck` ✅
+- `frontend`: `npm run typecheck` ✅
+
+**Result:** ✅ Done — restart backend/frontend dev servers before retesting chat.
+
+---
+
+## 2026-05-08 (Fri) — ~1h
+**Task:** AI Settings — Model Diagnostics
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Extended the AI provider health check with model diagnostics.
+- Added native OpenAI-style `tool_calls` probe using a private `diagnostics_ping` compatibility tool.
+- Added guarded `ERP_TOOL_PLAN` fallback probe for text-only or failed-native models.
+- Added a Model diagnostics panel to AI Assistant Settings → Provider.
+- Added diagnostics API DTO fields and EN/AR/TR i18n.
+- Added completion report `1-TODO/done/72-ai-settings-model-diagnostics.md`.
+- Updated AI Assistant architecture and user-guide docs.
+
+**Verification:**
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/CheckProviderHealthUseCase.test.ts` ✅ — 3 tests
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant` ✅ — 13 suites, 338 tests
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+- `graphify update .` ❌ — command unavailable on PATH
+
+**Result:** ✅ Done — ready for manual browser testing in AI Settings.
+**Next:** Run diagnostics for the selected free models and one known native model, then retest chat tool usage.
+
+---
+
+## 2026-05-08 (Fri) — ~5m
+**Task:** Frontend dev server ngrok host allowlist
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Fixed Vite's blocked-host error for manual frontend QA through `caucus-garbage-unusable.ngrok-free.dev`.
+- Added the hostname to `frontend/vite.config.ts` under `server.allowedHosts`.
+
+**Verification:**
+- `frontend`: `npm run typecheck` ✅
+
+**Result:** ✅ Done — restart the frontend Vite dev server and reload the ngrok URL.
+**Next:** Continue manual AI Assistant browser QA.
+
+---
+
+## 2026-05-08 (Fri) — ~10m
+**Task:** AI Assistant — Register Free Model Test Profiles
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Registered the requested OpenAI-compatible free models as known experimental profiles:
+  - `google/gemma-4-31b-it:free`
+  - `openai/gpt-oss-20b:free`
+  - `z-ai/glm-4.5-air:free`
+  - `tencent/hy3-preview:free`
+- Kept native tool calling disabled because OpenAI-style `tool_calls` support is not yet verified.
+- Enabled safer guarded `ERP_TOOL_PLAN` text-plan mode for testing.
+- Marked `tencent/hy3-preview:free` for finance/accounting/reporting test use.
+- Added regression coverage in `AiRuntimeGuard.test.ts`.
+
+**Verification:**
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/AiRuntimeGuard.test.ts` ✅ — 15 tests
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+
+**Result:** ✅ Done — restart/reload backend emulator before browser retest.
+
+---
+
+## 2026-05-08 (Fri) — ~2h
+**Task:** AI Assistant — AI-Led Tool Planning + Keyword Hint Context
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+- Replaced chat-time deterministic keyword auto-execution with AI-led tool planning.
+- Super Admin `chatKeywords` now become advisory keyword hints for the model to check first.
+- Added schema-aware tool planning context containing allowed tool names, provider-safe names, descriptions, keywords, input schemas, output schemas, examples, and safety notes.
+- Added guarded `ERP_TOOL_PLAN` text fallback so unknown/text-only models can still propose read-only tool calls as JSON.
+- Added a multi-round planning loop so the model can call one read-only tool, inspect results, then request another tool before answering.
+- Preserved Runtime Guard validation for both native provider tool calls and text-plan calls.
+- Updated tests to cover:
+  - keyword matches do not auto-execute tools,
+  - unknown/free model text-plan tool execution,
+  - native multi-step tool chaining.
+- Added completion report `1-TODO/done/71-ai-assistant-ai-led-tool-planning.md`.
+- Updated architecture and user-guide docs for AI-led planning.
+
+**Verification:**
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant` ✅ — 12 suites, 331 tests
+- `backend`: `npm run build` ✅
+- `graphify update .` attempted but unavailable on PATH ❌
+
+**Result:** ✅ Code-ready for manual browser testing.
+**Next:** Manual QA in AI Assistant with a known native tool-capable model and with `openai/gpt-oss-120b:free`, then run full project regression before merge.
+
+---
+
+## 2026-05-08 (Fri) — ~15m
+**Task:** AI Assistant — Provider-Prefixed Model Capability Alias Fix
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Fixed `AiModelCapabilityCatalog.getProfile()` to check model aliases after `/`.
+- `openai/gpt-4o-mini` now resolves to the known `gpt-4o-mini` profile.
+- Provider-prefixed pattern fallback also works, e.g. `anthropic/claude-3-5-sonnet`.
+- Added regression coverage in `AiRuntimeGuard.test.ts`.
+
+**Verification:**
+- `backend`: `npm run test -- --runInBand src/tests/application/ai-assistant/AiRuntimeGuard.test.ts` ✅ — 13 tests
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+
+**Result:** ✅ Done — restart/reload backend emulator before browser retest.
+
+---
+
 ## 2026-05-07 (Thu) — ~45m
 **Task:** AI Tool Catalog — Migrate chat keywords to editable catalog + admin UI  
 **Agent:** OpenCode (CTO Mode)  

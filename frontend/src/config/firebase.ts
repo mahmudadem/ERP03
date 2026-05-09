@@ -8,13 +8,38 @@ let app: FirebaseApp;
 
 const useEmulators = typeof window !== 'undefined' && (import.meta as any).env?.VITE_USE_EMULATORS === 'true';
 
+const parseEmulatorHost = (
+  value: string | undefined,
+  fallbackHost: string,
+  fallbackPort: number
+): { host: string; port: number } => {
+  if (!value) {
+    return { host: fallbackHost, port: fallbackPort };
+  }
+
+  const withoutProtocol = value.replace(/^https?:\/\//, '');
+  const [host, rawPort] = withoutProtocol.split(':');
+  const port = rawPort ? Number(rawPort) : fallbackPort;
+
+  return {
+    host: host || fallbackHost,
+    port: Number.isFinite(port) ? port : fallbackPort,
+  };
+};
+
+const databaseEmulator = parseEmulatorHost(
+  (import.meta as any).env?.VITE_FIREBASE_DATABASE_EMULATOR_HOST,
+  '127.0.0.1',
+  9001
+);
+
 if (getApps().length > 0) {
   app = getApp();
 } else {
   // CRITICAL: The emulator default namespace is just the projectId
   // Production often uses -default-rtdb suffix. We must be consistent with the backend.
   const rtdbUrl = useEmulators
-    ? `http://127.0.0.1:9000?ns=${env.firebase.projectId}`
+    ? `http://${databaseEmulator.host}:${databaseEmulator.port}?ns=${env.firebase.projectId}`
     : `https://${env.firebase.projectId}-default-rtdb.firebaseio.com`;
 
   app = initializeApp({
@@ -50,26 +75,28 @@ if (typeof window !== 'undefined') {
   }
   
   // Firestore emulator
-  const firestoreEmulatorHost = (import.meta as any).env?.VITE_FIREBASE_FIRESTORE_EMULATOR_HOST || '127.0.0.1';
-  const firestoreEmulatorPort = (import.meta as any).env?.VITE_FIREBASE_FIRESTORE_EMULATOR_PORT || 8080;
+  const firestoreEmulator = parseEmulatorHost(
+    (import.meta as any).env?.VITE_FIRESTORE_EMULATOR_HOST ||
+      (import.meta as any).env?.VITE_FIREBASE_FIRESTORE_EMULATOR_HOST,
+    '127.0.0.1',
+    8080
+  );
   if (useEmulators) {
     try {
-      connectFirestoreEmulator(db, firestoreEmulatorHost, firestoreEmulatorPort);
+      connectFirestoreEmulator(db, firestoreEmulator.host, firestoreEmulator.port);
       // eslint-disable-next-line no-console
-      console.info(`Firestore emulator connected at ${firestoreEmulatorHost}:${firestoreEmulatorPort}`);
+      console.info(`Firestore emulator connected at ${firestoreEmulator.host}:${firestoreEmulator.port}`);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Firestore emulator connection skipped/failed', e);
     }
   }
   // Database emulator
-  const databaseEmulatorHost = (import.meta as any).env?.VITE_FIREBASE_DATABASE_EMULATOR_HOST || '127.0.0.1';
-  const databaseEmulatorPort = (import.meta as any).env?.VITE_FIREBASE_DATABASE_EMULATOR_PORT || 9000;
   if (useEmulators) {
     try {
-      connectDatabaseEmulator(rtdb, databaseEmulatorHost, databaseEmulatorPort);
+      connectDatabaseEmulator(rtdb, databaseEmulator.host, databaseEmulator.port);
       // eslint-disable-next-line no-console
-      console.info(`Database emulator connected at ${databaseEmulatorHost}:${databaseEmulatorPort}`);
+      console.info(`Database emulator connected at ${databaseEmulator.host}:${databaseEmulator.port}`);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Database emulator connection skipped/failed', e);

@@ -81,9 +81,13 @@ const ModuleActivationService_1 = require("../../application/system/services/Mod
 const AiToolRegistry_1 = require("../../application/ai-assistant/services/AiToolRegistry");
 const AiToolCallingOrchestrator_1 = require("../../application/ai-assistant/services/AiToolCallingOrchestrator");
 const AiRuntimeGuard_1 = require("../../application/ai-assistant/services/AiRuntimeGuard");
+const AiModelRoutingGuard_1 = require("../../application/ai-assistant/services/AiModelRoutingGuard");
 const AiAuditService_1 = require("../../application/ai-assistant/services/AiAuditService");
 const AiModelCapabilityCatalog_1 = require("../../application/ai-assistant/services/AiModelCapabilityCatalog");
 const AiToolCatalogUseCase_1 = require("../../application/ai-assistant/use-cases/AiToolCatalogUseCase");
+const AiModelProfileUseCase_1 = require("../../application/ai-assistant/use-cases/AiModelProfileUseCase");
+const AiProviderRegistryUseCase_1 = require("../../application/ai-assistant/use-cases/AiProviderRegistryUseCase");
+const AiModelCertificationUseCase_1 = require("../../application/ai-assistant/use-cases/AiModelCertificationUseCase");
 const GetTrialBalanceSummaryTool_1 = require("../../application/ai-assistant/tools/GetTrialBalanceSummaryTool");
 const GetProfitAndLossTool_1 = require("../../application/ai-assistant/tools/GetProfitAndLossTool");
 const GetBalanceSheetTool_1 = require("../../application/ai-assistant/tools/GetBalanceSheetTool");
@@ -104,6 +108,9 @@ const GetMonthlyComparisonTool_1 = require("../../application/ai-assistant/tools
 const FirestoreAiToolCatalogRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiToolCatalogRepository");
 const FirestoreAiToolEnablementRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiToolEnablementRepository");
 const FirestoreAiModelToolPolicyRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiModelToolPolicyRepository");
+const FirestoreAiModelProfileRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiModelProfileRepository");
+const FirestoreAiProviderRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiProviderRepository");
+const FirestoreAiModelCertificationRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiModelCertificationRepository");
 const PermissionChecker_1 = require("../../application/rbac/PermissionChecker");
 const FirestoreAiProposalRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiProposalRepository");
 const FirestoreAiProposalPolicyRepository_1 = require("../firestore/repositories/ai-assistant/FirestoreAiProposalPolicyRepository");
@@ -225,6 +232,7 @@ const moduleActivationService = DB_TYPE === 'SQL'
 let _httpClient;
 let _aiToolRegistry;
 let _aiRuntimeGuard;
+let _aiModelRoutingGuard;
 let _aiToolCallingOrchestrator;
 let _aiSkillRegistry;
 exports.diContainer = {
@@ -679,8 +687,26 @@ exports.diContainer = {
     get aiModelToolPolicyRepository() {
         return new FirestoreAiModelToolPolicyRepository_1.FirestoreAiModelToolPolicyRepository(getDb());
     },
+    get aiModelProfileRepository() {
+        return new FirestoreAiModelProfileRepository_1.FirestoreAiModelProfileRepository(getDb());
+    },
+    get aiProviderRepository() {
+        return new FirestoreAiProviderRepository_1.FirestoreAiProviderRepository(getDb());
+    },
+    get aiModelCertificationRepository() {
+        return new FirestoreAiModelCertificationRepository_1.FirestoreAiModelCertificationRepository(getDb());
+    },
     get aiToolCatalogUseCase() {
         return new AiToolCatalogUseCase_1.AiToolCatalogUseCase(this.aiToolCatalogRepository, this.aiToolEnablementRepository, this.aiModelToolPolicyRepository);
+    },
+    get aiModelProfileUseCase() {
+        return new AiModelProfileUseCase_1.AiModelProfileUseCase(this.aiModelProfileRepository);
+    },
+    get aiProviderRegistryUseCase() {
+        return new AiProviderRegistryUseCase_1.AiProviderRegistryUseCase(this.aiProviderRepository);
+    },
+    get aiModelCertificationUseCase() {
+        return new AiModelCertificationUseCase_1.AiModelCertificationUseCase(this.aiModelProfileRepository, this.aiModelCertificationRepository);
     },
     // AI ASSISTANT — Proposal Sandbox
     get aiProposalRepository() {
@@ -751,6 +777,9 @@ exports.diContainer = {
     },
     get aiSkillRegistry() {
         return _aiSkillRegistry !== null && _aiSkillRegistry !== void 0 ? _aiSkillRegistry : (_aiSkillRegistry = new AiSkillRegistry_1.AiSkillRegistry());
+    },
+    get aiModelRoutingGuard() {
+        return _aiModelRoutingGuard !== null && _aiModelRoutingGuard !== void 0 ? _aiModelRoutingGuard : (_aiModelRoutingGuard = new AiModelRoutingGuard_1.AiModelRoutingGuard(this.aiModelProfileRepository, this.aiModelCertificationRepository));
     },
     get aiModelCapabilityCatalog() {
         return AiModelCapabilityCatalog_1.AiModelCapabilityCatalog;

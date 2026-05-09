@@ -53,6 +53,7 @@ class AiRuntimeGuard {
             toolCallsUsed: 0,
             allowedToolIds: params.allowedToolIds,
             providerModel: params.providerModel,
+            certification: params.certification,
         };
         this.runs.set(aiRunId, ctx);
         return ctx;
@@ -80,7 +81,7 @@ class AiRuntimeGuard {
      * We always use the authenticated backend identity from the AiRunContext.
      */
     async validateToolCall(aiRunId, toolCall, nameMapping) {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d, _e, _f, _g;
         const ctx = this.getRun(aiRunId);
         // 1. aiRunId must exist and not be expired
         if (!ctx) {
@@ -97,6 +98,17 @@ class AiRuntimeGuard {
         // 2. Resolve provider-safe name to original registered name
         const originalName = (_b = nameMapping.get(toolCall.name)) !== null && _b !== void 0 ? _b : toolCall.name;
         const catalogDef = (0, AiToolCatalogSeed_1.getCatalogDefinition)(originalName);
+        if (ctx.certification && !ctx.certification.allowed) {
+            return {
+                approved: false,
+                toolName: toolCall.name,
+                rejectionReason: ctx.certification.reason || 'This model profile is not certified for this ERP module/workflow. Please select a certified profile or run company certification.',
+                rejectionCode: ctx.certification.code || 'MODEL_PROFILE_NOT_CERTIFIED',
+                originalRequest: toolCall,
+                resolvedOriginalName: originalName,
+                operationType: (_c = catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.operationType) !== null && _c !== void 0 ? _c : 'READ',
+            };
+        }
         if (!toolCall.arguments || typeof toolCall.arguments !== 'object' || Array.isArray(toolCall.arguments)) {
             return {
                 approved: false,
@@ -105,7 +117,7 @@ class AiRuntimeGuard {
                 rejectionCode: 'INVALID_TOOL_ARGUMENTS',
                 originalRequest: toolCall,
                 resolvedOriginalName: originalName,
-                operationType: (_c = catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.operationType) !== null && _c !== void 0 ? _c : 'READ',
+                operationType: (_d = catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.operationType) !== null && _d !== void 0 ? _d : 'READ',
             };
         }
         // 3. Tool must exist in catalog/registry
@@ -122,7 +134,7 @@ class AiRuntimeGuard {
             };
         }
         // 4. Determine operation type
-        const operationType = (_d = catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.operationType) !== null && _d !== void 0 ? _d : 'READ';
+        const operationType = (_e = catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.operationType) !== null && _e !== void 0 ? _e : 'READ';
         // 5. Tool must be in allowed tools snapshot for this run
         if (!ctx.allowedToolIds.includes(originalName)) {
             return {
@@ -190,7 +202,7 @@ class AiRuntimeGuard {
             };
         }
         // 10. Permission check — user must have the required permission
-        const requiredPermission = (_f = (_e = catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.requiredPermissions) === null || _e === void 0 ? void 0 : _e[0]) !== null && _f !== void 0 ? _f : registeredTool.requiredPermission;
+        const requiredPermission = (_g = (_f = catalogDef === null || catalogDef === void 0 ? void 0 : catalogDef.requiredPermissions) === null || _f === void 0 ? void 0 : _f[0]) !== null && _g !== void 0 ? _g : registeredTool.requiredPermission;
         const hasPermission = await this.permissionChecker.hasPermission(ctx.userId, ctx.companyId, requiredPermission);
         if (!hasPermission) {
             return {

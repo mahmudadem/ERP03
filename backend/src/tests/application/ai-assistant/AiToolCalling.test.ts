@@ -194,7 +194,7 @@ describe('AiToolCallingOrchestrator - Tool Execution', () => {
     const descriptions = orchestrator.getToolDescriptionsForPrompt();
     expect(descriptions).toContain('mock.success');
     expect(descriptions).toContain('Available tools:');
-    expect(descriptions).toContain('You do NOT invoke these tools yourself');
+    expect(descriptions).toContain('The backend validates all requested tools');
   });
 
   it('should return empty string when no tools are registered', () => {
@@ -303,7 +303,7 @@ describe('SendChatMessageUseCase - System Prompt with Tools', () => {
     // We test this indirectly by checking if the orchestrator can format prompts
     const descriptions = orchestrator.getToolDescriptionsForPrompt();
     expect(descriptions).toContain('mock.success');
-    expect(descriptions).toContain('You do NOT invoke these tools yourself');
+    expect(descriptions).toContain('The backend validates all requested tools');
   });
 
   it('should format tool data with safety instructions when injected into prompt', () => {

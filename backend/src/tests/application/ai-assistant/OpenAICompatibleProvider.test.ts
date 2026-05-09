@@ -433,14 +433,14 @@ describe('OpenAICompatibleProvider', () => {
       expect(req.timeoutMs).toBe(60000);
     });
 
-    it('should default timeout to 30000ms when not configured', async () => {
+    it('should default chat timeout to 120000ms when not configured', async () => {
       mockHttp.setResponse(createChatResponse('test'));
 
       const provider = new OpenAICompatibleProvider(validConfig, mockHttp);
       await provider.chat({ messages: [{ role: 'user', content: 'test' }] });
 
       const req = mockHttp.getLastRequest()!;
-      expect(req.timeoutMs).toBe(30000);
+      expect(req.timeoutMs).toBe(120000);
     });
 
     it('should use fallback model name when response model is missing', async () => {

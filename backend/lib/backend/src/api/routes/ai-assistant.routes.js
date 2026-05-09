@@ -26,6 +26,10 @@ router.put('/settings', (0, permissionGuard_1.permissionGuard)('ai-assistant.set
 // Settings — test provider connectivity (consumes real tokens for external providers)
 router.post('/settings/health', (0, permissionGuard_1.permissionGuard)('ai-assistant.settings.manage'), AiAssistantController_1.AiAssistantController.checkProviderHealth);
 router.get('/settings/usage', (0, permissionGuard_1.permissionGuard)('ai-assistant.settings.view'), AiAssistantController_1.AiAssistantController.getUsageAnalytics);
+router.post('/settings/custom-model-profiles', (0, permissionGuard_1.permissionGuard)('ai-assistant.settings.manage'), AiAssistantController_1.AiAssistantController.createTenantCustomModelProfile);
+router.post('/settings/custom-model-profiles/:profileId/diagnostics', (0, permissionGuard_1.permissionGuard)('ai-assistant.settings.manage'), AiAssistantController_1.AiAssistantController.runTenantCustomModelDiagnostics);
+router.post('/settings/custom-model-profiles/:profileId/certifications/run', (0, permissionGuard_1.permissionGuard)('ai-assistant.settings.manage'), AiAssistantController_1.AiAssistantController.runTenantCustomModelCertification);
+router.get('/certified-profiles', (0, permissionGuard_1.permissionGuard)('ai-assistant.settings.view'), AiAssistantController_1.AiAssistantController.listTenantCertifiedProfiles);
 // Tools — execute read-only AI tools (permission-gated per tool)
 router.post('/tools/execute', (0, permissionGuard_1.permissionGuard)('ai-assistant.chat.use'), AiAssistantController_1.AiAssistantController.executeTool);
 // Chat endpoints — no moduleInitializedGuard needed (no setup wizard)

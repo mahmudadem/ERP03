@@ -85,6 +85,8 @@ describe('AiProviderConfig', () => {
       expect(json.apiEndpoint).toBe('https://api.openai.com/v1');
       expect(json.maxTokensPerRequest).toBe(8192);
       expect(json.maxRequestsPerDay).toBe(50);
+      expect(json.conversationContextMode).toBe('balanced');
+      expect(json.includePreviousToolResults).toBe(true);
       expect(json.isEnabled).toBe(true);
       expect(json.updatedAt).toBe('2026-01-01T00:00:00.000Z');
     });
@@ -208,6 +210,8 @@ describe('AiProviderConfig', () => {
       expect(restored.apiEndpoint).toBe(original.apiEndpoint);
       expect(restored.maxTokensPerRequest).toBe(original.maxTokensPerRequest);
       expect(restored.maxRequestsPerDay).toBe(original.maxRequestsPerDay);
+      expect(restored.conversationContextMode).toBe(original.conversationContextMode);
+      expect(restored.includePreviousToolResults).toBe(original.includePreviousToolResults);
       expect(restored.isEnabled).toBe(original.isEnabled);
       expect(restored.dailyRequestCount).toBe(original.dailyRequestCount);
       expect(restored.dailyRequestDate).toBe(original.dailyRequestDate);
@@ -271,6 +275,8 @@ describe('AiProviderConfig', () => {
       expect(config.provider).toBe('mock');
       expect(config.maxTokensPerRequest).toBe(4096);
       expect(config.maxRequestsPerDay).toBe(100);
+      expect(config.conversationContextMode).toBe('balanced');
+      expect(config.includePreviousToolResults).toBe(true);
       expect(config.dailyRequestCount).toBe(0);
       expect(config.dailyRequestDate).toBeUndefined();
       expect(config.isEnabled).toBe(true);
@@ -290,6 +296,18 @@ describe('AiProviderConfig', () => {
       expect(config.dailyRequestCount).toBe(0);
       expect(config.dailyRequestDate).toBeUndefined();
       expect(config.isEnabled).toBe(true);
+    });
+
+    it('should update conversation context settings', () => {
+      const config = AiProviderConfig.defaultForCompany(companyId);
+
+      config.updateConfig({
+        conversationContextMode: 'deep',
+        includePreviousToolResults: false,
+      });
+
+      expect(config.conversationContextMode).toBe('deep');
+      expect(config.includePreviousToolResults).toBe(false);
     });
 
     it('should create a config with custom provider via create()', () => {

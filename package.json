@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit",
+    "emulators:remote": "firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
     "db:export": "firebase emulators:export ./emulator-data --force"
   },
   "dependencies": {

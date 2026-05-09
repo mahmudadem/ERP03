@@ -51,6 +51,15 @@ export interface AiRunContext {
   allowedToolIds: string[];
   /** Provider/model that initiated this run */
   providerModel: string;
+  /** Certification gate captured before tools were exposed for this run */
+  certification?: {
+    allowed: boolean;
+    code?: string;
+    reason?: string;
+    modelProfileId?: string;
+    profileHash?: string;
+    certificationId?: string;
+  };
 }
 
 /**
@@ -91,6 +100,7 @@ export class AiRuntimeGuard {
     conversationId: string;
     allowedToolIds: string[];
     providerModel: string;
+    certification?: AiRunContext['certification'];
     maxToolCalls?: number;
     ttlMs?: number;
   }): AiRunContext {
@@ -107,6 +117,7 @@ export class AiRuntimeGuard {
       toolCallsUsed: 0,
       allowedToolIds: params.allowedToolIds,
       providerModel: params.providerModel,
+      certification: params.certification,
     };
     this.runs.set(aiRunId, ctx);
     return ctx;
@@ -157,6 +168,18 @@ export class AiRuntimeGuard {
     // 2. Resolve provider-safe name to original registered name
     const originalName = nameMapping.get(toolCall.name) ?? toolCall.name;
     const catalogDef = getCatalogDefinition(originalName);
+
+    if (ctx.certification && !ctx.certification.allowed) {
+      return {
+        approved: false,
+        toolName: toolCall.name,
+        rejectionReason: ctx.certification.reason || 'This model profile is not certified for this ERP module/workflow. Please select a certified profile or run company certification.',
+        rejectionCode: ctx.certification.code || 'MODEL_PROFILE_NOT_CERTIFIED',
+        originalRequest: toolCall,
+        resolvedOriginalName: originalName,
+        operationType: catalogDef?.operationType ?? 'READ',
+      };
+    }
 
     if (!toolCall.arguments || typeof toolCall.arguments !== 'object' || Array.isArray(toolCall.arguments)) {
       return {

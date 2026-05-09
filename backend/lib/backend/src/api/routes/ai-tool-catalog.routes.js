@@ -10,7 +10,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const AiToolCatalogController_1 = require("../controllers/ai-assistant/AiToolCatalogController");
+const authMiddleware_1 = require("../middlewares/authMiddleware");
+const assertSuperAdmin_1 = require("../middlewares/assertSuperAdmin");
 const router = (0, express_1.Router)();
+// Apply auth and super-admin guard for all platform AI tool routes
+router.use(authMiddleware_1.authMiddleware);
+router.use(assertSuperAdmin_1.assertSuperAdmin);
 // ─── Tool Catalog ─────────────────────────────────────────────────────────
 /**
  * GET /platform/ai-tools
@@ -40,10 +45,35 @@ router.patch('/ai-tools/:toolName/enable', AiToolCatalogController_1.AiToolCatal
  */
 router.patch('/ai-tools/:toolName/disable', AiToolCatalogController_1.AiToolCatalogController.disableTool);
 /**
+ * PATCH /platform/ai-tools/:toolName/keywords
+ * Update a tool's chat keywords.
+ * Body: { keywords: string[] }
+ */
+router.patch('/ai-tools/:toolName/keywords', AiToolCatalogController_1.AiToolCatalogController.updateChatKeywords);
+/**
  * POST /platform/ai-tools/sync
  * Sync static catalog seed into the DB.
  */
 router.post('/ai-tools/sync', AiToolCatalogController_1.AiToolCatalogController.syncCatalog);
+// ─── Model Profiles ──────────────────────────────────────────────────────
+router.get('/ai-providers', AiToolCatalogController_1.AiToolCatalogController.listProviders);
+router.post('/ai-providers', AiToolCatalogController_1.AiToolCatalogController.createProvider);
+router.get('/ai-providers/:providerId', AiToolCatalogController_1.AiToolCatalogController.getProvider);
+router.patch('/ai-providers/:providerId', AiToolCatalogController_1.AiToolCatalogController.updateProvider);
+router.patch('/ai-providers/:providerId/enable', AiToolCatalogController_1.AiToolCatalogController.enableProvider);
+router.patch('/ai-providers/:providerId/disable', AiToolCatalogController_1.AiToolCatalogController.disableProvider);
+router.get('/ai-certifications/valid', AiToolCatalogController_1.AiToolCatalogController.listValidCertifiedProfiles);
+router.patch('/ai-certifications/:certificationId/expire', AiToolCatalogController_1.AiToolCatalogController.expireCertification);
+router.get('/ai-model-profiles', AiToolCatalogController_1.AiToolCatalogController.listModelProfiles);
+router.post('/ai-model-profiles', AiToolCatalogController_1.AiToolCatalogController.createModelProfile);
+router.post('/ai-model-profiles/sync', AiToolCatalogController_1.AiToolCatalogController.syncModelProfiles);
+router.post('/ai-model-profiles/:profileId/diagnostics', AiToolCatalogController_1.AiToolCatalogController.runModelProfileDiagnostics);
+router.get('/ai-model-profiles/:profileId/certifications', AiToolCatalogController_1.AiToolCatalogController.listModelProfileCertifications);
+router.post('/ai-model-profiles/:profileId/certifications/manual', AiToolCatalogController_1.AiToolCatalogController.recordGlobalCertification);
+router.post('/ai-model-profiles/:profileId/certifications/run', AiToolCatalogController_1.AiToolCatalogController.runGlobalCertification);
+router.get('/ai-model-profiles/:profileId', AiToolCatalogController_1.AiToolCatalogController.getModelProfile);
+router.patch('/ai-model-profiles/:profileId', AiToolCatalogController_1.AiToolCatalogController.updateModelProfile);
+router.delete('/ai-model-profiles/:profileId', AiToolCatalogController_1.AiToolCatalogController.deleteModelProfile);
 // ─── Enablement Policies ──────────────────────────────────────────────────
 /**
  * GET /platform/ai-tool-policies
