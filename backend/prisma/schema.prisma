@@ -2155,17 +2155,25 @@ model AiChatMessage {
 }
 
 model AiProviderConfig {
-  companyId           String   @id
-  provider            String   @default("mock") // 'mock' | 'openai_compatible' | 'ollama'
-  model               String?
-  apiKey              String?
-  apiEndpoint         String?
-  maxTokensPerRequest Int?
-  maxRequestsPerDay   Int?
-  dailyRequestCount   Int      @default(0) // Number of AI requests made today (UTC)
-  dailyRequestDate    String?            // UTC date string for the current count (e.g., '2026-05-05')
-  isEnabled           Boolean  @default(true)
-  updatedAt           DateTime @updatedAt
+  companyId                   String   @id
+  provider                    String   @default("mock") // 'mock' | 'openai_compatible' | 'ollama'
+  model                       String?
+  apiKey                      String?
+  apiEndpoint                 String?
+  maxTokensPerRequest         Int?
+  maxRequestsPerDay           Int?
+  dailyRequestCount           Int      @default(0) // Number of AI requests made today (UTC)
+  dailyRequestDate            String?            // UTC date string for the current count (e.g., '2026-05-05')
+  isEnabled                   Boolean  @default(true)
+  mode                        String?  // 'certified_profile' | 'custom_uncertified' | 'legacy_unverified'
+  providerId                  String?  // Reference to platform provider registry
+  selectedModelProfileId      String?  // Selected certified profile ID
+  selectedProfileHash         String?  // Profile hash for certification validation
+  conversationContextMode     String?  // 'minimal' | 'balanced' | 'deep'
+  includePreviousToolResults  Boolean  @default(true)
+  runtimeMode                 String   @default("BYOK") // 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'
+  allowedRuntimeModes         String?  // JSON array: ["BYOK","PLATFORM_MANAGED","BUILT_IN"]
+  updatedAt                   DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 

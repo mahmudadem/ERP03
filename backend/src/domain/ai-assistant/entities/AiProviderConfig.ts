@@ -23,6 +23,18 @@ export type AiProviderType = 'mock' | 'openai_compatible' | 'ollama';
 export type AiConversationContextMode = 'minimal' | 'balanced' | 'deep';
 export type AiTenantModelMode = 'certified_profile' | 'custom_uncertified' | 'legacy_unverified';
 
+/**
+ * RuntimeMode determines HOW tenant chat resolves credentials.
+ * - BYOK: Tenant must provide their own API key. No platform fallback.
+ * - PLATFORM_MANAGED: Platform uses its runtime credential. Tenant pays via credits/entitlement.
+ * - BUILT_IN: Platform uses local/embedded model. Tenant pays via credits/entitlement.
+ * - DISABLED: AI is turned off for this tenant.
+ *
+ * controlledRuntimeModes is set by Super Admin to restrict which modes a tenant may select.
+ * Defaults to all available modes. Tenant picks one from the allowed list.
+ */
+export type AiTenantRuntimeMode = 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED';
+
 export interface AiProviderConfigProps {
   companyId: string;
   provider: AiProviderType;
@@ -40,6 +52,8 @@ export interface AiProviderConfigProps {
   dailyRequestCount?: number;  // Number of requests made today (UTC)
   dailyRequestDate?: string;   // UTC date string for the current count (e.g., '2026-05-05')
   isEnabled: boolean;           // Company admin can disable AI without removing config
+  runtimeMode?: AiTenantRuntimeMode; // How credentials are resolved for tenant chat
+  allowedRuntimeModes?: AiTenantRuntimeMode[]; // Super Admin restriction: which modes tenant may select
   updatedAt: Date;
 }
 
@@ -61,7 +75,11 @@ export class AiProviderConfig implements AiProviderConfigProps {
     public mode: AiTenantModelMode = 'legacy_unverified',
     public providerId?: string,
     public selectedModelProfileId?: string,
-    public selectedProfileHash?: string
+    public selectedProfileHash?: string,
+    /** How credentials are resolved for tenant chat */
+    public runtimeMode: AiTenantRuntimeMode = 'BYOK',
+    /** Super Admin restriction: which modes tenant may select */
+    public allowedRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']
   ) {}
 
   static create(input: {
@@ -88,7 +106,9 @@ export class AiProviderConfig implements AiProviderConfigProps {
       'legacy_unverified',
       input.provider || 'mock',
       undefined,
-      undefined
+      undefined,
+      'BYOK',
+      ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']
     );
   }
 
@@ -111,7 +131,9 @@ export class AiProviderConfig implements AiProviderConfigProps {
       'legacy_unverified',
       'mock',
       undefined,
-      undefined
+      undefined,
+      'BYOK',
+      ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']
     );
   }
 
@@ -129,6 +151,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
     if (updates.conversationContextMode !== undefined) this.conversationContextMode = updates.conversationContextMode;
     if (updates.includePreviousToolResults !== undefined) this.includePreviousToolResults = updates.includePreviousToolResults;
     if (updates.isEnabled !== undefined) this.isEnabled = updates.isEnabled;
+    if (updates.runtimeMode !== undefined) this.runtimeMode = updates.runtimeMode;
+    if (updates.allowedRuntimeModes !== undefined) this.allowedRuntimeModes = updates.allowedRuntimeModes;
     // Note: dailyRequestCount and dailyRequestDate are NOT updated via updateConfig
     // They are managed exclusively by AiRateLimiterService
     this.updatedAt = new Date();
@@ -195,6 +219,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
       conversationContextMode: this.conversationContextMode,
       includePreviousToolResults: this.includePreviousToolResults,
       isEnabled: this.isEnabled,
+      runtimeMode: this.runtimeMode,
+      allowedRuntimeModes: this.allowedRuntimeModes,
       updatedAt: this.updatedAt.toISOString(),
       hasApiKey: !!this.apiKey, // Indicate presence without revealing value
     };
@@ -223,6 +249,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
       dailyRequestCount: this.dailyRequestCount || 0,
       dailyRequestDate: this.dailyRequestDate || null,
       isEnabled: this.isEnabled,
+      runtimeMode: this.runtimeMode,
+      allowedRuntimeModes: this.allowedRuntimeModes,
       updatedAt: this.updatedAt.toISOString(),
     };
   }
@@ -232,6 +260,14 @@ export class AiProviderConfig implements AiProviderConfigProps {
     const mode: AiTenantModelMode = ['certified_profile', 'custom_uncertified', 'legacy_unverified'].includes(data.mode)
       ? data.mode
       : 'legacy_unverified';
+
+    const runtimeModeValid = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'].includes(data.runtimeMode);
+    const runtimeMode: AiTenantRuntimeMode = runtimeModeValid ? data.runtimeMode : 'BYOK';
+
+    const allModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'];
+    const allowedRuntimeModes: AiTenantRuntimeMode[] = Array.isArray(data.allowedRuntimeModes)
+      ? data.allowedRuntimeModes.filter((m: string): m is AiTenantRuntimeMode => allModes.includes(m as AiTenantRuntimeMode))
+      : ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN'];
 
     return new AiProviderConfig(
       data.companyId,
@@ -252,7 +288,9 @@ export class AiProviderConfig implements AiProviderConfigProps {
       mode,
       data.providerId || provider,
       data.selectedModelProfileId || undefined,
-      data.selectedProfileHash || undefined
+      data.selectedProfileHash || undefined,
+      runtimeMode,
+      allowedRuntimeModes
     );
   }
 }

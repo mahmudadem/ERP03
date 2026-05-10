@@ -86,4 +86,38 @@ export function validateUpdateAiSettingsInput(body: any): void {
   if (body.isEnabled !== undefined && typeof body.isEnabled !== 'boolean') {
     throw ApiError.badRequest('isEnabled must be a boolean');
   }
+
+  if (body.mode !== undefined) {
+    const validModes = ['certified_profile', 'custom_uncertified', 'legacy_unverified'];
+    if (!validModes.includes(body.mode)) {
+      throw ApiError.badRequest(`mode must be one of: ${validModes.join(', ')}`);
+    }
+  }
+
+  if (body.providerId !== undefined && typeof body.providerId !== 'string') {
+    throw ApiError.badRequest('providerId must be a string');
+  }
+
+  if (body.selectedModelProfileId !== undefined && typeof body.selectedModelProfileId !== 'string') {
+    throw ApiError.badRequest('selectedModelProfileId must be a string');
+  }
+
+  if (body.runtimeMode !== undefined) {
+    const validRuntimeModes = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'];
+    if (!validRuntimeModes.includes(body.runtimeMode)) {
+      throw ApiError.badRequest(`runtimeMode must be one of: ${validRuntimeModes.join(', ')}`);
+    }
+  }
+
+  if (body.allowedRuntimeModes !== undefined) {
+    if (!Array.isArray(body.allowedRuntimeModes)) {
+      throw ApiError.badRequest('allowedRuntimeModes must be an array');
+    }
+    const validRuntimeModes = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'];
+    for (const mode of body.allowedRuntimeModes) {
+      if (!validRuntimeModes.includes(mode)) {
+        throw ApiError.badRequest(`allowedRuntimeModes must contain only: ${validRuntimeModes.join(', ')}`);
+      }
+    }
+  }
 }

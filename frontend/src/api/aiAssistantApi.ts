@@ -103,6 +103,12 @@ export interface AiSettingsDTO {
   includePreviousToolResults?: boolean;
   isEnabled: boolean;
   hasApiKey: boolean;
+  mode: string | null;
+  providerId: string | null;
+  selectedModelProfileId: string | null;
+  selectedProfileHash: string | null;
+  runtimeMode: string;
+  allowedRuntimeModes: string[];
   updatedAt: string;
 }
 
@@ -183,6 +189,12 @@ export interface UpdateAiSettingsPayload {
   conversationContextMode?: 'minimal' | 'balanced' | 'deep';
   includePreviousToolResults?: boolean;
   isEnabled?: boolean;
+  mode?: 'certified_profile' | 'custom_uncertified' | 'legacy_unverified';
+  providerId?: string;
+  selectedModelProfileId?: string;
+  selectedProfileHash?: string;
+  runtimeMode?: 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED';
+  allowedRuntimeModes?: Array<'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'>;
 }
 
 // Proposal Sandbox Types

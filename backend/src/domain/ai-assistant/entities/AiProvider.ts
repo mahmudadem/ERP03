@@ -14,6 +14,7 @@ export interface AiProviderProps {
   type: AiProviderRegistryType;
   defaultBaseUrl?: string;
   authType: AiProviderAuthType;
+  platformRuntimeCredential?: string; // Encrypted at rest; used ONLY for PLATFORM_MANAGED/BUILT_IN tenant runtime; never exposed in toJSON API responses
   enabled: boolean;
   supportsTools: boolean;
   supportsJsonMode: boolean;
@@ -30,10 +31,11 @@ export class AiProvider implements AiProviderProps {
     public readonly type: AiProviderRegistryType,
     public readonly defaultBaseUrl: string | undefined,
     public readonly authType: AiProviderAuthType,
-    public readonly enabled: boolean,
-    public readonly supportsTools: boolean,
-    public readonly supportsJsonMode: boolean,
-    public readonly supportsModelSync: boolean,
+    public readonly platformRuntimeCredential: string | undefined = undefined,
+    public readonly enabled: boolean = true,
+    public readonly supportsTools: boolean = false,
+    public readonly supportsJsonMode: boolean = false,
+    public readonly supportsModelSync: boolean = false,
     public readonly notes: string | undefined = undefined,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
@@ -54,6 +56,26 @@ export class AiProvider implements AiProviderProps {
       type: this.type,
       defaultBaseUrl: this.defaultBaseUrl || null,
       authType: this.authType,
+      hasPlatformRuntimeCredential: !!this.platformRuntimeCredential,
+      enabled: this.enabled,
+      supportsTools: this.supportsTools,
+      supportsJsonMode: this.supportsJsonMode,
+      supportsModelSync: this.supportsModelSync,
+      notes: this.notes || null,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+    };
+  }
+
+  /** For persistence — includes encrypted apiKey */
+  toPersistenceJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      name: this.name,
+      type: this.type,
+      defaultBaseUrl: this.defaultBaseUrl || null,
+      authType: this.authType,
+      platformRuntimeCredential: this.platformRuntimeCredential || null,
       enabled: this.enabled,
       supportsTools: this.supportsTools,
       supportsJsonMode: this.supportsJsonMode,
@@ -71,6 +93,8 @@ export class AiProvider implements AiProviderProps {
       data.type || 'custom',
       data.defaultBaseUrl || undefined,
       data.authType || 'api_key',
+      // Backward compat: read both old (defaultApiKey) and new (platformRuntimeCredential) field names
+      data.platformRuntimeCredential || data.defaultApiKey || undefined,
       data.enabled !== false,
       data.supportsTools === true,
       data.supportsJsonMode === true,

@@ -750,4 +750,170 @@ describe('SendChatMessageUseCase', () => {
       expect(result).toBeDefined();
     });
   });
+
+  describe('runtimeMode credential resolution', () => {
+    let mockProviderRepo: any;
+
+    beforeEach(() => {
+      mockProviderRepo = {
+        getById: jest.fn(),
+        list: jest.fn().mockResolvedValue([]),
+        save: jest.fn(),
+        delete: jest.fn(),
+      };
+    });
+
+    const createConfig = (runtimeMode: string, apiKey?: string) => {
+      const config = AiProviderConfig.defaultForCompany('company-1');
+      config.runtimeMode = runtimeMode as any;
+      config.apiKey = apiKey;
+      config.provider = 'openai_compatible'; // Non-mock so credential resolution is exercised
+      return config;
+    };
+
+    it('should reject with clear error when runtimeMode is DISABLED', async () => {
+      const config = createConfig('DISABLED');
+      settingsRepo = createMockSettingsRepo(config);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(403);
+        expect((error as ApiError).message).toContain('disabled');
+      }
+    });
+
+    it('should reject with clear error when runtimeMode is BYOK and no apiKey', async () => {
+      const config = createConfig('BYOK', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(403);
+        expect((error as ApiError).message).toContain('No API key configured');
+      }
+    });
+
+    it('should allow BYOK when tenant has apiKey', async () => {
+      const config = createConfig('BYOK', 'test-key');
+      settingsRepo = createMockSettingsRepo(config);
+
+      const httpClient = new SequenceHttpClient([{
+        choices: [{ message: { role: 'assistant', content: 'Hello!' } }],
+      }]);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, httpClient as any);
+
+      const result = await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+      expect(result).toBeDefined();
+    });
+
+    it('should reject PLATFORM_MANAGED when no providerRepository is wired', async () => {
+      const config = createConfig('PLATFORM_MANAGED', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+
+      // Without providerRepository, PLATFORM_MANAGED should fail
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(500);
+        expect((error as ApiError).message).toContain('not configured');
+      }
+    });
+
+    it('should reject PLATFORM_MANAGED when provider has no platformRuntimeCredential', async () => {
+      const config = createConfig('PLATFORM_MANAGED', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+      mockProviderRepo.list.mockResolvedValue([
+        { id: 'openai:openai', type: 'openai_compatible', platformRuntimeCredential: undefined },
+      ]);
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, createMockHttpClient(),
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockProviderRepo,
+      );
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(403);
+        expect((error as ApiError).message).toContain('No platform runtime credential');
+      }
+    });
+
+    it('should use platform credential when PLATFORM_MANAGED and provider has credential', async () => {
+      const config = createConfig('PLATFORM_MANAGED', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+      mockProviderRepo.list.mockResolvedValue([
+        { id: 'openai:openai', type: 'openai_compatible', platformRuntimeCredential: 'enc:platform-key' },
+      ]);
+
+      const httpClient = new SequenceHttpClient([{
+        choices: [{ message: { role: 'assistant', content: 'Hello!' } }],
+      }]);
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, httpClient as any,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockProviderRepo,
+      );
+
+      const result = await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+      expect(result).toBeDefined();
+      // Verify the provider key was decrypted from platform credential
+      expect(encryptionService.decrypt).toHaveBeenCalledWith('enc:platform-key');
+    });
+
+    it('should reject BUILT_IN when no providerRepository is wired', async () => {
+      const config = createConfig('BUILT_IN', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(500);
+        expect((error as ApiError).message).toContain('not configured');
+      }
+    });
+
+    it('should NOT fall back to platform credential when runtimeMode is BYOK even if provider has credential', async () => {
+      const config = createConfig('BYOK', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+      mockProviderRepo.list.mockResolvedValue([
+        { id: 'openai:openai', type: 'openai_compatible', platformRuntimeCredential: 'enc:platform-key' },
+      ]);
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, createMockHttpClient(),
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockProviderRepo,
+      );
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        // BYOK must reject even when platform credential exists
+        expect((error as ApiError).statusCode).toBe(403);
+        expect((error as ApiError).message).toContain('No API key configured');
+        // Platform credential should NEVER be checked for BYOK mode
+        expect(encryptionService.decrypt).not.toHaveBeenCalled();
+      }
+    });
+  });
 });

@@ -1164,7 +1164,8 @@
       "flags": {
         "tools": "Araçlar",
         "json": "JSON",
-        "sync": "Senkronizasyon"
+        "sync": "Senkronizasyon",
+        "hasPlatformCredential": "Platform kimlik bilgisi"
       },
       "form": {
         "createTitle": "Sağlayıcı Oluştur",
@@ -1173,6 +1174,9 @@
         "type": "Sağlayıcı Türü",
         "baseUrl": "Varsayılan Temel URL",
         "authType": "Kimlik Doğrulama Türü",
+        "platformRuntimeCredential": "Platform Çalışma Kimlik Bilgisi",
+        "platformRuntimeCredentialHint": "Şifreli olarak saklanır. YALNIZCA PLATFORM_MANAGED / BUILT_IN kiracı çalışma zamanı için kullanılır. Mevcut kimlik bilgisini korumak için boş bırakın.",
+        "keepExistingCredential": "Mevcut kimlik bilgisini korumak için boş bırakın",
         "notes": "Notlar",
         "enable": "Sağlayıcıyı Etkinleştir",
         "disable": "Sağlayıcıyı Devre Dışı Bırak"
@@ -1208,15 +1212,19 @@
         "tags": "Etiketler",
         "actions": "İşlemler"
       },
-      "actions": {
+"actions": {
         "new": "Yeni Model",
         "sync": "Varsayılanları Senkronize Et",
         "edit": "Düzenle",
         "delete": "Sil",
+        "cancel": "İptal",
         "save": "Model Profilini Kaydet",
         "saving": "Kaydediliyor...",
         "runDiagnostics": "Tanılamayı çalıştır",
         "testing": "Test ediliyor..."
+      },
+      "modal": {
+        "profileDetails": "Profil Detayları"
       },
       "messages": {
         "created": "Model profili oluşturuldu",
@@ -1257,13 +1265,26 @@
         "warningLevel": "Uyarı seviyesi",
         "tags": "Etiketler",
         "useCases": "Kullanım alanları",
-        "warningMessage": "Uyarı mesajı",
+"warningMessage": "Uyarı mesajı",
         "nativeTools": "Yerel araçlar",
         "structuredJson": "Yapılandırılmış JSON",
-        "textOnly": "Sadece metin modu"
+        "textOnly": "Sadece metin modu",
+        "scope": "Kapsam",
+        "toolMode": "Araç modu",
+        "temperature": "Sıcaklık",
+        "maxOutputTokens": "Maks çıktı tokeni",
+        "timeoutMs": "Zaman aşımı (ms)",
+        "retryPolicy": "Yeniden deneme politikası",
+        "dataFilterPolicyId": "Veri filtre politikası",
+        "safetyPolicyId": "Güvenlik politikası",
+        "systemPromptPolicyId": "Sistem prompt politikası",
+        "enabled": "Etkin",
+        "runtimeConfig": "Çalışma Zamanı Yapılandırması",
+        "runtimeConfigSubtitle": "Bu ayarlar AI çalışma zamanının bu profili nasıl kullanacağını etkiler. Kabuk sertifikasını geçmek için veri filtre ve güvenlik politikalarını ayarlayın."
       },
 "diagnosticsPanel": {
         "title": "Tanılamayı Çalıştır",
+        "subtitle": "Bir şirketin AI yapılandırmasını kullanarak bağlantı ve model yeteneklerini test edin.",
         "company": "Şirket ayarlarını kullan",
         "chatReady": "Sohbet hazır",
         "chatNotReady": "Sohbet hazır değil",
@@ -1887,6 +1908,18 @@
       "save": "Şirket Varsayılanlarını Kaydet",
       "eventCategories": "Etkinlik Kategorileri",
       "hint": "Kategorileri bu şirketteki tüm kullanıcılar için varsayılan olarak kapatmak için burada devre dışı bırakın. Kullanıcılar yine de profillerinde bu varsayılanları geçersiz kılabilir."
+    },
+    "runtimeMode": "AI Çalışma Modu",
+    "runtimeModeDesc": "Şirketiniz için AI kimlik bilgilerinin nasıl çözüleceğini belirler.",
+    "runtimeMode": {
+      "BYOK": "Kendi Anahtarını Getir (BYOK)",
+      "BYOK.desc": "Aşağıda kendi API anahtarınızı sağlamanız gerekir. Şirketiniz sağlayıcıya doğrudan ödeme yapar.",
+      "PLATFORM_MANAGED": "Platform Yönetimli",
+      "PLATFORM_MANAGED.desc": "Platform kimlik bilgilerini yönetir. Kullanım AI kredisi veya aboneliği gerektirir.",
+      "BUILT_IN": "Dahili AI",
+      "BUILT_IN.desc": "Dahili AI hizmeti. Kullanım AI kredisi veya aboneliği gerektirir.",
+      "DISABLED": "Devre Dışı",
+      "DISABLED.desc": "AI Asistan şirketiniz için devre dışı bırakıldı."
     }
   },
   "success": {

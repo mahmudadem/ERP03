@@ -14,7 +14,7 @@
 
 import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assistant/IAiSettingsRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
-import { AiConversationContextMode, AiProviderConfig, AiProviderType, AiTenantModelMode } from '../../../domain/ai-assistant/entities/AiProviderConfig';
+import { AiConversationContextMode, AiProviderConfig, AiProviderType, AiTenantModelMode, AiTenantRuntimeMode } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { ProviderFactory } from '../providers/ProviderFactory';
 import { ApiError } from '../../../api/errors/ApiError';
 
@@ -37,6 +37,8 @@ export interface UpdateSettingsInput {
   conversationContextMode?: AiConversationContextMode;
   includePreviousToolResults?: boolean;
   isEnabled?: boolean;
+  runtimeMode?: AiTenantRuntimeMode;
+  allowedRuntimeModes?: AiTenantRuntimeMode[];
 }
 
 export class AiSettingsUseCase {
@@ -118,6 +120,8 @@ export class AiSettingsUseCase {
       conversationContextMode: input.conversationContextMode,
       includePreviousToolResults: input.includePreviousToolResults,
       isEnabled: input.isEnabled,
+      runtimeMode: input.runtimeMode,
+      allowedRuntimeModes: input.allowedRuntimeModes,
     });
 
     // Encrypt apiKey before saving to repository

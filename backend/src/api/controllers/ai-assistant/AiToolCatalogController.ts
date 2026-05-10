@@ -256,11 +256,13 @@ export class AiToolCatalogController {
     }
   }
 
-  static async updateProvider(req: Request, res: Response, next: NextFunction) {
+static async updateProvider(req: Request, res: Response, next: NextFunction) {
     try {
       const existing = await diContainer.aiProviderRegistryUseCase.getProvider(req.params.providerId);
+      // Merge existing fields with request body, but exclude hasPlatformRuntimeCredential (it's a computed field)
+      const { hasPlatformRuntimeCredential, ...existingData } = existing.toJSON();
       const provider = await diContainer.aiProviderRegistryUseCase.upsertProvider({
-        ...existing.toJSON(),
+        ...existingData,
         ...req.body,
         id: req.params.providerId,
       } as any);
@@ -459,9 +461,11 @@ export class AiToolCatalogController {
     }
   }
 
-  private static validateModelProfilePayload(body: any): void {
+private static validateModelProfilePayload(body: any): void {
     const statuses = ['recommended', 'tested', 'experimental', 'custom'];
     const warningLevels = ['none', 'info', 'warning', 'danger'];
+    const toolModes = ['none', 'text_plan', 'native_tools', 'json_only'];
+    const scopes = ['GLOBAL', 'TENANT'];
     if (!body || typeof body !== 'object') {
       throw ApiError.badRequest('Request body is required');
     }
@@ -488,6 +492,21 @@ export class AiToolCatalogController {
     }
     if (body.warningLevel && !warningLevels.includes(body.warningLevel)) {
       throw ApiError.badRequest(`warningLevel must be one of: ${warningLevels.join(', ')}`);
+    }
+    if (body.toolMode && !toolModes.includes(body.toolMode)) {
+      throw ApiError.badRequest(`toolMode must be one of: ${toolModes.join(', ')}`);
+    }
+    if (body.scope && !scopes.includes(body.scope)) {
+      throw ApiError.badRequest(`scope must be one of: ${scopes.join(', ')}`);
+    }
+    if (body.temperature !== undefined && !Number.isFinite(Number(body.temperature))) {
+      throw ApiError.badRequest('temperature must be a number');
+    }
+    if (body.maxOutputTokens !== undefined && !Number.isFinite(Number(body.maxOutputTokens))) {
+      throw ApiError.badRequest('maxOutputTokens must be a number');
+    }
+    if (body.timeoutMs !== undefined && !Number.isFinite(Number(body.timeoutMs))) {
+      throw ApiError.badRequest('timeoutMs must be a number');
     }
   }
 }

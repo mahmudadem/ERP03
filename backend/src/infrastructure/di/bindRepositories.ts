@@ -813,8 +813,8 @@ export const diContainer = {
   get aiModelProfileUseCase(): AiModelProfileUseCase {
     return new AiModelProfileUseCase(this.aiModelProfileRepository);
   },
-  get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
-    return new AiProviderRegistryUseCase(this.aiProviderRepository);
+get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
+    return new AiProviderRegistryUseCase(this.aiProviderRepository, this.encryptionService);
   },
   get aiModelCertificationUseCase(): AiModelCertificationUseCase {
     return new AiModelCertificationUseCase(

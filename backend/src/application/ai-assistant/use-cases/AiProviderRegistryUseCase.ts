@@ -5,6 +5,7 @@ import {
   AiProviderRegistryType,
 } from '../../../domain/ai-assistant/entities/AiProvider';
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
+import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 
 export interface UpsertAiProviderInput {
   id?: string;
@@ -12,6 +13,7 @@ export interface UpsertAiProviderInput {
   type: AiProviderRegistryType;
   defaultBaseUrl?: string;
   authType?: AiProviderAuthType;
+  platformRuntimeCredential?: string; // Encrypted at rest; used ONLY for PLATFORM_MANAGED/BUILT_IN runtime
   enabled?: boolean;
   supportsTools?: boolean;
   supportsJsonMode?: boolean;
@@ -20,7 +22,10 @@ export interface UpsertAiProviderInput {
 }
 
 export class AiProviderRegistryUseCase {
-  constructor(private readonly providerRepository: IAiProviderRepository) {}
+  constructor(
+    private readonly providerRepository: IAiProviderRepository,
+    private readonly encryptionService?: IEncryptionService,
+  ) {}
 
   async listProviders(): Promise<AiProvider[]> {
     return (await this.providerRepository.list())
@@ -33,17 +38,48 @@ export class AiProviderRegistryUseCase {
     return provider;
   }
 
+  private encryptApiKey(apiKey: string): string {
+    if (!this.encryptionService) return `plain:${apiKey}`;
+    try {
+      return this.encryptionService.encrypt(apiKey);
+    } catch {
+      return `plain:${apiKey}`;
+    }
+  }
+
+  private decryptApiKey(apiKey: string): string {
+    if (apiKey.startsWith('plain:')) return apiKey.substring(6);
+    if (!this.encryptionService) return apiKey;
+    try {
+      return this.encryptionService.decrypt(apiKey);
+    } catch {
+      return apiKey;
+    }
+  }
+
   async upsertProvider(input: UpsertAiProviderInput): Promise<AiProvider> {
     this.validateProviderInput(input);
     const now = new Date();
     const id = input.id || AiProvider.makeId(input.type, input.name);
     const existing = await this.providerRepository.getById(id);
+
+    // Handle platform runtime credential encryption
+    let platformRuntimeCredential: string | undefined;
+    if (input.platformRuntimeCredential !== undefined) {
+      // New credential provided — encrypt it
+      platformRuntimeCredential = input.platformRuntimeCredential ? this.encryptApiKey(input.platformRuntimeCredential) : undefined;
+    } else {
+      // No new credential provided — preserve existing
+      platformRuntimeCredential = existing?.platformRuntimeCredential;
+    }
+
     const provider = new AiProvider(
       id,
       input.name.trim(),
       input.type,
       input.defaultBaseUrl?.trim() || undefined,
       input.authType || existing?.authType || 'api_key',
+      platformRuntimeCredential,
       input.enabled ?? existing?.enabled ?? true,
       input.supportsTools ?? existing?.supportsTools ?? false,
       input.supportsJsonMode ?? existing?.supportsJsonMode ?? false,
@@ -64,6 +100,7 @@ export class AiProviderRegistryUseCase {
       existing.type,
       existing.defaultBaseUrl,
       existing.authType,
+      existing.platformRuntimeCredential,
       enabled,
       existing.supportsTools,
       existing.supportsJsonMode,

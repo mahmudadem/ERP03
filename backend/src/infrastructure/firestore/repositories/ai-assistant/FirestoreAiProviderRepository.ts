@@ -29,7 +29,7 @@ export class FirestoreAiProviderRepository implements IAiProviderRepository {
   }
 
   async save(provider: AiProvider): Promise<void> {
-    await this.getCollection().doc(provider.id).set(stripUndefined(provider.toJSON()));
+    await this.getCollection().doc(provider.id).set(stripUndefined(provider.toPersistenceJSON()));
   }
 
   async delete(id: string): Promise<void> {

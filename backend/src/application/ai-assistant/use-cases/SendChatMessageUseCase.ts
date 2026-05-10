@@ -48,11 +48,12 @@
 import { IAiChatRepository } from '../../../repository/interfaces/ai-assistant/IAiChatRepository';
 import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assistant/IAiSettingsRepository';
 import { IAiUsageLogRepository } from '../../../repository/interfaces/ai-assistant/IAiUsageLogRepository';
+import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { AiChatMessage } from '../../../domain/ai-assistant/entities/AiChatMessage';
 import { AiUsageLog } from '../../../domain/ai-assistant/entities/AiUsageLog';
-import { AiConversationContextMode, AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
+import { AiConversationContextMode, AiProviderConfig, AiTenantRuntimeMode } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { ProviderFactory } from '../providers/ProviderFactory';
 import { AiProviderRequest, AiProviderResponse } from '../providers/IAiProvider';
 import { AiRateLimiterService } from '../services/AiRateLimiterService';
@@ -163,7 +164,7 @@ const CONVERSATION_CONTEXT_BUDGETS: Record<AiConversationContextMode, Omit<Conve
 export class SendChatMessageUseCase {
   private rateLimiter: AiRateLimiterService;
 
-  constructor(
+constructor(
     private chatRepository: IAiChatRepository,
     private settingsRepository: IAiSettingsRepository,
     private encryptionService: IEncryptionService,
@@ -177,6 +178,7 @@ export class SendChatMessageUseCase {
     private skillRegistry?: AiSkillRegistry,
     private modelProfileUseCase?: AiModelProfileUseCase,
     private modelRoutingGuard?: AiModelRoutingGuard,
+    private providerRepository?: IAiProviderRepository,
   ) {
     this.rateLimiter = new AiRateLimiterService(settingsRepository);
   }
@@ -211,6 +213,9 @@ export class SendChatMessageUseCase {
     } else {
       config = this.decryptConfig(config);
     }
+
+    // 3b. Resolve credentials based on tenant runtimeMode (no silent fallback)
+    config = await this.resolveRuntimeCredential(config);
 
     // 4. Check if AI is enabled for this company
     if (!config.isEnabled) {
@@ -764,7 +769,7 @@ export class SendChatMessageUseCase {
     }
   }
 
-  /**
+/**
    * Decrypt the apiKey in an AiProviderConfig after loading from storage.
    * Returns the config with plaintext apiKey for provider usage.
    */
@@ -800,6 +805,85 @@ export class SendChatMessageUseCase {
       // Return config as-is — ProviderFactory will fall back to mock if the key is invalid
       return config;
     }
+  }
+
+  /**
+   * Resolve the API credential based on tenant runtimeMode.
+   * No silent fallback — each mode has explicit requirements.
+   *
+   * - BYOK: Tenant MUST have their own apiKey. No platform fallback.
+   * - PLATFORM_MANAGED: Platform uses its runtime credential.
+   * - BUILT_IN: Platform uses its runtime credential (local model routing).
+    * - DISABLED: Rejected inside resolveRuntimeCredential (before isEnabled check).
+   */
+  private async resolveRuntimeCredential(config: AiProviderConfig): Promise<AiProviderConfig> {
+    const runtimeMode = config.runtimeMode || 'BYOK';
+
+    // Mock provider never needs credentials — skip resolution entirely
+    if (config.provider === 'mock') return config;
+
+    if (runtimeMode === 'DISABLED') {
+      throw ApiError.forbidden('AI Assistant is disabled for your company. Contact your administrator.');
+    }
+
+    if (runtimeMode === 'BYOK') {
+      // Tenant must provide their own API key — no platform fallback
+      if (!config.apiKey) {
+        throw ApiError.forbidden(
+          'No API key configured. Please add your provider API key in AI Settings (Bring Your Own Key mode).'
+        );
+      }
+      return config;
+    }
+
+    if (runtimeMode === 'PLATFORM_MANAGED' || runtimeMode === 'BUILT_IN') {
+      // Platform-managed: use the platform runtime credential from the provider registry
+      if (!this.providerRepository) {
+        throw ApiError.internal('Platform runtime credential is not configured. Contact support.');
+      }
+
+      try {
+        const providers = await this.providerRepository.list();
+        const provider = providers.find(p =>
+          p.type === config.provider ||
+          (p.type === 'openai_compatible' && config.provider === 'openai_compatible')
+        );
+
+        if (!provider || !provider.platformRuntimeCredential) {
+          throw ApiError.forbidden(
+            'Platform AI service is not available. No platform runtime credential configured for this provider. Contact support.'
+          );
+        }
+
+        // Decrypt the platform runtime credential
+        let plainKey: string;
+        if (provider.platformRuntimeCredential.startsWith('plain:')) {
+          plainKey = provider.platformRuntimeCredential.substring(6);
+        } else if (provider.platformRuntimeCredential.includes(':')) {
+          plainKey = this.encryptionService.decrypt(provider.platformRuntimeCredential);
+        } else {
+          plainKey = provider.platformRuntimeCredential;
+        }
+
+        // Apply the platform credential to the config
+        return AiProviderConfig.fromJSON({
+          ...config.toJSON(),
+          apiKey: plainKey,
+          updatedAt: config.updatedAt.toISOString(),
+        });
+      } catch (error) {
+        if (error instanceof ApiError) throw error;
+        throw ApiError.internal(
+          `Failed to resolve platform runtime credential: ${(error as Error).message}`
+        );
+      }
+    }
+
+    // Unknown mode — treat as BYOK requirement
+    if (!config.apiKey) {
+      throw ApiError.forbidden('AI configuration error. Please update your AI Settings.');
+    }
+    return config;
   }
 
   private async resolveModelProfile(provider: string, modelName: string | null | undefined): Promise<AiModelProfile> {

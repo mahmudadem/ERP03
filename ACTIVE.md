@@ -8,6 +8,69 @@
 
 ---
 
+## 2026-05-10 Result — Canvas Dev 96-Cell Widget Layout Sandbox
+
+**Status:** ✅ COMPLETE
+**Estimate:** 60-90m
+**Actual time:** ~1h 10m
+
+Added a dev-only precision top-bar layout implementation to `/canvas-dev` so the new widget architecture can be tested before replacing the production widget area.
+
+Changed:
+- Added a 96-cell horizontal precision grid sandbox in `frontend/src/pages/dev/CanvasDevPage.tsx`.
+- Added sandbox-local `PrecisionWidgetConfig`, `PRECISION_MAX_CELLS = 96`, and `PRECISION_MIN_WIDGET_SPAN = 8`.
+- Added `Edit & Layout`, `Auto Align`, and `Add Widget` controls for the candidate layout.
+- Added predefined widget templates for clock, date, logo, text, weather, and battery.
+- Added per-widget quick controls under each widget:
+  - Move left/right by exactly 1 cell.
+  - Type exact width/span.
+  - Toggle bold, border, and background.
+  - Remove widget.
+- Follow-up fix: quick controls now appear only for the selected widget, preventing overlapping/staked toolbars across the bar.
+- Follow-up fix: the 96-cell candidate now initializes from and adds the real application top-bar widgets (`company-logo`, `fiscal-year`, `base-currency`, `approval-mode`, `ui-mode`, `clock`, `date`, `notes`, `alarm`) instead of mocked weather/battery/text widgets.
+- Follow-up fix: the Bold control now overrides real widget child typography, background styling now opens a compact color swatch panel, and real widget internal backgrounds/borders are disabled inside the sandbox so the candidate wrapper owns all styling.
+- Kept all state local to the canvas dev page. The production `TopBar` and `DraggableWidgetSpace` were not changed.
+- Detour fix: the legacy React Grid Layout canvas demo could trigger `Maximum update depth exceeded` because it wrote scaled 48-cell coordinates back into the shared widget store. The old demos are now hidden behind a toggle by default, and the RGL demo converts coordinates back before saving.
+
+Verification:
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+
+Completion report:
+- `1-TODO/done/82-canvas-dev-96-cell-widget-layout.md`
+
+Next recommended move:
+- Open `/canvas-dev`, test the 96-cell candidate with realistic top-bar widths, then decide whether to port it into `DraggableWidgetSpace`. Estimate for production port after QA: 2-4h.
+
+---
+
+## 2026-05-10 Result — Emulator Data Restore and Export-Path Guardrail
+
+**Status:** ✅ COMPLETE
+**Estimate:** 10-15m
+**Actual time:** ~10m
+
+Restored the latest Firebase emulator export back into the normal `emulator-data` folder.
+
+Root cause:
+- The default `npm run emulators` script imported from `./emulator-data` but used `--export-on-exit` without a destination.
+- Firebase wrote shutdown data to a timestamped folder such as `firebase-export-1778387915442YfJ0Al`.
+- The next emulator startup looked for `./emulator-data`, which was missing, so data appeared lost.
+
+Changed:
+- Copied `firebase-export-1778387915442YfJ0Al` to `emulator-data`.
+- Updated `package.json` so `npm run emulators` now uses `--export-on-exit=./emulator-data`.
+
+Verification:
+- `emulator-data/firebase-export-metadata.json` exists ✅
+- `emulator-data/firestore_export/all_namespaces/all_kinds/output-0` exists ✅
+- Restored Firestore export size: `3061301` bytes ✅
+
+Next recommended move:
+- Start emulators with `npm run emulators` or `npm run emulators:remote`; both now import and export through `./emulator-data`.
+
+---
+
 ## 2026-05-10 Result — Graphify CLI Usability Fix
 
 **Status:** ✅ COMPLETE
@@ -281,18 +344,157 @@ Manual browser QA in Super Admin and Tenant settings:
 
 ---
 
-## Current Focus
+## Current Focus — Correct Credential/Provider Design (runtimeMode + platformRuntimeCredential)
 
-Turn Super Admin chat keywords into AI planning hints instead of deterministic auto-execution, then make tool use work through AI-led planning:
+**Status:** ✅ COMPLETE
+**Actual time:** ~2.5h (including audit fixes)
 
-1. **Keyword hints, not automatic execution** — matched keywords suggest tools to the model, but do not run tools by themselves.
-2. **Schema-aware tool context** — the model receives allowed tool names, descriptions, keywords, input schemas, output schemas, and examples.
-3. **Native structured tool calls** — known tool-capable models can request provider tool calls; Runtime Guard validates before execution.
-4. **Text-plan fallback for other models** — text-only/unknown models can return a guarded `ERP_TOOL_PLAN` JSON block; backend parses, validates, and executes like normal tool calls.
-5. **Multi-step planning loop** — after tool results, the model can request another tool or produce the final answer.
+### Problem
+The previous implementation had a fundamental design flaw: `AiProvider.defaultApiKey` was used as an automatic silent fallback when tenants had no API key. This conflated three separate concerns:
+1. **Certification** — testing model compatibility
+2. **Tenant BYOK runtime** — company brings their own key
+3. **Platform-managed runtime** — platform provides AI as a service
 
-**Estimate:** 3-4h implementation + targeted verification.
-**Rollback point:** branch `feat/ai-proposal-sandbox`; working tree already had unrelated dirty files before this task, so do not reset the worktree.
+### Changes
+
+**Backend — Entity Renames (2 files):**
+- `AiProvider.ts`: Renamed `defaultApiKey` → `platformRuntimeCredential`. `toJSON()` returns `hasPlatformRuntimeCredential` (never the key). `fromJSON()` reads BOTH old and new field names for backward compatibility with existing Firestore docs.
+- `AiProviderConfig.ts`: Added `runtimeMode: 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'` and `allowedRuntimeModes: AiTenantRuntimeMode[]`. Defaults: `runtimeMode = 'BYOK'`, `allowedRuntimeModes = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']`.
+
+**Backend — Use Case Updates (3 files):**
+- `AiProviderRegistryUseCase.ts`: Renamed `defaultApiKey` → `platformRuntimeCredential` in input interface and encryption logic.
+- `SendChatMessageUseCase.ts`: **DELETED** `applyProviderDefaultApiKey()` (silent fallback). **ADDED** `resolveRuntimeCredential()` with explicit mode-based logic:
+  - Mock provider → skip credential check entirely
+  - `BYOK` → require tenant apiKey; reject if missing
+  - `PLATFORM_MANAGED`/`BUILT_IN` → use platform credential from provider registry; reject if not configured
+  - `DISABLED` → reject
+- `AiSettingsUseCase.ts`: Added `runtimeMode` + `allowedRuntimeModes` to `UpdateSettingsInput`. Passes through to entity.
+
+**Backend — Controller/DTO/Validator Updates (3 files):**
+- `AiToolCatalogController.ts`: Renamed `hasDefaultApiKey` → `hasPlatformRuntimeCredential` in destructure.
+- `AiAssistantController.ts`: Now passes `runtimeMode`, `allowedRuntimeModes`, `mode`, `providerId`, `selectedModelProfileId`, `selectedProfileHash` (fixed pre-existing gap where these were silently dropped).
+- `AiAssistantDTOs.ts`: Added `runtimeMode` + `allowedRuntimeModes` + previously-missing fields to request/response DTOs.
+- `ai-assistant.validators.ts`: Added validation for `runtimeMode`, `allowedRuntimeModes`, `mode`, `providerId`, `selectedModelProfileId`.
+
+**Backend — Prisma Fix (2 files):**
+- `schema.prisma`: Added 8 missing columns: `mode`, `providerId`, `selectedModelProfileId`, `selectedProfileHash`, `conversationContextMode`, `includePreviousToolResults`, `runtimeMode`, `allowedRuntimeModes`
+- `PrismaAiSettingsRepository.ts`: Added all 8 fields to both create and update blocks. `allowedRuntimeModes` stored as JSON string.
+
+**Frontend — Type & UI Updates (5 files):**
+- `superAdmin/index.ts`: Renamed `defaultApiKey` → `platformRuntimeCredential` in `AiProvider` and `UpsertAiProviderPayload`.
+- `AiProvidersPage.tsx`: Updated UI: "Platform Runtime Credential" label, "Platform credential" badge.
+- `aiAssistantApi.ts`: Added `runtimeMode` + `allowedRuntimeModes` + previously-missing fields to `AiSettingsDTO` and `UpdateAiSettingsPayload`.
+- `AiAssistantSettingsPage.tsx`: Added `runtimeMode` selector dropdown (filtered by `allowedRuntimeModes`) with mode-specific descriptions. Fixed `showApiKeyField` to only show when `runtimeMode === 'BYOK'`.
+- `i18n (en/ar/tr)`: Added runtimeMode labels for all 4 modes + renamed provider credential labels.
+
+**Tests:**
+- `SendChatMessageUseCase.test.ts`: Added 8 new tests for `resolveRuntimeCredential()` covering all 4 modes + edge cases (BYOK with platform credential available, PLATFORM_MANAGED with/without credential, BUILT_IN, DISABLED). All 26 tests pass.
+
+### Verification:
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 26 tests
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+### Design Rules Enforced:
+1. Certification compatibility and runtime billing are separate concerns
+2. No silent fallback from missing tenant key to platform key
+3. Platform runtime credentials are ONLY used for PLATFORM_MANAGED/BUILT_IN tenants
+4. BYOK tenants MUST have their own API key — rejected clearly if missing
+5. `allowedRuntimeModes` set by Super Admin restricts what tenant can select
+6. Tenant defaults to all available options: `['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']`
+7. Mock provider never requires credentials
+
+---
+
+## Previous Focus — Fix Certification Failures + Add Provider API Key Management
+
+**Status:** ✅ COMPLETE
+**Actual time:** ~2h
+
+### Problem
+1. **Shell certification always FAILED** for ACCOUNTING, FINANCE_REPORTING, TOOL_CALLING, DATA_FILTERING categories because `UpsertAiModelProfileInput` didn't carry runtime config fields (`dataFilterPolicyId`, `safetyPolicyId`, `systemPromptPolicyId`, `toolMode`, `enabled`, `scope`, etc.) — the profile was created without these fields, and the certification engine correctly rejected profiles missing `dataFilterPolicyId`.
+2. **Super Admin couldn't set API keys** for providers. The `AiProvider` entity only stored registry metadata (name, type, base URL), not API keys. Only tenant admins could set per-company keys.
+
+### Changes — Subtask A: Backend Model Profile Runtime Config (3 files)
+- **`UpsertAiModelProfileInput`** — Added 14 new optional fields: `scope`, `providerId`, `modelId`, `displayName`, `baseUrl`, `temperature`, `maxOutputTokens`, `toolMode`, `timeoutMs`, `retryPolicy`, `safetyPolicyId`, `systemPromptPolicyId`, `dataFilterPolicyId`, `enabled`
+- **`AiModelProfileUseCase.upsertProfile()`** — When ANY runtime field is provided, uses the full constructor to preserve profileHash, scope, providerId, etc. Legacy path (no runtime fields) still works.
+- **`AiToolCatalogController.validateModelProfilePayload()`** — Validates `toolMode`, `scope`, `temperature`, `maxOutputTokens`, `timeoutMs`
+
+### Changes — Subtask B: Provider Default API Key (4 files)
+- **`AiProvider` entity** — Added `defaultApiKey?: string` property. `toJSON()` returns `hasDefaultApiKey` boolean (never the key). `toPersistenceJSON()` includes the encrypted key for storage. `fromJSON()` deserializes the key.
+- **`FirestoreAiProviderRepository`** — Uses `toPersistenceJSON()` (includes apiKey) instead of `toJSON()` (excludes apiKey).
+- **`AiProviderRegistryUseCase`** — Accepts `defaultApiKey` in `UpsertAiProviderInput`. Encrypts on save (via `AesEncryptionService`), preserves existing key on update if not provided. Constructor now takes optional `IEncryptionService`.
+- **`AiToolCatalogController.updateProvider()`** — Strips `hasDefaultApiKey` (computed field) from `existing.toJSON()` before merging with request body.
+- **DI container** — Passes `encryptionService` to `AiProviderRegistryUseCase`.
+
+### Changes — Subtask C: Chat Runtime API Key Fallback (1 file)
+- **`SendChatMessageUseCase`** — Added `providerRepository?: IAiProviderRepository` dependency. New `applyProviderDefaultApiKey()` method: when tenant config has no API key, looks up the provider by `config.provider`, decrypts its `defaultApiKey`, and applies it as fallback. Added after `decryptConfig()` in the main flow.
+- **DI container** — Passes `aiProviderRepository` to `SendChatMessageUseCase`.
+- Import added for `IAiProviderRepository`.
+
+### Changes — Subtask D: Frontend Updates (5+ files)
+- **`AiModelProfilesPage.tsx`** — Added "Runtime Configuration" section to the modal with: scope, toolMode, temperature, maxOutputTokens, timeoutMs, retryPolicy, dataFilterPolicyId, safetyPolicyId, systemPromptPolicyId, enabled checkbox. Updated `emptyForm` and `openEditModal` to populate all new fields.
+- **`AiProvidersPage.tsx`** — Added `defaultApiKey` masked input with show/hide toggle (Eye/EyeOff icons), hint text about encryption. Shows `hasDefaultApiKey` badge in the provider table.
+- **`superAdmin/index.ts`** — Added `hasDefaultApiKey` to `AiProvider` type, `defaultApiKey` to `UpsertAiProviderPayload`, 14 new runtime config fields to `UpsertAiModelProfilePayload`.
+- **i18n (en/ar/tr)** — Added keys: `form.scope`, `form.toolMode`, `form.temperature`, `form.maxOutputTokens`, `form.timeoutMs`, `form.retryPolicy`, `form.dataFilterPolicyId`, `form.safetyPolicyId`, `form.systemPromptPolicyId`, `form.enabled`, `form.runtimeConfig`, `form.runtimeConfigSubtitle` for models; `form.defaultApiKey`, `form.defaultApiKeyHint`, `form.keepExistingKey`, `flags.hasKey` for providers.
+
+### Verification:
+- `backend`: `npx tsc --noEmit` ✅
+- `frontend`: `npx tsc --noEmit` ✅  
+- `frontend`: `npm run build` ✅
+
+### How to test:
+1. **Super Admin → AI Models** — Edit a model profile. In the new "Runtime Configuration" section, set `dataFilterPolicyId` to `ai-data-filter-v1`, `safetyPolicyId` to `proposal-draft-sandbox-v1`, and `systemPromptPolicyId` to `erp-assistant-base-v1`. Set `toolMode` to `native_tools`. Save.
+2. **Run Shell Certification** again for ACCOUNTING or TOOL_CALLING — should now pass structural checks (return WARNING instead of FAILED).
+3. **Super Admin → AI Providers** — Edit a provider. The form now has a "Default API Key" field with show/hide toggle. Enter a key, save, and verify the table shows a green "Key set" badge.
+4. **Tenant Chat** — If a tenant has no API key configured, the system now falls back to the provider's default API key.
+
+---
+
+## Previous Focus — Modal-based UX Rewrite for AiModelProfilesPage
+
+**Status:** ✅ COMPLETE
+**Actual time:** ~45m
+
+Rewrote `AiModelProfilesPage.tsx` from a two-column side-panel layout to a clean full-width table + modal-based UX per user request ("instead of putting everything to side edit model must use modal scrollable and inside the modal a button run diagnostic and other for cert run, make all nice and clean").
+
+### Changes:
+- **`AiModelProfilesPage.tsx`** — Complete rewrite from 744-line side-panel layout to modal-based UX:
+  - Full-width profile table with search and stats header
+  - Click "Edit" or row model name → opens `SuperAdminModal` (size `xl`) with three scrollable sections:
+    1. **Profile Details** — editable form fields (always visible)
+    2. **Diagnostics** — company selector + run diagnostics button + results (editing only)
+    3. **Certifications** — certification table + record manual cert button + shell cert form + expire action (editing only)
+  - "New Model" button opens modal in create mode (only profile details section shown)
+  - Delete button moved inside modal footer alongside Save/Cancel
+  - Manual certification form remains a separate nested `SuperAdminModal`
+  - Clean section dividers and section headers with icons
+  - `SectionDivider` and `SectionHeader` helper components for modal content organization
+
+- **`SuperAdminPage.tsx`** — Extended `SuperAdminModal` component:
+  - Added `'sm'` and `'xl'` size options (previously only `'md'` and `'lg'`)
+  - `xl` uses `max-w-4xl` for wider profile editing modal
+  - `xl` size has `max-h-[70vh]` scrollable content area (vs `65vh` for others)
+
+- **i18n:** Added new keys to all three locale files:
+  - `superAdmin.aiModels.modal.profileDetails` — Section header for profile form
+  - `superAdmin.aiModels.diagnosticsPanel.subtitle` — Helper text for diagnostics section
+  - `superAdmin.aiModels.actions.cancel` — Cancel button label
+
+### Verification:
+- `frontend`: `npx tsc --noEmit` ✅ (no type errors)
+- `frontend`: `npm run build` ✅ (produces dist output)
+
+### Remaining:
+- **Seed certification test data** — The dev seed script (`backend/src/scripts/seedAiCertifiedProfileDev.ts`) needs testing; manual seeding or emulator data may be needed
+- **Browser QA** — Developer will manually verify the modal UX in browser
+- **Commit** — Changes ready for commit after developer approval
+
+---
+
+## Previous Focus — AI-led Tool Planning (Completed)
 
 ---
 

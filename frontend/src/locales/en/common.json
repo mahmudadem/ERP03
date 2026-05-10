@@ -1164,7 +1164,8 @@
       "flags": {
         "tools": "Tools",
         "json": "JSON",
-        "sync": "Sync"
+        "sync": "Sync",
+        "hasPlatformCredential": "Platform credential"
       },
       "form": {
         "createTitle": "Create Provider",
@@ -1173,6 +1174,9 @@
         "type": "Provider Type",
         "baseUrl": "Default Base URL",
         "authType": "Authentication Type",
+        "platformRuntimeCredential": "Platform Runtime Credential",
+        "platformRuntimeCredentialHint": "Stored encrypted. Used ONLY for PLATFORM_MANAGED / BUILT_IN tenant runtime. Leave blank to keep existing credential.",
+        "keepExistingCredential": "Leave blank to keep existing credential",
         "notes": "Notes",
         "enable": "Enable Provider",
         "disable": "Disable Provider"
@@ -1208,15 +1212,19 @@
         "tags": "Tags",
         "actions": "Actions"
       },
-      "actions": {
+"actions": {
         "new": "New Model",
         "sync": "Sync Defaults",
         "edit": "Edit",
         "delete": "Delete",
+        "cancel": "Cancel",
         "save": "Save Model Profile",
         "saving": "Saving...",
         "runDiagnostics": "Run diagnostics",
         "testing": "Testing..."
+      },
+      "modal": {
+        "profileDetails": "Profile Details"
       },
       "messages": {
         "created": "Model profile created",
@@ -1247,7 +1255,7 @@
         "textOnly": "Text only",
         "json": "JSON"
       },
-      "form": {
+"form": {
         "createTitle": "Create Model Profile",
         "editTitle": "Edit Model Profile",
         "provider": "Provider",
@@ -1260,10 +1268,23 @@
         "warningMessage": "Warning message",
         "nativeTools": "Native tools",
         "structuredJson": "Structured JSON",
-        "textOnly": "Text-only mode"
+        "textOnly": "Text-only mode",
+        "scope": "Scope",
+        "toolMode": "Tool mode",
+        "temperature": "Temperature",
+        "maxOutputTokens": "Max output tokens",
+        "timeoutMs": "Timeout (ms)",
+        "retryPolicy": "Retry policy",
+        "dataFilterPolicyId": "Data filter policy",
+        "safetyPolicyId": "Safety policy",
+        "systemPromptPolicyId": "System prompt policy",
+        "enabled": "Enabled",
+        "runtimeConfig": "Runtime Configuration",
+        "runtimeConfigSubtitle": "These settings affect how the AI runtime uses this profile. Set data filter and safety policies to pass shell certification."
       },
 "diagnosticsPanel": {
         "title": "Run Diagnostics",
+        "subtitle": "Test connectivity and model capabilities using a company's AI configuration.",
         "company": "Use company settings",
         "chatReady": "Chat ready",
         "chatNotReady": "Chat not ready",
@@ -1801,6 +1822,18 @@
       "save": "Save Company Defaults",
       "eventCategories": "Event Categories",
       "hint": "Disable categories here to turn them off by default for all users in this company. Users can still override these defaults in their profile."
+    },
+    "runtimeMode": "AI Runtime Mode",
+    "runtimeModeDesc": "Determines how AI credentials are resolved for your company.",
+    "runtimeMode": {
+      "BYOK": "Bring Your Own Key (BYOK)",
+      "BYOK.desc": "You must provide your own API key below. Your company pays the provider directly.",
+      "PLATFORM_MANAGED": "Platform Managed",
+      "PLATFORM_MANAGED.desc": "Platform manages credentials. Usage requires AI credits or subscription.",
+      "BUILT_IN": "Built-in AI",
+      "BUILT_IN.desc": "Built-in AI service. Usage requires AI credits or subscription.",
+      "DISABLED": "Disabled",
+      "DISABLED.desc": "AI Assistant is disabled for your company."
     }
   },
   "success": {

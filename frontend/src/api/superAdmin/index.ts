@@ -148,6 +148,7 @@ export interface AiProvider {
   type: AiProviderRegistryType;
   defaultBaseUrl: string | null;
   authType: AiProviderAuthType;
+  hasPlatformRuntimeCredential: boolean;
   enabled: boolean;
   supportsTools: boolean;
   supportsJsonMode: boolean;
@@ -163,6 +164,7 @@ export interface UpsertAiProviderPayload {
   type: AiProviderRegistryType;
   defaultBaseUrl?: string;
   authType?: AiProviderAuthType;
+  platformRuntimeCredential?: string;
   enabled?: boolean;
   supportsTools?: boolean;
   supportsJsonMode?: boolean;
@@ -350,6 +352,21 @@ export interface UpsertAiModelProfilePayload {
   warningLevel?: AiModelWarningLevel;
   textOnlyMode: boolean;
   warningMessage?: string;
+  // Runtime config fields
+  scope?: 'GLOBAL' | 'TENANT';
+  providerId?: string;
+  modelId?: string;
+  displayName?: string;
+  baseUrl?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  toolMode?: 'none' | 'text_plan' | 'native_tools' | 'json_only';
+  timeoutMs?: number;
+  retryPolicy?: string;
+  safetyPolicyId?: string;
+  systemPromptPolicyId?: string;
+  dataFilterPolicyId?: string;
+  enabled?: boolean;
 }
 
 // ===== API Functions =====

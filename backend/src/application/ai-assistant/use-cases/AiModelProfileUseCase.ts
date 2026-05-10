@@ -20,6 +20,21 @@ export interface UpsertAiModelProfileInput {
   warningLevel?: AiModelWarningLevel;
   textOnlyMode: boolean;
   warningMessage?: string;
+  // Runtime config fields (optional, with sensible defaults)
+  scope?: 'GLOBAL' | 'TENANT';
+  providerId?: string;
+  modelId?: string;
+  displayName?: string;
+  baseUrl?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  toolMode?: 'none' | 'text_plan' | 'native_tools' | 'json_only';
+  timeoutMs?: number;
+  retryPolicy?: string;
+  safetyPolicyId?: string;
+  systemPromptPolicyId?: string;
+  dataFilterPolicyId?: string;
+  enabled?: boolean;
 }
 
 export interface CreateTenantCustomModelProfileInput {
@@ -73,12 +88,96 @@ export class AiModelProfileUseCase {
 
   async upsertProfile(input: UpsertAiModelProfileInput): Promise<AiModelProfile> {
     const now = new Date();
-    const id = AiModelProfile.makeId(input.provider, input.modelName);
-    const existing = await this.modelProfileRepo.getById(id);
+    const provider = input.provider.trim().toLowerCase();
+    const modelName = input.modelName.trim();
+    // If any runtime config field is provided, use the full constructor
+    // to preserve all runtime fields, profileHash, scope, etc.
+    const hasRuntimeFields = input.scope || input.providerId || input.modelId
+      || input.baseUrl || input.toolMode || input.dataFilterPolicyId
+      || input.safetyPolicyId || input.systemPromptPolicyId || input.displayName;
+
+    if (hasRuntimeFields) {
+      const existing = await this.modelProfileRepo.getById(
+        input.scope === 'TENANT'
+          ? AiModelProfile.makeId(provider, modelName)
+          : AiModelProfile.makeId(provider, modelName),
+      );
+      const scope: 'GLOBAL' | 'TENANT' = input.scope || 'GLOBAL';
+      const providerId = input.providerId || provider;
+      const modelId = input.modelId || modelName;
+      const displayName = input.displayName || input.modelId || modelName;
+      const baseUrl = input.baseUrl || undefined;
+      const endpointFingerprint = AiModelProfile.fingerprintEndpoint(baseUrl || provider);
+      const toolMode = input.toolMode || (input.supportsToolCalling ? 'native_tools' : (input.textOnlyMode ? 'none' : 'text_plan'));
+      const temperature = input.temperature ?? 0.7;
+      const maxOutputTokens = input.maxOutputTokens ?? input.maxContextTokens;
+      const jsonMode = input.supportsStructuredJson;
+      const profileHash = AiModelProfile.generateProfileHash({
+        scope,
+        tenantId: scope === 'TENANT' ? undefined : undefined,
+        providerId,
+        modelId,
+        endpointFingerprint,
+        temperature,
+        maxOutputTokens,
+        jsonMode,
+        toolMode,
+        timeoutMs: input.timeoutMs ?? 120000,
+        retryPolicy: input.retryPolicy || 'default',
+        safetyPolicyId: input.safetyPolicyId,
+        systemPromptPolicyId: input.systemPromptPolicyId,
+        dataFilterPolicyId: input.dataFilterPolicyId,
+      });
+      const profile = new AiModelProfile(
+        AiModelProfile.makeId(provider, modelName),
+        provider,
+        modelName,
+        input.status,
+        input.supportsToolCalling,
+        input.supportsStructuredJson,
+        input.maxContextTokens,
+        this.cleanStringList(input.recommendedUseCases),
+        this.cleanStringList(input.tags),
+        input.warningLevel ?? 'info',
+        input.textOnlyMode,
+        input.warningMessage?.trim() ?? '',
+        existing?.lastDiagnosticStatus ?? 'never-tested',
+        existing?.lastDiagnosticMode,
+        existing?.lastDiagnosticAt,
+        existing?.lastDiagnosticCompanyId,
+        existing?.lastDiagnosticDetail,
+        existing?.createdAt ?? now,
+        now,
+        scope,
+        scope === 'TENANT' ? undefined : undefined,
+        providerId,
+        modelId,
+        displayName,
+        baseUrl,
+        endpointFingerprint,
+        temperature,
+        maxOutputTokens,
+        jsonMode,
+        toolMode,
+        input.timeoutMs ?? 120000,
+        input.retryPolicy || 'default',
+        input.safetyPolicyId,
+        input.systemPromptPolicyId,
+        input.dataFilterPolicyId,
+        profileHash,
+        (existing?.revision ?? 0) + 1,
+        input.enabled ?? true,
+      );
+      await this.modelProfileRepo.save(profile);
+      return profile;
+    }
+
+    // Legacy path: basic profile without runtime config
+    const existing = await this.modelProfileRepo.getById(AiModelProfile.makeId(provider, modelName));
     const profile = new AiModelProfile(
-      id,
-      input.provider.trim().toLowerCase(),
-      input.modelName.trim(),
+      AiModelProfile.makeId(provider, modelName),
+      provider,
+      modelName,
       input.status,
       input.supportsToolCalling,
       input.supportsStructuredJson,

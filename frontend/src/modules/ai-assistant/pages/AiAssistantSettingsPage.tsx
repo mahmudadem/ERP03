@@ -155,6 +155,8 @@ export const AiAssistantSettingsPage: React.FC = () => {
   const [conversationContextMode, setConversationContextMode] = useState<ConversationContextMode>('balanced');
   const [includePreviousToolResults, setIncludePreviousToolResults] = useState(true);
   const [isEnabled, setIsEnabled] = useState(true);
+  const [runtimeMode, setRuntimeMode] = useState<'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'>('BYOK');
+  const [allowedRuntimeModes, setAllowedRuntimeModes] = useState<Array<'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'>>(['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']);
   const [usageAnalytics, setUsageAnalytics] = useState<AiUsageAnalyticsResponse | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
 const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(null);
@@ -190,7 +192,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
   );
 
   const isCustom = presetId === 'custom';
-  const showApiKeyField = provider !== 'mock' && currentPreset.requiresApiKey;
+  const showApiKeyField = provider !== 'mock' && currentPreset.requiresApiKey && runtimeMode === 'BYOK';
   const showProviderFields = provider !== 'mock';
 
   // ── Load settings ──────────────────────────────────────────────────────────
@@ -216,6 +218,8 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
         setIncludePreviousToolResults(config.includePreviousToolResults !== false);
         setIsEnabled(config.isEnabled);
         setPresetId(resolvePresetId(config.provider, config.apiEndpoint || ''));
+        if (config.runtimeMode) setRuntimeMode(config.runtimeMode as any);
+        if (Array.isArray(config.allowedRuntimeModes)) setAllowedRuntimeModes(config.allowedRuntimeModes as any);
       } catch (err: any) {
         if (cancelled) return;
         setError(err?.response?.data?.error?.message || err?.message || 'Failed to load settings');
@@ -284,6 +288,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
         conversationContextMode,
         includePreviousToolResults,
         isEnabled,
+        runtimeMode,
       };
 
       if (provider !== 'mock') {
@@ -309,7 +314,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
     } finally {
       setSaving(false);
     }
-  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, conversationContextMode, includePreviousToolResults, isEnabled]);
+  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, conversationContextMode, includePreviousToolResults, isEnabled, runtimeMode]);
 
   const handleRunDiagnostics = useCallback(async () => {
     try {
@@ -494,6 +499,52 @@ const hasChanges = settings && (
               </div>
             </label>
           </div>
+
+          {/* Runtime Mode — how credentials are resolved */}
+          {allowedRuntimeModes.length > 1 && (
+            <div className="mb-4">
+              <label htmlFor="runtime-mode" className="block text-sm font-medium text-gray-700 mb-1">
+                <Shield className="w-4 h-4 inline mr-1" />
+                {t('settings.runtimeMode', 'AI Runtime Mode')}
+              </label>
+              <select
+                id="runtime-mode"
+                value={runtimeMode}
+                onChange={(e) => setRuntimeMode(e.target.value as any)}
+                disabled={!canManage}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                {allowedRuntimeModes.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {t(`settings.runtimeMode.${mode}`, mode)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                {t('settings.runtimeModeDesc', 'Determines how AI credentials are resolved for your company.')}
+              </p>
+              {runtimeMode === 'BYOK' && (
+                <p className="text-xs text-amber-600 mt-1">
+                  {t('settings.runtimeMode.BYOK.desc', 'You must provide your own API key below.')}
+                </p>
+              )}
+              {runtimeMode === 'PLATFORM_MANAGED' && (
+                <p className="text-xs text-blue-600 mt-1">
+                  {t('settings.runtimeMode.PLATFORM_MANAGED.desc', 'Platform manages credentials. Usage requires AI credits or subscription.')}
+                </p>
+              )}
+              {runtimeMode === 'BUILT_IN' && (
+                <p className="text-xs text-green-600 mt-1">
+                  {t('settings.runtimeMode.BUILT_IN.desc', 'Built-in AI service. Usage requires AI credits or subscription.')}
+                </p>
+              )}
+              {runtimeMode === 'DISABLED' && (
+                <p className="text-xs text-red-600 mt-1">
+                  {t('settings.runtimeMode.DISABLED.desc', 'AI Assistant is disabled for your company.')}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Provider Preset Dropdown */}
           <div className="mb-4">

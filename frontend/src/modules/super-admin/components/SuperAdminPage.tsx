@@ -146,22 +146,31 @@ export const SuperAdminModal: React.FC<{
   children: React.ReactNode;
   footer?: React.ReactNode;
   onClose: () => void;
-  size?: 'md' | 'lg';
-}> = ({ title, subtitle, children, footer, onClose, size = 'md' }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" onClick={onClose}>
-    <div
-      className={clsx(
-        'max-h-[90vh] w-full overflow-hidden rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface)] shadow-xl',
-        size === 'lg' ? 'max-w-2xl' : 'max-w-md'
-      )}
-      onClick={(event) => event.stopPropagation()}
-    >
-      <div className="border-b border-[var(--sa-border)] px-5 py-4">
-        <h2 className="text-lg font-semibold text-[var(--sa-text)]">{title}</h2>
-        {subtitle && <p className="mt-1 text-sm text-[var(--sa-muted)]">{subtitle}</p>}
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}> = ({ title, subtitle, children, footer, onClose, size = 'md' }) => {
+  const sizeConfig = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" onClick={onClose}>
+      <div
+        className={clsx(
+          'max-h-[90vh] w-full overflow-hidden rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface)] shadow-xl',
+          sizeConfig[size],
+        )}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-b border-[var(--sa-border)] px-5 py-4">
+          <h2 className="text-lg font-semibold text-[var(--sa-text)]">{title}</h2>
+          {subtitle && <p className="mt-1 text-sm text-[var(--sa-muted)]">{subtitle}</p>}
+        </div>
+        <div className={clsx('overflow-y-auto px-5 py-4', size === 'xl' ? 'max-h-[70vh]' : 'max-h-[65vh]')}>{children}</div>
+        {footer && <div className="border-t border-[var(--sa-border)] bg-[var(--sa-surface-muted)] px-5 py-4">{footer}</div>}
       </div>
-      <div className="max-h-[65vh] overflow-y-auto px-5 py-4">{children}</div>
-      {footer && <div className="border-t border-[var(--sa-border)] bg-[var(--sa-surface-muted)] px-5 py-4">{footer}</div>}
     </div>
-  </div>
-);
+  );
+};

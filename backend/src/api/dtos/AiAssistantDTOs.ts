@@ -93,6 +93,12 @@ export interface AiSettingsResponse {
     maxRequestsPerDay: number | null;
     isEnabled: boolean;
     hasApiKey: boolean;
+    mode: string | null;
+    providerId: string | null;
+    selectedModelProfileId: string | null;
+    selectedProfileHash: string | null;
+    runtimeMode: string;
+    allowedRuntimeModes: string[];
     updatedAt: string;
   };
 }
@@ -105,6 +111,12 @@ export interface UpdateAiSettingsRequest {
   maxTokensPerRequest?: number;
   maxRequestsPerDay?: number;
   isEnabled?: boolean;
+  mode?: 'certified_profile' | 'custom_uncertified' | 'legacy_unverified';
+  providerId?: string;
+  selectedModelProfileId?: string;
+  selectedProfileHash?: string;
+  runtimeMode?: 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED';
+  allowedRuntimeModes?: Array<'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'>;
 }
 
 export class AiAssistantDTOMapper {

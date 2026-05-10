@@ -51,7 +51,7 @@ export class AiAssistantController {
       const userId = AiAssistantController.getUserId(req);
       const { message, conversationId } = req.body;
 
-      const useCase = new SendChatMessageUseCase(
+const useCase = new SendChatMessageUseCase(
         diContainer.aiChatRepository,
         diContainer.aiSettingsRepository,
         diContainer.encryptionService,
@@ -65,6 +65,7 @@ export class AiAssistantController {
         diContainer.aiSkillRegistry,
         diContainer.aiModelProfileUseCase,
         diContainer.aiModelRoutingGuard,
+        diContainer.aiProviderRepository,
       );
 
       const result = await useCase.execute({
@@ -209,6 +210,12 @@ export class AiAssistantController {
         conversationContextMode: req.body.conversationContextMode,
         includePreviousToolResults: req.body.includePreviousToolResults,
         isEnabled: req.body.isEnabled,
+        mode: req.body.mode,
+        providerId: req.body.providerId,
+        selectedModelProfileId: req.body.selectedModelProfileId,
+        selectedProfileHash: req.body.selectedProfileHash,
+        runtimeMode: req.body.runtimeMode,
+        allowedRuntimeModes: req.body.allowedRuntimeModes,
       });
 
       (res as any).status(200).json({
