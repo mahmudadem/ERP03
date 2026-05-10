@@ -9,6 +9,8 @@ export interface UserPreferencesDTO {
   appearanceSettings?: Record<string, any>;
   disabledNotificationCategories?: string[];
   notificationCategoryOverrides?: Record<string, boolean>;
+  showWidgetsOnMobile?: boolean;
+  showTopbarActionsOnMobile?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

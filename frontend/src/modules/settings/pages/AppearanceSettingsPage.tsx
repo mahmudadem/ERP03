@@ -46,6 +46,10 @@ const AppearanceSettingsPage: React.FC = () => {
     setSidebarMode,
     theme,
     setTheme,
+    showWidgetsOnMobile,
+    setShowWidgetsOnMobile,
+    showTopbarActionsOnMobile,
+    setShowTopbarActionsOnMobile,
   } = useUserPreferences();
   const [draft, setDraft] = useState<UserAppearanceSettings>(() => normalizeUserAppearance(appearanceSettings));
   const [saving, setSaving] = useState(false);
@@ -151,6 +155,39 @@ const AppearanceSettingsPage: React.FC = () => {
                   <option value="classic">Accordion</option>
                   <option value="submenus">Flyout Sub-menus</option>
                 </select>
+              </label>
+            </div>
+          </Card>
+
+          <Card className="p-[var(--app-panel-padding,1.25rem)]">
+            <h2 className="mb-4 text-base font-semibold text-[var(--color-text-primary)]">Mobile Display</h2>
+            <p className="mb-4 text-xs text-[var(--color-text-muted)]">
+              Controls what is visible when the browser window is narrow or on tablet/mobile devices.
+            </p>
+            <div className="grid grid-cols-1 gap-4">
+              <label className="flex items-center justify-between cursor-pointer rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-3">
+                <div>
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">Show Widgets on Mobile</span>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Display the topbar widget space on small screens (fits what the screen allows).</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={showWidgetsOnMobile}
+                  onChange={(e) => setShowWidgetsOnMobile(e.target.checked)}
+                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+              </label>
+              <label className="flex items-center justify-between cursor-pointer rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-3">
+                <div>
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">Show Topbar Actions on Mobile</span>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Display theme toggle, widget manager, and notification bell on small screens.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={showTopbarActionsOnMobile}
+                  onChange={(e) => setShowTopbarActionsOnMobile(e.target.checked)}
+                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
               </label>
             </div>
           </Card>

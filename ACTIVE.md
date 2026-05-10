@@ -1,53 +1,72 @@
 # 🎯 Current Focus
 
-**Task:** AI Model Management — Certification Workflows and APIs
-**Started:** 2026-05-08
-**Status:** ✅ INCREMENT 2 COMPLETE — certification backend/API foundation implemented
+**Task:** Increment 2.5 — Branch and Worktree Reconciliation
+**Started:** 2026-05-10
+**Status:** ✅ COMPLETE — branch/worktree reconciled before Increment 3
 **Agent/IDE:** Codex (CTO Mode)
 **Branch:** `feat/ai-proposal-sandbox`
 
 ---
 
-## 2026-05-09 Result — AI Model Management Certification Workflows/APIs
+## 2026-05-10 Result — Increment 2.5 Branch and Worktree Reconciliation
 
-**Status:** ✅ COMPLETE  
-**Estimate:** 5-7h  
-**Actual time:** ~2h 20m
+**Status:** ✅ COMPLETE
+**Estimate:** 45-60m
+**Actual time:** ~40m
 
-Implemented backend/API foundation for certification workflows.
+Reconciled the branch/worktree state before starting AI Model Management Increment 3.
 
-Changed:
-- Added Super Admin Provider Registry APIs.
-- Added `AiProviderRegistryUseCase`.
-- Added `AiCertificationEngine` shell.
-- Added `AiModelCertificationUseCase`.
-- Added Super Admin GLOBAL model profile certification endpoints.
-- Added Company Admin TENANT custom model profile, diagnostics, certification, and certified profile query endpoints.
-- Added valid certified profile query for future Recommended Certified Models UI.
-- Added development seed helper `backend/src/scripts/seedAiCertifiedProfileDev.ts`.
-
-Key behavior:
-- Provider registry stores metadata only; no API keys.
-- Manual certification requires current `profileHash`, category, score/maxScore, status, test suite version, tool contract version, data filter policy version, and summary.
-- Certification is rejected if the submitted profileHash is stale.
-- Shell certification performs deterministic structural checks only and does not fake deep ERP/accounting correctness.
-- TENANT certification applies only to the matching company.
-- Tenant certifications are excluded from GLOBAL certified/recommended queries.
-- Existing tenant free-text settings remain `legacy_unverified`.
-- Diagnostics remain non-authoritative.
-- Direct business execution remains disabled.
+Findings:
+- Starting branch and final branch are both `feat/ai-proposal-sandbox`.
+- AI Model Management Increment 1 and Increment 2 backend/API work are committed on `feat/ai-proposal-sandbox` at HEAD commit `52e97549`.
+- `main` is still at `b201766f` and does not contain the AI backend/certification commits.
+- The frontend responsiveness fixes are not committed on `main`; they are currently uncommitted working-tree changes on top of `feat/ai-proposal-sandbox`.
+- No merge or cherry-pick was needed because all current work already coexists on the AI feature branch.
+- No conflicts were found or resolved.
 
 Verification:
 - `backend`: `npm run typecheck` ✅
-- `backend`: provider/certification/routing/auth tests ✅ — 5 suites, 32 tests
-- `backend`: chat/diagnostics/tool regression slice ✅ — 3 suites, 38 tests
 - `backend`: `npm run build` ✅
+- `backend`: targeted AI certification/routing/API tests ✅ — 5 suites, 32 tests
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+- `frontend`: `npm run dev -- --host 127.0.0.1 --port 5174` smoke start ✅ — HTTP 200, server stopped after check
 
 Completion report:
-- `1-TODO/done/78-ai-model-management-certification-workflows-apis.md`
+- `1-TODO/done/79-branch-worktree-reconciliation.md`
 
 Next recommended move:
-- Increment 3: build the frontend Recommended Certified Models modal, tenant custom model UX, and Super Admin provider/certification UI. Estimate: 5-7h.
+- Before Increment 3 frontend UI work, create a clean checkpoint for the uncommitted responsiveness/docs changes, then proceed with the Recommended Certified Models and tenant custom certification UI. Estimate: 5-7h.
+
+---
+
+## 2026-05-09 Result — Responsiveness Fix Plan
+
+**Status:** ✅ COMPLETE
+**Estimate:** 4-6h
+**Actual time:** ~1h 30m
+
+Resolved systemic responsiveness and UI stability issues across the application.
+
+Changed:
+- **Infrastructure:** Created `useBreakpoint.ts` for consistent Tailwind-aligned breakpoint detection.
+- **AppShell:** Replaced manual resize listeners with `useBreakpoint('lg')`. Implemented mobile-specific sidebar auto-close and backdrop overlay.
+- **Preferences:** Added `showWidgetsOnMobile` and `showTopbarActionsOnMobile` toggles to `UserPreferencesContext` and backend API (`userPreferencesApi.ts`).
+- **TopBar:** Merged layout-mode and widget-manager controls into a single unified dropdown. Implemented conditional visibility for mobile.
+- **Widget Space:** Relocated per-widget style buttons to prevent top-bar overflow on small screens.
+- **Appearance Settings:** Added "Mobile Display" configuration section for user-controlled responsiveness.
+- **Layout Grids:** Fixed hardcoded `grid-cols-3/2` in `SalesReturnDetailPage`, `SalesSettingsPage`, and `PurchaseSettingsPage` to use `sm:` responsive prefixes.
+
+Verification:
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+- `frontend`: Manual verification of sidebar auto-close and backdrop overlay logic.
+
+Completion report:
+- `1-TODO/done/01-responsiveness-fix.md`
+
+Next recommended move:
+- Perform module-specific audits for other complex screens (Inventory/Accounting) to ensure grid-to-stack behavior is consistent.
 
 ---
 

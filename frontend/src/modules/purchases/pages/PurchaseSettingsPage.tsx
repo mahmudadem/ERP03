@@ -299,7 +299,7 @@ const PurchaseSettingsPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">Over-delivery (%)</label>
                     <input
@@ -490,7 +490,7 @@ const PurchaseSettingsPage: React.FC = () => {
                   Base Policy (Workflow: {settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
                 </h3>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { persona: 'Direct', key: 'direct' as const, allowed: settings.workflowMode === 'SIMPLE' || settings.allowDirectInvoicing },
                   { persona: 'Linked', key: 'linked' as const, allowed: settings.workflowMode === 'OPERATIONAL' },

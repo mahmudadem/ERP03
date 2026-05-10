@@ -274,7 +274,7 @@ const SalesReturnDetailPage: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Return Mode</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   className={`rounded-lg border px-3 py-2 text-sm font-medium ${

@@ -26,10 +26,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 z-40 transition-all duration-300 ease-out flex flex-col print:hidden",
+        "fixed inset-y-0 z-40 flex flex-col print:hidden",
         "bg-[var(--app-sidebar-surface)] border-[var(--color-border)]",
-        isOpen ? 'w-64' : 'w-24',
-        isRtl ? 'right-0 border-l' : 'left-0 border-r'
+        "transition-all duration-300 ease-out",
+        // Desktop: collapse to icon strip, no translate
+        // Mobile: always full width but translate off-screen when closed
+        isRtl
+          ? [
+              "right-0 border-l",
+              // desktop width
+              "lg:w-24 lg:translate-x-0",
+              // open state overrides desktop width
+              isOpen ? "lg:!w-64" : "",
+              // mobile: full width, translate off when closed
+              "w-64",
+              isOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0",
+            ]
+          : [
+              "left-0 border-r",
+              // desktop width
+              "lg:w-24 lg:translate-x-0",
+              // open state overrides desktop width
+              isOpen ? "lg:!w-64" : "",
+              // mobile: full width, translate off when closed
+              "w-64",
+              isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+            ]
       )}
     >
       {/* Header / Logo Area */}

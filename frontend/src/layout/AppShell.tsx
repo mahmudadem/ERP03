@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom'; // Important for nested routing
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -21,33 +22,28 @@ export const AppShell: React.FC = () => {
   const documentActions = useDocumentActions();
   const { i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
-  const [isDesktop, setIsDesktop] = useState<boolean>(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true));
+  const isDesktop = useBreakpoint('lg');
 
-  React.useEffect(() => {
-    const handler = () => setIsDesktop(window.innerWidth >= 1024);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-  
-  // Printing State (Moved to Shell for global access)
+  // Printing State
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [viewingVoucher, setViewingVoucher] = useState<any>(null);
   const [viewingFormType, setViewingFormType] = useState<any>(null);
 
   const isWindowsMode = uiMode === 'windows';
 
-  // Sync isSidebarOpen with sidebarPinned if pinned is enabled
+  // Sync sidebar state with pinned preference and breakpoint
   React.useEffect(() => {
-    if (sidebarPinned) {
+    if (sidebarPinned && isDesktop) {
       setIsSidebarOpen(true);
     }
-  }, [sidebarPinned]);
+    if (!isDesktop) {
+      // Always close sidebar when on mobile — it hides off-screen via transform
+      setIsSidebarOpen(false);
+    }
+  }, [sidebarPinned, isDesktop]);
 
   const handleGlobalPrint = (idOrVoucher: string | any, formType?: any) => {
     if (typeof idOrVoucher === 'string') {
-      // If only ID is passed, we might need a separate mechanism to fetch, 
-      // but for now we expect the caller to pass the object or we use a global bus.
-      // Actually, let's support dispatching an event that VouchersListPage (which has the data) or a service can hear.
       window.dispatchEvent(new CustomEvent('request-print-voucher', { detail: { id: idOrVoucher } }));
     } else {
       setViewingVoucher(idOrVoucher);
@@ -58,96 +54,103 @@ export const AppShell: React.FC = () => {
 
   // Listen for print requests
   React.useEffect(() => {
-     const handler = async (e: any) => {
-        const { id, voucher, formType } = e.detail;
-        if (voucher) {
-           setViewingVoucher(voucher);
-           setViewingFormType(formType);
-           setIsPrintViewOpen(true);
-        } else if (id) {
-           // Fetch and print
-           try {
-              const fullVoucher = await accountingApi.getVoucher(id);
-              // We'll need the form type. We can try to infer it or just pass it in detail.
-              setViewingVoucher(fullVoucher);
-              setViewingFormType(formType); 
-              setIsPrintViewOpen(true);
-           } catch (err) {
-              console.error('Failed to fetch voucher for global print:', err);
-           }
+    const handler = async (e: any) => {
+      const { id, voucher, formType } = e.detail;
+      if (voucher) {
+        setViewingVoucher(voucher);
+        setViewingFormType(formType);
+        setIsPrintViewOpen(true);
+      } else if (id) {
+        try {
+          const fullVoucher = await accountingApi.getVoucher(id);
+          setViewingVoucher(fullVoucher);
+          setViewingFormType(formType);
+          setIsPrintViewOpen(true);
+        } catch (err) {
+          console.error('Failed to fetch voucher for global print:', err);
         }
-     };
-     window.addEventListener('print-voucher', handler as any);
-     return () => window.removeEventListener('print-voucher', handler as any);
+      }
+    };
+    window.addEventListener('print-voucher', handler as any);
+    return () => window.removeEventListener('print-voucher', handler as any);
   }, []);
+
+  // Desktop sidebar margins: w-24 = 6rem (collapsed), w-64 = 16rem (expanded)
+  const desktopMarginStyle = isDesktop
+    ? (isRtl
+        ? { marginRight: isSidebarOpen ? '16rem' : '6rem', marginLeft: 0 }
+        : { marginLeft: isSidebarOpen ? '16rem' : '6rem', marginRight: 0 })
+    : undefined; // mobile: sidebar is off-screen, content is full width
 
   return (
     <AccountsProvider>
       <CostCentersProvider>
-      <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
-        <PageTitleManager />
-        {/* Sidebar */}
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-          onNavigate={() => {
-            if (!sidebarPinned && window.innerWidth < 1024) {
-              setIsSidebarOpen(false);
-            }
-          }}
-        />
+        <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
+          <PageTitleManager />
 
-        {/* Main Content Area */}
-        <div 
-          className={clsx(
-            "flex-1 flex flex-col h-screen transition-all duration-300 print:!ml-0 print:!mr-0 print:!h-auto"
-          )}
-          style={
-            isDesktop
-              ? (isRtl 
-                ? { marginRight: isSidebarOpen ? '14.4rem' : '4.5rem', marginLeft: 0 } 
-                : { marginLeft: isSidebarOpen ? '14.4rem' : '4.5rem', marginRight: 0 })
-              : undefined
-          }
-        >
-          <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-
-          <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
-            <div className="h-full overflow-y-auto custom-scroll print:!h-auto print:!overflow-visible">
-              <Outlet />
-            </div>
-          </main>
-        </div>
-
-        {/* Global Windows Desktop for MDI Mode */}
-        {isWindowsMode && (
-          <WindowsDesktop 
-            onSaveVoucher={handleSaveVoucher} 
-            onSubmitVoucher={handleSubmitVoucher}
-            onApproveVoucher={handleApproveVoucher}
-            onRejectVoucher={handleRejectVoucher}
-            onConfirmVoucher={handleConfirmVoucher}
-            onPostVoucher={post}
-            onCancelVoucher={cancel}
-            onReverseVoucher={reverse}
-            onPrintVoucher={(id) => {
-               window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id } }));
+          {/* Sidebar — slides off-screen on mobile, collapses to icon strip on desktop */}
+          <Sidebar
+            isOpen={isSidebarOpen}
+            onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            onNavigate={() => {
+              if (!sidebarPinned && !isDesktop) {
+                setIsSidebarOpen(false);
+              }
             }}
-            // Document Actions
-            onSalesAction={documentActions.sales}
-            onPurchasesAction={documentActions.purchases}
           />
-        )}
 
-        {/* Global Print View */}
-        {isPrintViewOpen && viewingVoucher && (
-          <VoucherPrintView 
-            voucher={viewingVoucher}
-            voucherType={viewingFormType}
-            onClose={() => setIsPrintViewOpen(false)}
-          />
-        )}
-      </div>
+          {/* Mobile backdrop — closes sidebar when tapped */}
+          {!isDesktop && isSidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+
+          {/* Main Content Area */}
+          <div
+            className={clsx(
+              'flex-1 flex flex-col h-screen transition-all duration-300 print:!ml-0 print:!mr-0 print:!h-auto'
+            )}
+            style={desktopMarginStyle}
+          >
+            <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+            <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
+              <div className="h-full overflow-y-auto custom-scroll print:!h-auto print:!overflow-visible">
+                <Outlet />
+              </div>
+            </main>
+          </div>
+
+          {/* Global Windows Desktop for MDI Mode */}
+          {isWindowsMode && (
+            <WindowsDesktop
+              onSaveVoucher={handleSaveVoucher}
+              onSubmitVoucher={handleSubmitVoucher}
+              onApproveVoucher={handleApproveVoucher}
+              onRejectVoucher={handleRejectVoucher}
+              onConfirmVoucher={handleConfirmVoucher}
+              onPostVoucher={post}
+              onCancelVoucher={cancel}
+              onReverseVoucher={reverse}
+              onPrintVoucher={(id) => {
+                window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id } }));
+              }}
+              onSalesAction={documentActions.sales}
+              onPurchasesAction={documentActions.purchases}
+            />
+          )}
+
+          {/* Global Print View */}
+          {isPrintViewOpen && viewingVoucher && (
+            <VoucherPrintView
+              voucher={viewingVoucher}
+              voucherType={viewingFormType}
+              onClose={() => setIsPrintViewOpen(false)}
+            />
+          )}
+        </div>
       </CostCentersProvider>
     </AccountsProvider>
   );

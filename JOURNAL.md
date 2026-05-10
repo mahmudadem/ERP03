@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-05-10 (Sun) — ~40m
+**Task:** Increment 2.5 — Branch and Worktree Reconciliation before AI Model Management Increment 3
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Read `ACTIVE.md`, `JOURNAL.md`, and `VISION.md` before acting.
+- Inspected current branch, status, recent commits, and diffs against `main` and `feat/ai-proposal-sandbox`.
+- Confirmed AI Model Management Increment 1 and Increment 2 backend/API work are committed on `feat/ai-proposal-sandbox` at HEAD commit `52e97549`.
+- Confirmed `main` remains at `b201766f` and does not contain the AI backend/certification commits.
+- Confirmed the frontend responsiveness fixes are not committed on `main`; they are uncommitted working-tree changes on top of `feat/ai-proposal-sandbox`.
+- No merge or cherry-pick was required because the responsiveness changes and AI feature branch already coexist in the same worktree.
+- No conflicts were found or resolved.
+- Added completion report `1-TODO/done/79-branch-worktree-reconciliation.md`.
+
+**Verification:**
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm test -- --runInBand src/tests/application/ai-assistant/AiProviderRegistryUseCase.test.ts src/tests/application/ai-assistant/AiModelCertificationUseCase.test.ts src/tests/application/ai-assistant/AiModelRoutingGuard.test.ts src/tests/application/ai-assistant/AiRuntimeGuard.test.ts src/tests/api/assertSuperAdmin.test.ts` ✅ — 5 suites, 32 tests
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+- `frontend`: `npm run dev -- --host 127.0.0.1 --port 5174` smoke start ✅ — HTTP 200, server stopped after check
+
+**Result:** ✅ Increment 2.5 complete. The branch state is understood and verified, but the worktree is still not clean because responsiveness and documentation changes remain uncommitted.
+**Next:** Ask for approval to create a checkpoint commit for the current responsiveness/docs reconciliation state before starting Increment 3 frontend UI. Estimate for Increment 3: 5-7h.
+
+---
+
 ## 2026-05-09 (Sat) — ~2h 20m
 **Task:** AI Model Management — Certification workflows and APIs, Increment 2
 **Agent:** Codex (CTO Mode)
@@ -2430,3 +2458,23 @@ Designed and implemented the AI Assistant as an optional installable ERP module 
 - Verified that once the tab is visible, the catalog loading logic (which already handled `'PURCHASE'` normalization) correctly pulls forms from the platform catalog.
 **Result:** ✅ Done — Purchase module forms are now visible in the Forms Designer.
 **Next:** Resume the Firestore Transaction Safety restructure, starting with `PostPurchaseReturnUseCase`.
+
+---
+
+## 2026-05-09 (Fri) — 1.5h
+**Task:** Systemic Responsiveness Fix — Infrastructure & UI Stabilization
+**Agent:** Antigravity (CTO Mode)
+**What I Did:**
+- Implemented centralized responsive logic using a new `useBreakpoint` hook aligned with Tailwind CSS breakpoints.
+- Cleaned up `AppShell.tsx`: removed legacy resize listeners, implemented mobile-specific sidebar auto-close and backdrop overlay for the overlay sidebar mode.
+- Extended `UserPreferencesContext` with persisted toggles for `showWidgetsOnMobile` and `showTopbarActionsOnMobile`, including backend DTO/API synchronization.
+- Optimized `TopBar.tsx`: merged layout-mode and widget-manager into a single unified dropdown to save space. Implemented conditional rendering for top-bar actions based on screen size and user preferences.
+- Refactored `DraggableWidgetSpace.tsx`: moved per-widget style toggles to the bottom-right within widgets to prevent top-bar overflow on mobile.
+- Exposed new mobile settings in `AppearanceSettingsPage.tsx`.
+- Fixed hardcoded grid columns in `SalesReturnDetailPage`, `SalesSettingsPage`, and `PurchaseSettingsPage` by adding `sm:` responsive prefixes to allow stacking on small screens.
+**Verification:**
+- ✅ `npm run typecheck` (frontend) — pass
+- ✅ `npm run build` (frontend) — pass
+- ✅ Manual QA of sidebar backdrop and auto-close logic.
+**Result:** ✅ Done — Systemic responsiveness issues resolved.
+**Next:** Module-specific audits for Inventory and Accounting screens to ensure consistent responsive grid behavior.

@@ -21,12 +21,16 @@ interface UserPreferencesContextType {
   appearanceSettings: UserAppearanceSettings;
   language: string;
   sidebarPinned: boolean;
+  showWidgetsOnMobile: boolean;
+  showTopbarActionsOnMobile: boolean;
   setUiMode: (mode: UiMode) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   setTheme: (theme: Theme) => void;
   setAppearanceSettings: (settings: UserAppearanceSettings) => void;
   setLanguage: (lang: string) => void;
   setSidebarPinned: (pinned: boolean) => void;
+  setShowWidgetsOnMobile: (show: boolean) => void;
+  setShowTopbarActionsOnMobile: (show: boolean) => void;
   toggleUiMode: () => void;
   toggleSidebarMode: () => void;
   toggleTheme: () => void;
@@ -60,6 +64,16 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     return saved === null ? true : saved === 'true';
   });
 
+  const [showWidgetsOnMobile, setShowWidgetsOnMobileState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('erp_show_widgets_mobile');
+    return saved === null ? false : saved === 'true';
+  });
+
+  const [showTopbarActionsOnMobile, setShowTopbarActionsOnMobileState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('erp_show_topbar_actions_mobile');
+    return saved === null ? false : saved === 'true';
+  });
+
   const [language, setLanguage] = useState('en');
   const [loadedFromServer, setLoadedFromServer] = useState(false);
   useEffect(() => {
@@ -85,6 +99,8 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
         if (prefs.appearanceSettings) setAppearanceSettingsState(normalizeUserAppearance(prefs.appearanceSettings));
         if (prefs.sidebarMode) setSidebarModeState(prefs.sidebarMode);
         if (prefs.sidebarPinned !== undefined) setSidebarPinnedState(prefs.sidebarPinned);
+        if (prefs.showWidgetsOnMobile !== undefined) setShowWidgetsOnMobileState(prefs.showWidgetsOnMobile);
+        if (prefs.showTopbarActionsOnMobile !== undefined) setShowTopbarActionsOnMobileState(prefs.showTopbarActionsOnMobile);
         if (prefs.language) {
           setLanguage(prefs.language);
           i18n.changeLanguage(prefs.language);
@@ -126,6 +142,14 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   }, [sidebarPinned]);
 
   useEffect(() => {
+    localStorage.setItem('erp_show_widgets_mobile', String(showWidgetsOnMobile));
+  }, [showWidgetsOnMobile]);
+
+  useEffect(() => {
+    localStorage.setItem('erp_show_topbar_actions_mobile', String(showTopbarActionsOnMobile));
+  }, [showTopbarActionsOnMobile]);
+
+  useEffect(() => {
     localStorage.setItem('erp_language', language);
     if (i18n.language !== language) {
       i18n.changeLanguage(language);
@@ -137,10 +161,12 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   const setTheme = (t: Theme) => setThemeState(t);
   const setAppearanceSettings = (settings: UserAppearanceSettings) => setAppearanceSettingsState(normalizeUserAppearance(settings));
   const setSidebarPinned = (pinned: boolean) => setSidebarPinnedState(pinned);
+  const setShowWidgetsOnMobile = (show: boolean) => setShowWidgetsOnMobileState(show);
+  const setShowTopbarActionsOnMobile = (show: boolean) => setShowTopbarActionsOnMobileState(show);
   const setLanguagePref = (lang: string) => setLanguage(lang);
 
   const savePreferences = async () => {
-    const payload = { language, uiMode, theme, sidebarMode, sidebarPinned, appearanceSettings };
+    const payload = { language, uiMode, theme, sidebarMode, sidebarPinned, appearanceSettings, showWidgetsOnMobile, showTopbarActionsOnMobile };
     if (!user) return;
     const saved = await userPreferencesApi.upsert(payload);
     console.debug('[Prefs] Saved to backend', { uid: user.uid, saved });
@@ -162,6 +188,12 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     }
     if (typeof saved.sidebarPinned === 'boolean') {
       setSidebarPinnedState(saved.sidebarPinned);
+    }
+    if (typeof saved.showWidgetsOnMobile === 'boolean') {
+      setShowWidgetsOnMobileState(saved.showWidgetsOnMobile);
+    }
+    if (typeof saved.showTopbarActionsOnMobile === 'boolean') {
+      setShowTopbarActionsOnMobileState(saved.showTopbarActionsOnMobile);
     }
   };
 
@@ -195,6 +227,10 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
       setAppearanceSettings,
       setLanguage: setLanguagePref,
       setSidebarPinned,
+      showWidgetsOnMobile,
+      showTopbarActionsOnMobile,
+      setShowWidgetsOnMobile,
+      setShowTopbarActionsOnMobile,
       toggleUiMode,
       toggleSidebarMode,
       toggleTheme,
