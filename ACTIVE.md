@@ -8,6 +8,39 @@
 
 ---
 
+## 2026-05-10 Result — Production Topbar Precision Widget Layout
+
+**Status:** ✅ COMPLETE
+**Estimate:** 2-4h
+**Actual time:** ~2h 20m
+
+Replaced the production top-bar widget layout with the 96-cell precision system validated in Canvas Dev.
+
+Changed:
+- Ported the precision grid into `frontend/src/components/topbar/DraggableWidgetSpace.tsx`.
+- Replaced the legacy widget edit buttons in `frontend/src/layout/TopBar.tsx` with one list-style `Layout Actions` menu.
+- Updated `frontend/src/store/widgetStore.ts` to store 96-cell widget layouts and richer style properties.
+- Kept real top-bar widgets in use while moving border, background, bold, and padding control to the precision wrapper.
+- Added selected-widget quick controls for 1-cell moves, typed width, bold, border variant, and background color.
+- Expanded background choices and made border variants follow each widget background color.
+- Fixed stacking/overflow by showing controls only for the selected widget and keeping color panels compact.
+- Updated auto-align so active widgets divide the full 96-cell width equally.
+- Added margin inside the top-bar widget area while widgets still use the available height.
+
+Verification:
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+
+Documentation:
+- `1-TODO/done/83-topbar-precision-widget-layout.md`
+- `docs/architecture/topbar-precision-widget-layout.md`
+- `docs/user-guide/topbar-widget-layout.md`
+
+Next recommended move:
+- Browser QA the production top bar on desktop and narrow widths, then decide whether any default widget order/widths should be changed for launch.
+
+---
+
 ## 2026-05-10 Result — Canvas Dev 96-Cell Widget Layout Sandbox
 
 **Status:** ✅ COMPLETE

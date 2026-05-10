@@ -12,9 +12,10 @@ import {
   LogOut,
   User,
   Building2,
-  Settings2,
   LayoutTemplate,
+  ListChecks,
   Palette,
+  RefreshCcw,
 } from "lucide-react";
 import { Menu as HeadlessMenu, Transition } from "@headlessui/react";
 import { NotificationBell } from "../components/NotificationBell";
@@ -32,7 +33,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation("common");
   const isRtl = useMemo(() => i18n.dir() === "rtl", [i18n]);
-  const { widgets, toggleWidget, isLayoutMode, setLayoutMode } = useWidgetStore();
+  const { widgets, toggleWidget, isLayoutMode, setLayoutMode, updateWidgetLayouts } = useWidgetStore();
   const isMdUp = useBreakpoint("md");
   const { showWidgetsOnMobile, showTopbarActionsOnMobile } = useUserPreferences();
 
@@ -42,6 +43,30 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const userInitial = user?.displayName
     ? user.displayName.charAt(0).toUpperCase()
     : user?.email?.charAt(0).toUpperCase() || "U";
+
+  const autoAlignWidgets = () => {
+    const activeWidgets = widgets.filter((widget) => widget.visible);
+    if (activeWidgets.length === 0) return;
+
+    const baseWidth = Math.floor(96 / activeWidgets.length);
+    const extraCells = 96 % activeWidgets.length;
+    let nextX = 0;
+
+    updateWidgetLayouts(
+      activeWidgets.map((widget, index) => {
+        const width = baseWidth + (index < extraCells ? 1 : 0);
+        const layout = {
+          i: widget.id,
+          x: nextX,
+          y: 0,
+          w: width,
+          h: 1,
+        };
+        nextX += width;
+        return layout;
+      }),
+    );
+  };
 
   return (
     // NOTE: NO overflow-hidden here — dropdowns must be able to render outside the bar
@@ -89,7 +114,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
             )}
           </Button>
 
-          {/* Widget / Layout Manager */}
+          {/* Widget / Layout Actions */}
           <HeadlessMenu as="div" className="relative">
             <HeadlessMenu.Button
               className={clsx(
@@ -99,7 +124,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                   : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]",
               )}
             >
-              <LayoutTemplate className={clsx("w-4 h-4", isLayoutMode && "animate-spin-slow")} />
+              <ListChecks className="w-4 h-4" />
             </HeadlessMenu.Button>
 
             <Transition
@@ -113,11 +138,10 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
             >
               <HeadlessMenu.Items
                 className={clsx(
-                  "absolute z-[200] mt-2 w-52 rounded-xl bg-[var(--color-bg-primary)] shadow-lg shadow-slate-900/10 border border-[var(--color-border)] focus:outline-none p-2",
+                  "absolute z-[200] mt-2 w-64 rounded-xl bg-[var(--color-bg-primary)] shadow-lg shadow-slate-900/10 border border-[var(--color-border)] focus:outline-none p-2",
                   isRtl ? "left-0 origin-top-left" : "right-0 origin-top-right",
                 )}
               >
-                {/* Layout Edit Toggle */}
                 <HeadlessMenu.Item>
                   {({ active }) => (
                     <button
@@ -135,8 +159,10 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                       )}
                     >
                       <span className="flex items-center gap-2">
-                        <Settings2 className={clsx("w-3.5 h-3.5", isLayoutMode && "animate-spin-slow")} />
-                        {t("widgets.editLayout", "Edit Layout")}
+                        <LayoutTemplate className="w-3.5 h-3.5 text-slate-400" />
+                        {isLayoutMode
+                          ? t("widgets.doneEditing", "Done Editing")
+                          : t("widgets.editLayout", "Edit & Layout")}
                       </span>
                       <div
                         className={clsx(
@@ -150,10 +176,30 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                   )}
                 </HeadlessMenu.Item>
 
+                <HeadlessMenu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        autoAlignWidgets();
+                      }}
+                      className={clsx(
+                        "flex items-center gap-2 w-full px-2 py-2 text-xs rounded-lg transition-colors font-bold tracking-tight",
+                        active
+                          ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-secondary)]",
+                      )}
+                    >
+                      <RefreshCcw className="w-3.5 h-3.5 text-slate-400" />
+                      {t("widgets.autoAlign", "Auto Align")}
+                    </button>
+                  )}
+                </HeadlessMenu.Item>
+
                 <div className="my-1.5 border-t border-[var(--color-border)]" />
 
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">
-                  {t("widgets.managerTitle", "Workspace Widgets")}
+                  {t("widgets.addWidget", "Add Widget")}
                 </div>
 
                 {widgets.map((w) => (

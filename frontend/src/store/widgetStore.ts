@@ -24,6 +24,10 @@ export interface WidgetLayout {
 export interface WidgetStyle {
   showBorder: boolean;
   showBackground: boolean;
+  isBold?: boolean;
+  bgColor?: string;
+  borderVariant?: string;
+  padding?: "none" | "small" | "medium" | "large";
 }
 
 export interface WidgetConfig {
@@ -51,63 +55,63 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
     id: "widget-company-logo",
     type: "company-logo",
     visible: true,
-    layout: { x: 0, y: 0, w: 3, h: 1, minW: 1 },
+    layout: { x: 0, y: 0, w: 12, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-fiscal-year",
     type: "fiscal-year",
     visible: true,
-    layout: { x: 3, y: 0, w: 2, h: 1, minW: 1 },
+    layout: { x: 13, y: 0, w: 12, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-base-currency",
     type: "base-currency",
     visible: true,
-    layout: { x: 5, y: 0, w: 2, h: 1, minW: 1 },
+    layout: { x: 26, y: 0, w: 12, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-approval-mode",
     type: "approval-mode",
     visible: true,
-    layout: { x: 7, y: 0, w: 2, h: 1, minW: 1 },
+    layout: { x: 39, y: 0, w: 14, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-ui-mode",
     type: "ui-mode",
     visible: true,
-    layout: { x: 14, y: 0, w: 3, h: 1, minW: 1 },
+    layout: { x: 54, y: 0, w: 14, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-clock",
     type: "clock",
     visible: true,
-    layout: { x: 17, y: 0, w: 3, h: 1, minW: 1 },
+    layout: { x: 84, y: 0, w: 12, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-date",
     type: "date",
     visible: true,
-    layout: { x: 11, y: 0, w: 3, h: 1, minW: 1 },
+    layout: { x: 69, y: 0, w: 14, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-notes",
     type: "notes",
     visible: false,
-    layout: { x: 9, y: 0, w: 2, h: 1, minW: 1 },
+    layout: { x: 69, y: 0, w: 10, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
   {
     id: "widget-alarm",
     type: "alarm",
     visible: false,
-    layout: { x: 10, y: 0, w: 2, h: 1, minW: 1 },
+    layout: { x: 80, y: 0, w: 10, h: 1, minW: 8 },
     style: { showBorder: true, showBackground: true },
   },
 ];
@@ -153,7 +157,7 @@ export const useWidgetStore = create<WidgetState>()(
         }),
     }),
     {
-      name: "topbar-widgets-grid",
+      name: "topbar-widgets-precision-grid",
       merge: (persistedState: any, currentState: WidgetState) => {
         const persistedWidgets = persistedState?.widgets || [];
         const missingWidgets = currentState.widgets.filter(
