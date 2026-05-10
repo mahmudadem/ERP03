@@ -1127,6 +1127,71 @@
         "error": "Failed to sync catalog."
       }
     },
+"aiProviders": {
+      "title": "AI Providers",
+      "description": "Manage AI provider registry. Provider metadata is used for model profiles and certification.",
+      "loading": "Loading providers...",
+      "empty": "No providers found",
+      "search": "Search providers...",
+      "meta": "{{total}} providers · {{enabled}} enabled",
+      "columns": {
+        "name": "Name",
+        "type": "Type",
+        "baseUrl": "Base URL",
+        "auth": "Auth",
+        "capabilities": "Capabilities",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "types": {
+        "openai": "OpenAI",
+        "openai_compatible": "OpenAI Compatible",
+        "google_gemini": "Google Gemini",
+        "anthropic": "Anthropic",
+        "ollama": "Ollama",
+        "custom": "Custom"
+      },
+      "authTypes": {
+        "api_key": "API Key",
+        "bearer": "Bearer Token",
+        "none": "None",
+        "custom": "Custom"
+      },
+      "flags": {
+        "tools": "Tools",
+        "json": "JSON",
+        "sync": "Sync"
+      },
+      "form": {
+        "createTitle": "Create Provider",
+        "editTitle": "Edit Provider",
+        "name": "Provider Name",
+        "type": "Provider Type",
+        "baseUrl": "Default Base URL",
+        "authType": "Authentication Type",
+        "notes": "Notes",
+        "enable": "Enable Provider",
+        "disable": "Disable Provider"
+      },
+      "actions": {
+        "new": "New Provider",
+        "save": "Save",
+        "saving": "Saving...",
+        "edit": "Edit",
+        "enable": "Enable",
+        "disable": "Disable"
+      },
+      "messages": {
+        "created": "Provider created successfully",
+        "updated": "Provider updated successfully",
+        "enabled": "Provider enabled",
+        "disabled": "Provider disabled"
+      }
+    },
     "aiModels": {
       "title": "AI Model Profiles",
       "description": "Manage model trust status, runtime flags, tags, and diagnostic history.",
@@ -1197,7 +1262,7 @@
         "structuredJson": "Structured JSON",
         "textOnly": "Text-only mode"
       },
-      "diagnosticsPanel": {
+"diagnosticsPanel": {
         "title": "Run Diagnostics",
         "company": "Use company settings",
         "chatReady": "Chat ready",
@@ -1207,6 +1272,56 @@
           "inference": "Model response",
           "nativeToolCalling": "Native tool calling",
           "textPlan": "Guarded text-plan fallback"
+        }
+      },
+      "certifications": {
+        "title": "Certifications",
+        "disclaimer": "⚠ Certification validates ERP module compatibility. Diagnostics only test connectivity.",
+        "empty": "No certifications recorded",
+        "columns": {
+          "category": "Category",
+          "status": "Status",
+          "score": "Score",
+          "testedBy": "Tested By",
+          "testedAt": "Tested At",
+          "summary": "Summary",
+          "actions": "Actions"
+        },
+        "recordManual": "Record Manual Certification",
+        "runShell": "Run Shell Certification",
+        "expire": "Expire",
+        "confirmExpire": "Are you sure you want to expire this certification?",
+        "form": {
+          "category": "Category",
+          "moduleId": "Module ID (optional)",
+          "skillId": "Skill ID (optional)",
+          "score": "Score",
+          "maxScore": "Max Score",
+          "status": "Status",
+          "testSuiteVersion": "Test Suite Version",
+          "toolContractVersion": "Tool Contract Version",
+          "dataFilterPolicyVersion": "Data Filter Policy Version",
+          "summary": "Summary",
+          "profileHash": "Profile Hash"
+        },
+        "messages": {
+          "recorded": "Certification recorded successfully",
+          "shellRan": "Shell certification completed",
+          "expired": "Certification expired"
+        },
+        "categories": {
+          "GENERAL_CHAT": "General Chat",
+          "ACCOUNTING": "Accounting",
+          "FINANCE_REPORTING": "Finance Reporting",
+          "SALES": "Sales",
+          "PURCHASES": "Purchases",
+          "INVENTORY": "Inventory",
+          "HR": "HR",
+          "CRM": "CRM",
+          "TOOL_CALLING": "Tool Calling",
+          "DATA_FILTERING": "Data Filtering",
+          "PROPOSAL_DRAFT": "Proposal Draft",
+          "ANALYTICS": "Analytics"
         }
       }
     }
@@ -1490,7 +1605,8 @@
         "permissions": "Permissions",
         "bundles": "Bundles",
         "plans": "Plans",
-        "aiTools": "AI Tools",
+"aiTools": "AI Tools",
+        "aiProviders": "AI Providers",
         "aiModels": "AI Models"
       }
     }

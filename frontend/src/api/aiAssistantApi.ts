@@ -228,6 +228,67 @@ export interface AiProposalListResponse {
   total: number;
 }
 
+// AI Certification Types (shared with superAdmin)
+export type AiCertificationCategory =
+  | 'GENERAL_CHAT' | 'ACCOUNTING' | 'FINANCE_REPORTING' | 'SALES'
+  | 'PURCHASES' | 'INVENTORY' | 'HR' | 'CRM'
+  | 'TOOL_CALLING' | 'DATA_FILTERING' | 'PROPOSAL_DRAFT' | 'ANALYTICS';
+
+export type AiCertificationStatus = 'CERTIFIED' | 'WARNING' | 'FAILED' | 'EXPIRED';
+
+export interface AiCertificationResult {
+  id: string;
+  scope: 'GLOBAL' | 'TENANT';
+  tenantId: string | null;
+  providerId: string;
+  modelProfileId: string;
+  profileHash: string;
+  moduleId: string | null;
+  skillId: string | null;
+  category: AiCertificationCategory;
+  score: number;
+  maxScore: number;
+  status: AiCertificationStatus;
+  testSuiteVersion: string;
+  toolContractVersion: string;
+  dataFilterPolicyVersion: string;
+  testedAt: string;
+  testedBy: string;
+  approvedBy: string | null;
+  summary: string;
+  failureReasons: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface CertifiedProfileEntry {
+  profile: Record<string, unknown>;
+  certifications: AiCertificationResult[];
+}
+
+export interface CreateTenantCustomModelProfilePayload {
+  providerId: string;
+  provider: string;
+  modelId: string;
+  displayName?: string;
+  baseUrl?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  jsonMode?: boolean;
+  toolMode?: 'none' | 'text_plan' | 'native_tools' | 'json_only';
+  timeoutMs?: number;
+  retryPolicy?: string;
+  safetyPolicyId?: string;
+  systemPromptPolicyId?: string;
+  dataFilterPolicyId?: string;
+}
+
+export interface RunTenantCertificationPayload {
+  profileHash: string;
+  category: AiCertificationCategory;
+  moduleId?: string;
+  skillId?: string;
+}
+
 export const aiAssistantApi = {
   // Chat
   sendMessage: async (payload: SendChatMessagePayload): Promise<SendChatMessageResponse> => {
@@ -321,5 +382,33 @@ export const aiAssistantApi = {
   archiveProposal: async (proposalId: string): Promise<{ proposal: AiProposalDTO }> => {
     const response = await client.patch(`/tenant/ai-assistant/proposals/${proposalId}/archive`);
     return response as unknown as { proposal: AiProposalDTO };
+  },
+
+  // Tenant Custom Model Profiles & Certification
+  createTenantCustomModelProfile: async (data: CreateTenantCustomModelProfilePayload): Promise<Record<string, unknown>> => {
+    const response = await client.post('/tenant/ai-assistant/settings/custom-model-profiles', data);
+    return response as unknown as Record<string, unknown>;
+  },
+
+  runTenantCustomModelDiagnostics: async (profileId: string): Promise<ProviderHealthResponse> => {
+    const response = await client.post(
+      `/tenant/ai-assistant/settings/custom-model-profiles/${encodeURIComponent(profileId)}/diagnostics`,
+      undefined,
+      { timeout: AI_DIAGNOSTICS_TIMEOUT_MS },
+    );
+    return response as unknown as ProviderHealthResponse;
+  },
+
+  runTenantCustomModelCertification: async (profileId: string, data: RunTenantCertificationPayload): Promise<AiCertificationResult> => {
+    const response = await client.post(
+      `/tenant/ai-assistant/settings/custom-model-profiles/${encodeURIComponent(profileId)}/certifications/run`,
+      data,
+    );
+    return response as unknown as AiCertificationResult;
+  },
+
+  listTenantCertifiedProfiles: async (params?: { scope?: 'GLOBAL' | 'TENANT' | 'ALL'; category?: string; moduleId?: string }): Promise<CertifiedProfileEntry[]> => {
+    const response = await client.get('/tenant/ai-assistant/certified-profiles', { params });
+    return response as unknown as CertifiedProfileEntry[];
   },
 };

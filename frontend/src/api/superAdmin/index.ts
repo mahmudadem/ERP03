@@ -138,6 +138,100 @@ export interface Plan {
   updatedAt: Date;
 }
 
+// AI Provider Types
+export type AiProviderRegistryType = 'openai' | 'openai_compatible' | 'google_gemini' | 'anthropic' | 'ollama' | 'custom';
+export type AiProviderAuthType = 'api_key' | 'bearer' | 'none' | 'custom';
+
+export interface AiProvider {
+  id: string;
+  name: string;
+  type: AiProviderRegistryType;
+  defaultBaseUrl: string | null;
+  authType: AiProviderAuthType;
+  enabled: boolean;
+  supportsTools: boolean;
+  supportsJsonMode: boolean;
+  supportsModelSync: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertAiProviderPayload {
+  id?: string;
+  name: string;
+  type: AiProviderRegistryType;
+  defaultBaseUrl?: string;
+  authType?: AiProviderAuthType;
+  enabled?: boolean;
+  supportsTools?: boolean;
+  supportsJsonMode?: boolean;
+  supportsModelSync?: boolean;
+  notes?: string;
+}
+
+// AI Certification Types
+export type AiCertificationCategory =
+  | 'GENERAL_CHAT' | 'ACCOUNTING' | 'FINANCE_REPORTING' | 'SALES'
+  | 'PURCHASES' | 'INVENTORY' | 'HR' | 'CRM'
+  | 'TOOL_CALLING' | 'DATA_FILTERING' | 'PROPOSAL_DRAFT' | 'ANALYTICS';
+
+export type AiCertificationStatus = 'CERTIFIED' | 'WARNING' | 'FAILED' | 'EXPIRED';
+
+export interface AiCertificationResult {
+  id: string;
+  scope: 'GLOBAL' | 'TENANT';
+  tenantId: string | null;
+  providerId: string;
+  modelProfileId: string;
+  profileHash: string;
+  moduleId: string | null;
+  skillId: string | null;
+  category: AiCertificationCategory;
+  score: number;
+  maxScore: number;
+  status: AiCertificationStatus;
+  testSuiteVersion: string;
+  toolContractVersion: string;
+  dataFilterPolicyVersion: string;
+  testedAt: string;
+  testedBy: string;
+  approvedBy: string | null;
+  summary: string;
+  failureReasons: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface CertifiedProfileEntry {
+  profile: Record<string, unknown>;
+  certifications: AiCertificationResult[];
+}
+
+export interface ManualCertificationPayload {
+  profileHash: string;
+  category: AiCertificationCategory;
+  moduleId?: string;
+  skillId?: string;
+  score: number;
+  maxScore: number;
+  status: AiCertificationStatus;
+  testSuiteVersion: string;
+  toolContractVersion: string;
+  dataFilterPolicyVersion: string;
+  summary: string;
+  failureReasons?: string[];
+  metadata?: Record<string, unknown>;
+  testedBy?: string;
+  approvedBy?: string;
+}
+
+export interface RunCertificationPayload {
+  profileHash: string;
+  category: AiCertificationCategory;
+  moduleId?: string;
+  skillId?: string;
+}
+
 // AI Tool Catalog Types
 export interface AiTool {
   name: string;
@@ -193,15 +287,33 @@ export interface AiModelToolPolicy {
   updatedAt?: Date;
 }
 
-export type AiModelStatus = 'recommended' | 'tested' | 'experimental' | 'custom';
+export type AiModelStatus = 'recommended' | 'tested' | 'experimental' | 'custom' | 'blocked' | 'deprecated' | 'text_only' | 'uncertified' | 'legacy_unverified';
 export type AiModelWarningLevel = 'none' | 'info' | 'warning' | 'danger';
 export type AiModelDiagnosticStatus = 'never-tested' | 'passed' | 'failed';
 export type AiModelRuntimeMode = 'native-tool-calling' | 'text-plan' | 'text-only' | 'unavailable';
+export type AiModelScope = 'GLOBAL' | 'TENANT';
+export type AiModelToolMode = 'none' | 'text_plan' | 'native_tools' | 'json_only';
 
 export interface AiModelProfile {
   id: string;
+  scope: AiModelScope;
+  tenantId?: string;
+  providerId: string;
   provider: string;
+  modelId: string;
   modelName: string;
+  displayName: string;
+  baseUrl?: string;
+  endpointFingerprint: string;
+  temperature: number;
+  maxOutputTokens: number;
+  jsonMode: boolean;
+  toolMode: AiModelToolMode;
+  timeoutMs: number;
+  retryPolicy: string;
+  safetyPolicyId?: string;
+  systemPromptPolicyId?: string;
+  dataFilterPolicyId?: string;
   status: AiModelStatus;
   supportsToolCalling: boolean;
   supportsStructuredJson: boolean;
@@ -216,16 +328,29 @@ export interface AiModelProfile {
   lastDiagnosticAt?: string;
   lastDiagnosticCompanyId?: string;
   lastDiagnosticDetail?: string;
+  profileHash: string;
+  revision: number;
+  enabled: boolean;
+  createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export type { ProviderHealthResponse };
 
-export type UpsertAiModelProfilePayload = Omit<
-  AiModelProfile,
-  'id' | 'lastDiagnosticStatus' | 'lastDiagnosticMode' | 'lastDiagnosticAt' | 'lastDiagnosticCompanyId' | 'lastDiagnosticDetail' | 'createdAt' | 'updatedAt'
->;
+export interface UpsertAiModelProfilePayload {
+  provider: string;
+  modelName: string;
+  status: AiModelStatus;
+  supportsToolCalling: boolean;
+  supportsStructuredJson: boolean;
+  maxContextTokens: number;
+  recommendedUseCases?: string[];
+  tags?: string[];
+  warningLevel?: AiModelWarningLevel;
+  textOnlyMode: boolean;
+  warningMessage?: string;
+}
 
 // ===== API Functions =====
 
@@ -336,7 +461,7 @@ export const superAdminApi = {
   revokeModuleFromCompany: (companyId: string, moduleKey: string): Promise<void> =>
     client.delete(`/super-admin/companies/${companyId}/entitlements/modules/${moduleKey}`),
 
-  // AI Tool Catalog
+// AI Tool Catalog
   getAiTools: (filters?: { module?: string; category?: string; status?: string; mode?: string }) =>
     client.get('/platform/ai-tools', { params: filters }),
 
@@ -367,6 +492,26 @@ export const superAdminApi = {
   updateAiModelToolPolicy: (policyId: string, data: any) =>
     client.patch(`/platform/ai-model-tool-policies/${policyId}`, data),
 
+  // AI Providers
+  getAiProviders: (): Promise<AiProvider[]> =>
+    client.get('/platform/ai-providers'),
+
+  getAiProvider: (providerId: string): Promise<AiProvider> =>
+    client.get(`/platform/ai-providers/${encodeURIComponent(providerId)}`),
+
+  createAiProvider: (data: UpsertAiProviderPayload): Promise<AiProvider> =>
+    client.post('/platform/ai-providers', data),
+
+  updateAiProvider: (providerId: string, data: Partial<UpsertAiProviderPayload>): Promise<AiProvider> =>
+    client.patch(`/platform/ai-providers/${encodeURIComponent(providerId)}`, data),
+
+  enableAiProvider: (providerId: string): Promise<AiProvider> =>
+    client.patch(`/platform/ai-providers/${encodeURIComponent(providerId)}/enable`),
+
+  disableAiProvider: (providerId: string): Promise<AiProvider> =>
+    client.patch(`/platform/ai-providers/${encodeURIComponent(providerId)}/disable`),
+
+  // AI Model Profiles
   getAiModelProfiles: (filters?: { provider?: string; status?: string; tag?: string }) =>
     client.get('/platform/ai-model-profiles', { params: filters }),
 
@@ -388,6 +533,22 @@ export const superAdminApi = {
       { companyId },
       { timeout: 180_000 },
     ),
+
+  // AI Certifications
+  getAiModelProfileCertifications: (profileId: string): Promise<AiCertificationResult[]> =>
+    client.get(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications`),
+
+  recordGlobalCertification: (profileId: string, data: ManualCertificationPayload): Promise<AiCertificationResult> =>
+    client.post(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications/manual`, data),
+
+  runGlobalCertification: (profileId: string, data: RunCertificationPayload): Promise<AiCertificationResult> =>
+    client.post(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications/run`, data),
+
+  expireCertification: (certificationId: string): Promise<AiCertificationResult> =>
+    client.patch(`/platform/ai-certifications/${encodeURIComponent(certificationId)}/expire`),
+
+  listValidCertifiedProfiles: (params?: { scope?: 'GLOBAL' | 'TENANT' | 'ALL'; category?: string; moduleId?: string }): Promise<CertifiedProfileEntry[]> =>
+    client.get('/platform/ai-certifications/valid', { params }),
 };
 
 export * from './voucherTypes';

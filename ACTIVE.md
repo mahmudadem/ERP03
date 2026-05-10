@@ -1,10 +1,39 @@
 # 🎯 Current Focus
 
-**Task:** Increment 2.5 — Branch and Worktree Reconciliation
+**Task:** Increment 3 — Frontend AI Certification UI
 **Started:** 2026-05-10
-**Status:** ✅ COMPLETE — branch/worktree reconciled before Increment 3
-**Agent/IDE:** Codex (CTO Mode)
+**Status:** ✅ COMPLETE — Frontend certification UI for Super Admin and Tenant
+**Agent/IDE:** OpenCode (CTO Mode)
 **Branch:** `feat/ai-proposal-sandbox`
+
+---
+
+## 2026-05-10 Result — Graphify CLI Usability Fix
+
+**Status:** ✅ COMPLETE
+**Estimate:** 20-30m
+**Actual time:** ~25m
+
+Made graphify usable from the project root without depending on a global `graphify` executable on PATH.
+
+Changed:
+- Added npm scripts: `graph:update`, `graph:check`, `graph:query`, `graph:explain`, and `graph:path`.
+- Added Windows wrappers: `scripts/graphify.bat` and `scripts/graphify.ps1`.
+- Updated `scripts/watch-graphify.bat` to use `py -3.14 -m graphify watch .`.
+- Rebuilt `graphify-out/graph.json` and `graphify-out/GRAPH_REPORT.md`.
+- Added developer guidance in `docs/architecture/graphify-usage.md`.
+
+Verification:
+- `npm run graph:check` ✅
+- `scripts\graphify.bat query "How does AI Assistant connect to Accounting tools?" --budget 300` ✅
+- `powershell -ExecutionPolicy Bypass -File scripts\graphify.ps1 explain "SendChatMessageUseCase"` ✅
+- `npm run graph:update` ✅ — rebuilt `12886 nodes`, `21549 edges`, `760 communities`
+
+Completion report:
+- `1-TODO/done/80-graphify-cli-wrappers.md`
+
+Next recommended move:
+- Return to the previous product work: create a clean checkpoint for current uncommitted AI/frontend responsiveness/docs changes, then proceed with Increment 3 frontend UI for Recommended Certified Models and tenant custom certification. Estimate: 5-7h.
 
 ---
 
@@ -145,6 +174,110 @@ Next:
 - Start the frontend with `npm run dev:remote` in `frontend/`.
 - Test from another Tailscale device at `http://100.72.126.75:5173`.
 - If unreachable, allow Windows Firewall inbound access for ports `5173`, `4000`, `5001`, `9099`, `8080`, `9001`, and `9199`.
+
+---
+
+## 2026-05-10 Result — Increment 3: Frontend AI Certification UI
+
+**Status:** ✅ COMPLETE
+**Estimate:** 5-7h
+**Actual time:** ~5h
+
+Implemented the frontend UI that uses the existing certification APIs.
+
+**Phase 1 — API Client Contracts:**
+- Added `scope=ALL` support to `AiModelCertificationUseCase.listValidCertifiedProfiles()` for GLOBAL + TENANT combined queries
+- Updated `AiAssistantController.listTenantCertifiedProfiles` to accept `scope=ALL`
+- Added full certification types to `superAdmin/index.ts`: `AiProvider`, `UpsertAiProviderPayload`, `AiCertificationCategory`, `AiCertificationStatus`, `AiCertificationResult`, `CertifiedProfileEntry`, `ManualCertificationPayload`, `RunCertificationPayload`
+- Expanded `AiModelProfile` type to match full backend `toJSON()` (scope, tenantId, providerId, modelId, displayName, baseUrl, toolMode, profileHash, revision, enabled, etc.)
+- Redefined `UpsertAiModelProfilePayload` as explicit interface (not Omit) matching backend contract
+- Added provider API functions: `getAiProviders`, `getAiProvider`, `createAiProvider`, `updateAiProvider`, `enableAiProvider`, `disableAiProvider`
+- Added certification API functions: `getAiModelProfileCertifications`, `recordGlobalCertification`, `runGlobalCertification`, `expireCertification`, `listValidCertifiedProfiles`
+- Added tenant API functions to `aiAssistantApi.ts`: `createTenantCustomModelProfile`, `runTenantCustomModelDiagnostics`, `runTenantCustomModelCertification`, `listTenantCertifiedProfiles`
+
+**Phase 2 — Super Admin Provider UI:**
+- Created `AiProvidersPage.tsx` — full CRUD for AI providers (list, create, edit, enable/disable)
+- Added route `/super-admin/ai-providers` and nav item with Server icon
+- Full i18n for EN/AR/TR under `superAdmin.aiProviders.*`
+- Provider types: openai, openai_compatible, google_gemini, anthropic, ollama, custom
+- Provider auth types: api_key, bearer, none, custom
+- Capability badges: Tools, JSON Mode, Model Sync
+
+**Phase 3 — Super Admin Model Certification UI:**
+- Enhanced `AiModelProfilesPage.tsx` with:
+  - Certification Summary Panel (loads and displays certifications per profile)
+  - Manual Certification Form (modal with all required fields)
+  - Shell Certification inline form (profileHash + category)
+  - Expire Certification button per certification row
+  - Safety disclaimer: "Certification validates ERP module compatibility. Diagnostics only test connectivity."
+- Full i18n for EN/AR/TR under `superAdmin.aiModels.certifications.*`
+
+**Phase 4 — Tenant Recommended Certified Models:**
+- Created `CertifiedModelsModal.tsx` — modal component showing certified profiles
+- Fetches GLOBAL + TENANT certified profiles via `scope=ALL`
+- Table with Model, Provider, Scope badge (GLOBAL/TENANT), Categories, Tool Mode, Status, Select button
+- When user selects a certified model: populates provider, modelId, baseUrl, selectedModelProfileId, selectedProfileHash, mode=certified_profile
+- Safety label about certification vs diagnostics
+- Integrated into `AiAssistantSettingsPage.tsx` with "Browse Certified Models" button
+- Selected profile indicator with green/gray status
+
+**Phase 5 — Tenant Custom Model Flow:**
+- Added custom model creation form to settings page with Provider Type, Base URL, Model ID, Display Name
+- Creates TENANT-scoped custom profile via `createTenantCustomModelProfile`
+- Shows profile status after creation (Custom/Uncertified + status badges)
+- Runs diagnostics for custom profile via `runTenantCustomModelDiagnostics`
+- Runs tenant certification via `runTenantCustomModelCertification`
+- Cancel button resets all custom model state
+- Safety labels: "Uncertified — sensitive ERP tools are blocked" and "Company certification is tenant-scoped only"
+
+**Phase 6 — Safety Labels:**
+- Diagnostics: "Connection and capability test only. This does not certify ERP module compatibility."
+- Certification: "ERP compatibility approval for specific categories/modules."
+- Custom uncertified: "Not certified. Sensitive ERP tools are blocked."
+- Legacy unverified: "Legacy unverified model. Please select a certified profile or run company certification."
+- Company certification: "Company certification is tenant-scoped only. It does not appear as global recommended."
+
+**Phase 7 — Frontend Tests:**
+- Skipped — no frontend test infrastructure exists yet (no Jest/Vitest/RTL config). Manual browser QA covers verification.
+
+**Verification:**
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+- `backend`: targeted certification tests ✅ — 5 suites, 5 tests
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+
+**Files Changed:**
+
+Backend:
+- `backend/src/application/ai-assistant/use-cases/AiModelCertificationUseCase.ts` — Added `scope=ALL` support
+- `backend/src/api/controllers/ai-assistant/AiAssistantController.ts` — Accept `scope=ALL` parameter
+
+Frontend (new):
+- `frontend/src/modules/super-admin/pages/AiProvidersPage.tsx` — Provider registry UI
+- `frontend/src/modules/ai-assistant/components/CertifiedModelsModal.tsx` — Certified models modal
+
+Frontend (modified):
+- `frontend/src/api/superAdmin/index.ts` — Provider + certification types and API functions
+- `frontend/src/api/aiAssistantApi.ts` — Certification types and tenant API functions
+- `frontend/src/modules/super-admin/pages/AiModelProfilesPage.tsx` — Certification UI
+- `frontend/src/modules/ai-assistant/pages/AiAssistantSettingsPage.tsx` — Recommended models + custom model flow
+- `frontend/src/layout/SuperAdminShell.tsx` — Nav item for AI Providers
+- `frontend/src/router/routes.config.ts` — Route for AI Providers
+- `frontend/src/locales/en/common.json` — Provider + certification i18n
+- `frontend/src/locales/ar/common.json` — Provider + certification i18n
+- `frontend/src/locales/tr/common.json` — Provider + certification i18n
+- `frontend/src/locales/en/aiAssistant.json` — Certified models + custom model i18n
+- `frontend/src/locales/ar/aiAssistant.json` — Certified models + custom model i18n
+- `frontend/src/locales/tr/aiAssistant.json` — Certified models + custom model i18n
+
+**Next Recommended Move:**
+Manual browser QA in Super Admin and Tenant settings:
+1. Super Admin → AI Providers: list/create/edit/enable/disable providers
+2. Super Admin → AI Models: view certifications, record manual cert, run shell cert, expire cert
+3. Tenant → AI Settings → Provider: open "Browse Certified Models", select certified model, save
+4. Tenant → AI Settings → Provider: create custom model, run diagnostics, run certification
+5. Verify: uncertified custom model shows warning; certified model carries selectedModelProfileId + selectedProfileHash
 
 ---
 

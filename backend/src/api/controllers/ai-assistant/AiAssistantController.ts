@@ -360,8 +360,12 @@ export class AiAssistantController {
       const companyId = AiAssistantController.getCompanyId(req);
       const category = req.query.category as string | undefined;
       if (category && !isAiCertificationCategory(category)) throw ApiError.badRequest('Invalid category');
+const scopeParam = (req.query.scope as string) || 'TENANT';
+      if (scopeParam !== 'GLOBAL' && scopeParam !== 'TENANT' && scopeParam !== 'ALL') {
+        throw ApiError.badRequest('scope must be one of: GLOBAL, TENANT, ALL');
+      }
       const data = await diContainer.aiModelCertificationUseCase.listValidCertifiedProfiles({
-        scope: (req.query.scope as any) || 'TENANT',
+        scope: scopeParam as 'GLOBAL' | 'TENANT' | 'ALL',
         tenantId: companyId,
         category: category as any,
         moduleId: req.query.moduleId as string | undefined,

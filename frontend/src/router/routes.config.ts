@@ -87,6 +87,7 @@ const PlansManagerPage = lazy(() => import('../modules/super-admin/pages/PlansMa
 const AiToolCatalogPage = lazy(() => import('../modules/super-admin/pages/AiToolCatalogPage').then(m => ({ default: m.AiToolCatalogPage })));
 const AiToolDetailPage = lazy(() => import('../modules/super-admin/pages/AiToolDetailPage').then(m => ({ default: m.AiToolDetailPage })));
 const AiModelProfilesPage = lazy(() => import('../modules/super-admin/pages/AiModelProfilesPage').then(m => ({ default: m.AiModelProfilesPage })));
+const AiProvidersPage = lazy(() => import('../modules/super-admin/pages/AiProvidersPage').then(m => ({ default: m.AiProvidersPage })));
 const AiProposalPolicyPage = lazy(() => import('../modules/super-admin/pages/AiProposalPolicyPage').then(m => ({ default: m.AiProposalPolicyPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
 
@@ -135,6 +136,7 @@ const SalesInvoiceDetailPage = lazy(() => import('../modules/sales/pages/SalesIn
 const SalesReturnsListPage = lazy(() => import('../modules/sales/pages/SalesReturnsListPage'));
 const SalesReturnDetailPage = lazy(() => import('../modules/sales/pages/SalesReturnDetailPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
+const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
 
 export interface AppRoute {
   path: string;
@@ -242,6 +244,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/modules-registry', label: 'Modules Registry', component: ModulesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools', label: 'AI Tools', component: AiToolCatalogPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools/:toolName', label: 'AI Tool Detail', component: AiToolDetailPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/ai-providers', label: 'AI Providers', component: AiProvidersPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-models', label: 'AI Models', component: AiModelProfilesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-proposal-policies', label: 'AI Proposal Policies', component: AiProposalPolicyPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/plans', label: 'Plans', component: PlansManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
@@ -332,6 +335,7 @@ export const routesConfig: AppRoute[] = [
   
   // TOOLS
   { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },
+  { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: false },
 
   // AI ASSISTANT
   { path: '/ai-assistant', label: 'AI Assistant', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantHomePage')), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.chat.use' },

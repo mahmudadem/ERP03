@@ -32,6 +32,8 @@ import {
   CheckCircle2,
   CircleMinus,
   XCircle,
+  ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import {
@@ -39,8 +41,13 @@ import {
   AiSettingsDTO,
   AiUsageAnalyticsResponse,
   ProviderHealthResponse,
+  CertifiedProfileEntry,
+  CreateTenantCustomModelProfilePayload,
+  AiCertificationResult,
+  AiCertificationCategory,
 } from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
+import { CertifiedModelsModal } from '../components/CertifiedModelsModal';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -150,9 +157,30 @@ export const AiAssistantSettingsPage: React.FC = () => {
   const [isEnabled, setIsEnabled] = useState(true);
   const [usageAnalytics, setUsageAnalytics] = useState<AiUsageAnalyticsResponse | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
-  const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(null);
+const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(null);
   const [healthTesting, setHealthTesting] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
+
+  // ── Certified Models & Custom Model state ──────────────────────────────────
+  const [showCertifiedModels, setShowCertifiedModels] = useState(false);
+  const [selectedCertifiedProfile, setSelectedCertifiedProfile] = useState<CertifiedProfileEntry | null>(null);
+  const [customModelMode, setCustomModelMode] = useState(false);
+  const [customModelProfileId, setCustomModelProfileId] = useState<string | null>(null);
+  const [customModelStatus, setCustomModelStatus] = useState<string>('');
+
+  // ── Custom Model Profile creation form state ──────────────────────────────
+  const [customProviderId, setCustomProviderId] = useState('');
+  const [customProvider, setCustomProvider] = useState<string>('openai_compatible');
+  const [customBaseUrl, setCustomBaseUrl] = useState('');
+  const [customModelId, setCustomModelId] = useState('');
+  const [customDisplayName, setCustomDisplayName] = useState('');
+  const [customCreating, setCustomCreating] = useState(false);
+  const [customProfileData, setCustomProfileData] = useState<Record<string, unknown> | null>(null);
+  const [customDiagnosticResult, setCustomDiagnosticResult] = useState<ProviderHealthResponse | null>(null);
+  const [customDiagnosticTesting, setCustomDiagnosticTesting] = useState(false);
+  const [customCertResult, setCustomCertResult] = useState<AiCertificationResult | null>(null);
+  const [customCertCategory, setCustomCertCategory] = useState<AiCertificationCategory>('GENERAL_CHAT');
+  const [customCertRunning, setCustomCertRunning] = useState(false);
 
   // ── Derived state (rerender-derived-state-no-effect) ────────────────────────
 
@@ -263,6 +291,14 @@ export const AiAssistantSettingsPage: React.FC = () => {
         payload.apiEndpoint = apiEndpoint || undefined;
       }
 
+      if (selectedCertifiedProfile) {
+        const profile = selectedCertifiedProfile.profile as Record<string, unknown>;
+        payload.mode = 'certified_profile';
+        payload.selectedModelProfileId = profile.id;
+        payload.selectedProfileHash = profile.profileHash;
+        payload.providerId = profile.providerId;
+      }
+
       const result = await aiAssistantApi.updateSettings(payload);
       setSettings(result.config);
       setApiKey('');
@@ -294,9 +330,98 @@ export const AiAssistantSettingsPage: React.FC = () => {
     }
   }, [t]);
 
+  const handleSelectCertifiedProfile = useCallback((entry: CertifiedProfileEntry) => {
+    const profile = entry.profile as Record<string, unknown>;
+    setPresetId('custom');
+    setProvider('openai_compatible');
+    setModel(String(profile.modelId || profile.modelName || ''));
+    if (profile.baseUrl) setApiEndpoint(String(profile.baseUrl));
+    setSelectedCertifiedProfile(entry);
+    setCustomModelMode(false);
+    setShowCertifiedModels(false);
+    // Note: the user must still Save Settings to persist the change
+  }, []);
+
+  const handleCustomModelProfile = useCallback(() => {
+    setCustomModelMode(true);
+    setPresetId('custom');
+    setProvider('openai_compatible');
+    setSelectedCertifiedProfile(null);
+  }, []);
+
+  const handleCreateCustomModel = async () => {
+    if (!customModelId) { return; }
+    try {
+      setCustomCreating(true);
+      const result = await aiAssistantApi.createTenantCustomModelProfile({
+        providerId: customProviderId || customProvider,
+        provider: customProvider,
+        modelId: customModelId,
+        displayName: customDisplayName || undefined,
+        baseUrl: customBaseUrl || undefined,
+      });
+      setCustomProfileData(result);
+      setCustomModelProfileId((result as any).id || '');
+    } catch (err: any) {
+      // Silently catch; UI can show inline error if needed
+    } finally {
+      setCustomCreating(false);
+    }
+  };
+
+  const handleRunCustomDiagnostics = async () => {
+    if (!customModelProfileId) return;
+    try {
+      setCustomDiagnosticTesting(true);
+      const result = await aiAssistantApi.runTenantCustomModelDiagnostics(customModelProfileId);
+      setCustomDiagnosticResult(result);
+    } catch (err: any) {
+      // Silently catch; UI can show inline error if needed
+    } finally {
+      setCustomDiagnosticTesting(false);
+    }
+  };
+
+  const handleRunCustomCertification = async () => {
+    if (!customModelProfileId) return;
+    const profileHash = (customProfileData as any)?.profileHash;
+    if (!profileHash) { return; }
+    try {
+      setCustomCertRunning(true);
+      const result = await aiAssistantApi.runTenantCustomModelCertification(customModelProfileId, {
+        profileHash,
+        category: customCertCategory,
+      });
+      setCustomCertResult(result);
+    } catch (err: any) {
+      // Silently catch; UI can show inline error if needed
+    } finally {
+      setCustomCertRunning(false);
+    }
+  };
+
+  const handleCancelCustomModel = useCallback(() => {
+    setCustomModelMode(false);
+    setCustomModelProfileId(null);
+    setCustomModelStatus('');
+    setCustomProviderId('');
+    setCustomProvider('openai_compatible');
+    setCustomBaseUrl('');
+    setCustomModelId('');
+    setCustomDisplayName('');
+    setCustomCreating(false);
+    setCustomProfileData(null);
+    setCustomDiagnosticResult(null);
+    setCustomDiagnosticTesting(false);
+    setCustomCertResult(null);
+    setCustomCertCategory('GENERAL_CHAT');
+    setCustomCertRunning(false);
+    setSelectedCertifiedProfile(null);
+  }, []);
+
   // ── Computed: has changes ──────────────────────────────────────────────────
 
-  const hasChanges = settings && (
+const hasChanges = settings && (
     settings.provider !== provider ||
     (settings.model || '') !== model ||
     settings.maxTokensPerRequest !== maxTokens ||
@@ -305,7 +430,9 @@ export const AiAssistantSettingsPage: React.FC = () => {
     (settings.includePreviousToolResults !== false) !== includePreviousToolResults ||
     settings.isEnabled !== isEnabled ||
     (provider !== 'mock' && apiKey !== '') ||
-    (provider !== 'mock' && (settings.apiEndpoint || '') !== apiEndpoint)
+    (provider !== 'mock' && (settings.apiEndpoint || '') !== apiEndpoint) ||
+    selectedCertifiedProfile !== null ||
+    customModelMode
   );
   const hasUnsavedChanges = Boolean(hasChanges);
 
@@ -632,7 +759,7 @@ export const AiAssistantSettingsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Current Config Info */}
+{/* Current Config Info */}
           {settings && (
             <div className="text-xs text-gray-400 mt-4 pt-4 border-t">
               {t('settings.currentProvider', 'Current Provider')}: <strong>{settings.provider}</strong>
@@ -641,6 +768,475 @@ export const AiAssistantSettingsPage: React.FC = () => {
               {' | '}{t('settings.lastUpdated', 'Updated')}: {new Date(settings.updatedAt).toLocaleString()}
             </div>
           )}
+
+          {/* ── Recommended Certified Models & Custom Model ──────────────────── */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-medium text-gray-800 mb-2">
+              <ShieldCheck className="w-4 h-4 inline mr-1.5 text-indigo-600" />
+              {t('settings.certifiedModels.title', 'Recommended Certified Models')}
+            </h3>
+
+            {/* Selected profile indicator */}
+            {selectedCertifiedProfile ? (
+              <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-green-800">
+                  <ShieldCheck className="w-4 h-4" />
+                  {t('settings.certifiedModels.selectedProfile', 'Certified Profile Selected')}
+                </div>
+                <div className="mt-1 text-xs text-green-700">
+                  {(() => {
+                    const p = selectedCertifiedProfile.profile as Record<string, unknown>;
+                    const name = String(p.displayName || p.modelName || 'Unknown');
+                    return t('settings.certifiedModels.profileSelected', { defaultValue: 'Profile: {{name}}', name });
+                  })()}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {(() => {
+                    const cats = selectedCertifiedProfile.certifications
+                      ?.filter((c) => !['blocked', 'deprecated', 'expired'].includes(String(c.status).toLowerCase()))
+                      .map((c) => c.category) ?? [];
+                    const uniqueCats = [...new Set(cats)];
+                    const hasGlobal = selectedCertifiedProfile.certifications?.some((c) => c.scope === 'GLOBAL');
+                    const scopeLabel = hasGlobal
+                      ? t('settings.certifiedModels.scopeGlobal', 'GLOBAL')
+                      : t('settings.certifiedModels.scopeTenant', 'TENANT');
+                    const scopeColor = hasGlobal ? 'bg-green-100 text-green-800 border-green-200' : 'bg-blue-100 text-blue-800 border-blue-200';
+                    return (
+                      <>
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${scopeColor}`}>
+                          {scopeLabel}
+                        </span>
+                        {uniqueCats.map((cat) => (
+                          <span key={cat} className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
+                            {cat}
+                          </span>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                {t('settings.certifiedModels.noProfile', 'No certified profile selected')}
+              </div>
+            )}
+
+            {/* Warning for custom/uncertified mode */}
+            {customModelMode && !selectedCertifiedProfile && (
+              <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>
+                  {t('settings.certifiedModels.customModelWarning', '⚠ Not certified. Sensitive ERP tools are blocked for uncertified models.')}
+                </span>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCertifiedModels(true)}
+                className="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                {t('settings.certifiedModels.openModal', 'Browse Certified Models')}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCustomModelProfile}
+                className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+                  customModelMode && !selectedCertifiedProfile
+                    ? 'border-amber-300 bg-amber-50 text-amber-800'
+                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ExternalLink className="w-4 h-4" />
+                {t('settings.certifiedModels.customModel', 'Use Custom Model')}
+              </button>
+            </div>
+
+            {/* Diagnostics vs Certification disclaimers */}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-400">
+              <div className="rounded-md border border-gray-100 bg-gray-50/50 px-3 py-2">
+                <span className="font-medium text-gray-600">
+                  {t('settings.certifiedModels.diagnosticsLabel', 'Diagnostics')}:
+                </span>{' '}
+                {t('settings.certifiedModels.diagnosticsDisclaimer', 'Connection and capability test only. This does not certify ERP module compatibility.')}
+              </div>
+              <div className="rounded-md border border-gray-100 bg-gray-50/50 px-3 py-2">
+                <span className="font-medium text-gray-600">
+                  {t('settings.certifiedModels.certificationLabel', 'Certification')}:
+                </span>{' '}
+                {t('settings.certifiedModels.certificationDisclaimer', 'ERP compatibility approval for specific categories/modules.')}
+              </div>
+            </div>
+</div>
+
+          {/* ── Custom Model Profile Card ──────────────────────────────────────── */}
+          {customModelMode && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-800 mb-3">
+                <Sparkles className="w-4 h-4 inline mr-1.5 text-indigo-600" />
+                {t('settings.customModel.title', 'Custom Model Profile')}
+              </h3>
+
+              {!customModelProfileId ? (
+                /* ── Creation Form ────────────────────────────────────────────── */
+                <div className="space-y-4 rounded-md border border-gray-200 bg-white p-4">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    {t('settings.customModel.createTitle', 'Create Custom Model Profile')}
+                  </h4>
+
+                  {/* Provider Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.customModel.providerType', 'Provider Type')}
+                    </label>
+                    <select
+                      value={customProvider}
+                      onChange={(e) => setCustomProvider(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+                    >
+                      <option value="openai_compatible">OpenAI Compatible</option>
+                      <option value="google_gemini">Google Gemini</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="ollama">Ollama</option>
+                    </select>
+                  </div>
+
+                  {/* Base URL */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.customModel.baseUrl', 'Base URL')}
+                    </label>
+                    <input
+                      type="text"
+                      value={customBaseUrl}
+                      onChange={(e) => setCustomBaseUrl(e.target.value)}
+                      placeholder="https://api.openai.com/v1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Model ID */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.customModel.modelId', 'Model ID')} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customModelId}
+                      onChange={(e) => setCustomModelId(e.target.value)}
+                      placeholder="gpt-4o"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Display Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.customModel.displayName', 'Display Name')}
+                    </label>
+                    <input
+                      type="text"
+                      value={customDisplayName}
+                      onChange={(e) => setCustomDisplayName(e.target.value)}
+                      placeholder="My Custom Model"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateCustomModel}
+                      disabled={!customModelId || customCreating}
+                      className="inline-flex items-center justify-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {customCreating ? (
+                        <>
+                          <div className="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                          {t('settings.customModel.creating', 'Creating...')}
+                        </>
+                      ) : (
+                        t('settings.customModel.create', 'Create Custom Model Profile')
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCancelCustomModel}
+                      className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                    >
+                      {t('settings.customModel.cancelCustom', 'Cancel Custom Model')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ── Profile Status Card ──────────────────────────────────────── */
+                <div className="space-y-4">
+                  {/* Profile Info */}
+                  <div className="rounded-md border border-gray-200 bg-white p-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="text-xs text-gray-500">{t('settings.customModel.profileId', 'Profile ID')}</div>
+                        <div className="mt-0.5 font-mono text-sm text-gray-800 truncate" title={customModelProfileId}>
+                          {customModelProfileId.length > 20
+                            ? `${customModelProfileId.slice(0, 20)}...`
+                            : customModelProfileId}
+                        </div>
+                      </div>
+                      {(customProfileData as any)?.displayName && (
+                        <div>
+                          <div className="text-xs text-gray-500">{t('settings.customModel.displayName', 'Display Name')}</div>
+                          <div className="mt-0.5 font-medium text-gray-800">{String((customProfileData as any).displayName)}</div>
+                        </div>
+                      )}
+                      {(customProfileData as any)?.modelId && (
+                        <div>
+                          <div className="text-xs text-gray-500">{t('settings.customModel.modelId', 'Model ID')}</div>
+                          <div className="mt-0.5 font-mono text-sm text-gray-800">{String((customProfileData as any).modelId)}</div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-xs text-gray-500">{t('settings.customModel.status', 'Status')}</div>
+                        <div className="mt-0.5 flex flex-wrap gap-1.5">
+                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                            {t('settings.customModel.customProfile', 'Custom Profile')}
+                          </span>
+                          {customCertResult ? (
+                            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                              customCertResult.status === 'CERTIFIED'
+                                ? 'border-green-200 bg-green-100 text-green-800'
+                                : customCertResult.status === 'WARNING'
+                                  ? 'border-amber-200 bg-amber-100 text-amber-800'
+                                  : customCertResult.status === 'FAILED'
+                                    ? 'border-red-200 bg-red-100 text-red-800'
+                                    : 'border-slate-200 bg-slate-100 text-slate-700'
+                            }`}>
+                              {customCertResult.status}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              {t('settings.customModel.uncertified', 'Uncertified — sensitive ERP tools are blocked')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {(customProfileData as any)?.toolMode && (
+                        <div>
+                          <div className="text-xs text-gray-500">{t('settings.customModel.toolMode', 'Tool Mode')}</div>
+                          <div className="mt-0.5 text-sm text-gray-800">{String((customProfileData as any).toolMode)}</div>
+                        </div>
+                      )}
+                      {(customProfileData as any)?.supportsStructuredJson !== undefined && (
+                        <div>
+                          <div className="text-xs text-gray-500">{t('settings.customModel.jsonSupport', 'JSON Support')}</div>
+                          <div className="mt-0.5 text-sm text-gray-800">
+                            {(customProfileData as any).supportsStructuredJson
+                              ? t('settings.yes', 'Yes')
+                              : t('settings.no', 'No')}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Diagnostics ────────────────────────────────────────────── */}
+                  <div className="rounded-md border border-gray-200 bg-white p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <Activity className="mt-0.5 h-5 w-5 flex-shrink-0 text-indigo-600" />
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-800">
+                            {t('settings.customModel.runDiagnostics', 'Run Diagnostics')}
+                          </h4>
+                          <p className="mt-1 text-xs text-amber-700">
+                            {t('settings.customModel.diagnosticsDisclaimer', '⚠ Diagnostics: Connection and capability test only. This does not certify ERP module compatibility.')}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRunCustomDiagnostics}
+                        disabled={!canManage || customDiagnosticTesting}
+                        className="inline-flex items-center justify-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {customDiagnosticTesting ? (
+                          <div className="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                        ) : (
+                          <Activity className="h-4 w-4" />
+                        )}
+                        {customDiagnosticTesting
+                          ? t('settings.customModel.diagnosticsRunning', 'Running diagnostics...')
+                          : t('settings.customModel.runDiagnostics', 'Run Diagnostics')}
+                      </button>
+                    </div>
+
+                    {customDiagnosticResult && (
+                      <div className="mt-4">
+                        <ModelDiagnosticsResult result={customDiagnosticResult} t={t} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Certification ──────────────────────────────────────────── */}
+                  <div className="rounded-md border border-gray-200 bg-white p-4">
+                    <div className="flex items-start gap-3 mb-4">
+                      <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-indigo-600" />
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-800">
+                          {t('settings.customModel.runCertification', 'Run Company Certification')}
+                        </h4>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {t('settings.customModel.certificationDisclaimer', 'Company certification is tenant-scoped only. It does not appear as global recommended.')}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {/* Profile Hash (read-only) */}
+                      {(customProfileData as any)?.profileHash && (
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">
+                            {t('settings.customModel.profileHash', 'Profile Hash')}
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={String((customProfileData as any).profileHash)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm font-mono text-gray-500 cursor-default"
+                          />
+                        </div>
+                      )}
+
+                      {/* Category Dropdown */}
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">
+                          {t('settings.customModel.category', 'Category')}
+                        </label>
+                        <select
+                          value={customCertCategory}
+                          onChange={(e) => setCustomCertCategory(e.target.value as AiCertificationCategory)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+                        >
+                          <option value="GENERAL_CHAT">General Chat</option>
+                          <option value="ACCOUNTING">Accounting</option>
+                          <option value="FINANCE_REPORTING">Finance Reporting</option>
+                          <option value="SALES">Sales</option>
+                          <option value="PURCHASES">Purchases</option>
+                          <option value="INVENTORY">Inventory</option>
+                          <option value="HR">HR</option>
+                          <option value="CRM">CRM</option>
+                          <option value="TOOL_CALLING">Tool Calling</option>
+                          <option value="DATA_FILTERING">Data Filtering</option>
+                          <option value="PROPOSAL_DRAFT">Proposal Draft</option>
+                          <option value="ANALYTICS">Analytics</option>
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleRunCustomCertification}
+                        disabled={!canManage || customCertRunning || !(customProfileData as any)?.profileHash}
+                        className="inline-flex items-center justify-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {customCertRunning ? (
+                          <>
+                            <div className="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                            {t('settings.customModel.certRunning', 'Running certification...')}
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="h-4 w-4" />
+                            {t('settings.customModel.runCertification', 'Run Company Certification')}
+                          </>
+                        )}
+                      </button>
+
+                      {!(customProfileData as any)?.profileHash && customModelProfileId && (
+                        <p className="text-xs text-amber-700">
+                          {t('settings.customModel.noProfileHash', 'Profile hash not available. Run diagnostics first.')}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Certification Result */}
+                    {customCertResult && (
+                      <div className="mt-4 rounded-md border border-gray-100 bg-gray-50 p-3">
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">
+                          {t('settings.customModel.certificationResult', 'Certification Result')}
+                        </h5>
+                        <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                          <div>
+                            <span className="text-xs text-gray-500">{t('settings.customModel.category', 'Category')}</span>
+                            <div className="font-medium text-gray-800">{customCertResult.category}</div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500">{t('settings.customModel.status', 'Status')}</span>
+                            <div>
+                              <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                                customCertResult.status === 'CERTIFIED'
+                                  ? 'border-green-200 bg-green-100 text-green-800'
+                                  : customCertResult.status === 'WARNING'
+                                    ? 'border-amber-200 bg-amber-100 text-amber-800'
+                                    : customCertResult.status === 'FAILED'
+                                      ? 'border-red-200 bg-red-100 text-red-800'
+                                      : 'border-slate-200 bg-slate-100 text-slate-700'
+                              }`}>
+                                {customCertResult.status}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500">Score</span>
+                            <div className="font-medium text-gray-800">{customCertResult.score}/{customCertResult.maxScore}</div>
+                          </div>
+                          {customCertResult.summary && (
+                            <div className="sm:col-span-2">
+                              <span className="text-xs text-gray-500">Summary</span>
+                              <div className="text-gray-700">{customCertResult.summary}</div>
+                            </div>
+                          )}
+                          {customCertResult.failureReasons && customCertResult.failureReasons.length > 0 && (
+                            <div className="sm:col-span-2">
+                              <span className="text-xs text-gray-500">Failure Reasons</span>
+                              <ul className="mt-1 list-disc list-inside text-sm text-red-700">
+                                {customCertResult.failureReasons.map((reason, idx) => (
+                                  <li key={idx}>{reason}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cancel Button */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelCustomModel}
+                      className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      {t('settings.customModel.cancelCustom', 'Cancel Custom Model')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Certified Models Modal */}
+          <CertifiedModelsModal
+            isOpen={showCertifiedModels}
+            onClose={() => setShowCertifiedModels(false)}
+            onSelectProfile={handleSelectCertifiedProfile}
+          />
         </SettingsSection>
       )}
 

@@ -127,7 +127,7 @@ export class AiModelCertificationUseCase {
   }
 
   async listValidCertifiedProfiles(input: {
-    scope?: 'GLOBAL' | 'TENANT';
+    scope?: 'GLOBAL' | 'TENANT' | 'ALL';
     tenantId?: string;
     category?: AiCertificationCategory;
     moduleId?: string;
@@ -135,13 +135,21 @@ export class AiModelCertificationUseCase {
     profile: Record<string, unknown>;
     certifications: Record<string, unknown>[];
   }>> {
-    const results = await this.certificationRepository.list(input);
+    // When scope=ALL, don't filter by scope at the repository level
+    const repoFilters: { scope?: 'GLOBAL' | 'TENANT'; tenantId?: string; category?: AiCertificationCategory; moduleId?: string } = {};
+    if (input.scope === 'GLOBAL') repoFilters.scope = 'GLOBAL';
+    else if (input.scope === 'TENANT') repoFilters.scope = 'TENANT';
+    // scope=ALL or undefined: no scope filter — fetch both GLOBAL and TENANT
+
+    if (input.category) repoFilters.category = input.category;
+    if (input.moduleId) repoFilters.moduleId = input.moduleId;
+
+    const results = await this.certificationRepository.list(repoFilters);
     const grouped = new Map<string, { profile: AiModelProfile; certifications: AiModelCertificationResult[] }>();
 
     for (const result of results) {
       if (result.status !== 'CERTIFIED') continue;
-      if (input.scope === 'GLOBAL' && result.scope !== 'GLOBAL') continue;
-      if (input.scope === 'TENANT' && result.scope !== 'TENANT') continue;
+      // Exclude TENANT certifications that don't belong to this tenant
       if (result.scope === 'TENANT' && result.tenantId !== input.tenantId) continue;
       if (result.toolContractVersion !== AI_TOOL_CONTRACT_VERSION) continue;
       if (result.dataFilterPolicyVersion !== AI_DATA_FILTER_POLICY_VERSION) continue;

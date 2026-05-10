@@ -1127,6 +1127,71 @@
         "error": "فشلت مزامنة الكتالوج."
       }
     },
+"aiProviders": {
+      "title": "مزودو الذكاء الاصطناعي",
+      "description": "إدارة سجل مزودي الذكاء الاصطناعي. تُستخدم بيانات المزوديين في ملفات النماذج والشهادات.",
+      "loading": "جارٍ تحميل المزودين...",
+      "empty": "لم يتم العثور على مزودين",
+      "search": "البحث في المزودين...",
+      "meta": "{{total}} مزود · {{enabled}} مفعّل",
+      "columns": {
+        "name": "الاسم",
+        "type": "النوع",
+        "baseUrl": "عنوان URL الأساسي",
+        "auth": "المصادقة",
+        "capabilities": "القدرات",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "status": {
+        "enabled": "مفعّل",
+        "disabled": "معطّل"
+      },
+      "types": {
+        "openai": "OpenAI",
+        "openai_compatible": "متوافق مع OpenAI",
+        "google_gemini": "Google Gemini",
+        "anthropic": "Anthropic",
+        "ollama": "Ollama",
+        "custom": "مخصص"
+      },
+      "authTypes": {
+        "api_key": "مفتاح API",
+        "bearer": "رمز Bearer",
+        "none": "لا يوجد",
+        "custom": "مخصص"
+      },
+      "flags": {
+        "tools": "الأدوات",
+        "json": "JSON",
+        "sync": "المزامنة"
+      },
+      "form": {
+        "createTitle": "إنشاء مزود",
+        "editTitle": "تعديل المزود",
+        "name": "اسم المزود",
+        "type": "نوع المزود",
+        "baseUrl": "عنوان URL الأساسي الافتراضي",
+        "authType": "نوع المصادقة",
+        "notes": "ملاحظات",
+        "enable": "تفعيل المزود",
+        "disable": "تعطيل المزود"
+      },
+      "actions": {
+        "new": "مزود جديد",
+        "save": "حفظ",
+        "saving": "جارٍ الحفظ...",
+        "edit": "تعديل",
+        "enable": "تفعيل",
+        "disable": "تعطيل"
+      },
+      "messages": {
+        "created": "تم إنشاء المزود بنجاح",
+        "updated": "تم تحديث المزود بنجاح",
+        "enabled": "تم تفعيل المزود",
+        "disabled": "تم تعطيل المزود"
+      }
+    },
     "aiModels": {
       "title": "ملفات نماذج الذكاء الاصطناعي",
       "description": "إدارة حالة الثقة بالنماذج وإعدادات التشغيل والوسوم وسجل التشخيص.",
@@ -1197,7 +1262,7 @@
         "structuredJson": "JSON منظم",
         "textOnly": "وضع النص فقط"
       },
-      "diagnosticsPanel": {
+"diagnosticsPanel": {
         "title": "تشغيل التشخيص",
         "company": "استخدام إعدادات الشركة",
         "chatReady": "المحادثة جاهزة",
@@ -1207,6 +1272,56 @@
           "inference": "استجابة النموذج",
           "nativeToolCalling": "استدعاء الأدوات الأصلي",
           "textPlan": "خطة النص المحمية"
+        }
+      },
+      "certifications": {
+        "title": "الشهادات",
+        "disclaimer": "⚠ الشهادة تتحقق من توافق وحدات النظام. التشخيص يختبر الاتصال فقط.",
+        "empty": "لا توجد شهادات مسجلة",
+        "columns": {
+          "category": "الفئة",
+          "status": "الحالة",
+          "score": "النتيجة",
+          "testedBy": "اختبر بواسطة",
+          "testedAt": "تاريخ الاختبار",
+          "summary": "الملخص",
+          "actions": "الإجراءات"
+        },
+        "recordManual": "تسجيل شهادة يدوية",
+        "runShell": "تشغيل شهادة shell",
+        "expire": "إنهاء الصلاحية",
+        "confirmExpire": "هل أنت متأكد من إنهاء صلاحية هذه الشهادة؟",
+        "form": {
+          "category": "الفئة",
+          "moduleId": "معرف الوحدة (اختياري)",
+          "skillId": "معرف المهارة (اختياري)",
+          "score": "النتيجة",
+          "maxScore": "الحد الأقصى للنتيجة",
+          "status": "الحالة",
+          "testSuiteVersion": "إصدار مجموعة الاختبار",
+          "toolContractVersion": "إصدار عقد الأدوات",
+          "dataFilterPolicyVersion": "إصدار سياسة تصفية البيانات",
+          "summary": "الملخص",
+          "profileHash": "هاش الملف الشخصي"
+        },
+        "messages": {
+          "recorded": "تم تسجيل الشهادة بنجاح",
+          "shellRan": "اكتملت شهادة shell",
+          "expired": "انتهت صلاحية الشهادة"
+        },
+        "categories": {
+          "GENERAL_CHAT": "دردشة عامة",
+          "ACCOUNTING": "المحاسبة",
+          "FINANCE_REPORTING": "التقارير المالية",
+          "SALES": "المبيعات",
+          "PURCHASES": "المشتريات",
+          "INVENTORY": "المخزون",
+          "HR": "الموارد البشرية",
+          "CRM": "إدارة العملاء",
+          "TOOL_CALLING": "استدعاء الأدوات",
+          "DATA_FILTERING": "تصفية البيانات",
+          "PROPOSAL_DRAFT": "مسودة الاقتراح",
+          "ANALYTICS": "التحليلات"
         }
       }
     }
@@ -1576,7 +1691,8 @@
         "permissions": "الأذونات",
         "bundles": "الحزم",
         "plans": "الخطط",
-        "aiTools": "أدوات الذكاء الاصطناعي",
+"aiTools": "أدوات الذكاء الاصطناعي",
+        "aiProviders": "مزودو الذكاء الاصطناعي",
         "aiModels": "نماذج الذكاء الاصطناعي"
       }
     }

@@ -4,6 +4,91 @@
 
 ---
 
+## 2026-05-10 (Sun) — ~5h
+**Task:** Increment 3 — Frontend AI Certification UI
+**Agent:** OpenCode (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+Implemented the frontend UI that consumes the existing certification APIs built in Increments 1 and 2.
+
+**Phase 1 — API Client Contracts:**
+- Added `scope=ALL` support to `AiModelCertificationUseCase.listValidCertifiedProfiles()` so tenant can fetch GLOBAL + TENANT certified profiles in one query
+- Updated tenant controller to validate scope parameter (GLOBAL/TENANT/ALL)
+- Added full certification/provider types to both `superAdmin/index.ts` and `aiAssistantApi.ts`
+- Expanded `AiModelProfile` type to match full backend `toJSON()` output
+- Redefined `UpsertAiModelProfilePayload` as explicit interface
+
+**Phase 2 — Super Admin Provider UI:**
+- Created `AiProvidersPage.tsx` — full CRUD for AI providers with list/create/edit/enable/disable
+- Two-column layout (table + form), search, status badges, capability badges
+- Route at `/super-admin/ai-providers`, nav item with Server icon
+- Full i18n for EN/AR/TR
+
+**Phase 3 — Super Admin Model Certification UI:**
+- Enhanced `AiModelProfilesPage.tsx` with certification management:
+  - Certification Summary Panel (loads per profile)
+  - Manual Certification Form (modal with category, score, versions, summary)
+  - Shell Certification inline form (profileHash + category)
+  - Expire Certification button per row
+  - Safety disclaimers: certification ≠ diagnostics
+
+**Phase 4 — Tenant Recommended Certified Models:**
+- Created `CertifiedModelsModal.tsx` — modal showing GLOBAL + TENANT certified profiles
+- Select certified model → populates provider, modelId, baseUrl, selectedModelProfileId, selectedProfileHash, mode=certified_profile
+- Integrated into settings page with "Browse Certified Models" button
+- Selected profile indicator with status
+
+**Phase 5 — Tenant Custom Model Flow:**
+- Custom model creation form (Provider Type, Base URL, Model ID, Display Name)
+- Creates TENANT-scoped profile via `createTenantCustomModelProfile`
+- Diagnostics via `runTenantCustomModelDiagnostics`
+- Tenant certification via `runTenantCustomModelCertification`
+- Status badges: Custom/Uncertified, CERTIFIED, WARNING, FAILED, EXPIRED
+
+**Phase 6 — Safety Labels:**
+- Diagnostics disclaimer
+- Certification disclaimer
+- Custom uncertified warning
+- Legacy unverified warning
+- Company certification scope disclaimer
+
+**Verification:**
+- `backend`: `npm run typecheck` ✅
+- `backend`: `npm run build` ✅
+- `backend`: certification tests ✅ — 5 passed
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+
+**Result:** ✅ Increment 3 complete — Frontend AI Certification UI implemented.
+**Next:** Manual browser QA, then commit.
+
+## 2026-05-10 (Sun) — ~25m
+**Task:** Graphify CLI usability fix
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+- Confirmed the existing graphify module works through `py -3.14 -m graphify`, but the bare `graphify` command is not on PATH.
+- Added root npm scripts for graphify update, check, query, explain, and path commands.
+- Added `scripts/graphify.bat` and `scripts/graphify.ps1` wrappers for direct Windows usage.
+- Updated `scripts/watch-graphify.bat` to use `py -3.14 -m graphify watch .`.
+- Rebuilt the graph with `npm run graph:update`.
+- Added developer guidance in `docs/architecture/graphify-usage.md`.
+- Added completion report `1-TODO/done/80-graphify-cli-wrappers.md`.
+
+**Verification:**
+- `npm run graph:check` ✅
+- `scripts\graphify.bat query "How does AI Assistant connect to Accounting tools?" --budget 300` ✅
+- `powershell -ExecutionPolicy Bypass -File scripts\graphify.ps1 explain "SendChatMessageUseCase"` ✅
+- `npm run graph:update` ✅ — rebuilt `12886 nodes`, `21549 edges`, `760 communities`
+
+**Result:** ✅ Done — agents can now use graphify through stable project commands without relying on global PATH.
+**Next:** Return to the previous product track: checkpoint the current uncommitted AI/frontend responsiveness/docs changes, then proceed with Increment 3 frontend AI model management UI. Estimate: 5-7h.
+
+---
+
 ## 2026-05-10 (Sun) — ~40m
 **Task:** Increment 2.5 — Branch and Worktree Reconciliation before AI Model Management Increment 3
 **Agent:** Codex (CTO Mode)

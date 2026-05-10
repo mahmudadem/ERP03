@@ -1127,6 +1127,71 @@
         "error": "Katalog senkronizasyonu başarısız oldu."
       }
     },
+"aiProviders": {
+      "title": "AI Sağlayıcıları",
+      "description": "AI sağlayıcı kayıt defterini yönetin. Sağlayıcı meta verileri model profilleri ve sertifikasyon için kullanılır.",
+      "loading": "Sağlayıcılar yükleniyor...",
+      "empty": "Sağlayıcı bulunamadı",
+      "search": "Sağlayıcı ara...",
+      "meta": "{{total}} sağlayıcı · {{enabled}} etkin",
+      "columns": {
+        "name": "Ad",
+        "type": "Tür",
+        "baseUrl": "Temel URL",
+        "auth": "Kimlik Doğrulama",
+        "capabilities": "Yetenekler",
+        "status": "Durum",
+        "actions": "İşlemler"
+      },
+      "status": {
+        "enabled": "Etkin",
+        "disabled": "Devre Dışı"
+      },
+      "types": {
+        "openai": "OpenAI",
+        "openai_compatible": "OpenAI Uyumlu",
+        "google_gemini": "Google Gemini",
+        "anthropic": "Anthropic",
+        "ollama": "Ollama",
+        "custom": "Özel"
+      },
+      "authTypes": {
+        "api_key": "API Anahtarı",
+        "bearer": "Bearer Token",
+        "none": "Yok",
+        "custom": "Özel"
+      },
+      "flags": {
+        "tools": "Araçlar",
+        "json": "JSON",
+        "sync": "Senkronizasyon"
+      },
+      "form": {
+        "createTitle": "Sağlayıcı Oluştur",
+        "editTitle": "Sağlayıcıyı Düzenle",
+        "name": "Sağlayıcı Adı",
+        "type": "Sağlayıcı Türü",
+        "baseUrl": "Varsayılan Temel URL",
+        "authType": "Kimlik Doğrulama Türü",
+        "notes": "Notlar",
+        "enable": "Sağlayıcıyı Etkinleştir",
+        "disable": "Sağlayıcıyı Devre Dışı Bırak"
+      },
+      "actions": {
+        "new": "Yeni Sağlayıcı",
+        "save": "Kaydet",
+        "saving": "Kaydediliyor...",
+        "edit": "Düzenle",
+        "enable": "Etkinleştir",
+        "disable": "Devre Dışı Bırak"
+      },
+      "messages": {
+        "created": "Sağlayıcı başarıyla oluşturuldu",
+        "updated": "Sağlayıcı başarıyla güncellendi",
+        "enabled": "Sağlayıcı etkinleştirildi",
+        "disabled": "Sağlayıcı devre dışı bırakıldı"
+      }
+    },
     "aiModels": {
       "title": "AI Model Profilleri",
       "description": "Model güven durumunu, çalışma bayraklarını, etiketleri ve tanılama geçmişini yönetin.",
@@ -1197,7 +1262,7 @@
         "structuredJson": "Yapılandırılmış JSON",
         "textOnly": "Sadece metin modu"
       },
-      "diagnosticsPanel": {
+"diagnosticsPanel": {
         "title": "Tanılamayı Çalıştır",
         "company": "Şirket ayarlarını kullan",
         "chatReady": "Sohbet hazır",
@@ -1207,6 +1272,56 @@
           "inference": "Model yanıtı",
           "nativeToolCalling": "Yerel araç çağırma",
           "textPlan": "Korumalı metin planı"
+        }
+      },
+      "certifications": {
+        "title": "Sertifikalar",
+        "disclaimer": "⚠ Sertifika, ERP modül uyumluluğunu doğrular. Tanılama yalnızca bağlantıyı test eder.",
+        "empty": "Kayıtlı sertifika yok",
+        "columns": {
+          "category": "Kategori",
+          "status": "Durum",
+          "score": "Puan",
+          "testedBy": "Test Eden",
+          "testedAt": "Test Tarihi",
+          "summary": "Özet",
+          "actions": "İşlemler"
+        },
+        "recordManual": "Manuel Sertifika Kaydet",
+        "runShell": "Shell Sertifikası Çalıştır",
+        "expire": "Süresini Doldur",
+        "confirmExpire": "Bu sertifikanın süresini doldurmak istediğinizden emin misiniz?",
+        "form": {
+          "category": "Kategori",
+          "moduleId": "Modül ID (isteğe bağlı)",
+          "skillId": "Yetenek ID (isteğe bağlı)",
+          "score": "Puan",
+          "maxScore": "Maksimum Puan",
+          "status": "Durum",
+          "testSuiteVersion": "Test Paketi Sürümü",
+          "toolContractVersion": "Araç Sözleşme Sürümü",
+          "dataFilterPolicyVersion": "Veri Filtre Politikası Sürümü",
+          "summary": "Özet",
+          "profileHash": "Profil Hash"
+        },
+        "messages": {
+          "recorded": "Sertifika başarıyla kaydedildi",
+          "shellRan": "Shell sertifikası tamamlandı",
+          "expired": "Sertifikanın süresi doldu"
+        },
+        "categories": {
+          "GENERAL_CHAT": "Genel Sohbet",
+          "ACCOUNTING": "Muhasebe",
+          "FINANCE_REPORTING": "Finansal Raporlama",
+          "SALES": "Satış",
+          "PURCHASES": "Satın Alma",
+          "INVENTORY": "Envanter",
+          "HR": "İK",
+          "CRM": "CRM",
+          "TOOL_CALLING": "Araç Çağırma",
+          "DATA_FILTERING": "Veri Filtreleme",
+          "PROPOSAL_DRAFT": "Teklif Taslağı",
+          "ANALYTICS": "Analitik"
         }
       }
     }
@@ -1576,7 +1691,8 @@
         "permissions": "Izinler",
         "bundles": "Paketler",
         "plans": "Planlar",
-        "aiTools": "AI Araçları",
+"aiTools": "AI Araçları",
+        "aiProviders": "AI Sağlayıcıları",
         "aiModels": "AI Modelleri"
       }
     }
