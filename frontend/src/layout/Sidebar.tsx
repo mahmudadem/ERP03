@@ -34,20 +34,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
         isRtl
           ? [
               "right-0 border-l",
-              // desktop width
-              "lg:w-24 lg:translate-x-0",
-              // open state overrides desktop width
-              isOpen ? "lg:!w-64" : "",
+              // desktop width is shared with AppShell via --app-sidebar-width
+              "lg:w-[var(--app-sidebar-width)] lg:translate-x-0",
               // mobile: full width, translate off when closed
               "w-64",
               isOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0",
             ]
           : [
               "left-0 border-r",
-              // desktop width
-              "lg:w-24 lg:translate-x-0",
-              // open state overrides desktop width
-              isOpen ? "lg:!w-64" : "",
+              // desktop width is shared with AppShell via --app-sidebar-width
+              "lg:w-[var(--app-sidebar-width)] lg:translate-x-0",
               // mobile: full width, translate off when closed
               "w-64",
               isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",

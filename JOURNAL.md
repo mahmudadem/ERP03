@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-05-11 (Mon) — ~1h 15m — AI Settings UX Final Gaps (Subtasks 6 & 8)
+**Task:** Close remaining gaps: profile deprecation endpoint + restore profile reference on reload
+**Agent:** OpenCode (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+**Subtask 8 — Restore Profile Reference on Reload:**
+- Added bridging `useEffect` in `AiAssistantSettingsPage.tsx` that runs after both `settings` and `erp03AvailableModels` are loaded
+- Matches `selectedModelProfileId` + `selectedProfileHash` against certified profiles → restores `selectedErp03Profile`
+- If mode is `custom_uncertified` and profile exists in ALL query → restores `registeredProfileId` + `registeredProfileData`
+- Fixes: on page reload, certified profile indicator and custom profile card now persist correctly
+
+**Subtask 6 — Profile Deprecation Endpoint:**
+- Backend: Added `deprecateTenantProfile(profileId, tenantId)` to `AiModelProfileUseCase` — marks TENANT profile as `deprecated`, sets `enabled=false`
+- Backend: Added `clearSelectedProfile(companyId)` to `AiSettingsUseCase` — clears `selectedModelProfileId`/`selectedProfileHash`, resets mode to `legacy_unverified`
+- Backend: Added `deprecateTenantCustomModelProfile` controller method + `DELETE /settings/custom-model-profiles/:profileId` route
+- Frontend: Added `deleteTenantCustomModelProfile` API function
+- Frontend: Added "Deprecate Profile" button with confirmation dialog to registered profile card
+- Frontend: Handler resets all registration state, reloads settings from server for authoritative state
+- i18n: Added deprecate keys for EN/AR/TR
+
+**Files Changed (10):**
+- Backend (4): `AiModelProfileUseCase.ts`, `AiSettingsUseCase.ts`, `AiAssistantController.ts`, `ai-assistant.routes.ts`
+- Frontend (6): `AiAssistantSettingsPage.tsx`, `aiAssistantApi.ts`, `en/aiAssistant.json`, `ar/aiAssistant.json`, `tr/aiAssistant.json`
+
+**Verification:**
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 25/25
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+**Completion report:** `1-TODO/done/84-ai-settings-ux-final-gaps.md`
+
+**Next:** Manual browser QA of both features (reload restoration + deprecation flow), then commit.
+
+---
+
 ## 2026-05-10 (Sun) — ~30m — Audit Fixes for Credential Redesign
 **Task:** Fix 4 issues found in post-implementation audit
 **Agent:** OpenCode (CTO Mode)

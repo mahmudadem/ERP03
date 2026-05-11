@@ -402,6 +402,23 @@ export const aiAssistantApi = {
     return response as unknown as Record<string, unknown>;
   },
 
+  updateTenantCustomModelProfile: async (profileId: string, data: Partial<CreateTenantCustomModelProfilePayload>): Promise<Record<string, unknown>> => {
+    const response = await client.patch(`/tenant/ai-assistant/settings/custom-model-profiles/${encodeURIComponent(profileId)}`, data);
+    return response as unknown as Record<string, unknown>;
+  },
+
+  getTenantCustomModelProfile: async (profileId: string): Promise<Record<string, unknown>> => {
+    // Double-encode because profile IDs may already contain URL-encoded chars (e.g., %2F)
+    // Backend will decode once to get the original ID
+    const response = await client.get(`/tenant/ai-assistant/settings/custom-model-profiles/${encodeURIComponent(profileId)}`);
+    return response as unknown as Record<string, unknown>;
+  },
+
+  deleteTenantCustomModelProfile: async (profileId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await client.delete(`/tenant/ai-assistant/settings/custom-model-profiles/${encodeURIComponent(profileId)}`);
+    return response as unknown as { success: boolean; message: string };
+  },
+
   runTenantCustomModelDiagnostics: async (profileId: string): Promise<ProviderHealthResponse> => {
     const response = await client.post(
       `/tenant/ai-assistant/settings/custom-model-profiles/${encodeURIComponent(profileId)}/diagnostics`,

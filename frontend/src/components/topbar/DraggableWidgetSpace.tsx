@@ -592,7 +592,7 @@ export const DraggableWidgetSpace: React.FC = () => {
       ref={containerRef}
       dir="ltr"
       className={clsx(
-        "box-border flex-1 h-full relative overflow-visible z-10 w-full min-w-[200px] transition-all duration-300 mx-1 p-1",
+        "box-border flex-1 h-full relative overflow-visible z-10 w-full min-w-[200px] transition-all duration-300 p-1",
         isLayoutMode && "bg-sky-50/40 border-x border-sky-100",
       )}
     >

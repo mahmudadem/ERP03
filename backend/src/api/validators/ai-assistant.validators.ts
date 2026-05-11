@@ -103,7 +103,7 @@ export function validateUpdateAiSettingsInput(body: any): void {
   }
 
   if (body.runtimeMode !== undefined) {
-    const validRuntimeModes = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'];
+    const validRuntimeModes = ['BYOK', 'PLATFORM_MANAGED', 'DISABLED'];
     if (!validRuntimeModes.includes(body.runtimeMode)) {
       throw ApiError.badRequest(`runtimeMode must be one of: ${validRuntimeModes.join(', ')}`);
     }
@@ -113,7 +113,7 @@ export function validateUpdateAiSettingsInput(body: any): void {
     if (!Array.isArray(body.allowedRuntimeModes)) {
       throw ApiError.badRequest('allowedRuntimeModes must be an array');
     }
-    const validRuntimeModes = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'];
+    const validRuntimeModes = ['BYOK', 'PLATFORM_MANAGED', 'DISABLED'];
     for (const mode of body.allowedRuntimeModes) {
       if (!validRuntimeModes.includes(mode)) {
         throw ApiError.badRequest(`allowedRuntimeModes must contain only: ${validRuntimeModes.join(', ')}`);

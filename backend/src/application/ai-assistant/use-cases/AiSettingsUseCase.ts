@@ -138,6 +138,35 @@ export class AiSettingsUseCase {
   }
 
   /**
+   * Clear the selected model profile reference from tenant settings.
+   * Used when a tenant custom profile is deprecated/deleted.
+   * Resets mode to 'legacy_unverified' and nullifies profileId/profileHash.
+   */
+  async clearSelectedProfile(companyId: string): Promise<GetSettingsOutput> {
+    let config = await this.settingsRepository.getConfig(companyId);
+    if (!config) {
+      config = AiProviderConfig.defaultForCompany(companyId);
+    } else {
+      config = this.decryptConfig(config);
+    }
+
+    config.updateConfig({
+      mode: 'legacy_unverified',
+      selectedModelProfileId: undefined,
+      selectedProfileHash: undefined,
+    });
+
+    const configForStorage = this.encryptConfig(config);
+    await this.settingsRepository.saveConfig(configForStorage);
+
+    ProviderFactory.invalidateCompany(companyId);
+
+    return {
+      config: config.toJSON(),
+    };
+  }
+
+  /**
    * Check if a provider type is supported.
    */
   private isValidProviderType(provider: string): boolean {

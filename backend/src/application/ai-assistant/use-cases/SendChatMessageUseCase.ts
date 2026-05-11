@@ -813,8 +813,7 @@ constructor(
    *
    * - BYOK: Tenant MUST have their own apiKey. No platform fallback.
    * - PLATFORM_MANAGED: Platform uses its runtime credential.
-   * - BUILT_IN: Platform uses its runtime credential (local model routing).
-    * - DISABLED: Rejected inside resolveRuntimeCredential (before isEnabled check).
+   * - DISABLED: Rejected inside resolveRuntimeCredential (before isEnabled check).
    */
   private async resolveRuntimeCredential(config: AiProviderConfig): Promise<AiProviderConfig> {
     const runtimeMode = config.runtimeMode || 'BYOK';
@@ -836,7 +835,7 @@ constructor(
       return config;
     }
 
-    if (runtimeMode === 'PLATFORM_MANAGED' || runtimeMode === 'BUILT_IN') {
+    if (runtimeMode === 'PLATFORM_MANAGED') {
       // Platform-managed: use the platform runtime credential from the provider registry
       if (!this.providerRepository) {
         throw ApiError.internal('Platform runtime credential is not configured. Contact support.');

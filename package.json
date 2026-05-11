@@ -7,9 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit",
+    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
     "emulators:remote": "firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
-    "db:export": "firebase emulators:export ./emulator-data --force"
+    "db:export": "firebase emulators:export ./emulator-data --force",
+    "graph:update": "py -3.14 -m graphify update .",
+    "graph:check": "py -3.14 -m graphify check-update .",
+    "graph:query": "py -3.14 -m graphify query",
+    "graph:explain": "py -3.14 -m graphify explain",
+    "graph:path": "py -3.14 -m graphify path"
   },
   "dependencies": {
     "firebase-admin": "^13.6.0",

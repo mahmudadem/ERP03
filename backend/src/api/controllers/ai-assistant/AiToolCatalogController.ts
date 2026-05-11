@@ -377,6 +377,7 @@ static async updateProvider(req: Request, res: Response, next: NextFunction) {
         diContainer.encryptionService,
         diContainer.httpClient,
         diContainer.aiModelProfileUseCase,
+        diContainer.aiProviderRepository,
       );
       const result = await useCase.execute({
         companyId,

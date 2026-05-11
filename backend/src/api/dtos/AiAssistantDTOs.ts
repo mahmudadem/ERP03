@@ -115,8 +115,8 @@ export interface UpdateAiSettingsRequest {
   providerId?: string;
   selectedModelProfileId?: string;
   selectedProfileHash?: string;
-  runtimeMode?: 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED';
-  allowedRuntimeModes?: Array<'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'>;
+  runtimeMode?: 'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED';
+  allowedRuntimeModes?: Array<'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED'>;
 }
 
 export class AiAssistantDTOMapper {

@@ -15,6 +15,11 @@ import { accountingApi } from '../api/accountingApi';
 import { VoucherPrintView } from '../modules/accounting/components/VoucherPrintView';
 import { useTranslation } from 'react-i18next';
 
+const DESKTOP_SIDEBAR_WIDTH = {
+  collapsed: '6rem',
+  expanded: '16rem',
+} as const;
+
 export const AppShell: React.FC = () => {
   const { uiMode, sidebarPinned } = useUserPreferences();
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
@@ -75,17 +80,29 @@ export const AppShell: React.FC = () => {
     return () => window.removeEventListener('print-voucher', handler as any);
   }, []);
 
-  // Desktop sidebar margins: w-24 = 6rem (collapsed), w-64 = 16rem (expanded)
+  const desktopSidebarWidth = isSidebarOpen
+    ? DESKTOP_SIDEBAR_WIDTH.expanded
+    : DESKTOP_SIDEBAR_WIDTH.collapsed;
+
+  const shellStyle = {
+    '--app-sidebar-width': desktopSidebarWidth,
+  } as React.CSSProperties;
+
+  // Sidebar is fixed, so desktop content needs an offset. Keep the offset tied
+  // to the same CSS variable used by the sidebar width.
   const desktopMarginStyle = isDesktop
     ? (isRtl
-        ? { marginRight: isSidebarOpen ? '16rem' : '6rem', marginLeft: 0 }
-        : { marginLeft: isSidebarOpen ? '16rem' : '6rem', marginRight: 0 })
+        ? { marginRight: 'var(--app-sidebar-width)', marginLeft: 0 }
+        : { marginLeft: 'var(--app-sidebar-width)', marginRight: 0 })
     : undefined; // mobile: sidebar is off-screen, content is full width
 
   return (
     <AccountsProvider>
       <CostCentersProvider>
-        <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
+        <div
+          className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden"
+          style={shellStyle}
+        >
           <PageTitleManager />
 
           {/* Sidebar — slides off-screen on mobile, collapses to icon strip on desktop */}

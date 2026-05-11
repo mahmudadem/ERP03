@@ -27,13 +27,12 @@ export type AiTenantModelMode = 'certified_profile' | 'custom_uncertified' | 'le
  * RuntimeMode determines HOW tenant chat resolves credentials.
  * - BYOK: Tenant must provide their own API key. No platform fallback.
  * - PLATFORM_MANAGED: Platform uses its runtime credential. Tenant pays via credits/entitlement.
- * - BUILT_IN: Platform uses local/embedded model. Tenant pays via credits/entitlement.
  * - DISABLED: AI is turned off for this tenant.
  *
- * controlledRuntimeModes is set by Super Admin to restrict which modes a tenant may select.
+ * allowedRuntimeModes is set by Super Admin to restrict which modes a tenant may select.
  * Defaults to all available modes. Tenant picks one from the allowed list.
  */
-export type AiTenantRuntimeMode = 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED';
+export type AiTenantRuntimeMode = 'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED';
 
 export interface AiProviderConfigProps {
   companyId: string;
@@ -79,7 +78,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
     /** How credentials are resolved for tenant chat */
     public runtimeMode: AiTenantRuntimeMode = 'BYOK',
     /** Super Admin restriction: which modes tenant may select */
-    public allowedRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']
+    public allowedRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED']
   ) {}
 
   static create(input: {
@@ -108,7 +107,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       undefined,
       'BYOK',
-      ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']
+      ['BYOK', 'PLATFORM_MANAGED']
     );
   }
 
@@ -133,7 +132,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       undefined,
       'BYOK',
-      ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN']
+      ['BYOK', 'PLATFORM_MANAGED']
     );
   }
 
@@ -261,13 +260,13 @@ export class AiProviderConfig implements AiProviderConfigProps {
       ? data.mode
       : 'legacy_unverified';
 
-    const runtimeModeValid = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'].includes(data.runtimeMode);
+    const runtimeModeValid = ['BYOK', 'PLATFORM_MANAGED', 'DISABLED'].includes(data.runtimeMode);
     const runtimeMode: AiTenantRuntimeMode = runtimeModeValid ? data.runtimeMode : 'BYOK';
 
-    const allModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN', 'DISABLED'];
+    const allModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED', 'DISABLED'];
     const allowedRuntimeModes: AiTenantRuntimeMode[] = Array.isArray(data.allowedRuntimeModes)
       ? data.allowedRuntimeModes.filter((m: string): m is AiTenantRuntimeMode => allModes.includes(m as AiTenantRuntimeMode))
-      : ['BYOK', 'PLATFORM_MANAGED', 'BUILT_IN'];
+      : ['BYOK', 'PLATFORM_MANAGED'];
 
     return new AiProviderConfig(
       data.companyId,

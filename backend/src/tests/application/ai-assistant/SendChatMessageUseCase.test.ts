@@ -876,21 +876,6 @@ describe('SendChatMessageUseCase', () => {
       expect(encryptionService.decrypt).toHaveBeenCalledWith('enc:platform-key');
     });
 
-    it('should reject BUILT_IN when no providerRepository is wired', async () => {
-      const config = createConfig('BUILT_IN', undefined);
-      settingsRepo = createMockSettingsRepo(config);
-
-      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
-
-      try {
-        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
-        fail('Should have thrown');
-      } catch (error) {
-        expect((error as ApiError).statusCode).toBe(500);
-        expect((error as ApiError).message).toContain('not configured');
-      }
-    });
-
     it('should NOT fall back to platform credential when runtimeMode is BYOK even if provider has credential', async () => {
       const config = createConfig('BYOK', undefined);
       settingsRepo = createMockSettingsRepo(config);

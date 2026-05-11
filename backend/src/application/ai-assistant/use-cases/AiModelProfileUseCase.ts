@@ -313,6 +313,167 @@ export class AiModelProfileUseCase {
     return profile;
   }
 
+  /**
+   * Update a tenant custom model profile's configuration.
+   * Regenerates profileHash and increments revision (invalidates existing certifications).
+   */
+  async updateTenantProfile(profileId: string, tenantId: string, updates: {
+    toolMode?: 'none' | 'text_plan' | 'native_tools' | 'json_only';
+    temperature?: number;
+    maxOutputTokens?: number;
+    dataFilterPolicyId?: string;
+    safetyPolicyId?: string;
+    systemPromptPolicyId?: string;
+    displayName?: string;
+    baseUrl?: string;
+  }): Promise<AiModelProfile> {
+    const existing = await this.modelProfileRepo.getById(profileId);
+    if (!existing) throw new Error(`Profile ${profileId} not found`);
+    if (existing.scope !== 'TENANT' || existing.tenantId !== tenantId) {
+      throw new Error('Profile does not belong to this tenant');
+    }
+
+    const now = new Date();
+    const toolMode = updates.toolMode ?? existing.toolMode;
+    const temperature = updates.temperature ?? existing.temperature;
+    const maxOutputTokens = updates.maxOutputTokens ?? existing.maxOutputTokens;
+    const dataFilterPolicyId = updates.dataFilterPolicyId ?? existing.dataFilterPolicyId;
+    const safetyPolicyId = updates.safetyPolicyId ?? existing.safetyPolicyId;
+    const systemPromptPolicyId = updates.systemPromptPolicyId ?? existing.systemPromptPolicyId;
+    const displayName = updates.displayName ?? existing.displayName;
+    const baseUrl = updates.baseUrl ?? existing.baseUrl;
+
+    const supportsToolCalling = toolMode === 'native_tools';
+    const supportsStructuredJson = toolMode === 'json_only' || toolMode === 'native_tools';
+    const endpointFingerprint = baseUrl
+      ? AiModelProfile.fingerprintEndpoint(baseUrl)
+      : existing.endpointFingerprint;
+
+    const profileHash = AiModelProfile.generateProfileHash({
+      scope: 'TENANT',
+      tenantId: existing.tenantId,
+      providerId: existing.providerId,
+      modelId: existing.modelId,
+      endpointFingerprint,
+      temperature,
+      maxOutputTokens,
+      jsonMode: supportsStructuredJson,
+      toolMode,
+      timeoutMs: existing.timeoutMs,
+      retryPolicy: existing.retryPolicy,
+      safetyPolicyId,
+      systemPromptPolicyId,
+      dataFilterPolicyId,
+    });
+
+    const updated = new AiModelProfile(
+      existing.id,
+      existing.provider,
+      existing.modelName,
+      existing.status,
+      supportsToolCalling,
+      supportsStructuredJson,
+      maxOutputTokens,
+      existing.recommendedUseCases,
+      existing.tags,
+      existing.warningLevel,
+      toolMode === 'none',
+      existing.warningMessage,
+      existing.lastDiagnosticStatus,
+      existing.lastDiagnosticMode,
+      existing.lastDiagnosticAt,
+      existing.lastDiagnosticCompanyId,
+      existing.lastDiagnosticDetail,
+      existing.createdAt,
+      now,
+      'TENANT',
+      existing.tenantId,
+      existing.providerId,
+      existing.modelId,
+      displayName,
+      baseUrl,
+      endpointFingerprint,
+      temperature,
+      maxOutputTokens,
+      supportsStructuredJson,
+      toolMode,
+      existing.timeoutMs,
+      existing.retryPolicy,
+      safetyPolicyId,
+      systemPromptPolicyId,
+      dataFilterPolicyId,
+      profileHash,
+      existing.revision + 1,
+      existing.enabled,
+      existing.createdBy,
+    );
+    await this.modelProfileRepo.save(updated);
+    return updated;
+  }
+
+  /**
+   * Deprecate a tenant custom model profile (soft-delete).
+   * Sets status to 'deprecated' and disables the profile.
+   * Does NOT actually delete the document — preserves audit trail.
+   * The caller (controller) is responsible for clearing the tenant's
+   * selectedModelProfileId/selectedProfileHash if this was the active profile.
+   */
+  async deprecateTenantProfile(profileId: string, tenantId: string): Promise<AiModelProfile> {
+    const existing = await this.modelProfileRepo.getById(profileId);
+    if (!existing) throw new Error(`Profile ${profileId} not found`);
+    if (existing.scope !== 'TENANT' || existing.tenantId !== tenantId) {
+      throw new Error('Profile does not belong to this tenant');
+    }
+    if (existing.status === 'deprecated') {
+      throw new Error('Profile is already deprecated');
+    }
+
+    const now = new Date();
+    const deprecated = new AiModelProfile(
+      existing.id,
+      existing.provider,
+      existing.modelName,
+      'deprecated', // status
+      existing.supportsToolCalling,
+      existing.supportsStructuredJson,
+      existing.maxContextTokens,
+      existing.recommendedUseCases,
+      existing.tags,
+      existing.warningLevel,
+      existing.textOnlyMode,
+      'This model profile has been deprecated by your company admin.',
+      existing.lastDiagnosticStatus,
+      existing.lastDiagnosticMode,
+      existing.lastDiagnosticAt,
+      existing.lastDiagnosticCompanyId,
+      existing.lastDiagnosticDetail,
+      existing.createdAt,
+      now,
+      existing.scope,
+      existing.tenantId,
+      existing.providerId,
+      existing.modelId,
+      existing.displayName,
+      existing.baseUrl,
+      existing.endpointFingerprint,
+      existing.temperature,
+      existing.maxOutputTokens,
+      existing.supportsStructuredJson,
+      existing.toolMode,
+      existing.timeoutMs,
+      existing.retryPolicy,
+      existing.safetyPolicyId,
+      existing.systemPromptPolicyId,
+      existing.dataFilterPolicyId,
+      existing.profileHash,
+      existing.revision + 1,
+      false, // enabled = false
+      existing.createdBy,
+    );
+    await this.modelProfileRepo.save(deprecated);
+    return deprecated;
+  }
+
   private toRuntimeProfile(profile: AiModelProfile): RuntimeModelProfile {
     return {
       provider: profile.provider,

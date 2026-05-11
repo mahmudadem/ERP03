@@ -18,6 +18,7 @@
 import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assistant/IAiSettingsRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
+import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { ProviderFactory } from '../providers/ProviderFactory';
 import { ProviderError } from '../../../errors/ProviderErrors';
@@ -143,6 +144,7 @@ export class CheckProviderHealthUseCase {
     private encryptionService: IEncryptionService,
     private httpClient: IHttpClient,
     private modelProfileUseCase?: AiModelProfileUseCase,
+    private providerRepository?: IAiProviderRepository,
   ) {}
 
   async execute(companyIdOrInput: string | CheckProviderHealthInput): Promise<ProviderHealthResult> {
@@ -174,6 +176,9 @@ export class CheckProviderHealthUseCase {
     } else {
       config = this.decryptConfig(config);
     }
+
+    // Resolve runtime credentials based on runtimeMode (same logic as SendChatMessageUseCase)
+    config = await this.resolveRuntimeCredential(config);
 
     if (input.providerOverride || input.modelOverride) {
       config = AiProviderConfig.fromJSON({
@@ -588,6 +593,74 @@ export class CheckProviderHealthUseCase {
         detail: reason,
       },
     };
+  }
+
+  /**
+   * Resolve runtime credentials based on runtimeMode.
+   * Mirrors the logic in SendChatMessageUseCase.resolveRuntimeCredential.
+   * - Mock provider: skip credential check
+   * - BYOK: require tenant apiKey
+   * - PLATFORM_MANAGED: use platform runtime credential from provider registry
+   * - DISABLED: reject
+   */
+  private async resolveRuntimeCredential(config: AiProviderConfig): Promise<AiProviderConfig> {
+    const runtimeMode = config.runtimeMode || 'BYOK';
+
+    // Mock provider never needs credentials — skip resolution entirely
+    if (config.provider === 'mock') return config;
+
+    if (runtimeMode === 'DISABLED') {
+      return config; // Let the isEnabled check below handle the disabled state
+    }
+
+    if (runtimeMode === 'BYOK') {
+      // Tenant must provide their own API key — no platform fallback
+      // (Diagnostics will fail with auth error if no key — that's expected behavior)
+      return config;
+    }
+
+    if (runtimeMode === 'PLATFORM_MANAGED') {
+      // Platform-managed: use the platform runtime credential from the provider registry
+      if (!this.providerRepository) {
+        return config; // Can't resolve — let diagnostics fail naturally
+      }
+
+      try {
+        const providers = await this.providerRepository.list();
+        const provider = providers.find(p =>
+          p.type === config.provider ||
+          (p.type === 'openai_compatible' && config.provider === 'openai_compatible')
+        );
+
+        if (!provider || !provider.platformRuntimeCredential) {
+          return config; // No platform credential — let diagnostics fail naturally
+        }
+
+        // Decrypt the platform runtime credential
+        let plainKey: string;
+        if (provider.platformRuntimeCredential.startsWith('plain:')) {
+          plainKey = provider.platformRuntimeCredential.substring(6);
+        } else if (provider.platformRuntimeCredential.includes(':')) {
+          plainKey = this.encryptionService.decrypt(provider.platformRuntimeCredential);
+        } else {
+          plainKey = provider.platformRuntimeCredential;
+        }
+
+        // Apply the platform credential to the config
+        return AiProviderConfig.fromJSON({
+          ...config.toJSON(),
+          apiKey: plainKey,
+          updatedAt: config.updatedAt.toISOString(),
+        });
+      } catch (error) {
+        // If resolution fails, return config as-is — diagnostics will fail naturally
+        console.warn(`[CheckProviderHealth] Failed to resolve platform credential: ${(error as Error).message}`);
+        return config;
+      }
+    }
+
+    // Unknown mode — treat as BYOK
+    return config;
   }
 
   /**

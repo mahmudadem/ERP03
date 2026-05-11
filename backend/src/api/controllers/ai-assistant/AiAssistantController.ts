@@ -40,6 +40,19 @@ export class AiAssistantController {
   }
 
   /**
+   * Decode profile ID from route param.
+   * Profile IDs may contain '/' which gets double-encoded in URLs.
+   * Express auto-decodes once, so we decode a second time to get the original ID.
+   */
+  private static decodeProfileId(raw: string): string {
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw; // Already decoded or invalid encoding
+    }
+  }
+
+  /**
    * POST /ai-assistant/chat
    * Send a message to the AI assistant and receive a response.
    */
@@ -263,6 +276,7 @@ const useCase = new SendChatMessageUseCase(
         diContainer.encryptionService,
         diContainer.httpClient,
         diContainer.aiModelProfileUseCase,
+        diContainer.aiProviderRepository,
       );
 
       const result = await useCase.execute(companyId);
@@ -313,8 +327,8 @@ const useCase = new SendChatMessageUseCase(
   static async runTenantCustomModelDiagnostics(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = AiAssistantController.getCompanyId(req);
-      const profile = await diContainer.aiModelProfileUseCase.getProfileById(req.params.profileId);
-      if (!profile) throw ApiError.notFound(`AI model profile '${req.params.profileId}' not found`);
+      const profile = await diContainer.aiModelProfileUseCase.getProfileById(AiAssistantController.decodeProfileId(req.params.profileId));
+      if (!profile) throw ApiError.notFound(`AI model profile '${AiAssistantController.decodeProfileId(req.params.profileId)}' not found`);
       if (profile.scope !== 'TENANT' || profile.tenantId !== companyId) {
         throw ApiError.forbidden('Tenant model profile does not belong to this company');
       }
@@ -324,6 +338,7 @@ const useCase = new SendChatMessageUseCase(
         diContainer.encryptionService,
         diContainer.httpClient,
         diContainer.aiModelProfileUseCase,
+        diContainer.aiProviderRepository,
       );
       const result = await useCase.execute({
         companyId,
@@ -347,7 +362,7 @@ const useCase = new SendChatMessageUseCase(
       const result = await diContainer.aiModelCertificationUseCase.runShellCertification({
         scope: 'TENANT',
         tenantId: companyId,
-        modelProfileId: req.params.profileId,
+        modelProfileId: AiAssistantController.decodeProfileId(req.params.profileId),
         profileHash,
         category,
         moduleId,
@@ -378,6 +393,100 @@ const scopeParam = (req.query.scope as string) || 'TENANT';
         moduleId: req.query.moduleId as string | undefined,
       });
       (res as any).status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /ai-assistant/settings/custom-model-profiles/:profileId
+   * Get a tenant custom model profile by ID (tenant-scoped).
+   */
+  static async getTenantCustomModelProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+
+      const profile = await diContainer.aiModelProfileUseCase.getProfileById(AiAssistantController.decodeProfileId(req.params.profileId));
+      if (!profile) throw ApiError.notFound(`AI model profile '${AiAssistantController.decodeProfileId(req.params.profileId)}' not found`);
+      if (profile.scope !== 'TENANT' || profile.tenantId !== companyId) {
+        throw ApiError.forbidden('Tenant model profile does not belong to this company');
+      }
+
+      (res as any).status(200).json({ success: true, data: profile.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PATCH /ai-assistant/settings/custom-model-profiles/:profileId
+   * Update a tenant custom model profile's configuration.
+   * Regenerates profileHash and increments revision.
+   */
+  static async updateTenantCustomModelProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const body = req.body || {};
+
+      const profile = await diContainer.aiModelProfileUseCase.getProfileById(AiAssistantController.decodeProfileId(req.params.profileId));
+      if (!profile) throw ApiError.notFound(`AI model profile '${AiAssistantController.decodeProfileId(req.params.profileId)}' not found`);
+      if (profile.scope !== 'TENANT' || profile.tenantId !== companyId) {
+        throw ApiError.forbidden('Tenant model profile does not belong to this company');
+      }
+
+      const updates: {
+        toolMode?: 'none' | 'text_plan' | 'native_tools' | 'json_only';
+        temperature?: number;
+        maxOutputTokens?: number;
+        dataFilterPolicyId?: string;
+        safetyPolicyId?: string;
+        systemPromptPolicyId?: string;
+        displayName?: string;
+        baseUrl?: string;
+      } = {};
+      if (body.toolMode) updates.toolMode = body.toolMode;
+      if (body.temperature !== undefined) updates.temperature = body.temperature;
+      if (body.maxOutputTokens !== undefined) updates.maxOutputTokens = body.maxOutputTokens;
+      if (body.dataFilterPolicyId !== undefined) updates.dataFilterPolicyId = body.dataFilterPolicyId;
+      if (body.safetyPolicyId !== undefined) updates.safetyPolicyId = body.safetyPolicyId;
+      if (body.systemPromptPolicyId !== undefined) updates.systemPromptPolicyId = body.systemPromptPolicyId;
+      if (body.displayName !== undefined) updates.displayName = body.displayName;
+      if (body.baseUrl !== undefined) updates.baseUrl = body.baseUrl;
+
+      const updated = await diContainer.aiModelProfileUseCase.updateTenantProfile(AiAssistantController.decodeProfileId(req.params.profileId), companyId, updates);
+      (res as any).status(200).json({ success: true, data: updated.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /ai-assistant/settings/custom-model-profiles/:profileId
+   * Deprecate a tenant custom model profile (soft-delete).
+   * Marks the profile as deprecated, disables it, and clears the tenant's
+   * selected profile reference if this was the active profile.
+   */
+  static async deprecateTenantCustomModelProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+
+      const profile = await diContainer.aiModelProfileUseCase.getProfileById(AiAssistantController.decodeProfileId(req.params.profileId));
+      if (!profile) throw ApiError.notFound(`AI model profile '${AiAssistantController.decodeProfileId(req.params.profileId)}' not found`);
+      if (profile.scope !== 'TENANT' || profile.tenantId !== companyId) {
+        throw ApiError.forbidden('Tenant model profile does not belong to this company');
+      }
+
+      // Deprecate the profile
+      await diContainer.aiModelProfileUseCase.deprecateTenantProfile(AiAssistantController.decodeProfileId(req.params.profileId), companyId);
+
+      // Clear the selected profile reference from tenant settings if this was the active profile
+      const settingsUseCase = new AiSettingsUseCase(diContainer.aiSettingsRepository, diContainer.encryptionService);
+      const settings = await settingsUseCase.getSettings(companyId);
+      if (settings.config.selectedModelProfileId === AiAssistantController.decodeProfileId(req.params.profileId)) {
+        await settingsUseCase.clearSelectedProfile(companyId);
+      }
+
+      (res as any).status(200).json({ success: true, message: 'Profile deprecated successfully' });
     } catch (error) {
       next(error);
     }
