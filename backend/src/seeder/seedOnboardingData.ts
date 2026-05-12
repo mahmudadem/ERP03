@@ -205,6 +205,8 @@ const MODULE_DEFINITIONS = [
   }
 ];
 
+const IMPLEMENTED_CODE_MODULES = new Set(['accounting', 'inventory', 'purchase', 'sales', 'ai-assistant']);
+
 // Role Templates
 const ROLE_TEMPLATES = [
   {
@@ -310,7 +312,20 @@ async function seedModulesRegistry() {
   const collection = db.collection('system_metadata').doc('modules').collection('items');
   for (const def of MODULE_DEFINITIONS) {
     const moduleName = def.moduleId.charAt(0).toUpperCase() + def.moduleId.slice(1);
-    await collection.doc(def.moduleId).set({ id: def.moduleId, name: moduleName, description: `Core ${moduleName} module`, createdAt: new Date(), updatedAt: new Date() });
+    const isImplemented = IMPLEMENTED_CODE_MODULES.has(def.moduleId.toLowerCase());
+    await collection.doc(def.moduleId).set({
+      id: def.moduleId,
+      code: def.moduleId,
+      name: moduleName,
+      description: `Core ${moduleName} module`,
+      version: '1.0.0',
+      lifecycleStatus: isImplemented ? 'ready' : 'draft',
+      runtimeStatus: 'available',
+      implementationStatus: isImplemented ? 'passed' : 'unchecked',
+      dependencies: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }, { merge: true });
     console.log(`  ✓ Registry: ${def.moduleId}`);
   }
 }

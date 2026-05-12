@@ -13,17 +13,13 @@ router.get('/health', (req, res) => {
 // Note: Individual routes inside publicRouter must handle their own Auth if needed (e.g. coreRoutes does)
 router.use(publicRouter);
 
-// Platform Routes (Super Admin)
-// Most platform routes likely need Auth.
-// We assume existing routes handle auth or we can add it here if needed.
-// Given the previous structure, we'll rely on the routes themselves or add global auth if verified.
-// For safety, let's assume Platform routes are protected.
-// But wait, authRoutes (in publicRouter) has login.
-// If we put authMiddleware here, it won't affect publicRouter.
-router.use(platformRouter);
-
 // Tenant Routes (Company Context)
 // These REQUIRE Auth AND Company Context
 router.use('/tenant', tenantRouter);
+
+// Platform Routes (Super Admin)
+// Keep this after tenant routes because some platform sub-routers mount
+// root-level guards internally. Tenant routes must not pass through them.
+router.use(platformRouter);
 
 export default router;

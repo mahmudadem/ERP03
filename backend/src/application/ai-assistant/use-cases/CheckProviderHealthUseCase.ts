@@ -20,7 +20,7 @@ import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionSe
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
-import { ProviderFactory } from '../providers/ProviderFactory';
+import { ProviderFactory, ProviderProviderError } from '../providers/ProviderFactory';
 import { ProviderError } from '../../../errors/ProviderErrors';
 import { ApiError } from '../../../api/errors/ApiError';
 import { AiModelCapabilityCatalog, AiModelProfile } from '../services/AiModelCapabilityCatalog';
@@ -90,6 +90,11 @@ export interface ProviderHealthResult {
 export interface CheckProviderHealthInput {
   companyId: string;
   providerOverride?: AiProviderConfig['provider'];
+  modelOverride?: string;
+}
+
+export interface ExecuteWithConfigInput {
+  providerOverride?: string;
   modelOverride?: string;
 }
 
@@ -212,7 +217,56 @@ export class CheckProviderHealthUseCase {
       };
     }
 
-    const provider = ProviderFactory.getProvider(config, this.httpClient);
+// Use strict provider creation for diagnostics — never silently fall back to mock.
+    // If the provider can't be created (e.g., no API key), report it as a diagnostic failure.
+    let provider: IAiProvider;
+    try {
+      provider = ProviderFactory.getProviderStrict(config, this.httpClient);
+    } catch (err) {
+      const reason = err instanceof ProviderProviderError
+        ? err.message
+        : 'Provider could not be created — check your configuration';
+      return {
+        ready: false,
+        networkOk: false,
+        inferenceOk: false,
+        provider: config.provider,
+        model: config.model || 'unknown',
+        reason,
+        modelProfile: this.toModelProfileResult(
+          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+        ),
+        toolDiagnostics: this.buildSkippedToolDiagnostics(reason),
+        checks: [
+          { id: 'network', status: 'failed', ok: false, detail: reason },
+          { id: 'inference', status: 'skipped', ok: false, detail: reason },
+          { id: 'nativeToolCalling', status: 'skipped', ok: false, detail: reason },
+          { id: 'textPlan', status: 'skipped', ok: false, detail: reason },
+        ],
+      };
+    }
+
+    // If the provider is a mock, report it clearly — diagnostics tested a mock, not a real provider.
+    if (ProviderFactory.isMockProvider(provider)) {
+      return {
+        ready: false,
+        networkOk: false,
+        inferenceOk: false,
+        provider: config.provider,
+        model: config.model || 'unknown',
+        reason: 'Provider is configured as "mock" — diagnostics cannot test a mock provider. Configure a real provider (OpenAI-compatible, Ollama, etc.) and provide an API key.',
+        modelProfile: this.toModelProfileResult(
+          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+        ),
+        toolDiagnostics: this.buildSkippedToolDiagnostics('Mock provider — no real provider configured'),
+        checks: [
+          { id: 'network', status: 'skipped', ok: false, detail: 'Mock provider — no real network test possible' },
+          { id: 'inference', status: 'skipped', ok: false, detail: 'Mock provider — no real inference test possible' },
+          { id: 'nativeToolCalling', status: 'skipped', ok: false, detail: 'Mock provider' },
+          { id: 'textPlan', status: 'skipped', ok: false, detail: 'Mock provider' },
+        ],
+      };
+    }
     const providerCapabilities = provider.getCapabilities();
 
     // Step 1: Network connectivity check
@@ -293,6 +347,231 @@ export class CheckProviderHealthUseCase {
         status: diagnosticStatus,
         mode: recommendedMode,
         companyId,
+        detail: nativeToolCalling.ok
+          ? nativeToolCalling.detail
+          : textPlan.detail || nativeToolCalling.detail || reason,
+      });
+    }
+
+    return {
+      ready,
+      networkOk,
+      inferenceOk,
+      provider: config.provider,
+      model: config.model || provider.providerName,
+      reason,
+      modelProfile: this.toModelProfileResult(modelProfile),
+      toolDiagnostics: {
+        erpToolsReady,
+        recommendedMode,
+        nativeToolCalling,
+        textPlan,
+      },
+      checks: [
+        {
+          id: 'network',
+          status: networkOk ? 'passed' : 'failed',
+          ok: networkOk,
+          detail: networkOk ? 'Provider connectivity check passed' : networkError,
+        },
+        {
+          id: 'inference',
+          status: inferenceOk ? 'passed' : 'failed',
+          ok: inferenceOk,
+          detail: inferenceOk ? 'Model generated a response' : inferenceError,
+        },
+        {
+          id: 'nativeToolCalling',
+          status: nativeToolCalling.attempted
+            ? (nativeToolCalling.ok ? 'passed' : 'failed')
+            : 'skipped',
+          ok: nativeToolCalling.ok,
+          detail: nativeToolCalling.detail,
+        },
+        {
+          id: 'textPlan',
+          status: textPlan.attempted ? (textPlan.ok ? 'passed' : 'failed') : 'skipped',
+          ok: textPlan.ok,
+          detail: textPlan.detail,
+        },
+      ],
+    };
+  }
+
+  /**
+   * Run diagnostics with a pre-built config (e.g., Super Admin using their own API key).
+   *
+   * Unlike `execute()`, this method:
+   * - Skips cooldown checks (admin diagnostics should not be throttled)
+   * - Skips config loading, decryption, and runtime credential resolution
+   * - Uses the config as-is (the caller provides plaintext apiKey and settings)
+   * - Records diagnostics under 'admin-test' companyId
+   *
+   * The API key in the config is NEVER stored or logged — it exists only for
+   * the duration of this request.
+   */
+  async executeWithConfig(
+    config: AiProviderConfig,
+    options?: ExecuteWithConfigInput,
+  ): Promise<ProviderHealthResult> {
+    // For non-ollama providers, an API key is required for meaningful diagnostics.
+    // Ollama runs locally and doesn't need a key.
+    if (config.provider !== 'mock' && config.provider !== 'ollama' && !config.apiKey) {
+      return {
+        ready: false,
+        networkOk: false,
+        inferenceOk: false,
+        provider: config.provider,
+        model: config.model || 'unknown',
+        reason: 'API key is required for diagnostics. Please provide your provider API key.',
+        modelProfile: this.toModelProfileResult(
+          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+        ),
+        toolDiagnostics: this.buildSkippedToolDiagnostics('No API key provided'),
+        checks: [
+          { id: 'network', status: 'failed', ok: false, detail: 'No API key provided — cannot connect to provider' },
+          { id: 'inference', status: 'skipped', ok: false, detail: 'No API key provided' },
+          { id: 'nativeToolCalling', status: 'skipped', ok: false, detail: 'No API key provided' },
+          { id: 'textPlan', status: 'skipped', ok: false, detail: 'No API key provided' },
+        ],
+      };
+    }
+
+    // Apply overrides if provided
+    if (options?.providerOverride || options?.modelOverride) {
+      config = AiProviderConfig.fromJSON({
+        ...config.toPersistenceJSON(),
+        provider: (options.providerOverride || config.provider) as AiProviderConfig['provider'],
+        model: options.modelOverride || config.model,
+        updatedAt: config.updatedAt.toISOString(),
+      });
+    }
+
+    const modelName = config.model || 'unknown';
+    const modelProfile = await this.resolveModelProfile(config.provider, modelName);
+
+    // Use strict provider creation for diagnostics — never silently fall back to mock.
+    // If the provider can't be created (e.g., no API key), report it as a diagnostic failure.
+    let provider: IAiProvider;
+    try {
+      provider = ProviderFactory.getProviderStrict(config, this.httpClient);
+    } catch (err) {
+      // Provider creation failed (missing key, unknown type, etc.)
+      const reason = err instanceof ProviderProviderError
+        ? err.message
+        : 'Provider could not be created — check your configuration';
+      return {
+        ready: false,
+        networkOk: false,
+        inferenceOk: false,
+        provider: config.provider,
+        model: config.model || 'unknown',
+        reason,
+        modelProfile: this.toModelProfileResult(
+          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+        ),
+        toolDiagnostics: this.buildSkippedToolDiagnostics(reason),
+        checks: [
+          { id: 'network', status: 'failed', ok: false, detail: reason },
+          { id: 'inference', status: 'skipped', ok: false, detail: reason },
+          { id: 'nativeToolCalling', status: 'skipped', ok: false, detail: reason },
+          { id: 'textPlan', status: 'skipped', ok: false, detail: reason },
+        ],
+      };
+    }
+
+    // If the provider is a mock, report it clearly — diagnostics tested a mock, not a real provider.
+    if (ProviderFactory.isMockProvider(provider)) {
+      return {
+        ready: false,
+        networkOk: false,
+        inferenceOk: false,
+        provider: config.provider,
+        model: config.model || 'unknown',
+        reason: 'Provider is configured as "mock" — diagnostics cannot test a mock provider. Configure a real provider (OpenAI-compatible, Ollama, etc.) and provide an API key.',
+        modelProfile: this.toModelProfileResult(
+          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+        ),
+        toolDiagnostics: this.buildSkippedToolDiagnostics('Mock provider — no real provider configured'),
+        checks: [
+          { id: 'network', status: 'skipped', ok: false, detail: 'Mock provider — no real network test possible' },
+          { id: 'inference', status: 'skipped', ok: false, detail: 'Mock provider — no real inference test possible' },
+          { id: 'nativeToolCalling', status: 'skipped', ok: false, detail: 'Mock provider' },
+          { id: 'textPlan', status: 'skipped', ok: false, detail: 'Mock provider' },
+        ],
+      };
+    }
+
+    const providerCapabilities = provider.getCapabilities();
+
+    // Step 1: Network connectivity check
+    let networkOk = false;
+    let networkError: string | undefined;
+    try {
+      networkOk = await provider.isAvailable();
+    } catch (error) {
+      networkError = this.sanitizeError(error);
+    }
+
+    // Step 2: Inference check (safe prompt only)
+    let inferenceOk = false;
+    let inferenceError: string | undefined;
+    try {
+      const response = await provider.chat({
+        messages: [
+          { role: 'user', content: 'Reply with only: provider-ok' },
+        ],
+        maxTokens: 10,
+        temperature: 0,
+      });
+      inferenceOk = true;
+    } catch (error) {
+      inferenceError = this.sanitizeError(error);
+    }
+
+    // Step 3: Native OpenAI-style tool calling probe
+    const nativeToolCalling = await this.runNativeToolCallingDiagnostic(
+      provider,
+      providerCapabilities.supportsToolCalling,
+      modelProfile.supportsToolCalling,
+      networkOk && inferenceOk,
+    );
+
+    // Step 4: Guarded text-plan fallback probe
+    const shouldRunTextPlan =
+      networkOk &&
+      inferenceOk &&
+      (!nativeToolCalling.ok || modelProfile.textOnlyMode || !providerCapabilities.supportsToolCalling);
+    const textPlan = await this.runTextPlanDiagnostic(provider, shouldRunTextPlan);
+    const nativeEnabledForRuntime =
+      nativeToolCalling.ok &&
+      modelProfile.supportsToolCalling &&
+      !modelProfile.textOnlyMode;
+    const recommendedMode = this.resolveRecommendedMode(inferenceOk, nativeEnabledForRuntime, textPlan.ok);
+    const erpToolsReady = nativeEnabledForRuntime || textPlan.ok;
+
+    // Determine overall ready status
+    const ready = networkOk && inferenceOk;
+    const diagnosticStatus = ready && erpToolsReady ? 'passed' : 'failed';
+
+    // Build reason message (never includes API key or sensitive data)
+    let reason: string | undefined;
+    if (!networkOk && !inferenceOk) {
+      reason = inferenceError || networkError || 'Provider is not responding';
+    } else if (!networkOk) {
+      reason = networkError || 'Network connectivity check failed';
+    } else if (!inferenceOk) {
+      reason = inferenceError || 'Inference check failed — the model could not generate a response';
+    }
+
+    // Record diagnostics to model profile (use 'admin-test' as companyId)
+    if (this.modelProfileUseCase) {
+      await this.modelProfileUseCase.recordDiagnostics({
+        provider: config.provider,
+        modelName,
+        status: diagnosticStatus,
+        mode: recommendedMode,
+        companyId: config.companyId || 'admin-test',
         detail: nativeToolCalling.ok
           ? nativeToolCalling.detail
           : textPlan.detail || nativeToolCalling.detail || reason,
@@ -600,7 +879,7 @@ export class CheckProviderHealthUseCase {
    * Mirrors the logic in SendChatMessageUseCase.resolveRuntimeCredential.
    * - Mock provider: skip credential check
    * - BYOK: require tenant apiKey
-   * - PLATFORM_MANAGED: use platform runtime credential from provider registry
+   * - CREDITS: use platform runtime credential from provider registry
    * - DISABLED: reject
    */
   private async resolveRuntimeCredential(config: AiProviderConfig): Promise<AiProviderConfig> {
@@ -619,8 +898,8 @@ export class CheckProviderHealthUseCase {
       return config;
     }
 
-    if (runtimeMode === 'PLATFORM_MANAGED') {
-      // Platform-managed: use the platform runtime credential from the provider registry
+    if (runtimeMode === 'CREDITS') {
+      // Credits mode: use the platform runtime credential from the provider registry
       if (!this.providerRepository) {
         return config; // Can't resolve — let diagnostics fail naturally
       }

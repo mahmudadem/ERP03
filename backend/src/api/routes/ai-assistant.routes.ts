@@ -12,6 +12,7 @@
 
 import { Router } from 'express';
 import { AiAssistantController } from '../controllers/ai-assistant/AiAssistantController';
+import { AiCreditController } from '../controllers/ai-assistant/AiCreditController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -25,6 +26,8 @@ router.use(companyContextMiddleware);
 // Settings — view and manage AI provider configuration
 router.get('/settings', permissionGuard('ai-assistant.settings.view'), AiAssistantController.getSettings);
 router.put('/settings', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.updateSettings);
+router.get('/providers', permissionGuard('ai-assistant.settings.view'), AiAssistantController.listAvailableProviders);
+router.get('/providers/:providerId(.+)/models', permissionGuard('ai-assistant.settings.view'), AiAssistantController.listAvailableProviderModels);
 
 // Settings — test provider connectivity (consumes real tokens for external providers)
 router.post('/settings/health', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.checkProviderHealth);
@@ -52,5 +55,8 @@ router.get('/proposals/:proposalId', permissionGuard('ai-assistant.proposals.vie
 router.post('/proposals', permissionGuard('ai-assistant.proposals.create'), AiAssistantController.createProposal);
 router.patch('/proposals/:proposalId/status', permissionGuard('ai-assistant.proposals.review'), AiAssistantController.updateProposalStatus);
 router.patch('/proposals/:proposalId/archive', permissionGuard('ai-assistant.proposals.archive'), AiAssistantController.archiveProposal);
+
+// Credit balance — tenant views their own credit balance (companyId from context only)
+router.get('/credits', permissionGuard('ai-assistant.settings.view'), AiCreditController.getBalance);
 
 export default router;

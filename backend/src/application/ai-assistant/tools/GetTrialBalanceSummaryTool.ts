@@ -32,6 +32,9 @@ interface TrialBalanceSummaryDTO {
   totalCredit: number;
   difference: number;
   accountCount: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
   topAccounts: Array<{
     code: string;
     name: string;
@@ -79,8 +82,10 @@ export class GetTrialBalanceSummaryTool implements AiTool {
 
       // Sanitize and summarize: limit to top 20 accounts by closing balance
       const sortedAccounts = [...result.data]
-        .sort((a, b) => Math.abs(b.netBalance) - Math.abs(a.netBalance))
-        .slice(0, 20);
+        .sort((a, b) => Math.abs(b.netBalance) - Math.abs(a.netBalance));
+      const totalCount = sortedAccounts.length;
+      const topAccounts = sortedAccounts.slice(0, 20);
+      const truncated = totalCount > 20;
 
       const summary: TrialBalanceSummaryDTO = {
         asOfDate,
@@ -88,8 +93,13 @@ export class GetTrialBalanceSummaryTool implements AiTool {
         totalDebit: result.meta.totalClosingDebit,
         totalCredit: result.meta.totalClosingCredit,
         difference: result.meta.difference,
-        accountCount: result.data.length,
-        topAccounts: sortedAccounts.map(line => ({
+        accountCount: totalCount,
+        displayedCount: topAccounts.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 20 of ${totalCount} accounts by balance. Navigate to the Trial Balance report for the complete list.`
+          : undefined,
+        topAccounts: topAccounts.map(line => ({
           code: line.code,
           name: line.name,
           classification: line.classification,

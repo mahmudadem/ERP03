@@ -9,6 +9,7 @@
 
 import { Router } from 'express';
 import { AiToolCatalogController } from '../controllers/ai-assistant/AiToolCatalogController';
+import { AiCreditController } from '../controllers/ai-assistant/AiCreditController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { assertSuperAdmin } from '../middlewares/assertSuperAdmin';
 
@@ -81,6 +82,7 @@ router.get('/ai-model-profiles', AiToolCatalogController.listModelProfiles);
 router.post('/ai-model-profiles', AiToolCatalogController.createModelProfile);
 router.post('/ai-model-profiles/sync', AiToolCatalogController.syncModelProfiles);
 router.post('/ai-model-profiles/:profileId/diagnostics', AiToolCatalogController.runModelProfileDiagnostics);
+router.post('/ai-model-profiles/:profileId/diagnostics/admin', AiToolCatalogController.runAdminModelProfileDiagnostics);
 router.get('/ai-model-profiles/:profileId/certifications', AiToolCatalogController.listModelProfileCertifications);
 router.post('/ai-model-profiles/:profileId/certifications/manual', AiToolCatalogController.recordGlobalCertification);
 router.post('/ai-model-profiles/:profileId/certifications/run', AiToolCatalogController.runGlobalCertification);
@@ -115,5 +117,14 @@ router.get('/ai-model-tool-policies', AiToolCatalogController.listModelToolPolic
  * Update a model tool policy.
  */
 router.patch('/ai-model-tool-policies/:policyId', AiToolCatalogController.updateModelToolPolicy);
+
+// ─── AI Credits (Super Admin) ────────────────────────────────────────────────
+
+/**
+ * POST /platform/ai-assistant/credits/grant
+ * Super Admin grants credits to a tenant.
+ * Body: { companyId: string, amount: number, reason?: string }
+ */
+router.post('/ai-assistant/credits/grant', AiCreditController.grantCredits);
 
 export default router;

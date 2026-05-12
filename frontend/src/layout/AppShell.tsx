@@ -14,6 +14,7 @@ import { PageTitleManager } from '../components/common/PageTitleManager';
 import { accountingApi } from '../api/accountingApi';
 import { VoucherPrintView } from '../modules/accounting/components/VoucherPrintView';
 import { useTranslation } from 'react-i18next';
+import { GlobalAiWidget } from '../modules/ai-assistant/components/GlobalAiWidget';
 
 const DESKTOP_SIDEBAR_WIDTH = {
   collapsed: '6rem',
@@ -167,6 +168,8 @@ export const AppShell: React.FC = () => {
               onClose={() => setIsPrintViewOpen(false)}
             />
           )}
+          {/* Global AI Assistant Widget */}
+          <GlobalAiWidget />
         </div>
       </CostCentersProvider>
     </AccountsProvider>

@@ -29,6 +29,14 @@ interface BalanceSheetSummaryDTO {
   retainedEarnings: number;
   isBalanced: boolean;
   difference: number;
+  totalAssetAccounts: number;
+  totalLiabilityAccounts: number;
+  totalEquityAccounts: number;
+  displayedAssets: number;
+  displayedLiabilities: number;
+  displayedEquity: number;
+  truncated: boolean;
+  truncationNote?: string;
   topAssets: Array<{ code: string; name: string; balance: number }>;
   topLiabilities: Array<{ code: string; name: string; balance: number }>;
   topEquity: Array<{ code: string; name: string; balance: number }>;
@@ -68,23 +76,23 @@ export class GetBalanceSheetTool implements AiTool {
       );
 
       // Sanitize: top 10 accounts per section by absolute balance
-      const topAssets = result.assets.accounts
+      const allAssets = result.assets.accounts
         .filter(a => !a.isParent)
-        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance))
-        .slice(0, 10)
-        .map(a => ({ code: a.code, name: a.name, balance: a.balance }));
+        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+      const allLiabilities = result.liabilities.accounts
+        .filter(a => !a.isParent)
+        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+      const allEquity = result.equity.accounts
+        .filter(a => !a.isParent)
+        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
 
-      const topLiabilities = result.liabilities.accounts
-        .filter(a => !a.isParent)
-        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance))
-        .slice(0, 10)
-        .map(a => ({ code: a.code, name: a.name, balance: a.balance }));
-
-      const topEquity = result.equity.accounts
-        .filter(a => !a.isParent)
-        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance))
-        .slice(0, 10)
-        .map(a => ({ code: a.code, name: a.name, balance: a.balance }));
+      const totalAssetAccounts = allAssets.length;
+      const totalLiabilityAccounts = allLiabilities.length;
+      const totalEquityAccounts = allEquity.length;
+      const topAssets = allAssets.slice(0, 10);
+      const topLiabilities = allLiabilities.slice(0, 10);
+      const topEquity = allEquity.slice(0, 10);
+      const truncated = totalAssetAccounts > 10 || totalLiabilityAccounts > 10 || totalEquityAccounts > 10;
 
       const summary: BalanceSheetSummaryDTO = {
         asOfDate: result.asOfDate,
@@ -96,9 +104,19 @@ export class GetBalanceSheetTool implements AiTool {
         retainedEarnings: result.retainedEarnings,
         isBalanced: result.isBalanced,
         difference: Math.round((result.totalAssets - result.totalLiabilitiesAndEquity) * 100) / 100,
-        topAssets,
-        topLiabilities,
-        topEquity,
+        totalAssetAccounts,
+        totalLiabilityAccounts,
+        totalEquityAccounts,
+        displayedAssets: topAssets.length,
+        displayedLiabilities: topLiabilities.length,
+        displayedEquity: topEquity.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 10 accounts per section. Navigate to the Balance Sheet report for the complete list.`
+          : undefined,
+        topAssets: topAssets.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
+        topLiabilities: topLiabilities.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
+        topEquity: topEquity.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
       };
 
       return {

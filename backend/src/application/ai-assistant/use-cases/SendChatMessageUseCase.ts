@@ -49,13 +49,14 @@ import { IAiChatRepository } from '../../../repository/interfaces/ai-assistant/I
 import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assistant/IAiSettingsRepository';
 import { IAiUsageLogRepository } from '../../../repository/interfaces/ai-assistant/IAiUsageLogRepository';
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
+import { IAiCreditLedgerRepository } from '../../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { AiChatMessage } from '../../../domain/ai-assistant/entities/AiChatMessage';
 import { AiUsageLog } from '../../../domain/ai-assistant/entities/AiUsageLog';
 import { AiConversationContextMode, AiProviderConfig, AiTenantRuntimeMode } from '../../../domain/ai-assistant/entities/AiProviderConfig';
-import { ProviderFactory } from '../providers/ProviderFactory';
-import { AiProviderRequest, AiProviderResponse } from '../providers/IAiProvider';
+import { ProviderFactory, ProviderProviderError } from '../providers/ProviderFactory';
+import { IAiProvider, AiProviderRequest, AiProviderResponse } from '../providers/IAiProvider';
 import { AiRateLimiterService } from '../services/AiRateLimiterService';
 import { AiToolCallingOrchestrator, ToolCallingResult, StructuredToolCallResult } from '../services/AiToolCallingOrchestrator';
 import { AiRuntimeGuard, AiRunContext } from '../services/AiRuntimeGuard';
@@ -162,6 +163,7 @@ const CONVERSATION_CONTEXT_BUDGETS: Record<AiConversationContextMode, Omit<Conve
 };
 
 export class SendChatMessageUseCase {
+  private static activeLocks = new Set<string>();
   private rateLimiter: AiRateLimiterService;
 
 constructor(
@@ -179,6 +181,7 @@ constructor(
     private modelProfileUseCase?: AiModelProfileUseCase,
     private modelRoutingGuard?: AiModelRoutingGuard,
     private providerRepository?: IAiProviderRepository,
+    private creditLedgerRepository?: IAiCreditLedgerRepository,
   ) {
     this.rateLimiter = new AiRateLimiterService(settingsRepository);
   }
@@ -225,6 +228,14 @@ constructor(
     // 5. Determine conversation ID (new or existing)
     const convId = conversationId || `conv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
+    // 5b. Concurrent request deduplication — reject duplicate sends for same conversation
+    const lockKey = `${companyId}:${userId}:${convId}`;
+    if (SendChatMessageUseCase.activeLocks.has(lockKey)) {
+      throw ApiError.conflict('A request is already being processed for this conversation. Please wait.');
+    }
+    SendChatMessageUseCase.activeLocks.add(lockKey);
+
+    try {
     // 6. Build model capability profile
     const modelProfile = await this.resolveModelProfile(config.provider, config.model);
     if (modelProfile.textOnlyMode) {
@@ -396,7 +407,16 @@ constructor(
     }
 
     // ── PHASE D: Build provider request ─────────────────────────────────
-    const provider = ProviderFactory.getProvider(config, this.httpClient);
+    let provider: IAiProvider;
+    try {
+      provider = ProviderFactory.getProvider(config, this.httpClient);
+    } catch (providerError) {
+      // ProviderProviderError — no mock fallback; inform user clearly
+      const providerMsg = providerError instanceof ProviderProviderError
+        ? providerError.message
+        : 'AI provider could not be initialized. Please check your AI settings and run diagnostics.';
+      throw ApiError.badRequest(providerMsg);
+    }
     const providerCapabilities = provider.getCapabilities();
 
     // Decide whether to expose native provider tool contracts.
@@ -449,6 +469,38 @@ constructor(
         content: message.trim(),
       },
     ];
+
+    // ── Context window overflow guard ──────────────────────────────────
+    // Before sending to the provider, verify the total prompt size doesn't
+    // exceed the model's maxContextTokens. If it does, trim oldest history
+    // messages while preserving the system prompt and current user message.
+    if (modelProfile.maxContextTokens > 0) {
+      const estimatedTokens = this.estimateTokenCount(
+        providerMessages.map(m => m.content || '').join(''),
+      );
+
+      if (estimatedTokens > modelProfile.maxContextTokens * 0.9) {
+        runtimeWarnings.push(
+          `The conversation context (~${estimatedTokens} tokens) is approaching the model's limit (${modelProfile.maxContextTokens} tokens). Some older context may be trimmed.`,
+        );
+
+        // Trim oldest history messages until under 85% of the limit.
+        // Never remove system prompt (index 0) or the current user message (last index).
+        while (
+          providerMessages.length > 2
+          && this.estimateTokenCount(providerMessages.map(m => m.content || '').join('')) > modelProfile.maxContextTokens * 0.85
+        ) {
+          // Find the oldest message that is NOT the system prompt (index 0)
+          // and NOT the current user message (last index).
+          // History messages are between indices 1 and length-2 inclusive.
+          const removeIndex = providerMessages.findIndex((m, i) => i > 0 && i < providerMessages.length - 1);
+          if (removeIndex === -1) {
+            break;
+          }
+          providerMessages.splice(removeIndex, 1);
+        }
+      }
+    }
 
     const providerRequest: AiProviderRequest = {
       messages: providerMessages,
@@ -711,6 +763,32 @@ constructor(
         });
       }
 
+      // Debit 1 credit after successful AI response (CREDITS mode only)
+      const resolvedRuntimeMode = config.runtimeMode || 'BYOK';
+      if (resolvedRuntimeMode === 'CREDITS' && this.creditLedgerRepository) {
+        try {
+          const ledger = await this.creditLedgerRepository.getByCompanyId(companyId);
+          if (ledger) {
+            ledger.debit(1, `chat_request_${runContext?.aiRunId ?? aiRunId}`);
+            await this.creditLedgerRepository.save(ledger);
+          }
+        } catch (debitError) {
+          if (debitError instanceof Error && debitError.message.includes('Insufficient AI credits')) {
+            throw ApiError.forbidden('Insufficient AI credits. Please purchase more credits or switch to BYOK mode.');
+          }
+          // Non-critical debit failure — audit log for observability, then continue
+          this.auditLogSafe('AI_CREDIT_DEBIT_FAILED', {
+            companyId,
+            userId,
+            conversationId: convId,
+            aiRunId: runContext?.aiRunId ?? aiRunId,
+            providerModel: `${config.provider}/${config.model || 'unknown'}`,
+            errorMessage: (debitError as Error).message?.substring(0, 500),
+          });
+          console.warn('[AI Assistant] Failed to debit credits:', (debitError as Error).message);
+        }
+      }
+
       return result;
 
     } catch (error) {
@@ -767,6 +845,9 @@ constructor(
 
       throw error;
     }
+    } finally {
+      SendChatMessageUseCase.activeLocks.delete(lockKey);
+    }
   }
 
 /**
@@ -812,7 +893,7 @@ constructor(
    * No silent fallback — each mode has explicit requirements.
    *
    * - BYOK: Tenant MUST have their own apiKey. No platform fallback.
-   * - PLATFORM_MANAGED: Platform uses its runtime credential.
+   * - CREDITS: Check credit balance, then use platform runtime credential.
    * - DISABLED: Rejected inside resolveRuntimeCredential (before isEnabled check).
    */
   private async resolveRuntimeCredential(config: AiProviderConfig): Promise<AiProviderConfig> {
@@ -825,6 +906,9 @@ constructor(
       throw ApiError.forbidden('AI Assistant is disabled for your company. Contact your administrator.');
     }
 
+    // Resolve provider endpoint from registry if apiEndpoint is missing
+    config = await this.resolveProviderEndpoint(config);
+
     if (runtimeMode === 'BYOK') {
       // Tenant must provide their own API key — no platform fallback
       if (!config.apiKey) {
@@ -835,8 +919,18 @@ constructor(
       return config;
     }
 
-    if (runtimeMode === 'PLATFORM_MANAGED') {
-      // Platform-managed: use the platform runtime credential from the provider registry
+    if (runtimeMode === 'CREDITS') {
+      // Credits mode: check credit balance, then use the platform runtime credential from the provider registry
+      if (!this.creditLedgerRepository) {
+        throw ApiError.internal('Credit system is not configured. Contact support.');
+      }
+
+      const ledger = await this.creditLedgerRepository.getByCompanyId(config.companyId);
+      if (!ledger || !ledger.hasCredits()) {
+        throw ApiError.forbidden('No AI credits remaining. Please purchase more credits or switch to BYOK mode.');
+      }
+
+      // Resolve platform credential for CREDITS mode
       if (!this.providerRepository) {
         throw ApiError.internal('Platform runtime credential is not configured. Contact support.');
       }
@@ -885,6 +979,60 @@ constructor(
     return config;
   }
 
+  /**
+   * Resolve the provider endpoint URL from the provider registry when apiEndpoint
+   * is not explicitly set in config. Uses providerId (preferred) or falls back to
+   * provider type matching.
+   *
+   * This ensures that when a tenant selects a dynamic provider (e.g., OpenRouter),
+   * the chat use case sends requests to the correct endpoint instead of defaulting
+   * to OpenAI's URL.
+   *
+   * IMPORTANT: Mutates config in-place via updateConfig() to avoid the toJSON()
+   * round-trip which would lose apiKey and rate-limit fields.
+   */
+  private async resolveProviderEndpoint(config: AiProviderConfig): Promise<AiProviderConfig> {
+    // If apiEndpoint is explicitly set, use it — no resolution needed
+    if (config.apiEndpoint) return config;
+
+    // Only resolve for openai_compatible providers (others have fixed endpoints)
+    if (config.provider !== 'openai_compatible') return config;
+
+    // If no providerRepository is available, we can't resolve
+    if (!this.providerRepository) return config;
+
+    try {
+      const providers = await this.providerRepository.list();
+
+      // Try exact providerId match first (preferred — avoids type collisions)
+      if (config.providerId) {
+        const exactMatch = providers.find(p => p.id === config.providerId);
+        if (exactMatch?.defaultBaseUrl) {
+          config.updateConfig({ apiEndpoint: exactMatch.defaultBaseUrl });
+          return config;
+        }
+      }
+
+      // Fall back to type-based match (legacy behavior)
+      const typeMatch = providers.find(p =>
+        p.type === config.provider ||
+        (p.type === 'openai_compatible' && config.provider === 'openai_compatible')
+      );
+      if (typeMatch?.defaultBaseUrl) {
+        config.updateConfig({ apiEndpoint: typeMatch.defaultBaseUrl });
+        return config;
+      }
+    } catch (error) {
+      // Log but don't block — fallback to ProviderFactory defaults
+      console.warn(
+        `[AI Assistant] Failed to resolve provider endpoint for company ${config.companyId}: ${(error as Error).message}`
+      );
+    }
+
+    // No resolution possible — ProviderFactory will use hardcoded defaults
+    return config;
+  }
+
   private async resolveModelProfile(provider: string, modelName: string | null | undefined): Promise<AiModelProfile> {
     if (this.modelProfileUseCase) {
       return this.modelProfileUseCase.resolveRuntimeProfile(provider, modelName);
@@ -914,57 +1062,143 @@ constructor(
    * available. The result is treated exactly like provider tool calls: untrusted
    * input that must pass Runtime Guard validation before execution.
    */
-  private parseTextToolPlan(content: string | null): ParsedTextToolPlan {
+private parseTextToolPlan(content: string | null): ParsedTextToolPlan {
     if (!content) {
       return { hasPlanBlock: false, calls: [] };
     }
 
+    // Strategy 1: [ERP_TOOL_PLAN]...[/ERP_TOOL_PLAN] markers (primary expected format)
     const match = content.match(/\[ERP_TOOL_PLAN\]([\s\S]*?)\[\/ERP_TOOL_PLAN\]/i);
-    if (!match) {
-      return { hasPlanBlock: false, calls: [] };
-    }
+    if (match) {
+      const rawJson = match[1]
+        .trim()
+        .replace(/^```(?:json)?/i, '')
+        .replace(/```$/i, '')
+        .trim();
 
-    const rawJson = match[1]
-      .trim()
-      .replace(/^```(?:json)?/i, '')
-      .replace(/```$/i, '')
-      .trim();
+      try {
+        const parsed = JSON.parse(rawJson) as Record<string, unknown>;
+        const rawCalls = Array.isArray(parsed.calls) ? parsed.calls : [];
+        const calls = rawCalls
+          .slice(0, 5)
+          .map((raw, index) => {
+            const call = raw as Record<string, unknown>;
+            const name = String(call.tool || call.name || call.providerTool || '').trim().replace(/\./g, '_');
+            const args = call.arguments;
 
-    try {
-      const parsed = JSON.parse(rawJson) as Record<string, unknown>;
-      const rawCalls = Array.isArray(parsed.calls) ? parsed.calls : [];
-      const calls = rawCalls
-        .slice(0, 5)
-        .map((raw, index) => {
-          const call = raw as Record<string, unknown>;
-          const name = String(call.tool || call.name || call.providerTool || '').trim();
-          const args = call.arguments;
+            return {
+              id: `text_plan_call_${index + 1}`,
+              name,
+              arguments: args && typeof args === 'object' && !Array.isArray(args)
+                ? args as Record<string, unknown>
+                : {},
+            };
+          })
+          .filter(call => call.name.length > 0);
 
+        if (calls.length === 0) {
           return {
-            id: `text_plan_call_${index + 1}`,
-            name,
-            arguments: args && typeof args === 'object' && !Array.isArray(args)
-              ? args as Record<string, unknown>
-              : {},
+            hasPlanBlock: true,
+            calls: [],
+            error: 'ERP_TOOL_PLAN contained no valid calls',
           };
-        })
-        .filter(call => call.name.length > 0);
+        }
 
-      if (calls.length === 0) {
+        return { hasPlanBlock: true, calls };
+      } catch (error) {
         return {
           hasPlanBlock: true,
           calls: [],
-          error: 'ERP_TOOL_PLAN contained no valid calls',
+          error: `Invalid ERP_TOOL_PLAN JSON: ${(error as Error).message}`,
+        };
+      }
+    }
+
+    // Strategy 2: Bare JSON tool call format
+    // Some models output {"tool_call": "module.function"} or {"calls": [...]}
+    // inside code blocks instead of using [ERP_TOOL_PLAN] markers.
+    // We try to detect these as a fallback.
+    const jsonBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+    if (jsonBlockMatch) {
+      const candidate = jsonBlockMatch[1].trim();
+      const result = this.tryParseBareToolJson(candidate);
+      if (result.calls.length > 0) return result;
+    }
+
+    // Strategy 3: Inline JSON (not in code block)
+    // Models sometimes output raw JSON like {"tool_call": "accounting.getTrialBalanceSummary"}
+    const inlineJsonMatch = content.match(/\{[\s\S]*?"tool_?calls?[\s\S]*?\}/);
+    if (inlineJsonMatch) {
+      const result = this.tryParseBareToolJson(inlineJsonMatch[0]);
+      if (result.calls.length > 0) return result;
+    }
+
+    return { hasPlanBlock: false, calls: [] };
+  }
+
+  /**
+   * Try to parse a bare JSON object that contains tool call information.
+   * Accepts formats:
+   *   {"tool_call": "module.function"}
+   *   {"tool_calls": [{"tool": "module.function", "arguments": {}}]}
+   *   {"calls": [{"tool": "module.function", "arguments": {}}]}
+   */
+  private tryParseBareToolJson(raw: string): ParsedTextToolPlan {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+      // Format: {"tool_call": "module.function"} → single tool call
+      if (typeof parsed.tool_call === 'string' && parsed.tool_call.trim()) {
+        const name = String(parsed.tool_call).trim();
+        // Normalize: module.function → module_function for runtime guard
+        const normalizedName = name.replace(/\./g, '_');
+        return {
+          hasPlanBlock: false,
+          calls: [{
+            id: 'text_plan_call_1',
+            name: normalizedName,
+            arguments: typeof parsed.arguments === 'object' && !Array.isArray(parsed.arguments)
+              ? parsed.arguments as Record<string, unknown>
+              : {},
+          }],
         };
       }
 
-      return { hasPlanBlock: true, calls };
-    } catch (error) {
-      return {
-        hasPlanBlock: true,
-        calls: [],
-        error: `Invalid ERP_TOOL_PLAN JSON: ${(error as Error).message}`,
-      };
+      // Format: {"tool_calls": [...]} or {"calls": [...]}
+      const rawCalls = Array.isArray(parsed.tool_calls)
+        ? parsed.tool_calls
+        : Array.isArray(parsed.calls)
+          ? parsed.calls
+          : [];
+
+      if (rawCalls.length > 0) {
+        const calls = rawCalls
+          .slice(0, 5)
+          .map((raw, index) => {
+            const call = raw as Record<string, unknown>;
+            const name = String(call.tool || call.name || call.providerTool || '').trim();
+            // Normalize: module.function → module_function
+            const normalizedName = name.replace(/\./g, '_');
+            const args = call.arguments || call.args;
+
+            return {
+              id: `text_plan_call_${index + 1}`,
+              name: normalizedName,
+              arguments: args && typeof args === 'object' && !Array.isArray(args)
+                ? args as Record<string, unknown>
+                : {},
+            };
+          })
+          .filter(call => call.name.length > 0);
+
+        if (calls.length > 0) {
+          return { hasPlanBlock: false, calls };
+        }
+      }
+
+      return { hasPlanBlock: false, calls: [] };
+    } catch {
+      return { hasPlanBlock: false, calls: [] };
     }
   }
 
@@ -1079,6 +1313,14 @@ constructor(
     };
   }
 
+  /**
+   * Rough token estimation: ~3.5 chars per token for mixed English/code content.
+   * This is a safety guard, not a precise counter.
+   */
+  private estimateTokenCount(text: string): number {
+    return Math.ceil(text.length / 3.5);
+  }
+
   private truncateForPrompt(value: string, maxChars: number): { text: string; wasTruncated: boolean } {
     if (value.length <= maxChars) {
       return { text: value, wasTruncated: false };
@@ -1191,7 +1433,7 @@ Keep responses concise and actionable. Use markdown formatting when it helps rea
   /**
    * Audit an event safely — never throws, never blocks the chat flow.
    */
-  private auditLogSafe(eventType: 'AI_RUN_STARTED' | 'AI_TOOL_CALL_APPROVED' | 'AI_TOOL_CALL_REJECTED' | 'AI_RUN_COMPLETED' | 'AI_RUN_FAILED', meta: AiAuditMeta): void {
+  private auditLogSafe(eventType: 'AI_RUN_STARTED' | 'AI_TOOL_CALL_APPROVED' | 'AI_TOOL_CALL_REJECTED' | 'AI_RUN_COMPLETED' | 'AI_RUN_FAILED' | 'AI_CREDIT_DEBIT_FAILED', meta: AiAuditMeta): void {
     if (this.auditService) {
       this.auditService.log(eventType, meta).catch(err => {
         console.warn(`[AI Assistant] Audit log failed for '${eventType}': ${(err as Error).message}`);

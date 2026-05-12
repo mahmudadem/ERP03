@@ -70,6 +70,7 @@ export class AiModelCertificationUseCase {
       },
     });
 
+    await this.certificationRepository.expireByProfileAndCategory(input.modelProfileId, input.category);
     await this.certificationRepository.save(result);
     return result;
   }
@@ -105,6 +106,7 @@ export class AiModelCertificationUseCase {
       testedBy: input.testedBy,
       approvedBy: input.approvedBy,
     });
+    await this.certificationRepository.expireByProfileAndCategory(input.modelProfileId, input.category);
     await this.certificationRepository.save(result);
     return result;
   }

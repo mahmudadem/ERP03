@@ -115,8 +115,64 @@ export interface UpdateAiSettingsRequest {
   providerId?: string;
   selectedModelProfileId?: string;
   selectedProfileHash?: string;
-  runtimeMode?: 'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED';
-  allowedRuntimeModes?: Array<'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED'>;
+  runtimeMode?: 'BYOK' | 'CREDITS' | 'DISABLED';
+  allowedRuntimeModes?: Array<'BYOK' | 'CREDITS' | 'DISABLED'>;
+}
+
+// ─── Provider & Model Catalog DTOs ────────────────────────────────────
+
+/**
+ * Safe provider metadata response shape.
+ * Provider-level runtime credentials are NEVER included.
+ */
+export interface AiProviderSafeResponse {
+  id: string;
+  name: string;
+  type: string;
+  defaultBaseUrl: string | null;
+  authType: string;
+  byok: boolean;
+  enabled: boolean;
+  supportsTools: boolean;
+  supportsJsonMode: boolean;
+  supportsModelSync: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Model profile + certifications returned by the provider models endpoint.
+ */
+export interface AiProviderModelResponse {
+  profile: Record<string, unknown>;
+  certifications: Record<string, unknown>[];
+}
+
+// ─── AI Credit DTOs ──────────────────────────────────────────────────
+
+export interface AiCreditBalanceResponse {
+  companyId: string;
+  balance: number;
+  totalPurchased: number;
+  totalConsumed: number;
+  lastDebitAt: string | null;
+  lastCreditAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface GrantAiCreditsRequest {
+  companyId: string;
+  amount: number;
+  reason?: string;
+}
+
+export interface GrantAiCreditsResponse {
+  companyId: string;
+  newBalance: number;
+  grantedAmount: number;
+  grantedAt: string;
 }
 
 export class AiAssistantDTOMapper {

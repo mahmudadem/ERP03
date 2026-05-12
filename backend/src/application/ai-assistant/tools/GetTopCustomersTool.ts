@@ -26,6 +26,10 @@ interface TopCustomersDTO {
     totalRevenue: number;
   }>;
   period: { from: string; to: string };
+  totalCount: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
 }
 
 export class GetTopCustomersTool implements AiTool {
@@ -96,19 +100,27 @@ export class GetTopCustomersTool implements AiTool {
       }
 
       // Sort by revenue and limit
-      const customers = Array.from(customerMap.entries())
+      const allCustomers = Array.from(customerMap.entries())
         .map(([customerId, data]) => ({
           customerId,
           customerName: data.customerName,
           invoiceCount: data.invoiceCount,
           totalRevenue: round2(data.totalRevenue),
         }))
-        .sort((a, b) => b.totalRevenue - a.totalRevenue)
-        .slice(0, limit);
+        .sort((a, b) => b.totalRevenue - a.totalRevenue);
+      const totalCount = allCustomers.length;
+      const customers = allCustomers.slice(0, limit);
+      const truncated = totalCount > limit;
 
       const summary: TopCustomersDTO = {
         customers,
         period: { from: fromDate, to: toDate },
+        totalCount,
+        displayedCount: customers.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top ${limit} of ${totalCount} customers by revenue. Navigate to the Top Customers report for the complete list.`
+          : undefined,
       };
 
       return {

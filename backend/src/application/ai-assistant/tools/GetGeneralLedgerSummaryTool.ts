@@ -21,6 +21,10 @@ const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 1
  */
 interface GeneralLedgerSummaryDTO {
   period: { from: string; to: string };
+  totalAccounts: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
   accounts: Array<{
     accountId: string;
     accountCode: string;
@@ -75,7 +79,7 @@ export class GetGeneralLedgerSummaryTool implements AiTool {
       }
 
       // Sanitize: top 30 accounts by total absolute movement
-      const accounts = Array.from(accountMap.entries())
+      const allAccounts = Array.from(accountMap.entries())
         .map(([accountId, data]) => ({
           accountId,
           accountCode: data.accountCode,
@@ -83,14 +87,22 @@ export class GetGeneralLedgerSummaryTool implements AiTool {
           side: data.debit >= data.credit ? 'Debit' : 'Credit',
           amount: round2(Math.abs(data.debit - data.credit)),
         }))
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, 30);
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      const totalCount = allAccounts.length;
+      const accounts = allAccounts.slice(0, 30);
+      const truncated = totalCount > 30;
 
       const totalDebit = Array.from(accountMap.values()).reduce((sum, a) => sum + a.debit, 0);
       const totalCredit = Array.from(accountMap.values()).reduce((sum, a) => sum + a.credit, 0);
 
       const summary: GeneralLedgerSummaryDTO = {
         period: { from: fromDate, to: toDate },
+        totalAccounts: totalCount,
+        displayedCount: accounts.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 30 of ${totalCount} accounts by activity. Navigate to the General Ledger report for the complete list.`
+          : undefined,
         accounts,
         totalDebit: round2(totalDebit),
         totalCredit: round2(totalCredit),

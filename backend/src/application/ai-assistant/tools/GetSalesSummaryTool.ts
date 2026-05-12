@@ -24,6 +24,10 @@ interface SalesSummaryDTO {
   invoiceCount: number;
   averageInvoiceValue: number;
   byStatus: Record<string, number>;
+  totalCustomers: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
   topCustomers: Array<{
     customerId: string;
     customerName: string;
@@ -108,15 +112,17 @@ export class GetSalesSummaryTool implements AiTool {
       }
 
       // Top 10 customers by revenue
-      const topCustomers = Array.from(customerMap.entries())
+      const allCustomers = Array.from(customerMap.entries())
         .map(([customerId, data]) => ({
           customerId,
           customerName: data.customerName,
           invoiceCount: data.invoiceCount,
           totalRevenue: round2(data.totalRevenue),
         }))
-        .sort((a, b) => b.totalRevenue - a.totalRevenue)
-        .slice(0, 10);
+        .sort((a, b) => b.totalRevenue - a.totalRevenue);
+      const totalCustomers = allCustomers.length;
+      const topCustomers = allCustomers.slice(0, 10);
+      const truncated = totalCustomers > 10;
 
       const invoiceCount = filtered.length;
       const averageInvoiceValue = invoiceCount > 0 ? round2(totalRevenue / invoiceCount) : 0;
@@ -127,6 +133,12 @@ export class GetSalesSummaryTool implements AiTool {
         invoiceCount,
         averageInvoiceValue,
         byStatus,
+        totalCustomers,
+        displayedCount: topCustomers.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 10 of ${totalCustomers} customers by revenue. Navigate to the Sales report for the complete list.`
+          : undefined,
         topCustomers,
       };
 

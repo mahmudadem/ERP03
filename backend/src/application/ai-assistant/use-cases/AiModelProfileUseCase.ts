@@ -9,6 +9,7 @@ import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-ass
 import { AiModelCapabilityCatalog, AiModelProfile as RuntimeModelProfile } from '../services/AiModelCapabilityCatalog';
 
 export interface UpsertAiModelProfileInput {
+  id?: string;
   provider: string;
   modelName: string;
   status: AiModelStatus;
@@ -97,17 +98,14 @@ export class AiModelProfileUseCase {
       || input.safetyPolicyId || input.systemPromptPolicyId || input.displayName;
 
     if (hasRuntimeFields) {
-      const existing = await this.modelProfileRepo.getById(
-        input.scope === 'TENANT'
-          ? AiModelProfile.makeId(provider, modelName)
-          : AiModelProfile.makeId(provider, modelName),
-      );
       const scope: 'GLOBAL' | 'TENANT' = input.scope || 'GLOBAL';
       const providerId = input.providerId || provider;
       const modelId = input.modelId || modelName;
       const displayName = input.displayName || input.modelId || modelName;
       const baseUrl = input.baseUrl || undefined;
       const endpointFingerprint = AiModelProfile.fingerprintEndpoint(baseUrl || provider);
+      const profileId = input.id || AiModelProfile.makeRuntimeId({ scope, providerId, modelId, endpointFingerprint });
+      const existing = await this.modelProfileRepo.getById(profileId);
       const toolMode = input.toolMode || (input.supportsToolCalling ? 'native_tools' : (input.textOnlyMode ? 'none' : 'text_plan'));
       const temperature = input.temperature ?? 0.7;
       const maxOutputTokens = input.maxOutputTokens ?? input.maxContextTokens;
@@ -129,7 +127,7 @@ export class AiModelProfileUseCase {
         dataFilterPolicyId: input.dataFilterPolicyId,
       });
       const profile = new AiModelProfile(
-        AiModelProfile.makeId(provider, modelName),
+        profileId,
         provider,
         modelName,
         input.status,

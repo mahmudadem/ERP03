@@ -148,7 +148,7 @@ export interface AiProvider {
   type: AiProviderRegistryType;
   defaultBaseUrl: string | null;
   authType: AiProviderAuthType;
-  hasPlatformRuntimeCredential: boolean;
+  byok: boolean;
   enabled: boolean;
   supportsTools: boolean;
   supportsJsonMode: boolean;
@@ -164,7 +164,7 @@ export interface UpsertAiProviderPayload {
   type: AiProviderRegistryType;
   defaultBaseUrl?: string;
   authType?: AiProviderAuthType;
-  platformRuntimeCredential?: string;
+  byok?: boolean;
   enabled?: boolean;
   supportsTools?: boolean;
   supportsJsonMode?: boolean;
@@ -341,6 +341,7 @@ export interface AiModelProfile {
 export type { ProviderHealthResponse };
 
 export interface UpsertAiModelProfilePayload {
+  id?: string;
   provider: string;
   modelName: string;
   status: AiModelStatus;
@@ -367,6 +368,20 @@ export interface UpsertAiModelProfilePayload {
   systemPromptPolicyId?: string;
   dataFilterPolicyId?: string;
   enabled?: boolean;
+}
+
+// AI Credits Types
+export interface GrantAiCreditsPayload {
+  companyId: string;
+  amount: number;
+  reason?: string;
+}
+
+export interface GrantAiCreditsResponse {
+  companyId: string;
+  newBalance: number;
+  grantedAmount: number;
+  grantedAt: string;
 }
 
 // ===== API Functions =====
@@ -566,6 +581,18 @@ export const superAdminApi = {
 
   listValidCertifiedProfiles: (params?: { scope?: 'GLOBAL' | 'TENANT' | 'ALL'; category?: string; moduleId?: string }): Promise<CertifiedProfileEntry[]> =>
     client.get('/platform/ai-certifications/valid', { params }),
+
+  // AI Diagnostics (Super Admin — uses own API key)
+  runAdminDiagnostics: (profileId: string, data: {
+    apiKey: string;
+    baseUrl?: string;
+    providerOverride?: string;
+  }): Promise<ProviderHealthResponse> =>
+    client.post(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/diagnostics/admin`, data),
+
+  // AI Credits
+  grantAiCredits: (payload: GrantAiCreditsPayload): Promise<GrantAiCreditsResponse> =>
+    client.post('/platform/ai-assistant/credits/grant', payload),
 };
 
 export * from './voucherTypes';

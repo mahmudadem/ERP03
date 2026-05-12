@@ -24,6 +24,10 @@ interface AgingPayablesSummaryDTO {
   asOfDate: string;
   type: 'AP';
   buckets: string[];
+  totalAccounts: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
   accounts: Array<{
     accountCode: string;
     accountName: string;
@@ -66,21 +70,28 @@ export class GetAgingPayablesTool implements AiTool {
       );
 
       // Sanitize: top 20 accounts by total, strip entries
-      const topAccounts = result.accounts
-        .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
-        .slice(0, 20)
-        .map(a => ({
-          accountCode: a.accountCode,
-          accountName: a.accountName,
-          bucketAmounts: a.bucketAmounts.map(round2),
-          total: round2(a.total),
-        }));
+      const allAccounts = result.accounts
+        .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+      const totalCount = allAccounts.length;
+      const topAccounts = allAccounts.slice(0, 20);
+      const truncated = totalCount > 20;
 
       const summary: AgingPayablesSummaryDTO = {
         asOfDate: result.asOfDate,
         type: 'AP',
         buckets: result.buckets,
-        accounts: topAccounts,
+        totalAccounts: totalCount,
+        displayedCount: topAccounts.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 20 of ${totalCount} accounts by balance. Navigate to the AP Aging report for the complete list.`
+          : undefined,
+        accounts: topAccounts.map(a => ({
+          accountCode: a.accountCode,
+          accountName: a.accountName,
+          bucketAmounts: a.bucketAmounts.map(round2),
+          total: round2(a.total),
+        })),
         totals: result.totals.map(round2),
         grandTotal: round2(result.grandTotal),
       };

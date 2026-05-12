@@ -148,6 +148,8 @@ import { FirestoreAiModelToolPolicyRepository } from '../firestore/repositories/
 import { FirestoreAiModelProfileRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelProfileRepository';
 import { FirestoreAiProviderRepository } from '../firestore/repositories/ai-assistant/FirestoreAiProviderRepository';
 import { FirestoreAiModelCertificationRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelCertificationRepository';
+import { IAiCreditLedgerRepository } from '../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
+import { FirestoreAiCreditLedgerRepository } from '../firestore/repositories/ai-assistant/FirestoreAiCreditLedgerRepository';
 import { PermissionChecker } from '../../application/rbac/PermissionChecker';
 
 // AI ASSISTANT — Proposal Sandbox
@@ -800,8 +802,11 @@ export const diContainer = {
   get aiProviderRepository(): IAiProviderRepository {
     return new FirestoreAiProviderRepository(getDb());
   },
-  get aiModelCertificationRepository(): IAiModelCertificationRepository {
+get aiModelCertificationRepository(): IAiModelCertificationRepository {
     return new FirestoreAiModelCertificationRepository(getDb());
+  },
+  get aiCreditLedgerRepository(): IAiCreditLedgerRepository {
+    return new FirestoreAiCreditLedgerRepository(getDb());
   },
   get aiToolCatalogUseCase(): AiToolCatalogUseCase {
     return new AiToolCatalogUseCase(

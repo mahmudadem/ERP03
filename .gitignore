@@ -35,3 +35,10 @@ graphify-out/cache/
 
 # Build artifacts
 backend/lib/
+
+# Emulator data exports and backups
+firebase-export-*/
+emulator-data-before-*/
+emulator-data-empty-*/
+emulator-data.backup/
+!emulator-data/

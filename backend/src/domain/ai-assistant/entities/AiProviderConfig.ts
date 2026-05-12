@@ -26,13 +26,15 @@ export type AiTenantModelMode = 'certified_profile' | 'custom_uncertified' | 'le
 /**
  * RuntimeMode determines HOW tenant chat resolves credentials.
  * - BYOK: Tenant must provide their own API key. No platform fallback.
- * - PLATFORM_MANAGED: Platform uses its runtime credential. Tenant pays via credits/entitlement.
+ * - CREDITS: Platform uses its runtime credential. Tenant pays via credit balance.
  * - DISABLED: AI is turned off for this tenant.
  *
  * allowedRuntimeModes is set by Super Admin to restrict which modes a tenant may select.
- * Defaults to all available modes. Tenant picks one from the allowed list.
+ * Defaults to BYOK + CREDITS. Tenant picks one from the allowed list.
+ *
+ * Legacy note: 'PLATFORM_MANAGED' is mapped to 'CREDITS' in fromJSON() for backward compat.
  */
-export type AiTenantRuntimeMode = 'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED';
+export type AiTenantRuntimeMode = 'BYOK' | 'CREDITS' | 'DISABLED';
 
 export interface AiProviderConfigProps {
   companyId: string;
@@ -78,7 +80,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
     /** How credentials are resolved for tenant chat */
     public runtimeMode: AiTenantRuntimeMode = 'BYOK',
     /** Super Admin restriction: which modes tenant may select */
-    public allowedRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED']
+    public allowedRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'CREDITS']
   ) {}
 
   static create(input: {
@@ -107,7 +109,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       undefined,
       'BYOK',
-      ['BYOK', 'PLATFORM_MANAGED']
+      ['BYOK', 'CREDITS']
     );
   }
 
@@ -132,7 +134,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       undefined,
       'BYOK',
-      ['BYOK', 'PLATFORM_MANAGED']
+      ['BYOK', 'CREDITS']
     );
   }
 
@@ -260,13 +262,26 @@ export class AiProviderConfig implements AiProviderConfigProps {
       ? data.mode
       : 'legacy_unverified';
 
-    const runtimeModeValid = ['BYOK', 'PLATFORM_MANAGED', 'DISABLED'].includes(data.runtimeMode);
-    const runtimeMode: AiTenantRuntimeMode = runtimeModeValid ? data.runtimeMode : 'BYOK';
+    // Map legacy 'PLATFORM_MANAGED' → 'CREDITS' for backward compatibility
+    const validRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'CREDITS', 'DISABLED'];
+    const legacyRuntimeModeMap: Record<string, AiTenantRuntimeMode> = {
+      'BYOK': 'BYOK',
+      'CREDITS': 'CREDITS',
+      'DISABLED': 'DISABLED',
+      'PLATFORM_MANAGED': 'CREDITS', // legacy → new
+    };
+    const rawRuntimeMode = data.runtimeMode;
+    const runtimeMode: AiTenantRuntimeMode = legacyRuntimeModeMap[rawRuntimeMode] || 'BYOK';
 
-    const allModes: AiTenantRuntimeMode[] = ['BYOK', 'PLATFORM_MANAGED', 'DISABLED'];
     const allowedRuntimeModes: AiTenantRuntimeMode[] = Array.isArray(data.allowedRuntimeModes)
-      ? data.allowedRuntimeModes.filter((m: string): m is AiTenantRuntimeMode => allModes.includes(m as AiTenantRuntimeMode))
-      : ['BYOK', 'PLATFORM_MANAGED'];
+      ? data.allowedRuntimeModes
+          .map((m: string): AiTenantRuntimeMode | null => {
+            if (validRuntimeModes.includes(m as AiTenantRuntimeMode)) return m as AiTenantRuntimeMode;
+            if (m === 'PLATFORM_MANAGED') return 'CREDITS'; // legacy → new
+            return null;
+          })
+          .filter((m): m is AiTenantRuntimeMode => m !== null)
+      : ['BYOK', 'CREDITS'];
 
     return new AiProviderConfig(
       data.companyId,

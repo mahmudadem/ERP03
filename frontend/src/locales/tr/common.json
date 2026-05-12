@@ -421,6 +421,8 @@
       "processing": "Isleniyor...",
       "disableModule": "Modulu Devre Disi Birak",
       "enableModule": "Modulu Etkinlestir",
+      "loadErrorTitle": "Modüller yüklenemedi",
+      "loadErrorDescription": "Modül listesi yüklenemedi. Şirket erişiminizi kontrol edip tekrar deneyin.",
       "confirmDisable": "{{moduleName}} modülünü devre dışı bırakmak istediğinizden emin misiniz?"
     },
     "overview": {
@@ -1129,7 +1131,7 @@
     },
 "aiProviders": {
       "title": "AI Sağlayıcıları",
-      "description": "AI sağlayıcı kayıt defterini yönetin. Sağlayıcı meta verileri model profilleri ve sertifikasyon için kullanılır.",
+      "description": "Kiracıların seçebileceği AI sağlayıcı meta verilerini yönetin. ERP03 tarafından yönetilmediği sürece kiracılar bu sağlayıcıları kendi anahtarlarıyla kullanır.",
       "loading": "Sağlayıcılar yükleniyor...",
       "empty": "Sağlayıcı bulunamadı",
       "search": "Sağlayıcı ara...",
@@ -1165,7 +1167,8 @@
         "tools": "Araçlar",
         "json": "JSON",
         "sync": "Senkronizasyon",
-        "hasPlatformCredential": "Platform kimlik bilgisi"
+        "byok": "Kendi anahtarı",
+        "erpManaged": "ERP03 yönetir"
       },
       "form": {
         "createTitle": "Sağlayıcı Oluştur",
@@ -1173,10 +1176,9 @@
         "name": "Sağlayıcı Adı",
         "type": "Sağlayıcı Türü",
         "baseUrl": "Varsayılan Temel URL",
+        "byok": "Kiracı kendi anahtarını getirir",
+        "byokHint": "Etkin olduğunda kiracı AI Ayarları içinde kendi sağlayıcı anahtarını girmelidir. Devre dışı olduğunda bağlantıyı ERP03 ayrı bir yetki/kredi motoruyla yönetir.",
         "authType": "Kimlik Doğrulama Türü",
-        "platformRuntimeCredential": "Platform Çalışma Kimlik Bilgisi",
-        "platformRuntimeCredentialHint": "Şifreli olarak saklanır. YALNIZCA PLATFORM_MANAGED / BUILT_IN kiracı çalışma zamanı için kullanılır. Mevcut kimlik bilgisini korumak için boş bırakın.",
-        "keepExistingCredential": "Mevcut kimlik bilgisini korumak için boş bırakın",
         "notes": "Notlar",
         "enable": "Sağlayıcıyı Etkinleştir",
         "disable": "Sağlayıcıyı Devre Dışı Bırak"
@@ -1204,14 +1206,16 @@
       "search": "Modelleri ara...",
       "empty": "AI model profili bulunamadı",
       "confirmDelete": "{{model}} model profili silinsin mi?",
-      "columns": {
+"columns": {
         "model": "Model",
+        "provider": "Sağlayıcı",
         "status": "Durum",
         "tools": "Çalışma",
         "diagnostics": "Tanılama",
         "tags": "Etiketler",
         "actions": "İşlemler"
       },
+      "filterAllProviders": "Tüm sağlayıcılar",
 "actions": {
         "new": "Yeni Model",
         "sync": "Varsayılanları Senkronize Et",
@@ -1259,6 +1263,8 @@
         "createTitle": "Model Profili Oluştur",
         "editTitle": "Model Profilini Düzenle",
         "provider": "Sağlayıcı",
+        "selectProvider": "Sağlayıcı seç",
+        "providerLegacy": "eski",
         "modelName": "Model adı",
         "status": "Durum",
         "maxContextTokens": "Maksimum bağlam tokenları",
@@ -1295,10 +1301,38 @@
           "textPlan": "Korumalı metin planı"
         }
       },
-      "certifications": {
+      "diagnosticsModal": {
+        "title": "Tanılamayı Çalıştır",
+        "close": "Kapat",
+        "modelInfo": "Model Bilgisi",
+        "baseUrl": "Temel URL",
+        "apiKey": "API Anahtarınız",
+        "apiKeyPlaceholder": "Bu test için API anahtarınızı girin",
+        "apiKeyHelp": "Anahtar yalnızca bu test için kullanılır ve hiçbir zaman saklanmaz veya kaydedilmez.",
+        "apiKeyFooterNote": "API anahtarınız saklanmaz ve yalnızca bu test için kullanılır.",
+        "infoText": "Tanılamalar, sağlayıcı bağlantısını ve model yeteneklerini KENDİ API anahtarınızı kullanarak test eder. Anahtar yalnızca bu test için kullanılır ve hiçbir zaman saklanmaz veya kaydedilmez.",
+        "runWithKey": "Tanılamayı Çalıştır",
+        "results": "Sonuçlar",
+        "noResults": "Sağlayıcı bağlantısını test etmek için \"Tanılamayı Çalıştır\" seçeneğini tıklayın."
+      },
+"certifications": {
         "title": "Sertifikalar",
-        "disclaimer": "⚠ Sertifika, ERP modül uyumluluğunu doğrular. Tanılama yalnızca bağlantıyı test eder.",
-        "empty": "Kayıtlı sertifika yok",
+        "disclaimer": "⚠ Sertifika, ERP modülü uyumluluğunu doğrular. Tanılama yalnızca bağlantıyı test eder.",
+        "empty": "Kayıtlı sertifika bulunamadı",
+        "noCerts": "Henüz sertifika yok. ERP araç erişimini etkinleştirmek için kabuk veya manuel sertifika çalıştırın.",
+        "certCount": "{{count}} sertifika",
+        "currentStatus": "Mevcut Durum",
+        "openModal": "Sertifikaları Yönet",
+        "modalTitle": "Sertifika Yöneticisi",
+        "close": "Kapat",
+        "whatIsCertification": "Sertifika nedir?",
+        "whatIsCertificationDesc": "Sertifika, bir model profilinin Muhasebe, Satış veya Stok gibi belirli ERP modülleriyle güvenli şekilde kullanılabileceğini doğrular. Sertifika olmadan, AI çalışma zamanı bu modül için araç erişimini engeller.",
+        "whatAreDiagnosticsDesc": "Kiracının kayıtlı ayarlarını kullanarak sağlayıcı bağlantısını ve model yeteneklerini test eder. Bu, modeli ERP modülü erişimi için sertifikalandırMAZ.",
+        "shellCertDesc": "Kabuk sertifikası yapısal gereksinimleri (araç modu, veri filtresi ilkesi, güvenlik ilkesi) kontrol eder. Canlı AI testleri çalıştırmaz. Başarılı bir kabuk sertifikası, seçilen kategori için ERP araç erişimini etkinleştirir.",
+        "noProfileHash": "Profil karması mevcut değil. Önce profili kaydedin.",
+        "manualCertInfo": "Harici bir AI test paketinden sertifika sonucu kaydedin. Bu herhangi bir otomatik test çalıştırmaz — manuel olarak doğruladığınız bir sonucu kaydeder.",
+        "existingCerts": "Mevcut Sertifikalar",
+        "expired": "Süresi Dolmuş",
         "columns": {
           "category": "Kategori",
           "status": "Durum",
@@ -1914,10 +1948,8 @@
     "runtimeMode": {
       "BYOK": "Kendi Anahtarını Getir (BYOK)",
       "BYOK.desc": "Aşağıda kendi API anahtarınızı sağlamanız gerekir. Şirketiniz sağlayıcıya doğrudan ödeme yapar.",
-      "PLATFORM_MANAGED": "Platform Yönetimli",
-      "PLATFORM_MANAGED.desc": "Platform kimlik bilgilerini yönetir. Kullanım AI kredisi veya aboneliği gerektirir.",
-      "BUILT_IN": "Dahili AI",
-      "BUILT_IN.desc": "Dahili AI hizmeti. Kullanım AI kredisi veya aboneliği gerektirir.",
+      "CREDITS": "AI Kredisi Kullan",
+      "CREDITS.desc": "Kredi bakiyesi üzerinden platform tarafından sağlanan AI. Kullanım AI kredilerinizden düşülür.",
       "DISABLED": "Devre Dışı",
       "DISABLED.desc": "AI Asistan şirketiniz için devre dışı bırakıldı."
     }

@@ -24,6 +24,10 @@ interface PurchaseSummaryDTO {
   invoiceCount: number;
   averageInvoiceValue: number;
   byStatus: Record<string, number>;
+  totalSuppliers: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
   topSuppliers: Array<{
     vendorId: string;
     vendorName: string;
@@ -108,15 +112,17 @@ export class GetPurchaseSummaryTool implements AiTool {
       }
 
       // Top 10 suppliers by spend
-      const topSuppliers = Array.from(vendorMap.entries())
+      const allSuppliers = Array.from(vendorMap.entries())
         .map(([vendorId, data]) => ({
           vendorId,
           vendorName: data.vendorName,
           invoiceCount: data.invoiceCount,
           totalSpend: round2(data.totalSpend),
         }))
-        .sort((a, b) => b.totalSpend - a.totalSpend)
-        .slice(0, 10);
+        .sort((a, b) => b.totalSpend - a.totalSpend);
+      const totalSuppliers = allSuppliers.length;
+      const topSuppliers = allSuppliers.slice(0, 10);
+      const truncated = totalSuppliers > 10;
 
       const invoiceCount = filtered.length;
       const averageInvoiceValue = invoiceCount > 0 ? round2(totalSpend / invoiceCount) : 0;
@@ -127,6 +133,12 @@ export class GetPurchaseSummaryTool implements AiTool {
         invoiceCount,
         averageInvoiceValue,
         byStatus,
+        totalSuppliers,
+        displayedCount: topSuppliers.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 10 of ${totalSuppliers} suppliers by spend. Navigate to the Purchases report for the complete list.`
+          : undefined,
         topSuppliers,
       };
 

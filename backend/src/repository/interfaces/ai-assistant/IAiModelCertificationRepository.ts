@@ -24,4 +24,10 @@ export interface IAiModelCertificationRepository {
   findValidForRouting(input: CertificationLookupInput): Promise<AiModelCertificationResult | null>;
   save(result: AiModelCertificationResult): Promise<void>;
   delete(id: string): Promise<void>;
+  /**
+   * Expire all non-expired certifications for a given model profile + category combination.
+   * This ensures only one active certification exists per profile per category at any time.
+   * Returns the number of certifications that were expired.
+   */
+  expireByProfileAndCategory(modelProfileId: string, category: AiCertificationCategory): Promise<number>;
 }

@@ -25,8 +25,8 @@ export function setupErrorInterceptor() {
     },
     async (error: AxiosError) => {
       // Handle authentication errors FIRST before showing any UI
-      // Support 401 Unauthorized AND 500 Internal Server Error (if message is auth-related)
-      const isAuthStatus = error.response?.status === 401 || error.response?.status === 500;
+      // Only 401 Unauthorized is an auth failure. 500 is a server error, not auth.
+      const isAuthStatus = error.response?.status === 401;
       
       if (isAuthStatus) {
         const errorResponse = error.response?.data as ApiErrorResponse | undefined;

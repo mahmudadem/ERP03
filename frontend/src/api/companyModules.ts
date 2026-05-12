@@ -15,16 +15,12 @@ export const companyModulesApi = {
    * List all installed modules for a company
    */
   list: async (companyId: string): Promise<CompanyModuleStatus[]> => {
-    try {
-      const response = await client.get<{ modules: CompanyModuleStatus[] }>(
-        `/company-modules/${companyId}`
-      );
-      // Axios client is configured to auto-unwrap data, so response IS the data object
-      const modules = (response as any).modules || [];
-      return modules;
-    } catch (error: any) {
-      return [];
-    }
+    const response = await client.get<{ modules: CompanyModuleStatus[] }>(
+      `/company-modules/${companyId}`
+    );
+    // Axios client is configured to auto-unwrap data, so response IS the data object
+    const modules = (response as any).modules || [];
+    return modules;
   },
 
   /**

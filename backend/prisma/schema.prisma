@@ -2171,8 +2171,8 @@ model AiProviderConfig {
   selectedProfileHash         String?  // Profile hash for certification validation
   conversationContextMode     String?  // 'minimal' | 'balanced' | 'deep'
   includePreviousToolResults  Boolean  @default(true)
-  runtimeMode                 String   @default("BYOK") // 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'
-  allowedRuntimeModes         String?  // JSON array: ["BYOK","PLATFORM_MANAGED","BUILT_IN"]
+  runtimeMode                 String   @default("BYOK") // 'BYOK' | 'CREDITS' | 'DISABLED'
+  allowedRuntimeModes         String?  // JSON array: ["BYOK","CREDITS"]
   updatedAt                   DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)

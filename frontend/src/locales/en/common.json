@@ -421,6 +421,8 @@
       "processing": "Processing...",
       "disableModule": "Disable Module",
       "enableModule": "Enable Module",
+      "loadErrorTitle": "Unable to load modules",
+      "loadErrorDescription": "The module list could not be loaded. Check your company access and try again.",
       "confirmDisable": "Are you sure you want to disable the {{moduleName}} module?"
     },
     "overview": {
@@ -1129,7 +1131,7 @@
     },
 "aiProviders": {
       "title": "AI Providers",
-      "description": "Manage AI provider registry. Provider metadata is used for model profiles and certification.",
+      "description": "Manage tenant-selectable AI provider metadata. Tenants use these providers with their own key unless marked ERP03-managed.",
       "loading": "Loading providers...",
       "empty": "No providers found",
       "search": "Search providers...",
@@ -1165,7 +1167,8 @@
         "tools": "Tools",
         "json": "JSON",
         "sync": "Sync",
-        "hasPlatformCredential": "Platform credential"
+        "byok": "BYOK",
+        "erpManaged": "ERP03-managed"
       },
       "form": {
         "createTitle": "Create Provider",
@@ -1173,10 +1176,9 @@
         "name": "Provider Name",
         "type": "Provider Type",
         "baseUrl": "Default Base URL",
+        "byok": "Tenant brings their own key",
+        "byokHint": "When enabled, tenants must provide their own provider key in AI Settings. When disabled, ERP03 manages the connection through a separate entitlement/credits engine.",
         "authType": "Authentication Type",
-        "platformRuntimeCredential": "Platform Runtime Credential",
-        "platformRuntimeCredentialHint": "Stored encrypted. Used ONLY for PLATFORM_MANAGED / BUILT_IN tenant runtime. Leave blank to keep existing credential.",
-        "keepExistingCredential": "Leave blank to keep existing credential",
         "notes": "Notes",
         "enable": "Enable Provider",
         "disable": "Disable Provider"
@@ -1204,14 +1206,16 @@
       "search": "Search models...",
       "empty": "No AI model profiles found",
       "confirmDelete": "Delete model profile {{model}}?",
-      "columns": {
+"columns": {
         "model": "Model",
+        "provider": "Provider",
         "status": "Status",
         "tools": "Runtime",
         "diagnostics": "Diagnostics",
         "tags": "Tags",
         "actions": "Actions"
       },
+      "filterAllProviders": "All providers",
 "actions": {
         "new": "New Model",
         "sync": "Sync Defaults",
@@ -1259,6 +1263,8 @@
         "createTitle": "Create Model Profile",
         "editTitle": "Edit Model Profile",
         "provider": "Provider",
+        "selectProvider": "Select provider",
+        "providerLegacy": "legacy",
         "modelName": "Model name",
         "status": "Status",
         "maxContextTokens": "Max context tokens",
@@ -1295,10 +1301,38 @@
           "textPlan": "Guarded text-plan fallback"
         }
       },
+      "diagnosticsModal": {
+        "title": "Run Diagnostics",
+        "close": "Close",
+        "modelInfo": "Model Info",
+        "baseUrl": "Base URL",
+        "apiKey": "Your API Key",
+        "apiKeyPlaceholder": "Enter your API key for this test",
+        "apiKeyHelp": "The key is used only for this test and is never stored or logged.",
+        "apiKeyFooterNote": "Your API key is not stored and is only used for this test.",
+        "infoText": "Diagnostics test provider connection and model capabilities using YOUR API key. The key is used only for this test and is never stored or logged.",
+        "runWithKey": "Run Diagnostics",
+        "results": "Results",
+        "noResults": "Click \"Run Diagnostics\" to test the provider connection."
+      },
       "certifications": {
         "title": "Certifications",
         "disclaimer": "⚠ Certification validates ERP module compatibility. Diagnostics only test connectivity.",
         "empty": "No certifications recorded",
+        "noCerts": "No certifications yet. Run shell or manual certification to enable ERP tool access for this model.",
+        "certCount": "{{count}} certifications",
+        "currentStatus": "Current Status",
+        "openModal": "Manage Certifications",
+        "modalTitle": "Certification Manager",
+        "close": "Close",
+        "whatIsCertification": "What is certification?",
+        "whatIsCertificationDesc": "Certification validates that a model profile is safe to use with specific ERP modules like Accounting, Sales, or Inventory. Without certification, the AI runtime blocks tool access for that module.",
+        "whatAreDiagnosticsDesc": "Tests provider connection and model capabilities using a tenant's saved settings. This does NOT certify the model for ERP module access.",
+        "shellCertDesc": "Shell certification checks structural requirements (tool mode, data filter policy, safety policy). It does NOT run live AI tests. A passing shell cert enables ERP tool access for the selected category.",
+        "noProfileHash": "Profile hash not available. Save the profile first.",
+        "manualCertInfo": "Record a certification result from an external AI test suite. This does NOT run any automated tests — it registers a result you have verified manually.",
+        "existingCerts": "Existing Certifications",
+        "expired": "Expired",
         "columns": {
           "category": "Category",
           "status": "Status",
@@ -1828,10 +1862,8 @@
     "runtimeMode": {
       "BYOK": "Bring Your Own Key (BYOK)",
       "BYOK.desc": "You must provide your own API key below. Your company pays the provider directly.",
-      "PLATFORM_MANAGED": "Platform Managed",
-      "PLATFORM_MANAGED.desc": "Platform manages credentials. Usage requires AI credits or subscription.",
-      "BUILT_IN": "Built-in AI",
-      "BUILT_IN.desc": "Built-in AI service. Usage requires AI credits or subscription.",
+      "CREDITS": "Use AI Credits",
+      "CREDITS.desc": "Platform-provided AI via credit balance. Usage is deducted from your AI credits.",
       "DISABLED": "Disabled",
       "DISABLED.desc": "AI Assistant is disabled for your company."
     }

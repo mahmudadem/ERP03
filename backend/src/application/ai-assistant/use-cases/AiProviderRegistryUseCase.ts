@@ -13,7 +13,8 @@ export interface UpsertAiProviderInput {
   type: AiProviderRegistryType;
   defaultBaseUrl?: string;
   authType?: AiProviderAuthType;
-  platformRuntimeCredential?: string; // Encrypted at rest; used ONLY for PLATFORM_MANAGED/BUILT_IN runtime
+  byok?: boolean;
+  platformRuntimeCredential?: string; // Deprecated/provider-page-hidden: retained only for backward compatibility with existing records.
   enabled?: boolean;
   supportsTools?: boolean;
   supportsJsonMode?: boolean;
@@ -79,6 +80,7 @@ export class AiProviderRegistryUseCase {
       input.type,
       input.defaultBaseUrl?.trim() || undefined,
       input.authType || existing?.authType || 'api_key',
+      input.byok ?? existing?.byok ?? true,
       platformRuntimeCredential,
       input.enabled ?? existing?.enabled ?? true,
       input.supportsTools ?? existing?.supportsTools ?? false,
@@ -100,6 +102,7 @@ export class AiProviderRegistryUseCase {
       existing.type,
       existing.defaultBaseUrl,
       existing.authType,
+      existing.byok,
       existing.platformRuntimeCredential,
       enabled,
       existing.supportsTools,
@@ -121,6 +124,9 @@ export class AiProviderRegistryUseCase {
     const authTypes = ['api_key', 'bearer', 'none', 'custom'];
     if (input.authType && !authTypes.includes(input.authType)) {
       throw ApiError.badRequest(`authType must be one of: ${authTypes.join(', ')}`);
+    }
+    if (input.byok !== undefined && typeof input.byok !== 'boolean') {
+      throw ApiError.badRequest('byok must be a boolean');
     }
   }
 }

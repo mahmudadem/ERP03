@@ -2,8 +2,8 @@
  * AiAuditService - Wraps IAuditLogRepository for AI-specific audit events
  *
  * Logs AI runtime events (AI_RUN_STARTED, AI_TOOL_CALL_APPROVED,
- * AI_TOOL_CALL_REJECTED, AI_RUN_COMPLETED, AI_RUN_FAILED) for security
- * and compliance.
+ * AI_TOOL_CALL_REJECTED, AI_RUN_COMPLETED, AI_RUN_FAILED,
+ * AI_CREDIT_DEBIT_FAILED) for security and compliance.
  *
  * CRITICAL RULES:
  * - Audit failures MUST NEVER block chat — errors are caught and logged
@@ -25,7 +25,8 @@ export type AiAuditEventType =
   | 'AI_TOOL_CALL_APPROVED'
   | 'AI_TOOL_CALL_REJECTED'
   | 'AI_RUN_COMPLETED'
-  | 'AI_RUN_FAILED';
+  | 'AI_RUN_FAILED'
+  | 'AI_CREDIT_DEBIT_FAILED';
 
 export interface AiAuditMeta {
   companyId: string;

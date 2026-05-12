@@ -29,7 +29,6 @@ interface DisplayMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
-  isMock?: boolean;
   provider?: string;
   model?: string | null;
   toolResults?: AiToolCallResultDTO[];
@@ -38,6 +37,7 @@ interface DisplayMessage {
   modelProfile?: ChatRuntimeModelProfileDTO;
   runtimeStatus?: string;
   selectedSkills?: string[];
+  isProviderError?: boolean;
   allowedToolIds?: string[];
   toolCallsRequested?: string[];
   toolCallResults?: ChatRuntimeMetadataDTO['toolResults'];
@@ -128,7 +128,6 @@ export const AiAssistantHomePage: React.FC = () => {
           role: msg.role as 'user' | 'assistant' | 'system',
           content: msg.content,
           timestamp: msg.createdAt,
-          isMock: msg.provider === 'mock',
           provider: msg.provider,
           model: msg.model,
           toolResults: extractToolResults(msg.metadata),
@@ -203,7 +202,6 @@ export const AiAssistantHomePage: React.FC = () => {
         role: 'assistant',
         content: response.assistantMessage.content,
         timestamp: response.assistantMessage.createdAt,
-        isMock: response.provider === 'mock',
         provider: response.provider,
         model: response.model,
         toolResults: extractToolResults(response.assistantMessage.metadata),
@@ -218,6 +216,9 @@ export const AiAssistantHomePage: React.FC = () => {
       const status = err?.response?.status;
       const errorMsg = err?.response?.data?.error?.message || err?.message || 'Failed to send message';
 
+      // Detect provider configuration errors (missing key, unknown provider, etc.)
+      const isProviderError = /api key|provider|diagnostics|ai settings/i.test(errorMsg);
+
       // Rate limit errors (429) and disabled AI (403) should show inline in chat only,
       // not as a global error toast
       if (status === 429 || status === 403) {
@@ -231,6 +232,19 @@ export const AiAssistantHomePage: React.FC = () => {
             role: 'assistant',
             content: `⚠️ ${prefix}: ${errorMsg}`,
             timestamp: new Date().toISOString(),
+          },
+        ]);
+        setError(null);
+      } else if (isProviderError) {
+        // Provider config errors — show actionable message with link to settings
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `error_${Date.now()}`,
+            role: 'assistant',
+            content: `⚠️ ${t('chat.providerNotAvailable', 'AI provider is not available')}: ${errorMsg}`,
+            timestamp: new Date().toISOString(),
+            isProviderError: true,
           },
         ]);
         setError(null);
@@ -619,10 +633,15 @@ export const AiAssistantHomePage: React.FC = () => {
                     </p>
                   </div>
                 )}
-                {msg.isMock && msg.role === 'assistant' && (
-                  <div className="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-100 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {t('chat.mockLabel', 'Mock response — for development only')}
+                {msg.isProviderError && msg.role === 'assistant' && (
+                  <div className="mt-3 pt-2 border-t border-amber-100">
+                    <Link
+                      to="/ai-assistant/settings"
+                      className="inline-flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-800 hover:underline font-medium"
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      {t('chat.checkSettingsAndDiag', 'Check AI Settings & Run Diagnostics')}
+                    </Link>
                   </div>
                 )}
               </div>

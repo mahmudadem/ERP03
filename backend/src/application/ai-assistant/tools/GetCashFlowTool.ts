@@ -27,16 +27,24 @@ interface CashFlowSummaryDTO {
   netIncome: number;
   operating: {
     total: number;
+    totalItems: number;
+    displayedCount: number;
     items: Array<{ name: string; amount: number }>;
   };
   investing: {
     total: number;
+    totalItems: number;
+    displayedCount: number;
     items: Array<{ name: string; amount: number }>;
   };
   financing: {
     total: number;
+    totalItems: number;
+    displayedCount: number;
     items: Array<{ name: string; amount: number }>;
   };
+  truncated: boolean;
+  truncationNote?: string;
   netCashChange: number;
   openingCashBalance: number;
   closingCashBalance: number;
@@ -79,20 +87,20 @@ export class GetCashFlowTool implements AiTool {
       );
 
       // Sanitize: limit items to top 10 per section by absolute amount
-      const operatingItems = result.operating.items
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, 10)
-        .map(i => ({ name: i.name, amount: round2(i.amount) }));
+      const sortedOperating = result.operating.items
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      const sortedInvesting = result.investing.items
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      const sortedFinancing = result.financing.items
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 
-      const investingItems = result.investing.items
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, 10)
-        .map(i => ({ name: i.name, amount: round2(i.amount) }));
-
-      const financingItems = result.financing.items
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, 10)
-        .map(i => ({ name: i.name, amount: round2(i.amount) }));
+      const totalOperatingItems = sortedOperating.length;
+      const totalInvestingItems = sortedInvesting.length;
+      const totalFinancingItems = sortedFinancing.length;
+      const operatingItems = sortedOperating.slice(0, 10).map(i => ({ name: i.name, amount: round2(i.amount) }));
+      const investingItems = sortedInvesting.slice(0, 10).map(i => ({ name: i.name, amount: round2(i.amount) }));
+      const financingItems = sortedFinancing.slice(0, 10).map(i => ({ name: i.name, amount: round2(i.amount) }));
+      const truncated = totalOperatingItems > 10 || totalInvestingItems > 10 || totalFinancingItems > 10;
 
       const summary: CashFlowSummaryDTO = {
         period: result.period,
@@ -100,16 +108,26 @@ export class GetCashFlowTool implements AiTool {
         netIncome: round2(result.netIncome),
         operating: {
           total: round2(result.operating.total),
+          totalItems: totalOperatingItems,
+          displayedCount: operatingItems.length,
           items: operatingItems,
         },
         investing: {
           total: round2(result.investing.total),
+          totalItems: totalInvestingItems,
+          displayedCount: investingItems.length,
           items: investingItems,
         },
         financing: {
           total: round2(result.financing.total),
+          totalItems: totalFinancingItems,
+          displayedCount: financingItems.length,
           items: financingItems,
         },
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 10 items per section. Navigate to the Cash Flow Statement for the complete list.`
+          : undefined,
         netCashChange: round2(result.netCashChange),
         openingCashBalance: round2(result.openingCashBalance),
         closingCashBalance: round2(result.closingCashBalance),

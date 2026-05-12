@@ -78,4 +78,32 @@ export class FirestoreAiModelCertificationRepository implements IAiModelCertific
   async delete(id: string): Promise<void> {
     await this.getCollection().doc(id).delete();
   }
+
+  async expireByProfileAndCategory(modelProfileId: string, category: string): Promise<number> {
+    const snapshot = await this.getCollection()
+      .where('modelProfileId', '==', modelProfileId)
+      .where('category', '==', category)
+      .get();
+
+    const batch = this.db.batch();
+    let count = 0;
+    const now = new Date();
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      if (data.status === 'EXPIRED') continue; // Already expired
+
+      batch.update(doc.ref, {
+        status: 'EXPIRED',
+        updatedAt: now.toISOString(),
+      });
+      count++;
+    }
+
+    if (count > 0) {
+      await batch.commit();
+    }
+
+    return count;
+  }
 }

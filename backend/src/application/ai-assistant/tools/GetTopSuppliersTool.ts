@@ -26,6 +26,10 @@ interface TopSuppliersDTO {
     totalSpend: number;
   }>;
   period: { from: string; to: string };
+  totalCount: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
 }
 
 export class GetTopSuppliersTool implements AiTool {
@@ -96,19 +100,27 @@ export class GetTopSuppliersTool implements AiTool {
       }
 
       // Sort by spend and limit
-      const suppliers = Array.from(vendorMap.entries())
+      const allSuppliers = Array.from(vendorMap.entries())
         .map(([vendorId, data]) => ({
           vendorId,
           vendorName: data.vendorName,
           invoiceCount: data.invoiceCount,
           totalSpend: round2(data.totalSpend),
         }))
-        .sort((a, b) => b.totalSpend - a.totalSpend)
-        .slice(0, limit);
+        .sort((a, b) => b.totalSpend - a.totalSpend);
+      const totalCount = allSuppliers.length;
+      const suppliers = allSuppliers.slice(0, limit);
+      const truncated = totalCount > limit;
 
       const summary: TopSuppliersDTO = {
         suppliers,
         period: { from: fromDate, to: toDate },
+        totalCount,
+        displayedCount: suppliers.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top ${limit} of ${totalCount} suppliers by spend. Navigate to the Top Suppliers report for the complete list.`
+          : undefined,
       };
 
       return {

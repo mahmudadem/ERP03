@@ -110,7 +110,12 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
       
       setLastFetch(Date.now());
       setHasFetched(true);
-    } catch (err) {
+    } catch (err: any) {
+      const status = err?.response?.status;
+      // On 403/404, mark as fetched to prevent infinite retry loops
+      if (status === 403 || status === 404) {
+        setHasFetched(true);
+      }
       setError(err instanceof Error ? err : new Error('Unknown error'));
       console.error('Failed to fetch accounts:', err);
     } finally {

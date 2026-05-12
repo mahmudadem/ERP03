@@ -23,6 +23,12 @@ interface ProfitAndLossSummaryDTO {
   revenue: number;
   expenses: number;
   netProfit: number;
+  totalRevenueAccounts: number;
+  totalExpenseAccounts: number;
+  displayedRevenue: number;
+  displayedExpenses: number;
+  truncated: boolean;
+  truncationNote?: string;
   revenueBreakdown: Array<{ accountName: string; amount: number }>;
   expensesBreakdown: Array<{ accountName: string; amount: number }>;
   structured?: {
@@ -71,19 +77,30 @@ export class GetProfitAndLossTool implements AiTool {
       });
 
       // Sanitize: top 10 revenue accounts + top 10 expense accounts by absolute amount
-      const topRevenue = result.revenueByAccount
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, 10);
+      const sortedRevenue = result.revenueByAccount
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      const sortedExpenses = result.expensesByAccount
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 
-      const topExpenses = result.expensesByAccount
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, 10);
+      const totalRevenueAccounts = sortedRevenue.length;
+      const totalExpenseAccounts = sortedExpenses.length;
+      const topRevenue = sortedRevenue.slice(0, 10);
+      const topExpenses = sortedExpenses.slice(0, 10);
+      const truncated = totalRevenueAccounts > 10 || totalExpenseAccounts > 10;
 
       const summary: ProfitAndLossSummaryDTO = {
         period: result.period,
         revenue: result.revenue,
         expenses: result.expenses,
         netProfit: result.netProfit,
+        totalRevenueAccounts,
+        totalExpenseAccounts,
+        displayedRevenue: topRevenue.length,
+        displayedExpenses: topExpenses.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 10 of ${totalRevenueAccounts} revenue accounts and top 10 of ${totalExpenseAccounts} expense accounts. Navigate to the Profit & Loss report for the complete list.`
+          : undefined,
         revenueBreakdown: topRevenue.map(a => ({ accountName: a.accountName, amount: a.amount })),
         expensesBreakdown: topExpenses.map(a => ({ accountName: a.accountName, amount: a.amount })),
       };

@@ -259,8 +259,8 @@ export class AiToolCatalogController {
 static async updateProvider(req: Request, res: Response, next: NextFunction) {
     try {
       const existing = await diContainer.aiProviderRegistryUseCase.getProvider(req.params.providerId);
-      // Merge existing fields with request body, but exclude hasPlatformRuntimeCredential (it's a computed field)
-      const { hasPlatformRuntimeCredential, ...existingData } = existing.toJSON();
+      // Merge existing provider metadata with request body. Provider credentials are not managed from this metadata endpoint.
+      const existingData = existing.toJSON();
       const provider = await diContainer.aiProviderRegistryUseCase.upsertProvider({
         ...existingData,
         ...req.body,
@@ -330,6 +330,7 @@ static async updateProvider(req: Request, res: Response, next: NextFunction) {
       AiToolCatalogController.validateModelProfilePayload(req.body);
       const profile = await diContainer.aiModelProfileUseCase.upsertProfile({
         ...req.body,
+        id: req.params.profileId,
         provider: req.body.provider ?? req.params.profileId.split(':')[0],
         modelName: req.body.modelName ?? req.params.profileId.split(':').slice(1).join(':'),
       });
@@ -357,7 +358,7 @@ static async updateProvider(req: Request, res: Response, next: NextFunction) {
     }
   }
 
-  static async runModelProfileDiagnostics(req: Request, res: Response, next: NextFunction) {
+static async runModelProfileDiagnostics(req: Request, res: Response, next: NextFunction) {
     try {
       const { companyId } = req.body as { companyId?: string };
       if (!companyId || typeof companyId !== 'string') {
@@ -383,6 +384,70 @@ static async updateProvider(req: Request, res: Response, next: NextFunction) {
         companyId,
         providerOverride: profile.provider as any,
         modelOverride: profile.modelName,
+      });
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Super Admin diagnostics — uses the admin's own API key instead of a tenant's settings.
+   * The API key is used only for this test and is never stored.
+   */
+  static async runAdminModelProfileDiagnostics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { apiKey, baseUrl, providerOverride } = req.body as {
+        apiKey?: string;
+        baseUrl?: string;
+        providerOverride?: string;
+      };
+
+      if (!apiKey || typeof apiKey !== 'string') {
+        throw ApiError.badRequest('apiKey is required for admin diagnostics');
+      }
+
+      const profile = await diContainer.aiModelProfileUseCase.getProfileById(req.params.profileId);
+      if (!profile) {
+        throw ApiError.notFound(`AI model profile '${req.params.profileId}' not found`);
+      }
+
+      // Build a temporary config with the provided API key.
+      // The config is never persisted — apiKey exists only for this request.
+      const { AiProviderConfig } = await import('../../../domain/ai-assistant/entities/AiProviderConfig');
+      const config = new AiProviderConfig(
+        'admin-test', // placeholder companyId — never stored
+        (providerOverride || profile.provider) as any,
+        profile.modelName || profile.modelId || 'unknown',
+        apiKey,
+        baseUrl || profile.baseUrl || undefined,
+        profile.maxOutputTokens || 4096,
+        undefined,  // maxRequestsPerDay
+        0,           // dailyRequestCount
+        undefined,   // dailyRequestDate
+        true,        // isEnabled
+        new Date(),
+        'balanced',  // conversationContextMode
+        true,        // includePreviousToolResults
+        'legacy_unverified', // mode — not relevant for diagnostics; use default
+        profile.providerId || profile.provider,
+        profile.id,  // selectedModelProfileId
+        profile.profileHash,
+      );
+
+      const { CheckProviderHealthUseCase } = await import(
+        '../../../application/ai-assistant/use-cases/CheckProviderHealthUseCase'
+      );
+      const useCase = new CheckProviderHealthUseCase(
+        diContainer.aiSettingsRepository,
+        diContainer.encryptionService,
+        diContainer.httpClient,
+        diContainer.aiModelProfileUseCase,
+        diContainer.aiProviderRepository,
+      );
+      const result = await useCase.executeWithConfig(config, {
+        providerOverride: providerOverride || undefined,
+        modelOverride: profile.modelName || profile.modelId,
       });
       res.json({ success: true, data: result });
     } catch (error) {

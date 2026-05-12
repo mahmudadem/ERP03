@@ -339,6 +339,7 @@ export const routesConfig: AppRoute[] = [
 
   // AI ASSISTANT
   { path: '/ai-assistant', label: 'AI Assistant', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantHomePage')), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.chat.use' },
+  { path: '/ai-assistant/mock', label: 'AI Assistant (Widget Mode)', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantHomePage')), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.chat.use' },
   { path: '/ai-assistant/settings', label: 'AI Settings', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSettingsPage').then(m => ({ default: m.AiAssistantSettingsPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view' },
   { path: '/ai-assistant/proposals', label: 'AI Proposals', component: lazy(() => import('../modules/ai-assistant/pages/AiProposalListPage').then(m => ({ default: m.AiProposalListPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.proposals.view', hideInMenu: false },
   { path: '/ai-assistant/proposals/:proposalId', label: 'Proposal Detail', component: lazy(() => import('../modules/ai-assistant/pages/AiProposalDetailPage').then(m => ({ default: m.AiProposalDetailPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.proposals.view', hideInMenu: true },

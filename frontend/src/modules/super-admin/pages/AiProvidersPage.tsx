@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye, EyeOff, Plus, Save, Server } from 'lucide-react';
+import { Plus, Save, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
 import {
@@ -34,7 +34,7 @@ const emptyForm: UpsertAiProviderPayload = {
   type: 'openai',
   defaultBaseUrl: '',
   authType: 'api_key',
-  platformRuntimeCredential: '',
+  byok: true,
   enabled: true,
   supportsTools: false,
   supportsJsonMode: false,
@@ -71,7 +71,6 @@ export const AiProvidersPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<UpsertAiProviderPayload>(emptyForm);
-  const [showApiKey, setShowApiKey] = useState(false);
 
   const loadProviders = async () => {
     try {
@@ -96,6 +95,7 @@ export const AiProvidersPage: React.FC = () => {
       type: provider.type,
       defaultBaseUrl: provider.defaultBaseUrl || '',
       authType: provider.authType,
+      byok: provider.byok !== false,
       enabled: provider.enabled,
       supportsTools: provider.supportsTools,
       supportsJsonMode: provider.supportsJsonMode,
@@ -233,7 +233,11 @@ export const AiProvidersPage: React.FC = () => {
                       <SuperAdminBadge tone={authTone(provider.authType)}>
                         {t(`superAdmin.aiProviders.authTypes.${provider.authType}`)}
                       </SuperAdminBadge>
-                      {provider.hasPlatformRuntimeCredential && <SuperAdminBadge tone="green">{t('superAdmin.aiProviders.flags.hasPlatformCredential')}</SuperAdminBadge>}
+                      <SuperAdminBadge tone={provider.byok === false ? 'green' : 'blue'}>
+                        {provider.byok === false
+                          ? t('superAdmin.aiProviders.flags.erpManaged')
+                          : t('superAdmin.aiProviders.flags.byok')}
+                      </SuperAdminBadge>
                     </div>
                   </td>
                   <td className={tableCellClass}>
@@ -301,6 +305,16 @@ export const AiProvidersPage: React.FC = () => {
               value={form.defaultBaseUrl || ''}
               onChange={value => setForm({ ...form, defaultBaseUrl: value })}
             />
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <FormCheckbox
+                label={t('superAdmin.aiProviders.form.byok')}
+                checked={form.byok !== false}
+                onChange={checked => setForm({ ...form, byok: checked })}
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                {t('superAdmin.aiProviders.form.byokHint')}
+              </p>
+            </div>
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiProviders.form.authType')}</span>
               <select
@@ -312,26 +326,6 @@ export const AiProvidersPage: React.FC = () => {
                   <option key={auth} value={auth}>{t(`superAdmin.aiProviders.authTypes.${auth}`)}</option>
                 ))}
               </select>
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiProviders.form.platformRuntimeCredential')}</span>
-              <div className="relative">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={form.platformRuntimeCredential || ''}
-                  onChange={event => setForm({ ...form, platformRuntimeCredential: event.target.value })}
-                  placeholder={selectedId && !form.platformRuntimeCredential ? t('superAdmin.aiProviders.form.keepExistingCredential') : ''}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
-                >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <span className="mt-1 block text-xs text-slate-500">{t('superAdmin.aiProviders.form.platformRuntimeCredentialHint')}</span>
             </label>
             <div className="grid gap-2 sm:grid-cols-3">
               <FormCheckbox

@@ -14,7 +14,8 @@ export interface AiProviderProps {
   type: AiProviderRegistryType;
   defaultBaseUrl?: string;
   authType: AiProviderAuthType;
-  platformRuntimeCredential?: string; // Encrypted at rest; used ONLY for PLATFORM_MANAGED/BUILT_IN tenant runtime; never exposed in toJSON API responses
+  byok: boolean;
+  platformRuntimeCredential?: string; // Deprecated/provider-page-hidden: future ERP-managed credentials belong to the AI entitlement engine, not provider metadata UI.
   enabled: boolean;
   supportsTools: boolean;
   supportsJsonMode: boolean;
@@ -31,6 +32,7 @@ export class AiProvider implements AiProviderProps {
     public readonly type: AiProviderRegistryType,
     public readonly defaultBaseUrl: string | undefined,
     public readonly authType: AiProviderAuthType,
+    public readonly byok: boolean = true,
     public readonly platformRuntimeCredential: string | undefined = undefined,
     public readonly enabled: boolean = true,
     public readonly supportsTools: boolean = false,
@@ -56,7 +58,7 @@ export class AiProvider implements AiProviderProps {
       type: this.type,
       defaultBaseUrl: this.defaultBaseUrl || null,
       authType: this.authType,
-      hasPlatformRuntimeCredential: !!this.platformRuntimeCredential,
+      byok: this.byok,
       enabled: this.enabled,
       supportsTools: this.supportsTools,
       supportsJsonMode: this.supportsJsonMode,
@@ -75,6 +77,7 @@ export class AiProvider implements AiProviderProps {
       type: this.type,
       defaultBaseUrl: this.defaultBaseUrl || null,
       authType: this.authType,
+      byok: this.byok,
       platformRuntimeCredential: this.platformRuntimeCredential || null,
       enabled: this.enabled,
       supportsTools: this.supportsTools,
@@ -93,6 +96,7 @@ export class AiProvider implements AiProviderProps {
       data.type || 'custom',
       data.defaultBaseUrl || undefined,
       data.authType || 'api_key',
+      data.byok !== false,
       // Backward compat: read both old (defaultApiKey) and new (platformRuntimeCredential) field names
       data.platformRuntimeCredential || data.defaultApiKey || undefined,
       data.enabled !== false,

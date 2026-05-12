@@ -45,6 +45,8 @@ import {
   CreateTenantCustomModelProfilePayload,
   AiCertificationResult,
   AiCertificationCategory,
+  TenantAiProviderOption,
+  TenantAiProviderModelOption,
 } from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { CertifiedModelsModal } from '../components/CertifiedModelsModal';
@@ -74,7 +76,7 @@ const PROVIDER_PRESETS: ProviderPreset[] = [
 ];
 
 const PRESET_LABEL_FALLBACKS: Record<string, string> = {
-  mock: 'Mock (Development)',
+  mock: 'Mock (Dev Only)',
   openai: 'OpenAI',
   openrouter: 'OpenRouter',
   groq: 'Groq',
@@ -83,7 +85,7 @@ const PRESET_LABEL_FALLBACKS: Record<string, string> = {
 };
 
 const PRESET_DESC_FALLBACKS: Record<string, string> = {
-  mock: 'Returns simulated responses. Safe for development. No API key needed.',
+  mock: 'Simulated responses for development testing only. Not a real AI provider.',
   openai: 'GPT-4o and other OpenAI models. Requires an API key.',
   openrouter: 'Access 200+ models. Requires an OpenRouter API key.',
   groq: 'Ultra-fast inference. Requires a Groq API key.',
@@ -155,8 +157,8 @@ export const AiAssistantSettingsPage: React.FC = () => {
   const [conversationContextMode, setConversationContextMode] = useState<ConversationContextMode>('balanced');
   const [includePreviousToolResults, setIncludePreviousToolResults] = useState(true);
   const [isEnabled, setIsEnabled] = useState(true);
-  const [runtimeMode, setRuntimeMode] = useState<'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED'>('BYOK');
-  const [allowedRuntimeModes, setAllowedRuntimeModes] = useState<Array<'BYOK' | 'PLATFORM_MANAGED' | 'DISABLED'>>(['BYOK', 'PLATFORM_MANAGED']);
+  const [runtimeMode, setRuntimeMode] = useState<'BYOK' | 'CREDITS' | 'DISABLED'>('BYOK');
+  const [allowedRuntimeModes, setAllowedRuntimeModes] = useState<Array<'BYOK' | 'CREDITS' | 'DISABLED'>>(['BYOK', 'CREDITS']);
   const [usageAnalytics, setUsageAnalytics] = useState<AiUsageAnalyticsResponse | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
 const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(null);
@@ -182,6 +184,13 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
   const [isRunningCert, setIsRunningCert] = useState(false);
   const [isDeprecating, setIsDeprecating] = useState(false);
 
+  // ── Dynamic provider state (provider-driven flow) ───────────────────────────
+  const [availableProviders, setAvailableProviders] = useState<TenantAiProviderOption[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
+  const [providerModels, setProviderModels] = useState<TenantAiProviderModelOption[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(false);
+
   // ── Derived state (rerender-derived-state-no-effect) ────────────────────────
 
   const currentPreset = useMemo(
@@ -189,24 +198,47 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
     [presetId]
   );
 
+  // Resolved dynamic provider (from API). Null when using mock/preset/custom.
+  const selectedProviderOption = useMemo(
+    () => availableProviders.find((p) => p.id === selectedProviderId) ?? null,
+    [selectedProviderId, availableProviders]
+  );
+
+  // Whether to use dynamic provider flow (vs. hardcoded preset flow).
+  // Dynamic providers are the source of truth when available.
+  const useDynamicProvider = selectedProviderOption !== null;
+
   const isCustom = presetId === 'custom';
-  const showApiKeyField = provider !== 'mock' && currentPreset.requiresApiKey && runtimeMode === 'BYOK';
+
+  // Show API key field when: BYOK mode AND (dynamic provider requires key OR preset requires key)
+  const showApiKeyField = runtimeMode === 'BYOK' && (() => {
+    if (provider === 'mock') return false;
+    if (selectedProviderOption) {
+      return selectedProviderOption.byok && ['api_key', 'bearer', 'custom'].includes(selectedProviderOption.authType);
+    }
+    return currentPreset.requiresApiKey;
+  })();
+
+  // Show provider config fields (endpoint, model) for non-mock providers
   const showProviderFields = provider !== 'mock';
+  const modelFieldId = useDynamicProvider && providerModels.length > 0 ? 'model-select' : 'model-input';
 
   // ── Computed: certification match from catalog ─────────────────────────────
   // Check if the current BYOK model+provider matches an existing certified profile
   const certificationMatch = useMemo((): { entry: CertifiedProfileEntry; isGlobal: boolean } | null => {
     if (runtimeMode !== 'BYOK' || !model || erp03AvailableModels.length === 0) return null;
+    const resolvedProviderType = selectedProviderOption?.type || provider;
+    const resolvedProviderId = selectedProviderOption?.id || '';
     const matched = erp03AvailableModels.find((entry) => {
       const p = entry.profile as Record<string, unknown>;
       const profileModelId = String(p.modelId || p.modelName || '');
       const profileProvider = String(p.provider || p.providerId || '');
-      return profileModelId === model && (profileProvider === provider || profileProvider === currentPreset.providerType);
+      return profileModelId === model && (profileProvider === resolvedProviderType || profileProvider === resolvedProviderId || profileProvider === currentPreset.providerType);
     });
     if (!matched) return null;
     const isGlobal = matched.certifications?.some((c) => c.scope === 'GLOBAL') ?? false;
     return { entry: matched, isGlobal };
-  }, [runtimeMode, model, provider, currentPreset.providerType, erp03AvailableModels]);
+  }, [runtimeMode, model, provider, selectedProviderOption, currentPreset.providerType, erp03AvailableModels]);
 
   // ── Load settings ──────────────────────────────────────────────────────────
 
@@ -233,6 +265,15 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
         setPresetId(resolvePresetId(config.provider, config.apiEndpoint || ''));
         if (config.runtimeMode) setRuntimeMode(config.runtimeMode as any);
         if (Array.isArray(config.allowedRuntimeModes)) setAllowedRuntimeModes(config.allowedRuntimeModes as any);
+        // Restore provider selection: providerId for dynamic, mock/custom sentinels, or preset fallback
+        if (config.providerId) {
+          setSelectedProviderId(config.providerId);
+        } else if (config.provider === 'mock') {
+          setSelectedProviderId('__mock__');
+        } else if (!config.providerId && config.provider && config.provider !== 'mock') {
+          // No providerId saved — keep preset-based selection (selectedProviderId stays '')
+          setSelectedProviderId('');
+        }
       } catch (err: any) {
         if (cancelled) return;
         setError(err?.response?.data?.error?.message || err?.message || 'Failed to load settings');
@@ -285,6 +326,47 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
     return () => { cancelled = true; };
   }, [canView]);
 
+  // ── Load available providers (provider-driven flow) ────────────────────────
+  useEffect(() => {
+    if (!canView) return;
+    let cancelled = false;
+    const loadProviders = async () => {
+      try {
+        setProvidersLoading(true);
+        const result = await aiAssistantApi.listAvailableProviders();
+        if (!cancelled) setAvailableProviders(result.filter((p) => p.enabled));
+      } catch {
+        if (!cancelled) setAvailableProviders([]);
+      } finally {
+        if (!cancelled) setProvidersLoading(false);
+      }
+    };
+    loadProviders();
+    return () => { cancelled = true; };
+  }, [canView]);
+
+  // ── Load provider models when selectedProviderId changes ───────────────────
+  useEffect(() => {
+    if (!selectedProviderOption) {
+      setProviderModels([]);
+      return;
+    }
+    let cancelled = false;
+    const loadModels = async () => {
+      try {
+        setModelsLoading(true);
+        const result = await aiAssistantApi.listProviderModels(selectedProviderOption.id);
+        if (!cancelled) setProviderModels(result);
+      } catch {
+        if (!cancelled) setProviderModels([]);
+      } finally {
+        if (!cancelled) setModelsLoading(false);
+      }
+    };
+    loadModels();
+    return () => { cancelled = true; };
+  }, [selectedProviderOption]);
+
   // ── Restore selected profile reference after settings + certified models load ──
   // This bridges the gap between loadSettings() and loadCertifiedModels() so that
   // on page reload, the UI correctly shows the previously selected certified profile
@@ -334,23 +416,66 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  const handlePresetChange = useCallback((newPresetId: string) => {
-    const preset = PROVIDER_PRESETS.find((p) => p.id === newPresetId);
-    if (!preset) return;
-
-    setPresetId(newPresetId);
-    setProvider(preset.providerType);
+const handleProviderChange = useCallback((newProviderId: string) => {
+    // Clear previous state
     setHealthResult(null);
     setHealthError(null);
+    setSelectedCertifiedProfile(null);
+    setRegisteredProfileId(null);
+    setRegisteredProfileData(null);
 
-    if (newPresetId === 'custom') {
+    if (newProviderId === '__mock__' || newProviderId === 'mock') {
+      // Mock provider — built-in
+      setSelectedProviderId('__mock__');
+      setPresetId('mock');
+      setProvider('mock');
+      setModel('mock-assistant');
+      setApiEndpoint('');
+      return;
+    }
+
+    if (newProviderId === '__custom__' || newProviderId === 'custom') {
+      // Custom provider — manual entry escape hatch
+      setSelectedProviderId('__custom__');
+      setPresetId('custom');
+      setProvider('openai_compatible');
       setApiEndpoint('');
       setModel('');
-    } else {
-      setApiEndpoint(preset.endpoint);
-      setModel(preset.defaultModel);
+      return;
     }
-  }, []);
+
+    // Legacy preset IDs (openai, openrouter, groq, ollama) — map to closest behavior
+    const legacyPreset = PROVIDER_PRESETS.find((p) => p.id === newProviderId);
+    if (legacyPreset && !availableProviders.some((p) => p.id === newProviderId)) {
+      setSelectedProviderId('');
+      setPresetId(newProviderId);
+      setProvider(legacyPreset.providerType);
+      setApiEndpoint(legacyPreset.endpoint);
+      setModel(legacyPreset.defaultModel);
+      return;
+    }
+
+    // Dynamic provider from API
+    setSelectedProviderId(newProviderId);
+    const found = availableProviders.find((p) => p.id === newProviderId);
+    if (found) {
+      // Map provider type to legacy provider type
+      let legacyType: AiProviderType = 'openai_compatible';
+      if (found.type === 'ollama') legacyType = 'ollama';
+      // openai, openai_compatible, google_gemini, anthropic, custom all map to openai_compatible
+      setProvider(legacyType);
+      setApiEndpoint(found.defaultBaseUrl || '');
+      // Model will auto-load via useEffect on selectedProviderId
+      setModel('');
+    } else {
+      // Provider not found in available list — fall back to custom
+      setSelectedProviderId('__custom__');
+      setPresetId('custom');
+      setProvider('openai_compatible');
+      setApiEndpoint('');
+      setModel('');
+    }
+  }, [availableProviders]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -359,7 +484,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
       setHealthResult(null);
       setHealthError(null);
 
-      const payload: Record<string, any> = {
+const payload: Record<string, any> = {
         provider,
         model: model || undefined,
         maxTokensPerRequest: maxTokens || 4096,
@@ -368,6 +493,10 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
         includePreviousToolResults,
         isEnabled,
         runtimeMode,
+        mode: 'legacy_unverified',
+        providerId: selectedProviderOption?.id || '',
+        selectedModelProfileId: '',
+        selectedProfileHash: '',
       };
 
       if (provider !== 'mock') {
@@ -384,7 +513,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
       }
 
       // ERP03 AI mode: use the inline-selected certified model
-      if (runtimeMode === 'PLATFORM_MANAGED' && selectedErp03Profile) {
+      if (runtimeMode === 'CREDITS' && selectedErp03Profile) {
         const profile = selectedErp03Profile.profile as Record<string, unknown>;
         payload.mode = 'certified_profile';
         payload.selectedModelProfileId = profile.id;
@@ -417,7 +546,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
     } finally {
       setSaving(false);
     }
-  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, conversationContextMode, includePreviousToolResults, isEnabled, runtimeMode, selectedCertifiedProfile, registeredProfileId, registeredProfileData, selectedErp03Profile]);
+  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, conversationContextMode, includePreviousToolResults, isEnabled, runtimeMode, selectedCertifiedProfile, registeredProfileId, registeredProfileData, selectedErp03Profile, selectedProviderOption]);
 
   const handleRunDiagnostics = useCallback(async () => {
     try {
@@ -440,16 +569,30 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
 
   const handleSelectCertifiedProfile = useCallback((entry: CertifiedProfileEntry) => {
     const profile = entry.profile as Record<string, unknown>;
-    setPresetId('custom');
-    setProvider('openai_compatible');
+    // Try to match the certified profile's providerId with available dynamic providers
+    const profileProviderId = String(profile.providerId || '');
+    const matchedProvider = profileProviderId
+      ? availableProviders.find((p) => p.id === profileProviderId)
+      : null;
+
+    if (matchedProvider) {
+      setSelectedProviderId(matchedProvider.id);
+      let legacyType: AiProviderType = 'openai_compatible';
+      if (matchedProvider.type === 'ollama') legacyType = 'ollama';
+      setProvider(legacyType);
+      setApiEndpoint(matchedProvider.defaultBaseUrl || String(profile.baseUrl || ''));
+    } else {
+      setError(t('settings.certifiedModels.providerUnavailable', 'This certified model belongs to a provider that is not currently available in your provider list. Please ask your administrator to enable that provider.'));
+      setShowCertifiedModels(false);
+      return;
+    }
     setModel(String(profile.modelId || profile.modelName || ''));
-    if (profile.baseUrl) setApiEndpoint(String(profile.baseUrl));
     setSelectedCertifiedProfile(entry);
     setRegisteredProfileId(null);
     setRegisteredProfileData(null);
     setShowCertifiedModels(false);
     // Note: the user must still Save Settings to persist the change
-  }, []);
+  }, [availableProviders, t]);
 
   // ── Inline Registration & Certification ────────────────────────────────────
 
@@ -458,12 +601,14 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
     try {
       setIsRegistering(true);
       setError(null);
+      // Use dynamic provider ID when available, otherwise fall back
+      const dynamicProviderId = selectedProviderOption?.id;
       const result = await aiAssistantApi.createTenantCustomModelProfile({
-        providerId: provider,
-        provider: currentPreset.providerType,
+        providerId: dynamicProviderId || provider,
+        provider: selectedProviderOption?.type || currentPreset.providerType,
         modelId: model,
         displayName: undefined,
-        baseUrl: apiEndpoint || undefined,
+        baseUrl: apiEndpoint || selectedProviderOption?.defaultBaseUrl || undefined,
         // ── Auto-configured safe defaults for certification ──
         toolMode: 'text_plan',                    // Safe: guarded text-plan tools
         dataFilterPolicyId: 'ai-data-filter-v1',  // Required for sensitive categories
@@ -479,7 +624,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
     } finally {
       setIsRegistering(false);
     }
-  }, [model, provider, currentPreset.providerType, apiEndpoint]);
+  }, [model, provider, currentPreset.providerType, apiEndpoint, selectedProviderOption]);
 
   const handleRunRegisteredDiagnostics = useCallback(async () => {
     if (!registeredProfileId) return;
@@ -551,6 +696,14 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
       setPresetId(resolvePresetId(config.provider, config.apiEndpoint || ''));
       if (config.runtimeMode) setRuntimeMode(config.runtimeMode as any);
       if (Array.isArray(config.allowedRuntimeModes)) setAllowedRuntimeModes(config.allowedRuntimeModes as any);
+      // Restore provider selection
+      if (config.providerId) {
+        setSelectedProviderId(config.providerId);
+      } else if (config.provider === 'mock') {
+        setSelectedProviderId('__mock__');
+      } else {
+        setSelectedProviderId('');
+      }
       setSelectedErp03Profile(null);
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || err?.message || 'Failed to deprecate profile');
@@ -570,6 +723,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
     (settings.includePreviousToolResults !== false) !== includePreviousToolResults ||
     settings.isEnabled !== isEnabled ||
     (settings.runtimeMode || 'BYOK') !== runtimeMode ||
+    (settings.providerId || '') !== (selectedProviderId || '') ||
     (provider !== 'mock' && apiKey !== '') ||
     (provider !== 'mock' && (settings.apiEndpoint || '') !== apiEndpoint) ||
     selectedCertifiedProfile !== null ||
@@ -657,7 +811,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {allowedRuntimeModes.map((mode) => {
                     const isActive = runtimeMode === mode;
-                    const modeKey = mode === 'PLATFORM_MANAGED' ? 'PLATFORM_MANAGED' : mode;
+                    const modeKey = mode === 'CREDITS' ? 'CREDITS' : mode;
                     return (
                       <button
                         key={mode}
@@ -718,44 +872,89 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
             {/* ═══════════════════════════════════════════════════════════ */}
             {runtimeMode === 'BYOK' && (
               <>
-                {/* Provider Preset Dropdown */}
+                {/* Provider Dropdown — dynamic from API + built-in fallbacks */}
                 <div className="mb-4">
-                  <label htmlFor="provider-preset" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="provider-select" className="block text-sm font-medium text-gray-700 mb-1">
                     <Server className="w-4 h-4 inline mr-1" />
                     {t('settings.selectProvider', 'AI Provider')}
                   </label>
-                  <select
-                    id="provider-preset"
-                    value={presetId}
-                    onChange={(e) => handlePresetChange(e.target.value)}
-                    disabled={!canManage}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    {PROVIDER_PRESETS.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        {t(`settings.preset${preset.id.charAt(0).toUpperCase() + preset.id.slice(1)}`, PRESET_LABEL_FALLBACKS[preset.id])}
-                      </option>
-                    ))}
-                  </select>
+                  {providersLoading ? (
+                    <div className="w-full px-3 py-2.5 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-400">
+                      {t('settings.providersLoading', 'Loading providers...')}
+                    </div>
+                  ) : (
+                    <select
+                      id="provider-select"
+                      value={selectedProviderId || presetId}
+                      onChange={(e) => {
+                        handleProviderChange(e.target.value);
+                      }}
+                      disabled={!canManage}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      {/* Mock (Development) — always available */}
+                      <option value="__mock__">{t('settings.presetMock', 'Mock (Development)')}</option>
+                      {/* Dynamic providers from API */}
+                      {availableProviders.length > 0 && (
+                        <optgroup label={t('settings.providerGroupAvailable', 'Available Providers')}>
+                          {availableProviders.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                              {p.byok ? ` (${t('settings.providerByok', 'BYOK')})` : ` (${t('settings.providerManaged', 'Managed')})`}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {/* Fallback built-in presets when no dynamic providers */}
+                      {availableProviders.length === 0 && PROVIDER_PRESETS.filter((p) => p.id !== 'mock' && p.id !== 'custom').map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {t(`settings.preset${preset.id.charAt(0).toUpperCase() + preset.id.slice(1)}`, PRESET_LABEL_FALLBACKS[preset.id])}
+                        </option>
+                      ))}
+                      {/* Custom — manual entry escape hatch */}
+                      <option value="__custom__">{t('settings.presetCustom', 'Custom')}</option>
+                    </select>
+                  )}
                 </div>
 
-                {/* Preset description */}
+                {/* Provider description / badges */}
                 <div className="mb-6 px-3 py-2 bg-gray-50 border border-gray-100 rounded-md text-sm text-gray-500">
-                  {t(`settings.preset${currentPreset.id.charAt(0).toUpperCase() + currentPreset.id.slice(1)}Desc`, PRESET_DESC_FALLBACKS[currentPreset.id])}
-                  {currentPreset.endpoint && (
-                    <span className="ml-1 text-xs font-mono text-gray-400">
-                      ({currentPreset.endpoint})
-                    </span>
-                  )}
-                  {!currentPreset.requiresApiKey && currentPreset.id !== 'mock' && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
-                      {t('settings.noApiKeyRequired', 'No API key')}
-                    </span>
-                  )}
-                  {currentPreset.requiresApiKey && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
-                      {t('settings.apiKeyRequired', 'API key required')}
-                    </span>
+                  {selectedProviderOption ? (
+                    <>
+                      <span className="font-medium text-gray-700">{selectedProviderOption.name}</span>
+                      <span className="ml-2 text-xs text-gray-400">({selectedProviderOption.type})</span>
+                      {selectedProviderOption.defaultBaseUrl && (
+                        <span className="ml-1 text-xs font-mono text-gray-400">({selectedProviderOption.defaultBaseUrl})</span>
+                      )}
+                      {selectedProviderOption.byok ? (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+                          {t('settings.apiKeyRequired', 'API key required')}
+                        </span>
+                      ) : (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
+                          {t('settings.noApiKeyRequired', 'No API key')}
+                        </span>
+                      )}
+                      {selectedProviderOption.supportsTools && (
+                        <span className="ml-1 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded border border-blue-200">
+                          {t('settings.providerCapTools', 'Tools')}
+                        </span>
+                      )}
+                    </>
+                  ) : selectedProviderId === '__mock__' || presetId === 'mock' ? (
+                    <>
+                      {t('settings.presetMockDesc', 'Returns simulated responses. Safe for development. No API key needed.')}
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
+                        {t('settings.noApiKeyRequired', 'No API key')}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {t('settings.presetCustomDesc', 'Use any OpenAI-compatible endpoint manually.')}
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+                        {t('settings.apiKeyRequired', 'API key required')}
+                      </span>
+                    </>
                   )}
                 </div>
 
@@ -786,7 +985,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
                       </div>
                     )}
 
-                    {/* API Endpoint */}
+                    {/* API Endpoint — editable only for custom providers */}
                     <div>
                       <label htmlFor="api-endpoint" className="block text-sm font-medium text-gray-700 mb-1">
                         <Globe className="w-4 h-4 inline mr-1" />
@@ -798,33 +997,87 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
                         value={apiEndpoint}
                         onChange={(e) => setApiEndpoint(e.target.value)}
                         placeholder="https://api.openai.com/v1"
-                        disabled={!canManage || !isCustom}
+                        disabled={!canManage || (!!selectedProviderOption && selectedProviderId !== '__custom__')}
                         className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
-                          !isCustom ? 'bg-gray-50 text-gray-600' : ''
+                          !!selectedProviderOption && selectedProviderId !== '__custom__' ? 'bg-gray-50 text-gray-600' : ''
                         }`}
                       />
-                      {!isCustom && canManage && (
+                      {!!selectedProviderOption && selectedProviderId !== '__custom__' && canManage && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {t('settings.endpointFromProvider', 'Endpoint set by provider. Switch to Custom to edit.')}
+                        </p>
+                      )}
+                      {!selectedProviderOption && !isCustom && canManage && (
                         <p className="text-xs text-gray-400 mt-1">
                           {t('settings.endpointPresetLocked', 'Switch to "Custom" to edit the endpoint URL.')}
                         </p>
                       )}
                     </div>
 
-                    {/* Model */}
+                    {/* Model — dropdown from provider models or free text */}
                     <div>
-                      <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor={modelFieldId} className="block text-sm font-medium text-gray-700 mb-1">
                         <Sparkles className="w-4 h-4 inline mr-1" />
                         {t('settings.model', 'Model')}
                       </label>
-                      <input
-                        id="model"
-                        type="text"
-                        value={model}
-                        onChange={(e) => setModel(e.target.value)}
-                        placeholder={currentPreset.defaultModel || 'gpt-4o'}
-                        disabled={!canManage}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                      />
+                      {useDynamicProvider && providerModels.length > 0 ? (
+                        <>
+                          <select
+                            id={modelFieldId}
+                            value={providerModels.some((m) => String((m.profile as Record<string, unknown>).modelId || (m.profile as Record<string, unknown>).modelName || '') === model) ? model : '__custom__'}
+                            onChange={(e) => {
+                              if (e.target.value === '__custom__') {
+                                setModel('');
+                              } else {
+                                setModel(e.target.value);
+                              }
+                            }}
+                            disabled={!canManage}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white disabled:bg-gray-100"
+                          >
+                            <option value="__custom__">{t('settings.modelCustomOption', 'Enter custom model name...')}</option>
+                            {providerModels.map((m) => {
+                              const profileData = m.profile as Record<string, unknown>;
+                              const modelId = String(profileData.modelId || profileData.modelName || '');
+                              const displayName = String(profileData.displayName || profileData.modelName || modelId);
+                              return (
+                                <option key={modelId} value={modelId}>
+                                  {displayName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          {/* Show free text input only when "custom" is selected in dropdown */}
+                          {(model === '' || !providerModels.some((m) => String((m.profile as Record<string, unknown>).modelId || (m.profile as Record<string, unknown>).modelName || '') === model)) && (
+                            <input
+                              id="model-custom"
+                              type="text"
+                              value={model === '' || providerModels.some((m) => String((m.profile as Record<string, unknown>).modelId || (m.profile as Record<string, unknown>).modelName || '') === model) ? '' : model}
+                              onChange={(e) => setModel(e.target.value)}
+                              placeholder={t('settings.modelPlaceholder', 'e.g., gpt-4o, claude-3-opus')}
+                              disabled={!canManage}
+                              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <input
+                            id={modelFieldId}
+                            type="text"
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            placeholder={currentPreset.defaultModel || 'gpt-4o'}
+                            disabled={!canManage}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          />
+                          {useDynamicProvider && modelsLoading && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              {t('settings.modelsLoading', 'Loading models...')}
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1249,9 +1502,9 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
             )}
 
             {/* ═══════════════════════════════════════════════════════════ */}
-            {/* ERP03 AI Mode — Inline certified model selector            */}
+            {/* CREDITS Mode — Inline certified model selector               */}
             {/* ═══════════════════════════════════════════════════════════ */}
-            {runtimeMode === 'PLATFORM_MANAGED' && (
+            {runtimeMode === 'CREDITS' && (
               <>
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-gray-800 mb-1">
@@ -1372,7 +1625,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
             )}
 
             {/* ═══════════════════════════════════════════════════════════ */}
-            {/* Advanced Settings (BYOK + PLATFORM_MANAGED only)           */}
+            {/* Advanced Settings (BYOK + CREDITS only)           */}
             {/* ═══════════════════════════════════════════════════════════ */}
             {runtimeMode !== 'DISABLED' && (
               <div className="space-y-4 mb-6">
@@ -1478,7 +1731,7 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
             )}
 
             {/* ═══════════════════════════════════════════════════════════ */}
-            {/* Model Diagnostics (BYOK + PLATFORM_MANAGED only)           */}
+            {/* Model Diagnostics (BYOK + CREDITS only)           */}
             {/* ═══════════════════════════════════════════════════════════ */}
             {runtimeMode !== 'DISABLED' && (
               <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
@@ -1495,9 +1748,9 @@ const [healthResult, setHealthResult] = useState<ProviderHealthResponse | null>(
                       <p className="mt-1 text-xs text-gray-400">
                         {t('settings.diagnosticsTokenNote', 'This sends a few provider requests and may consume tokens.')}
                       </p>
-                      {runtimeMode === 'PLATFORM_MANAGED' && (
+                      {runtimeMode === 'CREDITS' && (
                         <p className="mt-1 text-xs text-blue-600">
-                          Tests the selected model using platform credentials.
+                          {t('settings.diagnosticsCreditsNote', 'Tests the selected model using platform credits.')}
                         </p>
                       )}
                     </div>

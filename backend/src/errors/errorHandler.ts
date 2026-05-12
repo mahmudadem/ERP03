@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from './AppError';
 import { ErrorCode, ErrorSeverity, ApiErrorResponse } from './ErrorCodes';
 import { ProviderError } from './ProviderErrors';
+import { ApiError as HttpApiError } from '../api/errors/ApiError';
 
 function isFirestoreTransactionError(err: Error): boolean {
   const msg = err.message || '';
@@ -26,6 +27,24 @@ export function errorHandler(
     url: req.url,
     method: req.method,
   });
+
+  const maybeApiError = err as Error & { statusCode?: number; code?: string };
+  if (
+    err instanceof HttpApiError ||
+    (maybeApiError.name === 'ApiError' && typeof maybeApiError.statusCode === 'number')
+  ) {
+    const response: ApiErrorResponse = {
+      success: false,
+      error: {
+        code: (maybeApiError.code || ErrorCode.INFRA_UNKNOWN_ERROR) as ErrorCode,
+        message: err.message,
+        severity: ErrorSeverity.ERROR,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    return res.status(maybeApiError.statusCode || 500).json(response);
+  }
 
   if (err instanceof AppError) {
     // Provider errors have specific HTTP status codes that don't follow the

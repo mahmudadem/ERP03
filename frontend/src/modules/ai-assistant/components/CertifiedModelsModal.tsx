@@ -18,6 +18,7 @@ import {
   X,
   Check,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   aiAssistantApi,
@@ -168,6 +169,16 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
             </div>
           </div>
 
+          {/* Shell certification disclaimer */}
+          <div className="px-6 pt-2">
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" />
+              <span>
+                {t('settings.certifiedModels.shellDisclaimer', 'Certification scores reflect structural and connectivity checks. Full ERP module coverage requires comprehensive test suites that may not yet be complete. Treat WARNING scores with caution.')}
+              </span>
+            </div>
+          </div>
+
           {/* Content */}
           <div className="px-6 py-4">
             {loading && (
@@ -217,6 +228,9 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
                       <th className="text-left px-4 py-2.5 font-medium text-gray-600">
                         {t('settings.certifiedModels.columnStatus', 'Status')}
                       </th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-600">
+                        {t('settings.certifiedModels.columnScore', 'Score')}
+                      </th>
                       <th className="text-right px-4 py-2.5 font-medium text-gray-600">
                         {/* Select column */}
                       </th>
@@ -231,6 +245,14 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
                       const categories = getCategories(entry);
                       const toolMode = String(profile.toolMode || 'unknown');
                       const status = getProfileStatus(entry);
+
+                      // Build certification score summary
+                      const certScores = entry.certifications
+                        ?.filter((c) => !BLOCKED_CERT_STATUSES.has(String(c.status).toLowerCase()))
+                        ?? [];
+                      const bestScore = certScores.length > 0
+                        ? certScores.reduce((best, c) => (c.score > best.score ? c : best), certScores[0])
+                        : null;
 
                       return (
                         <tr key={idx} className="hover:bg-gray-50 transition-colors">
@@ -272,6 +294,22 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
                             }`}>
                               {status}
                             </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-gray-600">
+                            {bestScore ? (
+                              <div className="flex flex-wrap gap-1">
+                                <span className="inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-medium bg-gray-50">
+                                  {bestScore.score}/{bestScore.maxScore}
+                                </span>
+                                {certScores.length > 1 && (
+                                  <span className="text-xs text-gray-400">
+                                    +{certScores.length - 1} {t('settings.certifiedModels.moreCerts', 'more')}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <button

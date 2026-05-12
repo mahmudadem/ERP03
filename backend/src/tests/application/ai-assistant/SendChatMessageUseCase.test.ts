@@ -138,6 +138,13 @@ describe('SendChatMessageUseCase', () => {
     ProviderFactory.clearCache();
     chatRepo = createMockChatRepo();
     encryptionService = createMockEncryptionService();
+    // Clear static deduplication locks to prevent test pollution
+    (SendChatMessageUseCase as any).activeLocks.clear();
+  });
+
+  afterEach(() => {
+    // Clear static deduplication locks after each test
+    (SendChatMessageUseCase as any).activeLocks.clear();
   });
 
   describe('with mock provider', () => {
@@ -815,11 +822,11 @@ describe('SendChatMessageUseCase', () => {
       expect(result).toBeDefined();
     });
 
-    it('should reject PLATFORM_MANAGED when no providerRepository is wired', async () => {
-      const config = createConfig('PLATFORM_MANAGED', undefined);
+    it('should reject CREDITS when no providerRepository is wired (credit system not configured)', async () => {
+      const config = createConfig('CREDITS', undefined);
       settingsRepo = createMockSettingsRepo(config);
 
-      // Without providerRepository, PLATFORM_MANAGED should fail
+      // Without providerRepository, CREDITS should fail with "Credit system is not configured"
       const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
 
       try {
@@ -831,9 +838,16 @@ describe('SendChatMessageUseCase', () => {
       }
     });
 
-    it('should reject PLATFORM_MANAGED when provider has no platformRuntimeCredential', async () => {
-      const config = createConfig('PLATFORM_MANAGED', undefined);
+    it('should reject CREDITS when provider has no platformRuntimeCredential', async () => {
+      const config = createConfig('CREDITS', undefined);
       settingsRepo = createMockSettingsRepo(config);
+
+      // Create a mock credit ledger repo that returns a ledger with credits
+      const mockCreditLedgerRepo = {
+        getByCompanyId: jest.fn().mockResolvedValue({ balance: 100, hasCredits: () => true }),
+        save: jest.fn(),
+      };
+
       mockProviderRepo.list.mockResolvedValue([
         { id: 'openai:openai', type: 'openai_compatible', platformRuntimeCredential: undefined },
       ]);
@@ -842,6 +856,7 @@ describe('SendChatMessageUseCase', () => {
         chatRepo, settingsRepo, encryptionService, createMockHttpClient(),
         undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
         mockProviderRepo,
+        mockCreditLedgerRepo as any,
       );
 
       try {
@@ -853,9 +868,17 @@ describe('SendChatMessageUseCase', () => {
       }
     });
 
-    it('should use platform credential when PLATFORM_MANAGED and provider has credential', async () => {
-      const config = createConfig('PLATFORM_MANAGED', undefined);
+    it('should use platform credential when CREDITS and provider has credential', async () => {
+      const config = createConfig('CREDITS', undefined);
       settingsRepo = createMockSettingsRepo(config);
+
+      // Create a mock credit ledger repo that returns a ledger with credits
+      const mockLedger = { balance: 100, hasCredits: () => true, debit: jest.fn(), companyId: 'company-1' };
+      const mockCreditLedgerRepo = {
+        getByCompanyId: jest.fn().mockResolvedValue(mockLedger),
+        save: jest.fn().mockResolvedValue({}),
+      };
+
       mockProviderRepo.list.mockResolvedValue([
         { id: 'openai:openai', type: 'openai_compatible', platformRuntimeCredential: 'enc:platform-key' },
       ]);
@@ -868,12 +891,17 @@ describe('SendChatMessageUseCase', () => {
         chatRepo, settingsRepo, encryptionService, httpClient as any,
         undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
         mockProviderRepo,
+        mockCreditLedgerRepo as any,
       );
 
       const result = await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
       expect(result).toBeDefined();
       // Verify the provider key was decrypted from platform credential
       expect(encryptionService.decrypt).toHaveBeenCalledWith('enc:platform-key');
+      // Verify credit ledger was fetched, debited, and saved after successful response
+      expect(mockCreditLedgerRepo.getByCompanyId).toHaveBeenCalledWith('company-1');
+      expect(mockLedger.debit).toHaveBeenCalledWith(1, expect.stringContaining('chat_request_'));
+      expect(mockCreditLedgerRepo.save).toHaveBeenCalled();
     });
 
     it('should NOT fall back to platform credential when runtimeMode is BYOK even if provider has credential', async () => {
@@ -899,6 +927,391 @@ describe('SendChatMessageUseCase', () => {
         // Platform credential should NEVER be checked for BYOK mode
         expect(encryptionService.decrypt).not.toHaveBeenCalled();
       }
+    });
+
+    it('should reject CREDITS with 403 BEFORE provider/HTTP call when no ledger exists', async () => {
+      const config = createConfig('CREDITS', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+
+      // Mock credit ledger repo that returns null (no ledger)
+      const mockCreditLedgerRepo = {
+        getByCompanyId: jest.fn().mockResolvedValue(null),
+        save: jest.fn().mockResolvedValue({}),
+      };
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, createMockHttpClient(),
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockProviderRepo,
+        mockCreditLedgerRepo as any,
+      );
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(403);
+        expect((error as ApiError).message).toContain('No AI credits remaining');
+        // Credit check happens before provider call — no debit or save should occur
+        expect(mockCreditLedgerRepo.getByCompanyId).toHaveBeenCalledWith('company-1');
+        expect(mockCreditLedgerRepo.save).not.toHaveBeenCalled();
+      }
+    });
+
+    it('should reject CREDITS with 403 BEFORE provider/HTTP call when ledger hasCredits() is false', async () => {
+      const config = createConfig('CREDITS', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+
+      // Mock credit ledger repo that returns a ledger with zero credits
+      const mockCreditLedgerRepo = {
+        getByCompanyId: jest.fn().mockResolvedValue({ balance: 0, hasCredits: () => false, debit: jest.fn(), companyId: 'company-1' }),
+        save: jest.fn().mockResolvedValue({}),
+      };
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, createMockHttpClient(),
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockProviderRepo,
+        mockCreditLedgerRepo as any,
+      );
+
+      try {
+        await useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(403);
+        expect((error as ApiError).message).toContain('No AI credits remaining');
+        // Should NOT debit or save — rejection is before provider call
+        expect(mockCreditLedgerRepo.getByCompanyId).toHaveBeenCalledWith('company-1');
+        expect(mockCreditLedgerRepo.save).not.toHaveBeenCalled();
+      }
+    });
+
+    it('should NOT debit credits or save ledger when CREDITS provider call fails', async () => {
+      const config = createConfig('CREDITS', undefined);
+      settingsRepo = createMockSettingsRepo(config);
+
+      const mockLedger = { balance: 100, hasCredits: () => true, debit: jest.fn(), companyId: 'company-1' };
+      const mockCreditLedgerRepo = {
+        getByCompanyId: jest.fn().mockResolvedValue(mockLedger),
+        save: jest.fn().mockResolvedValue({}),
+      };
+
+      mockProviderRepo.list.mockResolvedValue([
+        { id: 'openai:openai', type: 'openai_compatible', platformRuntimeCredential: 'enc:platform-key' },
+      ]);
+
+      // Use an HTTP client that throws to simulate provider call failure
+      const failingHttpClient = {
+        request: jest.fn().mockRejectedValue(new Error('Provider connection failed')),
+      } as unknown as IHttpClient;
+
+      // Also need a rate-limiter-safe config that won't block on rate limits
+      const usageLogRepo = {
+        create: jest.fn().mockResolvedValue({}),
+      };
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, failingHttpClient,
+        usageLogRepo as any,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockProviderRepo,
+        mockCreditLedgerRepo as any,
+      );
+
+      await expect(
+        useCase.execute({ companyId: 'company-1', userId: 'user-1', message: 'Hello' }),
+      ).rejects.toThrow();
+
+      // Credit check (in resolveRuntimeCredential) happened, but post-response debit should NOT have occurred
+      // because the provider call failed, jumping to the catch block before debit logic
+      expect(mockLedger.debit).not.toHaveBeenCalled();
+      expect(mockCreditLedgerRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('concurrent request deduplication', () => {
+    it('should reject with 409 when same company/user/conversation is already being processed', async () => {
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      // Manually add a lock to simulate an in-progress request
+      const lockKey = 'company-1:user-1:conv-dedupe-test';
+      (SendChatMessageUseCase as any).activeLocks.add(lockKey);
+
+      try {
+        await useCase.execute({
+          companyId: 'company-1',
+          userId: 'user-1',
+          message: 'Hello',
+          conversationId: 'conv-dedupe-test',
+        });
+        fail('Should have thrown');
+      } catch (error) {
+        expect((error as ApiError).statusCode).toBe(409);
+        expect((error as ApiError).message).toContain('already being processed');
+      } finally {
+        (SendChatMessageUseCase as any).activeLocks.delete(lockKey);
+      }
+    });
+
+    it('should allow different conversations from the same user while one is locked', async () => {
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      // Lock conversation A
+      (SendChatMessageUseCase as any).activeLocks.add('company-1:user-1:conv-A');
+
+      // Conversation B should still succeed
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'Hello from conversation B',
+        conversationId: 'conv-B',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.userMessage.conversationId).toBe('conv-B');
+
+      // Cleanup
+      (SendChatMessageUseCase as any).activeLocks.delete('company-1:user-1:conv-A');
+    });
+
+    it('should release lock after successful execution', async () => {
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const useCase = new SendChatMessageUseCase(chatRepo, settingsRepo, encryptionService, createMockHttpClient());
+
+      // Execute once — should succeed and release lock
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'Hello',
+        conversationId: 'conv-lock-release',
+      });
+
+      expect(result).toBeDefined();
+
+      // Lock should be released — same conversation should work again
+      const result2 = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'Hello again',
+        conversationId: 'conv-lock-release',
+      });
+
+      expect(result2).toBeDefined();
+    });
+
+    it('should release lock after provider error', async () => {
+      const config = createOpenAiConfig('gpt-4o');
+      settingsRepo = createMockSettingsRepo(config);
+
+      // Use an HTTP client that will cause a provider error after config resolution
+      const failingProviderRepo = {
+        getById: jest.fn(),
+        list: jest.fn().mockResolvedValue([
+          { id: 'openai:openai', type: 'openai_compatible', platformRuntimeCredential: 'plain:test-key' },
+        ]),
+        save: jest.fn(),
+        delete: jest.fn(),
+      };
+
+      // A mock HTTP client that throws on request to simulate provider failure
+      const failingHttpClient = {
+        request: jest.fn().mockRejectedValue(new Error('Provider connection failed')),
+      } as unknown as IHttpClient;
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, failingHttpClient,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        failingProviderRepo as any,
+      );
+
+      // This should throw but release the lock
+      const lockKeyBefore = 'company-1:user-1:conv-error-release';
+      try {
+        await useCase.execute({
+          companyId: 'company-1',
+          userId: 'user-1',
+          message: 'This will fail',
+          conversationId: 'conv-error-release',
+        });
+        fail('Should have thrown');
+      } catch (error) {
+        // Expected error from provider
+        expect(error).toBeDefined();
+      }
+
+      // After the error, the lock must be released — a new request for the same conversation should not get 409
+      // We can check directly that the lock was removed
+      expect((SendChatMessageUseCase as any).activeLocks.has(lockKeyBefore)).toBe(false);
+    });
+  });
+
+  describe('context window overflow guard', () => {
+    /** Helper: creates a mock modelProfileUseCase that returns a profile with the given maxContextTokens. */
+    const createMockModelProfileUseCase = (maxContextTokens: number) => ({
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'mock',
+        modelName: 'mock-assistant',
+        status: 'recommended',
+        supportsToolCalling: false,
+        supportsStructuredJson: false,
+        maxContextTokens,
+        recommendedUseCases: ['development', 'testing'],
+        warningLevel: 'none',
+        textOnlyMode: false,
+        warningMessage: '',
+      }),
+    });
+
+    /** Helper: creates a chat repository that returns messages with specified content length. */
+    const createChatRepoWithHistory = (messageCount: number, charsPerMessage: number): IAiChatRepository => {
+      const longContent = 'x'.repeat(charsPerMessage);
+      const messages: any[] = [];
+      for (let i = 0; i < messageCount; i++) {
+        messages.push({
+          role: i % 2 === 0 ? 'user' : 'assistant',
+          content: longContent,
+          metadata: {},
+          companyId: 'company-1',
+          userId: 'user-1',
+          conversationId: 'conv-overflow-test',
+        });
+      }
+      return {
+        create: jest.fn((msg: any) => Promise.resolve(msg)),
+        getConversationMessages: jest.fn(() => Promise.resolve(messages)),
+        getRecentConversations: jest.fn(() => Promise.resolve([])),
+        deleteConversation: jest.fn(() => Promise.resolve()),
+        countToday: jest.fn(() => Promise.resolve(0)),
+      };
+    };
+
+    it('should add overflow warning and still return a response when context exceeds model limit', async () => {
+      // Use a small maxContextTokens so the system prompt alone exceeds 90% threshold.
+      const mockModelProfileUseCase = createMockModelProfileUseCase(500);
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const chatRepoWithHistory = createChatRepoWithHistory(4, 900);
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepoWithHistory, settingsRepo, encryptionService, createMockHttpClient(),
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockModelProfileUseCase as any,
+      );
+
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'Tell me about sales',
+        conversationId: 'conv-overflow-test',
+      });
+
+      // Response should still succeed
+      expect(result).toBeDefined();
+      expect(result.assistantMessage).toBeDefined();
+      expect(result.assistantMessage.content).toBeDefined();
+
+      // Overflow warning should be present
+      expect(result.runtimeMeta).toBeDefined();
+      const overflowWarning = result.runtimeMeta!.runtimeWarnings.find(
+        w => w.includes("approaching the model's limit"),
+      );
+      expect(overflowWarning).toBeDefined();
+      expect(overflowWarning).toContain('500');
+    });
+
+    it('should preserve system prompt and current user message after trimming', async () => {
+      // Use a small maxContextTokens to force trimming of history messages.
+      const mockModelProfileUseCase = createMockModelProfileUseCase(500);
+      const config = createOpenAiConfig('gpt-4o-mini');
+      settingsRepo = createMockSettingsRepo(config);
+
+      const httpClient = new SequenceHttpClient([{
+        model: 'gpt-4o-mini',
+        choices: [{
+          message: {
+            role: 'assistant',
+            content: 'Here is a summary of recent activity.',
+          },
+          finish_reason: 'stop',
+        }],
+        usage: { prompt_tokens: 200, completion_tokens: 50, total_tokens: 250 },
+      }]);
+
+      const chatRepoWithHistory = createChatRepoWithHistory(4, 900);
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepoWithHistory, settingsRepo, encryptionService, httpClient as unknown as IHttpClient,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        mockModelProfileUseCase as any,
+      );
+
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'What is our sales total?',
+        conversationId: 'conv-trim-test',
+      });
+
+      expect(result).toBeDefined();
+
+      // Inspect the messages sent to the provider
+      const sentMessages = (httpClient.requests[0].body as any).messages as Array<{ role: string; content: string }>;
+      expect(sentMessages.length).toBeGreaterThan(0);
+
+      // System prompt must be the first message
+      expect(sentMessages[0].role).toBe('system');
+      expect(sentMessages[0].content.length).toBeGreaterThan(100);
+
+      // Current user message must be the last message
+      const lastMessage = sentMessages[sentMessages.length - 1];
+      expect(lastMessage.role).toBe('user');
+      expect(lastMessage.content).toContain('What is our sales total?');
+
+      // History messages should have been trimmed: fewer messages than
+      // system(1) + 4_history + user(1) = 6 total
+      expect(sentMessages.length).toBeLessThan(6);
+
+      // Overflow warning should be present
+      const overflowWarning = result.runtimeMeta!.runtimeWarnings.find(
+        w => w.includes("approaching the model's limit"),
+      );
+      expect(overflowWarning).toBeDefined();
+    });
+
+    it('should not add overflow warning for short context within model limits', async () => {
+      // Default mock config has maxContextTokens: 4096 (fallback for unknown models).
+      // A short message with no history should be well within limits.
+      const mockConfig = AiProviderConfig.defaultForCompany('company-1');
+      settingsRepo = createMockSettingsRepo(mockConfig);
+
+      const useCase = new SendChatMessageUseCase(
+        chatRepo, settingsRepo, encryptionService, createMockHttpClient(),
+      );
+
+      const result = await useCase.execute({
+        companyId: 'company-1',
+        userId: 'user-1',
+        message: 'Hello',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.runtimeMeta).toBeDefined();
+
+      // No overflow warning should be present for a short message
+      const overflowWarning = result.runtimeMeta!.runtimeWarnings.find(
+        w => w.includes("approaching the model's limit"),
+      );
+      expect(overflowWarning).toBeUndefined();
     });
   });
 });

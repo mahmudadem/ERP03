@@ -23,6 +23,9 @@ type AccountClassification = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXP
 interface ChartOfAccountsSummaryDTO {
   totalAccounts: number;
   byClassification: Record<string, number>;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
   topAccounts: Array<{
     code: string;
     name: string;
@@ -71,19 +74,26 @@ export class GetChartOfAccountsSummaryTool implements AiTool {
       }
 
       // Top 20 accounts by absolute balance (use netBalance if available)
-      const topAccounts = accounts
+      const allAccounts = accounts
         .map((a: any) => ({
           code: a.userCode || a.code || '',
           name: a.name || '',
           classification: a.classification || 'EXPENSE',
           balance: round2(a.netBalance ?? a.balance ?? 0),
         }))
-        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance))
-        .slice(0, 20);
+        .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+      const totalCount = allAccounts.length;
+      const topAccounts = allAccounts.slice(0, 20);
+      const truncated = totalCount > 20;
 
       const summary: ChartOfAccountsSummaryDTO = {
-        totalAccounts: accounts.length,
+        totalAccounts: totalCount,
         byClassification,
+        displayedCount: topAccounts.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing top 20 of ${totalCount} accounts by balance. Navigate to the Chart of Accounts for the complete list.`
+          : undefined,
         topAccounts,
       };
 

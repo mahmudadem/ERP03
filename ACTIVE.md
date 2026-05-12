@@ -1,10 +1,597 @@
 # 🎯 Current Focus
 
-**Task:** AI Settings UX — Final Gaps Closure (Subtasks 6 & 8)
-**Started:** 2026-05-11
-**Status:** ✅ COMPLETE — Profile deprecation + reload restoration
+**Task:** AI Assistant Fixing Plan — Phase 3B/3C Tool Truncation Signals
+**Started:** 2026-05-12
+**Status:** 🟡 Phase 3B/3C complete — Ready for Phase 4
 **Agent/IDE:** OpenCode (CTO Mode)
 **Branch:** `feat/ai-proposal-sandbox`
+
+---
+
+## Next Recommended Move
+
+Phase 3B/3C (truncation signals) is complete. Next recommended move:
+1. Phase 4.1: Add "Respond in User's Language" rule to system prompt.
+2. Phase 4.2: Add broader intent keywords to skills.
+3. Phase 4.3: Lightweight mode for non-tool messages.
+
+---
+
+## 2026-05-13 Urgent Detour Result — Module Access 403 Trace
+
+**Status:** ✅ COMPLETE
+**Estimate:** 45-60m
+**Actual time:** ~55m
+
+### Root Cause
+
+Super Admin grants entitlements, but tenant module access is resolved from:
+1. company module enablement records,
+2. entitlement state,
+3. module registry availability.
+
+The seeder was creating module registry records without `code`, `version`, `lifecycleStatus`, or `implementationStatus`. The Firestore registry repository then defaulted those records to `lifecycleStatus='draft'` and `implementationStatus='unchecked'`, so implemented modules could be granted by Super Admin but still filtered out from Company Admin availability.
+
+Follow-up browser verification exposed a second root cause: `platform.router` was mounted before `/tenant`, and platform sub-routers with root-level `assertSuperAdmin` guards intercepted authenticated `/tenant/...` requests before `tenant.router` could handle them.
+
+### Changes
+
+- `backend/src/seeder/seedOnboardingData.ts`
+  - Seed implemented modules as registry-ready: `ready`, `available`, `passed`, `version=1.0.0`, `code=<moduleId>`.
+- `backend/src/errors/errorHandler.ts`
+  - Root backend error handler now returns `ApiError.statusCode` correctly.
+- `frontend/src/api/companyModules.ts`
+  - Company module list no longer converts API failures to an empty list.
+- `frontend/src/pages/company-admin/pages/ModulesPage.tsx`
+  - Company Admin Modules page now shows the actual module-load error instead of "No modules available" when the API fails.
+- `frontend/src/locales/{en,ar,tr}/common.json`
+  - Added translated Company Admin module-load error strings.
+- `backend/src/api/server/router.ts`
+  - Moved `/tenant` before `platformRouter` so Company Admin tenant routes cannot be intercepted by root-mounted Super Admin platform guards.
+- `backend/src/api/__tests__/routerOrdering.test.ts`
+  - Added regression coverage for tenant-before-platform route ordering.
+- Emulator data
+  - Targeted registry update applied for `accounting`, `inventory`, `purchase`, `sales`, and `ai-assistant`.
+  - Rebuilt and restarted emulator from `firebase-export-before-routefix-20260513-024048`.
+
+### Verification
+
+- `backend`: targeted module availability/access tests ✅ — 33/33
+- `frontend`: `npm run typecheck` ✅
+- `backend`: `npm run typecheck` ✅
+- `backend`: router-order regression test ✅
+- Runtime endpoint check ✅
+  - `/tenant/company-admin/modules` returns 200 with SYCO modules.
+  - `/tenant/company-admin/modules/active` returns 200 with active module IDs.
+  - `/system/module-settings/definitions` still returns the expected Super Admin 403 for tenant users.
+
+### Next Step
+
+Hard refresh the frontend and verify Company Admin Modules shows the five granted modules, then verify tenant Accounting/Inventory pages load.
+
+---
+
+## 2026-05-13 Result — AI Assistant Fixing Plan Phase 3B/3C Tool Truncation Signals
+
+**Status:** ✅ COMPLETE, reviewed, verified
+**Estimate:** 60-90m
+**Actual time:** ~50m
+
+### Changes
+
+Added explicit truncation signals (`truncated`, `displayedCount`/`totalCount`, `truncationNote`) to ALL 12 AI tools that limit results with `.slice()`:
+
+**Accounting/Reporting tools:**
+1. **`GetTrialBalanceSummaryTool.ts`** — `accountCount`, `displayedCount`, `truncated`, `truncationNote`
+2. **`GetChartOfAccountsSummaryTool.ts`** — `totalAccounts`, `displayedCount`, `truncated`, `truncationNote`
+3. **`GetGeneralLedgerSummaryTool.ts`** — `totalAccounts`, `displayedCount`, `truncated`, `truncationNote`
+4. **`GetProfitAndLossTool.ts`** — `totalRevenueAccounts`, `totalExpenseAccounts`, `displayedRevenue`, `displayedExpenses`, `truncated`, `truncationNote`
+5. **`GetBalanceSheetTool.ts`** — `totalAssetAccounts`, `totalLiabilityAccounts`, `totalEquityAccounts`, `displayedAssets/Liabilities/Equity`, `truncated`, `truncationNote`
+6. **`GetCashFlowTool.ts`** — `totalItems`/`displayedCount` per section (operating/investing/financing), `truncated`, `truncationNote`
+7. **`GetAgingReceivablesTool.ts`** — `totalAccounts`, `displayedCount`, `truncated`, `truncationNote`
+8. **`GetAgingPayablesTool.ts`** — `totalAccounts`, `displayedCount`, `truncated`, `truncationNote`
+
+**Sales/Purchases tools:**
+9. **`GetSalesSummaryTool.ts`** — `totalCustomers`, `displayedCount`, `truncated`, `truncationNote`
+10. **`GetPurchaseSummaryTool.ts`** — `totalSuppliers`, `displayedCount`, `truncated`, `truncationNote`
+11. **`GetTopCustomersTool.ts`** — `totalCount`, `displayedCount`, `truncated`, `truncationNote`
+12. **`GetTopSuppliersTool.ts`** — `totalCount`, `displayedCount`, `truncated`, `truncationNote`
+
+**Tools NOT modified (no truncation):**
+- `GetFinancialOverviewTool.ts` — aggregated totals only
+- `GetMonthlyComparisonTool.ts` — all months in period
+- `GetFiscalYearStatusTool.ts` — single status object
+- `GetAccountStatementSummaryTool.ts` — single account summary
+- `GetAccountBalanceTool.ts` — single account balance
+
+**Detour fix:**
+- **`GlobalAiWidget.tsx`** — Added missing `X` icon import from lucide-react (pre-existing build blocker).
+
+### Verification
+
+- `backend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+### Documentation
+
+- `1-TODO/done/88-ai-assistant-phase3b-truncation-signals.md`
+
+---
+
+## 2026-05-13 Progress — AI Assistant Fixing Plan Phase 3A
+
+**Status:** ✅ Phase 3A complete, reviewed, verified
+**Estimate:** 45-60m
+**Actual time:** ~45m
+
+### Changes
+
+1. **`SendChatMessageUseCase.ts`**
+   - Added `estimateTokenCount(text)` using `Math.ceil(text.length / 3.5)`.
+   - Added context-window overflow guard after `providerMessages` is built and before provider request execution.
+   - If estimated prompt tokens exceed 90% of `modelProfile.maxContextTokens`, the use case adds a runtime warning and trims oldest history messages until under 85% of the model limit.
+   - The guard preserves the system prompt and the current user message.
+
+2. **`SendChatMessageUseCase.test.ts`**
+   - Added tests for overflow warning behavior.
+   - Added tests verifying system prompt/current user message preservation.
+   - Added test verifying normal short context does not trigger overflow warning.
+
+### Review / Verification
+
+- `erp-reviewer`: ✅ PASS with medium follow-up notes.
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 35/35
+- `backend`: `npm run build` ✅
+
+### Follow-Up Notes
+
+- Current guard estimates message content only. Tool-definition serialization overhead is not counted yet.
+- The guard runs before the first provider call. Multi-round tool-planning messages can still grow context mid-loop; consider re-checking `activeMessages` before each provider round in a later refinement.
+
+---
+
+## 2026-05-12 Result — AI Assistant Fixing Plan Phase 2 Security Hardening
+
+**Status:** ✅ COMPLETE, reviewed, verified
+**Estimate:** 60-90m
+**Actual time:** ~1h 20m
+
+### Completed Subtasks
+
+1. **Phase 2A — Prompt injection sanitization**
+   - Added recursive `sanitizeForPrompt()` in `AiToolCallingOrchestrator`.
+   - Sanitizes ERP tool-result data before AI prompt insertion.
+   - Covers direct tool-result context and structured provider context.
+   - Avoids corrupting legitimate business terms containing `inst`, `sys`, or `system` substrings.
+
+2. **Phase 2B — Concurrent request deduplication**
+   - Added per-process active lock set in `SendChatMessageUseCase`.
+   - Lock key: `companyId:userId:conversationId`.
+   - Same company/user/conversation concurrent sends return 409 Conflict.
+   - Different conversations/users/companies are not blocked.
+   - Locks are released in `finally` on success or error.
+
+### Verification
+
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 32/32
+- `frontend`: `npm run build` ✅
+- `npm run graph:update` ✅ — graphify updated after Phase 2 changes
+
+### Notes
+
+- `AiToolCalling` targeted prompt-sanitization tests pass, but the full `npm run test -- AiToolCalling` command still includes two pre-existing unrelated `CheckProviderHealthUseCase - Cooldown` failures.
+- Concurrent locks are process-local. Distributed locking should be considered if the backend runs across multiple instances.
+
+### Documentation
+
+- `1-TODO/done/87-ai-assistant-phase2-security-hardening.md`
+- `docs/architecture/ai-assistant-security-hardening.md`
+- `docs/user-guide/ai-assistant-security.md`
+
+---
+
+## 2026-05-12 Progress — AI Assistant Fixing Plan Phase 2A
+
+**Status:** ✅ Phase 2A complete, reviewed; targeted tests pass
+**Estimate:** 30-45m
+**Actual time:** ~35m
+
+### Changes
+
+1. **`AiToolCallingOrchestrator.ts`**
+   - Added recursive `sanitizeForPrompt()` for tool-result data before it enters AI prompt context.
+   - Sanitizes common prompt-injection phrases such as ignoring previous instructions, revealing secrets/keys/tokens, role override phrases, and instruction-forgetting phrases.
+   - Sanitizes bracket/angle prompt markers like `[SYSTEM]`, `[INST]`, `[SYS]`, `<SYSTEM>` without corrupting legitimate words like `INSTALLATION`, `INSTITUTE`, `SYSTEMIC`, or `sysadmin`.
+   - Applied sanitization in both `formatToolResultsForContext()` and `formatStructuredResultsForProviderContext()` before `JSON.stringify()`.
+
+2. **`AiToolCalling.test.ts`**
+   - Added prompt-sanitization tests for direct tool-result context and structured provider context.
+   - Added regression tests for nested objects/arrays and false-positive business terms.
+
+### Review / Verification
+
+- `erp-reviewer`: ✅ PASS.
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run test -- AiToolCalling` ⚠️ new sanitization tests pass, but two pre-existing `CheckProviderHealthUseCase - Cooldown` tests in the same file still fail because health checks return `ready=false` instead of expected `true`.
+
+### Rabbit Hole Logged
+
+- Pre-existing cooldown test failures in `AiToolCalling.test.ts` unrelated to Phase 2A. Needs separate investigation after Phase 2 unless it blocks a later verification gate.
+
+---
+
+## 2026-05-12 Result — AI Assistant Fixing Plan Phase 1 Business Model Fix
+
+**Status:** ✅ COMPLETE, reviewed, verified
+**Estimate:** 4-5h
+**Actual time:** ~3h 15m
+
+### Completed Subtasks
+
+1. **Phase 1A — Runtime mode domain/API cleanup**
+   - Replaced active `PLATFORM_MANAGED` runtime mode with `CREDITS` in backend domain/DTO/validator/Prisma documentation.
+   - Kept legacy `PLATFORM_MANAGED` → `CREDITS` mapping in `AiProviderConfig.fromJSON()`.
+
+2. **Phase 1B — Credit ledger foundation**
+   - Added `AiCreditLedger` domain entity.
+   - Added `IAiCreditLedgerRepository`.
+   - Added Firestore repository at `companies/{companyId}/ai_credit_ledger/current`.
+   - Registered `aiCreditLedgerRepository` in DI.
+
+3. **Phase 1C — Runtime credit enforcement**
+   - CREDITS mode checks credit balance before provider call.
+   - CREDITS mode uses provider `platformRuntimeCredential` for platform-funded execution.
+   - Successful chat responses debit 1 credit after provider success.
+   - Failed provider requests do not consume credits.
+   - Added audit event `AI_CREDIT_DEBIT_FAILED` for debit/save failures.
+
+4. **Phase 1D — Frontend runtime-mode migration**
+   - Frontend runtime-mode types now support `BYOK | CREDITS | DISABLED`.
+   - Removed frontend `PLATFORM_MANAGED` and `BUILT_IN` runtime-mode references.
+   - Added EN/AR/TR CREDITS labels and descriptions.
+
+5. **Phase 1E — Credit APIs**
+   - Added `GET /tenant/ai-assistant/credits`.
+   - Added `POST /platform/ai-assistant/credits/grant`.
+   - Added frontend API client functions for both endpoints.
+   - Fixed Super Admin guard detour: `assertSuperAdmin` now enforces whenever applied, including `/platform/*` routes.
+
+### Verification
+
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 28/28
+- `backend`: `npm run test -- assertSuperAdmin` ✅ — 4/4
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- `frontend/src`: no `PLATFORM_MANAGED` or `BUILT_IN` occurrences ✅
+- `backend/src`: only accepted legacy `PLATFORM_MANAGED` mapping remains in `AiProviderConfig.fromJSON()` ✅
+- `npm run graph:update` ✅ — graphify updated after code changes
+
+### Detours
+
+- **Super Admin guard security fix (~15m):** `assertSuperAdmin` previously skipped enforcement unless URL contained `/super-admin`, which left `/platform/*` routes insufficiently protected despite route-level `router.use(assertSuperAdmin)`. Fixed middleware and added tests.
+
+### Documentation
+
+- `1-TODO/done/86-ai-assistant-phase1-credits.md`
+- `docs/architecture/ai-assistant-credits-runtime.md`
+- `docs/user-guide/ai-assistant-credits.md`
+
+---
+
+## 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1D
+
+**Status:** ✅ Phase 1D complete, reviewed, verified
+**Estimate:** 45-60m
+**Actual time:** ~40m
+
+### Changes
+
+1. **`aiAssistantApi.ts`**
+   - Updated frontend runtime-mode request types to `'BYOK' | 'CREDITS' | 'DISABLED'`.
+   - Removed frontend `BUILT_IN` from runtime-mode unions.
+
+2. **`AiAssistantSettingsPage.tsx`**
+   - Migrated runtime-mode state/defaults from `PLATFORM_MANAGED` to `CREDITS`.
+   - CREDITS mode now owns the certified-model/ERP03 provided model UI that previously belonged to PLATFORM_MANAGED.
+   - BYOK API-key behavior remains unchanged.
+   - Extracted the new diagnostics credits note into i18n.
+
+3. **i18n EN/AR/TR**
+   - Added/renamed `runtimeModeCREDITS` and `runtimeModeCREDITSDesc` in `aiAssistant.json`.
+   - Replaced common runtime-mode `PLATFORM_MANAGED`/`BUILT_IN` labels with `CREDITS` labels.
+   - Added missing `providerDesc`, `securityDesc`, and `diagnosticsCreditsNote` keys in EN/AR/TR.
+
+### Review / Verification
+
+- `erp-reviewer`: ✅ PASS for Phase 1D scope.
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- `frontend/src`: no `PLATFORM_MANAGED` or `BUILT_IN` occurrences ✅
+
+### Rabbit Holes Logged
+
+- `AiAssistantSettingsPage.tsx` has pre-existing i18n gaps for some certification labels and catch-block fallback errors. They are not part of Phase 1D but should be handled in a later i18n polish pass.
+
+---
+
+## 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1C
+
+**Status:** ✅ Phase 1C complete, reviewed, verified
+**Estimate:** 60-90m
+**Actual time:** ~55m
+
+### Changes
+
+1. **`SendChatMessageUseCase.ts`**
+   - Added optional `IAiCreditLedgerRepository` dependency.
+   - Replaced runtime `PLATFORM_MANAGED` logic with `CREDITS`.
+   - Checks credit ledger before provider call.
+   - Uses provider registry `platformRuntimeCredential` for CREDITS mode.
+   - Debits 1 credit only after successful chat response.
+   - Maps insufficient-credit debit failure to `ApiError.forbidden(...)`.
+   - Adds `AI_CREDIT_DEBIT_FAILED` audit log when debit/save fails for non-insufficient-credit reasons.
+
+2. **`CheckProviderHealthUseCase.ts`**
+   - Replaced runtime credential logic/comment from `PLATFORM_MANAGED` to `CREDITS`.
+   - Did not debit credits for diagnostics; Phase 1 plan only required chat debit.
+
+3. **`AiAssistantController.ts`**
+   - Wires `diContainer.aiCreditLedgerRepository` into `SendChatMessageUseCase`.
+
+4. **`SendChatMessageUseCase.test.ts`**
+   - Migrated runtime-mode tests from `PLATFORM_MANAGED` to `CREDITS`.
+   - Added/updated tests for:
+     - CREDITS success debits and saves ledger.
+     - Missing/no-credit ledger rejects before provider call.
+     - Provider failure does not debit credits.
+
+5. **`AiAuditService.ts`**
+   - Added `AI_CREDIT_DEBIT_FAILED` audit event type as a direct type dependency.
+
+### Review / Verification
+
+- `erp-reviewer`: ✅ APPROVE.
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 28/28 tests
+- `PLATFORM_MANAGED` no longer appears in `SendChatMessageUseCase.ts` or `CheckProviderHealthUseCase.ts` ✅
+
+---
+
+## 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1B
+
+**Status:** ✅ Phase 1B complete, reviewed; expected typecheck follow-up remains for Phase 1C
+**Estimate:** 45-60m
+**Actual time:** ~35m
+
+### Changes
+
+1. **`AiCreditLedger.ts`** — New domain entity with:
+   - `id`, `companyId`, `balance`, `totalPurchased`, `totalConsumed`, `lastDebitAt`, `lastCreditAt`, `createdAt`, `updatedAt`.
+   - `create()`, `debit()`, `credit()`, `hasCredits()`, `toJSON()`, `fromJSON()`.
+   - No transaction/mutation history in JSON output.
+   - Throws a domain `Error` with the planned insufficient-credits message instead of importing API-layer `ApiError` into the domain layer.
+
+2. **`IAiCreditLedgerRepository.ts`** — New repository interface with:
+   - `getByCompanyId(companyId)`
+   - `save(ledger)`
+
+3. **`FirestoreAiCreditLedgerRepository.ts`** — New Firestore implementation:
+   - Path: `companies/{companyId}/ai_credit_ledger/current`.
+   - Preserves tenant isolation by scoping reads/writes under `companyId`.
+
+4. **Repository / DI exports**
+   - Added `IAiCreditLedgerRepository` barrel export.
+   - Added `AiCreditLedger` domain barrel export as a direct export dependency.
+   - Registered `aiCreditLedgerRepository` in `bindRepositories.ts`.
+
+### Review / Verification
+
+- `erp-reviewer`: ✅ PASS for Phase 1B scope.
+- `backend`: `npx tsc --noEmit` ⚠️ still has only the expected 2 Phase 1C errors from `PLATFORM_MANAGED` comparisons in:
+  - `CheckProviderHealthUseCase.ts`
+  - `SendChatMessageUseCase.ts`
+- No new Phase 1B type errors.
+
+### Technical Decision
+
+- The plan text said `debit()` should throw `ApiError.forbidden(...)`, but importing `ApiError` into a domain entity would violate Clean Architecture. We kept the domain entity API-agnostic and will map insufficient-credit failures to `ApiError.forbidden(...)` in Phase 1C use-case logic.
+
+---
+
+## 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1A
+
+**Status:** ✅ Phase 1A complete, reviewed; expected typecheck follow-up remains for Phase 1C
+**Estimate:** 20-30m
+**Actual time:** ~25m
+
+### Changes
+
+1. **`AiProviderConfig.ts`**
+   - Changed `AiTenantRuntimeMode` to exactly `'BYOK' | 'CREDITS' | 'DISABLED'`.
+   - Updated default `allowedRuntimeModes` to `['BYOK', 'CREDITS']`.
+   - Kept `defaultForCompany()` runtime mode as `'BYOK'`.
+   - Added legacy mapping from stored `'PLATFORM_MANAGED'` to `'CREDITS'` for both `runtimeMode` and `allowedRuntimeModes`.
+
+2. **`AiAssistantDTOs.ts`**
+   - Updated update-settings runtime-mode DTO unions to `'BYOK' | 'CREDITS' | 'DISABLED'`.
+
+3. **`ai-assistant.validators.ts`**
+   - Updated runtime-mode validator arrays to `['BYOK', 'CREDITS', 'DISABLED']`.
+
+4. **`backend/prisma/schema.prisma`**
+   - Updated runtime-mode comments/default documentation to `CREDITS`.
+
+### Review / Verification
+
+- `erp-reviewer`: ✅ PASS for Phase 1A scope.
+- `backend`: `npx tsc --noEmit` ⚠️ expected 2 errors from later Phase 1C files:
+  - `CheckProviderHealthUseCase.ts` still compares against `PLATFORM_MANAGED`.
+  - `SendChatMessageUseCase.ts` still compares against `PLATFORM_MANAGED`.
+
+### Rabbit Holes Logged
+
+- Prisma `allowedRuntimeModes` read path appears to store JSON as a string but pass it directly to `AiProviderConfig.fromJSON()`, causing stored restrictions to fall back to defaults. This is pre-existing and should be fixed before/with Prisma credit-readiness work; current active runtime is Firestore-oriented.
+- DTOs are still missing some pre-existing settings fields (`conversationContextMode`, `includePreviousToolResults`) in response/request contracts. Not part of Phase 1A.
+
+---
+
+## 2026-05-12 Progress — Super Admin Diagnostics Modal + UX Refactor
+
+**Status:** ✅ Changes made, all compile clean
+**Estimate:** 1-2h
+**Actual time:** ~1h
+
+### Changes
+
+1. **`CheckProviderHealthUseCase.executeWithConfig()`** — New method that accepts a pre-built `AiProviderConfig` (with plaintext apiKey) and runs diagnostics without cooldown/decrypt/config-load steps. Used by the Super Admin diagnostics endpoint which provides its own API key.
+
+2. **`AiToolCatalogController.runAdminModelProfileDiagnostics()`** — Fixed type errors:
+   - Changed `profile.scope || 'GLOBAL'` (was `AiModelScope`) to `'legacy_unverified'` for the `mode` constructor param (which expects `AiTenantModelMode`)
+   - Removed `profileId` from `executeWithConfig` options (not a valid field on `ExecuteWithConfigInput`)
+   - Added clarifying comments about placeholder companyId and temporary config
+
+3. **`AiModelProfilesPage.tsx`** — Refactored:
+   - Replaced inline Edit/Delete text links with `ActionMenu` (⋮) dots menu with 4 items: Edit, Run Diagnostics, Manage Certifications, Delete
+   - Added `SuperAdminDiagnosticsModal` — opened from dots menu "Run Diagnostics" item
+   - Added `CertificationManagerModal` — opened from dots menu "Manage Certifications" item
+   - Removed stale diagnostics/cert state from page (`testing`, `diagnosticCompanyId`, `diagnosticResult`, `companies`, `certifications`, `certSaving`, `shellCertCategory`, `showManualCertModal`, `manualCertForm`)
+   - Removed stale handlers (`handleRunDiagnostics`, `handleRecordManualCert`, `handleRunShellCert`, `handleExpireCertification`, `loadCompanies`, `loadCertifications`)
+   - Removed certification summary card from profile edit modal (cert now managed via dedicated modal)
+   - Added imports for `ActionMenu`, `ActionMenuItem`, `SuperAdminDiagnosticsModal`
+
+4. **`CertificationManagerModal.tsx`** — Removed diagnostics section:
+   - Removed `Activity` import (no longer used)
+   - Removed `ProviderHealthResponse` and `SuperAdminCompany` imports
+   - Removed `companies` prop (was only used for diagnostics company selector)
+   - Removed `diagnosticCompanyId`, `diagnosticResult`, `testing` state
+   - Removed `handleRunDiagnostics` handler and diagnostics UI
+   - Diagnostics now has its own dedicated `SuperAdminDiagnosticsModal` (uses admin's own API key)
+
+5. **i18n** — Added `diagnosticsModal` section (EN/AR/TR) with: title, close, modelInfo, baseUrl, apiKey, apiKeyPlaceholder, apiKeyHelp, apiKeyFooterNote, infoText, runWithKey, results, noResults
+
+### Detour Fix — Silent Mock Fallback in Diagnostics
+
+**Problem:** Diagnostics could silently "pass" by falling back to `MockProvider` when:
+- A tenant had no AI settings (defaulted to mock)
+- A tenant had settings but no API key (`ProviderFactory` silently fell back to mock)
+- Admin diagnostics ran without a key (same silent fallback)
+
+The `MockProvider.isAvailable()` always returns `true` and `MockProvider.chat()` always succeeds, so all checks appeared green — but nothing was actually tested.
+
+**Fix (Type B detour, ~20min):**
+6. **`ProviderFactory.ts`** — Added `getProviderStrict()` method that throws `ProviderProviderError` instead of silently falling back to `MockProvider`. Added `isMockProvider()` static method. Added `ProviderProviderError` export class. For diagnostics, we want to FAIL loudly, not silently pass via mock.
+
+7. **`CheckProviderHealthUseCase.ts`** — Both `execute()` and `executeWithConfig()` now:
+   - Use `ProviderFactory.getProviderStrict()` instead of `getProvider()`
+   - Catch `ProviderProviderError` and return a clear diagnostic failure with reason like "OpenAI-compatible provider requires an API key but none is configured"
+   - Detect `MockProvider` and return a clear failure: "Provider is configured as 'mock' — diagnostics cannot test a mock provider"
+   - `executeWithConfig()` also has an upfront guard for missing API keys (except mock/ollama)
+
+**Impact:** `SendChatMessageUseCase` and other chat codepaths still use `getProvider()` (graceful mock fallback for chat). Only diagnostics uses `getProviderStrict()` (loud failure for configuration problems).
+
+### Files Changed
+- `backend/src/application/ai-assistant/use-cases/CheckProviderHealthUseCase.ts` — Added `ExecuteWithConfigInput`, `executeWithConfig()`, replaced `getProvider` with `getProviderStrict` + mock detection, added API key guard
+- `backend/src/application/ai-assistant/providers/ProviderFactory.ts` — Added `getProviderStrict()`, `createOpenAICompatibleProviderStrict()`, `createOllamaProviderStrict()`, `isMockProvider()`, `ProviderProviderError`
+- `backend/src/api/controllers/ai-assistant/AiToolCatalogController.ts` — Fixed type errors in `runAdminModelProfileDiagnostics`
+- `frontend/src/modules/super-admin/pages/AiModelProfilesPage.tsx` — Refactored with ActionMenu, removed stale state, wired dedicated modals
+- `frontend/src/modules/super-admin/components/CertificationManagerModal.tsx` — Removed diagnostics section, removed companies prop
+- `frontend/src/locales/en/common.json` — Added `diagnosticsModal` keys
+- `frontend/src/locales/ar/common.json` — Added `diagnosticsModal` keys
+- `frontend/src/locales/tr/common.json` — Added `diagnosticsModal` keys
+
+### Verification
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+---
+
+## 2026-05-12 Progress — Fix AI chat tool call pipeline and UX issues
+
+**Status:** ✅ Changes made, all compile clean, reviewer feedback addressed
+**Estimate:** 1-2h
+**Actual time:** ~1h 30m
+
+### Issues Fixed
+
+1. **Save button not enabling when changing models/providers on tenant settings** — `hasChanges` was missing `providerId` comparison: `(settings.providerId || '') !== (selectedProviderId || '')`
+
+2. **AI chat tool calls failing silently** — Three root causes:
+   - **Provider endpoint not resolved from providerId**: When a tenant selected a dynamic provider (e.g., OpenRouter) but saved settings without an explicit `apiEndpoint`, the `ProviderFactory` defaulted to `https://api.openai.com/v1`. Fix: New `resolveProviderEndpoint()` method in `SendChatMessageUseCase` looks up `providerId` in the provider registry and applies `defaultBaseUrl`.
+   - **Text-plan parser only recognized `[ERP_TOOL_PLAN]` format**: Models like Qwen output bare JSON `{"tool_call": "module.function"}`. The parser now has 3 strategies: (1) ERP_TOOL_PLAN markers, (2) JSON code blocks with tool_call/calls keys, (3) inline JSON.
+   - **Tool name normalization inconsistency**: Strategy 1 kept dots (`accounting.getTrialBalanceSummary`) while Strategies 2/3 normalized to underscores. Now all strategies normalize dots to underscores for consistent Runtime Guard lookup.
+
+3. **Provider column missing from AI Model Profiles table** — Added a "Provider" column showing provider name badge, and a filter dropdown to filter models by provider.
+
+4. **ProviderFactory cache key excluded endpoint** — Cached providers by `companyId:provider:model` but not by endpoint, causing stale providers when switching between providers with different base URLs. Fix: Include `apiEndpoint` in cache key.
+
+### Files Changed
+- `frontend/src/modules/ai-assistant/pages/AiAssistantSettingsPage.tsx` — Added `providerId` to `hasChanges`
+- `frontend/src/modules/super-admin/pages/AiModelProfilesPage.tsx` — Added Provider column + filter dropdown
+- `frontend/src/locales/{en,ar,tr}/common.json` — Added `provider` column and `filterAllProviders` i18n keys
+- `backend/src/application/ai-assistant/use-cases/SendChatMessageUseCase.ts` — Added `resolveProviderEndpoint()`, improved `parseTextToolPlan()` with 3-strategy parsing + `tryParseBareToolJson()`, normalized tool names in Strategy 1
+- `backend/src/application/ai-assistant/providers/ProviderFactory.ts` — Include `apiEndpoint` in cache key, keep protocol
+
+---
+
+## 2026-05-12 Progress — AI Provider-driven Settings UX Increment 1A
+
+**Status:** ✅ Subtask complete, uncommitted
+**Estimate:** 45-60m
+**Actual time:** ~35m
+
+Business decision captured:
+- Super Admin AI Providers page is tenant-usable provider metadata only.
+- Tenant-owned API keys stay in tenant AI settings, not provider definitions.
+- ERP03-managed AI/subscription credentials and usage controls will belong to a separate future entitlement/credits engine.
+- Provider records now carry one simple `byok` boolean: `true` means tenant brings their key; `false` means ERP03 manages the connection elsewhere.
+
+Changed:
+- `AiProvider.ts` — Added persisted/serialized `byok` boolean; removed provider credential flag from public JSON.
+- `AiProviderRegistryUseCase.ts` — Accepts/validates/preserves `byok`; provider credential support retained only for backward compatibility with existing records.
+- `AiToolCatalogController.ts` — Provider update now treats provider records as metadata.
+- `superAdmin/index.ts` — Replaced platform credential API fields with `byok` metadata.
+- `AiProvidersPage.tsx` — Removed provider API-key field; added BYOK checkbox and BYOK/ERP03-managed badges.
+- i18n (en/ar/tr) — Updated provider-page wording and labels.
+
+Verification:
+- `backend`: `npx tsc --noEmit` ✅
+- `frontend`: `npx tsc --noEmit` ✅
+
+---
+
+## 2026-05-12 Result — AI Provider-driven Settings UX Increment 1
+
+**Status:** ✅ COMPLETE, ready for manual QA
+**Estimate:** 5-7h
+**Actual time:** ~2h 30m
+
+Completed:
+- Provider page changed to metadata-only with `byok` boolean.
+- Added tenant-safe provider list endpoint: `GET /tenant/ai-assistant/providers`.
+- Added tenant-safe model list endpoint: `GET /tenant/ai-assistant/providers/:providerId/models`.
+- Added frontend API types/functions for tenant provider/model lists.
+- Tenant AI Settings now uses provider dropdown + provider model dropdown with fallback behavior.
+- API key field now follows provider `byok` + `authType`.
+- Certified Models modal now shows score badges and a shell-certification disclaimer.
+- Added architecture, user-guide, and completion report docs.
+
+Verification:
+- `erp-reviewer` ✅ approved after fixes
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+Documentation:
+- `1-TODO/done/85-ai-provider-driven-settings-ux.md`
+- `docs/architecture/ai-provider-driven-settings.md`
+- `docs/user-guide/ai-provider-settings.md`
 
 ---
 

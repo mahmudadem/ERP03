@@ -79,6 +79,7 @@ const useCase = new SendChatMessageUseCase(
         diContainer.aiModelProfileUseCase,
         diContainer.aiModelRoutingGuard,
         diContainer.aiProviderRepository,
+        diContainer.aiCreditLedgerRepository,
       );
 
       const result = await useCase.execute({
@@ -256,6 +257,83 @@ const useCase = new SendChatMessageUseCase(
         success: true,
         data: result,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+/**
+   * GET /ai-assistant/providers
+   * List enabled AI provider metadata available to tenant settings.
+   * Secrets/internal ERP-managed credentials are never returned here.
+   * Explicitly maps to a safe response shape — no secrets, no internal fields.
+   */
+  static async listAvailableProviders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const providers = await diContainer.aiProviderRegistryUseCase.listProviders();
+      const data = providers
+        .filter(provider => provider.enabled)
+        .map(provider => ({
+          id: provider.id,
+          name: provider.name,
+          type: provider.type,
+          defaultBaseUrl: provider.defaultBaseUrl || null,
+          authType: provider.authType,
+          byok: provider.byok,
+          enabled: provider.enabled,
+          supportsTools: provider.supportsTools,
+          supportsJsonMode: provider.supportsJsonMode,
+          supportsModelSync: provider.supportsModelSync,
+          notes: provider.notes || null,
+          createdAt: provider.createdAt.toISOString(),
+          updatedAt: provider.updatedAt.toISOString(),
+        }));
+
+      (res as any).status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /ai-assistant/providers/:providerId/models
+   * List enabled global model profiles registered under a selected provider.
+   * Uses exact providerId matching only. Provider type fallback is intentionally
+   * not used because multiple providers can share the same type (for example,
+   * several OpenAI-compatible providers such as OpenAI, OpenRouter, and Groq).
+   */
+  static async listAvailableProviderModels(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const providerId = AiAssistantController.decodeProfileId(req.params.providerId);
+      const provider = await diContainer.aiProviderRegistryUseCase.getProvider(providerId);
+      if (!provider.enabled) throw ApiError.badRequest('AI provider is disabled');
+
+      const profiles = await diContainer.aiModelProfileUseCase.listProfiles();
+      const profileRows = profiles
+        .filter(profile => profile.enabled)
+        .filter(profile => profile.scope === 'GLOBAL')
+        .filter(profile => profile.providerId === provider.id)
+        .filter(profile => !['blocked', 'deprecated'].includes(profile.status));
+
+      const certifiedEntries = await diContainer.aiModelCertificationUseCase.listValidCertifiedProfiles({
+        scope: 'ALL',
+        tenantId: companyId,
+      });
+      const certificationByProfileId = new Map<string, Record<string, unknown>[]>();
+      for (const entry of certifiedEntries) {
+        const profile = entry.profile as Record<string, unknown>;
+        const id = String(profile.id || '');
+        if (!id) continue;
+        certificationByProfileId.set(id, entry.certifications as Record<string, unknown>[]);
+      }
+
+      const data = profileRows.map(profile => ({
+        profile: profile.toJSON(),
+        certifications: certificationByProfileId.get(profile.id) || [],
+      }));
+
+      (res as any).status(200).json({ success: true, data });
     } catch (error) {
       next(error);
     }

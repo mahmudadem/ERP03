@@ -112,6 +112,30 @@ export interface AiSettingsDTO {
   updatedAt: string;
 }
 
+export type TenantAiProviderType = 'openai' | 'openai_compatible' | 'google_gemini' | 'anthropic' | 'ollama' | 'custom';
+export type TenantAiProviderAuthType = 'api_key' | 'bearer' | 'none' | 'custom';
+
+export interface TenantAiProviderOption {
+  id: string;
+  name: string;
+  type: TenantAiProviderType;
+  defaultBaseUrl: string | null;
+  authType: TenantAiProviderAuthType;
+  byok: boolean;
+  enabled: boolean;
+  supportsTools: boolean;
+  supportsJsonMode: boolean;
+  supportsModelSync: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TenantAiProviderModelOption {
+  profile: Record<string, unknown>;
+  certifications: AiCertificationResult[];
+}
+
 export interface AiUsageAnalyticsResponse {
   summary: {
     todayRequests: number;
@@ -193,8 +217,8 @@ export interface UpdateAiSettingsPayload {
   providerId?: string;
   selectedModelProfileId?: string;
   selectedProfileHash?: string;
-  runtimeMode?: 'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED';
-  allowedRuntimeModes?: Array<'BYOK' | 'PLATFORM_MANAGED' | 'BUILT_IN' | 'DISABLED'>;
+  runtimeMode?: 'BYOK' | 'CREDITS' | 'DISABLED';
+  allowedRuntimeModes?: Array<'BYOK' | 'CREDITS' | 'DISABLED'>;
 }
 
 // Proposal Sandbox Types
@@ -301,6 +325,18 @@ export interface RunTenantCertificationPayload {
   skillId?: string;
 }
 
+// AI Credit Balance Types
+export interface AiCreditBalanceResponse {
+  companyId: string;
+  balance: number;
+  totalPurchased: number;
+  totalConsumed: number;
+  lastDebitAt: string | null;
+  lastCreditAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
 export const aiAssistantApi = {
   // Chat
   sendMessage: async (payload: SendChatMessagePayload): Promise<SendChatMessageResponse> => {
@@ -345,6 +381,16 @@ export const aiAssistantApi = {
   updateSettings: async (payload: UpdateAiSettingsPayload): Promise<{ config: AiSettingsDTO }> => {
     const response = await client.put('/tenant/ai-assistant/settings', payload);
     return response as unknown as { config: AiSettingsDTO };
+  },
+
+  listAvailableProviders: async (): Promise<TenantAiProviderOption[]> => {
+    const response = await client.get('/tenant/ai-assistant/providers');
+    return response as unknown as TenantAiProviderOption[];
+  },
+
+  listProviderModels: async (providerId: string): Promise<TenantAiProviderModelOption[]> => {
+    const response = await client.get(`/tenant/ai-assistant/providers/${encodeURIComponent(providerId)}/models`);
+    return response as unknown as TenantAiProviderModelOption[];
   },
 
   getUsageAnalytics: async (limit: number = 50): Promise<AiUsageAnalyticsResponse> => {
@@ -394,6 +440,12 @@ export const aiAssistantApi = {
   archiveProposal: async (proposalId: string): Promise<{ proposal: AiProposalDTO }> => {
     const response = await client.patch(`/tenant/ai-assistant/proposals/${proposalId}/archive`);
     return response as unknown as { proposal: AiProposalDTO };
+  },
+
+  // Credit Balance
+  getCreditBalance: async (): Promise<AiCreditBalanceResponse> => {
+    const response = await client.get('/tenant/ai-assistant/credits');
+    return response as unknown as AiCreditBalanceResponse;
   },
 
   // Tenant Custom Model Profiles & Certification

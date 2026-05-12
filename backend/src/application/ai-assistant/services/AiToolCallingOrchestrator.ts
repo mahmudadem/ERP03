@@ -306,7 +306,7 @@ export class AiToolCallingOrchestrator {
           `4. Explain the data clearly and help the user understand what they see.\n` +
           `5. Do NOT invent missing accounts, vouchers, customers, suppliers, items, or employees.\n` +
           `6. If the data appears truncated or incomplete, mention the limitation rather than guessing.\n` +
-          `\nData:\n${JSON.stringify(result.data, null, 2)}\n` +
+          `\nData:\n${JSON.stringify(this.sanitizeForPrompt(result.data), null, 2)}\n` +
           `\n[END TOOL RESULT: ${toolName}]`
         );
       } else {
@@ -346,6 +346,40 @@ export class AiToolCallingOrchestrator {
       `Available tools:\n${lines.join('\n')}\n\n` +
       `IMPORTANT: The backend validates all requested tools before execution. ` +
       `If tool data is provided in this conversation, use it exactly and never invent missing values.`;
+  }
+
+  /**
+   * Sanitize tool result data to prevent prompt injection from ERP data.
+   * Strips known attack patterns from string values in the data.
+   * Does NOT modify stored data — only the prompt/context copy.
+   */
+  private sanitizeForPrompt(data: unknown): unknown {
+    if (typeof data === 'string') {
+      return data
+        // 1. Replace specific injection phrases FIRST (before marker stripping)
+        //    so that e.g. "IGNORE ALL PREVIOUS INSTRUCTIONS" is caught intact,
+        //    before any marker regex could alter the word "INSTRUCTIONS".
+        .replace(/ignore\s+(?:all\s+)?(?:previous|above|prior)\s+instructions?/gi, '[SANITIZED]')
+        .replace(/\b(?:reveal|expose|show)\s+(?:the\s+)?(?:api|secret|key|password|token|credential)/gi, '[SANITIZED]')
+        .replace(/\byou\s+are\s+now\b/gi, '[SANITIZED]')
+        .replace(/\bforget\s+(?:all\s+)?(?:everything|rules|instructions)\b/gi, '[SANITIZED]')
+        // 2. Strip only bracket/slash-delimited prompt markers.
+        //    DO NOT match bare SYSTEM/INST/SYS inside legitimate words
+        //    like SYSTEMIC, INSTALLATION, INSTITUTE, or sysadmin.
+        .replace(/\[\/?(?:SYSTEM|INST|SYS)\]/gi, '[SANITIZED]')
+        .replace(/<\/?(?:SYSTEM|INST|SYS)>/gi, '[SANITIZED]');
+    }
+    if (Array.isArray(data)) {
+      return data.map(item => this.sanitizeForPrompt(item));
+    }
+    if (data && typeof data === 'object') {
+      const sanitized: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+        sanitized[key] = this.sanitizeForPrompt(value);
+      }
+      return sanitized;
+    }
+    return data;
   }
 
   /**
@@ -569,7 +603,7 @@ export class AiToolCallingOrchestrator {
           `2. If data appears missing or incomplete, say "The data is currently unavailable" rather than making up values.\n` +
           `3. This is READ-ONLY data. No financial action has been performed.\n` +
           `4. Explain the data clearly.\n\n` +
-          `Data:\n${JSON.stringify(result.result.data, null, 2)}\n` +
+          `Data:\n${JSON.stringify(this.sanitizeForPrompt(result.result.data), null, 2)}\n` +
           `\n[END TOOL RESULT: ${result.toolName}]`
         );
       } else if (result.approved && result.result && !result.result.success) {

@@ -60,6 +60,11 @@ export const CostCentersProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setCostCenters(list);
       loadedRef.current = true;
     } catch (err: any) {
+      const status = err?.response?.status;
+      // On 403/404, mark as loaded to prevent infinite retry loops
+      if (status === 403 || status === 404) {
+        loadedRef.current = true;
+      }
       console.warn('[CostCentersContext] Failed to load cost centers:', err?.message || err);
       // Don't clear existing data on refresh failure
       if (!loadedRef.current) {

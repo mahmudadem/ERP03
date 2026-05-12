@@ -14,8 +14,13 @@ import { useState } from 'react';
 export const ModulesPage: React.FC = () => {
   const { t } = useTranslation('common');
   const { refreshPermissions } = useCompanyAccess();
-  const { modules, activeModules, isLoading, enableModule, disableModule, isEnabling, isDisabling } = useCompanyModules();
+  const { modules, activeModules, isLoading, isError, error, enableModule, disableModule, isEnabling, isDisabling } = useCompanyModules();
   const effectiveActiveCount = modules.filter((module) => module.isEnabled ?? module.enabled ?? activeModules.includes(module.id)).length;
+  const moduleLoadError = error as any;
+  const moduleLoadErrorMessage =
+    moduleLoadError?.response?.data?.error?.message ||
+    moduleLoadError?.response?.data?.message ||
+    moduleLoadError?.message;
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -80,6 +85,18 @@ export const ModulesPage: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
+      ) : isError ? (
+        <Card className="p-6 border-red-200 bg-red-50">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-red-600" />
+            <div>
+              <h3 className="text-sm font-semibold text-red-900">{t('companyAdmin.modules.loadErrorTitle')}</h3>
+              <p className="mt-1 text-sm text-red-700">
+                {moduleLoadErrorMessage || t('companyAdmin.modules.loadErrorDescription')}
+              </p>
+            </div>
+          </div>
+        </Card>
       ) : modules.length === 0 ? (
         <EmptyState 
           title={t('companyAdmin.modules.noModules')} 
