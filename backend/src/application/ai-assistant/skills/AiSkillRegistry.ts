@@ -110,6 +110,15 @@ export class AiSkillRegistry {
       }
     }
 
+    // Fallback: if NO domain skill matched and the message is substantial,
+    // inject reports-guidance as a default context for data-oriented queries.
+    if (matches.length === 0 && message.trim().length > 10) {
+      const reportsSkill = this.skills.get('reports-guidance');
+      if (reportsSkill) {
+        matches.push(reportsSkill);
+      }
+    }
+
     return matches;
   }
 

@@ -440,10 +440,18 @@ constructor(
       runtimeWarnings.push('Native structured tool calling is not available for this model/provider. The assistant may use guarded text-plan mode for read-only tools.');
     }
 
-    const keywordHints = this.toolOrchestrator && typeof (this.toolOrchestrator as any).getKeywordHints === 'function'
+const keywordHints = this.toolOrchestrator && typeof (this.toolOrchestrator as any).getKeywordHints === 'function'
       ? this.toolOrchestrator.getKeywordHints(message, allowedToolIds)
       : [];
-    const toolPlanningContextMessage = this.toolOrchestrator && typeof (this.toolOrchestrator as any).buildToolPlanningContext === 'function'
+
+    // Lightweight mode: skip heavy tool context for simple messages that
+    // don't need ERP data (greetings, short questions, general chat).
+    // This saves significant tokens for non-tool interactions.
+    const isLikelySimpleChat = message.trim().length < 60
+      && keywordHints.length === 0
+      && selectedSkills.length <= 1;  // Only base-orchestration skill matched
+
+    const toolPlanningContextMessage = !isLikelySimpleChat && this.toolOrchestrator && typeof (this.toolOrchestrator as any).buildToolPlanningContext === 'function'
       ? this.toolOrchestrator.buildToolPlanningContext(message, allowedContracts, {
           keywordHints,
           textPlanMode: shouldUseTextToolPlan,
@@ -461,6 +469,7 @@ constructor(
           modelProfile,
           toolPlanningContextMessage,
           recentToolDataContext.content,
+          isLikelySimpleChat,
         ),
       },
       ...recentProviderMessages,
@@ -1352,6 +1361,7 @@ private parseTextToolPlan(content: string | null): ParsedTextToolPlan {
     modelProfile?: AiModelProfile,
     toolPlanningContextMessage?: string,
     recentToolDataContextMessage?: string,
+    skipToolDescriptions?: boolean,
   ): string {
     let prompt = `You are the AI Assistant for an ERP system. Your role is STRICTLY advisory.
 
@@ -1384,6 +1394,8 @@ You are helpful, professional, and knowledgeable about business processes includ
 - Inventory (stock levels, movements, adjustments, transfers)
 - General business management advice
 
+17. Always respond in the SAME LANGUAGE that the user writes in. If the user writes in Arabic, respond in Arabic. If in Turkish, respond in Turkish. If in English, respond in English. Match the user's language exactly.
+
 Keep responses concise and actionable. Use markdown formatting when it helps readability.`;
 
     // Append model profile warnings
@@ -1410,7 +1422,8 @@ Keep responses concise and actionable. Use markdown formatting when it helps rea
     }
 
     // Fallback: append simple descriptions when no schema-aware context exists.
-    if (this.toolOrchestrator && !toolPlanningContextMessage) {
+    // Skip tool descriptions entirely in lightweight mode (simple chat).
+    if (!skipToolDescriptions && this.toolOrchestrator && !toolPlanningContextMessage) {
       const toolDescriptions = this.toolOrchestrator.getToolDescriptionsForPrompt();
       if (toolDescriptions) {
         prompt += `\n\n${toolDescriptions}`;

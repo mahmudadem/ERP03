@@ -198,10 +198,17 @@ export const DOMAIN_SKILLS: DomainSkillConfig = {
       // English
       'report', 'overview', 'dashboard', 'comparison', 'analysis',
       'financial position', 'monthly', 'period', 'kpi',
+      'financial', 'profit', 'loss', 'gain', 'revenue', 'expense', 'cost',
+      'health', 'status', 'situation', 'doing', 'performance', 'summary',
+      'how are we', 'how is the', 'business',
       // Arabic
       'تقرير', 'نظرة عامة', 'لوحة القيادة', 'تحليل', 'مقارنة',
+      'مالي', 'ربح', 'خسارة', 'إيرادات', 'مصاريف', 'وضع', 'حالة', 'أداء',
+      'كيف حالنا', 'كيف أعمالنا',
       // Turkish
       'rapor', 'genel bakış', 'tablo', 'analiz', 'karşılaştırma',
+      'mali', 'kâr', 'zarar', 'gelir', 'gider', 'durum', 'performans',
+      'nasılımız', 'işler nasıl',
     ],
     applicableTools: [
       'reports.getFinancialOverview',
