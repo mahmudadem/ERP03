@@ -42,6 +42,29 @@ function extractStatus(error: unknown): number | undefined {
 }
 
 /**
+ * Extracts a custom error code from an axios-style error response body.
+ * Looks for err.response.data.code or err.code.
+ */
+function extractErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const err = error as Record<string, unknown>;
+
+  // Axios-style: err.response.data.code
+  if (err.response && typeof err.response === 'object') {
+    const resp = err.response as Record<string, unknown>;
+    if (resp.data && typeof resp.data === 'object') {
+      const data = resp.data as Record<string, unknown>;
+      if (typeof data.code === 'string') return data.code;
+    }
+  }
+
+  // Direct code
+  if (typeof err.code === 'string') return err.code;
+
+  return undefined;
+}
+
+/**
  * Maps any caught error to a structured AiErrorResponse with:
  * - A user-friendly title and message
  * - Whether the user can retry
@@ -49,12 +72,25 @@ function extractStatus(error: unknown): number | undefined {
  */
 export function mapAiError(error: unknown): AiErrorResponse {
   const status = extractStatus(error);
+  const errorCode = extractErrorCode(error);
   const t = i18n.t.bind(i18n);
 
   switch (status) {
     case 429:
+      if (errorCode === 'RATE_LIMIT_BURST') {
+        // Per-user burst limit — user can retry after a short wait
+        return {
+          title: t('aiAssistant:chat.errors.burstLimitTitle', 'Slow Down'),
+          message: t(
+            'aiAssistant:chat.errors.burstLimit',
+            "You're sending messages too quickly. Please wait a moment and try again."
+          ),
+          canRetry: true,
+        };
+      }
+      // Per-company daily limit — can't retry until tomorrow
       return {
-        title: t('aiAssistant:chat.errors.rateLimitTitle', 'Rate Limit Reached'),
+        title: t('aiAssistant:chat.errors.rateLimitTitle', 'Daily Limit Reached'),
         message: t(
           'aiAssistant:chat.errors.rateLimit',
           "You've reached your daily AI request limit. Try again tomorrow or contact your admin to increase the limit."

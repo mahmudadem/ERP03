@@ -82,7 +82,9 @@
       "negative": "Not helpful"
     },
     "errors": {
-      "rateLimitTitle": "Rate Limit Reached",
+      "burstLimitTitle": "Slow Down",
+      "burstLimit": "You're sending messages too quickly. Please wait a moment and try again.",
+      "rateLimitTitle": "Daily Limit Reached",
       "rateLimit": "You've reached your daily AI request limit. Try again tomorrow or contact your admin to increase the limit.",
       "authFailedTitle": "Authentication Failed",
       "authFailed": "Your AI provider API key is invalid or expired. Please update it in AI Settings.",
@@ -99,7 +101,10 @@
       "generic": "Something went wrong. Please try again.",
       "retry": "Retry",
       "goToSettings": "Go to Settings"
-    }
+    },
+    "noConversations": "No previous chats",
+    "untitledConversation": "New conversation",
+    "messages": "messages"
   },
   "settings": {
     "title": "AI Assistant Settings",

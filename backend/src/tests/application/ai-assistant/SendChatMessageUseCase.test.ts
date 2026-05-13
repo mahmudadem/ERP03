@@ -21,6 +21,7 @@ import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionSe
 import { IHttpClient, HttpResponse } from '../../../infrastructure/http/IHttpClient';
 import { ApiError } from '../../../api/errors/ApiError';
 import { ProviderFactory } from '../../../application/ai-assistant/providers/ProviderFactory';
+import { AiRateLimiterService } from '../../../application/ai-assistant/services/AiRateLimiterService';
 
 // Mock encryption service — just passes through for tests
 const createMockEncryptionService = (): IEncryptionService => ({
@@ -140,6 +141,8 @@ describe('SendChatMessageUseCase', () => {
   beforeEach(() => {
     // Clear provider cache before each test
     ProviderFactory.clearCache();
+    // Clear burst rate limit map to prevent test pollution
+    AiRateLimiterService.clearBurstMap();
     chatRepo = createMockChatRepo();
     encryptionService = createMockEncryptionService();
     // Clear static deduplication locks to prevent test pollution

@@ -18,6 +18,7 @@ import {
   ChatRuntimeMetadataDTO,
   ChatRuntimeModelProfileDTO,
   ChatMessageMetadata,
+  ConversationMetaDTO,
 } from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
@@ -43,11 +44,6 @@ interface DisplayMessage {
   toolCallResults?: ChatRuntimeMetadataDTO['toolResults'];
 }
 
-interface ConversationSummary {
-  conversationId: string;
-  lastMessage: ChatMessageDTO;
-}
-
 export const AiAssistantHomePage: React.FC = () => {
   const { t } = useTranslation('aiAssistant');
   const { hasPermission } = useRBAC();
@@ -56,7 +52,7 @@ export const AiAssistantHomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [conversations, setConversations] = useState<ConversationMetaDTO[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -299,18 +295,19 @@ export const AiAssistantHomePage: React.FC = () => {
   };
 
   // Group conversations by date
-  const groupConversationsByDate = (convs: ConversationSummary[]) => {
+  const groupConversationsByDate = (convs: ConversationMetaDTO[]) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today.getTime() - 86400000);
 
-    const groups: { label: string; conversations: ConversationSummary[] }[] = [];
-    const todayConvs: ConversationSummary[] = [];
-    const yesterdayConvs: ConversationSummary[] = [];
-    const olderConvs: ConversationSummary[] = [];
+    const groups: { label: string; conversations: ConversationMetaDTO[] }[] = [];
+    const todayConvs: ConversationMetaDTO[] = [];
+    const yesterdayConvs: ConversationMetaDTO[] = [];
+    const olderConvs: ConversationMetaDTO[] = [];
 
     for (const conv of convs) {
-      const date = new Date(conv.lastMessage.createdAt);
+      const dateStr = conv.lastMessageAt || conv.createdAt || '';
+      const date = dateStr ? new Date(dateStr) : new Date(0);
       if (date >= today) {
         todayConvs.push(conv);
       } else if (date >= yesterday) {
@@ -436,16 +433,20 @@ export const AiAssistantHomePage: React.FC = () => {
                     <MessageSquare className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm text-gray-700 truncate font-medium">
-                        {conv.lastMessage.role === 'user'
-                          ? getPreview(conv.lastMessage.content)
-                          : getPreview(conv.lastMessage.content)
-                        }
+                        {conv.title || t('chat.untitledConversation', 'New conversation')}
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <Clock className="w-3 h-3 text-gray-300" />
-                        <span className="text-xs text-gray-400">
-                          {new Date(conv.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        {conv.messageCount != null && (
+                          <span className="text-xs text-gray-400">{conv.messageCount} {t('chat.messages', 'messages')}</span>
+                        )}
+                        {conv.lastMessageAt && (
+                          <>
+                            <Clock className="w-3 h-3 text-gray-300" />
+                            <span className="text-xs text-gray-400">
+                              {new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <button

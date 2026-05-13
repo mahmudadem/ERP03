@@ -112,8 +112,8 @@ export class SendChatMessageUseCase {
       throw ApiError.badRequest('Message content must not exceed 10,000 characters');
     }
 
-    // 2. Check and increment rate limit
-    await this.rateLimiter.checkAndIncrement(companyId);
+    // 2. Check and increment rate limit (per-user burst + per-company daily)
+    await this.rateLimiter.checkAndIncrement(companyId, userId);
 
     // 3. Get or create provider config, then decrypt and resolve credentials
     let config = await this.settingsRepository.getConfig(companyId);

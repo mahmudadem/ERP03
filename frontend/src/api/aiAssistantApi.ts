@@ -338,6 +338,14 @@ export interface AiCreditBalanceResponse {
   updatedAt: string | null;
 }
 
+export interface ConversationMetaDTO {
+  conversationId: string;
+  title?: string;
+  messageCount?: number;
+  lastMessageAt?: string;
+  createdAt?: string;
+}
+
 export const aiAssistantApi = {
   // Chat
   sendMessage: async (payload: SendChatMessagePayload): Promise<SendChatMessageResponse> => {
@@ -361,12 +369,12 @@ export const aiAssistantApi = {
   },
 
   getRecentConversations: async (
-    limit: number = 10
-  ): Promise<{ conversations: Array<{ conversationId: string; lastMessage: ChatMessageDTO }> }> => {
+    limit: number = 20
+  ): Promise<{ conversations: Array<ConversationMetaDTO> }> => {
     const response = await client.get('/tenant/ai-assistant/conversations', {
       params: { limit },
     });
-    return response as unknown as { conversations: Array<{ conversationId: string; lastMessage: ChatMessageDTO }> };
+    return response as unknown as { conversations: Array<ConversationMetaDTO> };
   },
 
   deleteConversation: async (conversationId: string): Promise<void> => {

@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Phase 6.6B — Integrate Tenant AI Setup Wizard
+**Task:** AI Assistant Remaining Polish — Rate limiting, keywords, sidebar
 **Started:** 2026-05-13
-**Status:** ✅ COMPLETE
+**Status:** ✅ ALL COMPLETE
 **Agent/IDE:** OpenCode (CTO Mode)
 **Branch:** `feat/ai-proposal-sandbox`
 
@@ -10,13 +10,115 @@
 
 ## Next Recommended Move
 
-1. Manual browser QA: open AI Settings as a tenant admin with default/mock settings and confirm the setup wizard appears, activates, and redirects to chat.
-2. Commit the setup wizard integration when QA is accepted.
-3. Phase 7.1: Add per-user AI rate limiting. Estimate: 60-90m.
+1. Commit all 4 completed tasks.
+2. Merge `feat/ai-proposal-sandbox` to main.
+3. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
+4. Before June 1: Firestore security rules.
 
 ---
 
-## 2026-05-13 Result — Phase 6.6B Setup Wizard Integration
+## 2026-05-13 Result — Phase 7.1 Per-User AI Rate Limiting
+
+**Status:** ✅ COMPLETE
+**Estimate:** 60-90m
+**Actual time:** ~30m
+
+### Changes
+
+1. **`AiRateLimiterService.ts`** — Added per-user per-minute burst rate limiting:
+   - In-memory sliding window tracks requests per `companyId:userId` key
+   - Default: 20 messages per 60-second window per user
+   - Returns `429 RATE_LIMIT_BURST` with "wait X seconds" message when exceeded
+   - Burst check runs FIRST (cheap, in-memory) before daily check (requires DB)
+   - Static `clearBurstMap()` for test isolation
+   - Exports `RateLimitResult` type for future use
+
+2. **`SendChatMessageUseCase.ts`** — Updated rate limiter call to pass `userId`:
+   - `checkAndIncrement(companyId)` → `checkAndIncrement(companyId, userId)`
+
+3. **`aiErrorMessages.ts`** — Added burst limit vs daily limit distinction:
+   - New `extractErrorCode()` function to check `err.response.data.code`
+   - 429 with `RATE_LIMIT_BURST`: "Slow Down" + "wait a moment" + `canRetry: true`
+   - 429 with `RATE_LIMIT_EXCEEDED`: "Daily Limit Reached" + `canRetry: false`
+
+4. **i18n** (EN/AR/TR) — Added `chat.errors.burstLimitTitle` and `chat.errors.burstLimit`
+
+5. **Tests** — Updated `AiRateLimiterService.test.ts`:
+   - 4 new burst limit tests + 1 combined test
+   - Added `AiRateLimiterService.clearBurstMap()` to `SendChatMessageUseCase` test `beforeEach`
+
+### Verification
+
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run test -- AiRateLimiterService` ✅ — 13/13
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 35/35
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+---
+
+## 2026-05-13 Result — Phase 4.1 Language Rule (ALREADY EXISTS)
+
+**Status:** ✅ VERIFIED — Already implemented at `AiContextBuilder.ts` line 117
+Rule 17: "Always respond in the SAME LANGUAGE that the user writes in."
+
+---
+
+## 2026-05-13 Result — Phase 4.2 Broader Intent Keywords
+
+**Status:** ✅ COMPLETE
+**Estimate:** 15m
+**Actual time:** ~10m
+
+### Changes
+
+1. **`domain-skills.config.ts`** — Expanded trigger keywords for all 6 domain skills:
+   - **accounting-guidance**: Added balance sheet, P&L, cash flow, receivable, payable, ageing, bookkeeping, reconciliation, GL, accrual, depreciation, retained earnings, closing entries, "what is my", "show me", "how much"
+   - **inventory-guidance**: Added out of stock, items, goods, material, SKU, stock movement, stock transfer, stock adjustment, available, on hand, in stock, backorder, "how many", "how much stock", "do we have"
+   - **sales-guidance**: Added delivery note, sales order, sales return, top customer, overdue, unpaid, collect, selling, sold, buyer, client, "how much did", "revenue from", "who owes"
+   - **purchases-guidance**: Added goods receipt, purchase return, expense, buying, bought, procurement, "how much did we spend", "owed to", "supplier balance"
+   - **reports-guidance**: Added trend, metric, analytics, insights, "give me a report", "show me the numbers", "what is the status", "where do we stand"
+   - **platform-guidance**: Added "how to", "where can i find", "can i", "is it possible", "need help", "stuck", "don't know how", setup, configure, enable, disable, permission, role, user management, company settings
+
+### Verification
+
+- `backend`: `npx tsc --noEmit` ✅
+
+---
+
+## 2026-05-13 Result — Frontend Conversation History Sidebar
+
+**Status:** ✅ COMPLETE
+**Estimate:** 60-90m
+**Actual time:** ~30m
+
+### Changes
+
+1. **`aiAssistantApi.ts`** — Updated `ConversationMetaDTO` interface:
+   - Added `title?`, `messageCount?`, `lastMessageAt?`, `createdAt?` fields
+   - Updated `getRecentConversations` return type to use `ConversationMetaDTO`
+
+2. **`GlobalAiWidget.tsx`** — Updated sidebar to show titles and metadata:
+   - `ConversationSummary` now has `title`, `messageCount`, `lastMessageAt`, `createdAt`
+   - Sidebar shows conversation title (fallback to content preview)
+   - Each item shows message count and timestamp
+   - Date grouping uses `lastMessageAt` instead of `lastMessage.createdAt`
+   - i18n keys for "No previous chats", "New conversation", "messages"
+
+3. **`AiAssistantHomePage.tsx`** — Updated full-page conversation sidebar:
+   - Replaced `ConversationSummary` with `ConversationMetaDTO`
+   - Shows `conv.title` with fallback to "New conversation"
+   - Shows message count and timestamp from metadata
+   - Removed dependency on `conv.lastMessage` (deprecated field)
+
+4. **i18n** (EN/AR/TR) — Added `chat.noConversations`, `chat.untitledConversation`, `chat.messages`
+
+### Verification
+
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+---
 
 **Status:** ✅ COMPLETE
 **Estimate:** 30-45m

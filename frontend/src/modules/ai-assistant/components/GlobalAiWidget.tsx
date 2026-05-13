@@ -48,7 +48,12 @@ interface DisplayMessage {
 
 interface ConversationSummary {
   conversationId: string;
-  lastMessage: ChatMessageDTO;
+  title?: string;
+  messageCount?: number;
+  lastMessageAt?: string;
+  createdAt?: string;
+  /** @deprecated — use title instead */
+  lastMessage?: ChatMessageDTO;
 }
 
 export const GlobalAiWidget: React.FC = () => {
@@ -316,7 +321,8 @@ export const GlobalAiWidget: React.FC = () => {
     const olderConvs: ConversationSummary[] = [];
 
     for (const conv of convs) {
-      const date = new Date(conv.lastMessage.createdAt);
+      const dateStr = conv.lastMessageAt || conv.lastMessage?.createdAt || conv.createdAt || '';
+      const date = dateStr ? new Date(dateStr) : new Date(0);
       if (date >= today) {
         todayConvs.push(conv);
       } else if (date >= yesterday) {
@@ -428,16 +434,34 @@ export const GlobalAiWidget: React.FC = () => {
                   <Plus className="w-4 h-4" /> New Chat
                </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-2">
-               {conversations.length === 0 && (
-                 <div className="text-xs text-gray-400 text-center mt-4">No previous chats</div>
-               )}
-               {conversations.map(conv => (
-                 <button key={conv.conversationId} onClick={() => { handleSelectConversation(conv.conversationId); setSidebarOpen(false); }} className={`w-full text-left p-2.5 rounded-lg text-sm mb-1 truncate ${conv.conversationId === conversationId ? 'bg-gray-100 font-semibold text-gray-900' : 'hover:bg-gray-50 text-gray-600'}`}>
-                   {getPreview(conv.lastMessage.content, 30)}
-                 </button>
-               ))}
-            </div>
+<div className="flex-1 overflow-y-auto p-2">
+                {conversations.length === 0 && (
+                  <div className="text-xs text-gray-400 text-center mt-4">{t('chat.noConversations', 'No previous chats')}</div>
+                )}
+                {conversations.map(conv => {
+                  const displayTitle = conv.title || (conv.lastMessage ? getPreview(conv.lastMessage.content, 30) : t('chat.untitledConversation', 'New conversation'));
+                  const timeLabel = conv.lastMessageAt
+                    ? new Date(conv.lastMessageAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                    : '';
+                  return (
+                    <button
+                      key={conv.conversationId}
+                      onClick={() => { handleSelectConversation(conv.conversationId); setSidebarOpen(false); }}
+                      className={`w-full text-left p-2.5 rounded-lg text-sm mb-1 ${conv.conversationId === conversationId ? 'bg-gray-100 font-semibold text-gray-900' : 'hover:bg-gray-50 text-gray-600'}`}
+                    >
+                      <div className="truncate font-medium">{displayTitle}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {conv.messageCount != null && (
+                          <span className="text-[10px] text-gray-400">{conv.messageCount} {t('chat.messages', 'messages')}</span>
+                        )}
+                        {timeLabel && (
+                          <span className="text-[10px] text-gray-400">{timeLabel}</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
           </div>
         )}
 

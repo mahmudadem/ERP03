@@ -82,7 +82,9 @@
       "negative": "Faydalı değil"
     },
     "errors": {
-      "rateLimitTitle": "Hız Sınırına Ulaşıldı",
+      "burstLimitTitle": "Yavaşlayın",
+      "burstLimit": "Mesajları çok hızlı gönderiyorsunuz. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimitTitle": "Günlük Limite Ulaşıldı",
       "rateLimit": "Günlük AI istek sınırına ulaştınız. Yarın tekrar deneyin veya sınırı artırmak için yöneticinize başvurun.",
       "authFailedTitle": "Kimlik Doğrulama Başarısız",
       "authFailed": "AI sağlayıcı API anahtarınız geçersiz veya süresi dolmuş. Lütfen AI Ayarları'nda güncelleyin.",
@@ -99,7 +101,10 @@
       "generic": "Bir şeyler yanlış gitti. Lütfen tekrar deneyin.",
       "retry": "Tekrar Dene",
       "goToSettings": "Ayarlara Git"
-    }
+    },
+    "noConversations": "Önceki sohbet yok",
+    "untitledConversation": "Yeni sohbet",
+    "messages": "mesaj"
   },
   "settings": {
     "title": "AI Asistanı Ayarları",

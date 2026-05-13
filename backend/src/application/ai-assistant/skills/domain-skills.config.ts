@@ -35,12 +35,22 @@ export const DOMAIN_SKILLS: DomainSkillConfig = {
       'accounting', 'journal', 'ledger', 'trial balance', 'accounts',
       'debit', 'credit', 'chart of accounts', 'COA', 'fiscal year',
       'period', 'posting', 'entry', 'voucher',
+      'balance sheet', 'income statement', 'P&L', 'profit and loss',
+      'cash flow', 'receivable', 'payable', 'ageing', 'aging',
+      'bookkeeping', 'reconciliation', 'general ledger', 'GL',
+      'accrual', 'deferral', 'depreciation', 'amortization',
+      'retained earnings', 'closing entries', 'opening balance',
+      'what is my', 'show me', 'how much', 'balance of',
       // Arabic
       'محاسبة', 'قيود', 'دفتر الأستاذ', 'ميزان المراجعة', 'حسابات',
       'مدين', 'دائن', 'دليل الحسابات', 'السنة المالية',
+      'الميزانية العمومية', 'قائمة الدخل', 'التدفقات النقدية',
+      'تسوية', 'إهلاك', 'أرصدة', 'إقفال',
       // Turkish
       'muhasebe', 'yevmiye', 'büyük defter', 'mizan', 'hesaplar',
       'borç', 'alacak', 'hesap planı', 'mali yıl',
+      'bilanço', 'gelir tablosu', 'nakit akışı',
+      'mutabakat', 'amortisman', 'kapanış',
     ],
     applicableTools: [
       'accounting.getTrialBalanceSummary',
@@ -83,11 +93,19 @@ export const DOMAIN_SKILLS: DomainSkillConfig = {
     triggerKeywords: [
       // English
       'inventory', 'stock', 'warehouse', 'item', 'product', 'reorder',
-      'quantity', 'stock level', 'low stock',
+      'quantity', 'stock level', 'low stock', 'out of stock',
+      'items', 'goods', 'material', 'materials', 'SKU',
+      'stock movement', 'stock transfer', 'stock adjustment',
+      'available', 'on hand', 'in stock', 'backorder',
+      'how many', 'how much stock', 'do we have',
       // Arabic
       'مخزون', 'مخازن', 'مستودع', 'صنف', 'منتج', 'كمية', 'طلب جديد',
+      'حركة مخزون', 'تحويل مخزون', 'تسوية مخزون',
+      'متوفر', 'راكد', 'نواقص',
       // Turkish
       'stok', 'depo', 'ürün', 'stok seviyesi', 'sipariş',
+      'stok hareketi', 'stok transferi', 'stok düzeltme',
+      'mevcut', 'tükendi', 'yetersiz',
     ],
     applicableTools: [
       'inventory.getItemStockBalance',
@@ -123,10 +141,18 @@ export const DOMAIN_SKILLS: DomainSkillConfig = {
       // English
       'sales', 'invoice', 'customer', 'revenue', 'order',
       'receivable', 'payment',
+      'delivery note', 'sales order', 'sales return',
+      'top customer', 'overdue', 'unpaid', 'collect',
+      'selling', 'sold', 'buyer', 'client',
+      'how much did', 'revenue from', 'who owes',
       // Arabic
       'مبيعات', 'فاتورة', 'عميل', 'إيرادات', 'طلب بيع',
+      'إشعار تسليم', 'مرتجع مبيعات', 'متأخر', 'غير مدفوع',
+      'مشتري', 'زبون', 'بائع',
       // Turkish
       'satış', 'fatura', 'müşteri', 'gelir', 'sipariş',
+      'teslim notası', 'satış iade', 'gecikmiş', 'ödeme',
+      'alıcı', 'cari',
     ],
     applicableTools: [
       'sales.getSalesSummary',
@@ -161,10 +187,17 @@ export const DOMAIN_SKILLS: DomainSkillConfig = {
       // English
       'purchase', 'vendor', 'supplier', 'payable', 'purchase order',
       'bill', 'spending',
+      'goods receipt', 'purchase return', 'expense',
+      'buying', 'bought', 'procurement',
+      'how much did we spend', 'owed to', 'supplier balance',
       // Arabic
       'مشتريات', 'مورد', 'فواتير شراء', 'ذمم دائنة',
+      'استلام بضاعة', 'مرتجع مشتريات', 'مصروف',
+      'شراء', 'مشتري', 'توريد',
       // Turkish
       'satın alma', 'tedarikçi', 'satın alma faturası', 'borçlar',
+      'irsaliye', 'satın alma iade', 'gider',
+      'alım', 'tedarik',
     ],
     applicableTools: [
       'purchase.getPurchaseSummary',
@@ -201,14 +234,19 @@ export const DOMAIN_SKILLS: DomainSkillConfig = {
       'financial', 'profit', 'loss', 'gain', 'revenue', 'expense', 'cost',
       'health', 'status', 'situation', 'doing', 'performance', 'summary',
       'how are we', 'how is the', 'business',
+      'trend', 'metric', 'analytics', 'insights',
+      'give me a report', 'show me the numbers',
+      'what is the status', 'where do we stand',
       // Arabic
       'تقرير', 'نظرة عامة', 'لوحة القيادة', 'تحليل', 'مقارنة',
       'مالي', 'ربح', 'خسارة', 'إيرادات', 'مصاريف', 'وضع', 'حالة', 'أداء',
       'كيف حالنا', 'كيف أعمالنا',
+      'اتجاه', 'مؤشر', 'رؤى',
       // Turkish
       'rapor', 'genel bakış', 'tablo', 'analiz', 'karşılaştırma',
       'mali', 'kâr', 'zarar', 'gelir', 'gider', 'durum', 'performans',
       'nasılımız', 'işler nasıl',
+      'trend', 'metrik', 'çözümleme',
     ],
     applicableTools: [
       'reports.getFinancialOverview',
@@ -246,10 +284,18 @@ export const DOMAIN_SKILLS: DomainSkillConfig = {
       // English
       'how do i', 'where is', 'navigate', 'settings', 'module', 'feature',
       'help', 'tutorial', 'guide',
+      'how to', 'where can i find', 'can i', 'is it possible',
+      'need help', 'stuck', 'don\'t know how',
+      'setup', 'configure', 'enable', 'disable', 'permission',
+      'role', 'user management', 'company settings',
       // Arabic
       'كيف', 'أين', 'إعدادات', 'مساعدة', 'دليل',
+      'كيف يمكنني', 'هل يمكن', 'أحتاج مساعدة', 'إعداد',
+      'صلاحية', 'دور', 'إدارة مستخدمين', 'إعدادات الشركة',
       // Turkish
       'nasıl', 'nerede', 'ayarlar', 'yardım', 'rehber',
+      'nasıl yapabilirim', 'mümkün mü', 'yardıma ihtiyacım var',
+      'kurulum', 'yetki', 'rol', 'kullanıcı yönetimi', 'şirket ayarları',
     ],
     applicableTools: [], // Navigation questions don't need data tools
     readonly: false,

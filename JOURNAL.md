@@ -4,6 +4,46 @@
 
 ---
 
+## 2026-05-13 (Wed) — ~1h 10m — AI Remaining Polish: Rate Limiting, Keywords, Sidebar
+
+**Task:** Complete remaining AI Assistant tasks: per-user rate limiting, broader intent keywords, conversation history sidebar
+**Agent:** OpenCode (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+1. **Phase 7.1 — Per-user AI rate limiting:**
+   - Added in-memory per-user burst limit to `AiRateLimiterService` (20 req/60s per user per company)
+   - Burst check runs before daily check (cheaper, no DB needed)
+   - Rate limit errors now distinguish `RATE_LIMIT_BURST` (retry after short wait) vs `RATE_LIMIT_EXCEEDED` (daily limit, no retry)
+   - Frontend `aiErrorMessages.ts` updated with burst limit messages in EN/AR/TR
+   - `SendChatMessageUseCase.test.ts` updated to clear burst map between tests
+   - All 13 rate limiter tests + 35 chat use case tests pass
+
+2. **Phase 4.1 — "Respond in user's language" rule:**
+   - Verified already exists in system prompt (line 117 of `AiContextBuilder.ts`)
+
+3. **Phase 4.2 — Broader intent keywords for skills:**
+   - Expanded all 6 domain skill keyword lists with common misspellings, abbreviations, natural language patterns, and Arabic/Turkish translations
+   - Added conversational triggers like "how much", "show me", "who owes", "give me a report"
+
+4. **Frontend conversation history sidebar:**
+   - Added `ConversationMetaDTO` type with `title`, `messageCount`, `lastMessageAt`, `createdAt`
+   - Updated both `GlobalAiWidget` and `AiAssistantHomePage` to display conversation titles, message counts, and timestamps
+   - Falls back to "New conversation" when no title
+   - Date grouping now uses server-provided `lastMessageAt` instead of message content
+
+**Verification:**
+- `backend`: `npx tsc --noEmit` ✅, `npm run build` ✅
+- `backend`: `npm run test -- AiRateLimiterService` ✅ — 13/13
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 35/35
+- `frontend`: `npx tsc --noEmit` ✅, `npm run build` ✅
+- `npm run graph:update` ✅
+
+**All AI tasks complete. Ready to merge to main and pivot to Phase 1 core stabilization.**
+
+---
+
 ## 2026-05-13 (Wed) — ~30m — Phase 6.6B: Setup Wizard Integration
 
 **Task:** Wire the existing first-time AI setup wizard into the tenant AI Settings page.
