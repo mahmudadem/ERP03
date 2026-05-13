@@ -33,6 +33,7 @@ import {
   AiProviderToolCallRequest,
   AiProviderCapabilities,
   AiProviderRuntimeMeta,
+  AiStreamEvent,
 } from './IAiProvider';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { ProviderError } from '../../../errors/ProviderErrors';
@@ -252,6 +253,199 @@ export class OpenAICompatibleProvider implements IAiProvider {
           totalTokens: response.usage.total_tokens,
         } : undefined,
         // NOTE: apiKey, apiEndpoint NEVER included in metadata
+      },
+    };
+  }
+
+  /**
+   * Stream a chat request using the OpenAI streaming API.
+   * Yields events as they arrive from the provider.
+   *
+   * Uses the IHttpClient.requestStream() method which handles SSE parsing.
+   * Token deltas are yielded immediately.
+   * Tool calls are accumulated across chunks and yielded as complete
+   * tool_call events once all argument fragments have arrived.
+   * A 'done' event with usage metadata is yielded at the end.
+   *
+   * If requestStream is not available on the HTTP client, falls back to
+   * calling chat() and yielding the full response as a single token.
+   */
+  async *chatStream(request: AiProviderRequest): AsyncGenerator<AiStreamEvent> {
+    // Check if the HTTP client supports streaming
+    if (!this.httpClient.requestStream) {
+      // Fallback: call chat() and yield the full response as a single token
+      let response: AiProviderResponse;
+      try {
+        response = await this.chat(request);
+      } catch (error) {
+        yield {
+          type: 'error',
+          message: error instanceof Error ? error.message : 'Failed to get AI response.',
+        };
+        return;
+      }
+
+      if (response.content) {
+        yield { type: 'token', content: response.content };
+      }
+
+      if (response.toolCalls && response.toolCalls.length > 0) {
+        for (const tc of response.toolCalls) {
+          yield {
+            type: 'tool_call',
+            toolName: tc.name,
+            toolCallId: tc.id,
+            toolArgs: tc.arguments,
+          };
+        }
+      }
+
+      yield {
+        type: 'done',
+        metadata: {
+          provider: response.provider || 'openai_compatible',
+          model: response.model || this.config.model,
+          usage: response.metadata?.usage as { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined,
+        },
+      };
+      return;
+    }
+
+    // Streaming path
+    const url = this.buildUrl('/chat/completions');
+    const isLocalProvider = this.config.apiKey === 'local-no-key';
+
+    const headers: Record<string, string> = {};
+    if (!isLocalProvider) {
+      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+    }
+    if (this.config.organization) {
+      headers['OpenAI-Organization'] = this.config.organization;
+    }
+
+    const requestBody: Record<string, unknown> = {
+      model: this.config.model,
+      messages: request.messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      })),
+      max_tokens: request.maxTokens ?? this.config.maxTokens,
+      temperature: request.temperature ?? 0.7,
+      stream: true,
+    };
+
+    // Map provider-agnostic tool contracts to OpenAI tools format
+    if (request.tools && request.tools.length > 0) {
+      requestBody.tools = this.mapToolsToOpenAIFormat(request.tools);
+    }
+
+    // Track state across chunks
+    const toolCallAccumulators = new Map<number, { id: string; name: string; argumentsChunks: string[] }>();
+    let responseModel = this.config.model;
+    let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
+
+    try {
+      const stream = this.httpClient.requestStream({
+        url,
+        method: 'POST',
+        headers,
+        body: requestBody,
+        timeoutMs: this.config.timeoutMs ?? OpenAICompatibleProvider.DEFAULT_CHAT_TIMEOUT_MS,
+      });
+
+      for await (const chunk of stream) {
+        // Each chunk is a parsed SSE data field (JSON string or "[DONE]")
+        if (chunk.data === '[DONE]') {
+          break;
+        }
+
+        let parsed: any;
+        try {
+          parsed = JSON.parse(chunk.data);
+        } catch {
+          // Skip unparseable chunks (keep-alive, comments, etc.)
+          continue;
+        }
+
+        if (parsed.model) {
+          responseModel = parsed.model;
+        }
+
+        // Usage may appear in the final chunk or a dedicated usage chunk
+        if (parsed.usage) {
+          usageData = parsed.usage;
+        }
+
+        const choices = parsed.choices;
+        if (!choices || choices.length === 0) continue;
+
+        const delta = choices[0].delta;
+
+        // Handle tool call deltas — accumulate arguments across chunks
+        if (delta?.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx: number = tc.index ?? 0;
+            if (!toolCallAccumulators.has(idx)) {
+              toolCallAccumulators.set(idx, {
+                id: tc.id ?? '',
+                name: tc.function?.name ?? '',
+                argumentsChunks: [],
+              });
+            }
+            const acc = toolCallAccumulators.get(idx)!;
+            if (tc.id) acc.id = tc.id;
+            if (tc.function?.name) acc.name = tc.function.name;
+            if (tc.function?.arguments) acc.argumentsChunks.push(tc.function.arguments);
+          }
+        }
+
+        // Yield content token deltas immediately
+        if (delta?.content) {
+          yield { type: 'token', content: delta.content };
+        }
+      }
+    } catch (error) {
+      if (error instanceof ProviderError) {
+        yield { type: 'error', message: error.message };
+        return;
+      }
+      yield { type: 'error', message: 'Unexpected error from AI provider. Please try again later.' };
+      return;
+    }
+
+    // Yield accumulated tool calls now that all chunks have arrived
+    for (const [idx, acc] of toolCallAccumulators) {
+      const rawArgs = acc.argumentsChunks.join('');
+      let parsedArgs: Record<string, unknown> = {};
+      try {
+        parsedArgs = JSON.parse(rawArgs);
+      } catch {
+        console.warn(
+          `[AI Assistant Stream] Failed to parse tool call arguments for '${acc.name}'. Arguments omitted.`
+        );
+      }
+
+      yield {
+        type: 'tool_call',
+        toolName: acc.name,
+        toolCallId: acc.id,
+        toolArgs: parsedArgs,
+      };
+    }
+
+    // Yield done event with metadata
+    yield {
+      type: 'done',
+      metadata: {
+        provider: 'openai_compatible',
+        model: responseModel,
+        usage: usageData
+          ? {
+              promptTokens: usageData.prompt_tokens,
+              completionTokens: usageData.completion_tokens,
+              totalTokens: usageData.total_tokens,
+            }
+          : undefined,
       },
     };
   }

@@ -97,6 +97,16 @@ export interface AiProviderRequest {
   temperature?: number;
 }
 
+/**
+ * SSE streaming event yielded by chatStream().
+ * Each event represents a discrete chunk of the streaming response.
+ */
+export type AiStreamEvent =
+  | { type: 'token'; content: string }
+  | { type: 'tool_call'; toolName: string; toolCallId: string; toolArgs: Record<string, unknown> }
+  | { type: 'done'; metadata: { provider: string; model: string; usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number } } }
+  | { type: 'error'; message: string };
+
 export interface IAiProvider {
   /** Provider identifier: 'mock', 'openai_compatible', 'ollama' */
   readonly providerId: string;
@@ -124,6 +134,21 @@ export interface IAiProvider {
    * @throws Error if the provider is unavailable or the request fails.
    */
   chat(request: AiProviderRequest): Promise<AiProviderResponse>;
+
+  /**
+   * Stream a chat request to the AI provider.
+   * Yields events as they arrive from the provider.
+   *
+   * If the provider does not support streaming, the default implementation
+   * falls back to calling chat() and yields the full response as a single
+   * token event followed by a done event.
+   *
+   * Tool calls are accumulated and yielded as complete tool_call events
+   * once all arguments have been received.
+   *
+   * @throws Error if the provider is unavailable or the request fails fatally.
+   */
+  chatStream?(request: AiProviderRequest): AsyncGenerator<AiStreamEvent>;
 
   /**
    * Check if this provider is available and properly configured.

@@ -16,6 +16,7 @@ import { AiCreditController } from '../controllers/ai-assistant/AiCreditControll
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
+import aiChatStreamRoute from './aiChatStreamRoute';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.post('/tools/execute', permissionGuard('ai-assistant.chat.use'), AiAssist
 
 // Chat endpoints — no moduleInitializedGuard needed (no setup wizard)
 router.post('/chat', permissionGuard('ai-assistant.chat.use'), AiAssistantController.sendMessage);
+router.use('/chat', aiChatStreamRoute); // POST /chat/stream (SSE streaming)
 router.get('/conversations', permissionGuard('ai-assistant.chat.use'), AiAssistantController.getRecentConversations);
 router.get('/conversations/:conversationId/messages', permissionGuard('ai-assistant.chat.use'), AiAssistantController.getConversationMessages);
 router.delete('/conversations/:conversationId', permissionGuard('ai-assistant.chat.use'), AiAssistantController.deleteConversation);
