@@ -1,23 +1,145 @@
 # 🎯 Current Focus
 
-**Task:** Phase 6.4 — Thumbs Up/Down Feedback for AI Chat
+**Task:** Phase 6.6 — Simplified Tenant AI Setup Wizard
 **Started:** 2026-05-13
 **Status:** ✅ COMPLETE
-**Agent/IDE:** OpenCode (Backend Builder)
+**Agent/IDE:** OpenCode (Frontend Builder)
 **Branch:** `feat/ai-proposal-sandbox`
 
 ---
 
 ## Next Recommended Move
 
-Phase 6.4 backend and frontend are complete. Next recommended move:
-1. Commit the feedback feature.
-2. Frontend: Polish the FeedbackButtons design or add analytics aggregation for feedback data.
+1. Commit the setup wizard feature.
+2. Integrate `AiSetupWizard` into the AI chat home page or settings page to show when `isConfigured=false`.
 3. Phase 4.1: Add "Respond in User's Language" rule to system prompt.
 
 ---
 
-## 2026-05-13 Result — Phase 6.4 Thumbs Up/Down Feedback for AI Chat
+## 2026-05-13 Result — Phase 6.6 Simplified Tenant AI Setup Wizard
+
+**Status:** ✅ COMPLETE
+**Estimate:** 45-60m
+**Actual time:** ~40m
+
+### Changes
+
+1. **`frontend/src/modules/ai-assistant/components/AiSetupWizard.tsx`** (NEW) — 3-step setup wizard component:
+   - **Step 1: Choose Mode** — Radio selection between CREDITS ("Use AI Credits — No API key needed") and BYOK ("Bring Your Own Key — Connect your own AI provider"). Visual cards with icons, clear i18n descriptions.
+   - **Step 2: Configure Provider** — For CREDITS mode: shows certified model grid with name, provider, status badges, and category/certification info. For BYOK mode: shows provider dropdown, model dropdown/input, API key input, and endpoint input. BYOK loads providers dynamically via `aiAssistantApi.listAvailableProviders()` and models via `aiAssistantApi.listProviderModels()`.
+   - **Step 3: Test & Activate** — Auto-runs diagnostic after configuration. Shows pass/fail result with details. "Activate AI Assistant" button saves settings via `aiAssistantApi.updateSettings()` and calls `onComplete()`. Failed diagnostics show detailed check results and "Retry Test" button.
+
+   **Component interface:**
+   ```typescript
+   interface AiSetupWizardProps {
+     onComplete: () => void;    // called after successful activation
+     isConfigured: boolean;     // if true, don't render
+   }
+   ```
+
+   **Key behaviors:**
+   - Returns `null` when `isConfigured=true` (parent controls visibility)
+   - Reuses existing API functions (`updateSettings`, `checkProviderHealth`, `listTenantCertifiedProfiles`, `listAvailableProviders`, `listProviderModels`)
+   - CREDITS mode: sets `runtimeMode='CREDITS'`, `mode='certified_profile'`, populates `selectedModelProfileId`, `selectedProfileHash`, `providerId` from certified profile
+   - BYOK mode: sets `runtimeMode='BYOK'`, `mode='legacy_unverified'`, populates `providerId`, `provider`, `model`, `apiEndpoint`, `apiKey`
+   - Step indicator: numbered circles (1 ● 2 ○ 3 ○) with connecting lines and completed-step checkmarks
+   - Smooth transitions between steps, centered card layout max-width 600px
+   - Back/Next/Activate buttons at bottom
+   - All user-facing strings use i18n with `t()` fallbacks
+
+2. **i18n** (EN/AR/TR) — Added `setupWizard` section with 20 keys each:
+   - `title`, `step1Title`, `step1Description`, `creditsMode`, `creditsDescription`, `byokMode`, `byokDescription`
+   - `step2Title`, `step2CreditsDesc`, `step2ByokDesc`
+   - `step3Title`, `step3Description`, `testingConnection`
+   - `back`, `next`, `selectProvider`, `selectModel`, `retryTest`
+   - `activating`, `diagnosticPassed`, `diagnosticFailed`, `activateButton`
+   - `activationError`, `configurationSummary`, `modeLabel`
+
+### Verification
+
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- i18n JSON validity (EN/AR/TR) ✅
+
+### Files Changed
+
+New files:
+- `frontend/src/modules/ai-assistant/components/AiSetupWizard.tsx`
+
+Modified files:
+- `frontend/src/locales/en/aiAssistant.json`
+- `frontend/src/locales/ar/aiAssistant.json`
+- `frontend/src/locales/tr/aiAssistant.json`
+
+---
+
+## 2026-05-13 Result — Phase 6.5 Provider Failure UX for AI Chat
+
+**Status:** ✅ COMPLETE
+**Estimate:** 30-45m
+**Actual time:** ~30m
+
+### Changes
+
+1. **`aiErrorMessages.ts`** (NEW) — Error mapping utility at `frontend/src/modules/ai-assistant/utils/`
+   - `AiErrorResponse` interface with `title`, `message`, `canRetry`, `actionLabel?`, `actionUrl?`
+   - `mapAiError(error: unknown): AiErrorResponse` function mapping HTTP status codes to user-friendly messages:
+     - 429 → Rate limit (no retry)
+     - 401 → Auth failed (Go to Settings link)
+     - 403 → No credits (Go to Settings link)
+     - 409 → Conflict / request in progress (no retry)
+     - 408 → Timeout (retry)
+     - 500/502/503/504 → Provider down (retry)
+     - Default → Provider error detection via regex, then generic error (retry)
+   - Uses i18n for all user-facing strings
+
+2. **`AiErrorDisplay.tsx`** (NEW) — Error display component at `frontend/src/modules/ai-assistant/components/`
+   - Takes `error: unknown` and optional `onRetry?: () => void`
+   - Renders styled card with color-coded icon (amber for retryable, red for non-retryable)
+   - Shows "Retry" button only if `canRetry` is true AND `onRetry` is provided
+   - Shows "Go to Settings" link if `actionUrl` is provided
+   - Uses `role="alert"` for accessibility
+
+3. **`GlobalAiWidget.tsx`** (MODIFIED) — Replaced raw error text with `AiErrorDisplay`
+   - Added `error?: unknown` to `DisplayMessage` interface
+   - Removed `isProviderError` from `DisplayMessage` (replaced by `error` field)
+   - Removed old multi-branch error handling (429/403/provider-regex/generic) with single `mapAiError` usage
+   - Error messages now rendered as `AiErrorDisplay` cards in the message stream
+   - Added `handleRetry()` function: removes error message, pre-fills last user message, focuses input
+   - Removed old inline error bar near the input box (errors now inline in chat)
+   - Removed `AlertCircle` import (now in AiErrorDisplay)
+   - Feedback buttons only shown for non-error messages (was already the case via `!msg.isProviderError`, now via `!msg.error`)
+
+4. **i18n** (EN/AR/TR) — Added `chat.errors` section with 10 keys each:
+   - `rateLimitTitle`, `rateLimit`
+   - `authFailedTitle`, `authFailed`
+   - `noCreditsTitle`, `noCredits`
+   - `conflictTitle`, `conflict`
+   - `timeoutTitle`, `timeout`
+   - `providerDownTitle`, `providerDown`
+   - `providerErrorTitle`
+   - `genericTitle`, `generic`
+   - `retry`, `goToSettings`
+
+### Verification
+
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- i18n JSON validity (EN/AR/TR) ✅
+
+### Files Changed
+
+New files:
+- `frontend/src/modules/ai-assistant/utils/aiErrorMessages.ts`
+- `frontend/src/modules/ai-assistant/components/AiErrorDisplay.tsx`
+
+Modified files:
+- `frontend/src/modules/ai-assistant/components/GlobalAiWidget.tsx`
+- `frontend/src/locales/en/aiAssistant.json`
+- `frontend/src/locales/ar/aiAssistant.json`
+- `frontend/src/locales/tr/aiAssistant.json`
+
+---
 
 **Status:** ✅ COMPLETE
 **Estimate:** 45-60m

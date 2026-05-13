@@ -4,6 +4,67 @@
 
 ---
 
+## 2026-05-13 (Wed) — ~40m — Phase 6.6: Simplified Tenant AI Setup Wizard
+
+**Task:** Create a 3-step setup wizard for first-time AI configuration.
+**Agent:** OpenCode (Frontend Builder)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+1. **Created `AiSetupWizard.tsx`** — 3-step setup wizard component at `frontend/src/modules/ai-assistant/components/`:
+   - Step 1: Choose Mode (CREDITS vs BYOK) with radio-button-style visual cards and icons
+   - Step 2: Configure Provider — CREDITS shows certified model grid; BYOK shows provider dropdown, model dropdown/input, API key, endpoint. Dynamic data loaded from existing `aiAssistantApi` functions
+   - Step 3: Test & Activate — auto-runs diagnostic, shows pass/fail with check details, "Activate AI Assistant" button saves settings and calls `onComplete()`
+   - Returns `null` when `isConfigured=true`
+   - Reuses all existing API functions (no new API needed)
+   - Centered card layout, max-width 600px, step indicator with connecting lines
+   - Smooth Back/Next navigation, all strings use i18n with fallbacks
+
+2. **Added i18n strings** (EN/AR/TR) — 20 `setupWizard.*` keys in each locale file
+
+**Verification:**
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- i18n JSON validity (EN/AR/TR) ✅
+
+**Next:** Integrate `AiSetupWizard` into the AI chat or settings page to show when no provider is configured. Phase 4.1 system prompt language rule.
+
+## 2026-05-13 (Wed) — ~30m — Phase 6.5: Provider Failure UX for AI Chat
+
+**Task:** Add user-friendly error messages with retry options when the AI provider fails. Frontend-only task.
+**Agent:** OpenCode (Frontend Builder)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+1. **Created `aiErrorMessages.ts`** — Error mapping utility that maps HTTP status codes to structured `AiErrorResponse` objects with title, message, canRetry, actionLabel, and actionUrl. Handles 429 (rate limit), 401 (auth), 403 (credits), 409 (conflict), 408 (timeout), 500/502/503/504 (provider down), and default errors. Provider config errors detected via regex on error message. Uses i18n for all strings.
+
+2. **Created `AiErrorDisplay.tsx`** — React component rendering styled error cards with:
+   - Amber/orange styling for retryable errors, red for non-retryable
+   - AlertTriangle icon for retryable, AlertCircle for non-retryable
+   - "Retry" button when canRetry=true and onRetry callback provided
+   - "Go to Settings" link when actionUrl is provided (for auth/credit errors)
+   - `role="alert"` accessibility attribute
+
+3. **Modified `GlobalAiWidget.tsx`** — Replaced raw error text with `AiErrorDisplay`:
+   - Added `error?: unknown` to DisplayMessage interface
+   - Removed `isProviderError` (replaced by `error` field)
+   - Simplified catch block: now stores raw error object instead of formatting error strings
+   - Error messages rendered as `AiErrorDisplay` cards inline in chat
+   - Added `handleRetry()`: removes error message, pre-fills last user message, focuses input
+   - Removed old inline error bar near input
+   - Removed unused `AlertCircle` import
+
+4. **Added i18n strings** (EN/AR/TR) — `chat.errors` section with `rateLimitTitle`, `rateLimit`, `authFailedTitle`, `authFailed`, `noCreditsTitle`, `noCredits`, `conflictTitle`, `conflict`, `timeoutTitle`, `timeout`, `providerDownTitle`, `providerDown`, `providerErrorTitle`, `genericTitle`, `generic`, `retry`, `goToSettings`.
+
+**Verification:**
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- i18n JSON validity (EN/AR/TR) ✅
+
+**Next:** Commit, then Phase 4.1 (Respond in User's Language) or conversation history sidebar UI.
+
 ## 2026-05-13 (Wed) — ~40m — Phase 6.4: Thumbs Up/Down Feedback for AI Chat
 
 **Task:** Add feedback (positive/negative) to AI chat messages so users can rate AI responses.

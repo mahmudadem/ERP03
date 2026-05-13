@@ -80,6 +80,25 @@
     "feedback": {
       "positive": "Faydalı",
       "negative": "Faydalı değil"
+    },
+    "errors": {
+      "rateLimitTitle": "Hız Sınırına Ulaşıldı",
+      "rateLimit": "Günlük AI istek sınırına ulaştınız. Yarın tekrar deneyin veya sınırı artırmak için yöneticinize başvurun.",
+      "authFailedTitle": "Kimlik Doğrulama Başarısız",
+      "authFailed": "AI sağlayıcı API anahtarınız geçersiz veya süresi dolmuş. Lütfen AI Ayarları'nda güncelleyin.",
+      "noCreditsTitle": "Kredi Kalmadı",
+      "noCredits": "AI kredisi kalmadı. Lütfen daha fazla kredi satın alın veya AI Ayarları'nda BYOK moduna geçin.",
+      "conflictTitle": "İstek Zaten İşleniyor",
+      "conflict": "Bu konuşma için zaten bir istek işleniyor. Lütfen bekleyin.",
+      "timeoutTitle": "İstek Zaman Aşımına Uğradı",
+      "timeout": "İstek çok uzun sürdü. Bu karmaşık sorularda olabilir. Sorunuzu basitleştirmeyi deneyin.",
+      "providerDownTitle": "Sağlayıcı Kullanılamıyor",
+      "providerDown": "AI sağlayıcısı geçici olarak kullanılamıyor. Lütfen biraz sonra tekrar deneyin.",
+      "providerErrorTitle": "Sağlayıcı Kullanılamıyor",
+      "genericTitle": "Bir Hata Oluştu",
+      "generic": "Bir şeyler yanlış gitti. Lütfen tekrar deneyin.",
+      "retry": "Tekrar Dene",
+      "goToSettings": "Ayarlara Git"
     }
   },
   "settings": {
@@ -368,5 +387,32 @@
       "date": "Oluşturulma",
       "actions": "İşlemler"
     }
+  },
+  "setupWizard": {
+    "title": "Yapay Zeka Asistanını Kur",
+    "step1Title": "Mod Seçin",
+    "step1Description": "Yapay zekayı nasıl kullanmak istersiniz?",
+    "creditsMode": "AI Kredilerini Kullan",
+    "creditsDescription": "API anahtarı gerekmez. Platform sağlayan AI kullanın.",
+    "byokMode": "Kendi Anahtarınızı Getirin",
+    "byokDescription": "Kendi AI sağlayıcınızı bağlayın.",
+    "step2Title": "Sağlayıcıyı Yapılandır",
+    "step2CreditsDesc": "Platformdan sertifikalı bir model seçin.",
+    "step2ByokDesc": "Sağlayıcı bilgilerinizi ve API anahtarınızı girin.",
+    "step3Title": "Test ve Etkinleştir",
+    "step3Description": "Bağlantınızı test edeceğiz ve Yapay Zeka Asistanını etkinleştireceğiz.",
+    "testingConnection": "AI bağlantınız test ediliyor...",
+    "back": "Geri",
+    "next": "İleri",
+    "selectProvider": "Bir sağlayıcı seçin...",
+    "selectModel": "Bir model seçin...",
+    "retryTest": "Testi Tekrar Dene",
+    "activating": "Etkinleştiriliyor...",
+    "diagnosticPassed": "Bağlantı testi başarılı! AI hazır.",
+    "diagnosticFailed": "Bağlantı testi başarısız. Ayarlarınızı kontrol edin.",
+    "activateButton": "Yapay Zeka Asistanını Etkinleştir",
+    "activationError": "Etkinleştirme başarısız. Lütfen tekrar deneyin.",
+    "configurationSummary": "Yapılandırma Özeti",
+    "modeLabel": "Mod"
   }
 }

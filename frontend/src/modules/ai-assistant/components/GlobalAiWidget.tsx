@@ -6,7 +6,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, User, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X } from 'lucide-react';
+import { Send, Bot, User, Trash2, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X } from 'lucide-react';
 import {
   aiAssistantApi,
   SendChatMessageResponse,
@@ -23,6 +23,7 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { FeedbackButtons } from '../components/FeedbackButtons';
+import { AiErrorDisplay } from '../components/AiErrorDisplay';
 import { Link } from 'react-router-dom';
 
 interface DisplayMessage {
@@ -38,11 +39,11 @@ interface DisplayMessage {
   modelProfile?: ChatRuntimeModelProfileDTO;
   runtimeStatus?: string;
   selectedSkills?: string[];
-  isProviderError?: boolean;
   allowedToolIds?: string[];
   toolCallsRequested?: string[];
   toolCallResults?: ChatRuntimeMetadataDTO['toolResults'];
   feedback?: 'positive' | 'negative' | null;
+  error?: unknown;
 }
 
 interface ConversationSummary {
@@ -229,48 +230,15 @@ export const GlobalAiWidget: React.FC = () => {
       setMessages(prev => [...prev, assistantMessage]);
       refreshConversations();
     } catch (err: any) {
-      const status = err?.response?.status;
-      const errorMsg = err?.response?.data?.error?.message || err?.message || 'Failed to send message';
-      const isProviderError = /api key|provider|diagnostics|ai settings/i.test(errorMsg);
-
-      if (status === 429 || status === 403) {
-        const prefix = status === 429
-          ? t('chat.rateLimited', 'Rate limit reached')
-          : t('chat.disabled', 'AI Assistant disabled');
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `error_${Date.now()}`,
-            role: 'assistant',
-            content: `⚠️ ${prefix}: ${errorMsg}`,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-        setError(null);
-      } else if (isProviderError) {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `error_${Date.now()}`,
-            role: 'assistant',
-            content: `⚠️ ${t('chat.providerNotAvailable', 'AI provider is not available')}: ${errorMsg}`,
-            timestamp: new Date().toISOString(),
-            isProviderError: true,
-          },
-        ]);
-        setError(null);
-      } else {
-        setError(errorMsg);
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `error_${Date.now()}`,
-            role: 'assistant',
-            content: `⚠️ ${t('chat.error', 'Error')}: ${errorMsg}`,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-      }
+      const errorMessage: DisplayMessage = {
+        id: `error_${Date.now()}`,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+        error: err,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      setError(null);
     } finally {
       setIsLoading(false);
       setTimeout(() => {
@@ -287,6 +255,27 @@ export const GlobalAiWidget: React.FC = () => {
       handleSend();
     }
   };
+
+  const handleRetry = useCallback(() => {
+    // Remove the last error message, find the last user message content to re-send
+    setMessages(prev => {
+      const lastMsg = prev[prev.length - 1];
+      if (lastMsg?.error) {
+        return prev.slice(0, -1);
+      }
+      return prev;
+    });
+    // Find last user message content to pre-fill for re-send
+    const lastUserContent = [...messages].reverse().find(m => m.role === 'user')?.content;
+    if (lastUserContent) {
+      setInput(lastUserContent);
+    }
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 50);
+  }, [messages]);
 
   const handleNewConversation = () => {
     setMessages([]);
@@ -494,32 +483,36 @@ export const GlobalAiWidget: React.FC = () => {
                          </div>
                        </div>
                      ) : (
-                       <div className="text-gray-800 text-[14px] leading-relaxed prose prose-slate prose-sm max-w-none bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                         <MarkdownRenderer content={msg.content} />
-                         
-                         {msg.toolResults && msg.toolResults.length > 0 && (
-                           <div className="mt-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                             <AiToolResultsPanel toolResults={msg.toolResults} />
-                           </div>
-                         )}
-{msg.proposal && (
-                            <div className="mt-3 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                              <Link to={`/ai-assistant/proposals/${msg.proposal.id}`} className="block text-sm text-indigo-700 font-semibold hover:underline">
-                                View Proposal: {msg.proposal.title}
-                              </Link>
-                            </div>
-                          )}
-                          {!msg.isProviderError && (
-                            <FeedbackButtons
-                              messageId={msg.id}
-                              currentFeedback={msg.feedback}
-                              companyId={companyId || ''}
-                              onFeedbackSubmitted={(msgId, newFeedback) => {
-                                setMessages(prev => prev.map(m =>
-                                  m.id === msgId ? { ...m, feedback: newFeedback } : m
-                                ));
-                              }}
-                            />
+<div className="text-gray-800 text-[14px] leading-relaxed prose prose-slate prose-sm max-w-none bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                          {msg.error ? (
+                            <AiErrorDisplay error={msg.error} onRetry={handleRetry} />
+                          ) : (
+                            <>
+                              <MarkdownRenderer content={msg.content} />
+                              
+                              {msg.toolResults && msg.toolResults.length > 0 && (
+                                <div className="mt-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                                  <AiToolResultsPanel toolResults={msg.toolResults} />
+                                </div>
+                              )}
+                              {msg.proposal && (
+                                <div className="mt-3 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                                  <Link to={`/ai-assistant/proposals/${msg.proposal.id}`} className="block text-sm text-indigo-700 font-semibold hover:underline">
+                                    View Proposal: {msg.proposal.title}
+                                  </Link>
+                                </div>
+                              )}
+                              <FeedbackButtons
+                                messageId={msg.id}
+                                currentFeedback={msg.feedback}
+                                companyId={companyId || ''}
+                                onFeedbackSubmitted={(msgId, newFeedback) => {
+                                  setMessages(prev => prev.map(m =>
+                                    m.id === msgId ? { ...m, feedback: newFeedback } : m
+                                  ));
+                                }}
+                              />
+                            </>
                           )}
                        </div>
                      )}
@@ -543,15 +536,9 @@ export const GlobalAiWidget: React.FC = () => {
              <div ref={messagesEndRef} />
            </div>
            
-           {/* Input */}
-           <div className="p-3 bg-white border-t border-gray-200">
-              {error && (
-                <div className="mb-2 px-3 py-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">{error}</span>
-                </div>
-              )}
-              <div dir="auto" className="relative flex items-end bg-gray-50 border border-gray-300 focus-within:border-indigo-500 rounded-2xl transition-all duration-200 p-1">
+{/* Input */}
+            <div className="p-3 bg-white border-t border-gray-200">
+               <div dir="auto" className="relative flex items-end bg-gray-50 border border-gray-300 focus-within:border-indigo-500 rounded-2xl transition-all duration-200 p-1">
                 <textarea
                   ref={inputRef}
                   value={input}
