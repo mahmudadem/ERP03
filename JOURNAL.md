@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-05-13 (Wed) — ~30m — Phase 6.6B: Setup Wizard Integration
+
+**Task:** Wire the existing first-time AI setup wizard into the tenant AI Settings page.
+**Agent:** OpenCode (CTO Mode)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+1. **Integrated `AiSetupWizard` into `AiAssistantSettingsPage.tsx`**:
+   - Shows the wizard on the Provider tab for users with `ai-assistant.settings.manage` when settings are loaded, AI is enabled, and no real provider/model profile has been configured yet.
+   - Keeps normal settings visible for configured tenants, read-only users, disabled configs, and error states.
+   - Hides the normal Save Settings button while the wizard is active.
+   - Redirects to `/ai-assistant` after successful activation if the user can chat.
+
+2. **Fixed `AiSetupWizard` hook ordering:**
+   - Moved the `isConfigured` early null render after all hooks.
+   - Guarded wizard effects so no model/provider loading or diagnostics run when already configured.
+
+3. **Updated graphify:**
+   - `npm run graph:update` rebuilt the code graph after frontend code changes.
+
+**Verification:**
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- `npm run graph:update` ✅
+
+**Completion report:** `1-TODO/done/90-ai-setup-wizard-integration.md`
+
+**Next:** Manual browser QA of first-time AI Settings wizard, then commit when accepted. After that, Phase 7.1 per-user AI rate limiting. Estimate: 60-90m.
+
+---
+
 ## 2026-05-13 (Wed) — ~40m — Phase 6.6: Simplified Tenant AI Setup Wizard
 
 **Task:** Create a 3-step setup wizard for first-time AI configuration.

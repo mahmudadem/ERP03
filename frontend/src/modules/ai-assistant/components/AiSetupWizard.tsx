@@ -79,10 +79,6 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
   const [activating, setActivating] = useState(false);
   const [activationError, setActivationError] = useState<string | null>(null);
 
-  // ── Don't render if already configured ──────────────────────────────────────
-
-  if (isConfigured) return null;
-
   // ── Load data when entering step 2 ──────────────────────────────────────────
 
   const loadCertifiedModels = useCallback(async () => {
@@ -122,24 +118,27 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
   }, []);
 
   useEffect(() => {
+    if (isConfigured) return;
     if (step === 2 && mode === 'CREDITS' && certifiedModels.length === 0) {
       loadCertifiedModels();
     }
-  }, [step, mode, certifiedModels.length, loadCertifiedModels]);
+  }, [isConfigured, step, mode, certifiedModels.length, loadCertifiedModels]);
 
   useEffect(() => {
+    if (isConfigured) return;
     if (step === 2 && mode === 'BYOK' && providers.length === 0) {
       loadProviders();
     }
-  }, [step, mode, providers.length, loadProviders]);
+  }, [isConfigured, step, mode, providers.length, loadProviders]);
 
   useEffect(() => {
+    if (isConfigured) return;
     if (selectedProviderId && mode === 'BYOK') {
       loadProviderModels(selectedProviderId);
     } else {
       setModelOptions([]);
     }
-  }, [selectedProviderId, mode, loadProviderModels]);
+  }, [isConfigured, selectedProviderId, mode, loadProviderModels]);
 
   // ── Determine selected provider option ──────────────────────────────────────
 
@@ -216,10 +215,11 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
 
   // Auto-run diagnostic when entering step 3
   useEffect(() => {
+    if (isConfigured) return;
     if (step === 3 && diagStatus === 'idle') {
       runDiagnostic();
     }
-  }, [step, diagStatus, runDiagnostic]);
+  }, [isConfigured, step, diagStatus, runDiagnostic]);
 
   // ── Step 3: Activate ─────────────────────────────────────────────────────────
 
@@ -694,6 +694,8 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
   );
 
   // ── Overall layout ───────────────────────────────────────────────────────────
+
+  if (isConfigured) return null;
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-4">

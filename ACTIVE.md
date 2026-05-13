@@ -1,18 +1,55 @@
 # 🎯 Current Focus
 
-**Task:** Phase 6.6 — Simplified Tenant AI Setup Wizard
+**Task:** Phase 6.6B — Integrate Tenant AI Setup Wizard
 **Started:** 2026-05-13
 **Status:** ✅ COMPLETE
-**Agent/IDE:** OpenCode (Frontend Builder)
+**Agent/IDE:** OpenCode (CTO Mode)
 **Branch:** `feat/ai-proposal-sandbox`
 
 ---
 
 ## Next Recommended Move
 
-1. Commit the setup wizard feature.
-2. Integrate `AiSetupWizard` into the AI chat home page or settings page to show when `isConfigured=false`.
-3. Phase 4.1: Add "Respond in User's Language" rule to system prompt.
+1. Manual browser QA: open AI Settings as a tenant admin with default/mock settings and confirm the setup wizard appears, activates, and redirects to chat.
+2. Commit the setup wizard integration when QA is accepted.
+3. Phase 7.1: Add per-user AI rate limiting. Estimate: 60-90m.
+
+---
+
+## 2026-05-13 Result — Phase 6.6B Setup Wizard Integration
+
+**Status:** ✅ COMPLETE
+**Estimate:** 30-45m
+**Actual time:** ~30m
+
+### Changes
+
+1. **`frontend/src/modules/ai-assistant/pages/AiAssistantSettingsPage.tsx`**
+   - Integrated `AiSetupWizard` into the Provider tab.
+   - Wizard shows only for users who can manage AI settings when settings are loaded, AI is enabled, and the current tenant config is still unconfigured/default.
+   - Treats these as configured states:
+     - `DISABLED` runtime mode.
+     - `CREDITS` mode with selected certified profile id/hash.
+     - `BYOK` mode with a non-mock provider and either an API key or Ollama provider.
+   - Hides the normal Save button while loading or while the wizard is active.
+   - Redirects to `/ai-assistant` after setup if the user also has chat permission.
+
+2. **`frontend/src/modules/ai-assistant/components/AiSetupWizard.tsx`**
+   - Moved the `isConfigured` null render after hooks to preserve React hook ordering.
+   - Guarded data-loading and auto-diagnostic effects when `isConfigured=true`.
+
+3. **Graphify**
+   - Ran `npm run graph:update` after code changes.
+
+### Verification
+
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+- `npm run graph:update` ✅
+
+### Documentation
+
+- `1-TODO/done/90-ai-setup-wizard-integration.md`
 
 ---
 
