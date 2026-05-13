@@ -10,7 +10,7 @@
 
 ## Next Recommended Move
 
-1. Commit all 4 completed tasks.
+1. ✅ All 4 AI polish tasks committed and documented.
 2. Merge `feat/ai-proposal-sandbox` to main.
 3. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
 4. Before June 1: Firestore security rules.
