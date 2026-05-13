@@ -64,7 +64,23 @@
     "quickPnl": "Kâr ve Zarar",
     "quickPnlPrompt": "Kâr ve zarar raporu oluştur",
     "quickBs": "Bilanço",
-    "quickBsPrompt": "Mevcut bilanço nedir?"
+    "quickBsPrompt": "Mevcut bilanço nedir?",
+    "quickActions": {
+      "financialOverview": "Finansal Genel Bakış",
+      "financialOverviewPrompt": "Mevcut finansal durumumuz hakkında genel bir bakış verin",
+      "trialBalance": "Mizan",
+      "trialBalancePrompt": "Mizan özetini gösterin",
+      "topExpenses": "En Büyük Giderler",
+      "topExpensesPrompt": "Bu ayki en büyük giderlerimiz neler?",
+      "salesSummary": "Satış Özeti",
+      "salesSummaryPrompt": "Bu ayın satış özetini gösterin",
+      "outstandingInvoices": "Açık Faturalar",
+      "outstandingInvoicesPrompt": "Ödenmemiş faturalarımız hangileri?"
+    },
+    "feedback": {
+      "positive": "Faydalı",
+      "negative": "Faydalı değil"
+    }
   },
   "settings": {
     "title": "AI Asistanı Ayarları",

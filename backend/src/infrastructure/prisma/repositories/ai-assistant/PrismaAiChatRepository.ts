@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { IAiChatRepository } from '../../../../repository/interfaces/ai-assistant/IAiChatRepository';
-import { AiChatMessage } from '../../../../domain/ai-assistant/entities/AiChatMessage';
+import { AiChatMessage, AiChatFeedback } from '../../../../domain/ai-assistant/entities/AiChatMessage';
 
 /**
  * PrismaAiChatRepository
@@ -24,10 +24,33 @@ export class PrismaAiChatRepository implements IAiChatRepository {
         model: message.model || null,
         tokenCount: message.tokenCount || null,
         metadata: message.metadata ? JSON.stringify(message.metadata) : null,
+        feedback: message.feedback || null,
         createdAt: message.createdAt,
       },
     });
     return AiChatMessage.fromJSON(record as any);
+  }
+
+  async getById(companyId: string, messageId: string): Promise<AiChatMessage | null> {
+    const record = await this.prisma.aiChatMessage.findFirst({
+      where: { id: messageId, companyId },
+    });
+    if (!record) return null;
+    return AiChatMessage.fromJSON({
+      ...record,
+      metadata: typeof (record as any).metadata === 'string' ? JSON.parse((record as any).metadata) : (record as any).metadata,
+    });
+  }
+
+  async updateFeedback(companyId: string, messageId: string, feedback: AiChatFeedback | undefined): Promise<AiChatMessage> {
+    const record = await this.prisma.aiChatMessage.update({
+      where: { id: messageId },
+      data: { feedback: feedback || null },
+    });
+    return AiChatMessage.fromJSON({
+      ...record,
+      metadata: typeof (record as any).metadata === 'string' ? JSON.parse((record as any).metadata) : (record as any).metadata,
+    });
   }
 
   async getConversationMessages(

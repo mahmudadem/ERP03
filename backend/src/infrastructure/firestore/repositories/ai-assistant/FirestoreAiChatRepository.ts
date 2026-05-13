@@ -1,6 +1,6 @@
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { IAiChatRepository } from '../../../../repository/interfaces/ai-assistant/IAiChatRepository';
-import { AiChatMessage } from '../../../../domain/ai-assistant/entities/AiChatMessage';
+import { AiChatMessage, AiChatFeedback } from '../../../../domain/ai-assistant/entities/AiChatMessage';
 
 const stripUndefinedDeep = (value: any): any => {
   if (value === undefined) return undefined;
@@ -44,9 +44,30 @@ export class FirestoreAiChatRepository implements IAiChatRepository {
       .collection('chat_messages');
   }
 
-  async create(message: AiChatMessage): Promise<AiChatMessage> {
+async create(message: AiChatMessage): Promise<AiChatMessage> {
     const docRef = this.getCollection(message.companyId).doc(message.id);
     await docRef.set(stripUndefinedDeep(message.toJSON()));
+    return message;
+  }
+
+  async getById(companyId: string, messageId: string): Promise<AiChatMessage | null> {
+    const docRef = this.getCollection(companyId).doc(messageId);
+    const doc = await docRef.get();
+    if (!doc.exists) return null;
+    return AiChatMessage.fromJSON(doc.data()!);
+  }
+
+  async updateFeedback(companyId: string, messageId: string, feedback: AiChatFeedback | undefined): Promise<AiChatMessage> {
+    const docRef = this.getCollection(companyId).doc(messageId);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      throw new Error(`Message ${messageId} not found`);
+    }
+
+    const message = AiChatMessage.fromJSON(doc.data()!);
+    message.setFeedback(feedback);
+
+    await docRef.update({ feedback: feedback || null });
     return message;
   }
 

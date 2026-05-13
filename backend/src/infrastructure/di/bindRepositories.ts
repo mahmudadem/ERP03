@@ -151,6 +151,8 @@ import { FirestoreAiProviderRepository } from '../firestore/repositories/ai-assi
 import { FirestoreAiModelCertificationRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelCertificationRepository';
 import { IAiCreditLedgerRepository } from '../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
 import { FirestoreAiCreditLedgerRepository } from '../firestore/repositories/ai-assistant/FirestoreAiCreditLedgerRepository';
+import { IAiConversationMetaRepository } from '../../repository/interfaces/ai-assistant/IAiConversationMetaRepository';
+import { FirestoreAiConversationMetaRepository } from '../firestore/repositories/ai-assistant/FirestoreAiConversationMetaRepository';
 import { PermissionChecker } from '../../application/rbac/PermissionChecker';
 
 // AI ASSISTANT — Proposal Sandbox
@@ -808,6 +810,9 @@ get aiModelCertificationRepository(): IAiModelCertificationRepository {
   },
   get aiCreditLedgerRepository(): IAiCreditLedgerRepository {
     return new FirestoreAiCreditLedgerRepository(getDb());
+  },
+  get aiConversationMetaRepository(): IAiConversationMetaRepository {
+    return new FirestoreAiConversationMetaRepository(getDb());
   },
   get aiToolCatalogUseCase(): AiToolCatalogUseCase {
     return new AiToolCatalogUseCase(

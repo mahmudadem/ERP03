@@ -64,7 +64,23 @@
     "quickPnl": "الأرباح والخسائر",
     "quickPnlPrompt": "أنشئ تقرير الأرباح والخسائر",
     "quickBs": "الميزانية العمومية",
-    "quickBsPrompt": "ما هي الميزانية العمومية الحالية؟"
+    "quickBsPrompt": "ما هي الميزانية العمومية الحالية؟",
+    "quickActions": {
+      "financialOverview": "نظرة مالية",
+      "financialOverviewPrompt": "اعرض لي نظرة عامة على وضعنا المالي الحالي",
+      "trialBalance": "ميزان المراجعة",
+      "trialBalancePrompt": "اعرض لي ملخص ميزان المراجعة",
+      "topExpenses": "أكبر المصروفات",
+      "topExpensesPrompt": "ما هي أكبر مصروفاتنا هذا الشهر؟",
+      "salesSummary": "ملخص المبيعات",
+      "salesSummaryPrompt": "اعرض لي ملخص المبيعات لهذا الشهر",
+      "outstandingInvoices": "الفواتير المستحقة",
+      "outstandingInvoicesPrompt": "ما هي الفواتير غير المدفوعة التي لدينا؟"
+    },
+    "feedback": {
+      "positive": "مفيد",
+      "negative": "غير مفيد"
+    }
   },
   "settings": {
     "title": "إعدادات مساعد الذكاء الاصطناعي",

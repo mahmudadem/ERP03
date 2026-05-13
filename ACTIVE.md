@@ -1,19 +1,129 @@
 # 🎯 Current Focus
 
-**Task:** AI Assistant Fixing Plan — Phase 3B/3C Tool Truncation Signals
-**Started:** 2026-05-12
-**Status:** 🟡 Phase 3B/3C complete — Ready for Phase 4
-**Agent/IDE:** OpenCode (CTO Mode)
+**Task:** Phase 6.4 — Thumbs Up/Down Feedback for AI Chat
+**Started:** 2026-05-13
+**Status:** ✅ COMPLETE
+**Agent/IDE:** OpenCode (Backend Builder)
 **Branch:** `feat/ai-proposal-sandbox`
 
 ---
 
 ## Next Recommended Move
 
-Phase 3B/3C (truncation signals) is complete. Next recommended move:
-1. Phase 4.1: Add "Respond in User's Language" rule to system prompt.
-2. Phase 4.2: Add broader intent keywords to skills.
-3. Phase 4.3: Lightweight mode for non-tool messages.
+Phase 6.4 backend and frontend are complete. Next recommended move:
+1. Commit the feedback feature.
+2. Frontend: Polish the FeedbackButtons design or add analytics aggregation for feedback data.
+3. Phase 4.1: Add "Respond in User's Language" rule to system prompt.
+
+---
+
+## 2026-05-13 Result — Phase 6.4 Thumbs Up/Down Feedback for AI Chat
+
+**Status:** ✅ COMPLETE
+**Estimate:** 45-60m
+**Actual time:** ~40m
+
+### Changes
+
+1. **`AiChatMessage.ts`** — Added `feedback` field (`'positive' | 'negative'`) as optional property
+   - Added `AiChatFeedback` type
+   - Added to `AiChatMessageProps`, constructor, `toJSON()`, `fromJSON()`
+   - Added `setFeedback()` method for toggle logic
+   - `create()` passes `undefined` for feedback (no feedback on new messages)
+
+2. **`IAiChatRepository.ts`** — Added two new methods:
+   - `getById(companyId, messageId)` — Get a single message by ID, scoped to company
+   - `updateFeedback(companyId, messageId, feedback)` — Update the feedback field on a message
+
+3. **`FirestoreAiChatRepository.ts`** —Implemented `getById()` and `updateFeedback()`
+   - `getById()` reads the document directly by ID from the chat_messages collection
+   - `updateFeedback()` reads the document, calls `message.setFeedback()`, and persists the update
+
+4. **`PrismaAiChatRepository.ts`** — Implemented `getById()` and `updateFeedback()`
+   - Added `feedback` field to `create()` data
+   - `getById()` uses `findFirst` with `id` and `companyId` filter
+   - `updateFeedback()` uses Prisma `update` with `data: { feedback }`
+
+5. **`schema.prisma`** — Added `feedback String?` column to `AiChatMessage` model
+
+6. **`AiAssistantDTOs.ts`** — Added `feedback` field to `toChatMessageResponse()` mapper
+
+7. **`AiAssistantController.ts`** — Added `updateMessageFeedback()` controller method
+   - Route: `PATCH /tenant/ai-assistant/messages/:messageId/feedback`
+   - Validates `feedback` is `'positive'` or `'negative'`
+   - Validates message exists and belongs to the company
+   - Validates message is an assistant message
+   - Toggle: same feedback value removes it; different value changes it
+   - Returns updated message via `AiAssistantDTOMapper`
+
+8. **`ai-assistant.routes.ts`** — Added route:
+   - `PATCH /messages/:messageId/feedback` with `permissionGuard('ai-assistant.chat.use')`
+
+9. **`aiAssistantApi.ts`** (frontend) — Added `updateMessageFeedback()` API client function and `feedback` field to `ChatMessageDTO`
+
+10. **`FeedbackButtons.tsx`** (NEW) — New React component:
+    - Shows ThumbsUp/ThumbsDown icons below assistant messages
+    - Clicking sends PATCH request to update feedback
+    - Visual feedback: selected icon gets colored (green for positive, red for negative)
+    - Toggle: clicking same value removes feedback
+    - Switch: clicking opposite changes to new value
+    - Disabled while submitting
+    - i18n-aware with `aiAssistant.chat.feedback.positive/negative`
+
+11. **`GlobalAiWidget.tsx`** — Integrated FeedbackButtons:
+    - Added `feedback` field to `DisplayMessage` interface
+    - Populated `feedback` from `ChatMessageDTO` on send and on history load
+    - Renders `<FeedbackButtons>` below each non-error assistant message
+    - Receives `companyId` from `useCompanyAccess()`
+    - `onFeedbackSubmitted` callback updates message state in-place
+
+12. **i18n files** (EN/AR/TR) — Added `chat.feedback.positive` and `chat.feedback.negative`:
+    - EN: "Helpful" / "Not helpful"
+    - AR: "مفيد" / "غير مفيد"
+    - TR: "Faydalı" / "Faydalı değil"
+
+13. **Test updates**:
+    - `SendChatMessageUseCase.test.ts` — Added `getById` and `updateFeedback` to all mock chat repos
+    - `AiToolCalling.test.ts` — Added `getById` and `updateFeedback` to mock chat repo
+
+### Verification
+
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 35/35
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+### Files Changed
+
+New files:
+- `frontend/src/modules/ai-assistant/components/FeedbackButtons.tsx`
+
+Modified files:
+- `backend/src/domain/ai-assistant/entities/AiChatMessage.ts`
+- `backend/src/repository/interfaces/ai-assistant/IAiChatRepository.ts`
+- `backend/src/infrastructure/firestore/repositories/ai-assistant/FirestoreAiChatRepository.ts`
+- `backend/src/infrastructure/prisma/repositories/ai-assistant/PrismaAiChatRepository.ts`
+- `backend/prisma/schema.prisma`
+- `backend/src/api/dtos/AiAssistantDTOs.ts`
+- `backend/src/api/controllers/ai-assistant/AiAssistantController.ts`
+- `backend/src/api/routes/ai-assistant.routes.ts`
+- `frontend/src/api/aiAssistantApi.ts`
+- `frontend/src/modules/ai-assistant/components/GlobalAiWidget.tsx`
+- `frontend/src/locales/en/aiAssistant.json`
+- `frontend/src/locales/ar/aiAssistant.json`
+- `frontend/src/locales/tr/aiAssistant.json`
+- `backend/src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts`
+- `backend/src/tests/application/ai-assistant/AiToolCalling.test.ts`
+
+---
+
+## Next Recommended Move
+
+Phase 6.3 backend is complete. Next recommended move:
+1. Frontend: Build the conversation history sidebar that calls `GET /tenant/ai-assistant/conversations` and displays titles/message counts.
+2. Phase 4.1: Add "Respond in User's Language" rule to system prompt.
+3. Phase 4.2: Add broader intent keywords to skills.
 
 ---
 

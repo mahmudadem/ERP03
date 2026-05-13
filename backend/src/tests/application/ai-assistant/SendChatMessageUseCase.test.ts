@@ -107,6 +107,10 @@ const createRunContext = () => ({
 // Mock chat repository — create returns the message passed to it
 const createMockChatRepo = (): IAiChatRepository => ({
   create: jest.fn((msg: any) => Promise.resolve(msg)),
+  getById: jest.fn(() => Promise.resolve(null)),
+  updateFeedback: jest.fn((companyId: string, messageId: string, feedback: any) => {
+    throw new Error('updateFeedback not implemented in mock');
+  }),
   getConversationMessages: jest.fn(() => Promise.resolve([])),
   getRecentConversations: jest.fn(() => Promise.resolve([])),
   deleteConversation: jest.fn(() => Promise.resolve()),
@@ -1187,6 +1191,8 @@ describe('SendChatMessageUseCase', () => {
       }
       return {
         create: jest.fn((msg: any) => Promise.resolve(msg)),
+        getById: jest.fn(() => Promise.resolve(null)),
+        updateFeedback: jest.fn(() => Promise.resolve(null as any)),
         getConversationMessages: jest.fn(() => Promise.resolve(messages)),
         getRecentConversations: jest.fn(() => Promise.resolve([])),
         deleteConversation: jest.fn(() => Promise.resolve()),

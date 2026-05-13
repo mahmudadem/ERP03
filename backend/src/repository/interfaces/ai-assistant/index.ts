@@ -8,5 +8,6 @@ export * from './IAiModelProfileRepository';
 export * from './IAiProviderRepository';
 export * from './IAiModelCertificationRepository';
 export * from './IAiCreditLedgerRepository';
+export * from './IAiConversationMetaRepository';
 export * from './IAiProposalRepository';
 export * from './IAiProposalPolicyRepository';

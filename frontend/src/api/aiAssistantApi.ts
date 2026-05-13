@@ -66,6 +66,7 @@ export interface ChatMessageDTO {
   model?: string | null;
   tokenCount?: number | null;
   metadata?: ChatMessageMetadata | null;
+  feedback?: 'positive' | 'negative' | null;
   createdAt: string;
 }
 
@@ -491,5 +492,17 @@ export const aiAssistantApi = {
   listTenantCertifiedProfiles: async (params?: { scope?: 'GLOBAL' | 'TENANT' | 'ALL'; category?: string; moduleId?: string }): Promise<CertifiedProfileEntry[]> => {
     const response = await client.get('/tenant/ai-assistant/certified-profiles', { params });
     return response as unknown as CertifiedProfileEntry[];
+  },
+
+  // Message Feedback
+  updateMessageFeedback: async (
+    messageId: string,
+    feedback: 'positive' | 'negative'
+  ): Promise<ChatMessageDTO> => {
+    const response = await client.patch(
+      `/tenant/ai-assistant/messages/${encodeURIComponent(messageId)}/feedback`,
+      { feedback }
+    );
+    return response as unknown as ChatMessageDTO;
   },
 };

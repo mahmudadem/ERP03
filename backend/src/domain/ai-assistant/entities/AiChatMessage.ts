@@ -8,6 +8,8 @@
 
 export type AiChatRole = 'user' | 'assistant' | 'system';
 
+export type AiChatFeedback = 'positive' | 'negative';
+
 export interface AiChatMessageProps {
   id: string;
   companyId: string;
@@ -19,6 +21,7 @@ export interface AiChatMessageProps {
   model?: string;             // Provider-specific model identifier
   tokenCount?: number;        // Tokens consumed (for usage tracking)
   metadata?: Record<string, unknown>; // Extensible metadata
+  feedback?: AiChatFeedback;  // User feedback on the message (assistant messages only)
   createdAt: Date;
 }
 
@@ -34,6 +37,7 @@ export class AiChatMessage implements AiChatMessageProps {
     public model?: string,
     public tokenCount?: number,
     public metadata?: Record<string, unknown>,
+    public feedback?: AiChatFeedback,
     public createdAt: Date = new Date()
   ) {}
 
@@ -59,8 +63,19 @@ export class AiChatMessage implements AiChatMessageProps {
       input.model,
       undefined,
       input.metadata,
+      undefined,
       new Date()
     );
+  }
+
+  /**
+   * Update the feedback field on this message.
+   * Only assistant messages should receive feedback.
+   * Passing the same value as current feedback removes it (toggle off).
+   */
+  setFeedback(feedback: 'positive' | 'negative' | undefined): AiChatMessage {
+    this.feedback = feedback;
+    return this;
   }
 
   toJSON(): Record<string, unknown> {
@@ -75,6 +90,7 @@ export class AiChatMessage implements AiChatMessageProps {
       model: this.model || null,
       tokenCount: this.tokenCount || null,
       metadata: this.metadata || null,
+      feedback: this.feedback || null,
       createdAt: this.createdAt.toISOString(),
     };
   }
@@ -91,6 +107,7 @@ export class AiChatMessage implements AiChatMessageProps {
       data.model || undefined,
       data.tokenCount || undefined,
       data.metadata || undefined,
+      data.feedback || undefined,
       data.createdAt?.toDate?.() || new Date(data.createdAt)
     );
   }

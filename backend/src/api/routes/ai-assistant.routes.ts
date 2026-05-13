@@ -50,6 +50,7 @@ router.use('/chat', aiChatStreamRoute); // POST /chat/stream (SSE streaming)
 router.get('/conversations', permissionGuard('ai-assistant.chat.use'), AiAssistantController.getRecentConversations);
 router.get('/conversations/:conversationId/messages', permissionGuard('ai-assistant.chat.use'), AiAssistantController.getConversationMessages);
 router.delete('/conversations/:conversationId', permissionGuard('ai-assistant.chat.use'), AiAssistantController.deleteConversation);
+router.patch('/messages/:messageId/feedback', permissionGuard('ai-assistant.chat.use'), AiAssistantController.updateMessageFeedback);
 
 // Proposal Sandbox endpoints — reviewable AI proposals, no real ERP data changes
 router.get('/proposals', permissionGuard('ai-assistant.proposals.view'), AiAssistantController.listProposals);

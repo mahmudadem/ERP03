@@ -32,6 +32,7 @@ import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assista
 import { IAiUsageLogRepository } from '../../../repository/interfaces/ai-assistant/IAiUsageLogRepository';
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { IAiCreditLedgerRepository } from '../../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
+import { IAiConversationMetaRepository } from '../../../repository/interfaces/ai-assistant/IAiConversationMetaRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
@@ -83,6 +84,7 @@ export class SendChatMessageUseCase {
     private modelRoutingGuard?: AiModelRoutingGuard,
     private providerRepository?: IAiProviderRepository,
     private creditLedgerRepository?: IAiCreditLedgerRepository,
+    private conversationMetaRepository?: IAiConversationMetaRepository,
   ) {
     this.rateLimiter = new AiRateLimiterService(settingsRepository);
     this.credentialResolver = new AiCredentialResolver(encryptionService, providerRepository, creditLedgerRepository);
@@ -410,6 +412,11 @@ export class SendChatMessageUseCase {
           runtimeWarnings, toolCallsRequested,
           toolResultsForMetadata,
           toolResultSummaries, proposalResultForMetadata,
+        });
+
+        // ── Update conversation metadata (title + message count) ────────
+        await this.upsertConversationMeta({
+          companyId, userId, conversationId: convId, message: message.trim(),
         });
 
         result = {
@@ -908,6 +915,11 @@ export class SendChatMessageUseCase {
             proposalResultForMetadata: null,
           });
 
+          // ── Update conversation metadata (title + message count) ──────
+          await this.upsertConversationMeta({
+            companyId, userId, conversationId: convId, message: message.trim(),
+          });
+
           await this.responsePersister.logUsage({
             companyId, userId,
             providerType: config.provider,
@@ -1038,6 +1050,66 @@ export class SendChatMessageUseCase {
     } finally {
       SendChatMessageUseCase.activeLocks.delete(lockKey);
     }
+  }
+
+  /**
+   * Update or create conversation metadata.
+   * On first user message, auto-generates a title from the message content.
+   * On subsequent messages, increments the message count and updates lastMessageAt.
+   */
+  private async upsertConversationMeta(input: {
+    companyId: string;
+    userId: string;
+    conversationId: string;
+    message: string;
+  }): Promise<void> {
+    if (!this.conversationMetaRepository) return;
+
+    try {
+      const existing = await this.conversationMetaRepository.get(
+        input.conversationId, input.companyId,
+      );
+
+      if (existing) {
+        // Increment message count and update timestamp
+        existing.messageCount += 2; // user + assistant
+        existing.lastMessageAt = new Date();
+        await this.conversationMetaRepository.save(existing);
+      } else {
+        // First message — generate a title
+        const title = SendChatMessageUseCase.generateTitle(input.message);
+        await this.conversationMetaRepository.save({
+          id: input.conversationId,
+          companyId: input.companyId,
+          userId: input.userId,
+          title,
+          messageCount: 2, // user + assistant
+          lastMessageAt: new Date(),
+          createdAt: new Date(),
+        });
+      }
+    } catch (error) {
+      // Title generation is non-critical — log and continue
+      console.warn(`[AI Assistant] Failed to update conversation meta: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Generate a conversation title from the first user message.
+   * Takes the first 50 characters, then trims to the last full word
+   * to avoid cutting mid-word.
+   */
+  static generateTitle(message: string): string {
+    const MAX_LENGTH = 50;
+    if (message.length <= MAX_LENGTH) {
+      return message.trim();
+    }
+    const truncated = message.substring(0, MAX_LENGTH);
+    const lastSpaceIndex = truncated.lastIndexOf(' ');
+    if (lastSpaceIndex > 0) {
+      return truncated.substring(0, lastSpaceIndex).trim();
+    }
+    return truncated.trim();
   }
 
   private async resolveModelProfile(provider: string, modelName: string | null | undefined): Promise<AiModelProfile> {

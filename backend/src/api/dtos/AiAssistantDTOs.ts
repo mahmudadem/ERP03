@@ -186,6 +186,7 @@ export class AiAssistantDTOMapper {
       model: message.model || null,
       tokenCount: message.tokenCount || null,
       metadata: message.metadata || null,
+      feedback: message.feedback || null,
       createdAt: message.createdAt?.toISOString?.() || message.createdAt,
     };
   }

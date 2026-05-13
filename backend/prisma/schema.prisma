@@ -2144,6 +2144,7 @@ model AiChatMessage {
   model          String?
   tokenCount     Int?
   metadata       Json?
+  feedback       String?  // 'positive' | 'negative' — user feedback on assistant messages
   createdAt      DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)

@@ -29,6 +29,8 @@ import { ApiError } from '../../../api/errors/ApiError';
 
 const createMockChatRepo = (): IAiChatRepository => ({
   create: jest.fn((msg: any) => Promise.resolve(msg)),
+  getById: jest.fn(() => Promise.resolve(null)),
+  updateFeedback: jest.fn(() => Promise.resolve(null as any)),
   getConversationMessages: jest.fn(() => Promise.resolve([])),
   getRecentConversations: jest.fn(() => Promise.resolve([])),
   deleteConversation: jest.fn(() => Promise.resolve()),

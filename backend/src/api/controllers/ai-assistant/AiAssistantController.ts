@@ -21,6 +21,7 @@ import { certificationCategoryForModule } from '../../../application/ai-assistan
 import { getCatalogDefinition } from '../../../application/ai-assistant/catalog/AiToolCatalogSeed';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { isAiCertificationCategory } from '../../../domain/ai-assistant/entities/AiCertificationCategory';
+import { AiChatFeedback } from '../../../domain/ai-assistant/entities/AiChatMessage';
 
 export class AiAssistantController {
   private static getCompanyId(req: Request): string {
@@ -80,6 +81,7 @@ const useCase = new SendChatMessageUseCase(
         diContainer.aiModelRoutingGuard,
         diContainer.aiProviderRepository,
         diContainer.aiCreditLedgerRepository,
+        diContainer.aiConversationMetaRepository,
       );
 
       const result = await useCase.execute({
@@ -133,24 +135,27 @@ const useCase = new SendChatMessageUseCase(
 
   /**
    * GET /ai-assistant/conversations
-   * Get recent conversations for the current user.
+   * Get recent conversations for the current user, including title and message counts.
    */
   static async getRecentConversations(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = AiAssistantController.getCompanyId(req);
       const userId = AiAssistantController.getUserId(req);
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = parseInt(req.query.limit as string) || 20;
 
-      const messages = await diContainer.aiChatRepository.getRecentConversations(
+      const metaList = await diContainer.aiConversationMetaRepository.listByUser(
         companyId, userId, limit
       );
 
       (res as any).status(200).json({
         success: true,
         data: {
-          conversations: messages.map(msg => ({
-            conversationId: msg.conversationId,
-            lastMessage: AiAssistantDTOMapper.toChatMessageResponse(msg),
+          conversations: metaList.map(meta => ({
+            conversationId: meta.id,
+            title: meta.title,
+            messageCount: meta.messageCount,
+            lastMessageAt: meta.lastMessageAt.toISOString(),
+            createdAt: meta.createdAt.toISOString(),
           })),
         },
       });
@@ -161,7 +166,7 @@ const useCase = new SendChatMessageUseCase(
 
   /**
    * DELETE /ai-assistant/conversations/:conversationId
-   * Delete all messages in a conversation.
+   * Delete all messages and metadata in a conversation.
    */
   static async deleteConversation(req: Request, res: Response, next: NextFunction) {
     try {
@@ -169,13 +174,60 @@ const useCase = new SendChatMessageUseCase(
       const userId = AiAssistantController.getUserId(req);
       const { conversationId } = req.params;
 
-      await diContainer.aiChatRepository.deleteConversation(
-        companyId, userId, conversationId
-      );
+      // Delete both the messages and the conversation metadata
+      await Promise.all([
+        diContainer.aiChatRepository.deleteConversation(
+          companyId, userId, conversationId
+        ),
+        diContainer.aiConversationMetaRepository.delete(
+          conversationId, companyId
+        ),
+      ]);
 
       (res as any).status(200).json({
         success: true,
         data: { deleted: true },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PATCH /ai-assistant/messages/:messageId/feedback
+   * Update user feedback (positive/negative) on an assistant message.
+   * Only assistant messages can receive feedback.
+   * Toggling the same value removes feedback; switching changes it.
+   */
+  static async updateMessageFeedback(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+      const { messageId } = req.params;
+      const { feedback } = req.body || {};
+
+      if (!feedback || (feedback !== 'positive' && feedback !== 'negative')) {
+        throw ApiError.badRequest('feedback must be "positive" or "negative"');
+      }
+
+      const message = await diContainer.aiChatRepository.getById(companyId, messageId);
+      if (!message) {
+        throw ApiError.notFound(`Message ${messageId} not found`);
+      }
+      if (message.companyId !== companyId) {
+        throw ApiError.forbidden('Message does not belong to your company');
+      }
+      if (message.role !== 'assistant') {
+        throw ApiError.badRequest('Feedback can only be provided on assistant messages');
+      }
+
+      // Toggle: if same feedback, remove it; otherwise set new value
+      const newFeedback: AiChatFeedback | undefined = message.feedback === feedback ? undefined : feedback;
+
+      const updated = await diContainer.aiChatRepository.updateFeedback(companyId, messageId, newFeedback);
+
+      (res as any).status(200).json({
+        success: true,
+        data: AiAssistantDTOMapper.toChatMessageResponse(updated),
       });
     } catch (error) {
       next(error);

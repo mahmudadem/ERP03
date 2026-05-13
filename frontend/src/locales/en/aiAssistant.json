@@ -64,7 +64,23 @@
     "quickPnl": "Profit & Loss",
     "quickPnlPrompt": "Generate a profit and loss report",
     "quickBs": "Balance Sheet",
-    "quickBsPrompt": "What is the current balance sheet?"
+    "quickBsPrompt": "What is the current balance sheet?",
+    "quickActions": {
+      "financialOverview": "Financial Overview",
+      "financialOverviewPrompt": "Give me an overview of our current financial position",
+      "trialBalance": "Trial Balance",
+      "trialBalancePrompt": "Show me the trial balance summary",
+      "topExpenses": "Top Expenses",
+      "topExpensesPrompt": "What are our biggest expenses this month?",
+      "salesSummary": "Sales Summary",
+      "salesSummaryPrompt": "Show me the sales summary for this month",
+      "outstandingInvoices": "Outstanding Invoices",
+      "outstandingInvoicesPrompt": "What unpaid invoices do we have?"
+    },
+    "feedback": {
+      "positive": "Helpful",
+      "negative": "Not helpful"
+    }
   },
   "settings": {
     "title": "AI Assistant Settings",

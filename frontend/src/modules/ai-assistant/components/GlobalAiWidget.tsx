@@ -22,6 +22,7 @@ import { useRBAC } from '../../../api/rbac/useRBAC';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { FeedbackButtons } from '../components/FeedbackButtons';
 import { Link } from 'react-router-dom';
 
 interface DisplayMessage {
@@ -41,6 +42,7 @@ interface DisplayMessage {
   allowedToolIds?: string[];
   toolCallsRequested?: string[];
   toolCallResults?: ChatRuntimeMetadataDTO['toolResults'];
+  feedback?: 'positive' | 'negative' | null;
 }
 
 interface ConversationSummary {
@@ -51,7 +53,7 @@ interface ConversationSummary {
 export const GlobalAiWidget: React.FC = () => {
   const { t } = useTranslation('aiAssistant');
   const { hasPermission } = useRBAC();
-  const { permissionsLoaded } = useCompanyAccess();
+  const { permissionsLoaded, companyId } = useCompanyAccess();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -145,6 +147,7 @@ export const GlobalAiWidget: React.FC = () => {
           model: msg.model,
           toolResults: extractToolResults(msg.metadata),
           proposal: (msg.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
+          feedback: msg.feedback || null,
           ...runtime,
         };
       });
@@ -219,6 +222,7 @@ export const GlobalAiWidget: React.FC = () => {
         model: response.model,
         toolResults: extractToolResults(response.assistantMessage.metadata),
         proposal: (response.assistantMessage.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
+        feedback: response.assistantMessage.feedback || null,
         ...extractRuntimeMetadata(response.assistantMessage.metadata, response.runtimeMeta),
       };
 
@@ -498,13 +502,25 @@ export const GlobalAiWidget: React.FC = () => {
                              <AiToolResultsPanel toolResults={msg.toolResults} />
                            </div>
                          )}
-                         {msg.proposal && (
-                           <div className="mt-3 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                             <Link to={`/ai-assistant/proposals/${msg.proposal.id}`} className="block text-sm text-indigo-700 font-semibold hover:underline">
-                               View Proposal: {msg.proposal.title}
-                             </Link>
-                           </div>
-                         )}
+{msg.proposal && (
+                            <div className="mt-3 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                              <Link to={`/ai-assistant/proposals/${msg.proposal.id}`} className="block text-sm text-indigo-700 font-semibold hover:underline">
+                                View Proposal: {msg.proposal.title}
+                              </Link>
+                            </div>
+                          )}
+                          {!msg.isProviderError && (
+                            <FeedbackButtons
+                              messageId={msg.id}
+                              currentFeedback={msg.feedback}
+                              companyId={companyId || ''}
+                              onFeedbackSubmitted={(msgId, newFeedback) => {
+                                setMessages(prev => prev.map(m =>
+                                  m.id === msgId ? { ...m, feedback: newFeedback } : m
+                                ));
+                              }}
+                            />
+                          )}
                        </div>
                      )}
                    </div>

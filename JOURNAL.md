@@ -4,6 +4,133 @@
 
 ---
 
+## 2026-05-13 (Wed) — ~40m — Phase 6.4: Thumbs Up/Down Feedback for AI Chat
+
+**Task:** Add feedback (positive/negative) to AI chat messages so users can rate AI responses.
+**Agent:** OpenCode (Backend Builder)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+1. **Backend: `AiChatMessage` domain entity** — Added `feedback?: 'positive' | 'negative'` field
+   - Added `AiChatFeedback` type alias
+   - Updated `AiChatMessageProps`, constructor, `toJSON()`, `fromJSON()`
+   - Added `setFeedback()` method
+   - `create()` defaults feedback to `undefined`
+
+2. **Backend: `IAiChatRepository` interface** — Added `getById(companyId, messageId)` and `updateFeedback(companyId, messageId, feedback)` methods
+
+3. **Backend: `FirestoreAiChatRepository`** — Implemented `getById()` and `updateFeedback()`
+
+4. **Backend: `PrismaAiChatRepository`** — Implemented `getById()` and `updateFeedback()`, added `feedback` to `create()` data
+
+5. **Backend: `schema.prisma`** — Added `feedback String?` column to `AiChatMessage` model
+
+6. **Backend: `AiAssistantDTOs.ts`** — Added `feedback` to `toChatMessageResponse()` output
+
+7. **Backend: `AiAssistantController.ts`** — Added `updateMessageFeedback()` controller:
+   - Route: `PATCH /tenant/ai-assistant/messages/:messageId/feedback`
+   - Validates feedback value, message existence, company ownership, and assistant role
+   - Toggle logic: same value removes feedback, different value changes it
+   - Returns updated message DTO
+
+8. **Backend: `ai-assistant.routes.ts`** — Added feedback route with `permissionGuard('ai-assistant.chat.use')`
+
+9. **Frontend: `aiAssistantApi.ts`** — Added `updateMessageFeedback()` API function and `feedback` field to `ChatMessageDTO`
+
+10. **Frontend: `FeedbackButtons.tsx`** (NEW) — ThumbsUp/ThumbsDown component with:
+    - Toggle/switch behavior
+    - Submitting state (disabled while in flight)
+    - Visual highlighting (green/rred)
+    - i18n support
+
+11. **Frontend: `GlobalAiWidget.tsx`** — Integrated `FeedbackButtons`:
+    - Added `feedback` to `DisplayMessage` interface
+    - Populated from API responses (new messages and history)
+    - Renders below each non-error assistant message
+    - Uses `companyId` from `useCompanyAccess()`
+
+12. **i18n** (EN/AR/TR) — Added `chat.feedback.positive` and `chat.feedback.negative`
+
+13. **Test updates** — Added `getById`/`updateFeedback` mock methods to both mock chat repos in `SendChatMessageUseCase.test.ts` and `AiToolCalling.test.ts`
+
+**Verification:**
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 35/35
+- `frontend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run build` ✅
+
+**Next:** Commit, then Phase 4.1 (Respond in User's Language) or frontend conversation history sidebar.
+
+## 2026-05-13 (Wed) — ~45m — Phase 6.3: Conversation Titles and History (Backend)
+
+**Task:** Add backend support for conversation titles and history listing for the AI Assistant.
+**Agent:** OpenCode (Backend Builder)
+**Branch:** `feat/ai-proposal-sandbox`
+
+**What Was Done:**
+
+1. **Created `IAiConversationMetaRepository` interface** (`backend/src/repository/interfaces/ai-assistant/IAiConversationMetaRepository.ts`)
+   - `AiConversationMeta` type with `id`, `companyId`, `userId`, `title`, `messageCount`, `lastMessageAt`, `createdAt`
+   - Repository methods: `get`, `listByUser`, `save`, `delete`
+
+2. **Created `FirestoreAiConversationMetaRepository`** (`backend/src/infrastructure/firestore/repositories/ai-assistant/FirestoreAiConversationMetaRepository.ts`)
+   - Firestore path: `companies/{companyId}/ai_conversation_meta/{conversationId}`
+   - Follows exact same pattern as `FirestoreAiCreditLedgerRepository` (singleton per conversation)
+   - `listByUser` orders by `lastMessageAt` desc with configurable limit
+
+3. **Registered in DI** (`backend/src/infrastructure/di/bindRepositories.ts`)
+   - Added import for interface + Firestore implementation
+   - Added `aiConversationMetaRepository` getter
+
+4. **Added title auto-generation to `SendChatMessageUseCase`**
+   - Added `IAiConversationMetaRepository` as optional constructor dependency
+   - Added `upsertConversationMeta()` private method that:
+     - On first message: creates new metadata with auto-generated title
+     - On subsequent messages: increments `messageCount` by 2 (user + assistant) and updates `lastMessageAt`
+     - Non-critical: failures are logged but don't block the chat flow
+   - Added static `generateTitle()` method:
+     - Takes first 50 characters of the user message
+     - Trims to the last full word (no mid-word cuts)
+     - Handles edge cases: short messages, no spaces, exact-length strings
+   - Called in both `execute()` and `executeStream()` after message persistence
+
+5. **Updated `AiAssistantController.getRecentConversations`**
+   - Now uses `aiConversationMetaRepository.listByUser()` instead of scanning chat messages
+   - Returns `conversationId`, `title`, `messageCount`, `lastMessageAt`, `createdAt`
+   - Default limit changed from 10 to 20
+
+6. **Updated `AiAssistantController.deleteConversation`**
+   - Now also deletes conversation metadata via `aiConversationMetaRepository.delete()`
+   - Both deletions run in parallel via `Promise.all()`
+
+7. **Added unit tests** (`backend/src/tests/application/ai-assistant/AiConversationMeta.test.ts`)
+   - 8 tests for `generateTitle()` covering: short messages, 50-char boundary, word truncation, no-space edge case, whitespace trimming, single words, long messages
+
+**Verification:**
+- `backend`: `npx tsc --noEmit` ✅
+- `backend`: `npm run build` ✅
+- `backend`: `npm run test -- SendChatMessageUseCase` ✅ — 35/35
+- `backend`: `npm run test -- AiConversationMeta` ✅ — 8/8
+
+**Files Changed:**
+
+New files:
+- `backend/src/repository/interfaces/ai-assistant/IAiConversationMetaRepository.ts`
+- `backend/src/infrastructure/firestore/repositories/ai-assistant/FirestoreAiConversationMetaRepository.ts`
+- `backend/src/tests/application/ai-assistant/AiConversationMeta.test.ts`
+
+Modified files:
+- `backend/src/repository/interfaces/ai-assistant/index.ts` — Added barrel export
+- `backend/src/infrastructure/di/bindRepositories.ts` — Added DI registration
+- `backend/src/application/ai-assistant/use-cases/SendChatMessageUseCase.ts` — Added `conversationMetaRepository` dependency, `upsertConversationMeta()`, `generateTitle()`
+- `backend/src/api/controllers/ai-assistant/AiAssistantController.ts` — Updated `getRecentConversations` and `deleteConversation` to use metadata repo
+
+**Next:** Frontend conversation history sidebar.
+
+---
+
 ## 2026-05-13 (Wed) — ~55m — Module Access 403 Trace
 **Task:** Trace tenant 403 errors where Super Admin showed modules granted but Company Admin showed no active/available modules.
 **Agent:** Codex (CTO Mode)

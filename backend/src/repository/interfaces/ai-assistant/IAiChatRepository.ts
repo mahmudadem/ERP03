@@ -5,13 +5,24 @@
  * Implementations: FirestoreAiChatRepository, PrismaAiChatRepository
  */
 
-import { AiChatMessage } from '../../../domain/ai-assistant/entities/AiChatMessage';
+import { AiChatMessage, AiChatFeedback } from '../../../domain/ai-assistant/entities/AiChatMessage';
 
 export interface IAiChatRepository {
   /**
    * Save a chat message and return the saved entity with generated ID.
    */
   create(message: AiChatMessage): Promise<AiChatMessage>;
+
+  /**
+   * Get a single message by ID, scoped to the company.
+   */
+  getById(companyId: string, messageId: string): Promise<AiChatMessage | null>;
+
+  /**
+   * Update the feedback field on a message.
+   * Returns the updated message.
+   */
+  updateFeedback(companyId: string, messageId: string, feedback: AiChatFeedback | undefined): Promise<AiChatMessage>;
 
   /**
    * Get recent messages for a conversation, ordered by creation time.
