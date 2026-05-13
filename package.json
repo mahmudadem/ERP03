@@ -14,7 +14,8 @@
     "graph:check": "py -3.14 -m graphify check-update .",
     "graph:query": "py -3.14 -m graphify query",
     "graph:explain": "py -3.14 -m graphify explain",
-    "graph:path": "py -3.14 -m graphify path"
+    "graph:path": "py -3.14 -m graphify path",
+    "seed:certifications": "npx ts-node --project backend/tsconfig.json backend/src/seeder/seedAutoCertifications.ts"
   },
   "dependencies": {
     "firebase-admin": "^13.6.0",

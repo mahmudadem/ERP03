@@ -119,6 +119,7 @@ import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRe
   import { AiModelProfileUseCase } from '../../application/ai-assistant/use-cases/AiModelProfileUseCase';
   import { AiProviderRegistryUseCase } from '../../application/ai-assistant/use-cases/AiProviderRegistryUseCase';
   import { AiModelCertificationUseCase } from '../../application/ai-assistant/use-cases/AiModelCertificationUseCase';
+import { AiAutoSeedCertification } from '../../application/ai-assistant/services/AiAutoSeedCertification';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
 import { GetProfitAndLossTool } from '../../application/ai-assistant/tools/GetProfitAndLossTool';
 import { GetBalanceSheetTool } from '../../application/ai-assistant/tools/GetBalanceSheetTool';
@@ -823,6 +824,12 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
   },
   get aiModelCertificationUseCase(): AiModelCertificationUseCase {
     return new AiModelCertificationUseCase(
+      this.aiModelProfileRepository,
+      this.aiModelCertificationRepository,
+    );
+  },
+  get aiAutoSeedCertification(): AiAutoSeedCertification {
+    return new AiAutoSeedCertification(
       this.aiModelProfileRepository,
       this.aiModelCertificationRepository,
     );
