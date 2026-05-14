@@ -11,6 +11,7 @@ router.use(assertSuperAdmin);
 router.get('/', SuperAdminVoucherTypeController.listSystemTemplates);
 router.post('/', SuperAdminVoucherTypeController.createSystemTemplate);
 router.put('/:id', SuperAdminVoucherTypeController.updateSystemTemplate);
+router.put('/:id/ui-layout', SuperAdminVoucherTypeController.updateSystemTemplateLayout);
 router.delete('/:id', SuperAdminVoucherTypeController.deleteSystemTemplate);
 
 export default router;

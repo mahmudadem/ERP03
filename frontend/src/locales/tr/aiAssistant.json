@@ -65,18 +65,6 @@
     "quickPnlPrompt": "Kâr ve zarar raporu oluştur",
     "quickBs": "Bilanço",
     "quickBsPrompt": "Mevcut bilanço nedir?",
-    "quickActions": {
-      "financialOverview": "Finansal Genel Bakış",
-      "financialOverviewPrompt": "Mevcut finansal durumumuz hakkında genel bir bakış verin",
-      "trialBalance": "Mizan",
-      "trialBalancePrompt": "Mizan özetini gösterin",
-      "topExpenses": "En Büyük Giderler",
-      "topExpensesPrompt": "Bu ayki en büyük giderlerimiz neler?",
-      "salesSummary": "Satış Özeti",
-      "salesSummaryPrompt": "Bu ayın satış özetini gösterin",
-      "outstandingInvoices": "Açık Faturalar",
-      "outstandingInvoicesPrompt": "Ödenmemiş faturalarımız hangileri?"
-    },
     "feedback": {
       "positive": "Faydalı",
       "negative": "Faydalı değil"
@@ -104,7 +92,11 @@
     },
     "noConversations": "Önceki sohbet yok",
     "untitledConversation": "Yeni sohbet",
-    "messages": "mesaj"
+    "messages": "mesaj",
+    "active": "Aktif",
+    "howCanIHelp": "Bugün size nasıl yardımcı olabilirim?",
+    "newChat": "Yeni Sohbet",
+    "poweredBy": "OpenCode AI tarafından desteklenmektedir"
   },
   "settings": {
     "title": "AI Asistanı Ayarları",
@@ -447,5 +439,18 @@
     "noData": "Bu dönem için veri bulunamadı.",
     "loadError": "Kullanım verileri yüklenemedi",
     "backToSettings": "Ayarlara Dön"
+  },
+  "quickActions": {
+    "financialOverview": "Finansal Genel Bakış",
+    "financialOverviewPrompt": "Mevcut finansal durumumuz hakkında genel bir bakış verin",
+    "trialBalance": "Mizan",
+    "trialBalancePrompt": "Mizan özetini gösterin",
+    "topExpenses": "En Büyük Giderler",
+    "topExpensesPrompt": "Bu ayki en büyük giderlerimiz neler?",
+    "salesSummary": "Satış Özeti",
+    "salesSummaryPrompt": "Bu ayın satış özetini gösterin",
+    "outstandingInvoices": "Açık Faturalar",
+    "outstandingInvoicesPrompt": "Ödenmemiş faturalarımız hangileri?",
+    "quickActionClick": "Sormak için tıkla"
   }
 }

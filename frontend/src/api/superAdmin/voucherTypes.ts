@@ -20,5 +20,9 @@ export const superAdminVoucherTypesApi = {
 
   delete: async (id: string): Promise<void> => {
     await client.delete(`${BASE_URL}/${id}`);
-  }
+  },
+
+  updateLayout: async (id: string, uiModeOverrides: any): Promise<void> => {
+    await client.put(`${BASE_URL}/${id}/ui-layout`, { uiModeOverrides });
+  },
 };

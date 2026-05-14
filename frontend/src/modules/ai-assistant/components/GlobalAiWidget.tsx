@@ -1,12 +1,7 @@
-/**
- * AiAssistantHomeMockPage.tsx
- *
- * Mock page for AI Assistant UI Refinements (ChatGPT Clone Aesthetic).
- */
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, Bot, User, Trash2, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import {
   aiAssistantApi,
   ChatMessageDTO,
@@ -18,7 +13,6 @@ import {
   streamMessage,
   AiStreamEvent,
 } from '../../../api/aiAssistantApi';
-import { client } from '../../../api/client';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
@@ -26,7 +20,6 @@ import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { FeedbackButtons } from '../components/FeedbackButtons';
 import { AiErrorDisplay } from '../components/AiErrorDisplay';
 import { QuickActionButtons } from './QuickActionButtons';
-import { Link } from 'react-router-dom';
 
 interface DisplayMessage {
   id: string;
@@ -53,391 +46,158 @@ interface ConversationSummary {
   title?: string;
   messageCount?: number;
   lastMessageAt?: string;
-  createdAt?: string;
-  /** @deprecated — use title instead */
-  lastMessage?: ChatMessageDTO;
 }
 
 export const GlobalAiWidget: React.FC = () => {
   const { t } = useTranslation('aiAssistant');
-  const { hasPermission } = useRBAC();
-  const { permissionsLoaded, companyId } = useCompanyAccess();
+  const { hasPermission, isOwner, isSuperAdmin } = useRBAC();
+  const { permissionsLoaded } = useCompanyAccess();
+  const location = useLocation();
+
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isOpen, setIsOpen] = useState(() => {
-    return localStorage.getItem('ai_widget_open') === 'true';
-  });
-  
-  useEffect(() => {
-    localStorage.setItem('ai_widget_open', isOpen.toString());
-  }, [isOpen]);
+  const [view, setView] = useState<'chat' | 'history'>('chat');
+  const [isOpen, setIsOpen] = useState(() => localStorage.getItem('ai_widget_open') === 'true');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  useEffect(() => {
+    localStorage.setItem('ai_widget_open', String(isOpen));
+  }, [isOpen]);
+
   const canChat = hasPermission('ai-assistant.chat.use');
+  const isAiPage = location.pathname.startsWith('/ai-assistant');
 
-  const extractRuntimeMetadata = useCallback((metadata: unknown, responseRuntimeMeta?: ChatRuntimeMetadataDTO): Partial<DisplayMessage> => {
-    const meta = (metadata || {}) as ChatMessageMetadata;
-    const runtimeMeta = responseRuntimeMeta;
-
-    const modelProfile = runtimeMeta?.modelProfile || meta.modelProfile;
-    const runtimeWarnings = runtimeMeta?.runtimeWarnings || meta.runtimeWarnings || [];
-    const toolCallsRequested = runtimeMeta?.toolCallsRequested || meta.toolCallsRequested || [];
-    const toolCallResults = runtimeMeta?.toolResults || meta.toolCallResults || [];
-
-    return {
-      runtimeStatus: runtimeMeta?.runtimeStatus || meta.runtimeStatus,
-      selectedSkills: runtimeMeta?.selectedSkills || meta.selectedSkills || [],
-      allowedToolIds: runtimeMeta?.allowedToolIds || meta.allowedToolIds || [],
-      modelProfile,
-      runtimeWarnings,
-      toolCallsRequested,
-      toolCallResults,
-    };
-  }, []);
-
-  const extractToolResults = useCallback((metadata: unknown): AiToolCallResultDTO[] => {
-    const meta = metadata as ChatMessageMetadata | null;
-    if (!meta || !Array.isArray(meta.toolResults)) return [];
-
-    return (meta.toolResults as unknown as Array<Record<string, unknown>>)
-      .map((entry) => ({
-        toolName: String(entry.toolName || ''),
-        result: {
-          success: Boolean((entry.result as any)?.success),
-          data: ((entry.result as any)?.data || null) as Record<string, unknown> | null,
-          error: (entry.result as any)?.error,
-          errorCode: (entry.result as any)?.errorCode,
-        },
-      }))
-      .filter(item => !!item.toolName);
-  }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const loadConversationList = useCallback(async () => {
+  // Load latest conversation on mount or when ID changes
+  const loadConversation = useCallback(async (id: string) => {
     try {
-      const resp = await client.get('/tenant/ai-assistant/conversations', {
-        params: { limit: 20 },
-        headers: { 'X-Silent-Error': 'true' },
-      });
-      const result = resp as any;
-      if (result?.conversations) {
-        setConversations(result.conversations);
-      }
-    } catch {
-      // Silently fail — AI widget is non-critical
-    }
-  }, []);
-
-  const loadConversation = useCallback(async (convId: string) => {
-    try {
-      const resp = await client.get(`/tenant/ai-assistant/conversations/${convId}/messages`, {
-        headers: { 'X-Silent-Error': 'true' },
-      });
-      const result = resp as any;
-      const historyMessages: DisplayMessage[] = (result?.messages || []).map((msg: ChatMessageDTO) => {
-        const runtime = extractRuntimeMetadata(msg.metadata);
-        return {
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
-          timestamp: msg.createdAt,
-          provider: msg.provider,
-          model: msg.model,
-          toolResults: extractToolResults(msg.metadata),
-          proposal: (msg.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
-          feedback: msg.feedback || null,
-          ...runtime,
-        };
-      });
-      setConversationId(convId);
-      setMessages(historyMessages);
-    } catch {
-      console.warn('[AI Assistant] Could not load conversation');
-    }
-  }, [extractRuntimeMetadata, extractToolResults]);
-
-  useEffect(() => {
-    if (!canChat || !permissionsLoaded) return;
-
-    const init = async () => {
-      try {
-        const resp = await client.get('/tenant/ai-assistant/conversations', {
-          params: { limit: 20 },
-          headers: { 'X-Silent-Error': 'true' },
-        });
-        const result = resp as any;
-        if (result?.conversations && result.conversations.length > 0) {
-          setConversations(result.conversations);
-          const lastConv = result.conversations[0];
-          await loadConversation(lastConv.conversationId);
-        }
-      } catch (err: any) {
-        // Silently ignore 403 (permission denied) and 404 (not found)
-        const status = err?.response?.status;
-        if (status !== 403 && status !== 404) {
-          console.warn('[AI Assistant] Failed to load conversations:', err);
-        }
-      }
-    };
-    init();
-  }, [canChat, permissionsLoaded, loadConversation]);
-
-  const refreshConversations = useCallback(() => {
-    loadConversationList();
-  }, [loadConversationList]);
-
-  const handleSend = useCallback(async (messageOverride?: string) => {
-    const trimmed = (messageOverride ?? input).trim();
-    if (!trimmed || isLoading) return;
-
-    setError(null);
-    const userMessage: DisplayMessage = {
-      id: `local_${Date.now()}`,
-      role: 'user',
-      content: trimmed,
-      timestamp: new Date().toISOString(),
-    };
-
-    // Create a placeholder assistant message for streaming updates
-    const streamId = `streaming_${Date.now()}`;
-    const placeholderMessage: DisplayMessage = {
-      id: streamId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, userMessage, placeholderMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    // Accumulate streaming state outside React for synchronous updates within the callback
-    let accumulatedContent = '';
-    const toolCallsRequested: string[] = [];
-    const toolCallResults: ChatRuntimeMetadataDTO['toolResults'] = [];
-    const toolResults: AiToolCallResultDTO[] = [];
-
-    try {
-      await streamMessage(
-        { message: trimmed, conversationId },
-        (event: AiStreamEvent) => {
-          switch (event.type) {
-            case 'token':
-              accumulatedContent += event.content;
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? { ...m, content: accumulatedContent } : m
-              ));
-              break;
-
-            case 'tool_call':
-              // TODO: yield tool_call events from backend for UI transparency
-              // Currently dead code — backend only emits tool_result, not tool_call
-              break;
-
-            case 'tool_result':
-              toolCallResults.push({
-                toolName: event.toolName,
-                approved: event.approved,
-                rejectionReason: event.approved ? undefined : 'Tool execution failed',
-              });
-              toolResults.push({
-                toolName: event.toolName,
-                result: {
-                  success: event.approved,
-                  data: event.approved ? (event.data as Record<string, unknown> | null) ?? null : null,
-                  ...(!event.approved ? { error: 'Tool execution failed' } : {}),
-                },
-              });
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? {
-                  ...m,
-                  toolCallResults: [...toolCallResults],
-                  toolResults: [...toolResults],
-                } : m
-              ));
-              break;
-
-            case 'done': {
-              const meta = event.metadata;
-              const runtimeMeta = meta.runtimeMeta;
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? {
-                  ...m,
-                  content: accumulatedContent || m.content,
-                  provider: meta.provider,
-                  model: meta.model,
-                  runtimeStatus: runtimeMeta?.runtimeStatus,
-                  selectedSkills: runtimeMeta?.selectedSkills,
-                  allowedToolIds: runtimeMeta?.allowedToolIds,
-                  modelProfile: runtimeMeta?.modelProfile,
-                  runtimeWarnings: runtimeMeta?.runtimeWarnings,
-                  toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
-                  toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
-                  toolResults: toolResults.length > 0 ? toolResults : undefined,
-                  proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
-                } : m
-              ));
-              if (runtimeMeta?.conversationId && !conversationId) {
-                setConversationId(runtimeMeta.conversationId);
-              }
-              break;
-            }
-
-            case 'error':
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? { ...m, error: new Error(event.message) } : m
-              ));
-              break;
-          }
-        },
-      );
-
-      refreshConversations();
-    } catch (err: any) {
-      setMessages(prev => prev.map(m =>
-        m.id === streamId ? { ...m, error: err } : m
-      ));
-      setError(null);
+      setIsLoading(true);
+      const { messages: history } = await aiAssistantApi.getConversationMessages(id);
+      setMessages(history.map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: m.createdAt,
+        modelProfile: m.metadata?.modelProfile,
+        toolResults: m.metadata?.toolCallResults?.map((tr: any) => ({
+          toolName: tr.toolName,
+          approved: tr.approved,
+          rejectionReason: tr.rejectionReason,
+          result: tr.result || {} // Provide required result field
+        })),
+        proposal: m.metadata?.proposal,
+      })));
+      setConversationId(id);
+    } catch (err) {
+      console.error('Failed to load conversation', err);
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
+    }
+  }, []);
+
+  // Fetch initial state and conversations
+  useEffect(() => {
+    if (canChat || isOwner || isSuperAdmin) {
+      aiAssistantApi.getRecentConversations(20).then(({ conversations: convs }) => {
+        setConversations(convs);
+        if (convs.length > 0 && messages.length === 0) {
+          loadConversation(convs[0].conversationId);
         }
-      }, 50);
+      }).catch(console.error);
     }
-  }, [input, isLoading, conversationId, refreshConversations]);
+  }, [canChat, isOwner, isSuperAdmin, loadConversation]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  const handleSendMessage = useCallback(async (textOverride?: string) => {
+    const text = textOverride || input;
+    if (!text.trim() || isLoading) return;
+
+    const userMsg: DisplayMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: text,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      let assistantContent = '';
+      const assistantMsgId = (Date.now() + 1).toString();
+      setStreamingContent('');
+
+      await streamMessage(
+        {
+          message: text,
+          conversationId,
+        },
+        (event: AiStreamEvent) => {
+          if (event.type === 'token') {
+            console.log('[AI] Token received:', event.content);
+            assistantContent += event.content;
+            setStreamingContent(assistantContent);
+          } else if (event.type === 'done') {
+            console.log('[AI] Stream done', event.metadata);
+            setConversationId(event.metadata?.runtimeMeta?.conversationId);
+            const finalContent = assistantContent;
+            setStreamingContent('');
+            
+            setMessages(prev => {
+              const assistantMsg: DisplayMessage = {
+                id: assistantMsgId,
+                role: 'assistant',
+                content: finalContent,
+                timestamp: new Date().toISOString(),
+                modelProfile: (event as any).metadata?.runtimeMeta?.modelProfile,
+                toolResults: (event as any).metadata?.runtimeMeta?.toolResults?.map((tr: any) => ({
+                  toolName: tr.toolName,
+                  approved: tr.approved,
+                  rejectionReason: tr.rejectionReason,
+                  result: tr.result || {}
+                })),
+                proposal: (event as any).metadata?.runtimeMeta?.proposal,
+                runtimeWarnings: (event as any).metadata?.runtimeMeta?.runtimeWarnings
+              };
+              return [...prev, assistantMsg];
+            });
+          } else if (event.type === 'error') {
+            console.error('[AI] Stream error:', event.message);
+            setError(event.message);
+            setStreamingContent('');
+          }
+        }
+      );
+    } catch (err) {
+      console.error('Failed to send message', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [input, isLoading, conversationId]);
 
-  const handleRetry = useCallback(() => {
-    // Remove the last error message, find the last user message content to re-send
-    setMessages(prev => {
-      const lastMsg = prev[prev.length - 1];
-      if (lastMsg?.error) {
-        return prev.slice(0, -1);
-      }
-      return prev;
-    });
-    // Find last user message content to pre-fill for re-send
-    const lastUserContent = [...messages].reverse().find(m => m.role === 'user')?.content;
-    if (lastUserContent) {
-      setInput(lastUserContent);
-    }
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 50);
-  }, [messages]);
-
-  const handleNewConversation = () => {
+  const startNewChat = () => {
     setMessages([]);
     setConversationId(undefined);
     setError(null);
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 50);
   };
 
-  const handleSelectConversation = async (convId: string) => {
-    await loadConversation(convId);
-  };
-
-  const handleDeleteConversation = async (convId: string) => {
-    try {
-      await aiAssistantApi.deleteConversation(convId);
-      if (convId === conversationId) {
-        setMessages([]);
-        setConversationId(undefined);
-      }
-      loadConversationList();
-    } catch {
-      // Silently fail
-    }
-  };
-
-  const groupConversationsByDate = (convs: ConversationSummary[]) => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today.getTime() - 86400000);
-
-    const groups: { label: string; conversations: ConversationSummary[] }[] = [];
-    const todayConvs: ConversationSummary[] = [];
-    const yesterdayConvs: ConversationSummary[] = [];
-    const olderConvs: ConversationSummary[] = [];
-
-    for (const conv of convs) {
-      const dateStr = conv.lastMessageAt || conv.lastMessage?.createdAt || conv.createdAt || '';
-      const date = dateStr ? new Date(dateStr) : new Date(0);
-      if (date >= today) {
-        todayConvs.push(conv);
-      } else if (date >= yesterday) {
-        yesterdayConvs.push(conv);
-      } else {
-        olderConvs.push(conv);
-      }
-    }
-
-    if (todayConvs.length > 0) groups.push({ label: t('chat.today', 'Today'), conversations: todayConvs });
-    if (yesterdayConvs.length > 0) groups.push({ label: t('chat.yesterday', 'Yesterday'), conversations: yesterdayConvs });
-    if (olderConvs.length > 0) groups.push({ label: t('chat.older', 'Older'), conversations: olderConvs });
-
-    return groups;
-  };
-
-  const conversationGroups = groupConversationsByDate(conversations);
-
-  const getPreview = (content: string, maxLength: number = 60) => {
-    const cleanContent = content.replace(/^(AI:\s*)+/i, '').replace(/[*#`|>]/g, '').trim();
-    const firstLine = cleanContent.split('\n')[0] || t('chat.emptyMessage', 'Message');
-    return firstLine.length > maxLength ? firstLine.substring(0, maxLength) + '...' : firstLine;
-  };
-
-  const formatModelProvider = (msg: DisplayMessage): string => {
-    const provider = msg.provider || msg.modelProfile?.provider || 'ai';
-    const model = msg.model || msg.modelProfile?.modelName || 'model';
-    return t('chat.modelLabel', 'Model: {{model}} · {{provider}}', { model, provider });
-  };
-
-  const formatModelStatus = (status: string): string => {
-    switch (status) {
-      case 'tested': return t('chat.testedModel', 'Tested model');
-      case 'experimental': return t('chat.experimentalModel', 'Experimental model');
-      case 'custom': return t('chat.customModelWarning', 'Custom model');
-      default: return t('chat.untestedModelWarning', 'Untested model');
-    }
-  };
-
-  const getVisibleRuntimeWarnings = (msg: DisplayMessage): string[] => {
-    const warnings = [...(msg.runtimeWarnings || [])];
-    const warningMessage = msg.modelProfile?.warningMessage;
-    if (warningMessage && !warnings.includes(warningMessage)) {
-      warnings.push(warningMessage);
-    }
-    return warnings.filter(Boolean);
-  };
-
-  // Quick actions are rendered by QuickActionButtons component
-
-  if (!canChat) {
+  if ((!canChat && !isOwner && !isSuperAdmin) || isAiPage) {
     return null;
   }
 
@@ -445,209 +205,159 @@ export const GlobalAiWidget: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl hover:bg-indigo-700 transition-all flex items-center justify-center rtl:right-auto rtl:left-6"
+        className="fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-[99999] w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl hover:scale-110 transition-all flex items-center justify-center group"
       >
-        <MessageSquare className="w-6 h-6" />
+        <MessageSquare className="w-7 h-7" />
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] w-[380px] h-[650px] max-h-[85vh] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden border border-gray-200 rtl:right-auto rtl:left-6">
-      {/* Widget Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
+    <div className="fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-[99999] w-[420px] h-[650px] max-h-[85vh] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex flex-col overflow-hidden border border-gray-100">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 flex items-center justify-between text-white">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
-            <Bot className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <Bot className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-semibold text-white text-sm leading-tight">ERP Assistant</h3>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-green-400 border border-green-500 shadow-sm"></span>
-              <span className="text-[10px] text-indigo-50 font-medium">Active</span>
-            </div>
+            <h3 className="font-bold text-sm">Global AI Assistant</h3>
+            <p className="text-[10px] opacity-80">Online & Ready</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button 
-             onClick={() => setSidebarOpen(!sidebarOpen)}
-             className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-md transition-colors"
-          >
-             <Menu className="w-5 h-5" />
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView(view === 'history' ? 'chat' : 'history')} className="p-2 hover:bg-white/10 rounded-lg" title="History">
+            <Clock className="w-4 h-4" />
           </button>
-          <button 
-             onClick={() => setIsOpen(false)}
-             className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-md transition-colors"
-          >
-             <X className="w-5 h-5" />
+          <button onClick={startNewChat} className="p-2 hover:bg-white/10 rounded-lg" title="New Chat">
+            <Plus className="w-4 h-4" />
+          </button>
+          <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-lg">
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden relative bg-gray-50">
-        {/* Sidebar Overlay */}
-        {sidebarOpen && (
-          <div className="absolute inset-y-0 left-0 w-[240px] bg-white border-r border-gray-200 shadow-xl z-20 flex flex-col rtl:left-auto rtl:right-0 rtl:border-r-0 rtl:border-l">
-            <div className="p-3 border-b border-gray-100">
-               <button onClick={handleNewConversation} className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors">
-                  <Plus className="w-4 h-4" /> New Chat
-               </button>
+      {/* History View */}
+      {view === 'history' && (
+        <div className="flex-1 overflow-y-auto bg-white p-2">
+          <h4 className="text-xs font-bold text-gray-400 px-3 py-2 uppercase tracking-wider">Recent Conversations</h4>
+          <div className="space-y-1">
+            {conversations.map(c => (
+              <button
+                key={c.conversationId}
+                onClick={() => {
+                  loadConversation(c.conversationId);
+                  setView('chat');
+                }}
+                className={`w-full text-left p-3 rounded-xl hover:bg-indigo-50 transition-colors flex items-center gap-3 group ${conversationId === c.conversationId ? 'bg-indigo-50 border border-indigo-100' : ''}`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-white group-hover:text-indigo-500 transition-colors">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-700 truncate">{c.title || 'Untitled Conversation'}</p>
+                  <p className="text-[10px] text-gray-400">{c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleDateString() : 'New chat'}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chat View */}
+      {view === 'chat' && (
+        <>
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50/50 scroll-smooth">
+        {messages.length === 0 && !isLoading && (
+          <div className="space-y-6">
+            <div className="text-center py-4">
+              <Sparkles className="w-10 h-10 text-indigo-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-gray-500">{t('chat.welcome', 'How can I assist you today?')}</p>
             </div>
-<div className="flex-1 overflow-y-auto p-2">
-                {conversations.length === 0 && (
-                  <div className="text-xs text-gray-400 text-center mt-4">{t('chat.noConversations', 'No previous chats')}</div>
-                )}
-                {conversations.map(conv => {
-                  const displayTitle = conv.title || (conv.lastMessage ? getPreview(conv.lastMessage.content, 30) : t('chat.untitledConversation', 'New conversation'));
-                  const timeLabel = conv.lastMessageAt
-                    ? new Date(conv.lastMessageAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                    : '';
-                  return (
-                    <button
-                      key={conv.conversationId}
-                      onClick={() => { handleSelectConversation(conv.conversationId); setSidebarOpen(false); }}
-                      className={`w-full text-left p-2.5 rounded-lg text-sm mb-1 ${conv.conversationId === conversationId ? 'bg-gray-100 font-semibold text-gray-900' : 'hover:bg-gray-50 text-gray-600'}`}
-                    >
-                      <div className="truncate font-medium">{displayTitle}</div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {conv.messageCount != null && (
-                          <span className="text-[10px] text-gray-400">{conv.messageCount} {t('chat.messages', 'messages')}</span>
-                        )}
-                        {timeLabel && (
-                          <span className="text-[10px] text-gray-400">{timeLabel}</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+            <QuickActionButtons 
+              onSendMessage={(text) => handleSendMessage(text)} 
+              hasMessages={messages.length > 0} 
+              compact={true} 
+            />
           </div>
         )}
 
-        {/* Messages */}
-        <div className="flex-1 flex flex-col relative w-full h-full">
-           <div className="flex-1 overflow-y-auto px-4 py-4 w-full">
-             {messages.length === 0 && (
-               <div className="flex flex-col items-center justify-center flex-1 mt-10">
-                  <div className="w-14 h-14 bg-white border border-gray-200 shadow-sm rounded-full flex items-center justify-center mb-4">
-                     <Bot className="w-7 h-7 text-indigo-600" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-gray-800 mb-6 text-center">
-                    How can I help you today?
-                  </h2>
-                  <div className="flex flex-col gap-2 w-full">
-                    <QuickActionButtons
-                      onSendMessage={(msg) => handleSend(msg)}
-                      hasMessages={messages.length > 0}
-                    />
-                  </div>
-               </div>
-             )}
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+            <div className={`max-w-[90%] p-4 rounded-2xl text-sm ${
+              msg.role === 'user'
+                ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-200 shadow-lg'
+                : 'bg-white text-gray-800 rounded-tl-none shadow-sm border border-gray-100'
+            }`}>
+              <MarkdownRenderer content={msg.content} />
+              
+              {msg.toolResults && msg.toolResults.length > 0 && (
+                <div className="mt-3">
+                  <AiToolResultsPanel toolResults={msg.toolResults} />
+                </div>
+              )}
+            </div>
+            <span className="text-[9px] text-gray-400 mt-1 px-1">
+              {msg.role === 'assistant' ? 'AI Assistant' : 'You'}
+            </span>
+          </div>
+        ))}
 
-             <div className="space-y-5 pb-2">
-               {messages.map((msg) => (
-                 <div key={msg.id} className={`flex w-full animate-in fade-in duration-300 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                   {msg.role === 'assistant' && (
-                     <div className="flex-shrink-0 w-7 h-7 rounded-full border border-gray-200 bg-white flex items-center justify-center mr-2 shadow-sm">
-                       <Bot className="w-4 h-4 text-black" />
-                     </div>
-                   )}
-                   <div className={`${msg.role === 'user' ? 'max-w-[85%]' : 'max-w-[85%] flex-1'}`}>
-                     {msg.role === 'user' ? (
-                       <div className="flex flex-col items-end">
-                         <div className="px-4 py-2.5 bg-indigo-600 text-white rounded-2xl rounded-tr-sm text-[14px] leading-relaxed shadow-sm">
-                           <div dir="auto">{msg.content}</div>
-                         </div>
-                       </div>
-                     ) : (
-<div className="text-gray-800 text-[14px] leading-relaxed prose prose-slate prose-sm max-w-none bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                          {msg.error ? (
-                            <AiErrorDisplay error={msg.error} onRetry={handleRetry} />
-                          ) : (
-                            <>
-                              <MarkdownRenderer content={msg.content} />
-                              
-                              {msg.toolResults && msg.toolResults.length > 0 && (
-                                <div className="mt-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                                  <AiToolResultsPanel toolResults={msg.toolResults} />
-                                </div>
-                              )}
-                              {msg.proposal && (
-                                <div className="mt-3 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                                  <Link to={`/ai-assistant/proposals/${msg.proposal.id}`} className="block text-sm text-indigo-700 font-semibold hover:underline">
-                                    View Proposal: {msg.proposal.title}
-                                  </Link>
-                                </div>
-                              )}
-                              {!msg.id.startsWith('streaming_') && (
-                                <FeedbackButtons
-                                  messageId={msg.id}
-                                  currentFeedback={msg.feedback}
-                                  companyId={companyId || ''}
-                                  onFeedbackSubmitted={(msgId, newFeedback) => {
-                                    setMessages(prev => prev.map(m =>
-                                      m.id === msgId ? { ...m, feedback: newFeedback } : m
-                                    ));
-                                  }}
-                                />
-                              )}
-                            </>
-                          )}
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               ))}
-               
-               {isLoading && (
-                 <div className="flex w-full animate-in fade-in duration-300">
-                   <div className="flex-shrink-0 w-7 h-7 rounded-full border border-gray-200 bg-white flex items-center justify-center mr-2 shadow-sm">
-                     <Bot className="w-4 h-4 text-black" />
-                   </div>
-                   <div className="text-gray-900 flex items-center gap-1 mt-2">
-                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" />
-                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                   </div>
-                 </div>
-               )}
-             </div>
-             <div ref={messagesEndRef} />
-           </div>
-           
-{/* Input */}
-            <div className="p-3 bg-white border-t border-gray-200">
-               <div dir="auto" className="relative flex items-end bg-gray-50 border border-gray-300 focus-within:border-indigo-500 rounded-2xl transition-all duration-200 p-1">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Your message..."
-                  disabled={isLoading}
-                  rows={1}
-                  dir="auto"
-                  autoFocus
-                  className="flex-1 max-h-[120px] min-h-[40px] py-2.5 px-3 bg-transparent border-none outline-none focus:ring-0 resize-none disabled:opacity-50 text-[14px] leading-relaxed m-0 placeholder-gray-400"
-                />
-                <button
-                  onClick={() => handleSend()}
-                  disabled={isLoading || !input.trim()}
-                  className="mb-1 mr-1 w-8 h-8 bg-indigo-600 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center flex-shrink-0"
-                >
-                  <Send className="w-4 h-4 rtl:-scale-x-100 ml-0.5" />
-                </button>
+        {streamingContent && (
+          <div className="flex flex-col items-start animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="max-w-[90%] p-4 rounded-2xl text-sm bg-white text-gray-800 rounded-tl-none shadow-sm border border-indigo-100 ring-1 ring-indigo-500/10">
+              <div className="flex items-center gap-2 mb-2 text-indigo-500">
+                <Bot className="w-3.5 h-3.5 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">AI Assistant is typing...</span>
               </div>
-              <div className="mt-2 text-center">
-                <span className="text-[10px] text-gray-400">Powered by OpenCode AI</span>
+              <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800 font-sans">
+                {streamingContent}
+                <span className="inline-block w-1.5 h-4 ml-0.5 bg-indigo-400 animate-pulse align-middle" />
               </div>
-           </div>
+            </div>
+          </div>
+        )}
+
+        {isLoading && !streamingContent && (
+          <div className="flex items-center gap-2 text-indigo-500 animate-pulse text-xs">
+            <Bot className="w-4 h-4" />
+            <span>AI is thinking...</span>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
         </div>
-      </div>
+
+        {/* Input area - only show in chat view */}
+        {error && <div className="px-4 py-2 bg-red-50 text-red-600 text-[10px] border-t border-red-100">{error}</div>}
+        <div className="p-4 bg-white border-t border-gray-100">
+          <div className="relative flex items-center">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Ask anything..."
+              className="w-full pl-4 pr-12 py-3 bg-gray-50 border-none rounded-xl text-sm resize-none focus:ring-2 focus:ring-indigo-500/20 max-h-32"
+            />
+            <button
+              onClick={() => handleSendMessage()}
+              disabled={isLoading || !input.trim()}
+              className="absolute right-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 transition-all shadow-md"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </>
+    )}
     </div>
   );
 };

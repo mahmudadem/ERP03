@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
   LayoutDashboard, 
+  LayoutTemplate,
   Users, 
   Building2, 
   Blocks, 
@@ -52,6 +53,7 @@ export const SuperAdminShell: React.FC = () => {
     { path: '/super-admin/ai-providers', label: t('shell.superAdmin.nav.aiProviders'), icon: Server },
     { path: '/super-admin/ai-models', label: t('shell.superAdmin.nav.aiModels'), icon: Bot },
     { path: '/super-admin/ai-proposal-policies', label: t('shell.superAdmin.nav.aiProposalPolicies', { defaultValue: 'AI Proposals' }), icon: ShieldCheck },
+    { path: '/super-admin/system-forms', label: t('shell.superAdmin.nav.systemForms', { defaultValue: 'System Forms' }), icon: LayoutTemplate },
     { path: '/super-admin/voucher-templates', label: t('shell.superAdmin.nav.voucherTemplates', { defaultValue: 'Voucher Templates' }), icon: FileText },
     { path: '/super-admin/appearance', label: t('shell.superAdmin.nav.appearance', { defaultValue: 'Appearance Lab' }), icon: Palette },
   ];

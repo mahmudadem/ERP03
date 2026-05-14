@@ -29,6 +29,7 @@ declare global {
                 permissions: string[];
                 modules: string[];
                 features: string[];
+                isOwner: boolean;
             }
         }
     }
@@ -95,7 +96,8 @@ export const tenantContextMiddleware = async (req: Request, res: Response, next:
             roleId: user.roleId,
             permissions: permissions,
             modules: capabilityParentModules,
-            features: enabledFeatures
+            features: enabledFeatures,
+            isOwner: !!user.isOwner || user.roleId?.toLowerCase() === 'owner'
         };
 
         next();

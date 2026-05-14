@@ -19,6 +19,8 @@ export interface QuickActionButtonsProps {
   onSendMessage: (message: string) => void;
   /** If true, the conversation already has messages and buttons should not render. */
   hasMessages: boolean;
+  /** Compact mode for small widgets (1 column). */
+  compact?: boolean;
 }
 
 interface QuickAction {
@@ -38,33 +40,52 @@ const QUICK_ACTIONS: QuickAction[] = [
 export const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
   onSendMessage,
   hasMessages,
+  compact = false,
 }) => {
   const { t } = useTranslation('aiAssistant');
 
-  if (hasMessages) {
+  if (hasMessages && !compact) {
     return null;
   }
 
   return (
     <div
-      className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 w-full"
+      className={`grid gap-6 w-full ${
+        compact 
+          ? 'grid-cols-1' 
+          : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+      }`}
       dir="auto"
     >
       {QUICK_ACTIONS.map((action) => (
         <button
           key={action.labelKey}
-          onClick={() => onSendMessage(t(action.promptKey))}
-          className="group flex flex-col items-center gap-2 p-4 bg-white border border-gray-200 rounded-xl
-                     hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5
-                     active:translate-y-0 active:shadow-sm
-                     transition-all duration-200 ease-out text-center"
+          onClick={() => onSendMessage(t(action.promptKey, { defaultValue: action.promptKey }))}
+          className={`
+            flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-3xl 
+            hover:bg-indigo-50 hover:border-indigo-200 hover:shadow-lg
+            transition-all text-center group shadow-sm min-h-[120px]
+            ${compact ? 'flex-row' : 'flex-col'}
+          `}
         >
-          <span className="text-2xl select-none" role="img" aria-hidden="true">
-            {action.icon}
-          </span>
-          <span className="text-sm font-medium text-gray-600 group-hover:text-indigo-600 transition-colors">
-            {t(action.labelKey)}
-          </span>
+          <div className={`
+            flex-shrink-0 w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center 
+            group-hover:bg-white group-hover:scale-110 transition-all shadow-inner
+          `}>
+            <span className="text-2xl">
+              {action.icon}
+            </span>
+          </div>
+          <div className="flex-1 w-full">
+            <span className="block text-sm font-bold text-gray-800 group-hover:text-indigo-700 leading-snug">
+              {t(action.labelKey, { defaultValue: action.labelKey.split('.').pop() })}
+            </span>
+            {!compact && (
+              <span className="block text-[10px] text-gray-400 group-hover:text-indigo-400 mt-2 font-medium">
+                {t('quickActions.quickActionClick', 'Click to ask')}
+              </span>
+            )}
+          </div>
         </button>
       ))}
     </div>

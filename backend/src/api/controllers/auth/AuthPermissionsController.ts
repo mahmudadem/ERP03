@@ -38,17 +38,22 @@ export class AuthPermissionsController {
         });
       }
 
+      const company = await diContainer.companyRepository.findById(companyId);
       const membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(user.uid, companyId);
+      
+      const isOwner = isSuperAdmin || (company?.ownerId === user.uid) || (!!membership?.isOwner) || (membership?.roleId?.toLowerCase() === 'owner');
+
       if (!membership) {
         return res.json({
           success: true,
           data: {
-            roleId: null,
-            roleName: null,
+            roleId: isOwner ? 'OWNER' : null,
+            roleName: isOwner ? 'Owner' : null,
             moduleBundles: [],
             explicitPermissions: [],
             resolvedPermissions: [],
-            isSuperAdmin
+            isSuperAdmin,
+            isOwner
           }
         });
       }
@@ -61,7 +66,6 @@ export class AuthPermissionsController {
       const entitledModules = await diContainer.entitlementService.getEntitledModules(companyId);
       const entitledModuleSet = new Set<string>(entitledModules.map(m => m.toLowerCase()));
 
-      const company = await diContainer.companyRepository.findById(companyId);
       const companyModules = await diContainer.companyModuleRepository.listByCompany(companyId);
       const legacyModulesList = (company as any)?.modules as string[] || [];
       const legacyModuleSet = new Set<string>(legacyModulesList.map((m: string) => m.toLowerCase()).filter(Boolean));
@@ -100,6 +104,8 @@ export class AuthPermissionsController {
         entitlementRepository: diContainer.companyEntitlementRepository,
       });
 
+      const finalIsOwner = isOwner || membership.roleId?.toLowerCase() === 'owner';
+
       return res.json({
         success: true,
         data: {
@@ -110,6 +116,7 @@ export class AuthPermissionsController {
           resolvedPermissions,
           enabledCapabilities,
           isSuperAdmin,
+          isOwner: finalIsOwner,
         },
       });
     } catch (err) {

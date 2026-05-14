@@ -221,7 +221,10 @@ describe('CheckProviderHealthUseCase - Cooldown', () => {
   });
 
   it('should enforce cooldown between health checks', async () => {
-    const config = AiProviderConfig.defaultForCompany('cooldown-test');
+    const config = AiProviderConfig.fromJSON({
+      ...AiProviderConfig.defaultForCompany('cooldown-test').toPersistenceJSON(),
+      provider: 'ollama', // Use ollama to bypass isMockProvider check
+    });
     const settingsRepo = createMockSettingsRepo(config);
     const encryptionService = createMockEncryptionService();
     const httpClient = createMockHttpClient();
@@ -243,8 +246,14 @@ describe('CheckProviderHealthUseCase - Cooldown', () => {
   });
 
   it('should allow health check for different companies', async () => {
-    const config1 = AiProviderConfig.defaultForCompany('company-a');
-    const config2 = AiProviderConfig.defaultForCompany('company-b');
+    const config1 = AiProviderConfig.fromJSON({
+      ...AiProviderConfig.defaultForCompany('company-a').toPersistenceJSON(),
+      provider: 'ollama',
+    });
+    const config2 = AiProviderConfig.fromJSON({
+      ...AiProviderConfig.defaultForCompany('company-b').toPersistenceJSON(),
+      provider: 'ollama',
+    });
     const settingsRepo = createMockSettingsRepo(config1);
     const encryptionService = createMockEncryptionService();
     const httpClient = createMockHttpClient();

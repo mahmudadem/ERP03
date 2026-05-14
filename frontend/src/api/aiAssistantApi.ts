@@ -587,6 +587,7 @@ export async function streamMessage(
   }
 
   const url = `${env.apiBaseUrl}/tenant/ai-assistant/chat/stream`;
+  console.log('[AI-DEBUG] STREAM CONNECTION INITIATED. URL:', url);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -623,12 +624,17 @@ export async function streamMessage(
 
       buffer += decoder.decode(value, { stream: true });
 
-      // SSE events are separated by blank lines (\n\n).
-      // Process all complete events found in the buffer.
+      // SSE events are separated by blank lines (\n\n or \r\n\r\n).
       let boundary: number;
       while ((boundary = buffer.indexOf('\n\n')) !== -1) {
         const eventText = buffer.substring(0, boundary);
         buffer = buffer.substring(boundary + 2);
+        parseSSEEvent(eventText, onEvent);
+      }
+      // Also check for \r\n\r\n
+      while ((boundary = buffer.indexOf('\r\n\r\n')) !== -1) {
+        const eventText = buffer.substring(0, boundary);
+        buffer = buffer.substring(boundary + 4);
         parseSSEEvent(eventText, onEvent);
       }
     }
@@ -648,22 +654,18 @@ export async function streamMessage(
  * SSE lines starting with ":" are comments (keep-alive) and are ignored.
  */
 function parseSSEEvent(eventText: string, onEvent: (event: AiStreamEvent) => void): void {
-  const lines = eventText.split('\n');
+  const lines = eventText.split(/\r?\n/);
   let eventName = '';
   const dataLines: string[] = [];
 
   for (const line of lines) {
-    // SSE comment lines (e.g. ": keep-alive") — ignore
-    if (line.startsWith(':')) continue;
-    if (line.startsWith('event:')) {
-      eventName = line.substring(6).trim();
-    } else if (line.startsWith('data:')) {
-      // Per SSE spec, a single leading space after "data:" is stripped
-      let dataContent = line.substring(5);
-      if (dataContent.startsWith(' ')) {
-        dataContent = dataContent.substring(1);
-      }
-      dataLines.push(dataContent);
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith(':')) continue;
+    
+    if (trimmedLine.startsWith('event:')) {
+      eventName = trimmedLine.substring(6).trim();
+    } else if (trimmedLine.startsWith('data:')) {
+      dataLines.push(trimmedLine.substring(5).trim());
     }
   }
 

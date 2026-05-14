@@ -23,6 +23,11 @@ class InMemoryCertificationRepo implements IAiModelCertificationRepository {
   async listByModelProfile(modelProfileId: string) {
     return this.results.filter(r => r.modelProfileId === modelProfileId);
   }
+  async expireByProfileAndCategory(modelProfileId: string, category: string) {
+    const toExpire = this.results.filter(r => r.modelProfileId === modelProfileId && r.category === category && r.status === 'CERTIFIED');
+    toExpire.forEach(r => { (r as any).status = 'DEPRECATED'; });
+    return toExpire.length;
+  }
   async findValidForRouting(input: any) {
     return this.results.find(result =>
       result.status === 'CERTIFIED' &&

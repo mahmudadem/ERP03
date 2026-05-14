@@ -1,11 +1,29 @@
 # 🎯 Current Focus
 
-**Task:** AI Assistant Fixing Plan — CTO Audit & Remediation Complete
-**Started:** 2026-05-13
-**Completed:** 2026-05-14
-**Status:** ✅ REMEDIATED — 25 PASS, 1 PARTIAL, 2 pre-existing test mock failures
+**Task:** Phase 1A — Core Module Bug Fixes & Stabilization
+**Started:** 2026-05-14
+**Status:** 🔄 IN PROGRESS
 **Agent/IDE:** OpenCode (CTO Mode)
-**Branch:** `feat/ai-proposal-sandbox`
+**Branch:** `feat/phase-1a-core-bugs`
+
+### 🛠️ Recent Fixes (AI Assistant Infrastructure)
+- **Test Infrastructure:** Fixed missing repository mocks and health check diagnostic blocks.
+- **I18n Robustness:** Flattened `quickActions` structure, fixed JSON syntax errors in all locales, and added backend cleanup for conversation titles.
+- **UI Layout:** Increased spacing and refined button grid to prevent horizontal text overlap in the main chat area.
+
+---
+
+## Where We Left Off
+
+The AI Assistant Fixing Plan audit was completed on `feat/ai-proposal-sandbox` (25 PASS / 1 PARTIAL / 2 pre-existing). The branch was **not merged**; instead, work pivoted to Phase 1A core stabilization on a new branch `feat/phase-1a-core-bugs`.
+
+### Phase 1A Progress
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1.1 | Fix Forms Designer field placement + preview | ✅ COMPLETE | Commit `1a8c0e9d` fixed for-of loop, CSS grid positioning, and object mutation. Follow-up fix resolved 5 additional shallow-copy mutation bugs in `handleDropField`, `updateSectionOrder`, `moveSelectedFieldSection`, `updateSectionStyle`, and `onResizeMove`. All now use `JSON.parse(JSON.stringify(...))` deep clones to prevent React state mutation. Frontend typecheck passes. |
+| 1.2 | Fix Voucher Save for Sales/Purchase semantic docs | 🔶 In Progress | Fixed missing Sales Order, Delivery Note, and Sales Return routes in `useVoucherActions.ts`. SO now routes to `salesApi.createSO/updateSO`. DN and SR route to `salesApi.createDN/createReturn` with clear errors on attempted updates (backend update endpoints missing). Frontend typecheck passes. |
+| 1.3 | Default Form Designs for standard doc types | ✅ COMPLETE | Super Admin System Form Designer built. Super Admin can now design default layouts for all system voucher types via `/super-admin/system-forms`. Layouts are saved to system templates and automatically inherited by new companies via `CompanyVoucherTemplateSyncService`. Seeder fixed to preserve existing `uiModeOverrides` on re-run. Frontend + backend typecheck pass. Build passes. |
 
 ---
 
@@ -13,7 +31,7 @@
 
 The CTO audit against `docs/architecture/ai-assistant-fixing-plan.md` and `docs/architecture/ai-assistant-fixing-plan-part2.md` identified:
 - Initial: 17 PASS / 8 PARTIAL / 3 FAIL (out of 28 tasks)
-- After remediation (4 subtasks A-D): **25 PASS / 1 PARTIAL / 2 pre-existing test mock failures**
+- After remediation (A-D + Stability): **27 PASS / 1 PARTIAL**
 
 ### Subtasks Completed
 
@@ -23,16 +41,11 @@ The CTO audit against `docs/architecture/ai-assistant-fixing-plan.md` and `docs/
 | B | Tool truncation signals + P&L/BS/CashFlow restructuring + contract v2 | `b304300c` |
 | C | SSE frontend + StreamChatMessageUseCase extraction + lock/DI fixes | `5bef9203` |
 | D | Conversation cleanup, usage dashboard, module entitlement, smoke tests | `1c238955` |
+| Stability | Fixed test mocks, health check cooldown tests, and global widget i18n/layout | WIP |
 
 ### Remaining Gap (PARTIAL)
 
 - **Phase 3.3 — SendChatMessageUseCase line count**: Target was 250 lines; actual is 549 (`executeStream()` extracted to new `StreamChatMessageUseCase`). To reach 250, `execute()` itself would need to be split further, which is a deeper refactoring. Acceptable for pre-alpha.
-
-### Pre-existing (not caused by this work)
-
-- **AiModelRoutingGuard / AiModelCertificationUseCase test failures** — test mock `InMemoryCertificationRepo` missing `expireByProfileAndCategory()` method. Needs a separate test infrastructure fix.
-- **AiToolCalling test failures** — 2 pre-existing `CheckProviderHealthUseCase - Cooldown` tests fail. Noted since Phase 2A.
-- **`ai-tool-contract-v1` → `v2` bump** invalidates any v1 certifications. No real deployment exists yet, so zero impact.
 
 ---
 
@@ -41,7 +54,7 @@ The CTO audit against `docs/architecture/ai-assistant-fixing-plan.md` and `docs/
 1. Merge `feat/ai-proposal-sandbox` to main.
 2. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
 3. Before June 1: Firestore security rules.
-4. Fix test mock infrastructure (AiModelRoutingGuard, AiToolCalling cooldown tests).
+4. Continue Phase 1A core bug fixes (Forms Designer, Voucher Save).
 
 ---
 

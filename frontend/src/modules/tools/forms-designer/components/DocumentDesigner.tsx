@@ -617,13 +617,15 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // --- VISUAL EDITOR LOGIC (Drag & Drop + Resize) ---
 
   const updateSectionOrder = (sectionKey: string, newOrder: number) => {
-    const overrides = { ...config.uiModeOverrides };
-    const currentModeSections = overrides[previewMode].sections;
+    const overrides = JSON.parse(JSON.stringify(config.uiModeOverrides || '{}'));
+    const currentModeSections = overrides[previewMode]?.sections || {};
     const targetSectionEntry = Object.entries(currentModeSections).find(([_, v]) => (v as SectionLayout).order === newOrder);
     
     if (targetSectionEntry) {
       const [targetKey, targetVal] = targetSectionEntry;
-      (targetVal as SectionLayout).order = (currentModeSections[sectionKey as SectionType] as SectionLayout).order;
+      const sourceOrder = (currentModeSections[sectionKey as SectionType] as SectionLayout)?.order;
+      if (sourceOrder === undefined) return;
+      (targetVal as SectionLayout).order = sourceOrder;
       (currentModeSections[sectionKey as SectionType] as SectionLayout).order = newOrder;
       setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
     }
@@ -646,9 +648,10 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     const fieldId = e.dataTransfer.getData('fieldId');
     const sourceSection = e.dataTransfer.getData('section');
 
-    const overrides = { ...config.uiModeOverrides };
+    const overrides = JSON.parse(JSON.stringify(config.uiModeOverrides || '{}'));
     const modeConfig = overrides[previewMode];
-    const sourceFields = modeConfig.sections[sourceSection as SectionType].fields;
+    if (!modeConfig || !modeConfig.sections || !modeConfig.sections[sourceSection as SectionType]) return;
+    const sourceFields: FieldLayout[] = modeConfig.sections[sourceSection as SectionType].fields || [];
     
     // Find the field being dragged
     const primaryFieldIndex = sourceFields.findIndex((f: FieldLayout) => f.fieldId === fieldId);
@@ -703,7 +706,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
        fieldsToMove[0].col = Math.max(0, Math.min(GRID_COLS - (fieldsToMove[0].colSpan || 1), targetCol));
     }
 
-    const targetFields = modeConfig.sections[targetSection as SectionType].fields;
+    const targetSectionKey = targetSection as SectionType;
+    if (!modeConfig.sections[targetSectionKey]) {
+      modeConfig.sections[targetSectionKey] = { order: 0, fields: [] };
+    }
+    const targetFields = modeConfig.sections[targetSectionKey].fields;
     targetFields.push(...fieldsToMove);
 
     setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
@@ -738,8 +745,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     const deltaX = e.clientX - resizingRef.current.startX;
     const colDelta = Math.round(deltaX / cellWidth);
     
-    const overrides = { ...config.uiModeOverrides };
-    const fields = overrides[previewMode].sections[section as SectionType].fields;
+    const overrides = JSON.parse(JSON.stringify(config.uiModeOverrides || '{}'));
+    const fields = overrides[previewMode]?.sections[section as SectionType]?.fields || [];
     const field = fields.find((f: FieldLayout) => f.fieldId === fieldId);
     if (!field) return;
 
@@ -778,8 +785,9 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
   const moveSelectedFieldSection = (newSection: string) => {
      if (!selectedField) return;
-     const overrides = { ...config.uiModeOverrides };
+     const overrides = JSON.parse(JSON.stringify(config.uiModeOverrides || '{}'));
      const modeConfig = overrides[previewMode];
+     if (!modeConfig || !modeConfig.sections) return;
      
      const container = document.querySelector('.grid-container') as HTMLElement;
      const rect = container?.getBoundingClientRect() || { width: 1000, left: 0 };
@@ -787,14 +795,20 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
      const mouseX = 0; // Simplified for logic
      const col = Math.floor(mouseX / cellWidth);
      
-     const sourceFields = modeConfig.sections[selectedField.section as SectionType].fields;
+     const sourceSectionKey = selectedField.section as SectionType;
+     if (!modeConfig.sections[sourceSectionKey]) return;
+     const sourceFields = modeConfig.sections[sourceSectionKey].fields;
      const idx = sourceFields.findIndex((f: FieldLayout) => f.fieldId === selectedField.id);
      if (idx === -1) return;
      const [field] = sourceFields.splice(idx, 1);
      
-      field.row = modeConfig.sections[newSection as SectionType].fields.length;
-      field.col = 0;
-      modeConfig.sections[newSection as SectionType].fields.push(field);
+     const targetSectionKey = newSection as SectionType;
+     if (!modeConfig.sections[targetSectionKey]) {
+       modeConfig.sections[targetSectionKey] = { order: 0, fields: [] };
+     }
+     field.row = modeConfig.sections[targetSectionKey].fields.length;
+     field.col = 0;
+     modeConfig.sections[targetSectionKey].fields.push(field);
      
      setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
      setSelectedField({ ...selectedField, section: newSection });
@@ -802,8 +816,15 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
 
   const updateSectionStyle = (sectionName: string, color: string) => {
-    const overrides = { ...config.uiModeOverrides };
-    overrides[previewMode].sections[sectionName as SectionType].backgroundColor = color;
+    const overrides = JSON.parse(JSON.stringify(config.uiModeOverrides || '{}'));
+    if (!overrides[previewMode]) {
+      overrides[previewMode] = { sections: {} };
+    }
+    const targetSectionKey = sectionName as SectionType;
+    if (!overrides[previewMode].sections[targetSectionKey]) {
+      overrides[previewMode].sections[targetSectionKey] = { order: 0, fields: [] };
+    }
+    overrides[previewMode].sections[targetSectionKey].backgroundColor = color;
     setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
   };
 

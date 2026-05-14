@@ -793,8 +793,92 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
       savedVoucher = cleanPayload.id
         ? await purchasesApi.updateReturn(cleanPayload.id, prPayload)
         : await purchasesApi.createReturn(prPayload);
+    } else if (isSalesOrder) {
+      const soPayload = {
+        customerId: firstEntityRef(data.customerId, data.partyId, data.customer) || '',
+        orderDate: firstDisplayText(data.orderDate, data.date) || new Date().toISOString().split('T')[0],
+        expectedDeliveryDate: firstDisplayText(data.expectedDeliveryDate),
+        currency: headerCurrency || 'USD',
+        exchangeRate: exchangeRate || 1,
+        notes: firstDisplayText(data.notes, data.description),
+        internalNotes: firstDisplayText(data.internalNotes),
+        lines: (data.lines || []).map((l: any, index: number) => ({
+          lineId: firstEntityRef(l.lineId, l.id),
+          lineNo: l.lineNo || index + 1,
+          itemId: firstEntityRef(l.itemId, l.item, l.productId) || '',
+          orderedQty: Number(l.orderedQty ?? l.qty ?? l.quantity) || 0,
+          uomId: firstEntityRef(l.uomId, l.uom),
+          uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+          unitPriceDoc: Number(l.unitPriceDoc ?? l.unitPrice ?? l.price ?? l.rate) || 0,
+          taxCodeId: firstEntityRef(l.taxCodeId, l.taxCode),
+          warehouseId: firstEntityRef(l.warehouseId, l.warehouse, data.warehouseId, data.warehouse),
+          description: firstDisplayText(l.description, l.notes),
+        })).filter((l: any) => !!l.itemId && Number(l.orderedQty) > 0),
+      };
+
+      savedVoucher = cleanPayload.id
+        ? await salesApi.updateSO(cleanPayload.id, soPayload)
+        : await salesApi.createSO(soPayload);
+    } else if (isDeliveryNote) {
+      const dnPayload = {
+        salesOrderId: firstEntityRef(data.salesOrderId, data.soId, data.sourceDocumentId),
+        customerId: firstEntityRef(data.customerId, data.partyId, data.customer),
+        deliveryDate: firstDisplayText(data.deliveryDate, data.date) || new Date().toISOString().split('T')[0],
+        warehouseId: firstEntityRef(data.warehouseId, data.warehouse) || '',
+        notes: firstDisplayText(data.notes, data.description),
+        lines: (data.lines || []).map((l: any, index: number) => ({
+          lineId: firstEntityRef(l.lineId, l.id),
+          lineNo: l.lineNo || index + 1,
+          soLineId: firstEntityRef(l.soLineId, l.salesOrderLineId, l.sourceLineId),
+          itemId: firstEntityRef(l.itemId, l.item, l.productId),
+          deliveredQty: Number(l.deliveredQty ?? l.qty ?? l.quantity ?? l.orderedQty) || 0,
+          uomId: firstEntityRef(l.uomId, l.uom),
+          uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+          description: firstDisplayText(l.description, l.notes),
+        })).filter((l: any) => !!l.itemId && Number(l.deliveredQty) > 0),
+      };
+
+      // Backend update endpoint for Delivery Notes does not exist yet.
+      if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
+        throw new Error('Updating existing Delivery Notes is not yet supported. Please create a new one.');
+      }
+      savedVoucher = await salesApi.createDN(dnPayload);
+    } else if (isSalesReturn) {
+      const srPayload = {
+        customerId: firstEntityRef(data.customerId, data.partyId, data.customer),
+        salesInvoiceId: firstEntityRef(data.salesInvoiceId, data.invoiceId),
+        deliveryNoteId: firstEntityRef(data.deliveryNoteId, data.dnId),
+        salesOrderId: firstEntityRef(data.salesOrderId, data.soId),
+        returnDate: firstDisplayText(data.returnDate, data.date) || new Date().toISOString().split('T')[0],
+        warehouseId: firstEntityRef(data.warehouseId, data.warehouse),
+        currency: headerCurrency || undefined,
+        exchangeRate: exchangeRate || 1,
+        reason: firstDisplayText(data.reason) || 'Sales return',
+        notes: firstDisplayText(data.notes, data.description),
+        lines: (data.lines || []).map((l: any, index: number) => ({
+          lineId: firstEntityRef(l.lineId, l.id),
+          lineNo: l.lineNo || index + 1,
+          siLineId: firstEntityRef(l.siLineId, l.salesInvoiceLineId),
+          dnLineId: firstEntityRef(l.dnLineId, l.deliveryNoteLineId),
+          soLineId: firstEntityRef(l.soLineId, l.salesOrderLineId, l.sourceLineId),
+          itemId: firstEntityRef(l.itemId, l.item, l.productId),
+          returnQty: Number(l.returnQty ?? l.qty ?? l.quantity) || 0,
+          uomId: firstEntityRef(l.uomId, l.uom),
+          uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+          unitPriceDoc: Number(l.unitPriceDoc ?? l.unitPrice ?? l.price ?? l.rate) || 0,
+          taxCodeId: firstEntityRef(l.taxCodeId, l.taxCode),
+          warehouseId: firstEntityRef(l.warehouseId, l.warehouse, data.warehouseId, data.warehouse),
+          description: firstDisplayText(l.description, l.notes),
+        })).filter((l: any) => !!l.itemId && Number(l.returnQty) > 0),
+      };
+
+      // Backend update endpoint for Sales Returns does not exist yet.
+      if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
+        throw new Error('Updating existing Sales Returns is not yet supported. Please create a new one.');
+      }
+      savedVoucher = await salesApi.createReturn(srPayload);
     } else {
-      // Sales non-invoice documents still use the legacy accounting-voucher path.
+      // Fallback: unhandled subledger document types route through legacy accounting-voucher path.
       if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
         await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
         savedVoucher = await accountingApi.getVoucher(cleanPayload.id);

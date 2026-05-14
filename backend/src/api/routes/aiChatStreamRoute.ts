@@ -36,6 +36,7 @@ router.use(permissionGuard('ai-assistant.chat.use'));
  */
 async function handleStream(req: Request, res: Response, _next: NextFunction): Promise<void> {
   // Validate input
+  console.log(`[AI-DEBUG] STREAM REQUEST RECEIVED. Body:`, JSON.stringify(req.body));
   try {
     validateSendChatMessageInput(req.body);
   } catch (error) {
@@ -63,6 +64,10 @@ async function handleStream(req: Request, res: Response, _next: NextFunction): P
   // Helper to send SSE events
   function sendSSE(event: string, data: unknown): void {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    // If using compression middleware, res.flush() is required to send the chunk immediately
+    if ((res as any).flush) {
+      (res as any).flush();
+    }
   }
 
   // Keep-alive: send a comment every 15 seconds to prevent proxy timeouts

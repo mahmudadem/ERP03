@@ -206,4 +206,32 @@ export class SuperAdminVoucherTypeController {
       next(error);
     }
   }
+
+  static async updateSystemTemplateLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id;
+      const { uiModeOverrides } = req.body;
+
+      if (!uiModeOverrides || typeof uiModeOverrides !== 'object') {
+        throw ApiError.badRequest('uiModeOverrides is required');
+      }
+
+      const existing = await findSystemTemplate(id);
+      if (!existing) throw ApiError.notFound('System template not found');
+      const targetId = existing.id || id;
+
+      await diContainer.voucherTypeDefinitionRepository.updateVoucherType(
+        SYSTEM_COMPANY_ID,
+        targetId,
+        { uiModeOverrides }
+      );
+
+      (res as any).status(200).json({
+        success: true,
+        message: 'Layout updated'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

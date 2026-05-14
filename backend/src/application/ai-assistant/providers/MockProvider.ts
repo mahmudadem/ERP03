@@ -96,6 +96,39 @@ export class MockProvider implements IAiProvider {
     };
   }
 
+  async *chatStream(request: AiProviderRequest): AsyncGenerator<{ type: 'token'; content: string } | { type: 'done'; metadata: any }> {
+    const lastUserMessage = request.messages
+      .filter(m => m.role === 'user')
+      .pop();
+
+    const userContent = lastUserMessage?.content || 'Hello';
+    const mockResponse = this.generateMockResponse(userContent);
+    const fullText = MockProvider.MOCK_SYSTEM_PREFIX + mockResponse + MockProvider.SAFETY_SUFFIX;
+
+    // Simulate word-by-word streaming
+    const words = fullText.split(' ');
+    for (const word of words) {
+      yield { type: 'token', content: word + ' ' };
+      // Simulate typing delay
+      await new Promise(resolve => setTimeout(resolve, 30 + Math.random() * 40));
+    }
+
+    yield {
+      type: 'done',
+      metadata: {
+        model: 'mock-assistant',
+        provider: 'mock',
+        runtimeMeta: {
+          modelUsed: 'mock-assistant',
+          capabilities: {
+            supportsToolCalling: false,
+            allowsEmptyContentWithToolCalls: false,
+          },
+        },
+      },
+    };
+  }
+
   async isAvailable(): Promise<boolean> {
     return true; // Mock provider is always available
   }

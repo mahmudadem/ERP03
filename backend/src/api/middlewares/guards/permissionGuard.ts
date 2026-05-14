@@ -9,6 +9,11 @@ export function permissionGuard(requiredPermission: string) {
       return next(ApiError.internal('Tenant context not initialized'));
     }
 
+    // Owners bypass all permission checks
+    if (context.isOwner) {
+      return next();
+    }
+
     // Check if user has the specific permission, wildcard, or a parent permission
     const hasPermission = context.permissions.some((perm: string) => {
       // Wildcard grants all

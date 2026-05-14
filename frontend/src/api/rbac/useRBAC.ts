@@ -36,6 +36,8 @@ export const useRBAC = () => {
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
+      isSuperAdmin,
+      isOwner,
     }),
     [effectivePermissions, isSuperAdmin, isOwner]
   );

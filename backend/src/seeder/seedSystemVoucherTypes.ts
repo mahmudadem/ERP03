@@ -702,7 +702,12 @@ const def = new VoucherTypeDefinition(
       const plainObject = JSON.parse(JSON.stringify(def));
 
       if (existing) {
-        await repo.updateVoucherType(SYSTEM_COMPANY_ID, id, plainObject);
+        // Preserve Super Admin-designed uiModeOverrides — never overwrite with seed defaults
+        const updatePayload = {
+          ...plainObject,
+          uiModeOverrides: existing.uiModeOverrides ?? plainObject.uiModeOverrides,
+        };
+        await repo.updateVoucherType(SYSTEM_COMPANY_ID, id, updatePayload);
         console.log(`  🔄 Updated template: ${t.name} (${t.code})`);
       } else {
         await repo.createVoucherType(plainObject);

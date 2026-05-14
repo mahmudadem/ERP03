@@ -33,13 +33,14 @@ export interface CompanyAccessContextValue {
 }
 
 const CompanyAccessContext = createContext<CompanyAccessContextValue | undefined>(undefined);
+export { CompanyAccessContext };
 
 export function CompanyAccessProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [companyId, setCompanyIdState] = useState<string>(() => localStorage.getItem('activeCompanyId') || '');
   const [company, setCompany] = useState<CompanyData | null>(null);
-  const [isOwner, setIsOwner] = useState<boolean>(false);
-  const [isSuperAdminState, setIsSuperAdminState] = useState<boolean>(false);
+  const [isOwner, setIsOwner] = useState<boolean>(() => localStorage.getItem('isOwner') === 'true');
+  const [isSuperAdminState, setIsSuperAdminState] = useState<boolean>(() => localStorage.getItem('isSuperAdmin') === 'true');
   const [permissions, setPermissions] = useState<string[]>(() => {
     try {
       const cached = localStorage.getItem('resolvedPermissions');
@@ -118,6 +119,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       setIsSuperAdminState(!!data.isSuperAdmin);
       setModuleBundles(normalizedBundles);
       localStorage.setItem('resolvedPermissions', JSON.stringify(data.resolvedPermissions || []));
+      localStorage.setItem('isOwner', String(!!data.isOwner));
+      localStorage.setItem('isSuperAdmin', String(!!data.isSuperAdmin));
       if (normalizedBundles.length > 0) {
         localStorage.setItem('activeModules', JSON.stringify(normalizedBundles));
       } else {

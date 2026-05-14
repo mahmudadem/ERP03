@@ -25,18 +25,18 @@ describe('generateTitle (chatMessageHelpers)', () => {
   it('should truncate to last full word within 50 characters', () => {
     const message = 'Can you show me the trial balance for all accounts in the current fiscal year?';
     const result = generateTitle(message);
-    // First 50 chars: "Can you show me the trial balance for all accounts "
-    // Trimming to last word: "Can you show me the trial balance for all"
-    expect(result).toBe('Can you show me the trial balance for all');
-    expect(result.length).toBeLessThanOrEqual(50);
+    // First 50 chars: "Can you show me the trial balance for all accounts"
+    // Trims to last word boundary + '...' suffix
+    expect(result).toBe('Can you show me the trial balance for all...');
+    expect(result.length).toBeLessThanOrEqual(53); // 50 chars + '...'
   });
 
   it('should handle messages with no spaces in first 50 chars', () => {
     const message = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab more text here';
     const result = generateTitle(message);
-    // No space found in first 50 chars (lastIndexOf(' ') === -1), so returns the truncated 50 chars
-    expect(result).toBe('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-    expect(result.length).toBe(50);
+    // No space found in first 50 chars (lastIndexOf(' ') <= 10), so returns truncated 50 chars + '...'
+    expect(result).toBe('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...');
+    expect(result.length).toBe(53); // 50 chars + '...'
   });
 
   it('should trim whitespace from the result', () => {

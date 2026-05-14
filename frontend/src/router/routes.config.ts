@@ -90,6 +90,7 @@ const AiModelProfilesPage = lazy(() => import('../modules/super-admin/pages/AiMo
 const AiProvidersPage = lazy(() => import('../modules/super-admin/pages/AiProvidersPage').then(m => ({ default: m.AiProvidersPage })));
 const AiProposalPolicyPage = lazy(() => import('../modules/super-admin/pages/AiProposalPolicyPage').then(m => ({ default: m.AiProposalPolicyPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
+const SystemFormDesignerPage = lazy(() => import('../modules/super-admin/pages/SystemFormDesignerPage').then(m => ({ default: m.default })));
 
 // Company Wizard (user-level)
 const SelectModelPage = lazy(() => import('../modules/company-wizard/pages/SelectModelPage'));
@@ -256,6 +257,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/voucher-templates', label: 'Voucher Templates', component: SuperAdminVoucherTemplatesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/voucher-templates/:id', label: 'Edit Voucher Template', component: VoucherTemplateEditorPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/appearance', label: 'Appearance Lab', component: SuperAdminAppearancePage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/system-forms', label: 'System Forms', component: SystemFormDesignerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
 
   // Company Wizard (user accessible)
   { path: '/company-wizard', label: 'Company Wizard', component: SelectModelPage, section: 'CORE' },

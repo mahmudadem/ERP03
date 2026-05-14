@@ -64,18 +64,43 @@ export async function upsertConversationMeta(
  * Generate a conversation title from the first user message.
  * Takes the first 50 characters, then trims to the last full word
  * to avoid cutting mid-word.
+ * 
+ * Includes logic to detect and clean up i18n keys if they accidentally
+ * reach the backend as message content.
  */
 export function generateTitle(message: string): string {
+  // If the message looks like an i18n key (e.g., chat.quickActions.financialOverviewPrompt)
+  // try to extract a readable label from the last part.
+  if (message.includes('.') && !message.includes(' ') && message.length < 100) {
+    const parts = message.split('.');
+    const lastPart = parts[parts.length - 1];
+    // Convert camelCase or snake_case to Space Case
+    const cleaned = lastPart
+      .replace(/([A-Z])/g, ' $1') // insert space before capital letters
+      .replace(/[_-]/g, ' ')      // replace underscores/hyphens with spaces
+      .replace(/Prompt$/i, '')    // remove "Prompt" suffix
+      .trim();
+    
+    if (cleaned.length > 2) {
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
+  }
+
   const MAX_LENGTH = 50;
-  if (message.length <= MAX_LENGTH) {
-    return message.trim();
+  const cleanMessage = message.trim();
+
+  if (cleanMessage.length <= MAX_LENGTH) {
+    return cleanMessage;
   }
-  const truncated = message.substring(0, MAX_LENGTH);
+
+  const truncated = cleanMessage.substring(0, MAX_LENGTH);
   const lastSpaceIndex = truncated.lastIndexOf(' ');
-  if (lastSpaceIndex > 0) {
-    return truncated.substring(0, lastSpaceIndex).trim();
+  
+  if (lastSpaceIndex > 10) { // Only trim to word if we have a reasonable length
+    return truncated.substring(0, lastSpaceIndex).trim() + '...';
   }
-  return truncated.trim();
+  
+  return truncated.trim() + '...';
 }
 
 /**
