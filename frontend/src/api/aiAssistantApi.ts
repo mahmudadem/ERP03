@@ -5,7 +5,8 @@
  * All requests go through the backend — frontend never calls AI providers directly.
  */
 
-import client from './client';
+import client, { getAuthToken, getCompanyId } from './client';
+import { env } from '../config/env';
 
 const AI_CHAT_TIMEOUT_MS = 120_000;
 const AI_DIAGNOSTICS_TIMEOUT_MS = 180_000;
@@ -91,6 +92,35 @@ export interface SendChatMessageResponse {
   provider: string;
   model: string;
   runtimeMeta?: ChatRuntimeMetadataDTO;
+}
+
+// --- SSE Streaming Types ---
+
+export type AiStreamEvent =
+  | { type: 'token'; content: string }
+  | { type: 'tool_call'; toolName: string; toolCallId: string; toolArgs: Record<string, unknown> }
+  | { type: 'tool_result'; toolName: string; data: unknown; approved: boolean }
+  | { type: 'done'; metadata: AiStreamDoneMetadata }
+  | { type: 'error'; message: string };
+
+export interface AiStreamDoneMetadata {
+  provider: string;
+  model: string;
+  runtimeMeta?: ChatRuntimeMetadataDTO;
+  usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+}
+
+/**
+ * Custom error for pre-stream HTTP failures (400/401/403/429).
+ * Carries the HTTP status so callers can differentiate error types.
+ */
+export class AiStreamError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+    this.name = 'AiStreamError';
+  }
 }
 
 export interface AiSettingsDTO {
@@ -514,3 +544,163 @@ export const aiAssistantApi = {
     return response as unknown as ChatMessageDTO;
   },
 };
+
+/**
+ * Send a chat message and consume the response as an SSE (Server-Sent Events) stream.
+ *
+ * Uses native `fetch` instead of axios because axios does not support SSE streaming
+ * (it buffers the entire response body before resolving the promise). The auth token
+ * and company-id headers are obtained from the same pluggable getters used by the
+ * axios client so behaviour is consistent with the rest of the API layer.
+ */
+export async function streamMessage(
+  payload: SendChatMessagePayload,
+  onEvent: (event: AiStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const token = await getAuthToken();
+  const companyId = getCompanyId();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (companyId) {
+    headers['x-company-id'] = companyId;
+  }
+
+  const url = `${env.apiBaseUrl}/tenant/ai-assistant/chat/stream`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  // Pre-stream HTTP errors (400/401/403/429): response body is JSON { success, error }
+  if (!response.ok) {
+    let errorMessage = `Request failed (${response.status})`;
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody?.error || errorBody?.message || errorMessage;
+    } catch {
+      // If we can't parse the error body, use the default message
+    }
+    throw new AiStreamError(errorMessage, response.status);
+  }
+
+  // Parse SSE stream from response body
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Response body is not readable');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE events are separated by blank lines (\n\n).
+      // Process all complete events found in the buffer.
+      let boundary: number;
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const eventText = buffer.substring(0, boundary);
+        buffer = buffer.substring(boundary + 2);
+        parseSSEEvent(eventText, onEvent);
+      }
+    }
+
+    // Process any remaining data in the buffer (last event may lack trailing \n\n)
+    const trimmed = buffer.trim();
+    if (trimmed) {
+      parseSSEEvent(trimmed, onEvent);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Parse a single SSE event text block into an AiStreamEvent and emit it.
+ * SSE lines starting with ":" are comments (keep-alive) and are ignored.
+ */
+function parseSSEEvent(eventText: string, onEvent: (event: AiStreamEvent) => void): void {
+  const lines = eventText.split('\n');
+  let eventName = '';
+  const dataLines: string[] = [];
+
+  for (const line of lines) {
+    // SSE comment lines (e.g. ": keep-alive") — ignore
+    if (line.startsWith(':')) continue;
+    if (line.startsWith('event:')) {
+      eventName = line.substring(6).trim();
+    } else if (line.startsWith('data:')) {
+      // Per SSE spec, a single leading space after "data:" is stripped
+      let dataContent = line.substring(5);
+      if (dataContent.startsWith(' ')) {
+        dataContent = dataContent.substring(1);
+      }
+      dataLines.push(dataContent);
+    }
+  }
+
+  if (!eventName || dataLines.length === 0) return;
+
+  // Per SSE spec, multiple data lines are joined with \n
+  const data = dataLines.join('\n');
+
+  try {
+    const parsed = JSON.parse(data);
+    switch (eventName) {
+      case 'token':
+        onEvent({ type: 'token', content: parsed.content ?? '' });
+        break;
+      case 'tool_call':
+        onEvent({
+          type: 'tool_call',
+          toolName: parsed.toolName ?? '',
+          toolCallId: parsed.toolCallId ?? '',
+          toolArgs: parsed.toolArgs ?? {},
+        });
+        break;
+      case 'tool_result':
+        onEvent({
+          type: 'tool_result',
+          toolName: parsed.toolName ?? '',
+          data: parsed.data,
+          approved: parsed.approved ?? false,
+        });
+        break;
+      case 'done':
+        onEvent({
+          type: 'done',
+          metadata: parsed.metadata ?? parsed,
+        });
+        break;
+      case 'error':
+        onEvent({
+          type: 'error',
+          message: parsed.message ?? 'Unknown streaming error',
+        });
+        break;
+      default:
+        // Unknown event type; silently ignore
+        break;
+    }
+  } catch (err) {
+    // If JSON parse fails, emit an error event but keep reading
+    onEvent({
+      type: 'error',
+      message: `Failed to parse SSE event: ${String(err)}`,
+    });
+  }
+}

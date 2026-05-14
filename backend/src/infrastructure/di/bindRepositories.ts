@@ -120,6 +120,8 @@ import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRe
   import { AiProviderRegistryUseCase } from '../../application/ai-assistant/use-cases/AiProviderRegistryUseCase';
   import { AiModelCertificationUseCase } from '../../application/ai-assistant/use-cases/AiModelCertificationUseCase';
 import { AiAutoSeedCertification } from '../../application/ai-assistant/services/AiAutoSeedCertification';
+import { StreamChatMessageUseCase } from '../../application/ai-assistant/use-cases/StreamChatMessageUseCase';
+import { SendChatMessageUseCase } from '../../application/ai-assistant/use-cases/SendChatMessageUseCase';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
 import { GetProfitAndLossTool } from '../../application/ai-assistant/tools/GetProfitAndLossTool';
 import { GetBalanceSheetTool } from '../../application/ai-assistant/tools/GetBalanceSheetTool';
@@ -1001,6 +1003,24 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
   },
   get aiModelCapabilityCatalog(): typeof AiModelCapabilityCatalog {
     return AiModelCapabilityCatalog;
+  },
+  get streamChatMessageUseCase(): StreamChatMessageUseCase {
+    return new StreamChatMessageUseCase(
+      this.aiChatRepository,
+      this.aiSettingsRepository,
+      this.encryptionService,
+      this.httpClient,
+      this.aiUsageLogRepository,
+      this.aiToolCallingOrchestrator,
+      this.aiRuntimeGuard,
+      this.aiAuditService,
+      this.aiSkillRegistry,
+      this.aiModelProfileUseCase,
+      this.aiModelRoutingGuard,
+      this.aiProviderRepository,
+      this.aiCreditLedgerRepository,
+      this.aiConversationMetaRepository,
+    );
   },
 
   // AI ASSISTANT - Permission Checker for tool access

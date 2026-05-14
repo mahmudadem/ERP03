@@ -22,7 +22,6 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { diContainer } from '../../infrastructure/di/bindRepositories';
-import { SendChatMessageUseCase } from '../../application/ai-assistant/use-cases/SendChatMessageUseCase';
 import { validateSendChatMessageInput } from '../validators/ai-assistant.validators';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
 
@@ -79,23 +78,7 @@ async function handleStream(req: Request, res: Response, _next: NextFunction): P
   });
 
   try {
-    const useCase = new SendChatMessageUseCase(
-      diContainer.aiChatRepository,
-      diContainer.aiSettingsRepository,
-      diContainer.encryptionService,
-      diContainer.httpClient,
-      diContainer.aiUsageLogRepository,
-      diContainer.aiToolCallingOrchestrator,
-      diContainer.aiProposalGeneratorRegistry,
-      diContainer.createAiProposalUseCase,
-      diContainer.aiRuntimeGuard,
-      diContainer.aiAuditService,
-      diContainer.aiSkillRegistry,
-      diContainer.aiModelProfileUseCase,
-      diContainer.aiModelRoutingGuard,
-      diContainer.aiProviderRepository,
-      diContainer.aiCreditLedgerRepository,
-    );
+    const useCase = diContainer.streamChatMessageUseCase;
 
     for await (const event of useCase.executeStream({
       companyId,

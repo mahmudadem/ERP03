@@ -9,13 +9,14 @@ import { useTranslation } from 'react-i18next';
 import { Send, Bot, User, Trash2, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X } from 'lucide-react';
 import {
   aiAssistantApi,
-  SendChatMessageResponse,
   ChatMessageDTO,
   AiToolCallResultDTO,
   AiProposalDTO,
   ChatRuntimeMetadataDTO,
   ChatRuntimeModelProfileDTO,
   ChatMessageMetadata,
+  streamMessage,
+  AiStreamEvent,
 } from '../../../api/aiAssistantApi';
 import { client } from '../../../api/client';
 import { useRBAC } from '../../../api/rbac/useRBAC';
@@ -206,44 +207,106 @@ export const GlobalAiWidget: React.FC = () => {
       content: trimmed,
       timestamp: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    // Create a placeholder assistant message for streaming updates
+    const streamId = `streaming_${Date.now()}`;
+    const placeholderMessage: DisplayMessage = {
+      id: streamId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMessage, placeholderMessage]);
     setInput('');
     setIsLoading(true);
 
+    // Accumulate streaming state outside React for synchronous updates within the callback
+    let accumulatedContent = '';
+    const toolCallsRequested: string[] = [];
+    const toolCallResults: ChatRuntimeMetadataDTO['toolResults'] = [];
+    const toolResults: AiToolCallResultDTO[] = [];
+
     try {
-      const response: SendChatMessageResponse = await aiAssistantApi.sendMessage({
-        message: trimmed,
-        conversationId,
-      });
+      await streamMessage(
+        { message: trimmed, conversationId },
+        (event: AiStreamEvent) => {
+          switch (event.type) {
+            case 'token':
+              accumulatedContent += event.content;
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? { ...m, content: accumulatedContent } : m
+              ));
+              break;
 
-      if (!conversationId) {
-        setConversationId(response.userMessage.conversationId);
-      }
+            case 'tool_call':
+              // TODO: yield tool_call events from backend for UI transparency
+              // Currently dead code — backend only emits tool_result, not tool_call
+              break;
 
-      const assistantMessage: DisplayMessage = {
-        id: response.assistantMessage.id,
-        role: 'assistant',
-        content: response.assistantMessage.content,
-        timestamp: response.assistantMessage.createdAt,
-        provider: response.provider,
-        model: response.model,
-        toolResults: extractToolResults(response.assistantMessage.metadata),
-        proposal: (response.assistantMessage.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
-        feedback: response.assistantMessage.feedback || null,
-        ...extractRuntimeMetadata(response.assistantMessage.metadata, response.runtimeMeta),
-      };
+            case 'tool_result':
+              toolCallResults.push({
+                toolName: event.toolName,
+                approved: event.approved,
+                rejectionReason: event.approved ? undefined : 'Tool execution failed',
+              });
+              toolResults.push({
+                toolName: event.toolName,
+                result: {
+                  success: event.approved,
+                  data: event.approved ? (event.data as Record<string, unknown> | null) ?? null : null,
+                  ...(!event.approved ? { error: 'Tool execution failed' } : {}),
+                },
+              });
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? {
+                  ...m,
+                  toolCallResults: [...toolCallResults],
+                  toolResults: [...toolResults],
+                } : m
+              ));
+              break;
 
-      setMessages(prev => [...prev, assistantMessage]);
+            case 'done': {
+              const meta = event.metadata;
+              const runtimeMeta = meta.runtimeMeta;
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? {
+                  ...m,
+                  content: accumulatedContent || m.content,
+                  provider: meta.provider,
+                  model: meta.model,
+                  runtimeStatus: runtimeMeta?.runtimeStatus,
+                  selectedSkills: runtimeMeta?.selectedSkills,
+                  allowedToolIds: runtimeMeta?.allowedToolIds,
+                  modelProfile: runtimeMeta?.modelProfile,
+                  runtimeWarnings: runtimeMeta?.runtimeWarnings,
+                  toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
+                  toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
+                  toolResults: toolResults.length > 0 ? toolResults : undefined,
+                  proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
+                } : m
+              ));
+              if (runtimeMeta?.conversationId && !conversationId) {
+                setConversationId(runtimeMeta.conversationId);
+              }
+              break;
+            }
+
+            case 'error':
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? { ...m, error: new Error(event.message) } : m
+              ));
+              break;
+          }
+        },
+      );
+
       refreshConversations();
     } catch (err: any) {
-      const errorMessage: DisplayMessage = {
-        id: `error_${Date.now()}`,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date().toISOString(),
-        error: err,
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => prev.map(m =>
+        m.id === streamId ? { ...m, error: err } : m
+      ));
       setError(null);
     } finally {
       setIsLoading(false);
@@ -253,7 +316,7 @@ export const GlobalAiWidget: React.FC = () => {
         }
       }, 50);
     }
-  }, [input, isLoading, conversationId, t, refreshConversations, extractToolResults, extractRuntimeMetadata]);
+  }, [input, isLoading, conversationId, refreshConversations]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -516,16 +579,18 @@ export const GlobalAiWidget: React.FC = () => {
                                   </Link>
                                 </div>
                               )}
-                              <FeedbackButtons
-                                messageId={msg.id}
-                                currentFeedback={msg.feedback}
-                                companyId={companyId || ''}
-                                onFeedbackSubmitted={(msgId, newFeedback) => {
-                                  setMessages(prev => prev.map(m =>
-                                    m.id === msgId ? { ...m, feedback: newFeedback } : m
-                                  ));
-                                }}
-                              />
+                              {!msg.id.startsWith('streaming_') && (
+                                <FeedbackButtons
+                                  messageId={msg.id}
+                                  currentFeedback={msg.feedback}
+                                  companyId={companyId || ''}
+                                  onFeedbackSubmitted={(msgId, newFeedback) => {
+                                    setMessages(prev => prev.map(m =>
+                                      m.id === msgId ? { ...m, feedback: newFeedback } : m
+                                    ));
+                                  }}
+                                />
+                              )}
                             </>
                           )}
                        </div>

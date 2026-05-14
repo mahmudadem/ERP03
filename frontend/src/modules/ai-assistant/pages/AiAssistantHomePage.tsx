@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { Send, Bot, User, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench } from 'lucide-react';
 import {
   aiAssistantApi,
-  SendChatMessageResponse,
   ChatMessageDTO,
   AiToolCallResultDTO,
   AiProposalDTO,
@@ -19,6 +18,9 @@ import {
   ChatRuntimeModelProfileDTO,
   ChatMessageMetadata,
   ConversationMetaDTO,
+  streamMessage,
+  AiStreamEvent,
+  AiStreamError,
 } from '../../../api/aiAssistantApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
@@ -178,90 +180,149 @@ export const AiAssistantHomePage: React.FC = () => {
       content: trimmed,
       timestamp: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    // Create a placeholder assistant message for streaming updates
+    const streamId = `streaming_${Date.now()}`;
+    const placeholderMessage: DisplayMessage = {
+      id: streamId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMessage, placeholderMessage]);
     setInput('');
     setIsLoading(true);
 
+    // Accumulate streaming state outside React for synchronous updates within the callback
+    let accumulatedContent = '';
+    const toolCallsRequested: string[] = [];
+    const toolCallResults: ChatRuntimeMetadataDTO['toolResults'] = [];
+    const toolResults: AiToolCallResultDTO[] = [];
+
     try {
-      const response: SendChatMessageResponse = await aiAssistantApi.sendMessage({
-        message: trimmed,
-        conversationId,
-      });
+      await streamMessage(
+        { message: trimmed, conversationId },
+        (event: AiStreamEvent) => {
+          switch (event.type) {
+            case 'token':
+              accumulatedContent += event.content;
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? { ...m, content: accumulatedContent } : m
+              ));
+              break;
 
-      // Store conversation ID for continuity
-      if (!conversationId) {
-        setConversationId(response.userMessage.conversationId);
-      }
+            case 'tool_call':
+              // TODO: yield tool_call events from backend for UI transparency
+              // Currently dead code — backend only emits tool_result, not tool_call
+              break;
 
-      // Add assistant response
-      const assistantMessage: DisplayMessage = {
-        id: response.assistantMessage.id,
-        role: 'assistant',
-        content: response.assistantMessage.content,
-        timestamp: response.assistantMessage.createdAt,
-        provider: response.provider,
-        model: response.model,
-        toolResults: extractToolResults(response.assistantMessage.metadata),
-        proposal: (response.assistantMessage.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
-        ...extractRuntimeMetadata(response.assistantMessage.metadata, response.runtimeMeta),
-      };
+            case 'tool_result':
+              toolCallResults.push({
+                toolName: event.toolName,
+                approved: event.approved,
+                rejectionReason: event.approved ? undefined : 'Tool execution failed',
+              });
+              toolResults.push({
+                toolName: event.toolName,
+                result: {
+                  success: event.approved,
+                  data: event.approved ? (event.data as Record<string, unknown> | null) ?? null : null,
+                  ...(!event.approved ? { error: 'Tool execution failed' } : {}),
+                },
+              });
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? {
+                  ...m,
+                  toolCallResults: [...toolCallResults],
+                  toolResults: [...toolResults],
+                } : m
+              ));
+              break;
 
-      setMessages(prev => [...prev, assistantMessage]);
-      // Refresh the sidebar conversation list
+            case 'done': {
+              const meta = event.metadata;
+              const runtimeMeta = meta.runtimeMeta;
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? {
+                  ...m,
+                  content: accumulatedContent || m.content,
+                  provider: meta.provider,
+                  model: meta.model,
+                  runtimeStatus: runtimeMeta?.runtimeStatus,
+                  selectedSkills: runtimeMeta?.selectedSkills,
+                  allowedToolIds: runtimeMeta?.allowedToolIds,
+                  modelProfile: runtimeMeta?.modelProfile,
+                  runtimeWarnings: runtimeMeta?.runtimeWarnings,
+                  toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
+                  toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
+                  toolResults: toolResults.length > 0 ? toolResults : undefined,
+                  proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
+                } : m
+              ));
+              if (runtimeMeta?.conversationId && !conversationId) {
+                setConversationId(runtimeMeta.conversationId);
+              }
+              break;
+            }
+
+            case 'error': {
+              const errorMsg = event.message;
+              const isProviderError = /api key|provider|diagnostics|ai settings/i.test(errorMsg);
+              setMessages(prev => prev.map(m =>
+                m.id === streamId ? {
+                  ...m,
+                  content: `⚠️ ${isProviderError ? t('chat.providerNotAvailable', 'AI provider is not available') : t('chat.error', 'Error')}: ${errorMsg}`,
+                  ...(isProviderError ? { isProviderError: true } : {}),
+                } : m
+              ));
+              break;
+            }
+          }
+        },
+      );
+
       refreshConversations();
     } catch (err: any) {
-      const status = err?.response?.status;
-      const errorMsg = err?.response?.data?.error?.message || err?.message || 'Failed to send message';
-
-      // Detect provider configuration errors (missing key, unknown provider, etc.)
+      const isStreamError = err instanceof AiStreamError;
+      const status = isStreamError ? err.status : undefined;
+      const errorMsg = err?.message || t('chat.errors.generic', 'Something went wrong. Please try again.');
       const isProviderError = /api key|provider|diagnostics|ai settings/i.test(errorMsg);
 
-      // Rate limit errors (429) and disabled AI (403) should show inline in chat only,
-      // not as a global error toast
       if (status === 429 || status === 403) {
         const prefix = status === 429
           ? t('chat.rateLimited', 'Rate limit reached')
           : t('chat.disabled', 'AI Assistant disabled');
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `error_${Date.now()}`,
-            role: 'assistant',
+        setMessages(prev => prev.map(m =>
+          m.id === streamId ? {
+            ...m,
             content: `⚠️ ${prefix}: ${errorMsg}`,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+          } : m
+        ));
         setError(null);
       } else if (isProviderError) {
-        // Provider config errors — show actionable message with link to settings
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `error_${Date.now()}`,
-            role: 'assistant',
+        setMessages(prev => prev.map(m =>
+          m.id === streamId ? {
+            ...m,
             content: `⚠️ ${t('chat.providerNotAvailable', 'AI provider is not available')}: ${errorMsg}`,
-            timestamp: new Date().toISOString(),
             isProviderError: true,
-          },
-        ]);
+          } : m
+        ));
         setError(null);
       } else {
         setError(errorMsg);
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `error_${Date.now()}`,
-            role: 'assistant',
+        setMessages(prev => prev.map(m =>
+          m.id === streamId ? {
+            ...m,
             content: `⚠️ ${t('chat.error', 'Error')}: ${errorMsg}`,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+          } : m
+        ));
       }
     } finally {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, isLoading, conversationId, t, refreshConversations, extractToolResults, extractRuntimeMetadata]);
+  }, [input, isLoading, conversationId, t, refreshConversations]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

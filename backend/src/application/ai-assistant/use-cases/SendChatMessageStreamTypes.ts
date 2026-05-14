@@ -1,5 +1,5 @@
 /**
- * Types for SendChatMessageUseCase.executeStream — SSE streaming output.
+ * Types for StreamChatMessageUseCase.executeStream — SSE streaming output.
  *
  * AiStreamEvent is the union type yielded by executeStream().
  * It mirrors the provider-level streaming events but adds application-level

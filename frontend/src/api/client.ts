@@ -13,6 +13,16 @@ export const setCompanyIdGetter = (getter: () => string | null) => {
   companyIdGetter = getter;
 };
 
+/** Get the current auth token. Used by SSE streaming which bypasses axios interceptors. */
+export const getAuthToken = async (): Promise<string | null> => {
+  return authTokenGetter ? authTokenGetter() : null;
+};
+
+/** Get the current company ID. Used by SSE streaming which bypasses axios interceptors. */
+export const getCompanyId = (): string | null => {
+  return companyIdGetter ? companyIdGetter() : null;
+};
+
 // Axios Instance
 export const client = axios.create({
   baseURL: env.apiBaseUrl,
