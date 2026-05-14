@@ -23,6 +23,7 @@ import {
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { QuickActionButtons } from '../components/QuickActionButtons';
 import { Link } from 'react-router-dom';
 
 interface DisplayMessage {
@@ -164,8 +165,8 @@ export const AiAssistantHomePage: React.FC = () => {
     loadConversationList();
   }, [loadConversationList]);
 
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
+  const handleSend = useCallback(async (messageOverride?: string) => {
+    const trimmed = (messageOverride ?? input).trim();
     if (!trimmed || isLoading) return;
 
     setError(null);
@@ -369,11 +370,7 @@ export const AiAssistantHomePage: React.FC = () => {
     }
   };
 
-  const quickActions = [
-    { label: t('chat.quickTb', 'Trial Balance'), prompt: t('chat.quickTbPrompt', 'Show me the trial balance summary') },
-    { label: t('chat.quickPnl', 'Profit & Loss'), prompt: t('chat.quickPnlPrompt', 'Generate a profit and loss report') },
-    { label: t('chat.quickBs', 'Balance Sheet'), prompt: t('chat.quickBsPrompt', 'What is the current balance sheet?') },
-  ];
+  // Quick actions are rendered by QuickActionButtons component
 
   if (!canChat) {
     return (
@@ -516,21 +513,10 @@ export const AiAssistantHomePage: React.FC = () => {
                 </p>
               </div>
               
-              <div className="w-full flex flex-wrap justify-center gap-3">
-                {quickActions.map((action, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setInput(action.prompt);
-                      if (inputRef.current) inputRef.current.focus();
-                    }}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-full hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-sm font-medium text-gray-600 hover:text-indigo-600"
-                  >
-                    <Sparkles className="w-4 h-4 opacity-50" />
-                    {action.label}
-                  </button>
-                ))}
-              </div>
+              <QuickActionButtons
+                onSendMessage={(msg) => handleSend(msg)}
+                hasMessages={messages.length > 0}
+              />
             </div>
           )}
           {messages.map((msg) => (
@@ -697,7 +683,7 @@ export const AiAssistantHomePage: React.FC = () => {
               />
               <div className="absolute right-2 rtl:right-auto rtl:left-2 top-1/2 -translate-y-1/2 flex items-center justify-center">
                 <button
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={isLoading || !input.trim()}
                   className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 hover:shadow-lg disabled:opacity-40 disabled:hover:shadow-none disabled:cursor-not-allowed transition-all flex items-center justify-center"
                 >

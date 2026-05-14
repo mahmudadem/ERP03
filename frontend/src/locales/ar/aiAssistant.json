@@ -419,5 +419,17 @@
     "activationError": "فشل التفعيل. يرجى المحاولة مرة أخرى.",
     "configurationSummary": "ملخص التكوين",
     "modeLabel": "الوضع"
+  },
+  "creditBalance": {
+    "title": "رصيد الأرصدة",
+    "currentBalance": "الرصيد الحالي",
+    "totalPurchased": "إجمالي المشتريات",
+    "totalConsumed": "إجمالي الاستهلاك",
+    "lastDebit": "آخر خصم",
+    "lastCredit": "آخر إضافة",
+    "loadingError": "فشل تحميل رصيد الأرصدة",
+    "loading": "جارٍ تحميل رصيد الأرصدة...",
+    "helpText": "هل تحتاج المزيد من الأرصدة؟ انتقل إلى وضع BYOK أو اتصل بالدعم.",
+    "noCreditsYet": "لا يوجد سجل أرصدة بعد. ستظهر الأرصدة هنا بمجرد الشراء أو الاستخدام."
   }
 }

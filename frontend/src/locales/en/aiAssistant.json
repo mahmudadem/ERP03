@@ -419,5 +419,17 @@
     "activationError": "Failed to activate. Please try again.",
     "configurationSummary": "Configuration Summary",
     "modeLabel": "Mode"
+  },
+  "creditBalance": {
+    "title": "Credit Balance",
+    "currentBalance": "Current Balance",
+    "totalPurchased": "Total Purchased",
+    "totalConsumed": "Total Consumed",
+    "lastDebit": "Last Debit",
+    "lastCredit": "Last Credit",
+    "loadingError": "Failed to load credit balance",
+    "loading": "Loading credit balance...",
+    "helpText": "Need more credits? Switch to BYOK mode or contact support.",
+    "noCreditsYet": "No credit history yet. Credits will appear here once you purchase or use them."
   }
 }

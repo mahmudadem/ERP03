@@ -564,7 +564,7 @@ export class SendChatMessageUseCase {
 
     // 2. Check and increment rate limit
     try {
-      await this.rateLimiter.checkAndIncrement(companyId);
+      await this.rateLimiter.checkAndIncrement(companyId, userId);
     } catch (error) {
       yield { type: 'error', message: error instanceof Error ? error.message : 'Rate limit exceeded' };
       return;

@@ -31,6 +31,7 @@ import { ApiKeyInput } from '../components/ApiKeyInput';
 import { ContextBudgetSettings } from '../components/ContextBudgetSettings';
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import { CreditsModelSelector } from '../components/CreditsModelSelector';
+import { CreditBalanceCard } from '../components/CreditBalanceCard';
 import { ByokCertificationSection } from '../components/ByokCertificationSection';
 import { SettingsSecurityTab } from '../components/SettingsSecurityTab';
 import { SettingsAnalyticsTab } from '../components/SettingsAnalyticsTab';
@@ -284,7 +285,9 @@ export const AiAssistantSettingsPage: React.FC = () => {
 
             {/* ═══ CREDITS Mode ═══ */}
             {ai.runtimeMode === 'CREDITS' && (
-              <CreditsModelSelector
+              <>
+                <CreditBalanceCard />
+                <CreditsModelSelector
                 erp03AvailableModels={ai.erp03AvailableModels}
                 erp03ModelsLoading={ai.erp03ModelsLoading}
                 selectedErp03Profile={ai.selectedErp03Profile}
@@ -293,6 +296,7 @@ export const AiAssistantSettingsPage: React.FC = () => {
                 onDeselect={() => ai.setSelectedErp03Profile(null)}
                 creditBalance={null}
               />
+              </>
             )}
 
             {/* ═══ DISABLED Mode ═══ */}

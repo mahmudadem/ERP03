@@ -4,11 +4,17 @@ import '../firebaseAdmin';
 import { registerAllModules } from '../modules';
 import { ModuleRegistry } from '../application/platform/ModuleRegistry';
 import { runModuleStartupValidation } from '../modules/moduleStartupValidation';
+import { diContainer } from '../infrastructure/di/bindRepositories';
 
 // Register modules before loading server
 registerAllModules();
 ModuleRegistry.getInstance().initializeAll().catch(console.error);
 runModuleStartupValidation().catch(console.error);
+
+// Auto-seed AI model certifications for well-known models (idempotent, non-blocking)
+diContainer.aiAutoSeedCertification.seed()
+  .then((count: number) => console.log(`[AI Auto-Certification] Seeded ${count} certification(s) at startup.`))
+  .catch((err: unknown) => console.warn('[AI Auto-Certification] Failed to seed at startup:', err));
 
 import server from '../api/server';
 

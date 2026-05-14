@@ -3,6 +3,7 @@ import * as functions from 'firebase-functions';
 import { registerAllModules } from './modules';
 import { ModuleRegistry } from './application/platform/ModuleRegistry';
 import { runModuleStartupValidation } from './modules/moduleStartupValidation';
+import { diContainer } from './infrastructure/di/bindRepositories';
 
 let server: any = null;
 let serverReady = false;
@@ -11,6 +12,14 @@ async function initServer() {
   registerAllModules();
   await ModuleRegistry.getInstance().initializeAll();
   await runModuleStartupValidation();
+
+  // Auto-seed AI model certifications for well-known models (idempotent)
+  try {
+    const seeded = await diContainer.aiAutoSeedCertification.seed();
+    console.log(`[AI Auto-Certification] Seeded ${seeded} certification(s) at startup.`);
+  } catch (err) {
+    console.warn('[AI Auto-Certification] Failed to seed at startup:', err);
+  }
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   server = require('./api/server').default;
   serverReady = true;

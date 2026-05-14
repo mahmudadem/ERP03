@@ -24,6 +24,7 @@ import { AiToolResultsPanel } from '../components/AiToolResultsPanel';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { FeedbackButtons } from '../components/FeedbackButtons';
 import { AiErrorDisplay } from '../components/AiErrorDisplay';
+import { QuickActionButtons } from './QuickActionButtons';
 import { Link } from 'react-router-dom';
 
 interface DisplayMessage {
@@ -194,8 +195,8 @@ export const GlobalAiWidget: React.FC = () => {
     loadConversationList();
   }, [loadConversationList]);
 
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
+  const handleSend = useCallback(async (messageOverride?: string) => {
+    const trimmed = (messageOverride ?? input).trim();
     if (!trimmed || isLoading) return;
 
     setError(null);
@@ -371,12 +372,7 @@ export const GlobalAiWidget: React.FC = () => {
     return warnings.filter(Boolean);
   };
 
-  const quickActions = [
-    { label: t('chat.quickTb', 'Trial Balance'), prompt: t('chat.quickTbPrompt', 'Show me the trial balance summary') },
-    { label: t('chat.quickPnl', 'Profit & Loss'), prompt: t('chat.quickPnlPrompt', 'Generate a profit and loss report') },
-    { label: t('chat.quickBs', 'Balance Sheet'), prompt: t('chat.quickBsPrompt', 'What is the current balance sheet?') },
-    { label: 'Inventory Aging', prompt: 'Show me the inventory aging report for the last 90 days' },
-  ];
+  // Quick actions are rendered by QuickActionButtons component
 
   if (!canChat) {
     return null;
@@ -477,16 +473,10 @@ export const GlobalAiWidget: React.FC = () => {
                     How can I help you today?
                   </h2>
                   <div className="flex flex-col gap-2 w-full">
-                    {quickActions.slice(0,2).map((action, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => { setInput(action.prompt); inputRef.current?.focus(); }}
-                        className="p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left shadow-sm"
-                      >
-                        <span className="font-medium text-gray-800 text-[13px] block">{action.label}</span>
-                        <span className="text-[12px] text-gray-500 truncate w-full block mt-0.5">{action.prompt}</span>
-                      </button>
-                    ))}
+                    <QuickActionButtons
+                      onSendMessage={(msg) => handleSend(msg)}
+                      hasMessages={messages.length > 0}
+                    />
                   </div>
                </div>
              )}
@@ -580,7 +570,7 @@ export const GlobalAiWidget: React.FC = () => {
                   className="flex-1 max-h-[120px] min-h-[40px] py-2.5 px-3 bg-transparent border-none outline-none focus:ring-0 resize-none disabled:opacity-50 text-[14px] leading-relaxed m-0 placeholder-gray-400"
                 />
                 <button
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={isLoading || !input.trim()}
                   className="mb-1 mr-1 w-8 h-8 bg-indigo-600 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center flex-shrink-0"
                 >

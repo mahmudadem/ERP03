@@ -419,5 +419,17 @@
     "activationError": "Etkinleştirme başarısız. Lütfen tekrar deneyin.",
     "configurationSummary": "Yapılandırma Özeti",
     "modeLabel": "Mod"
+  },
+  "creditBalance": {
+    "title": "Kredi Bakiyesi",
+    "currentBalance": "Mevcut Bakiye",
+    "totalPurchased": "Toplam Satın Alma",
+    "totalConsumed": "Toplam Tüketim",
+    "lastDebit": "Son Borçlandırma",
+    "lastCredit": "Son Kredi",
+    "loadingError": "Kredi bakiyesi yüklenemedi",
+    "loading": "Kredi bakiyesi yükleniyor...",
+    "helpText": "Daha fazla kredi mi lazım? BYOK moduna geçin veya destekle iletişime geçin.",
+    "noCreditsYet": "Henüz kredi geçmişi yok. Satın alma veya kullanım sonrası krediler burada görünecektir."
   }
 }
