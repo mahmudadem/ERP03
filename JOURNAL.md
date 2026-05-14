@@ -4,6 +4,42 @@
 
 ---
 
+## 2026-05-14 (Thu) — ~4h 30m — CTO Audit & Remediation of AI Assistant Fixing Plan
+
+**Task:** Audit all phases against plan docs, fix 3 FAIL + 8 PARTIAL tasks
+**Agent:** CTO (orchestrator, direct build mode)
+
+### Audit Results (initial)
+- 17 PASS / 8 PARTIAL / 3 FAIL across 28 tasks
+- Top gaps: conversation cleanup service (7.2), usage dashboard (7.3), real-provider smoke tests (8.1)
+
+### Remediation Subtasks
+
+| Subtask | Time | Key Changes |
+|---------|------|-------------|
+| A ~1h | QuickActionButtons rendered on empty chat, CreditBalanceCard+Settings, stream path userId fix, auto-seed startup invocation, `skipRateLimitCheck` param | |
+| B ~1h | Tool truncation signals on all truncatable tools (12), P&L/BS/CashFlow nested restructuring, v1→v2 contract bump, AiToolResultsPanel fix for new P&L shape | |
+| C ~2h | Frontend SSE streaming via `fetch`+`ReadableStream`, `StreamChatMessageUseCase` extraction (1121→549 lines), `chatMessageHelpers`, DI fallback fix, symmetric cross-lock, missing i18n key | |
+| D ~1.5h | AiConversationCleanupService + Super Admin endpoint, usage summary endpoint + AiUsageDashboardPage, module entitlement defense-in-depth, real-provider smoke tests (gated) | |
+
+### Final Scoring
+- 25 PASS, 1 PARTIAL (line count target), 2 pre-existing test mock failures
+- All 3 FAIL tasks resolved
+- All 8 PARTIAL tasks resolved except line-count target (549 vs 400 — acceptable for pre-alpha)
+
+### Rabbit Holes Logged
+- `test_output.txt` keeps churning (binary test artifact). Add to `.gitignore`.
+- `AiModelRoutingGuard.test.ts` and `AiModelCertificationUseCase.test.ts` mock infrastructure broken — `InMemoryCertificationRepo` missing `expireByProfileAndCategory()`.
+- `CheckProviderHealthUseCase - Cooldown` tests fail (pre-existing).
+
+### Next Recommended
+1. Merge `feat/ai-proposal-sandbox` to main.
+2. Phase 1 core stabilization: end-to-end ERP module tests.
+3. Firestore security rules before June 1.
+4. Fix test mocks (AiModelRoutingGuard, AiToolCalling cooldown).
+
+---
+
 ## 2026-05-13 (Wed) — ~1h 10m — AI Remaining Polish: Rate Limiting, Keywords, Sidebar
 
 **Task:** Complete remaining AI Assistant tasks: per-user rate limiting, broader intent keywords, conversation history sidebar

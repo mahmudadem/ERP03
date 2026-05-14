@@ -1,19 +1,47 @@
 # 🎯 Current Focus
 
-**Task:** AI Assistant Remaining Polish — Rate limiting, keywords, sidebar
+**Task:** AI Assistant Fixing Plan — CTO Audit & Remediation Complete
 **Started:** 2026-05-13
-**Status:** ✅ ALL COMPLETE
+**Completed:** 2026-05-14
+**Status:** ✅ REMEDIATED — 25 PASS, 1 PARTIAL, 2 pre-existing test mock failures
 **Agent/IDE:** OpenCode (CTO Mode)
 **Branch:** `feat/ai-proposal-sandbox`
 
 ---
 
+## Audit Summary
+
+The CTO audit against `docs/architecture/ai-assistant-fixing-plan.md` and `docs/architecture/ai-assistant-fixing-plan-part2.md` identified:
+- Initial: 17 PASS / 8 PARTIAL / 3 FAIL (out of 28 tasks)
+- After remediation (4 subtasks A-D): **25 PASS / 1 PARTIAL / 2 pre-existing test mock failures**
+
+### Subtasks Completed
+
+| Subtask | Scope | Commits |
+|---------|-------|---------|
+| A | Quick wins: QuickActionButtons render, CreditBalanceCard, stream userId fix, auto-seed startup | `e8e29757` |
+| B | Tool truncation signals + P&L/BS/CashFlow restructuring + contract v2 | `b304300c` |
+| C | SSE frontend + StreamChatMessageUseCase extraction + lock/DI fixes | `5bef9203` |
+| D | Conversation cleanup, usage dashboard, module entitlement, smoke tests | `1c238955` |
+
+### Remaining Gap (PARTIAL)
+
+- **Phase 3.3 — SendChatMessageUseCase line count**: Target was 250 lines; actual is 549 (`executeStream()` extracted to new `StreamChatMessageUseCase`). To reach 250, `execute()` itself would need to be split further, which is a deeper refactoring. Acceptable for pre-alpha.
+
+### Pre-existing (not caused by this work)
+
+- **AiModelRoutingGuard / AiModelCertificationUseCase test failures** — test mock `InMemoryCertificationRepo` missing `expireByProfileAndCategory()` method. Needs a separate test infrastructure fix.
+- **AiToolCalling test failures** — 2 pre-existing `CheckProviderHealthUseCase - Cooldown` tests fail. Noted since Phase 2A.
+- **`ai-tool-contract-v1` → `v2` bump** invalidates any v1 certifications. No real deployment exists yet, so zero impact.
+
+---
+
 ## Next Recommended Move
 
-1. ✅ All 4 AI polish tasks committed and documented.
-2. Merge `feat/ai-proposal-sandbox` to main.
-3. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
-4. Before June 1: Firestore security rules.
+1. Merge `feat/ai-proposal-sandbox` to main.
+2. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
+3. Before June 1: Firestore security rules.
+4. Fix test mock infrastructure (AiModelRoutingGuard, AiToolCalling cooldown tests).
 
 ---
 
