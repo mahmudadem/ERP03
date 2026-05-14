@@ -400,7 +400,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     // Deep copy to avoid mutation issues
     const newOverrides = JSON.parse(JSON.stringify(config.uiModeOverrides || {}));
 
-    modes.forEach(mode => {
+    for (const mode of modes) {
       const isWindows = mode === 'windows';
       if (!newOverrides[mode]) {
         newOverrides[mode] = {
@@ -455,7 +455,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         return !Object.values(currentModeConfig.sections).some((s: any) => s.fields.some((f: any) => f.fieldId === id));
       });
 
-      if (missingFieldIds.length === 0) return; // Skip this mode
+      if (missingFieldIds.length === 0) continue; // Skip this mode
 
       // 3. Place missing fields
       missingFieldIds.forEach(fieldId => {
@@ -497,7 +497,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
         section.fields.push({ fieldId, row, col, colSpan: span });
       });
-    });
+    }
 
     setConfig(prev => ({ ...prev, uiModeOverrides: newOverrides }));
   };
@@ -760,8 +760,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // --- PROPERTIES PANEL LOGIC ---
   const updateSelectedField = (key: keyof FieldLayout, value: any) => {
     if (!selectedField) return;
-    const overrides = { ...config.uiModeOverrides };
-    const fields = overrides[previewMode].sections[selectedField.section as SectionType].fields;
+    const overrides = JSON.parse(JSON.stringify(config.uiModeOverrides || '{}'));
+    const fields = overrides[previewMode]?.sections[selectedField.section as SectionType]?.fields || [];
     const field = fields.find((f: FieldLayout) => f.fieldId === selectedField.id);
     if (field) {
       // Validate colSpan constraint: must not exceed grid width when combined with current column
@@ -908,7 +908,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                      key={`cell-${r}-${c}`}
                      onDragOver={(e) => e.preventDefault()}
                      onDrop={(e) => handleDropField(e, sectionName, r, c)}
-                     className="border border-dashed border-gray-200/50 rounded-lg h-full w-full absolute z-0 pointer-events-auto hover:bg-indigo-500/5 transition-colors"
+                     className="border border-dashed border-gray-200/50 rounded-lg h-full w-full pointer-events-auto hover:bg-indigo-500/5 transition-colors"
                      style={{ gridRowStart: r + 1, gridColumnStart: c + 1 }}
                   />
                 );
