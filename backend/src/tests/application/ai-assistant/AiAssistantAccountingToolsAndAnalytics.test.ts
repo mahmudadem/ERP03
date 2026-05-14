@@ -62,8 +62,8 @@ describe('AI Assistant Accounting Tools', () => {
       netProfit: 700,
       period: { from: '2026-05-01', to: '2026-05-31' },
     });
-    expect((result.data as any).revenueBreakdown.length).toBeGreaterThan(0);
-    expect((result.data as any).expensesBreakdown.length).toBeGreaterThan(0);
+    expect((result.data as any).revenueBreakdown.items.length).toBeGreaterThan(0);
+    expect((result.data as any).expensesBreakdown.items.length).toBeGreaterThan(0);
   });
 
   it('GetProfitAndLossTool should return failure when permission denied', async () => {
@@ -153,7 +153,7 @@ describe('AI Assistant Accounting Tools', () => {
       isBalanced: true,
       difference: 0,
     });
-    expect((result.data as any).topAssets.length).toBeGreaterThan(0);
+    expect((result.data as any).assets.items.length).toBeGreaterThan(0);
   });
 });
 

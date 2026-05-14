@@ -47,6 +47,9 @@ interface FinancialOverviewDTO {
   };
 }
 
+// No truncation: returns aggregated financial totals (P&L, BS, cash, aging),
+// not a list of items. Truncation signals are not applicable because this tool
+// computes summary numbers from sub-queries and never slices an array.
 export class GetFinancialOverviewTool implements AiTool {
   readonly name = 'reports.getFinancialOverview';
   readonly description = 'Get a combined financial overview for the company including P&L summary, Balance Sheet summary, Cash Flow summary, and Aging totals. Read-only — cannot create, modify, or post anything.';

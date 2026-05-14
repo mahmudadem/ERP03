@@ -3,7 +3,7 @@ import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProvid
 import { IAiModelCertificationRepository } from '../../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 
-export const AI_TOOL_CONTRACT_VERSION = 'ai-tool-contract-v1';
+export const AI_TOOL_CONTRACT_VERSION = 'ai-tool-contract-v2';
 export const AI_DATA_FILTER_POLICY_VERSION = 'ai-data-filter-v1';
 
 export interface AiRoutingGuardRequest {

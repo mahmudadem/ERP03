@@ -29,17 +29,23 @@ interface BalanceSheetSummaryDTO {
   retainedEarnings: number;
   isBalanced: boolean;
   difference: number;
-  totalAssetAccounts: number;
-  totalLiabilityAccounts: number;
-  totalEquityAccounts: number;
-  displayedAssets: number;
-  displayedLiabilities: number;
-  displayedEquity: number;
+  assets: {
+    totalCount: number;
+    displayedCount: number;
+    items: Array<{ code: string; name: string; balance: number }>;
+  };
+  liabilities: {
+    totalCount: number;
+    displayedCount: number;
+    items: Array<{ code: string; name: string; balance: number }>;
+  };
+  equity: {
+    totalCount: number;
+    displayedCount: number;
+    items: Array<{ code: string; name: string; balance: number }>;
+  };
   truncated: boolean;
   truncationNote?: string;
-  topAssets: Array<{ code: string; name: string; balance: number }>;
-  topLiabilities: Array<{ code: string; name: string; balance: number }>;
-  topEquity: Array<{ code: string; name: string; balance: number }>;
 }
 
 export class GetBalanceSheetTool implements AiTool {
@@ -104,19 +110,25 @@ export class GetBalanceSheetTool implements AiTool {
         retainedEarnings: result.retainedEarnings,
         isBalanced: result.isBalanced,
         difference: Math.round((result.totalAssets - result.totalLiabilitiesAndEquity) * 100) / 100,
-        totalAssetAccounts,
-        totalLiabilityAccounts,
-        totalEquityAccounts,
-        displayedAssets: topAssets.length,
-        displayedLiabilities: topLiabilities.length,
-        displayedEquity: topEquity.length,
+        assets: {
+          totalCount: totalAssetAccounts,
+          displayedCount: topAssets.length,
+          items: topAssets.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
+        },
+        liabilities: {
+          totalCount: totalLiabilityAccounts,
+          displayedCount: topLiabilities.length,
+          items: topLiabilities.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
+        },
+        equity: {
+          totalCount: totalEquityAccounts,
+          displayedCount: topEquity.length,
+          items: topEquity.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
+        },
         truncated,
         truncationNote: truncated
           ? `Showing top 10 accounts per section. Navigate to the Balance Sheet report for the complete list.`
           : undefined,
-        topAssets: topAssets.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
-        topLiabilities: topLiabilities.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
-        topEquity: topEquity.map(a => ({ code: a.code, name: a.name, balance: a.balance })),
       };
 
       return {

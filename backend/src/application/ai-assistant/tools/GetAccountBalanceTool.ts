@@ -28,6 +28,8 @@ interface AccountBalanceDTO {
   credit: number;
 }
 
+// No truncation: returns the balance of a SINGLE account. Not a list —
+// truncation signals are not applicable.
 export class GetAccountBalanceTool implements AiTool {
   readonly name = 'accounting.getAccountBalance';
   readonly description = 'Get the balance of a specific account. Requires accountCode parameter. Optionally accepts asOfDate. Returns account code, name, classification, balance, debit, and credit. Read-only — cannot create, modify, or post anything.';

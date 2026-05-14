@@ -25,6 +25,7 @@ interface SalesSummaryDTO {
   averageInvoiceValue: number;
   byStatus: Record<string, number>;
   totalCustomers: number;
+  totalCount: number;
   displayedCount: number;
   truncated: boolean;
   truncationNote?: string;
@@ -134,6 +135,7 @@ export class GetSalesSummaryTool implements AiTool {
         averageInvoiceValue,
         byStatus,
         totalCustomers,
+        totalCount: totalCustomers,
         displayedCount: topCustomers.length,
         truncated,
         truncationNote: truncated

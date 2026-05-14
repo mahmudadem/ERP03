@@ -31,6 +31,8 @@ interface AccountStatementSummaryDTO {
   closingBalance: number;
 }
 
+// No truncation: returns a single account statement summary (opening/closing balance,
+// totals) for ONE account. Not a list — truncation signals are not applicable.
 export class GetAccountStatementSummaryTool implements AiTool {
   readonly name = 'accounting.getAccountStatementSummary';
   readonly description = 'Get an Account Statement summary for a specific account. Returns opening balance, total debit/credit, and closing balance for the period. Requires accountCode parameter. Read-only — cannot create, modify, or post anything.';

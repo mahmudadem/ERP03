@@ -26,6 +26,9 @@ interface FiscalYearStatusDTO {
   isPeriodClosed: boolean | null;
 }
 
+// No truncation: returns a single fiscal-year status object, not a list.
+// Truncation signals (truncated, totalCount, displayedCount) are not applicable
+// because this tool never returns an array of items that could grow unbounded.
 export class GetFiscalYearStatusTool implements AiTool {
   readonly name = 'accounting.getAccountingPeriodStatus';
   readonly description = 'Get the current fiscal year status and accounting period information for the company. Returns fiscal year name, dates, current period, and days remaining. Read-only — cannot create, modify, or post anything.';

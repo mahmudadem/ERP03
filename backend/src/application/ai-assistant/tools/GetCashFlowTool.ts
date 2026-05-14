@@ -27,19 +27,19 @@ interface CashFlowSummaryDTO {
   netIncome: number;
   operating: {
     total: number;
-    totalItems: number;
+    totalCount: number;
     displayedCount: number;
     items: Array<{ name: string; amount: number }>;
   };
   investing: {
     total: number;
-    totalItems: number;
+    totalCount: number;
     displayedCount: number;
     items: Array<{ name: string; amount: number }>;
   };
   financing: {
     total: number;
-    totalItems: number;
+    totalCount: number;
     displayedCount: number;
     items: Array<{ name: string; amount: number }>;
   };
@@ -108,19 +108,19 @@ export class GetCashFlowTool implements AiTool {
         netIncome: round2(result.netIncome),
         operating: {
           total: round2(result.operating.total),
-          totalItems: totalOperatingItems,
+          totalCount: totalOperatingItems,
           displayedCount: operatingItems.length,
           items: operatingItems,
         },
         investing: {
           total: round2(result.investing.total),
-          totalItems: totalInvestingItems,
+          totalCount: totalInvestingItems,
           displayedCount: investingItems.length,
           items: investingItems,
         },
         financing: {
           total: round2(result.financing.total),
-          totalItems: totalFinancingItems,
+          totalCount: totalFinancingItems,
           displayedCount: financingItems.length,
           items: financingItems,
         },

@@ -30,6 +30,10 @@ interface MonthlyComparisonDTO {
   totalRevenue: number;
   totalExpenses: number;
   totalProfit: number;
+  totalCount: number;
+  displayedCount: number;
+  truncated: boolean;
+  truncationNote?: string;
 }
 
 export class GetMonthlyComparisonTool implements AiTool {
@@ -111,11 +115,23 @@ export class GetMonthlyComparisonTool implements AiTool {
       const totalExpenses = round2(results.reduce((sum, r) => sum + r.expenses, 0));
       const totalProfit = round2(results.reduce((sum, r) => sum + r.netProfit, 0));
 
+      // Truncate months to prevent oversized AI context
+      const MONTHLY_COMPARISON_LIMIT = 24;
+      const totalCount = results.length;
+      const displayedMonths = results.slice(0, MONTHLY_COMPARISON_LIMIT);
+      const truncated = totalCount > MONTHLY_COMPARISON_LIMIT;
+
       const summary: MonthlyComparisonDTO = {
-        months: results,
+        months: displayedMonths,
         totalRevenue,
         totalExpenses,
         totalProfit,
+        totalCount,
+        displayedCount: displayedMonths.length,
+        truncated,
+        truncationNote: truncated
+          ? `Showing ${displayedMonths.length} of ${totalCount} months. Narrow the date range or navigate to the P&L report for the complete comparison.`
+          : undefined,
       };
 
       return {

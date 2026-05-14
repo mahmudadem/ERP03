@@ -25,6 +25,7 @@ interface PurchaseSummaryDTO {
   averageInvoiceValue: number;
   byStatus: Record<string, number>;
   totalSuppliers: number;
+  totalCount: number;
   displayedCount: number;
   truncated: boolean;
   truncationNote?: string;
@@ -134,6 +135,7 @@ export class GetPurchaseSummaryTool implements AiTool {
         averageInvoiceValue,
         byStatus,
         totalSuppliers,
+        totalCount: totalSuppliers,
         displayedCount: topSuppliers.length,
         truncated,
         truncationNote: truncated

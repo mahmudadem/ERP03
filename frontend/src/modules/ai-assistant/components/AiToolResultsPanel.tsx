@@ -93,8 +93,8 @@ const TrialBalanceView: React.FC<{ data: Record<string, unknown> }> = ({ data })
 
 const ProfitAndLossView: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
   const { t } = useTranslation('aiAssistant');
-  const revenueBreakdown = (data.revenueBreakdown as Array<Record<string, unknown>> | undefined) || [];
-  const expensesBreakdown = (data.expensesBreakdown as Array<Record<string, unknown>> | undefined) || [];
+  const revenueBreakdown = (data.revenueBreakdown as { items?: Array<Record<string, unknown>> } | undefined)?.items || [];
+  const expensesBreakdown = (data.expensesBreakdown as { items?: Array<Record<string, unknown>> } | undefined)?.items || [];
 
   return (
     <div className="space-y-2 text-xs text-gray-700">

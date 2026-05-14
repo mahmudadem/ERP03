@@ -23,14 +23,18 @@ interface ProfitAndLossSummaryDTO {
   revenue: number;
   expenses: number;
   netProfit: number;
-  totalRevenueAccounts: number;
-  totalExpenseAccounts: number;
-  displayedRevenue: number;
-  displayedExpenses: number;
+  revenueBreakdown: {
+    totalCount: number;
+    displayedCount: number;
+    items: Array<{ accountName: string; amount: number }>;
+  };
+  expensesBreakdown: {
+    totalCount: number;
+    displayedCount: number;
+    items: Array<{ accountName: string; amount: number }>;
+  };
   truncated: boolean;
   truncationNote?: string;
-  revenueBreakdown: Array<{ accountName: string; amount: number }>;
-  expensesBreakdown: Array<{ accountName: string; amount: number }>;
   structured?: {
     netSales: number;
     costOfSales: number;
@@ -93,16 +97,20 @@ export class GetProfitAndLossTool implements AiTool {
         revenue: result.revenue,
         expenses: result.expenses,
         netProfit: result.netProfit,
-        totalRevenueAccounts,
-        totalExpenseAccounts,
-        displayedRevenue: topRevenue.length,
-        displayedExpenses: topExpenses.length,
+        revenueBreakdown: {
+          totalCount: totalRevenueAccounts,
+          displayedCount: topRevenue.length,
+          items: topRevenue.map(a => ({ accountName: a.accountName, amount: a.amount })),
+        },
+        expensesBreakdown: {
+          totalCount: totalExpenseAccounts,
+          displayedCount: topExpenses.length,
+          items: topExpenses.map(a => ({ accountName: a.accountName, amount: a.amount })),
+        },
         truncated,
         truncationNote: truncated
           ? `Showing top 10 of ${totalRevenueAccounts} revenue accounts and top 10 of ${totalExpenseAccounts} expense accounts. Navigate to the Profit & Loss report for the complete list.`
           : undefined,
-        revenueBreakdown: topRevenue.map(a => ({ accountName: a.accountName, amount: a.amount })),
-        expensesBreakdown: topExpenses.map(a => ({ accountName: a.accountName, amount: a.amount })),
       };
 
       // Include structured view if available
