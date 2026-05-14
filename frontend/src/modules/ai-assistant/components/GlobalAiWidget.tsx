@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, User, Trash2, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X } from 'lucide-react';
+import { Send, Bot, User, Trash2, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X, Mic } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import {
   aiAssistantApi,
@@ -58,6 +58,7 @@ export const GlobalAiWidget: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -190,6 +191,43 @@ export const GlobalAiWidget: React.FC = () => {
       setIsLoading(false);
     }
   }, [input, isLoading, conversationId]);
+
+  const toggleRecording = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Your browser does not support voice recognition.');
+      return;
+    }
+
+    if (isRecording) {
+      setIsRecording(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-SA'; // Default to Arabic
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onend = () => setIsRecording(false);
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error);
+      setError(`Voice error: ${event.error}`);
+      setIsRecording(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      
+      setInput(transcript);
+    };
+
+    recognition.start();
+  }, [isRecording]);
 
   const startNewChat = () => {
     setMessages([]);
@@ -345,15 +383,28 @@ export const GlobalAiWidget: React.FC = () => {
                 }
               }}
               placeholder="Ask anything..."
-              className="w-full pl-4 pr-12 py-3 bg-gray-50 border-none rounded-xl text-sm resize-none focus:ring-2 focus:ring-indigo-500/20 max-h-32"
+              className="w-full pl-4 pr-20 py-3 bg-gray-50 border-none rounded-xl text-sm resize-none focus:ring-2 focus:ring-indigo-500/20 max-h-32"
             />
-            <button
-              onClick={() => handleSendMessage()}
-              disabled={isLoading || !input.trim()}
-              className="absolute right-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 transition-all shadow-md"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+            <div className="absolute right-2 flex items-center gap-1">
+              <button
+                onClick={toggleRecording}
+                className={`p-2 rounded-lg transition-all ${
+                  isRecording 
+                    ? 'bg-red-500 text-white animate-pulse shadow-lg' 
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title="Voice Message"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={isLoading || !input.trim()}
+                className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 transition-all shadow-md"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </>
