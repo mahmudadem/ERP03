@@ -33,6 +33,7 @@ router.get('/providers/:providerId(.+)/models', permissionGuard('ai-assistant.se
 // Settings — test provider connectivity (consumes real tokens for external providers)
 router.post('/settings/health', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.checkProviderHealth);
 router.get('/settings/usage', permissionGuard('ai-assistant.settings.view'), AiAssistantController.getUsageAnalytics);
+router.get('/usage/summary', permissionGuard('ai-assistant.settings.view'), AiAssistantController.getUsageSummary);
 router.post('/settings/custom-model-profiles', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.createTenantCustomModelProfile);
 router.get('/settings/custom-model-profiles/:profileId(.+)', permissionGuard('ai-assistant.settings.view'), AiAssistantController.getTenantCustomModelProfile);
 router.patch('/settings/custom-model-profiles/:profileId(.+)', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.updateTenantCustomModelProfile);

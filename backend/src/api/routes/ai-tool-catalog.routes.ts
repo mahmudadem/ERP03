@@ -10,6 +10,7 @@
 import { Router } from 'express';
 import { AiToolCatalogController } from '../controllers/ai-assistant/AiToolCatalogController';
 import { AiCreditController } from '../controllers/ai-assistant/AiCreditController';
+import { AiMaintenanceController } from '../controllers/ai-assistant/AiMaintenanceController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { assertSuperAdmin } from '../middlewares/assertSuperAdmin';
 
@@ -126,5 +127,15 @@ router.patch('/ai-model-tool-policies/:policyId', AiToolCatalogController.update
  * Body: { companyId: string, amount: number, reason?: string }
  */
 router.post('/ai-assistant/credits/grant', AiCreditController.grantCredits);
+
+// ─── AI Maintenance (Super Admin) ─────────────────────────────────────────────
+
+/**
+ * POST /platform/ai-assistant/maintenance/cleanup
+ * Super Admin triggers conversation retention cleanup.
+ * Body: { companyIds: string[], retentionDays?: number } (default retentionDays: 90)
+ * Returns a cleanup report with deletion counts.
+ */
+router.post('/ai-assistant/maintenance/cleanup', AiMaintenanceController.runCleanup);
 
 export default router;

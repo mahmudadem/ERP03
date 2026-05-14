@@ -43,4 +43,10 @@ export interface IAiConversationMetaRepository {
    * Delete conversation metadata.
    */
   delete(conversationId: string, companyId: string): Promise<void>;
+
+  /**
+   * List all conversation metadata for a company, most recent first.
+   * Used by the conversation cleanup service for retention policy enforcement.
+   */
+  listByCompany(companyId: string, limit?: number): Promise<AiConversationMeta[]>;
 }

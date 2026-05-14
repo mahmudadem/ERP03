@@ -189,6 +189,15 @@ export interface AiUsageAnalyticsResponse {
   }>;
 }
 
+export interface UsageSummaryResponse {
+  period: string;
+  totalRequests: number;
+  totalTokensUsed: number;
+  creditsRemaining?: number;
+  requestsByUser: Array<{ userId: string; requests: number }>;
+  requestsByDay: Array<{ date: string; count: number }>;
+}
+
 export interface ProviderHealthResponse {
   provider: string;
   model: string;
@@ -437,6 +446,11 @@ export const aiAssistantApi = {
       params: { limit },
     });
     return response as unknown as AiUsageAnalyticsResponse;
+  },
+
+  getUsageSummary: async (): Promise<{ success: boolean; data: UsageSummaryResponse }> => {
+    const response = await client.get('/tenant/ai-assistant/usage/summary');
+    return response as unknown as { success: boolean; data: UsageSummaryResponse };
   },
 
   checkProviderHealth: async (): Promise<ProviderHealthResponse> => {

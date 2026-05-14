@@ -431,5 +431,21 @@
     "loading": "Loading credit balance...",
     "helpText": "Need more credits? Switch to BYOK mode or contact support.",
     "noCreditsYet": "No credit history yet. Credits will appear here once you purchase or use them."
+  },
+  "usageDashboard": {
+    "title": "AI Usage Dashboard",
+    "period": "Period",
+    "totalRequests": "Total Requests",
+    "totalTokens": "Tokens Used",
+    "creditsRemaining": "Credits Remaining",
+    "requestsByDay": "Requests by Day",
+    "requestsByUser": "Top Users",
+    "date": "Date",
+    "count": "Count",
+    "user": "User",
+    "requests": "Requests",
+    "noData": "No data found for this period.",
+    "loadError": "Failed to load usage data",
+    "backToSettings": "Back to Settings"
   }
 }

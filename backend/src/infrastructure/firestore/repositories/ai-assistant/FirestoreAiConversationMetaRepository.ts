@@ -78,6 +78,17 @@ export class FirestoreAiConversationMetaRepository implements IAiConversationMet
     await this.getCollection(companyId).doc(conversationId).delete();
   }
 
+  async listByCompany(companyId: string, limit: number = 100): Promise<AiConversationMeta[]> {
+    const snapshot = await this.getCollection(companyId)
+      .orderBy('lastMessageAt', 'desc')
+      .limit(limit)
+      .get();
+
+    return snapshot.docs.map(doc =>
+      FirestoreAiConversationMetaRepository.fromDoc(doc.id, doc.data()!),
+    );
+  }
+
   // ── Serialization helpers ──────────────────────────────────────────
 
   private static toDoc(meta: AiConversationMeta): Record<string, unknown> {

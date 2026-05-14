@@ -120,6 +120,7 @@ import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRe
   import { AiProviderRegistryUseCase } from '../../application/ai-assistant/use-cases/AiProviderRegistryUseCase';
   import { AiModelCertificationUseCase } from '../../application/ai-assistant/use-cases/AiModelCertificationUseCase';
 import { AiAutoSeedCertification } from '../../application/ai-assistant/services/AiAutoSeedCertification';
+import { AiConversationCleanupService } from '../../application/ai-assistant/services/AiConversationCleanupService';
 import { StreamChatMessageUseCase } from '../../application/ai-assistant/use-cases/StreamChatMessageUseCase';
 import { SendChatMessageUseCase } from '../../application/ai-assistant/use-cases/SendChatMessageUseCase';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
@@ -839,6 +840,12 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
     return new AiAutoSeedCertification(
       this.aiModelProfileRepository,
       this.aiModelCertificationRepository,
+    );
+  },
+  get aiConversationCleanupService(): AiConversationCleanupService {
+    return new AiConversationCleanupService(
+      this.aiConversationMetaRepository,
+      this.aiChatRepository,
     );
   },
 

@@ -431,5 +431,21 @@
     "loading": "Kredi bakiyesi yükleniyor...",
     "helpText": "Daha fazla kredi mi lazım? BYOK moduna geçin veya destekle iletişime geçin.",
     "noCreditsYet": "Henüz kredi geçmişi yok. Satın alma veya kullanım sonrası krediler burada görünecektir."
+  },
+  "usageDashboard": {
+    "title": "AI Kullanım Paneli",
+    "period": "Dönem",
+    "totalRequests": "Toplam İstek",
+    "totalTokens": "Kullanılan Token",
+    "creditsRemaining": "Kalan Kredi",
+    "requestsByDay": "Günlük İstekler",
+    "requestsByUser": "En Çok Kullananlar",
+    "date": "Tarih",
+    "count": "Adet",
+    "user": "Kullanıcı",
+    "requests": "İstek",
+    "noData": "Bu dönem için veri bulunamadı.",
+    "loadError": "Kullanım verileri yüklenemedi",
+    "backToSettings": "Ayarlara Dön"
   }
 }

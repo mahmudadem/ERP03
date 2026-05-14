@@ -46,6 +46,7 @@ import { AiSkillRegistry } from '../skills/AiSkillRegistry';
 import { AiProviderToolContract } from '../../../domain/ai-assistant/tools/AiToolContract';
 import { ProviderError } from '../../../errors/ProviderErrors';
 import { ApiError } from '../../../api/errors/ApiError';
+import { ModuleAvailabilityService, ModuleAvailabilityState } from '../../platform/ModuleAvailabilityService';
 import { AiProposalGeneratorRegistry } from '../proposals/AiProposalGeneratorRegistry';
 import { CreateAiProposalUseCase } from './CreateAiProposalUseCase';
 import { AiModelProfileUseCase } from './AiModelProfileUseCase';
@@ -164,6 +165,24 @@ export class SendChatMessageUseCase {
     // 4. Check if AI is enabled
     if (!config.isEnabled) {
       throw ApiError.forbidden('AI Assistant is not enabled for this company. Please enable it in settings.');
+    }
+
+    // 4b. Defense-in-depth: verify AI Assistant module availability in the module registry.
+    //     The primary entitlement check is in the HTTP middleware (companyModuleGuard).
+    try {
+      const moduleService = ModuleAvailabilityService.getInstance();
+      const info = moduleService.getAvailabilityInfo('ai-assistant');
+      if (info) {
+        if (info.state === ModuleAvailabilityState.SUSPENDED) {
+          throw ApiError.locked('AI Assistant module is temporarily unavailable due to maintenance. Please try again later.');
+        }
+        if (info.state !== ModuleAvailabilityState.AVAILABLE) {
+          runtimeWarnings.push(`AI Assistant module state: ${info.state}. Contact SuperAdmin if issues persist.`);
+        }
+      }
+    } catch (err) {
+      if (err && typeof err === 'object' && 'statusCode' in (err as Record<string, unknown>)) throw err;
+      console.warn(`[ModuleEntitlement] Could not verify module availability for company ${companyId}:`, err);
     }
 
     // 5. Determine conversation ID

@@ -39,6 +39,7 @@ import { AiModelProfile } from '../services/AiModelCapabilityCatalog';
 import { AiSkillRegistry } from '../skills/AiSkillRegistry';
 import { AiProviderToolContract } from '../../../domain/ai-assistant/tools/AiToolContract';
 import { ApiError } from '../../../api/errors/ApiError';
+import { ModuleAvailabilityService, ModuleAvailabilityState } from '../../platform/ModuleAvailabilityService';
 import { AiModelProfileUseCase } from './AiModelProfileUseCase';
 import { AiCredentialResolver } from '../services/AiCredentialResolver';
 import { AiContextBuilder } from '../services/AiContextBuilder';
@@ -142,6 +143,18 @@ export class StreamChatMessageUseCase {
     if (!config.isEnabled) {
       yield { type: 'error', message: 'AI Assistant is not enabled for this company.' };
       return;
+    }
+
+    // 4b. Defense-in-depth: verify AI Assistant module availability in the module registry.
+    try {
+      const moduleService = ModuleAvailabilityService.getInstance();
+      const info = moduleService.getAvailabilityInfo('ai-assistant');
+      if (info && info.state === ModuleAvailabilityState.SUSPENDED) {
+        yield { type: 'error', message: 'AI Assistant module is temporarily unavailable due to maintenance.' };
+        return;
+      }
+    } catch (err) {
+      console.warn(`[ModuleEntitlement] Could not verify module availability for company ${companyId}:`, err);
     }
 
     // 5. Determine conversation ID

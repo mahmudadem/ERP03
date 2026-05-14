@@ -314,6 +314,70 @@ const useCase = new SendChatMessageUseCase(
     }
   }
 
+  /**
+   * GET /ai-assistant/usage/summary
+   * Aggregated usage summary for the AI Assistant dashboard.
+   * Returns: total requests this month, tokens, credits remaining, requests by user, requests by day.
+   */
+  static async getUsageSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+
+      const logs = await diContainer.aiUsageLogRepository.getByCompany(companyId, 10000, 0);
+
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthLogs = logs.filter(l => l.createdAt >= monthStart);
+
+      const totalRequests = monthLogs.length;
+      const totalTokensUsed = monthLogs.reduce((sum, l) => sum + (l.totalTokens || 0), 0);
+
+      const userMap = new Map<string, number>();
+      const dayMap = new Map<string, number>();
+
+      for (const log of monthLogs) {
+        const userId = log.userId || 'unknown';
+        userMap.set(userId, (userMap.get(userId) || 0) + 1);
+
+        const dayKey = log.createdAt.toISOString().slice(0, 10);
+        dayMap.set(dayKey, (dayMap.get(dayKey) || 0) + 1);
+      }
+
+      const requestsByUser = Array.from(userMap.entries())
+        .map(([userId, requests]) => ({ userId, requests }))
+        .sort((a, b) => b.requests - a.requests);
+
+      const requestsByDay = Array.from(dayMap.entries())
+        .map(([date, count]) => ({ date, count }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      // Get credit balance if available
+      let creditsRemaining: number | undefined;
+      try {
+        const ledger = await diContainer.aiCreditLedgerRepository.getByCompanyId(companyId);
+        if (ledger) {
+          creditsRemaining = ledger.balance;
+        }
+      } catch {
+        // Credit ledger may not be configured; that's fine
+      }
+
+      res.json({
+        success: true,
+        data: {
+          period: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+          totalRequests,
+          totalTokensUsed,
+          creditsRemaining,
+          requestsByUser,
+          requestsByDay,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
 /**
    * GET /ai-assistant/providers
    * List enabled AI provider metadata available to tenant settings.
