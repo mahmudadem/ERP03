@@ -49,7 +49,7 @@ interface ConversationSummary {
 }
 
 export const GlobalAiWidget: React.FC = () => {
-  const { t } = useTranslation('aiAssistant');
+  const { t, i18n } = useTranslation('aiAssistant');
   const { hasPermission, isOwner, isSuperAdmin } = useRBAC();
   const { permissionsLoaded } = useCompanyAccess();
   const location = useLocation();
@@ -205,7 +205,10 @@ export const GlobalAiWidget: React.FC = () => {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-SA'; // Default to Arabic
+    if (i18n.language.startsWith('ar')) recognition.lang = 'ar-SA';
+    else if (i18n.language.startsWith('tr')) recognition.lang = 'tr-TR';
+    else recognition.lang = 'en-US';
+    
     recognition.interimResults = true;
     recognition.continuous = false;
 

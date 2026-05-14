@@ -2,6 +2,37 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-15 (Fri) — ~1h — AI Assistant Stabilization & Voice Integration
+
+**Task:** Resolve "dead" state of AI Assistant (Permissions/Streaming) and add Voice-to-Text.
+**Agent:** OpenCode (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+
+**What Was Done:**
+
+1. **Fixed Permission Bypass:**
+   - Updated `tenantContextMiddleware.ts` to expose `isOwner` flag.
+   - Modified `permissionGuard.ts` to allow company owners to bypass all AI assistant permission checks.
+
+2. **Implemented Real-time Streaming:**
+   - Fixed `MockProvider.ts` to support SSE `chatStream` for development mode.
+   - Enhanced frontend `aiAssistantApi.ts` SSE parser to handle Windows-style line endings (`\r\n`).
+   - Added `res.flush()` to `aiChatStreamRoute.ts` to prevent backend buffering of tokens.
+
+3. **UI Optimization & Type Safety:**
+   - Overhauled `GlobalAiWidget.tsx` with `streamingContent` state to enable zero-lag typewriter effect.
+   - Bypassed expensive `MarkdownRenderer` during active streaming to prevent UI flickering.
+   - Resolved multiple TypeScript mismatches and prop-name errors (`onSendMessage`, `toolResults`, etc.).
+
+4. **Added Voice-to-Text (Arabic/English):**
+   - Integrated native Web Speech API directly into the chat widget.
+   - Added a pulsing microphone button with real-time transcription.
+   - Configured for Arabic (`ar-SA`) by default with fallback to English.
+
+**Status:** ✅ AI Assistant is now stable, responsive, and supports voice input. Ready for final manual verification.
+
+---
+
 ## 2026-05-14 (Thu) — ~2h — Phase 1A Core Bug Fixes + System Form Designer
 
 **Task:** Complete remaining Phase 1A tasks: voucher save routing, forms designer mutation bugs, and build Super Admin System Form Designer
