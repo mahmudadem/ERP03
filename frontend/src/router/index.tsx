@@ -25,6 +25,7 @@ import { LandingPage, PlanSelectionPage, CompaniesListPage } from '../modules/on
 const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
 const CompanySelectorPageLazy = lazy(() => import('../modules/company-selector/CompanySelectorPage'));
 const NewCompanyWizardPage = lazy(() => import('../modules/onboarding/pages/NewCompanyWizardPage'));
+const ChatGptMockPage = lazy(() => import('../modules/ai-assistant/pages/ChatGptMockPage'));
 
 import { useGlobalLoaderTask } from '../context/GlobalLoaderContext';
 
@@ -81,6 +82,15 @@ const routes = [
           <NewCompanyWizardPage />
         </Suspense>
       </RequireAuth>
+    ),
+  },
+  // Mock ChatGPT-style AI Chat (standalone, no app shell)
+  {
+    path: '/chat-mock',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <ChatGptMockPage />
+      </Suspense>
     ),
   },
   // Super Admin Routes - Completely separate from regular user flow
