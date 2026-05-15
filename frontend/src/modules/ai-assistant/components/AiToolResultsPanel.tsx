@@ -25,6 +25,12 @@ export const AiToolResultsPanel: React.FC<Props> = ({ toolResults }) => {
             <span>{t('chat.toolData', 'Data Tool Result')}</span>
             <span className="text-indigo-300 mx-1">•</span>
             <span className="font-mono text-[10px] normal-case bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-700">{tool.toolName}</span>
+            {((tool as any).durationMs || (tool as any).round) && (
+              <span className="text-[9px] text-gray-400 normal-case ml-auto flex items-center gap-2">
+                {(tool as any).round && <span>Round {(tool as any).round}</span>}
+                {(tool as any).durationMs && <span>{(tool as any).durationMs}ms</span>}
+              </span>
+            )}
           </div>
 
           {!tool.result?.success && (
@@ -39,6 +45,10 @@ export const AiToolResultsPanel: React.FC<Props> = ({ toolResults }) => {
 
           {tool.result?.success && tool.toolName === 'accounting.getTrialBalanceSummary' && (
             <TrialBalanceView data={tool.result.data || {}} />
+          )}
+
+          {tool.result?.success && tool.toolName === 'accounting.getAccountBalance' && (
+            <AccountBalanceView data={tool.result.data || {}} />
           )}
 
           {tool.result?.success && tool.toolName === 'accounting.getProfitAndLoss' && (
@@ -86,6 +96,35 @@ const TrialBalanceView: React.FC<{ data: Record<string, unknown> }> = ({ data })
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+};
+
+const AccountBalanceView: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
+  const { t } = useTranslation('aiAssistant');
+
+  return (
+    <div className="space-y-3 text-xs text-gray-700">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Stat label={t('chat.balance', 'Balance')} value={fmt(asNumber(data.balance))} />
+        <Stat label={t('chat.totalDebit', 'Total Debit')} value={fmt(asNumber(data.debit))} />
+        <Stat label={t('chat.totalCredit', 'Total Credit')} value={fmt(asNumber(data.credit))} />
+      </div>
+
+      <div className="rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-500">{t('chat.code', 'Code')}</span>
+          <span className="font-mono font-medium text-gray-900">{String(data.accountCode || '')}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 mt-1">
+          <span className="text-gray-500">{t('chat.account', 'Account')}</span>
+          <span className="font-medium text-gray-900 text-right">{String(data.accountName || '')}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 mt-1">
+          <span className="text-gray-500">{t('chat.classification', 'Classification')}</span>
+          <span className="font-medium text-gray-900">{String(data.classification || '')}</span>
+        </div>
       </div>
     </div>
   );

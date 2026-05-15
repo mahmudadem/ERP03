@@ -450,3 +450,16 @@ npx ts-node src/scripts/seedAiCertifiedProfileDev.ts
 ```
 
 The helper creates provider/profile/certification metadata without storing API keys.
+
+## Streaming Tool Result Reliability
+
+Updated on 2026-05-15.
+
+The streaming chat path now treats tool execution as a separate result from runtime-guard approval:
+
+- `tool_result` SSE events include `error`, `durationMs`, and `round`.
+- The frontend treats a tool event with an `error` as unavailable data even when the runtime guard approved the call.
+- `StreamChatMessageUseCase` passes only the current planning round's tool results back to the provider, instead of re-sending every accumulated result on every round.
+- Repeated successful calls with the same resolved tool name and normalized arguments reuse the already returned result within the same run.
+
+This keeps multi-round planning from repeatedly calling tools such as `accounting.getAccountBalance` after the needed data has already been returned, and it preserves the actual backend failure reason when a model supplies missing or invalid arguments.

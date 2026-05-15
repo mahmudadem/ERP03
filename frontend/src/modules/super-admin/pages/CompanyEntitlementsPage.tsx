@@ -46,16 +46,22 @@ export default function CompanyEntitlementsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [aiReportMode, setAiReportMode] = useState<'standard' | 'authoritative'>('standard');
   const [savingReportMode, setSavingReportMode] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [totalPurchased, setTotalPurchased] = useState(0);
+  const [totalConsumed, setTotalConsumed] = useState(0);
+  const [creditInput, setCreditInput] = useState('');
+  const [grantingCredits, setGrantingCredits] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
     try {
-      const [companies, modulesRes, entitlementsRes, reportModeRes] = await Promise.all([
+      const [companies, modulesRes, entitlementsRes, reportModeRes, creditsRes] = await Promise.all([
         superAdminApi.getAllCompanies(),
         superAdminApi.getModules(),
         superAdminApi.getCompanyEntitlements(companyId),
         superAdminApi.getCompanyAiReportMode(companyId),
+        superAdminApi.getCompanyAiCredits(companyId),
       ]);
 
       const found = companies.find((c: SuperAdminCompany) => c.id === companyId);
@@ -64,6 +70,11 @@ export default function CompanyEntitlementsPage() {
       setEntitledModules(entitlementsRes.modules || []);
       setEntitlements(entitlementsRes.entitlements || []);
       setAiReportMode(reportModeRes.aiReportMode || 'standard');
+      if (creditsRes.data) {
+        setCreditBalance(creditsRes.data.balance);
+        setTotalPurchased(creditsRes.data.totalPurchased);
+        setTotalConsumed(creditsRes.data.totalConsumed);
+      }
     } catch (error: any) {
       errorHandler.showError(error);
     } finally {
@@ -143,6 +154,22 @@ export default function CompanyEntitlementsPage() {
     }
   };
 
+  const handleGrantCredits = async () => {
+    if (!companyId || !creditInput || isNaN(Number(creditInput))) return;
+    setGrantingCredits(true);
+    try {
+      const amount = Number(creditInput);
+      await superAdminApi.grantAiCredits({ companyId, amount });
+      errorHandler.showSuccess(t('superAdmin.companyEntitlements.messages.creditsGranted', { defaultValue: `{{amount}} credits granted`, amount }));
+      setCreditInput('');
+      await loadData();
+    } catch (error: any) {
+      errorHandler.showError(error);
+    } finally {
+      setGrantingCredits(false);
+    }
+  };
+
   const sourceTypeLabel = (sourceType: string) => {
     switch (sourceType) {
       case 'bundle': return t('superAdmin.companyEntitlements.sourceTypes.bundle', { defaultValue: 'Bundle' });
@@ -189,6 +216,64 @@ export default function CompanyEntitlementsPage() {
         <SuperAdminLoading label={t('superAdmin.companyEntitlements.loading', { defaultValue: 'Loading modules...' })} />
       ) : (
         <div className="flex flex-col gap-4">
+          {/* AI Credits */}
+          <div className="rounded-lg border border-[var(--sa-border)] bg-[var(--sa-surface)]">
+            <div className="border-b border-[var(--sa-border)] px-4 py-3">
+              <h2 className="text-sm font-semibold text-[var(--sa-text)]">
+                {t('superAdmin.companyEntitlements.aiCredits.title', { defaultValue: 'AI Credits' })}
+              </h2>
+            </div>
+            <div className="px-4 py-4">
+              <div className="mb-4 grid grid-cols-3 gap-4">
+                <div className="rounded-md bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">
+                    {t('superAdmin.companyEntitlements.aiCredits.balance', { defaultValue: 'Current Balance' })}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{creditBalance}</p>
+                </div>
+                <div className="rounded-md bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">
+                    {t('superAdmin.companyEntitlements.aiCredits.totalPurchased', { defaultValue: 'Total Purchased' })}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{totalPurchased}</p>
+                </div>
+                <div className="rounded-md bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">
+                    {t('superAdmin.companyEntitlements.aiCredits.totalConsumed', { defaultValue: 'Total Consumed' })}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{totalConsumed}</p>
+                </div>
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('superAdmin.companyEntitlements.aiCredits.grantAmount', { defaultValue: 'Grant Amount' })}
+                  </label>
+                  <input
+                    type="number"
+                    value={creditInput}
+                    onChange={(e) => setCreditInput(e.target.value)}
+                    placeholder={t('superAdmin.companyEntitlements.aiCredits.enterAmount', { defaultValue: 'Enter amount' })}
+                    disabled={grantingCredits}
+                    className={clsx(
+                      'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900',
+                      'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500',
+                      grantingCredits && 'opacity-50 cursor-wait',
+                    )}
+                  />
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleGrantCredits}
+                  disabled={grantingCredits || !creditInput || isNaN(Number(creditInput))}
+                >
+                  {grantingCredits ? t('superAdmin.companyEntitlements.aiCredits.granting', { defaultValue: 'Granting...' }) : t('superAdmin.companyEntitlements.aiCredits.grant', { defaultValue: 'Grant Credits' })}
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* AI Report Mode */}
           <div className="rounded-lg border border-[var(--sa-border)] bg-[var(--sa-surface)]">
             <div className="border-b border-[var(--sa-border)] px-4 py-3">

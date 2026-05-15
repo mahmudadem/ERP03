@@ -42,6 +42,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
   const [conversationContextMode, setConversationContextMode] = useState<ConversationContextMode>('balanced');
   const [includePreviousToolResults, setIncludePreviousToolResults] = useState(true);
   const [isEnabled, setIsEnabled] = useState(true);
+  const [allowUnverifiedModels, setAllowUnverifiedModels] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<'BYOK' | 'CREDITS' | 'DISABLED'>('BYOK');
   const [allowedRuntimeModes, setAllowedRuntimeModes] = useState<Array<'BYOK' | 'CREDITS' | 'DISABLED'>>(['BYOK', 'CREDITS']);
   const [usageAnalytics, setUsageAnalytics] = useState<AiUsageAnalyticsResponse | null>(null);
@@ -136,6 +137,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
         setConversationContextMode(config.conversationContextMode || 'balanced');
         setIncludePreviousToolResults(config.includePreviousToolResults !== false);
         setIsEnabled(config.isEnabled);
+        setAllowUnverifiedModels(config.allowUnverifiedModels === true);
         setPresetId(resolvePresetId(config.provider, config.apiEndpoint || ''));
         if (config.runtimeMode) setRuntimeMode(config.runtimeMode as any);
         if (Array.isArray(config.allowedRuntimeModes)) setAllowedRuntimeModes(config.allowedRuntimeModes as any);
@@ -298,11 +300,12 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
         conversationContextMode,
         includePreviousToolResults,
         isEnabled,
+        allowUnverifiedModels,
         runtimeMode,
-        mode: 'legacy_unverified',
-        providerId: selectedProviderOption?.id || '',
-        selectedModelProfileId: '',
-        selectedProfileHash: '',
+        mode: settings?.mode || 'legacy_unverified',
+        providerId: selectedProviderOption?.id || settings?.providerId || '',
+        selectedModelProfileId: settings?.selectedModelProfileId || '',
+        selectedProfileHash: settings?.selectedProfileHash || '',
       };
       if (provider !== 'mock') {
         payload.apiKey = apiKey || undefined;
@@ -503,19 +506,20 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
 
   const hasChanges = settings && (
     settings.provider !== provider ||
-    (settings.model || '') !== model ||
-    settings.maxTokensPerRequest !== maxTokens ||
-    settings.maxRequestsPerDay !== maxRequestsPerDay ||
+    (settings.model || '') !== (model || '') ||
+    (settings.maxTokensPerRequest || 4096) !== maxTokens ||
+    (settings.maxRequestsPerDay || 100) !== maxRequestsPerDay ||
     (settings.conversationContextMode || 'balanced') !== conversationContextMode ||
     (settings.includePreviousToolResults !== false) !== includePreviousToolResults ||
     settings.isEnabled !== isEnabled ||
+    (settings.allowUnverifiedModels === true) !== allowUnverifiedModels ||
     (settings.runtimeMode || 'BYOK') !== runtimeMode ||
-    (settings.providerId || '') !== (selectedProviderId || '') ||
+    (settings.providerId || 'mock') !== (selectedProviderId === '__mock__' ? 'mock' : (selectedProviderId || 'mock')) ||
     (provider !== 'mock' && apiKey !== '') ||
-    (provider !== 'mock' && (settings.apiEndpoint || '') !== apiEndpoint) ||
-    selectedCertifiedProfile !== null ||
-    registeredProfileId !== null ||
-    selectedErp03Profile !== null
+    (provider !== 'mock' && (settings.apiEndpoint || '') !== (apiEndpoint || '')) ||
+    (selectedCertifiedProfile !== null && selectedCertifiedProfile.profile.id !== settings?.selectedModelProfileId) ||
+    (registeredProfileId !== null && registeredProfileId !== settings?.selectedModelProfileId) ||
+    (selectedErp03Profile !== null && selectedErp03Profile.profile.id !== settings?.selectedModelProfileId)
   );
   const hasUnsavedChanges = Boolean(hasChanges);
 
@@ -527,7 +531,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     presetId, provider, model, apiKey, apiEndpoint,
     maxTokens, maxRequestsPerDay,
     conversationContextMode, includePreviousToolResults,
-    isEnabled, runtimeMode, allowedRuntimeModes,
+    isEnabled, allowUnverifiedModels, runtimeMode, allowedRuntimeModes,
     usageAnalytics, usageLoading,
     healthResult, healthTesting, healthError,
     showCertifiedModels, selectedCertifiedProfile,
@@ -543,9 +547,9 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     isCustom, showApiKeyField, showProviderFields, modelFieldId,
     certificationMatch, hasChanges, hasUnsavedChanges,
     // Setters
-    setError, setIsEnabled, setRuntimeMode, setAllowedRuntimeModes,
-    setApiKey, setApiEndpoint, setModel, setMaxTokens, setMaxRequestsPerDay,
     setConversationContextMode, setIncludePreviousToolResults,
+    setIsEnabled, setAllowUnverifiedModels, setRuntimeMode, setAllowedRuntimeModes,
+    setApiKey, setApiEndpoint, setModel, setMaxTokens, setMaxRequestsPerDay,
     setSelectedErp03Profile, setRegisteredCertCategory,
     setShowCertifiedModels,
     // Handlers

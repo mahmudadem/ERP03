@@ -199,7 +199,7 @@ export class SendChatMessageUseCase {
 
     try {
       // 6. Build model capability profile
-      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, config.provider, config.model);
+      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, companyId, config.provider, config.model);
       if (modelProfile.textOnlyMode) {
         runtimeWarnings.push(modelProfile.warningMessage || `Model '${config.model}' is running in text-only mode. Tool calling is disabled.`);
       }
@@ -247,6 +247,8 @@ export class SendChatMessageUseCase {
         allowedContracts = [];
         nameMapping = new Map();
         allowedToolIds = [];
+      } else if (toolRoutingDecision?.warning) {
+        runtimeWarnings.push(toolRoutingDecision.reason || 'This model profile has a WARNING certification status. Use with caution.');
       }
 
       if (this.runtimeGuard) {
@@ -395,7 +397,7 @@ export class SendChatMessageUseCase {
             modelProfile,
             toolPlanningContextMessage,
             recentToolDataContextMessage: recentToolDataContext.content,
-            skipToolDescriptions: isLikelySimpleChat,
+            skipToolDescriptions: isLikelySimpleChat || !toolRoutingDecision?.allowed,
           }),
         },
         ...recentProviderMessages,
@@ -491,7 +493,7 @@ export class SendChatMessageUseCase {
             modelProfile: {
               provider: modelProfile.provider,
               modelName: modelProfile.modelName,
-              status: modelProfile.status,
+              status: toolRoutingDecision?.certificationId ? 'CERTIFIED' : modelProfile.status,
               supportsToolCalling: modelProfile.supportsToolCalling,
               textOnlyMode: modelProfile.textOnlyMode,
               warningLevel: modelProfile.warningLevel,

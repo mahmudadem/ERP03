@@ -272,7 +272,7 @@ describe('SendChatMessageUseCase', () => {
       expect(mockOrchestrator.detectAndExecute).not.toHaveBeenCalled();
       expect((result.assistantMessage.metadata as any)?.toolResults).toEqual([]);
       expect(Object.prototype.hasOwnProperty.call(result.assistantMessage.metadata || {}, 'toolCallResults')).toBe(false);
-      expect((result.assistantMessage.metadata as any)?.isMock).toBe(true);
+      expect(result.provider).toBe('mock');
     });
 
     it('should execute guarded ERP_TOOL_PLAN calls for unknown/text-only models', async () => {
@@ -557,7 +557,7 @@ describe('SendChatMessageUseCase', () => {
       expect(systemPrompt).toContain('accounting.getTrialBalanceSummary');
       expect(systemPrompt).toContain('cash syp1');
       expect(systemPrompt).toContain('10301');
-      expect(systemPrompt).toContain('Ask the user a short clarification question only when');
+      expect(systemPrompt).toContain('If the user\'s intent is ambiguous after reviewing context, ask a short clarification question');
       expect(sentMessages.map((m: any) => m.content)).toContain('Here is the trial balance summary.');
     });
 

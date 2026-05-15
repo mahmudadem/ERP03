@@ -13,12 +13,16 @@ async function initServer() {
   await ModuleRegistry.getInstance().initializeAll();
   await runModuleStartupValidation();
 
-  // Auto-seed AI model certifications for well-known models (idempotent)
+  // Sync built-in profiles and auto-seed certifications (idempotent)
   try {
-    const seeded = await diContainer.aiAutoSeedCertification.seed();
-    console.log(`[AI Auto-Certification] Seeded ${seeded} certification(s) at startup.`);
+    const syncedProfiles = await diContainer.aiModelProfileUseCase.syncBuiltInProfiles();
+    if (syncedProfiles > 0) {
+      console.log(`[AI Startup] Synced ${syncedProfiles} new model profile(s) from catalog.`);
+    }
+    const seededCerts = await diContainer.aiAutoSeedCertification.seed();
+    console.log(`[AI Startup] Seeded ${seededCerts} certification(s) for well-known models.`);
   } catch (err) {
-    console.warn('[AI Auto-Certification] Failed to seed at startup:', err);
+    console.warn('[AI Startup] Failed to sync AI metadata at startup:', err);
   }
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   server = require('./api/server').default;

@@ -360,6 +360,14 @@ export interface CreateDeliveryNotePayload {
   notes?: string;
 }
 
+export interface UpdateDeliveryNotePayload {
+  customerId?: string;
+  deliveryDate?: string;
+  warehouseId?: string;
+  lines?: DeliveryNoteLineInputDTO[];
+  notes?: string;
+}
+
 export interface ListDeliveryNotesOptions {
   salesOrderId?: string;
   status?: DNStatus;
@@ -472,6 +480,14 @@ export interface CreateSalesReturnPayload {
   lines?: SalesReturnLineInputDTO[];
 }
 
+export interface UpdateSalesReturnPayload {
+  returnDate?: string;
+  warehouseId?: string;
+  reason?: string;
+  notes?: string;
+  lines?: SalesReturnLineInputDTO[];
+}
+
 export interface ListSalesReturnsOptions {
   customerId?: string;
   salesInvoiceId?: string;
@@ -527,6 +543,9 @@ export const salesApi = {
   getDN: (id: string): Promise<DeliveryNoteDTO> =>
     client.get(`/tenant/sales/delivery-notes/${id}`),
 
+  updateDN: (id: string, payload: UpdateDeliveryNotePayload): Promise<DeliveryNoteDTO> =>
+    client.put(`/tenant/sales/delivery-notes/${id}`, payload),
+
   postDN: (id: string): Promise<DeliveryNoteDTO> =>
     client.post(`/tenant/sales/delivery-notes/${id}/post`, {}),
 
@@ -568,6 +587,9 @@ export const salesApi = {
 
   getReturn: (id: string): Promise<SalesReturnDTO> =>
     client.get(`/tenant/sales/returns/${id}`),
+
+  updateReturn: (id: string, payload: UpdateSalesReturnPayload): Promise<SalesReturnDTO> =>
+    client.put(`/tenant/sales/returns/${id}`, payload),
 
   postReturn: (id: string): Promise<SalesReturnDTO> =>
     client.post(`/tenant/sales/returns/${id}/post`, {}),

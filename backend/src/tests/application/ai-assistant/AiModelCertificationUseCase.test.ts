@@ -90,7 +90,57 @@ describe('AiModelCertificationUseCase', () => {
   beforeEach(() => {
     profileRepo = new InMemoryProfileRepo();
     certRepo = new InMemoryCertificationRepo();
-    useCase = new AiModelCertificationUseCase(profileRepo, certRepo);
+    const mockSettingsRepo = {
+      getConfig: jest.fn().mockResolvedValue(null),
+      saveConfig: jest.fn(),
+    } as any;
+    const mockEncryptionService = {
+      encrypt: jest.fn((val) => Promise.resolve(val)),
+      decrypt: jest.fn((val) => Promise.resolve(val)),
+    } as any;
+    const mockHttpClient = {
+      post: jest.fn(),
+      get: jest.fn(),
+    } as any;
+    const mockEngine = {
+      run: jest.fn().mockImplementation((input: any) => {
+        const base = {
+          id: `cert-${Date.now()}`,
+          scope: input.scope,
+          tenantId: input.tenantId,
+          providerId: input.profile?.providerId || 'openai',
+          modelProfileId: input.profile?.id || '',
+          profileHash: input.profileHash,
+          category: input.category,
+          moduleId: input.moduleId || '',
+          score: 100,
+          maxScore: 100,
+          status: 'CERTIFIED',
+          testSuiteVersion: input.manual?.testSuiteVersion || 'manual-v1',
+          toolContractVersion: input.manual?.toolContractVersion || AI_TOOL_CONTRACT_VERSION,
+          dataFilterPolicyVersion: input.manual?.dataFilterPolicyVersion || AI_DATA_FILTER_POLICY_VERSION,
+          testedAt: new Date().toISOString(),
+          testedBy: input.testedBy || 'test',
+          summary: input.manual?.summary || 'Certified',
+          failureReasons: input.manual?.failureReasons || [],
+          metadata: input.manual?.metadata || {},
+        };
+        if (input.manual) {
+          base.score = input.manual.score;
+          base.maxScore = input.manual.maxScore;
+          base.status = input.manual.status;
+        }
+        return Promise.resolve(AiModelCertificationResult.fromJSON(base));
+      }),
+    } as any;
+    useCase = new AiModelCertificationUseCase(
+      profileRepo,
+      certRepo,
+      mockSettingsRepo,
+      mockEncryptionService,
+      mockHttpClient,
+      mockEngine
+    );
   });
 
   it('rejects global certification for stale profileHash', async () => {
@@ -149,6 +199,8 @@ describe('AiModelCertificationUseCase', () => {
     await useCase.recordManualCertification(manualInput(blocked, { modelProfileId: blocked.id, profileHash: blocked.profileHash }));
     await useCase.recordManualCertification(manualInput(disabled, { modelProfileId: disabled.id, profileHash: disabled.profileHash }));
     const cert = await useCase.recordManualCertification(manualInput(stale, { modelProfileId: stale.id, profileHash: stale.profileHash }));
+    // Restore blocked profile status after graduation flow may have changed it
+    await profileRepo.save(AiModelProfile.fromJSON({ ...blocked.toJSON(), status: 'blocked' }));
     await profileRepo.save(AiModelProfile.fromJSON({ ...stale.toJSON(), profileHash: undefined, temperature: 0.8 }));
     await certRepo.save(AiModelCertificationResult.fromJSON({ ...cert.toJSON(), id: 'failed', status: 'FAILED' }));
 

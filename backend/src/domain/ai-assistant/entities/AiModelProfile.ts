@@ -149,7 +149,7 @@ export class AiModelProfile implements AiModelProfileProps {
       input.modelId,
       input.endpointFingerprint,
     ];
-    return parts.map(part => encodeURIComponent(part.trim().toLowerCase())).join(':');
+    return parts.map(part => encodeURIComponent(String(part || '').trim().toLowerCase())).join(':');
   }
 
   static fingerprintEndpoint(endpoint: string | null | undefined): string {
@@ -216,6 +216,50 @@ export class AiModelProfile implements AiModelProfileProps {
       new Date(),
       input.companyId,
       input.detail,
+      this.createdAt,
+      new Date(),
+      this.scope,
+      this.tenantId,
+      this.providerId,
+      this.modelId,
+      this.displayName,
+      this.baseUrl,
+      this.endpointFingerprint,
+      this.temperature,
+      this.maxOutputTokens,
+      this.jsonMode,
+      this.toolMode,
+      this.timeoutMs,
+      this.retryPolicy,
+      this.safetyPolicyId,
+      this.systemPromptPolicyId,
+      this.dataFilterPolicyId,
+      this.profileHash,
+      this.revision,
+      this.enabled,
+      this.createdBy,
+    );
+  }
+
+  withStatus(status: AiModelStatus): AiModelProfile {
+    return new AiModelProfile(
+      this.id,
+      this.provider,
+      this.modelName,
+      status,
+      this.supportsToolCalling,
+      this.supportsStructuredJson,
+      this.maxContextTokens,
+      this.recommendedUseCases,
+      this.tags,
+      this.warningLevel,
+      this.textOnlyMode,
+      this.warningMessage,
+      this.lastDiagnosticStatus,
+      this.lastDiagnosticMode,
+      this.lastDiagnosticAt,
+      this.lastDiagnosticCompanyId,
+      this.lastDiagnosticDetail,
       this.createdAt,
       new Date(),
       this.scope,

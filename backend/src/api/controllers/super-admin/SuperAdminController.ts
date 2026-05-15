@@ -101,4 +101,17 @@ export class SuperAdminController {
       next(error);
     }
   }
+
+  static async getCompanyAiCredits(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { companyId } = req.params;
+      const ledger = await diContainer.aiCreditLedgerRepository.getByCompanyId(companyId);
+      const balance = ledger?.balance || 0;
+      const totalPurchased = ledger?.totalPurchased || 0;
+      const totalConsumed = ledger?.totalConsumed || 0;
+      res.json({ success: true, data: { balance, totalPurchased, totalConsumed } });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

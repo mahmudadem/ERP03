@@ -35,8 +35,12 @@ export interface ChatRuntimeMetadataDTO {
     toolName: string;
     approved: boolean;
     rejectionReason?: string;
+    durationMs?: number;
+    round?: number;
+    error?: string;
   }>;
   proposal?: Record<string, unknown>;
+  actualRounds?: number;
 }
 
 export interface ChatMessageMetadata {
@@ -55,6 +59,7 @@ export interface ChatMessageMetadata {
   }>;
   toolResults?: AiToolCallResultDTO[];
   proposal?: AiProposalDTO | null;
+  actualRounds?: number;
   [key: string]: unknown;
 }
 
@@ -73,6 +78,8 @@ export interface ChatMessageDTO {
 
 export interface AiToolCallResultDTO {
   toolName: string;
+  durationMs?: number;
+  round?: number;
   result: {
     success: boolean;
     data: Record<string, unknown> | null;
@@ -99,7 +106,7 @@ export interface SendChatMessageResponse {
 export type AiStreamEvent =
   | { type: 'token'; content: string }
   | { type: 'tool_call'; toolName: string; toolCallId: string; toolArgs: Record<string, unknown> }
-  | { type: 'tool_result'; toolName: string; data: unknown; approved: boolean }
+  | { type: 'tool_result'; toolName: string; data: unknown; approved: boolean; error?: string; durationMs?: number; round?: number }
   | { type: 'done'; metadata: AiStreamDoneMetadata }
   | { type: 'error'; message: string };
 
@@ -140,6 +147,7 @@ export interface AiSettingsDTO {
   selectedProfileHash: string | null;
   runtimeMode: string;
   allowedRuntimeModes: string[];
+  allowUnverifiedModels: boolean;
   updatedAt: string;
 }
 
@@ -259,6 +267,7 @@ export interface UpdateAiSettingsPayload {
   selectedProfileHash?: string;
   runtimeMode?: 'BYOK' | 'CREDITS' | 'DISABLED';
   allowedRuntimeModes?: Array<'BYOK' | 'CREDITS' | 'DISABLED'>;
+  allowUnverifiedModels?: boolean;
 }
 
 // Proposal Sandbox Types
@@ -694,6 +703,9 @@ function parseSSEEvent(eventText: string, onEvent: (event: AiStreamEvent) => voi
           toolName: parsed.toolName ?? '',
           data: parsed.data,
           approved: parsed.approved ?? false,
+          error: parsed.error,
+          durationMs: parsed.durationMs,
+          round: parsed.round,
         });
         break;
       case 'done':

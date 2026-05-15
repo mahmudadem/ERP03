@@ -77,10 +77,92 @@ const MockDesignerShell: React.FC<{ children: ReactNode }> = ({ children }) => {
 
 // ── Adapter: VoucherTypeDefinition -> DocumentFormConfig ──
 
-const systemTemplateToFormConfig = (template: VoucherTypeDefinition): DocumentFormConfig => {
-  const allFields = [...(template.headerFields || []), ...(template.tableColumns || [])];
+const isEmptyLayout = (overrides: any): boolean => {
+  if (!overrides) return true;
+  const classicFields = overrides.classic?.sections
+    ? Object.values(overrides.classic.sections).reduce((sum: number, s: any) => sum + (s.fields?.length || 0), 0)
+    : 0;
+  const windowsFields = overrides.windows?.sections
+    ? Object.values(overrides.windows.sections).reduce((sum: number, s: any) => sum + (s.fields?.length || 0), 0)
+    : 0;
+  return classicFields === 0 && windowsFields === 0;
+};
 
-  const systemFields = allFields.map((f: any) => ({
+const buildInitialLayout = (template: VoucherTypeDefinition): { classic: { sections: Record<string, { order: number; fields: any[] }> }; windows: { sections: Record<string, { order: number; fields: any[] }> } } => {
+  const logicalSections: Record<string, { title: string; fieldIds: string[] }> = {};
+  const logicalLayout = (template.layout as any)?.sections;
+  if (Array.isArray(logicalLayout)) {
+    logicalLayout.forEach((s: any) => {
+      logicalSections[s.id] = { title: s.title, fieldIds: s.fieldIds || [] };
+    });
+  }
+
+  const headerFieldIds = logicalSections['header']?.fieldIds || [];
+  const lineFieldIds = logicalSections['lines']?.fieldIds || [];
+  const extraFieldIds = Object.entries(logicalSections)
+    .filter(([key]) => key !== 'header' && key !== 'lines')
+    .flatMap(([, s]) => s.fieldIds);
+
+  const isWindows = (mode: string) => mode === 'windows';
+
+  const buildMode = (mode: string) => {
+    const w = isWindows(mode);
+    const sections: Record<string, { order: number; fields: any[] }> = {
+      HEADER: { order: 0, fields: [] },
+      BODY: { order: 1, fields: [] },
+      EXTRA: { order: 2, fields: [] },
+      FOOTER: { order: 3, fields: [] },
+      ACTIONS: { order: 4, fields: [] },
+    };
+
+    // Place header fields: date(6), currency(4), rate(4), ref(10), desc(24)
+    let row = 0;
+    let col = 0;
+    headerFieldIds.forEach((fieldId: string) => {
+      const fieldDef = (template.headerFields || []).find((f: any) => (f.id || f.fieldId || f.name) === fieldId);
+      const type = String(fieldDef?.type || '').toLowerCase();
+      const span = w ? 6 : (type.includes('date') ? 6 : type.includes('currency') || type.includes('select') ? 4 : type.includes('textarea') || type.includes('description') || type.includes('note') ? 24 : (24 - col < 6 ? 24 - col : 6));
+      if (col + span > 24) { row++; col = 0; }
+      sections.HEADER.fields.push({ fieldId, row, col, colSpan: span });
+      col += span;
+    });
+
+    // Place lineItems in BODY (full width)
+    lineFieldIds.forEach((fieldId: string) => {
+      sections.BODY.fields.push({ fieldId, row: 0, col: 0, colSpan: 24 });
+    });
+
+    // Place extra fields
+    row = 0; col = 0;
+    extraFieldIds.forEach((fieldId: string) => {
+      const span = w ? 8 : 24;
+      if (col + span > 24) { row++; col = 0; }
+      sections.EXTRA.fields.push({ fieldId, row, col, colSpan: span });
+      col += span;
+    });
+
+    // Place actions as compact row (mode-specific display)
+    const actionFields = (template.actions || []).filter((a: any) => a.enabled).map((a: any, i: number) => ({
+      fieldId: `action_${a.type}`,
+      row: 0,
+      col: i * (w ? 4 : 6),
+      colSpan: w ? 4 : 6,
+      displayMode: 'compact' as const,
+      isCompact: true,
+    }));
+    sections.ACTIONS.fields = actionFields;
+
+    return { order: 0, sections };
+  };
+
+  return {
+    classic: { sections: buildMode('classic').sections as any },
+    windows: { sections: buildMode('windows').sections as any },
+  };
+};
+
+const systemTemplateToFormConfig = (template: VoucherTypeDefinition): DocumentFormConfig => {
+  const systemFields = (template.headerFields || []).map((f: any) => ({
     id: f.id || f.fieldId || f.name || '',
     label: f.label || f.name || f.id || '',
     type: mapFieldTypeToDesigner(f.type),
@@ -105,7 +187,9 @@ const systemTemplateToFormConfig = (template: VoucherTypeDefinition): DocumentFo
     enabled: a.enabled || false,
   }));
 
-  const uiOverrides = template.uiModeOverrides || { classic: { sections: {} }, windows: { sections: {} } };
+  const uiOverrides = template.uiModeOverrides && !isEmptyLayout(template.uiModeOverrides)
+    ? template.uiModeOverrides
+    : buildInitialLayout(template);
 
   return {
     id: template.id || template.code || '',

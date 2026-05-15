@@ -25,21 +25,13 @@ import { AI_TOOL_CONTRACT_VERSION, AI_DATA_FILTER_POLICY_VERSION } from './AiMod
  * profiles here, only certify existing ones.
  */
 const AUTO_CERTIFY_MODELS = [
-  { provider: 'openai', modelId: 'gpt-4o' },
-  { provider: 'openai', modelId: 'gpt-4o-mini' },
-  { provider: 'openai', modelId: 'gpt-4-turbo' },
-  { provider: 'openai', modelId: 'gpt-4.1' },
-  { provider: 'openai', modelId: 'gpt-4.1-mini' },
-  { provider: 'openai', modelId: 'gpt-4.1-nano' },
-  { provider: 'anthropic', modelId: 'claude-3.5-sonnet' },
-  { provider: 'anthropic', modelId: 'claude-3.5-haiku' },
-  { provider: 'anthropic', modelId: 'claude-sonnet-4-20250514' },
-  { provider: 'anthropic', modelId: 'claude-haiku-4-20250414' },
-  { provider: 'google', modelId: 'gemini-1.5-pro' },
-  { provider: 'google', modelId: 'gemini-1.5-flash' },
-  { provider: 'google', modelId: 'gemini-2.0-flash' },
-  { provider: 'google', modelId: 'gemini-2.5-pro' },
-  { provider: 'google', modelId: 'gemini-2.5-flash' },
+  { provider: 'openai_compatible', modelId: 'gpt-4o' },
+  { provider: 'openai_compatible', modelId: 'gpt-4o-mini' },
+  { provider: 'openai_compatible', modelId: 'gpt-4-turbo' },
+  { provider: 'openai_compatible', modelId: 'claude-3-5-sonnet' },
+  { provider: 'openai_compatible', modelId: 'claude-3-5-haiku' },
+  { provider: 'openai_compatible', modelId: 'gemini-1.5-pro' },
+  { provider: 'openai_compatible', modelId: 'gemini-1.5-flash' },
 ];
 
 /**
@@ -115,7 +107,7 @@ export class AiAutoSeedCertification {
           100,          // score
           100,          // maxScore
           'CERTIFIED' as AiModelCertificationStatus,
-          'auto-seed-v1',
+          'auto-seed-v2',
           AI_TOOL_CONTRACT_VERSION,
           AI_DATA_FILTER_POLICY_VERSION,
           new Date(),

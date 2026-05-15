@@ -28,11 +28,21 @@ export interface ManualCertificationInput {
   approvedBy?: string;
 }
 
+import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assistant/IAiSettingsRepository';
+import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
+import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
+import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
+import { ProviderFactory } from '../providers/ProviderFactory';
+import { IAiProvider } from '../providers/IAiProvider';
+
 export class AiModelCertificationUseCase {
   constructor(
     private readonly profileRepository: IAiModelProfileRepository,
     private readonly certificationRepository: IAiModelCertificationRepository,
-    private readonly engine: AiCertificationEngine = new AiCertificationEngine(),
+    private readonly settingsRepository: IAiSettingsRepository,
+    private readonly encryptionService: IEncryptionService,
+    private readonly httpClient: IHttpClient,
+    private readonly engine: AiCertificationEngine,
   ) {}
 
   async listResultsForProfile(modelProfileId: string): Promise<AiModelCertificationResult[]> {
@@ -47,7 +57,7 @@ export class AiModelCertificationUseCase {
       throw ApiError.badRequest('profileHash does not match current model profile hash');
     }
 
-    const result = this.engine.run({
+    const result = await this.engine.run({
       scope: input.scope,
       tenantId: input.tenantId,
       profile,
@@ -69,6 +79,12 @@ export class AiModelCertificationUseCase {
         metadata: input.metadata,
       },
     });
+
+    // Graduation Flow: Automatically promote model to 'tested' if it reaches 'CERTIFIED' status
+    if (result.status === 'CERTIFIED' && profile.status !== 'recommended' && profile.status !== 'tested') {
+      const graduated = profile.withStatus('tested');
+      await this.profileRepository.save(graduated);
+    }
 
     await this.certificationRepository.expireByProfileAndCategory(input.modelProfileId, input.category);
     await this.certificationRepository.save(result);
@@ -95,7 +111,24 @@ export class AiModelCertificationUseCase {
       throw ApiError.badRequest('profileHash does not match current model profile hash');
     }
 
-    const result = this.engine.run({
+    // Load and resolve provider for deep testing
+    let provider: IAiProvider | undefined;
+    if (input.tenantId) {
+      try {
+        let config = await this.settingsRepository.getConfig(input.tenantId);
+        if (config) {
+          config = this.decryptConfig(config);
+          // For diagnostics/certification, we use strict provider creation
+          provider = ProviderFactory.getProviderStrict(config, this.httpClient);
+        }
+      } catch (err) {
+        // If provider cannot be created (e.g. missing API key), we continue without it
+        // and the engine will perform structural-only checks (WARNING status).
+        console.warn(`[Certification] Could not create provider for deep test: ${(err as Error).message}`);
+      }
+    }
+
+    const result = await this.engine.run({
       scope: input.scope,
       tenantId: input.tenantId,
       profile,
@@ -105,10 +138,43 @@ export class AiModelCertificationUseCase {
       skillId: input.skillId,
       testedBy: input.testedBy,
       approvedBy: input.approvedBy,
-    });
+    }, provider);
+
+    // Graduation Flow: Automatically promote model to 'tested' if it reaches 'CERTIFIED' status
+    if (result.status === 'CERTIFIED' && profile.status !== 'recommended' && profile.status !== 'tested') {
+      const graduated = profile.withStatus('tested');
+      await this.profileRepository.save(graduated);
+    }
+
     await this.certificationRepository.expireByProfileAndCategory(input.modelProfileId, input.category);
     await this.certificationRepository.save(result);
     return result;
+  }
+
+  private decryptConfig(config: AiProviderConfig): AiProviderConfig {
+    if (!config.apiKey || !this.encryptionService) {
+      return config;
+    }
+
+    if (config.apiKey.startsWith('plain:')) {
+      const plainKey = config.apiKey.substring(6);
+      return AiProviderConfig.fromJSON({
+        ...config.toJSON(),
+        apiKey: plainKey,
+        updatedAt: config.updatedAt.toISOString(),
+      });
+    }
+
+    try {
+      const decrypted = this.encryptionService.decrypt(config.apiKey);
+      return AiProviderConfig.fromJSON({
+        ...config.toJSON(),
+        apiKey: decrypted,
+        updatedAt: config.updatedAt.toISOString(),
+      });
+    } catch (error) {
+      return config;
+    }
   }
 
   async expireCertification(id: string, userId: string): Promise<AiModelCertificationResult> {
@@ -150,11 +216,14 @@ export class AiModelCertificationUseCase {
     const grouped = new Map<string, { profile: AiModelProfile; certifications: AiModelCertificationResult[] }>();
 
     for (const result of results) {
-      if (result.status !== 'CERTIFIED') continue;
+      if (result.status !== 'CERTIFIED' && result.status !== 'WARNING') continue;
       // Exclude TENANT certifications that don't belong to this tenant
       if (result.scope === 'TENANT' && result.tenantId !== input.tenantId) continue;
-      if (result.toolContractVersion !== AI_TOOL_CONTRACT_VERSION) continue;
-      if (result.dataFilterPolicyVersion !== AI_DATA_FILTER_POLICY_VERSION) continue;
+      const isGlobalAutoSeed = result.scope === 'GLOBAL' && result.testSuiteVersion?.startsWith('auto-seed');
+      if (!isGlobalAutoSeed) {
+        if (result.toolContractVersion !== AI_TOOL_CONTRACT_VERSION) continue;
+        if (result.dataFilterPolicyVersion !== AI_DATA_FILTER_POLICY_VERSION) continue;
+      }
 
       const profile = await this.profileRepository.getById(result.modelProfileId);
       if (!profile) continue;

@@ -599,6 +599,9 @@ export const superAdminApi = {
   // AI Credits
   grantAiCredits: (payload: GrantAiCreditsPayload): Promise<GrantAiCreditsResponse> =>
     client.post('/platform/ai-assistant/credits/grant', payload),
+
+  getCompanyAiCredits: (companyId: string): Promise<{ success: boolean; data: { balance: number; totalPurchased: number; totalConsumed: number } }> =>
+    client.get(`/super-admin/companies/${companyId}/ai-credits`),
 };
 
 export * from './voucherTypes';

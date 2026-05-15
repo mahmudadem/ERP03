@@ -169,20 +169,36 @@ describe('CheckProviderHealthUseCase', () => {
     CheckProviderHealthUseCase.resetCooldown();
   });
 
-  it('should return READY for mock provider', async () => {
+  it('should reject mock provider diagnostics with getProviderStrict', async () => {
     const config = AiProviderConfig.defaultForCompany('company-1');
     settingsRepo = createMockSettingsRepo(config);
     encryptionService = createMockEncryptionService();
     httpClient = createMockHttpClient();
 
-    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient);
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'gpt-4o',
+        status: 'recommended',
+        supportsToolCalling: true,
+        supportsStructuredJson: true,
+        textOnlyMode: false,
+        warningLevel: 'info',
+        warningMessage: '',
+        recommendedUseCases: [],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
+    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient, mockModelProfileUseCase);
     const result = await useCase.execute('company-1');
 
-    expect(result.ready).toBe(true);
-    expect(result.networkOk).toBe(true);
-    expect(result.inferenceOk).toBe(true);
+    expect(result.ready).toBe(false);
+    expect(result.networkOk).toBe(false);
+    expect(result.inferenceOk).toBe(false);
     expect(result.provider).toBe('mock');
-    expect(result.reason).toBeUndefined();
+    expect(result.reason).toContain('mock');
   });
 
   it('should return NOT READY when AI is disabled', async () => {
@@ -192,7 +208,23 @@ describe('CheckProviderHealthUseCase', () => {
     encryptionService = createMockEncryptionService();
     httpClient = createMockHttpClient();
 
-    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient);
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'gpt-4o',
+        status: 'recommended',
+        supportsToolCalling: true,
+        supportsStructuredJson: true,
+        textOnlyMode: false,
+        warningLevel: 'info',
+        warningMessage: '',
+        recommendedUseCases: [],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
+    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient, mockModelProfileUseCase);
     const result = await useCase.execute('company-1');
 
     expect(result.ready).toBe(false);
@@ -201,18 +233,34 @@ describe('CheckProviderHealthUseCase', () => {
     expect(result.reason).toContain('not enabled');
   });
 
-  it('should return READY for default config when no config exists', async () => {
+  it('should reject default config mock fallback with getProviderStrict', async () => {
     settingsRepo = createMockSettingsRepo(null); // No config — falls back to mock
     encryptionService = createMockEncryptionService();
     httpClient = createMockHttpClient();
 
-    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient);
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'gpt-4o',
+        status: 'recommended',
+        supportsToolCalling: true,
+        supportsStructuredJson: true,
+        textOnlyMode: false,
+        warningLevel: 'info',
+        warningMessage: '',
+        recommendedUseCases: [],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
+    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient, mockModelProfileUseCase);
     const result = await useCase.execute('company-new');
 
-    // Default is mock provider which is always available
-    expect(result.ready).toBe(true);
-    expect(result.networkOk).toBe(true);
-    expect(result.inferenceOk).toBe(true);
+    // Mock provider is rejected by getProviderStrict
+    expect(result.ready).toBe(false);
+    expect(result.networkOk).toBe(false);
+    expect(result.inferenceOk).toBe(false);
   });
 });
 

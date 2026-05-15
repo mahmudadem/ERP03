@@ -174,10 +174,27 @@ describe('CheckProviderHealthUseCase', () => {
       'tool-call',
       '[ERP_TOOL_PLAN]{"calls":[]}[/ERP_TOOL_PLAN]',
     );
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'gpt-4o',
+        status: 'recommended',
+        supportsToolCalling: true,
+        supportsStructuredJson: true,
+        textOnlyMode: false,
+        warningLevel: 'info',
+        warningMessage: '',
+        recommendedUseCases: ['accounting'],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
     const useCase = new CheckProviderHealthUseCase(
       createSettingsRepository(createOpenAiConfig()),
       createEncryptionService(),
       httpClient,
+      mockModelProfileUseCase,
     );
 
     const result = await useCase.execute('company-1');
@@ -203,10 +220,27 @@ describe('CheckProviderHealthUseCase', () => {
       'text-only',
       '[ERP_TOOL_PLAN]{"calls":[{"tool":"diagnostics_ping","arguments":{"probe":"text-plan-ok"},"reason":"diagnostic"}]}[/ERP_TOOL_PLAN]',
     );
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'openai/gpt-oss-20b:free',
+        status: 'experimental',
+        supportsToolCalling: false,
+        supportsStructuredJson: false,
+        textOnlyMode: true,
+        warningLevel: 'warning',
+        warningMessage: '',
+        recommendedUseCases: [],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
     const useCase = new CheckProviderHealthUseCase(
       createSettingsRepository(createOpenAiConfig('openai/gpt-oss-20b:free')),
       createEncryptionService(),
       httpClient,
+      mockModelProfileUseCase,
     );
 
     const result = await useCase.execute('company-1');
@@ -233,10 +267,27 @@ describe('CheckProviderHealthUseCase', () => {
     const config = createOpenAiConfig();
     config.updateConfig({ isEnabled: false });
 
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'gpt-4o',
+        status: 'recommended',
+        supportsToolCalling: true,
+        supportsStructuredJson: true,
+        textOnlyMode: false,
+        warningLevel: 'info',
+        warningMessage: '',
+        recommendedUseCases: ['accounting'],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
     const useCase = new CheckProviderHealthUseCase(
       createSettingsRepository(config),
       createEncryptionService(),
       new DiagnosticHttpClient('tool-call', ''),
+      mockModelProfileUseCase,
     );
 
     const result = await useCase.execute('company-1');

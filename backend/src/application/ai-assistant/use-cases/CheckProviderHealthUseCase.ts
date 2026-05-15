@@ -148,7 +148,7 @@ export class CheckProviderHealthUseCase {
     private settingsRepository: IAiSettingsRepository,
     private encryptionService: IEncryptionService,
     private httpClient: IHttpClient,
-    private modelProfileUseCase?: AiModelProfileUseCase,
+    private modelProfileUseCase: AiModelProfileUseCase,
     private providerRepository?: IAiProviderRepository,
   ) {}
 
@@ -195,7 +195,7 @@ export class CheckProviderHealthUseCase {
     }
 
     const modelName = config.model || 'unknown';
-    const modelProfile = await this.resolveModelProfile(config.provider, modelName);
+    const modelProfile = await this.resolveModelProfile(companyId, config.provider, modelName);
 
     // Check if AI is enabled
     if (!config.isEnabled) {
@@ -234,7 +234,7 @@ export class CheckProviderHealthUseCase {
         model: config.model || 'unknown',
         reason,
         modelProfile: this.toModelProfileResult(
-          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+          await this.resolveModelProfile(config.companyId || 'admin-test', config.provider, config.model || 'unknown'),
         ),
         toolDiagnostics: this.buildSkippedToolDiagnostics(reason),
         checks: [
@@ -256,7 +256,7 @@ export class CheckProviderHealthUseCase {
         model: config.model || 'unknown',
         reason: 'Provider is configured as "mock" — diagnostics cannot test a mock provider. Configure a real provider (OpenAI-compatible, Ollama, etc.) and provide an API key.',
         modelProfile: this.toModelProfileResult(
-          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+          await this.resolveModelProfile(config.companyId || 'admin-test', config.provider, config.model || 'unknown'),
         ),
         toolDiagnostics: this.buildSkippedToolDiagnostics('Mock provider — no real provider configured'),
         checks: [
@@ -425,7 +425,7 @@ export class CheckProviderHealthUseCase {
         model: config.model || 'unknown',
         reason: 'API key is required for diagnostics. Please provide your provider API key.',
         modelProfile: this.toModelProfileResult(
-          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+          await this.resolveModelProfile(config.companyId || 'admin-test', config.provider, config.model || 'unknown'),
         ),
         toolDiagnostics: this.buildSkippedToolDiagnostics('No API key provided'),
         checks: [
@@ -448,7 +448,7 @@ export class CheckProviderHealthUseCase {
     }
 
     const modelName = config.model || 'unknown';
-    const modelProfile = await this.resolveModelProfile(config.provider, modelName);
+    const modelProfile = await this.resolveModelProfile(companyId, config.provider, modelName);
 
     // Use strict provider creation for diagnostics — never silently fall back to mock.
     // If the provider can't be created (e.g., no API key), report it as a diagnostic failure.
@@ -468,7 +468,7 @@ export class CheckProviderHealthUseCase {
         model: config.model || 'unknown',
         reason,
         modelProfile: this.toModelProfileResult(
-          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+          await this.resolveModelProfile(config.companyId || 'admin-test', config.provider, config.model || 'unknown'),
         ),
         toolDiagnostics: this.buildSkippedToolDiagnostics(reason),
         checks: [
@@ -490,7 +490,7 @@ export class CheckProviderHealthUseCase {
         model: config.model || 'unknown',
         reason: 'Provider is configured as "mock" — diagnostics cannot test a mock provider. Configure a real provider (OpenAI-compatible, Ollama, etc.) and provide an API key.',
         modelProfile: this.toModelProfileResult(
-          await this.resolveModelProfile(config.provider, config.model || 'unknown'),
+          await this.resolveModelProfile(config.companyId || 'admin-test', config.provider, config.model || 'unknown'),
         ),
         toolDiagnostics: this.buildSkippedToolDiagnostics('Mock provider — no real provider configured'),
         checks: [
@@ -848,9 +848,9 @@ export class CheckProviderHealthUseCase {
     };
   }
 
-  private async resolveModelProfile(provider: string, modelName: string): Promise<AiModelProfile> {
+  private async resolveModelProfile(tenantId: string, provider: string, modelName: string): Promise<AiModelProfile> {
     if (this.modelProfileUseCase) {
-      return this.modelProfileUseCase.resolveRuntimeProfile(provider, modelName);
+      return this.modelProfileUseCase.resolveRuntimeProfile(tenantId, provider, modelName) as any;
     }
     return AiModelCapabilityCatalog.getProfile(provider, modelName);
   }

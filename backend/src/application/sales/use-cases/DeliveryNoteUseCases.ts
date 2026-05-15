@@ -573,3 +573,69 @@ export class ListDeliveryNotesUseCase {
     });
   }
 }
+
+export interface UpdateDeliveryNoteInput {
+  companyId: string;
+  id: string;
+  customerId?: string;
+  deliveryDate?: string;
+  warehouseId?: string;
+  lines?: DeliveryNoteLineInput[];
+  notes?: string;
+}
+
+export class UpdateDeliveryNoteUseCase {
+  constructor(private readonly deliveryNoteRepo: IDeliveryNoteRepository, private readonly partyRepo: IPartyRepository) {}
+
+  async execute(input: UpdateDeliveryNoteInput): Promise<DeliveryNote> {
+    const current = await this.deliveryNoteRepo.getById(input.companyId, input.id);
+    if (!current) throw new Error(`Delivery note not found: ${input.id}`);
+    if (current.status !== 'DRAFT') {
+      throw new Error('Only draft delivery notes can be updated');
+    }
+
+    if (input.customerId !== undefined) {
+      if (!input.customerId) throw new Error('customerId is required');
+      const customer = await this.partyRepo.getById(input.companyId, input.customerId);
+      if (!customer) throw new Error(`Customer not found: ${input.customerId}`);
+      if (!customer.roles.includes('CUSTOMER')) throw new Error(`Party is not a customer: ${input.customerId}`);
+      current.customerId = customer.id;
+      current.customerName = customer.displayName;
+    }
+
+    if (input.deliveryDate !== undefined) current.deliveryDate = input.deliveryDate;
+    if (input.warehouseId !== undefined) current.warehouseId = input.warehouseId;
+    if (input.notes !== undefined) current.notes = input.notes;
+
+    if (input.lines) {
+      const existingById = new Map(current.lines.map((line) => [line.lineId, line]));
+      const mappedLines: DeliveryNoteLine[] = input.lines.map((line, index) => {
+        const existing = line.lineId ? existingById.get(line.lineId) : undefined;
+        return {
+          lineId: line.lineId || randomUUID(),
+          lineNo: line.lineNo ?? existing?.lineNo ?? index + 1,
+          soLineId: line.soLineId ?? existing?.soLineId,
+          itemId: line.itemId || existing?.itemId || '',
+          itemCode: existing?.itemCode || '',
+          itemName: existing?.itemName || '',
+          deliveredQty: line.deliveredQty,
+          uomId: line.uomId ?? existing?.uomId,
+          uom: line.uom || existing?.uom || 'EA',
+          unitCostBase: existing?.unitCostBase ?? 0,
+          lineCostBase: existing?.lineCostBase ?? 0,
+          moveCurrency: existing?.moveCurrency || 'USD',
+          fxRateMovToBase: existing?.fxRateMovToBase ?? 1,
+          fxRateCCYToBase: existing?.fxRateCCYToBase ?? 1,
+          stockMovementId: existing?.stockMovementId ?? null,
+          description: line.description ?? existing?.description,
+        };
+      });
+      current.lines = mappedLines;
+    }
+
+    current.updatedAt = new Date();
+    const updated = new DeliveryNote(current.toJSON() as any);
+    await this.deliveryNoteRepo.update(updated);
+    return updated;
+  }
+}

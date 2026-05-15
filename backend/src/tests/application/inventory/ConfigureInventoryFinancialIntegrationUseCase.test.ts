@@ -47,7 +47,7 @@ describe('ConfigureInventoryFinancialIntegrationUseCase', () => {
       settingsRepo as any,
       makeCompanyModuleRepo(false) as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []) } as any
+      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []), hasAnyMovements: jest.fn(async () => false) } as any
     );
 
     await expect(
@@ -71,7 +71,7 @@ describe('ConfigureInventoryFinancialIntegrationUseCase', () => {
       } as any,
       makeCompanyModuleRepo() as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []) } as any
+      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []), hasAnyMovements: jest.fn(async () => false) } as any
     );
 
     await expect(
@@ -98,7 +98,7 @@ describe('ConfigureInventoryFinancialIntegrationUseCase', () => {
       } as any,
       makeCompanyModuleRepo() as any,
       accountRepo as any,
-      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []) } as any
+      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []), hasAnyMovements: jest.fn(async () => false) } as any
     );
 
     await expect(
@@ -134,7 +134,7 @@ describe('ConfigureInventoryFinancialIntegrationUseCase', () => {
       settingsRepo as any,
       makeCompanyModuleRepo() as any,
       accountRepo as any,
-      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []) } as any
+      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []), hasAnyMovements: jest.fn(async () => false) } as any
     );
 
     await useCase.execute({
@@ -170,7 +170,7 @@ describe('ConfigureInventoryFinancialIntegrationUseCase', () => {
       settingsRepo as any,
       makeCompanyModuleRepo() as any,
       accountRepo as any,
-      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []) } as any
+      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []), hasAnyMovements: jest.fn(async () => false) } as any
     );
 
     await useCase.execute({
@@ -191,6 +191,7 @@ describe('ConfigureInventoryFinancialIntegrationUseCase', () => {
     const movementRepo = {
       getItemMovements: jest.fn(async () => [{ id: 'mov-1', date: '2026-01-15' }]),
       getMovementsByDateRange: jest.fn(async () => [{ id: 'mov-1', date: '2025-12-31' }]),
+      hasAnyMovements: jest.fn(async () => true),
     };
 
     const useCase = new ConfigureInventoryFinancialIntegrationUseCase(

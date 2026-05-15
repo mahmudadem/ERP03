@@ -62,17 +62,19 @@ export const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
           key={action.labelKey}
           onClick={() => onSendMessage(t(action.promptKey, { defaultValue: action.promptKey }))}
           className={`
-            flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-3xl 
-            hover:bg-indigo-50 hover:border-indigo-200 hover:shadow-lg
-            transition-all text-center group shadow-sm min-h-[120px]
-            ${compact ? 'flex-row' : 'flex-col'}
+            flex items-center transition-all group shadow-sm bg-white border border-gray-200 
+            hover:bg-indigo-50 hover:border-indigo-200 hover:shadow-md
+            ${compact 
+              ? 'flex-row gap-3 p-3 rounded-2xl min-h-0' 
+              : 'flex-col gap-4 p-5 rounded-3xl min-h-[120px] text-center'}
           `}
         >
           <div className={`
-            flex-shrink-0 w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center 
+            flex-shrink-0 rounded-xl bg-gray-50 flex items-center justify-center 
             group-hover:bg-white group-hover:scale-110 transition-all shadow-inner
+            ${compact ? 'w-10 h-10' : 'w-12 h-12'}
           `}>
-            <span className="text-2xl">
+            <span className={compact ? 'text-xl' : 'text-2xl'}>
               {action.icon}
             </span>
           </div>

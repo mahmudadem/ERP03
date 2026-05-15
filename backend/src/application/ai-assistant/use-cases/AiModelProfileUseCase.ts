@@ -78,12 +78,31 @@ export class AiModelProfileUseCase {
     return this.modelProfileRepo.getById(id);
   }
 
-  async resolveRuntimeProfile(provider: string, modelName: string | null | undefined): Promise<RuntimeModelProfile> {
+  async resolveRuntimeProfile(tenantId: string, provider: string, modelName: string | null | undefined): Promise<RuntimeModelProfile> {
     const model = modelName || '';
-    const dbProfile = await this.modelProfileRepo.getByProviderAndModel(provider, model);
+    
+    // 1. Search for TENANT-scoped profile first
+    const tenantProfiles = await this.modelProfileRepo.list({ tenantId, scope: 'TENANT' });
+    const tenantProfile = tenantProfiles.find(p => 
+      p.provider === provider && 
+      p.modelName === model
+    );
+    
+    if (tenantProfile) {
+      return this.toRuntimeProfile(tenantProfile);
+    }
+
+    // 2. Search for GLOBAL-scoped profile in DB
+    const globalProfiles = await this.modelProfileRepo.list({ scope: 'GLOBAL' });
+    const dbProfile = globalProfiles.find(p => 
+      p.provider === provider && 
+      p.modelName === model
+    );
     if (dbProfile) {
       return this.toRuntimeProfile(dbProfile);
     }
+
+    // 3. Fallback to Catalog (Should be rare if seeder is used)
     return AiModelCapabilityCatalog.getProfile(provider, model);
   }
 
@@ -222,7 +241,14 @@ export class AiModelProfileUseCase {
     companyId: string;
     detail?: string;
   }): Promise<AiModelProfile> {
-    const existing = await this.modelProfileRepo.getByProviderAndModel(input.provider, input.modelName);
+    // Try to find an existing profile (tenant-specific preferred, then global)
+    let existing = await this.modelProfileRepo.getByProviderAndModel(input.provider, input.modelName, input.companyId);
+    
+    // Fallback: search globally if not found for tenant
+    if (!existing) {
+      existing = await this.modelProfileRepo.getByProviderAndModel(input.provider, input.modelName);
+    }
+
     const base = existing ?? AiModelProfile.fromJSON({
       ...AiModelCapabilityCatalog.getProfile(input.provider, input.modelName),
       id: AiModelProfile.makeId(input.provider, input.modelName),

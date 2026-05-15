@@ -131,7 +131,7 @@ export const AiAssistantSettingsPage: React.FC = () => {
           )}
 
           {/* Enable/Disable Toggle */}
-          <div className="mb-6 flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <div className="mb-4 flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
             <div>
               <span className="text-sm font-medium text-gray-700">
                 {t('settings.enableAssistant', 'Enable AI Assistant')}
@@ -153,6 +153,37 @@ export const AiAssistantSettingsPage: React.FC = () => {
               <span
                 className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
                   ai.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Allow Unverified Models (Hybrid Safety Switch) */}
+          <div className="mb-6 flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div>
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-medium text-amber-900">
+                  {t('settings.allowUnverifiedModels', 'Allow Unverified Models')}
+                </span>
+              </div>
+              <p className="text-xs text-amber-700 mt-0.5">
+                {t('settings.allowUnverifiedModelsDesc', 'Allow the AI to use models that are not certified. Recommended only for testing or with highly trusted private models.')}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ai.allowUnverifiedModels}
+              onClick={() => canManage && ai.setAllowUnverifiedModels(!ai.allowUnverifiedModels)}
+              disabled={!canManage}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 ${
+                ai.allowUnverifiedModels ? 'bg-amber-600' : 'bg-gray-300'
+              } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  ai.allowUnverifiedModels ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>

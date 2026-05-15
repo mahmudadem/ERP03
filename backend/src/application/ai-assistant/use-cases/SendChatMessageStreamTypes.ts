@@ -18,7 +18,7 @@
 export type AiStreamEvent =
   | { type: 'token'; content: string }
   | { type: 'tool_call'; toolName: string; toolCallId: string; toolArgs: Record<string, unknown> }
-  | { type: 'tool_result'; toolName: string; data: unknown; approved: boolean }
+  | { type: 'tool_result'; toolName: string; data: unknown; approved: boolean; error?: string; durationMs?: number; round?: number }
   | { type: 'done'; metadata: AiStreamDoneMetadata }
   | { type: 'error'; message: string };
 
@@ -46,8 +46,12 @@ export interface AiStreamDoneMetadata {
       toolName: string;
       approved: boolean;
       rejectionReason?: string;
+      durationMs?: number;
+      round?: number;
+      error?: string;
     }>;
     proposal?: Record<string, unknown>;
+    actualRounds?: number;
   };
   usage?: {
     promptTokens?: number;

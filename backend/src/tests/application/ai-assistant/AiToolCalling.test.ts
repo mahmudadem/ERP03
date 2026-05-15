@@ -228,8 +228,24 @@ describe('CheckProviderHealthUseCase - Cooldown', () => {
     const settingsRepo = createMockSettingsRepo(config);
     const encryptionService = createMockEncryptionService();
     const httpClient = createMockHttpClient();
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'ollama',
+        status: 'recommended',
+        supportsToolCalling: true,
+        supportsStructuredJson: true,
+        textOnlyMode: false,
+        warningLevel: 'info',
+        warningMessage: '',
+        recommendedUseCases: [],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
 
-    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient);
+    const useCase = new CheckProviderHealthUseCase(settingsRepo, encryptionService, httpClient, mockModelProfileUseCase);
 
     // First check should succeed
     const result1 = await useCase.execute('cooldown-test');
@@ -257,6 +273,22 @@ describe('CheckProviderHealthUseCase - Cooldown', () => {
     const settingsRepo = createMockSettingsRepo(config1);
     const encryptionService = createMockEncryptionService();
     const httpClient = createMockHttpClient();
+    const mockModelProfileUseCase = {
+      resolveRuntimeProfile: jest.fn().mockResolvedValue({
+        provider: 'openai_compatible',
+        modelName: 'ollama',
+        status: 'recommended',
+        supportsToolCalling: true,
+        supportsStructuredJson: true,
+        textOnlyMode: false,
+        warningLevel: 'info',
+        warningMessage: '',
+        recommendedUseCases: [],
+      }),
+      upsertProfile: jest.fn(),
+      syncBuiltInProfiles: jest.fn(),
+      recordDiagnostics: jest.fn(),
+    } as any;
 
     const useCase = new CheckProviderHealthUseCase(
       // Return different configs based on companyId
@@ -268,6 +300,7 @@ describe('CheckProviderHealthUseCase - Cooldown', () => {
       },
       encryptionService,
       httpClient,
+      mockModelProfileUseCase,
     );
 
     const result1 = await useCase.execute('company-a');

@@ -156,3 +156,24 @@ Super Admins can certify global model profiles. Company Admins can create compan
 Certification is tied to the exact selected profile and profile hash. If the provider, endpoint, model, or runtime settings change, the previous certification no longer applies.
 
 The current certification engine is an initial shell. It performs structural safety checks and supports manual certification records. Full automated ERP behavior tests will be added later.
+
+## Account Balance Tool Results
+
+When you ask the AI Assistant for the balance of a specific account, include the account code when possible.
+
+Example:
+
+```text
+Show me the balance for account 1010101
+```
+
+If the account is found, the assistant shows a data card with:
+
+- balance,
+- total debit,
+- total credit,
+- account code,
+- account name,
+- account classification.
+
+If the account cannot be found or the assistant did not send enough information to the tool, the card shows the reason instead of a generic failure.

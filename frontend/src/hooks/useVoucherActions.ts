@@ -691,7 +691,7 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
         })).filter((l: any) => !!l.itemId),
       };
       
-      if (cleanPayload.id) {
+      if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
         const isDirect = purchasePersona === 'direct';
         const isFlexible = metadata?.creationMode === 'FLEXIBLE';
 
@@ -733,7 +733,7 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
         })).filter((l: any) => !!l.itemId && Number(l.orderedQty) > 0),
       };
 
-      savedVoucher = cleanPayload.id
+      savedVoucher = cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')
         ? await purchasesApi.updatePO(cleanPayload.id, poPayload)
         : await purchasesApi.createPO(poPayload);
     } else if (isGoodsReceipt) {
@@ -759,7 +759,7 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
         })).filter((l: any) => !!l.itemId && Number(l.receivedQty) > 0),
       };
 
-      savedVoucher = cleanPayload.id
+      savedVoucher = cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')
         ? await purchasesApi.updateGRN(cleanPayload.id, grnPayload)
         : await purchasesApi.createGRN(grnPayload);
     } else if (isPurchaseReturn) {
@@ -790,7 +790,7 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
         })).filter((l: any) => !!l.itemId && Number(l.returnQty) > 0),
       };
 
-      savedVoucher = cleanPayload.id
+      savedVoucher = cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')
         ? await purchasesApi.updateReturn(cleanPayload.id, prPayload)
         : await purchasesApi.createReturn(prPayload);
     } else if (isSalesOrder) {
@@ -816,7 +816,7 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
         })).filter((l: any) => !!l.itemId && Number(l.orderedQty) > 0),
       };
 
-      savedVoucher = cleanPayload.id
+      savedVoucher = cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')
         ? await salesApi.updateSO(cleanPayload.id, soPayload)
         : await salesApi.createSO(soPayload);
     } else if (isDeliveryNote) {
@@ -838,11 +838,9 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
         })).filter((l: any) => !!l.itemId && Number(l.deliveredQty) > 0),
       };
 
-      // Backend update endpoint for Delivery Notes does not exist yet.
-      if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
-        throw new Error('Updating existing Delivery Notes is not yet supported. Please create a new one.');
-      }
-      savedVoucher = await salesApi.createDN(dnPayload);
+      savedVoucher = cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')
+        ? await salesApi.updateDN(cleanPayload.id, dnPayload)
+        : await salesApi.createDN(dnPayload);
     } else if (isSalesReturn) {
       const srPayload = {
         customerId: firstEntityRef(data.customerId, data.partyId, data.customer),
@@ -872,11 +870,9 @@ const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
         })).filter((l: any) => !!l.itemId && Number(l.returnQty) > 0),
       };
 
-      // Backend update endpoint for Sales Returns does not exist yet.
-      if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
-        throw new Error('Updating existing Sales Returns is not yet supported. Please create a new one.');
-      }
-      savedVoucher = await salesApi.createReturn(srPayload);
+      savedVoucher = cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')
+        ? await salesApi.updateReturn(cleanPayload.id, srPayload)
+        : await salesApi.createReturn(srPayload);
     } else {
       // Fallback: unhandled subledger document types route through legacy accounting-voucher path.
       if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {

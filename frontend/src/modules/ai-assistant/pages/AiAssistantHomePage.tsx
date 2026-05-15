@@ -8,7 +8,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, User, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench } from 'lucide-react';
+import { Send, Bot, User, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Mic } from 'lucide-react';
 import {
   aiAssistantApi,
   ChatMessageDTO,
@@ -45,16 +45,19 @@ interface DisplayMessage {
   allowedToolIds?: string[];
   toolCallsRequested?: string[];
   toolCallResults?: ChatRuntimeMetadataDTO['toolResults'];
+  actualRounds?: number;
 }
 
 export const AiAssistantHomePage: React.FC = () => {
-  const { t } = useTranslation('aiAssistant');
+  const { t, i18n } = useTranslation('aiAssistant');
   const { hasPermission } = useRBAC();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
   const [conversations, setConversations] = useState<ConversationMetaDTO[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -89,6 +92,8 @@ export const AiAssistantHomePage: React.FC = () => {
     return (meta.toolResults as unknown as Array<Record<string, unknown>>)
       .map((entry) => ({
         toolName: String(entry.toolName || ''),
+        durationMs: typeof entry.durationMs === 'number' ? entry.durationMs : undefined,
+        round: typeof entry.round === 'number' ? entry.round : undefined,
         result: {
           success: Boolean((entry.result as any)?.success),
           data: ((entry.result as any)?.data || null) as Record<string, unknown> | null,
@@ -172,6 +177,7 @@ export const AiAssistantHomePage: React.FC = () => {
     if (!trimmed || isLoading) return;
 
     setError(null);
+    const streamId = `stream_${Date.now()}`;
 
     // Add user message immediately
     const userMessage: DisplayMessage = {
@@ -181,103 +187,83 @@ export const AiAssistantHomePage: React.FC = () => {
       timestamp: new Date().toISOString(),
     };
 
-    // Create a placeholder assistant message for streaming updates
-    const streamId = `streaming_${Date.now()}`;
-    const placeholderMessage: DisplayMessage = {
-      id: streamId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, userMessage, placeholderMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setStreamingContent('');
 
     // Accumulate streaming state outside React for synchronous updates within the callback
     let accumulatedContent = '';
     const toolCallsRequested: string[] = [];
     const toolCallResults: ChatRuntimeMetadataDTO['toolResults'] = [];
     const toolResults: AiToolCallResultDTO[] = [];
+    let actualRounds = 1;
 
     try {
       await streamMessage(
         { message: trimmed, conversationId },
         (event: AiStreamEvent) => {
-          switch (event.type) {
-            case 'token':
-              accumulatedContent += event.content;
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? { ...m, content: accumulatedContent } : m
-              ));
-              break;
+          if (event.type === 'token') {
+            accumulatedContent += event.content;
+            setStreamingContent(accumulatedContent);
+          } else if (event.type === 'tool_result') {
+            const toolSucceeded = event.approved && !event.error;
+            toolCallResults.push({
+              toolName: event.toolName,
+              approved: toolSucceeded,
+              rejectionReason: toolSucceeded ? undefined : (event as any).error || 'Tool execution failed',
+            });
 
-            case 'tool_call':
-              // TODO: yield tool_call events from backend for UI transparency
-              // Currently dead code — backend only emits tool_result, not tool_call
-              break;
+            // Deduplicate: replace previous result for the same toolName
+            const existingIdx = toolResults.findIndex(r => r.toolName === event.toolName);
+            const newEntry: AiToolCallResultDTO = {
+              toolName: event.toolName,
+              durationMs: (event as any).durationMs,
+              round: (event as any).round,
+              result: {
+                success: toolSucceeded,
+                data: toolSucceeded ? (event.data as Record<string, unknown> | null) ?? null : null,
+                error: (event as any).error || (!toolSucceeded ? 'Tool execution failed' : undefined),
+              },
+            };
 
-            case 'tool_result':
-              toolCallResults.push({
-                toolName: event.toolName,
-                approved: event.approved,
-                rejectionReason: event.approved ? undefined : 'Tool execution failed',
-              });
-              toolResults.push({
-                toolName: event.toolName,
-                result: {
-                  success: event.approved,
-                  data: event.approved ? (event.data as Record<string, unknown> | null) ?? null : null,
-                  ...(!event.approved ? { error: 'Tool execution failed' } : {}),
-                },
-              });
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? {
-                  ...m,
-                  toolCallResults: [...toolCallResults],
-                  toolResults: [...toolResults],
-                } : m
-              ));
-              break;
-
-            case 'done': {
-              const meta = event.metadata;
-              const runtimeMeta = meta.runtimeMeta;
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? {
-                  ...m,
-                  content: accumulatedContent || m.content,
-                  provider: meta.provider,
-                  model: meta.model,
-                  runtimeStatus: runtimeMeta?.runtimeStatus,
-                  selectedSkills: runtimeMeta?.selectedSkills,
-                  allowedToolIds: runtimeMeta?.allowedToolIds,
-                  modelProfile: runtimeMeta?.modelProfile,
-                  runtimeWarnings: runtimeMeta?.runtimeWarnings,
-                  toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
-                  toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
-                  toolResults: toolResults.length > 0 ? toolResults : undefined,
-                  proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
-                } : m
-              ));
-              if (runtimeMeta?.conversationId && !conversationId) {
-                setConversationId(runtimeMeta.conversationId);
-              }
-              break;
+            if (existingIdx !== -1) {
+              toolResults[existingIdx] = newEntry;
+            } else {
+              toolResults.push(newEntry);
             }
+          } else if (event.type === 'done') {
+            const meta = event.metadata;
+            const runtimeMeta = meta.runtimeMeta;
+            setStreamingContent('');
+            
+            const assistantMsg: DisplayMessage = {
+              id: `final_${Date.now()}`,
+              role: 'assistant',
+              content: accumulatedContent || '...',
+              timestamp: new Date().toISOString(),
+              provider: meta.provider,
+              model: meta.model,
+              runtimeStatus: runtimeMeta?.runtimeStatus,
+              selectedSkills: runtimeMeta?.selectedSkills,
+              allowedToolIds: runtimeMeta?.allowedToolIds,
+              modelProfile: runtimeMeta?.modelProfile,
+              runtimeWarnings: runtimeMeta?.runtimeWarnings,
+              toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
+              toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
+              toolResults: toolResults.length > 0 ? toolResults : undefined,
+              proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
+              actualRounds: runtimeMeta?.actualRounds || actualRounds,
+            };
 
-            case 'error': {
-              const errorMsg = event.message;
-              const isProviderError = /api key|provider|diagnostics|ai settings/i.test(errorMsg);
-              setMessages(prev => prev.map(m =>
-                m.id === streamId ? {
-                  ...m,
-                  content: `⚠️ ${isProviderError ? t('chat.providerNotAvailable', 'AI provider is not available') : t('chat.error', 'Error')}: ${errorMsg}`,
-                  ...(isProviderError ? { isProviderError: true } : {}),
-                } : m
-              ));
-              break;
+            setMessages(prev => [...prev, assistantMsg]);
+
+            if (runtimeMeta?.conversationId && !conversationId) {
+              setConversationId(runtimeMeta.conversationId);
             }
+          } else if (event.type === 'error') {
+            setError(event.message);
+            setStreamingContent('');
           }
         },
       );
@@ -323,6 +309,46 @@ export const AiAssistantHomePage: React.FC = () => {
       inputRef.current?.focus();
     }
   }, [input, isLoading, conversationId, t, refreshConversations]);
+
+  const toggleRecording = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Your browser does not support voice recognition.');
+      return;
+    }
+
+    if (isRecording) {
+      setIsRecording(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    if (i18n.language.startsWith('ar')) recognition.lang = 'ar-SA';
+    else if (i18n.language.startsWith('tr')) recognition.lang = 'tr-TR';
+    else recognition.lang = 'en-US';
+
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onend = () => setIsRecording(false);
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error);
+      setError(`Voice error: ${event.error}`);
+      setIsRecording(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      
+      setInput(transcript);
+    };
+
+    recognition.start();
+  }, [isRecording, i18n.language]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -577,6 +603,7 @@ export const AiAssistantHomePage: React.FC = () => {
               <QuickActionButtons
                 onSendMessage={(msg) => handleSend(msg)}
                 hasMessages={messages.length > 0}
+                compact={false}
               />
             </div>
           )}
@@ -597,6 +624,12 @@ export const AiAssistantHomePage: React.FC = () => {
                     : 'bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-tl-sm'
                 }`}
               >
+                {msg.role === 'assistant' && (
+                  <div className="flex items-center gap-1.5 mb-2 text-indigo-600">
+                    <Bot className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">AI Assistant</span>
+                  </div>
+                )}
                 <div className="text-sm whitespace-pre-wrap leading-relaxed">
                   {msg.role === 'assistant' ? (
                      <MarkdownRenderer content={msg.content} />
@@ -695,20 +728,19 @@ export const AiAssistantHomePage: React.FC = () => {
               </div>
             </div>
           ))}
-          {isLoading && (
-            <div className="flex gap-3 justify-start">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                <Bot className="w-4 h-4 text-indigo-600" />
+          {streamingContent && (
+            <div className="flex gap-4 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 shadow-sm flex items-center justify-center mt-1">
+                <Bot className="w-5 h-5 text-indigo-600 animate-pulse" />
               </div>
-              <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                  <Database className="w-3.5 h-3.5 text-indigo-500" />
-                  {t('chat.toolUseInProgress', 'Analyzing request and checking safe tools...')}
+              <div className="max-w-[85%] sm:max-w-[75%] px-5 py-3.5 shadow-sm bg-white border border-indigo-100 text-gray-800 rounded-2xl rounded-tl-sm ring-1 ring-indigo-500/10">
+                <div className="flex items-center gap-1.5 mb-2 text-indigo-600">
+                  <Bot className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">AI Assistant is typing...</span>
                 </div>
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="text-sm whitespace-pre-wrap leading-relaxed font-sans text-gray-800">
+                  {streamingContent}
+                  <span className="inline-block w-1.5 h-4 ml-0.5 bg-indigo-400 animate-pulse align-middle" />
                 </div>
               </div>
             </div>
@@ -739,10 +771,21 @@ export const AiAssistantHomePage: React.FC = () => {
                 disabled={isLoading}
                 rows={1}
                 dir="auto"
-                className="block w-full max-h-[200px] min-h-[64px] py-5 pr-[72px] pl-6 rtl:pl-[72px] rtl:pr-6 bg-transparent border-none outline-none focus:ring-0 resize-none disabled:opacity-50 text-sm md:text-base leading-relaxed overflow-y-auto m-0 rounded-3xl"
+                className="block w-full max-h-[200px] min-h-[64px] py-5 pr-[110px] pl-6 rtl:pl-[110px] rtl:pr-6 bg-transparent border-none outline-none focus:ring-0 resize-none disabled:opacity-50 text-sm md:text-base leading-relaxed overflow-y-auto m-0 rounded-3xl"
                 style={{ boxShadow: 'none' }}
               />
-              <div className="absolute right-2 rtl:right-auto rtl:left-2 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <div className="absolute right-2 rtl:right-auto rtl:left-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <button
+                  onClick={toggleRecording}
+                  className={`w-12 h-12 rounded-2xl transition-all flex items-center justify-center ${
+                    isRecording 
+                      ? 'bg-red-500 text-white animate-pulse shadow-lg' 
+                      : 'text-gray-400 hover:bg-gray-100'
+                  }`}
+                  title="Voice Message"
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
                 <button
                   onClick={() => handleSend()}
                   disabled={isLoading || !input.trim()}

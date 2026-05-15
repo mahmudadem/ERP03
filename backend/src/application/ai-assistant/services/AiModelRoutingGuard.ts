@@ -23,6 +23,7 @@ export interface AiRoutingGuardDecision {
   modelProfileId?: string;
   profileHash?: string;
   certificationId?: string;
+  warning?: string; // New field for hybrid logic
 }
 
 const ROUTING_ERROR = 'This model profile is not certified for this ERP module/workflow. Please select a certified profile or run company certification.';
@@ -85,6 +86,16 @@ export class AiModelRoutingGuard {
     });
 
     if (!certification) {
+      // HYBRID LOGIC: If no certification found, check if tenant allows unverified models
+      if (config.allowUnverifiedModels) {
+        return {
+          allowed: true,
+          modelProfileId: profile.id,
+          profileHash: profile.profileHash,
+          warning: 'MODEL_NOT_CERTIFIED', // Flag for UI to show warning
+          reason: 'This model is not certified for this module. Using in unverified mode.'
+        };
+      }
       return this.reject('CERTIFICATION_NOT_FOUND', ROUTING_ERROR, profile.id, profile.profileHash);
     }
 
@@ -93,6 +104,7 @@ export class AiModelRoutingGuard {
       modelProfileId: profile.id,
       profileHash: profile.profileHash,
       certificationId: certification.id,
+      warning: certification.status === 'WARNING' ? 'MODEL_CERTIFICATION_WARNING' : undefined,
     };
   }
 

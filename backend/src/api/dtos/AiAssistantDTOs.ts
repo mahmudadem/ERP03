@@ -99,6 +99,7 @@ export interface AiSettingsResponse {
     selectedProfileHash: string | null;
     runtimeMode: string;
     allowedRuntimeModes: string[];
+    allowUnverifiedModels: boolean;
     updatedAt: string;
   };
 }
@@ -117,6 +118,7 @@ export interface UpdateAiSettingsRequest {
   selectedProfileHash?: string;
   runtimeMode?: 'BYOK' | 'CREDITS' | 'DISABLED';
   allowedRuntimeModes?: Array<'BYOK' | 'CREDITS' | 'DISABLED'>;
+  allowUnverifiedModels?: boolean;
 }
 
 // ─── Provider & Model Catalog DTOs ────────────────────────────────────

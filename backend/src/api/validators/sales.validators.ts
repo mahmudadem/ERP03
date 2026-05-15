@@ -518,3 +518,35 @@ export const validateUpdateSalesInvoicePaymentStatusInput = (body: any) => {
 export const validateRecordSalesInvoicePaymentInput = (body: any) => {
   ensurePositiveNumber(body.paymentAmountBase, 'paymentAmountBase');
 };
+
+export const validateUpdateDeliveryNoteInput = (body: any) => {
+  if (body.customerId !== undefined) ensureOptionalString(body.customerId, 'customerId');
+  if (body.deliveryDate !== undefined) ensureIsoDate(body.deliveryDate, 'deliveryDate');
+  if (body.warehouseId !== undefined) ensureOptionalString(body.warehouseId, 'warehouseId');
+  if (body.notes !== undefined && typeof body.notes !== 'string') {
+    throw ApiError.badRequest('notes must be a string');
+  }
+
+  if (body.lines !== undefined) {
+    if (!Array.isArray(body.lines) || body.lines.length === 0) {
+      throw ApiError.badRequest('lines must be a non-empty array when provided');
+    }
+    body.lines.forEach((line: any, index: number) => validateDNLine(line, index));
+  }
+};
+
+export const validateUpdateSalesReturnInput = (body: any) => {
+  if (body.returnDate !== undefined) ensureIsoDate(body.returnDate, 'returnDate');
+  if (body.warehouseId !== undefined) ensureOptionalString(body.warehouseId, 'warehouseId');
+  if (body.reason !== undefined) ensureOptionalString(body.reason, 'reason');
+  if (body.notes !== undefined && typeof body.notes !== 'string') {
+    throw ApiError.badRequest('notes must be a string');
+  }
+
+  if (body.lines !== undefined) {
+    if (!Array.isArray(body.lines) || body.lines.length === 0) {
+      throw ApiError.badRequest('lines must be a non-empty array when provided');
+    }
+    body.lines.forEach((line: any, index: number) => validateSRLine(line, index));
+  }
+};

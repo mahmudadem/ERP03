@@ -24,6 +24,7 @@ router.post('/orders/:id/close', SalesController.closeSO);
 router.post('/delivery-notes', SalesController.createDN);
 router.get('/delivery-notes', SalesController.listDNs);
 router.get('/delivery-notes/:id', SalesController.getDN);
+router.put('/delivery-notes/:id', SalesController.updateDN);
 router.post('/delivery-notes/:id/post', SalesController.postDN);
 
 router.post('/invoices', SalesController.createSI);
@@ -40,6 +41,7 @@ router.get('/invoices/:id/payments', SalesController.getPaymentHistory);
 router.post('/returns', SalesController.createReturn);
 router.get('/returns', SalesController.listReturns);
 router.get('/returns/:id', SalesController.getReturn);
+router.put('/returns/:id', SalesController.updateReturn);
 router.post('/returns/:id/post', SalesController.postReturn);
 
 export default router;

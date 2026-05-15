@@ -120,4 +120,8 @@ export function validateUpdateAiSettingsInput(body: any): void {
       }
     }
   }
+
+  if (body.allowUnverifiedModels !== undefined && typeof body.allowUnverifiedModels !== 'boolean') {
+    throw ApiError.badRequest('allowUnverifiedModels must be a boolean');
+  }
 }

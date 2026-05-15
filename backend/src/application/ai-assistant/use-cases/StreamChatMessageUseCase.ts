@@ -33,6 +33,7 @@ import { ProviderFactory, ProviderProviderError } from '../providers/ProviderFac
 import { IAiProvider, AiProviderRequest, AiStreamEvent as ProviderStreamEvent } from '../providers/IAiProvider';
 import { AiRateLimiterService } from '../services/AiRateLimiterService';
 import { AiToolCallingOrchestrator } from '../services/AiToolCallingOrchestrator';
+import type { StructuredToolCallResult } from '../services/AiToolCallingOrchestrator';
 import { AiRuntimeGuard, AiRunContext } from '../services/AiRuntimeGuard';
 import { AiModelRoutingGuard } from '../services/AiModelRoutingGuard';
 import { AiModelProfile } from '../services/AiModelCapabilityCatalog';
@@ -48,6 +49,25 @@ import { SendChatMessageInput } from './SendChatMessageTypes';
 import { AiStreamEvent, AiStreamDoneMetadata } from './SendChatMessageStreamTypes';
 import { upsertConversationMeta, resolveModelProfile } from '../services/chatMessageHelpers';
 import { SendChatMessageUseCase } from './SendChatMessageUseCase';
+
+const stableStringify = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableStringify(nestedValue)}`);
+
+    return `{${entries.join(',')}}`;
+  }
+
+  return JSON.stringify(value);
+};
+
+const buildToolCallSignature = (toolName: string, args: Record<string, unknown>): string =>
+  `${toolName}:${stableStringify(args ?? {})}`;
 
 export class StreamChatMessageUseCase {
   private static activeLocks = new Set<string>();
@@ -135,7 +155,8 @@ export class StreamChatMessageUseCase {
       }
       config = await this.credentialResolver.resolveRuntimeCredential(config);
     } catch (error) {
-      yield { type: 'error', message: 'Failed to load AI configuration' };
+      const message = error instanceof ApiError ? error.message : 'Failed to load AI configuration';
+      yield { type: 'error', message };
       return;
     }
 
@@ -170,7 +191,7 @@ export class StreamChatMessageUseCase {
 
     try {
       // 6. Build model capability profile
-      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, config.provider, config.model);
+      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, companyId, config.provider, config.model);
       if (modelProfile.textOnlyMode) {
         runtimeWarnings.push(modelProfile.warningMessage || `Model '${config.model}' is running in text-only mode.`);
       }
@@ -218,6 +239,8 @@ export class StreamChatMessageUseCase {
         allowedContracts = [];
         nameMapping = new Map();
         allowedToolIds = [];
+      } else if (toolRoutingDecision?.warning) {
+        runtimeWarnings.push(toolRoutingDecision.reason || 'This model profile has a WARNING certification status. Use with caution.');
       }
 
       if (this.runtimeGuard) {
@@ -324,7 +347,7 @@ export class StreamChatMessageUseCase {
             modelProfile,
             toolPlanningContextMessage,
             recentToolDataContextMessage: recentToolDataContext.content,
-            skipToolDescriptions: isLikelySimpleChat,
+            skipToolDescriptions: isLikelySimpleChat || !toolRoutingDecision?.allowed,
           }),
         },
         ...recentProviderMessages,
@@ -351,109 +374,203 @@ export class StreamChatMessageUseCase {
         }
       }
 
-      const providerRequest: AiProviderRequest = {
-        messages: providerMessages,
-        maxTokens: config.maxTokensPerRequest,
-        temperature: 0.7,
-        ...(shouldUseNativeTools ? { tools: allowedContracts } : {}),
-      };
+      // ── Stream from provider with multi-round planning ──────────────────
+      let fullContent = '';
+      let streamProvider = '';
+      let streamModel = '';
+      let streamUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined;
+      const allToolResults: any[] = [];
+      const allToolSummaries: any[] = [];
+      const successfulToolResultsBySignature = new Map<string, StructuredToolCallResult>();
+      const maxRounds = 5;
+      let actualRounds = 0;
 
-      // ── Stream from provider ──────────────────────────────────────────────
-      // If provider supports streaming, use it; otherwise fall back to execute()
       if (typeof provider.chatStream === 'function') {
-        let fullContent = '';
-        let streamProvider = '';
-        let streamModel = '';
-        let streamUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined;
+        for (let round = 0; round < maxRounds; round++) {
+          actualRounds = round + 1;
+          let hasToolCallsThisRound = false;
+          let roundContent = '';
+          const structuredResultsThisRound: StructuredToolCallResult[] = [];
 
-        try {
-          for await (const event of provider.chatStream(providerRequest)) {
-            switch (event.type) {
-              case 'token':
-                fullContent += event.content;
-                yield { type: 'token', content: event.content };
-                break;
-
-              case 'tool_call': {
-                toolCallsRequested.push(event.toolName);
-
-                // Execute the tool server-side if orchestrator is available
-                if (this.toolOrchestrator && runContext) {
-                  try {
-                    const structuredCall = {
-                      id: event.toolCallId || `stream_tc_${toolCallsRequested.length}`,
-                      name: event.toolName,
-                      arguments: event.toolArgs,
-                    };
-
-                    const structuredResults = await this.toolOrchestrator.executeStructuredToolCalls(
-                      runContext.aiRunId,
-                      [structuredCall],
-                      nameMapping,
-                      companyId,
-                      userId,
-                    );
-
-                    for (const result of structuredResults) {
-                      const auditEventType = result.approved ? 'AI_TOOL_CALL_APPROVED' : 'AI_TOOL_CALL_REJECTED';
-                      this.responsePersister.auditLogSafe(auditEventType as 'AI_TOOL_CALL_APPROVED' | 'AI_TOOL_CALL_REJECTED', {
-                        companyId, userId, conversationId: convId,
-                        aiRunId: runContext.aiRunId,
-                        providerModel: `${config.provider}/${config.model || 'unknown'}`,
-                        resolvedOriginalName: result.toolName,
-                        operationType: 'READ',
-                        rejectionReason: result.rejectionReason,
-                        rejectionCode: result.rejectionCode,
-                        toolCallKeys: Object.keys(event.toolArgs),
-                      });
-
-                      yield {
-                        type: 'tool_result',
-                        toolName: result.toolName,
-                        data: result.result?.data ?? null,
-                        approved: result.approved,
-                      };
-                    }
-                  } catch (toolError) {
-                    console.warn(`[AI Assistant Stream] Tool execution failed: ${(toolError as Error).message}`);
-                    yield {
-                      type: 'tool_result',
-                      toolName: event.toolName,
-                      data: { error: 'Tool execution failed' },
-                      approved: false,
-                    };
-                  }
-                }
-                break;
-              }
-
-              case 'done':
-                streamProvider = event.metadata.provider;
-                streamModel = event.metadata.model;
-                streamUsage = event.metadata.usage;
-                break;
-
-              case 'error':
-                yield { type: 'error', message: event.message };
-                return;
-            }
-          }
-        } catch (streamError) {
-          yield {
-            type: 'error',
-            message: streamError instanceof Error ? streamError.message : 'Streaming error occurred.',
+          const providerRequest: AiProviderRequest = {
+            messages: providerMessages,
+            maxTokens: config.maxTokensPerRequest,
+            temperature: 0.7,
+            ...(shouldUseNativeTools ? { tools: allowedContracts } : {}),
           };
 
-          this.responsePersister.auditLogSafe('AI_RUN_FAILED', {
-            companyId, userId, conversationId: convId,
-            aiRunId: runContext?.aiRunId ?? aiRunId,
-            providerModel: `${config.provider}/${config.model || 'unknown'}`,
-            runtimeStatus: 'failed',
-            errorMessage: (streamError as Error).message?.substring(0, 500),
-            durationMs: Date.now() - startTime,
-          });
+          try {
+            for await (const event of provider.chatStream(providerRequest)) {
+              switch (event.type) {
+                case 'token':
+                  roundContent += event.content;
+                  fullContent += event.content;
+                  yield { type: 'token', content: event.content };
+                  break;
 
-          return;
+                case 'tool_call': {
+                  hasToolCallsThisRound = true;
+                  toolCallsRequested.push(event.toolName);
+
+                  // Execute the tool server-side
+                  if (this.toolOrchestrator && runContext) {
+                    try {
+                      const toolStartTime = Date.now();
+                      const structuredCall = {
+                        id: event.toolCallId || `stream_tc_${toolCallsRequested.length}`,
+                        name: event.toolName,
+                        arguments: event.toolArgs,
+                      };
+                      const resolvedRequestedToolName = nameMapping.get(event.toolName) ?? event.toolName;
+                      const toolCallSignature = buildToolCallSignature(resolvedRequestedToolName, event.toolArgs);
+                      const previousSuccessfulResult = successfulToolResultsBySignature.get(toolCallSignature);
+
+                      if (previousSuccessfulResult) {
+                        structuredResultsThisRound.push(previousSuccessfulResult);
+                        yield {
+                          type: 'tool_result',
+                          toolName: previousSuccessfulResult.toolName,
+                          data: previousSuccessfulResult.result?.data ?? null,
+                          approved: true,
+                          durationMs: 0,
+                          round: actualRounds,
+                        };
+                        break;
+                      }
+
+                      const structuredResults = await this.toolOrchestrator.executeStructuredToolCalls(
+                        runContext.aiRunId,
+                        [structuredCall],
+                        nameMapping,
+                        companyId,
+                        userId,
+                      );
+
+                      for (const result of structuredResults) {
+                        const toolEndTime = Date.now();
+                        const durationMs = toolEndTime - toolStartTime;
+                        structuredResultsThisRound.push(result);
+
+                        const auditEventType = result.approved ? 'AI_TOOL_CALL_APPROVED' : 'AI_TOOL_CALL_REJECTED';
+                        this.responsePersister.auditLogSafe(auditEventType as 'AI_TOOL_CALL_APPROVED' | 'AI_TOOL_CALL_REJECTED', {
+                          companyId, userId, conversationId: convId,
+                          aiRunId: runContext.aiRunId,
+                          providerModel: `${config.provider}/${config.model || 'unknown'}`,
+                          resolvedOriginalName: result.toolName,
+                          operationType: 'READ',
+                          rejectionReason: result.rejectionReason,
+                          rejectionCode: result.rejectionCode,
+                          toolCallKeys: Object.keys(event.toolArgs),
+                        });
+
+                        if (result.result) {
+                          allToolResults.push({
+                            toolName: result.toolName,
+                            toolCallId: result.toolCallId,
+                            result: result.result,
+                            durationMs,
+                            round: actualRounds,
+                          });
+
+                          if (result.result.success) {
+                            successfulToolResultsBySignature.set(toolCallSignature, result);
+                          }
+                        }
+
+                        allToolSummaries.push({
+                          toolName: result.toolName,
+                          approved: result.approved,
+                          rejectionReason: result.rejectionReason,
+                          durationMs,
+                          round: actualRounds,
+                          error: result.result?.error ?? result.rejectionReason,
+                        });
+
+                        yield {
+                          type: 'tool_result',
+                          toolName: result.toolName,
+                          data: result.result?.data ?? null,
+                          approved: result.approved,
+                          error: result.result?.error ?? result.rejectionReason,
+                          durationMs,
+                          round: actualRounds,
+                        };
+                      }
+                    } catch (toolError) {
+                      const errorMessage = (toolError as Error).message || 'Tool execution failed';
+                      console.warn(`[AI Assistant Stream] Tool execution failed: ${errorMessage}`);
+                      yield {
+                        type: 'tool_result',
+                        toolName: event.toolName,
+                        data: null,
+                        approved: false,
+                        error: errorMessage,
+                        round: actualRounds,
+                      };
+                    }
+                  }
+                  break;
+                }
+
+                case 'done':
+                  streamProvider = event.metadata.provider;
+                  streamModel = event.metadata.model;
+                  // Merge usage across rounds
+                  if (event.metadata.usage) {
+                    streamUsage = {
+                      promptTokens: (streamUsage?.promptTokens || 0) + (event.metadata.usage.promptTokens || 0),
+                      completionTokens: (streamUsage?.completionTokens || 0) + (event.metadata.usage.completionTokens || 0),
+                      totalTokens: (streamUsage?.totalTokens || 0) + (event.metadata.usage.totalTokens || 0),
+                    };
+                  }
+                  break;
+
+                case 'error':
+                  yield { type: 'error', message: event.message };
+                  return;
+              }
+            }
+
+            // If no tool calls in this round, we are done
+            if (!hasToolCallsThisRound) {
+              break;
+            }
+
+            // Prepare next round: add assistant response and tool results to context
+            providerMessages.push({
+              role: 'assistant',
+              content: roundContent || '[Tool calls requested]',
+            });
+
+            if (this.toolOrchestrator && structuredResultsThisRound.length > 0) {
+              const toolCallContext = this.toolOrchestrator.formatStructuredResultsForProviderContext(
+                structuredResultsThisRound,
+              );
+
+              providerMessages.push({
+                role: 'system',
+                content: toolCallContext +
+                  '\n\nContinue the same conversation from these tool results. First combine them with the current user request and any prior context. If another read-only tool is needed to fulfill the clear intent, request it. Do not call the same tool again with the same arguments when this message already contains the needed data or error. If the intent or required extra information is truly ambiguous, ask a short clarification question. Otherwise answer the user using only returned tool data and relevant prior context.',
+              });
+            }
+
+          } catch (streamError) {
+            yield {
+              type: 'error',
+              message: streamError instanceof Error ? streamError.message : 'Streaming error occurred.',
+            };
+
+            this.responsePersister.auditLogSafe('AI_RUN_FAILED', {
+              companyId, userId, conversationId: convId,
+              aiRunId: runContext?.aiRunId ?? aiRunId,
+              providerModel: `${config.provider}/${config.model || 'unknown'}`,
+              runtimeStatus: 'failed',
+              errorMessage: (streamError as Error).message?.substring(0, 500),
+              durationMs: Date.now() - startTime,
+            });
+
+            return;
+          }
         }
 
         // ── Save messages after streaming completes ───────────────────────
@@ -476,8 +593,8 @@ export class StreamChatMessageUseCase {
             finalResponse, aiRunId: runContext?.aiRunId ?? aiRunId,
             runContext, selectedSkills, allowedToolIds, modelProfile,
             runtimeWarnings, toolCallsRequested,
-            toolResultsForMetadata: [],
-            toolResultSummaries: [],
+            toolResultsForMetadata: allToolResults,
+            toolResultSummaries: allToolSummaries,
             proposalResultForMetadata: null,
           });
 
@@ -533,7 +650,7 @@ export class StreamChatMessageUseCase {
               modelProfile: {
                 provider: modelProfile.provider,
                 modelName: modelProfile.modelName,
-                status: modelProfile.status,
+                status: toolRoutingDecision?.certificationId ? 'CERTIFIED' : modelProfile.status,
                 supportsToolCalling: modelProfile.supportsToolCalling,
                 textOnlyMode: modelProfile.textOnlyMode,
                 warningLevel: modelProfile.warningLevel,
@@ -541,7 +658,7 @@ export class StreamChatMessageUseCase {
               },
               runtimeWarnings,
               toolCallsRequested,
-              toolResults: [],
+              toolResults: allToolSummaries,
             },
             usage: streamUsage,
           };
@@ -566,7 +683,7 @@ export class StreamChatMessageUseCase {
                 modelProfile: {
                   provider: modelProfile.provider,
                   modelName: modelProfile.modelName,
-                  status: modelProfile.status,
+                  status: toolRoutingDecision?.certificationId ? 'CERTIFIED' : modelProfile.status,
                   supportsToolCalling: modelProfile.supportsToolCalling,
                   textOnlyMode: modelProfile.textOnlyMode,
                   warningLevel: modelProfile.warningLevel,
@@ -574,7 +691,8 @@ export class StreamChatMessageUseCase {
                 },
                 runtimeWarnings,
                 toolCallsRequested,
-                toolResults: [],
+                toolResults: allToolSummaries,
+                actualRounds,
               },
               usage: streamUsage,
             },

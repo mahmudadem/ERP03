@@ -82,6 +82,7 @@ export interface ListPurchaseReturnsFilters {
   status?: PRStatus;
 }
 
+
 interface VoucherAccumulatedLine {
   accountId: string;
   side: 'Debit' | 'Credit';

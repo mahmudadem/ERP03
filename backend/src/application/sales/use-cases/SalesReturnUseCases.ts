@@ -1052,3 +1052,70 @@ export class ListSalesReturnsUseCase {
     });
   }
 }
+
+export interface UpdateSalesReturnInput {
+  companyId: string;
+  id: string;
+  returnDate?: string;
+  warehouseId?: string;
+  reason?: string;
+  notes?: string;
+  lines?: SalesReturnLineInput[];
+}
+
+export class UpdateSalesReturnUseCase {
+  constructor(private readonly salesReturnRepo: ISalesReturnRepository) {}
+
+  async execute(input: UpdateSalesReturnInput): Promise<SalesReturn> {
+    const current = await this.salesReturnRepo.getById(input.companyId, input.id);
+    if (!current) throw new Error(`Sales return not found: ${input.id}`);
+    if (current.status !== 'DRAFT') {
+      throw new Error('Only draft sales returns can be updated');
+    }
+
+    if (input.returnDate !== undefined) current.returnDate = input.returnDate;
+    if (input.warehouseId !== undefined) current.warehouseId = input.warehouseId;
+    if (input.reason !== undefined) current.reason = input.reason;
+    if (input.notes !== undefined) current.notes = input.notes;
+
+    if (input.lines) {
+      const existingById = new Map(current.lines.map((line) => [line.lineId, line]));
+      const mappedLines: SalesReturnLine[] = input.lines.map((line, index) => {
+        const existing = line.lineId ? existingById.get(line.lineId) : undefined;
+        return {
+          lineId: line.lineId || randomUUID(),
+          lineNo: line.lineNo ?? existing?.lineNo ?? index + 1,
+          siLineId: line.siLineId ?? existing?.siLineId,
+          dnLineId: line.dnLineId ?? existing?.dnLineId,
+          soLineId: line.soLineId ?? existing?.soLineId,
+          itemId: line.itemId || existing?.itemId || '',
+          itemCode: existing?.itemCode || '',
+          itemName: existing?.itemName || '',
+          returnQty: line.returnQty ?? existing?.returnQty ?? 0,
+          uomId: line.uomId ?? existing?.uomId,
+          uom: line.uom || existing?.uom || 'EA',
+          unitPriceDoc: line.unitPriceDoc ?? existing?.unitPriceDoc ?? 0,
+          unitPriceBase: existing?.unitPriceBase ?? 0,
+          unitCostBase: existing?.unitCostBase ?? 0,
+          fxRateMovToBase: existing?.fxRateMovToBase ?? 1,
+          fxRateCCYToBase: existing?.fxRateCCYToBase ?? 1,
+          taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
+          taxRate: existing?.taxRate ?? 0,
+          taxAmountDoc: existing?.taxAmountDoc ?? 0,
+          taxAmountBase: existing?.taxAmountBase ?? 0,
+          revenueAccountId: existing?.revenueAccountId,
+          cogsAccountId: existing?.cogsAccountId,
+          inventoryAccountId: existing?.inventoryAccountId,
+          stockMovementId: existing?.stockMovementId ?? null,
+          description: line.description ?? existing?.description,
+        };
+      });
+      current.lines = mappedLines;
+    }
+
+    current.updatedAt = new Date();
+    const updated = new SalesReturn(current.toJSON() as any);
+    await this.salesReturnRepo.update(updated);
+    return updated;
+  }
+}

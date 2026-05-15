@@ -30,6 +30,9 @@ router.get('/companies', SuperAdminController.listAllCompanies);
 router.get('/companies/:companyId/ai-report-mode', SuperAdminController.getCompanyAiReportMode);
 router.patch('/companies/:companyId/ai-report-mode', SuperAdminController.setCompanyAiReportMode);
 
+// Company AI Credits
+router.get('/companies/:companyId/ai-credits', SuperAdminController.getCompanyAiCredits);
+
 // Company Entitlements (module access management)
 router.get('/companies/:companyId/entitlements', SuperAdminEntitlementsController.listModules);
 router.post('/companies/:companyId/entitlements/modules', SuperAdminEntitlementsController.grantModule);

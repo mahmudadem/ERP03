@@ -109,11 +109,12 @@ export function generateTitle(message: string): string {
  */
 export async function resolveModelProfile(
   modelProfileUseCase: AiModelProfileUseCase | undefined,
+  tenantId: string,
   provider: string,
   modelName: string | null | undefined,
 ): Promise<AiModelProfile> {
   if (modelProfileUseCase) {
-    return modelProfileUseCase.resolveRuntimeProfile(provider, modelName);
+    return modelProfileUseCase.resolveRuntimeProfile(tenantId, provider, modelName);
   }
   return AiModelCapabilityCatalog.getProfile(provider, modelName);
 }

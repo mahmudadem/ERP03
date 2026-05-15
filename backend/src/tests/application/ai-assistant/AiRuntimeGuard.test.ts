@@ -298,7 +298,7 @@ describe('AiModelCapabilityCatalog', () => {
   it('uses provider-prefixed aliases for pattern fallback too', () => {
     const profile = AiModelCapabilityCatalog.getProfile('openai_compatible', 'anthropic/claude-3-5-sonnet');
 
-    expect(profile.status).toBe('tested');
+    expect(profile.status).toBe('recommended');
     expect(profile.supportsToolCalling).toBe(true);
     expect(profile.textOnlyMode).toBe(false);
   });

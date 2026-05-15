@@ -58,12 +58,12 @@ const KNOWN_PROFILES: Record<string, Partial<AiModelProfile>> = {
   // ─── Mock Provider ────────────────────────────────────────────────────
   'mock:mock': {
     status: 'recommended',
-    supportsToolCalling: false,
-    supportsStructuredJson: false,
+    supportsToolCalling: true,
+    supportsStructuredJson: true,
     maxContextTokens: 4096,
     recommendedUseCases: ['development', 'testing'],
     warningLevel: 'none',
-    textOnlyMode: true,
+    textOnlyMode: false,
     warningMessage: '',
   },
 
@@ -84,6 +84,26 @@ const KNOWN_PROFILES: Record<string, Partial<AiModelProfile>> = {
     supportsStructuredJson: true,
     maxContextTokens: 128000,
     recommendedUseCases: ['general', 'fast-response'],
+    warningLevel: 'none',
+    textOnlyMode: false,
+    warningMessage: '',
+  },
+  'openai_compatible:o1-preview': {
+    status: 'recommended',
+    supportsToolCalling: true,
+    supportsStructuredJson: true,
+    maxContextTokens: 128000,
+    recommendedUseCases: ['complex-reasoning', 'accounting-audit'],
+    warningLevel: 'none',
+    textOnlyMode: false,
+    warningMessage: '',
+  },
+  'openai_compatible:o3-mini': {
+    status: 'recommended',
+    supportsToolCalling: true,
+    supportsStructuredJson: true,
+    maxContextTokens: 200000,
+    recommendedUseCases: ['fast-reasoning', 'accounting'],
     warningLevel: 'none',
     textOnlyMode: false,
     warningMessage: '',
@@ -211,6 +231,50 @@ const KNOWN_PROFILES: Record<string, Partial<AiModelProfile>> = {
     warningLevel: 'warning',
     textOnlyMode: true,
     warningMessage: 'Qwen2 via Ollama has experimental tool calling. Using text-only mode.',
+  },
+
+  // ─── Anthropic Recommended (via compatible router) ─────────────────────
+  'openai_compatible:claude-3-5-sonnet': {
+    status: 'recommended',
+    supportsToolCalling: true,
+    supportsStructuredJson: true,
+    maxContextTokens: 200000,
+    recommendedUseCases: ['general', 'accounting', 'complex-reasoning', 'coding'],
+    warningLevel: 'none',
+    textOnlyMode: false,
+    warningMessage: '',
+  },
+  'openai_compatible:claude-3-5-haiku': {
+    status: 'recommended',
+    supportsToolCalling: true,
+    supportsStructuredJson: true,
+    maxContextTokens: 200000,
+    recommendedUseCases: ['general', 'fast-response'],
+    warningLevel: 'none',
+    textOnlyMode: false,
+    warningMessage: '',
+  },
+
+  // ─── Google Gemini Recommended (via compatible router) ─────────────────
+  'openai_compatible:gemini-1.5-pro': {
+    status: 'recommended',
+    supportsToolCalling: true,
+    supportsStructuredJson: true,
+    maxContextTokens: 1000000,
+    recommendedUseCases: ['long-context', 'accounting-audit', 'reporting'],
+    warningLevel: 'none',
+    textOnlyMode: false,
+    warningMessage: '',
+  },
+  'openai_compatible:gemini-1.5-flash': {
+    status: 'recommended',
+    supportsToolCalling: true,
+    supportsStructuredJson: true,
+    maxContextTokens: 1000000,
+    recommendedUseCases: ['general', 'fast-response'],
+    warningLevel: 'none',
+    textOnlyMode: false,
+    warningMessage: '',
   },
 };
 

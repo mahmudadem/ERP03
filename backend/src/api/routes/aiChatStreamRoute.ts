@@ -111,6 +111,9 @@ async function handleStream(req: Request, res: Response, _next: NextFunction): P
             toolName: event.toolName,
             data: event.data,
             approved: event.approved,
+            error: event.error,
+            durationMs: event.durationMs,
+            round: event.round,
           });
           break;
 

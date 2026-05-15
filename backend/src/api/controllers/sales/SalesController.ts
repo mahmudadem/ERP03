@@ -6,6 +6,7 @@ import {
   GetDeliveryNoteUseCase,
   ListDeliveryNotesUseCase,
   PostDeliveryNoteUseCase,
+  UpdateDeliveryNoteUseCase,
 } from '../../../application/sales/use-cases/DeliveryNoteUseCases';
 import {
   CreateSalesInvoiceUseCase,
@@ -39,6 +40,7 @@ import {
   GetSalesReturnUseCase,
   ListSalesReturnsUseCase,
   PostSalesReturnUseCase,
+  UpdateSalesReturnUseCase,
 } from '../../../application/sales/use-cases/SalesReturnUseCases';
 import { DNStatus } from '../../../domain/sales/entities/DeliveryNote';
 import { PaymentStatus, SIStatus } from '../../../domain/sales/entities/SalesInvoice';
@@ -59,6 +61,8 @@ import {
   validateListSalesOrdersQuery,
   validateListSalesReturnsQuery,
   validateUpdateSalesInvoiceInput,
+  validateUpdateSalesReturnInput,
+  validateUpdateDeliveryNoteInput,
   validateRecordSalesInvoicePaymentInput,
   validateUpdateSalesInvoicePaymentStatusInput,
   validateUpdateSalesOrderInput,
@@ -480,6 +484,32 @@ export class SalesController {
     }
   }
 
+  static async updateDN(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdateDeliveryNoteInput((req as any).body);
+      const companyId = SalesController.getCompanyId(req);
+      const id = String((req as any).params.id);
+
+      const useCase = new UpdateDeliveryNoteUseCase(
+        diContainer.deliveryNoteRepository,
+        diContainer.partyRepository
+      );
+
+      const dn = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        id,
+      });
+
+      (res as any).json({
+        success: true,
+        data: SalesDTOMapper.toDeliveryNoteDTO(dn),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async postDN(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SalesController.getCompanyId(req);
@@ -784,6 +814,29 @@ export class SalesController {
       const id = String((req as any).params.id);
       const useCase = new GetSalesReturnUseCase(diContainer.salesReturnRepository);
       const salesReturn = await useCase.execute(companyId, id);
+
+      (res as any).json({
+        success: true,
+        data: SalesDTOMapper.toSalesReturnDTO(salesReturn),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateReturn(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdateSalesReturnInput((req as any).body);
+      const companyId = SalesController.getCompanyId(req);
+      const id = String((req as any).params.id);
+
+      const useCase = new UpdateSalesReturnUseCase(diContainer.salesReturnRepository);
+
+      const salesReturn = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        id,
+      });
 
       (res as any).json({
         success: true,

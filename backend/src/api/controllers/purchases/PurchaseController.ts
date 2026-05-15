@@ -68,6 +68,7 @@ import {
   validateUpdateInvoicePaymentStatusInput,
   validateUpdatePurchaseInvoiceInput,
   validateUpdatePurchaseOrderInput,
+  validateUpdatePurchaseReturnInput,
   validateUpdatePurchaseSettingsInput,
 } from '../../validators/purchases.validators';
 
@@ -963,6 +964,7 @@ export class PurchaseController {
 
   static async updateReturn(req: Request, res: Response, next: NextFunction) {
     try {
+      validateUpdatePurchaseReturnInput((req as any).body);
       const companyId = PurchaseController.getCompanyId(req);
       const id = String((req as any).params.id);
       const userId = PurchaseController.getUserId(req);
@@ -977,7 +979,6 @@ export class PurchaseController {
         ...((req as any).body || {}),
         companyId,
         id,
-        updatedBy: userId,
       });
 
       (res as any).json({

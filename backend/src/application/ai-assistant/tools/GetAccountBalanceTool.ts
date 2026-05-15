@@ -12,6 +12,7 @@ import { AiTool, AiToolResult, ToolExecutionContext } from '../../../domain/ai-a
 import { GetTrialBalanceUseCase } from '../../accounting/use-cases/LedgerUseCases';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting';
+import { Account, normalizeUserCode } from '../../../domain/accounting/entities/Account';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -66,10 +67,12 @@ export class GetAccountBalanceTool implements AiTool {
 
       const asOfDate = (params?.asOfDate as string) || new Date().toISOString().split('T')[0];
 
-      // Find account by code
+      // Find account by code (normalized)
+      const normalizedCode = normalizeUserCode(accountCode);
       const accounts = await this.accountRepo.list(context.companyId);
       const account = accounts.find((a: any) =>
-        a.userCode === accountCode || (a as any).code === accountCode || (a as any).systemCode === accountCode
+        normalizeUserCode(a.userCode || (a as any).code || '') === normalizedCode || 
+        normalizeUserCode((a as any).systemCode || '') === normalizedCode
       );
 
       if (!account) {

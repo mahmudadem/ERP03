@@ -59,7 +59,7 @@ export class FirestoreAiModelCertificationRepository implements IAiModelCertific
 
     const candidates = snapshot.docs
       .map(doc => AiModelCertificationResult.fromJSON(doc.data()!))
-      .filter(result => result.status === 'CERTIFIED')
+      .filter(result => result.status === 'CERTIFIED' || result.status === 'WARNING')
       .filter(result => result.appliesToTenant(input.tenantId))
       .filter(result => !input.moduleId || !result.moduleId || result.moduleId === input.moduleId)
       .filter(result => !input.skillId || !result.skillId || result.skillId === input.skillId)

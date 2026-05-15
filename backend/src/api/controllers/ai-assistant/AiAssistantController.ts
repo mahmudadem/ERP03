@@ -282,6 +282,7 @@ const useCase = new SendChatMessageUseCase(
         selectedProfileHash: req.body.selectedProfileHash,
         runtimeMode: req.body.runtimeMode,
         allowedRuntimeModes: req.body.allowedRuntimeModes,
+        allowUnverifiedModels: req.body.allowUnverifiedModels,
       });
 
       (res as any).status(200).json({
