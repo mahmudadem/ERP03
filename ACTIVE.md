@@ -1,7 +1,7 @@
 # 🎯 Current Focus
 
-**Task:** AI Assistant Real Report Tooling — Phase 1 COMPLETE
-**Status:** ✅ IMPLEMENTATION COMPLETE — PENDING QA
+**Task:** Task 94 — AI Module Finalization COMPLETE
+**Status:** ✅ ALL SUBTASKS A-F DONE — ALL 924 TESTS PASSING
 **Branch:** `feat/phase-1a-core-bugs`
 
 ### What Was Built (Task 93 — Phase 1)
@@ -31,9 +31,10 @@
 
 ### Recommended Next Move
 
-1. **Manual QA:** Start emulators, flip a company to "authoritative" mode via Super Admin, ask AI for reports, verify full context in responses.
-2. **Deferred tools:** Cost Center Summary and Budget vs Actual need lookup tools first (separate task).
-3. **Currency conversion:** Phase 3 future task — Phase 1 returns base-currency-only data labeled accordingly.
+The AI module is complete for pre-alpha. Next focus should shift to non-AI ERP modules:
+1. **Manual QA:** End-to-end testing of core ERP modules (Accounting, Sales, Purchases, Inventory).
+2. **Firestore security rules** before June 1.
+3. **Deferred AI items** (currency conversion, Cost Center/Budget tools, API key encryption audit) are tracked but non-blocking for pre-alpha.
 
 ### 🛠️ Recent Fixes (AI Assistant Tooling & Stabilization)
 - **Streaming Tool Result Reliability:** Fixed the stream route so real tool errors, execution round, and latency reach the frontend. The streaming loop now feeds only current-round tool results back to the model, reuses duplicate successful same-argument tool results, and renders `accounting.getAccountBalance` data as a proper balance card.
