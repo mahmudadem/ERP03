@@ -120,6 +120,7 @@ import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRe
   import { AiProviderRegistryUseCase } from '../../application/ai-assistant/use-cases/AiProviderRegistryUseCase';
   import { AiModelCertificationUseCase } from '../../application/ai-assistant/use-cases/AiModelCertificationUseCase';
 import { AiAutoSeedCertification } from '../../application/ai-assistant/services/AiAutoSeedCertification';
+import { AiCertificationEngine } from '../../application/ai-assistant/services/AiCertificationEngine';
 import { AiConversationCleanupService } from '../../application/ai-assistant/services/AiConversationCleanupService';
 import { StreamChatMessageUseCase } from '../../application/ai-assistant/use-cases/StreamChatMessageUseCase';
 import { SendChatMessageUseCase } from '../../application/ai-assistant/use-cases/SendChatMessageUseCase';
@@ -140,6 +141,11 @@ import { GetPurchaseSummaryTool } from '../../application/ai-assistant/tools/Get
 import { GetTopSuppliersTool } from '../../application/ai-assistant/tools/GetTopSuppliersTool';
 import { GetFinancialOverviewTool } from '../../application/ai-assistant/tools/GetFinancialOverviewTool';
 import { GetMonthlyComparisonTool } from '../../application/ai-assistant/tools/GetMonthlyComparisonTool';
+import { ReportRunner } from '../../application/reports/ReportRunner';
+import {
+  RunProfitAndLossTool, RunTrialBalanceTool, RunBalanceSheetTool, RunCashFlowTool,
+  RunGeneralLedgerTool, RunAccountStatementTool, RunAgingReceivablesTool, RunAgingPayablesTool,
+} from '../../application/ai-assistant/tools/reports/index';
 import { IAiToolCatalogRepository } from '../../repository/interfaces/ai-assistant/IAiToolCatalogRepository';
 import { IAiToolEnablementRepository } from '../../repository/interfaces/ai-assistant/IAiToolEnablementRepository';
 import { IAiModelToolPolicyRepository } from '../../repository/interfaces/ai-assistant/IAiModelToolPolicyRepository';
@@ -156,6 +162,7 @@ import { IAiCreditLedgerRepository } from '../../repository/interfaces/ai-assist
 import { FirestoreAiCreditLedgerRepository } from '../firestore/repositories/ai-assistant/FirestoreAiCreditLedgerRepository';
 import { IAiConversationMetaRepository } from '../../repository/interfaces/ai-assistant/IAiConversationMetaRepository';
 import { FirestoreAiConversationMetaRepository } from '../firestore/repositories/ai-assistant/FirestoreAiConversationMetaRepository';
+import { ProviderFactory } from '../../application/ai-assistant/providers/ProviderFactory';
 import { PermissionChecker } from '../../application/rbac/PermissionChecker';
 
 // AI ASSISTANT — Proposal Sandbox
@@ -834,6 +841,13 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
     return new AiModelCertificationUseCase(
       this.aiModelProfileRepository,
       this.aiModelCertificationRepository,
+      this.aiSettingsRepository,
+      this.encryptionService,
+      this.httpClient,
+      new AiCertificationEngine(
+        this.httpClient,
+        (config) => ProviderFactory.getProvider(config, this.httpClient)
+      )
     );
   },
   get aiAutoSeedCertification(): AiAutoSeedCertification {
@@ -978,6 +992,25 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
         this.accountRepository,
         this.permissionChecker,
       ),
+      // ── Authoritative Report Tools (registry-based) ──
+      ...(() => {
+        const runner = new ReportRunner(
+          this.ledgerRepository,
+          this.accountRepository,
+          this.companyRepository,
+          this.permissionChecker,
+        );
+        return [
+          new RunProfitAndLossTool(runner),
+          new RunTrialBalanceTool(runner),
+          new RunBalanceSheetTool(runner),
+          new RunCashFlowTool(runner),
+          new RunGeneralLedgerTool(runner),
+          new RunAccountStatementTool(runner),
+          new RunAgingReceivablesTool(runner),
+          new RunAgingPayablesTool(runner),
+        ];
+      })(),
     ]);
     return _aiToolRegistry;
   },

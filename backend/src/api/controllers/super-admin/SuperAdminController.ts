@@ -68,4 +68,37 @@ export class SuperAdminController {
       next(error);
     }
   }
+
+  static async getCompanyAiReportMode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { companyId } = req.params;
+      const config = await diContainer.aiSettingsRepository.getConfig(companyId);
+      res.json({ success: true, data: { aiReportMode: config?.aiReportMode || 'standard' } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async setCompanyAiReportMode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { companyId } = req.params;
+      const { aiReportMode } = req.body;
+      if (!['standard', 'authoritative'].includes(aiReportMode)) {
+        res.status(400).json({ success: false, error: 'aiReportMode must be "standard" or "authoritative"' });
+        return;
+      }
+      const repo = diContainer.aiSettingsRepository;
+      let config = await repo.getConfig(companyId);
+      if (!config) {
+        const { AiProviderConfig } = await import('../../../domain/ai-assistant/entities/AiProviderConfig');
+        config = AiProviderConfig.create({ companyId });
+      }
+      config.aiReportMode = aiReportMode;
+      config.updatedAt = new Date();
+      await repo.saveConfig(config);
+      res.json({ success: true, data: { aiReportMode: config.aiReportMode } });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

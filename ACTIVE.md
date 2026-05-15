@@ -1,28 +1,66 @@
 # 🎯 Current Focus
 
-**Task:** Phase 1A — Core Module Bug Fixes & Stabilization
-**Status:** ✅ COMPLETED (AI Stabilization + Voice Integration)
+**Task:** AI Assistant Real Report Tooling — Phase 1 COMPLETE
+**Status:** ✅ IMPLEMENTATION COMPLETE — PENDING QA
 **Branch:** `feat/phase-1a-core-bugs`
 
-### 🛠️ Recent Fixes (AI Assistant Infrastructure)
-- **Permissions:** Fixed `permissionGuard` to allow `isOwner` bypass for AI Assistant.
-- **Streaming:** Implemented SSE streaming support in `MockProvider` and fixed Windows line endings in parser.
-- **UI:** Optimized `GlobalAiWidget` for real-time typewriter effect and fixed all TS type errors.
-- **Voice:** Integrated Web Speech API for Arabic/English voice-to-text.
+### What Was Built (Task 93 — Phase 1)
+
+8 authoritative AI report tools that call the exact same use cases as the ERP UI reports, returning full context (dates, currency, filters, warnings, truncation). Old summary tools preserved alongside with a per-tenant gate.
+
+**Reports implemented:** P&L, Trial Balance, Balance Sheet, Cash Flow, General Ledger, Account Statement, Aging Receivables, Aging Payables.
+
+**Files created:**
+- `backend/src/domain/reports/ReportDefinition.ts` — Domain types
+- `backend/src/application/reports/accountingReportDefinitions.ts` — 8 report definitions
+- `backend/src/application/reports/ReportRunner.ts` — Central dispatcher
+- `backend/src/application/ai-assistant/tools/reports/createReportTool.ts` — Factory
+- `backend/src/application/ai-assistant/tools/reports/index.ts` — 8 tool classes + name lists
+
+**Files modified:**
+- `backend/src/domain/ai-assistant/entities/AiProviderConfig.ts` — Added `aiReportMode` field
+- `backend/src/application/ai-assistant/catalog/AiToolCatalogSeed.ts` — Registered 8 `reports.*` tools
+- `backend/src/infrastructure/di/bindRepositories.ts` — Wired ReportRunner + tool instances
+- `backend/src/application/ai-assistant/services/AiToolCallingOrchestrator.ts` — Gate logic
+- `backend/src/api/controllers/super-admin/SuperAdminController.ts` — GET/PATCH aiReportMode
+- `backend/src/api/routes/super-admin.routes.ts` — Routes for aiReportMode
+- `frontend/src/api/superAdmin/index.ts` — API methods
+- `frontend/src/modules/super-admin/pages/CompanyEntitlementsPage.tsx` — AI Report Mode dropdown
+
+**Verification:** `tsc --noEmit` ✅ backend, ✅ frontend
+
+### Recommended Next Move
+
+1. **Manual QA:** Start emulators, flip a company to "authoritative" mode via Super Admin, ask AI for reports, verify full context in responses.
+2. **Deferred tools:** Cost Center Summary and Budget vs Actual need lookup tools first (separate task).
+3. **Currency conversion:** Phase 3 future task — Phase 1 returns base-currency-only data labeled accordingly.
+
+### 🛠️ Recent Fixes (AI Assistant Tooling & Stabilization)
+- **Streaming Tool Result Reliability:** Fixed the stream route so real tool errors, execution round, and latency reach the frontend. The streaming loop now feeds only current-round tool results back to the model, reuses duplicate successful same-argument tool results, and renders `accounting.getAccountBalance` data as a proper balance card.
+- **Tool Result Deduplication:** Implemented real-time deduplication in `AiAssistantHomePage` and `GlobalAiWidget`. Retry attempts for the same tool now overwrite previous results, eliminating visual clutter in multi-round planning loops.
+- **Debug & Observability Metadata:** Enriched `StreamChatMessageUseCase` and SSE events with `actualRounds`, `durationMs` (latency), and detailed `error` messages. Updated `AiToolResultsPanel` to render these metrics in tool headers.
+- **Robust Account Lookup:** Integrated `normalizeUserCode` into `GetAccountBalanceTool.ts` to ensure case-insensitive and whitespace-agnostic account lookups, significantly improving tool reliability.
+- **AI Settings Persistence:** Resolved the issue where the "Allow Unverified Models" toggle failed to persist. Updated API contracts and validation layers.
+- **Streaming Tool Summary:** Implemented a multi-round planning loop in `StreamChatMessageUseCase.ts`.
+- **Global Visibility & Seeding:** Resolved the empty "Browse Certified Models" state by adding `syncBuiltInProfiles` and `seedAutoCertifications` to the server startup.
+- **Internal Tag & JSON Leakage Fix:** Prevented AI from echoing raw JSON or system tags (`<tool_response>`) into chat.
+- **Build & Runtime Stability:** Resolved critical Firestore crash caused by unencoded slashes in profile IDs.
 
 ---
 
 ## Where We Left Off
 
-The AI Assistant Fixing Plan audit was completed on `feat/ai-proposal-sandbox` (25 PASS / 1 PARTIAL / 2 pre-existing). The branch was **not merged**; instead, work pivoted to Phase 1A core stabilization on a new branch `feat/phase-1a-core-bugs`.
+The AI Assistant Fixing Plan audit was completed on `feat/ai-proposal-sandbox` (25 PASS / 1 PARTIAL / 2 pre-existing). The branch was **not merged**; instead, work pivoted to Phase 1A core stabilization on a new branch `feat/phase-1a-core-bugs`
 
 ### Phase 1A Progress
+Phase 1A stabilization is reaching high maturity. AI Assistant core bugs are 95% resolved.
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1.1 | Fix Forms Designer field placement + preview | ✅ COMPLETE | Commit `1a8c0e9d` fixed for-of loop, CSS grid positioning, and object mutation. Follow-up fix resolved 5 additional shallow-copy mutation bugs in `handleDropField`, `updateSectionOrder`, `moveSelectedFieldSection`, `updateSectionStyle`, and `onResizeMove`. All now use `JSON.parse(JSON.stringify(...))` deep clones to prevent React state mutation. Frontend typecheck passes. |
-| 1.2 | Fix Voucher Save for Sales/Purchase semantic docs | 🔶 In Progress | Fixed missing Sales Order, Delivery Note, and Sales Return routes in `useVoucherActions.ts`. SO now routes to `salesApi.createSO/updateSO`. DN and SR route to `salesApi.createDN/createReturn` with clear errors on attempted updates (backend update endpoints missing). Frontend typecheck passes. |
-| 1.3 | Default Form Designs for standard doc types | ✅ COMPLETE | Super Admin System Form Designer built. Super Admin can now design default layouts for all system voucher types via `/super-admin/system-forms`. Layouts are saved to system templates and automatically inherited by new companies via `CompanyVoucherTemplateSyncService`. Seeder fixed to preserve existing `uiModeOverrides` on re-run. Frontend + backend typecheck pass. Build passes. |
+| 1.1 | Fix Forms Designer field placement + preview | ✅ COMPLETE | Fixed deep clones and object mutation. |
+| 1.2 | Fix Voucher Save for Sales/Purchase semantic docs | ✅ COMPLETE | Implemented missing update endpoints for DN, SR, PR. |
+| 1.3 | Default Form Designs for standard doc types | ✅ COMPLETE | Super Admin System Form Designer built. |
+| 1.4 | AI Assistant Tooling Stabilization | ✅ COMPLETE | Deduplication, debug metadata, and robust lookups implemented. |
 
 ---
 
@@ -50,10 +88,10 @@ The CTO audit against `docs/architecture/ai-assistant-fixing-plan.md` and `docs/
 
 ## Next Recommended Move
 
-1. Merge `feat/ai-proposal-sandbox` to main.
-2. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
-3. Before June 1: Firestore security rules.
-4. Continue Phase 1A core bug fixes (Forms Designer, Voucher Save).
+1. Manual browser QA for AI Assistant account-balance prompts in the full page and global widget.
+2. Merge `feat/ai-proposal-sandbox` to main after QA.
+3. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
+4. Before June 1: Firestore security rules.
 
 ---
 

@@ -26,6 +26,10 @@ router.patch('/users/:userId/demote', SuperAdminController.demoteUser);
 // Company management
 router.get('/companies', SuperAdminController.listAllCompanies);
 
+// Company AI Report Mode
+router.get('/companies/:companyId/ai-report-mode', SuperAdminController.getCompanyAiReportMode);
+router.patch('/companies/:companyId/ai-report-mode', SuperAdminController.setCompanyAiReportMode);
+
 // Company Entitlements (module access management)
 router.get('/companies/:companyId/entitlements', SuperAdminEntitlementsController.listModules);
 router.post('/companies/:companyId/entitlements/modules', SuperAdminEntitlementsController.grantModule);

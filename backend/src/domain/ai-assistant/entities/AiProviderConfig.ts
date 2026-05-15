@@ -35,6 +35,7 @@ export type AiTenantModelMode = 'certified_profile' | 'custom_uncertified' | 'le
  * Legacy note: 'PLATFORM_MANAGED' is mapped to 'CREDITS' in fromJSON() for backward compat.
  */
 export type AiTenantRuntimeMode = 'BYOK' | 'CREDITS' | 'DISABLED';
+export type AiReportMode = 'standard' | 'authoritative';
 
 export interface AiProviderConfigProps {
   companyId: string;
@@ -55,6 +56,8 @@ export interface AiProviderConfigProps {
   isEnabled: boolean;           // Company admin can disable AI without removing config
   runtimeMode?: AiTenantRuntimeMode; // How credentials are resolved for tenant chat
   allowedRuntimeModes?: AiTenantRuntimeMode[]; // Super Admin restriction: which modes tenant may select
+  allowUnverifiedModels?: boolean; // HYBRID LOGIC: Allow models without full certification (Warn but Allow)
+  aiReportMode?: AiReportMode; // 'standard' = old summary tools, 'authoritative' = registry-based full-context tools
   updatedAt: Date;
 }
 
@@ -80,7 +83,10 @@ export class AiProviderConfig implements AiProviderConfigProps {
     /** How credentials are resolved for tenant chat */
     public runtimeMode: AiTenantRuntimeMode = 'BYOK',
     /** Super Admin restriction: which modes tenant may select */
-    public allowedRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'CREDITS']
+    public allowedRuntimeModes: AiTenantRuntimeMode[] = ['BYOK', 'CREDITS'],
+    /** HYBRID LOGIC: Allow models without full certification (Warn but Allow) */
+    public allowUnverifiedModels: boolean = false,
+    public aiReportMode: AiReportMode = 'standard',
   ) {}
 
   static create(input: {
@@ -109,7 +115,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       undefined,
       'BYOK',
-      ['BYOK', 'CREDITS']
+      ['BYOK', 'CREDITS'],
+      false                 // allowUnverifiedModels
     );
   }
 
@@ -134,7 +141,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       undefined,
       'BYOK',
-      ['BYOK', 'CREDITS']
+      ['BYOK', 'CREDITS'],
+      false         // allowUnverifiedModels
     );
   }
 
@@ -154,6 +162,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
     if (updates.isEnabled !== undefined) this.isEnabled = updates.isEnabled;
     if (updates.runtimeMode !== undefined) this.runtimeMode = updates.runtimeMode;
     if (updates.allowedRuntimeModes !== undefined) this.allowedRuntimeModes = updates.allowedRuntimeModes;
+    if (updates.allowUnverifiedModels !== undefined) this.allowUnverifiedModels = updates.allowUnverifiedModels;
     // Note: dailyRequestCount and dailyRequestDate are NOT updated via updateConfig
     // They are managed exclusively by AiRateLimiterService
     this.updatedAt = new Date();
@@ -222,6 +231,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
       isEnabled: this.isEnabled,
       runtimeMode: this.runtimeMode,
       allowedRuntimeModes: this.allowedRuntimeModes,
+      allowUnverifiedModels: this.allowUnverifiedModels, // HYBRID logic
+      aiReportMode: this.aiReportMode,
       updatedAt: this.updatedAt.toISOString(),
       hasApiKey: !!this.apiKey, // Indicate presence without revealing value
     };
@@ -252,6 +263,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
       isEnabled: this.isEnabled,
       runtimeMode: this.runtimeMode,
       allowedRuntimeModes: this.allowedRuntimeModes,
+      allowUnverifiedModels: this.allowUnverifiedModels, // HYBRID logic
+      aiReportMode: this.aiReportMode,
       updatedAt: this.updatedAt.toISOString(),
     };
   }
@@ -304,7 +317,9 @@ export class AiProviderConfig implements AiProviderConfigProps {
       data.selectedModelProfileId || undefined,
       data.selectedProfileHash || undefined,
       runtimeMode,
-      allowedRuntimeModes
+      allowedRuntimeModes,
+      data.allowUnverifiedModels !== undefined ? Boolean(data.allowUnverifiedModels) : false,
+      ['standard', 'authoritative'].includes(data.aiReportMode) ? data.aiReportMode : 'standard',
     );
   }
 }

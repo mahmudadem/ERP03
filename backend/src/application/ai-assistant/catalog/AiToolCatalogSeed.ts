@@ -74,6 +74,14 @@ const IMPLEMENTED_TOOL_NAMES = new Set<string>([
   'purchase.getTopSuppliers',
   'reports.getFinancialOverview',
   'reports.getMonthlyPerformanceSummary',
+  'reports.profitAndLoss',
+  'reports.trialBalance',
+  'reports.balanceSheet',
+  'reports.cashFlow',
+  'reports.generalLedger',
+  'reports.accountStatement',
+  'reports.agingReceivables',
+  'reports.agingPayables',
 ]);
 
 // ─── Chat Keywords ────────────────────────────────────────────────────────────
@@ -216,6 +224,46 @@ const TOOL_KEYWORDS: Record<string, string[]> = {
     'توجه شهري', 'أفضل شهر', 'أكثر شهر مربح',
     'aylık karşılaştırma', 'aylık performans', 'aylık trend',
     'en kârlı ay', 'aylık gelir',
+  ],
+  'reports.profitAndLoss': [
+    'profit and loss', 'p&l', 'income statement', 'net profit', 'revenue and expenses',
+    'الأرباح والخسائر', 'قائمة الدخل', 'صافي الربح',
+    'kar zarar', 'gelir tablosu', 'net kar',
+  ],
+  'reports.trialBalance': [
+    'trial balance', 'balance summary', 'debit credit summary', 'account balances',
+    'ميزان المراجعة', 'ميزان', 'أرصدة',
+    'deneme bilançosu', 'mizan', 'genel mizan',
+  ],
+  'reports.balanceSheet': [
+    'balance sheet', 'statement of financial position', 'assets and liabilities',
+    'الميزانية العمومية', 'قائمة المركز المالي',
+    'bilanço', 'finansal durum tablosu',
+  ],
+  'reports.cashFlow': [
+    'cash flow', 'cashflow', 'cash position', 'cash movement', 'liquidity',
+    'التدفقات النقدية', 'تدفق نقدي', 'السيولة',
+    'nakit akışı', 'nakit pozisyonu', 'likidite',
+  ],
+  'reports.generalLedger': [
+    'general ledger', 'GL summary', 'ledger summary', 'full ledger',
+    'دفتر الأستاذ العام', 'دفتر الأستاذ',
+    'büyük defter', 'genel muhasebe',
+  ],
+  'reports.accountStatement': [
+    'account statement', 'account activity', 'account detail', 'ledger for account',
+    'كشف حساب', 'حركة حساب',
+    'hesap ekstresi', 'hesap hareketleri',
+  ],
+  'reports.agingReceivables': [
+    'aging receivables', 'AR aging', 'receivables aging', 'customer aging',
+    'أعمار الذمم المدينة', 'ذمم مدينة',
+    'alacak yaşlandırma', 'gecikmiş alacaklar',
+  ],
+  'reports.agingPayables': [
+    'aging payables', 'AP aging', 'payables aging', 'vendor aging',
+    'أعمار الذمم الدائنة', 'ذمم دائنة',
+    'borç yaşlandırma', 'gecikmiş borçlar',
   ],
 };
 
@@ -968,6 +1016,83 @@ const reportsTools: AiToolDefinition[] = [
   ),
 ];
 
+// ─── AUTHORITATIVE REPORT TOOLS (registry-based, full context) ──────────────
+
+const authoritativeReportTools: AiToolDefinition[] = [
+  new AiToolDefinition(
+    'reports.profitAndLoss', 'reports.profitAndLoss', 'reports', 'accounting',
+    'Run the authoritative Profit & Loss report with full context, currency metadata, and UI-parity data.',
+    'reports', active, read_only,
+    ['accounting.reports.profitAndLoss.view'], ['accounting'],
+    { type: 'object', properties: { fromDate: { type: 'string', description: 'Start date (YYYY-MM-DD)' }, toDate: { type: 'string', description: 'End date (YYYY-MM-DD)' } } },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+  new AiToolDefinition(
+    'reports.trialBalance', 'reports.trialBalance', 'reports', 'accounting',
+    'Run the authoritative Trial Balance report with full context, currency metadata, and UI-parity data.',
+    'reports', active, read_only,
+    ['accounting.reports.trialBalance.view'], ['accounting'],
+    { type: 'object', properties: { asOfDate: { type: 'string', description: 'As-of date (YYYY-MM-DD)' }, includeZeroBalance: { type: 'boolean' } } },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+  new AiToolDefinition(
+    'reports.balanceSheet', 'reports.balanceSheet', 'reports', 'accounting',
+    'Run the authoritative Balance Sheet report with full context, currency metadata, and UI-parity data.',
+    'reports', active, read_only,
+    ['accounting.reports.balanceSheet.view'], ['accounting'],
+    { type: 'object', properties: { asOfDate: { type: 'string', description: 'As-of date (YYYY-MM-DD)' } } },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+  new AiToolDefinition(
+    'reports.cashFlow', 'reports.cashFlow', 'reports', 'accounting',
+    'Run the authoritative Cash Flow Statement report with full context, currency metadata, and UI-parity data.',
+    'reports', active, read_only,
+    ['accounting.reports.cashFlow.view'], ['accounting'],
+    { type: 'object', properties: { fromDate: { type: 'string', description: 'Start date (YYYY-MM-DD)' }, toDate: { type: 'string', description: 'End date (YYYY-MM-DD)' } } },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+  new AiToolDefinition(
+    'reports.generalLedger', 'reports.generalLedger', 'reports', 'accounting',
+    'Run the authoritative General Ledger report with full context, currency metadata, and UI-parity data.',
+    'reports', active, read_only,
+    ['accounting.reports.generalLedger.view'], ['accounting'],
+    { type: 'object', properties: { fromDate: { type: 'string', description: 'Start date (YYYY-MM-DD)' }, toDate: { type: 'string', description: 'End date (YYYY-MM-DD)' } } },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+  new AiToolDefinition(
+    'reports.accountStatement', 'reports.accountStatement', 'reports', 'accounting',
+    'Run the authoritative Account Statement report for a specific account. Requires accountCode — ask the user which account.',
+    'reports', active, read_only,
+    ['accounting.reports.generalLedger.view'], ['accounting'],
+    { type: 'object', properties: { accountCode: { type: 'string', description: 'Account code (required)' }, fromDate: { type: 'string' }, toDate: { type: 'string' }, costCenterId: { type: 'string' } }, required: ['accountCode'] },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+  new AiToolDefinition(
+    'reports.agingReceivables', 'reports.agingReceivables', 'reports', 'accounting',
+    'Run the authoritative Accounts Receivable Aging report with full context, currency metadata, and UI-parity data.',
+    'reports', active, read_only,
+    ['accounting.reports.generalLedger.view'], ['accounting'],
+    { type: 'object', properties: { asOfDate: { type: 'string', description: 'As-of date (YYYY-MM-DD)' }, accountId: { type: 'string' } } },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+  new AiToolDefinition(
+    'reports.agingPayables', 'reports.agingPayables', 'reports', 'accounting',
+    'Run the authoritative Accounts Payable Aging report with full context, currency metadata, and UI-parity data.',
+    'reports', active, read_only,
+    ['accounting.reports.generalLedger.view'], ['accounting'],
+    { type: 'object', properties: { asOfDate: { type: 'string', description: 'As-of date (YYYY-MM-DD)' }, accountId: { type: 'string' } } },
+    { type: 'object', properties: { reportContext: { type: 'object' }, moneyContext: { type: 'object' }, data: { type: 'object' } } },
+    true, true, true, R, S_M,
+  ),
+];
+
 // ─── AUDIT TOOLS (disabled by default — sensitive) ───────────────────────────
 
 const auditTools: AiToolDefinition[] = [
@@ -1084,6 +1209,7 @@ export const AI_TOOL_CATALOG: AiToolDefinition[] = [
   ...crmTools,
   ...hrTools,
   ...reportsTools,
+  ...authoritativeReportTools,
   ...auditTools,
   ...platformTools,
   ...blockedWritePatterns,

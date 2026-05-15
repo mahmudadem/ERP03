@@ -493,6 +493,12 @@ export const superAdminApi = {
   revokeModuleFromCompany: (companyId: string, moduleKey: string): Promise<void> =>
     client.delete(`/super-admin/companies/${companyId}/entitlements/modules/${moduleKey}`),
 
+  getCompanyAiReportMode: (companyId: string): Promise<{ aiReportMode: 'standard' | 'authoritative' }> =>
+    client.get(`/super-admin/companies/${companyId}/ai-report-mode`),
+
+  setCompanyAiReportMode: (companyId: string, aiReportMode: 'standard' | 'authoritative'): Promise<void> =>
+    client.patch(`/super-admin/companies/${companyId}/ai-report-mode`, { aiReportMode }),
+
 // AI Tool Catalog
   getAiTools: (filters?: { module?: string; category?: string; status?: string; mode?: string }) =>
     client.get('/platform/ai-tools', { params: filters }),

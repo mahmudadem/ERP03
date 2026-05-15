@@ -547,7 +547,7 @@ describe('AiToolCatalogSeed', () => {
     const { AI_TOOL_CATALOG } = require('../../../application/ai-assistant/catalog/AiToolCatalogSeed');
 
     const implementedTools = AI_TOOL_CATALOG.filter((t: AiToolDefinition) => t.implemented === true);
-    expect(implementedTools.length).toBe(17);
+    expect(implementedTools.length).toBe(25);
 
     const implementedNames = implementedTools.map((t: AiToolDefinition) => t.name);
     expect(implementedNames).toContain('accounting.getTrialBalanceSummary');
@@ -556,6 +556,14 @@ describe('AiToolCatalogSeed', () => {
     expect(implementedNames).toContain('reports.getFinancialOverview');
     expect(implementedNames).toContain('sales.getSalesSummary');
     expect(implementedNames).toContain('purchase.getPurchaseSummary');
+    expect(implementedNames).toContain('reports.profitAndLoss');
+    expect(implementedNames).toContain('reports.trialBalance');
+    expect(implementedNames).toContain('reports.balanceSheet');
+    expect(implementedNames).toContain('reports.cashFlow');
+    expect(implementedNames).toContain('reports.generalLedger');
+    expect(implementedNames).toContain('reports.accountStatement');
+    expect(implementedNames).toContain('reports.agingReceivables');
+    expect(implementedNames).toContain('reports.agingPayables');
   });
 
   it('should mark non-implemented tools with implemented=false', () => {

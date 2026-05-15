@@ -44,15 +44,18 @@ export default function CompanyEntitlementsPage() {
   const [revoking, setRevoking] = useState<string | null>(null);
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [aiReportMode, setAiReportMode] = useState<'standard' | 'authoritative'>('standard');
+  const [savingReportMode, setSavingReportMode] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
     try {
-      const [companies, modulesRes, entitlementsRes] = await Promise.all([
+      const [companies, modulesRes, entitlementsRes, reportModeRes] = await Promise.all([
         superAdminApi.getAllCompanies(),
         superAdminApi.getModules(),
         superAdminApi.getCompanyEntitlements(companyId),
+        superAdminApi.getCompanyAiReportMode(companyId),
       ]);
 
       const found = companies.find((c: SuperAdminCompany) => c.id === companyId);
@@ -60,6 +63,7 @@ export default function CompanyEntitlementsPage() {
       setAllModules(modulesRes.filter((m: Module) => !PLATFORM_IDS.includes((m.code || m.id).toLowerCase())));
       setEntitledModules(entitlementsRes.modules || []);
       setEntitlements(entitlementsRes.entitlements || []);
+      setAiReportMode(reportModeRes.aiReportMode || 'standard');
     } catch (error: any) {
       errorHandler.showError(error);
     } finally {
@@ -125,6 +129,20 @@ export default function CompanyEntitlementsPage() {
     };
   });
 
+  const handleReportModeChange = async (mode: 'standard' | 'authoritative') => {
+    if (!companyId || mode === aiReportMode) return;
+    setSavingReportMode(true);
+    try {
+      await superAdminApi.setCompanyAiReportMode(companyId, mode);
+      setAiReportMode(mode);
+      errorHandler.showSuccess(t('superAdmin.companyEntitlements.messages.reportModeUpdated', { defaultValue: 'AI report mode updated' }));
+    } catch (error: any) {
+      errorHandler.showError(error);
+    } finally {
+      setSavingReportMode(false);
+    }
+  };
+
   const sourceTypeLabel = (sourceType: string) => {
     switch (sourceType) {
       case 'bundle': return t('superAdmin.companyEntitlements.sourceTypes.bundle', { defaultValue: 'Bundle' });
@@ -171,6 +189,46 @@ export default function CompanyEntitlementsPage() {
         <SuperAdminLoading label={t('superAdmin.companyEntitlements.loading', { defaultValue: 'Loading modules...' })} />
       ) : (
         <div className="flex flex-col gap-4">
+          {/* AI Report Mode */}
+          <div className="rounded-lg border border-[var(--sa-border)] bg-[var(--sa-surface)]">
+            <div className="border-b border-[var(--sa-border)] px-4 py-3">
+              <h2 className="text-sm font-semibold text-[var(--sa-text)]">
+                {t('superAdmin.companyEntitlements.aiReportMode.title', { defaultValue: 'AI Report Mode' })}
+              </h2>
+            </div>
+            <div className="px-4 py-4">
+              <p className="mb-3 text-xs text-slate-500">
+                {t('superAdmin.companyEntitlements.aiReportMode.description', {
+                  defaultValue: 'Controls which AI report tools are exposed to this company. "Standard" uses the original summary tools. "Authoritative" uses full ERP report tools with complete context.',
+                })}
+              </p>
+              <div className="flex items-center gap-3">
+                <select
+                  value={aiReportMode}
+                  onChange={(e) => handleReportModeChange(e.target.value as 'standard' | 'authoritative')}
+                  disabled={savingReportMode}
+                  className={clsx(
+                    'rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900',
+                    'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500',
+                    savingReportMode && 'opacity-50 cursor-wait',
+                  )}
+                >
+                  <option value="standard">
+                    {t('superAdmin.companyEntitlements.aiReportMode.standard', { defaultValue: 'Standard (summary tools)' })}
+                  </option>
+                  <option value="authoritative">
+                    {t('superAdmin.companyEntitlements.aiReportMode.authoritative', { defaultValue: 'Authoritative (full report tools)' })}
+                  </option>
+                </select>
+                {savingReportMode && (
+                  <span className="text-xs text-slate-400">
+                    {t('superAdmin.companyEntitlements.aiReportMode.saving', { defaultValue: 'Saving...' })}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Granted Modules Table */}
           <div className="rounded-lg border border-[var(--sa-border)] bg-[var(--sa-surface)]">
             <div className="border-b border-[var(--sa-border)] px-4 py-3">

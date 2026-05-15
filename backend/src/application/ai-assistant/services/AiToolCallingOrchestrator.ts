@@ -50,6 +50,7 @@ import { AiRuntimeGuard, GuardDecision } from './AiRuntimeGuard';
 import { getCatalogDefinition, getExecutableDefinitions } from '../catalog/AiToolCatalogSeed';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { AiModelRoutingGuard, certificationCategoryForModule } from './AiModelRoutingGuard';
+import { AUTHORITATIVE_REPORT_TOOL_NAMES, STANDARD_REPORT_TOOL_NAMES } from '../tools/reports/index';
 
 export interface ToolCallingResult {
   /** The tool that was invoked */
@@ -443,6 +444,11 @@ export class AiToolCallingOrchestrator {
 
       // Must not be blocked
       if (def.isBlocked) continue;
+
+      // Report mode gate: expose either standard or authoritative report tools
+      const reportMode = options?.providerConfig?.aiReportMode || 'standard';
+      if (reportMode === 'standard' && AUTHORITATIVE_REPORT_TOOL_NAMES.includes(def.name)) continue;
+      if (reportMode === 'authoritative' && STANDARD_REPORT_TOOL_NAMES.includes(def.name)) continue;
 
       if (options?.providerConfig && options.routingGuard) {
         const routingDecision = await options.routingGuard.validateSensitiveWorkflow({
