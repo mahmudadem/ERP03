@@ -1,5 +1,54 @@
 # 🎯 Current Focus
 
+**Task:** Enterprise restructure & doc workflow enforcement (Phases 1, 2, 4)
+**Status:** 🟡 IN PROGRESS — Phases 1, 2, 4 complete. Phase 3 (pnpm monorepo) deferred. Phase 5 (user guide backfill) pending.
+**Branch:** `chore/enterprise-restructure`
+**Started:** 2026-05-17
+**Plan:** See `C:\Users\mahmu\.claude\plans\ok-what-i-need-tingly-treasure.md`
+
+### What's been done (this session)
+
+**Phase 1 — Root Cleanup** (commit `d4301ca2`):
+- 8 root planning .md files → `planning/`
+- `1-TODO/` → `planning/tasks/`, `1-TODO/done/` → `planning/done/`
+- Root debug scripts → `scripts/debug/`
+- Added root `README.md` and `CLAUDE.md` (Claude Code auto-load)
+- Updated AGENTS.md path references and added Definition of Done section
+- Untracked clutter: firebase-export-*, test_results.txt, tsc_output.txt, tmp/, frontend log files
+
+**Phase 2 — Module Consolidation** (commit `2497ee77`):
+- Archived `auth-wizard/`, `Voucher-Wizard/`, `frontend/src/dynamic-core/`, and root orphans (index.html, index.tsx, metadata.json, root vite.config.ts) to `.archive/`
+- Kept `designer-engine/` (corrected from audit — it's actively used by 10+ files)
+- Added `STATUS.md` to 5 placeholder modules (hr, crm, manufacturing, projects, pos)
+- Cleaned root package.json scripts (removed dead `dev`/`build`/`preview` pointing to archived vite config)
+- Wrote `.archive/README.md`
+- Verified: frontend tsc clean, backend tsc clean
+
+**Phase 4 — Doc Workflow Enforcement** (current):
+- Created `planning/done/_TEMPLATE.md` — completion-report template with Definition-of-Done checklist
+- Created `docs/README.md` — full doc map with gap analysis
+- Created `docs/handoff/README.md` — onboarding guide for incoming engineers
+- Moved `docs/sales/`, `docs/inventory/`, `docs/purchases/` → `docs/modules/`
+- Reshuffled scattered docs: backend/*.md and docs/*.md (root) sorted into architecture/, planning/done/, or kept code-near
+- Updated `erp-reviewer` prompt (`.opencode/prompts/sub-reviewer.md`) — added rule 13 to BLOCK on missing user guide for user-facing features
+
+### Phases deferred / pending
+
+- **Phase 3 — pnpm monorepo restructure** (deferred — needs focused session). Will rename `frontend/` → `apps/web/`, `backend/` → `apps/api/`, `shared/` → `packages/shared-types/`, split root package.json, add `pnpm-workspace.yaml` and `tsconfig.base.json`.
+- **Phase 5 — User guide backfill** (pending). Core 4 first (Accounting, Sales, Purchases, Inventory) → AI/Super Admin/Settings → everything else.
+
+### Recommended next move
+
+Two options for the next session:
+1. **Phase 5 — start backfilling user guides for the Core 4 modules** (Accounting, Sales, Purchases, Inventory). Low risk, high value for handoff. Can be done feature-by-feature.
+2. **Phase 3 — pnpm monorepo** (higher risk; touches many files but makes the codebase look professional to incoming SWEs).
+
+Recommendation: **Phase 5 first**, then Phase 3 once docs are in place.
+
+---
+
+## 📦 Previous Focus — Topbar Widget Designer ✅ COMPLETE
+
 **Task:** Topbar Widget Designer — 8 New Customization Features
 **Status:** ✅ COMPLETE
 **Branch:** `feat/phase-1a-core-bugs`

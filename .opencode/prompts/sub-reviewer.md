@@ -68,6 +68,17 @@ You are activated by the orchestrator after builders finish implementation.
     - No API keys, tokens, or passwords in source code
     - If a secret is found, mark as BLOCKER immediately
 
+13. **Documentation — Definition of Done (per AGENTS.md)**
+    A task that adds or changes a user-facing feature is NOT complete without:
+    - `docs/architecture/<module>.md` updated or created (technical doc for future engineers)
+    - `docs/user-guide/<module>/<feature>.md` created (plain-language doc for end users)
+    - `planning/done/NN-feature-name.md` completion report linking both
+    - `planning/JOURNAL.md` entry appended
+    - `planning/ACTIVE.md` updated with next task
+    
+    **If a user-facing feature is missing a user guide, raise a BLOCKER.**
+    Internal-only changes (refactors, infrastructure, tooling) are exempt from the user-guide requirement but MUST still have an architecture-doc update if they affect how things are built or operated.
+
 ## Output Format
 ```
 REVIEW RESULT:

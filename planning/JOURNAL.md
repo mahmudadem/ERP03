@@ -2,6 +2,19 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-17 (Sun) — ~2.5h
+**Task:** Enterprise restructure & documentation workflow (Phases 1, 2, 4 of 5)
+**Agent:** Claude (Sonnet 4.6) — CTO mode
+**Branch:** `chore/enterprise-restructure` (off `main`)
+**What I Did:**
+- Drafted plan at `C:\Users\mahmu\.claude\plans\ok-what-i-need-tingly-treasure.md` based on three parallel exploration agents that audited root clutter, code organization, and doc state.
+- **Phase 1 — Root Cleanup** (commit `d4301ca2`): consolidated 8 root planning .md files under `planning/`, moved `1-TODO/` to `planning/tasks/` and `1-TODO/done/` to `planning/done/`, moved root debug scripts to `scripts/debug/`, added root `README.md` and `CLAUDE.md`, added Definition-of-Done section to `AGENTS.md`, untracked firebase exports / test outputs / tmp / frontend log files.
+- **Phase 2 — Module Consolidation** (commit `2497ee77`): archived `auth-wizard/`, `Voucher-Wizard/`, `frontend/src/dynamic-core/`, and root orphans (index.html / index.tsx / metadata.json / root vite.config.ts) to `.archive/`; kept `designer-engine/` (corrected from audit — actively used by 10+ files); added `STATUS.md` to 5 placeholder modules (hr, crm, manufacturing, projects, pos); cleaned root `package.json` scripts; wrote `.archive/README.md`.
+- **Phase 4 — Doc Workflow Enforcement** (this commit): created `planning/done/_TEMPLATE.md`, `docs/README.md`, `docs/handoff/README.md`; moved `docs/sales|inventory|purchases` → `docs/modules/`; reshuffled scattered backend/*.md and docs/*.md root docs into architecture/ or planning/done/; updated `erp-reviewer` prompt with rule 13 enforcing user-guide presence for user-facing features.
+- Confirmed: `frontend` and `backend` `tsc --noEmit` both clean after Phase 2.
+**Result:** ✅ Repo root went from ~60 visible entries to ~15 recognizable ones. Documentation has a single map (`docs/README.md`). Every future feature must produce architecture doc + user guide (enforced by reviewer).
+**Next:** Phase 5 — backfill user guides for Core 4 modules (Accounting, Sales, Purchases, Inventory). Phase 3 (pnpm monorepo) deferred — needs its own focused session.
+
 ## 2026-05-16 (Sat) — ~2.0h
 **Task:** Build Platform Global Providers for AI Credits mode
 **Agent:** Codex (CTO Mode)
