@@ -2,6 +2,20 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-17 (Sun, continued) — ~0.5h
+**Task:** Emulator data and Firebase export hygiene
+**Agent:** Claude (Sonnet 4.6) — CTO mode
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Audited ~32 MB of clutter across 15 directories: 11 `firebase-export-*/`, 3 `emulator-data-*/` backups, 1 `emulator-data.backup/`, and `restored-data/` (tracked but unused).
+- Archived all of it under `.archive/firebase-exports/` and `.archive/emulator-backups/`. `restored-data/` moved with `git mv` (history preserved).
+- Narrowed `.gitignore` patterns from global to root-anchored (`/firebase-export-*/` etc.) so the `.archive/` copies become tracked while future root-level exports remain ignored. Added `.emulator-snapshots/` as the canonical gitignored location for future ad-hoc snapshots.
+- Created `emulator-data/README.md` documenting what it is, when to refresh, the new `.emulator-snapshots/` workflow, and the relationship to historical exports.
+- Updated `.archive/README.md` with sections describing `firebase-exports/`, `emulator-backups/`, `restored-data/`, and `command-center/`.
+- Captured two pre-existing on-disk changes the product owner had started but not committed: `.analysis/erp02-accounting/` deletion (old ERP02 reference material) and `command-center/` → `.archive/command-center/` (dev dashboard archived May 5).
+**Result:** ✅ Root listing reduced from ~15 visible folders to ~10. Historical exports preserved as tracked archive. Clear forward policy for future snapshots.
+**Next:** Resume Phase 5 (Super Admin / Settings / Widget Designer user guides) or revisit Phase 3 (pnpm monorepo).
+
 ## 2026-05-17 (Sun, continued) — ~1.5h
 **Task:** Enterprise restructure Phase 5 — Core 4 user-guide backfill
 **Agent:** Claude (Sonnet 4.6) — CTO mode

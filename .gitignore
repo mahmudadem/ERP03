@@ -37,11 +37,22 @@ graphify-out/cache/
 backend/lib/
 
 # Emulator data exports and backups
-firebase-export-*/
-emulator-data-before-*/
-emulator-data-empty-*/
-emulator-data.backup/
-!emulator-data/
+#
+# Policy:
+# - `emulator-data/` (canonical seeded dev DB) IS tracked in git — shared seed state.
+# - Ad-hoc snapshots created on the fly (firebase emulators:export ./.emulator-snapshots/...)
+#   live under `.emulator-snapshots/` and are NEVER tracked.
+# - Historical exports preserved in `.archive/firebase-exports/` and `.archive/emulator-backups/`
+#   ARE tracked (they are bounded historical artifacts, not growing clutter).
+#
+# Patterns below ignore the LEGACY root-level export folders that Firebase CLI used to drop
+# at the repo root. The leading `/` anchors them to root so the `.archive/` copies stay tracked.
+
+/firebase-export-*/
+/emulator-data-before-*/
+/emulator-data-empty-*/
+/emulator-data.backup/
+.emulator-snapshots/
 
 # Test/build output files
 tsc_output.txt

@@ -40,6 +40,52 @@ This folder contains code that was once part of ERP03 but is no longer active. F
 
 ---
 
+### `command-center/` (archived ~2026-05-05; tracked from 2026-05-17)
+
+**What it was:** A local Express-based dev dashboard / task tracker. Ran separately from the main app. Useful as a development aide, not a deployable product feature.
+
+**Why archived:** Sat unused for weeks. The product owner moved it out of the active code on May 5 before this restructure session. Per the original plan, it was supposed to be kept as `apps/command-center/` (a gated dev tool), but the actual decision on disk was to archive it.
+
+**Status:** Dead-for-now. Revive into `apps/command-center/` (Phase 3 monorepo) if you ever want a local dashboard again.
+
+---
+
+### `firebase-exports/` (archived 2026-05-17)
+
+**What it was:** 11 timestamped Firebase emulator export snapshots dropped at the repo root by `firebase emulators:export ./firebase-export-NNN`. They accumulated over months of dev work — partly because Firebase CLI defaults to root-level export paths, partly because some sessions saved a snapshot before risky changes.
+
+**Why archived:** They polluted the root listing (~26 MB across 11 dirs, many of them obsolete or identical to `emulator-data/`). Preserving them in `.archive/firebase-exports/` keeps the historical state available without root noise.
+
+**Restore one:** `cp -r .archive/firebase-exports/firebase-export-XXX ./tmp-restore && firebase emulators:start --import ./tmp-restore`.
+
+**Going forward:** Ad-hoc snapshots should live under `.emulator-snapshots/` (gitignored) — see `emulator-data/README.md`.
+
+---
+
+### `emulator-backups/` (archived 2026-05-17)
+
+**What it was:** Three manual save points created with `cp -r emulator-data/ emulator-data-XXX-YYYYMMDD-HHMMSS/` before risky operations:
+- `emulator-data-before-routefix-restart-20260513-024116/` — before a route fix on 2026-05-13
+- `emulator-data-empty-after-forceclose-20260513-023318/` — empty state captured after a force-close (same day)
+- `emulator-data-empty-backup-20260510-180737/` — empty backup from 2026-05-10
+- `emulator-data.backup/` — generic backup, undated
+
+**Why archived:** Same as `firebase-exports/` — clutter at root with no active use.
+
+**Status:** Dead. Useful only if you ever need to investigate a 2026-05-10 / 2026-05-13 incident.
+
+---
+
+### `restored-data/` (archived 2026-05-17)
+
+**What it was:** A Firebase export staging folder that mirrored the structure of `emulator-data/`. Created during a past emergency restore. Was tracked in git (unlike the timestamped exports).
+
+**Why archived:** Not referenced anywhere in source code. Same shape as `emulator-data/` but smaller (278 KB) — probably a partial export or a snapshot of an earlier dev state.
+
+**Status:** Probably safe to delete entirely after a future engineer compares its contents to the current `emulator-data/`.
+
+---
+
 ### `root-orphans/` (archived 2026-05-17)
 
 **What it was:** Files left over from an early AI Studio prototype at the repo root:
