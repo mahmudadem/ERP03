@@ -2,7 +2,7 @@ import React from 'react';
 
 export type UserAppearanceDensity = 'compact' | 'comfortable' | 'spacious';
 export type UserAppearanceShadow = 'flat' | 'subtle' | 'pronounced' | 'glass';
-export type UserAppearanceFont = 'system' | 'inter' | 'roboto' | 'outfit' | 'mono';
+export type UserAppearanceFont = 'system' | 'inter' | 'roboto' | 'outfit' | 'mono' | 'cairo';
 
 export interface UserAppearancePalette {
   bgPrimary: string;
@@ -80,7 +80,7 @@ export const USER_APPEARANCE_PRESETS: UserAppearanceSettings[] = [
   {
     id: 'erp-default',
     name: 'ERP Default',
-    primary: '#3b82f6',
+    primary: '#005aeb',
     accent: '#d946ef',
     success: '#22c55e',
     warning: '#f59e0b',
@@ -91,7 +91,7 @@ export const USER_APPEARANCE_PRESETS: UserAppearanceSettings[] = [
       bgTertiary: '#f3f4f6',
       textPrimary: '#111827',
       textSecondary: '#4b5563',
-      textMuted: '#9ca3af',
+      textMuted: '#050505',
       border: '#e5e7eb',
     },
     dark: {
@@ -100,7 +100,7 @@ export const USER_APPEARANCE_PRESETS: UserAppearanceSettings[] = [
       bgTertiary: '#1f2937',
       textPrimary: '#f9fafb',
       textSecondary: '#d1d5db',
-      textMuted: '#9ca3af',
+      textMuted: '#f1f6fe',
       border: '#374151',
     },
     radius: 12,
@@ -237,6 +237,38 @@ export const USER_APPEARANCE_PRESETS: UserAppearanceSettings[] = [
     shadowIntensity: 'flat',
     fontFamily: 'system',
   },
+  {
+    id: 'ocean-breeze',
+    name: 'Ocean Breeze',
+    primary: '#0ea5e9',
+    accent: '#06b6d4',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    light: {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f0f9ff',
+      bgTertiary: '#e0f2fe',
+      textPrimary: '#0c4a6e',
+      textSecondary: '#0284c7',
+      textMuted: '#38bdf8',
+      border: '#bae6fd',
+    },
+    dark: {
+      bgPrimary: '#082f49',
+      bgSecondary: '#0c4a6e',
+      bgTertiary: '#075985',
+      textPrimary: '#f0f9ff',
+      textSecondary: '#bae6fd',
+      textMuted: '#7dd3fc',
+      border: '#0369a1',
+    },
+    radius: 16,
+    density: 'comfortable',
+    sidebarSurface: 'contrast',
+    shadowIntensity: 'glass',
+    fontFamily: 'outfit',
+  },
 ];
 
 export const DEFAULT_USER_APPEARANCE = USER_APPEARANCE_PRESETS[0];
@@ -261,10 +293,11 @@ const densityVars: Record<UserAppearanceDensity, Record<string, string>> = {
 
 const fontVars: Record<UserAppearanceFont, string> = {
   system: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  inter: '"Inter", ui-sans-serif, system-ui, sans-serif',
-  roboto: '"Roboto", ui-sans-serif, system-ui, sans-serif',
-  outfit: '"Outfit", ui-sans-serif, system-ui, sans-serif',
+  inter: '"Inter", "Cairo", ui-sans-serif, system-ui, sans-serif',
+  roboto: '"Roboto", "Cairo", ui-sans-serif, system-ui, sans-serif',
+  outfit: '"Outfit", "Cairo", ui-sans-serif, system-ui, sans-serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  cairo: '"Cairo", "Inter", ui-sans-serif, system-ui, sans-serif',
 };
 
 const hexToRgb = (hex: string) => {
@@ -363,6 +396,7 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, 
     '--app-sidebar-muted': settings.sidebarSurface === 'contrast' ? 'rgba(255,255,255,0.7)' : palette.textMuted,
     
     '--app-font-family': fontVars[settings.fontFamily],
+    '--font-sans': fontVars[settings.fontFamily],
     
     ...densityVars[settings.density],
   };

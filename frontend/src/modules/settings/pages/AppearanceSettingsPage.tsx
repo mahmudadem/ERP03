@@ -235,6 +235,7 @@ const AppearanceSettingsPage: React.FC = () => {
                     <option value="inter">Inter (Modern & Clean)</option>
                     <option value="roboto">Roboto (Classic UI)</option>
                     <option value="outfit">Outfit (Geometric & Bold)</option>
+                    <option value="cairo">Cairo (Arabic & Modern)</option>
                     <option value="mono">Monospace (Technical)</option>
                   </select>
                 </label>
