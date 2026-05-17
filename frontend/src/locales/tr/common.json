@@ -121,7 +121,8 @@
     "budgetVsActual": "B?t?e ve Ger?ekle?en",
     "aiAssistant": "AI Asistani",
     "chat": "Sohbet",
-    "aiProposals": "AI Önerileri"
+    "aiProposals": "Yapay Zeka Teklifleri",
+    "aiUsage": "Yapay Zeka Kullanımı"
   },
   "reportContainer": {
     "refresh": "Yenile",
@@ -1129,7 +1130,7 @@
         "error": "Katalog senkronizasyonu başarısız oldu."
       }
     },
-"aiProviders": {
+    "aiProviders": {
       "title": "AI Sağlayıcıları",
       "description": "Kiracıların seçebileceği AI sağlayıcı meta verilerini yönetin. ERP03 tarafından yönetilmediği sürece kiracılar bu sağlayıcıları kendi anahtarlarıyla kullanır.",
       "loading": "Sağlayıcılar yükleniyor...",
@@ -1298,7 +1299,7 @@
       "search": "Modelleri ara...",
       "empty": "AI model profili bulunamadı",
       "confirmDelete": "{{model}} model profili silinsin mi?",
-"columns": {
+      "columns": {
         "model": "Model",
         "provider": "Sağlayıcı",
         "status": "Durum",
@@ -1308,7 +1309,7 @@
         "actions": "İşlemler"
       },
       "filterAllProviders": "Tüm sağlayıcılar",
-"actions": {
+      "actions": {
         "new": "Yeni Model",
         "sync": "Varsayılanları Senkronize Et",
         "edit": "Düzenle",
@@ -1363,7 +1364,7 @@
         "warningLevel": "Uyarı seviyesi",
         "tags": "Etiketler",
         "useCases": "Kullanım alanları",
-"warningMessage": "Uyarı mesajı",
+        "warningMessage": "Uyarı mesajı",
         "nativeTools": "Yerel araçlar",
         "structuredJson": "Yapılandırılmış JSON",
         "textOnly": "Sadece metin modu",
@@ -1380,7 +1381,7 @@
         "runtimeConfig": "Çalışma Zamanı Yapılandırması",
         "runtimeConfigSubtitle": "Bu ayarlar AI çalışma zamanının bu profili nasıl kullanacağını etkiler. Kabuk sertifikasını geçmek için veri filtre ve güvenlik politikalarını ayarlayın."
       },
-"diagnosticsPanel": {
+      "diagnosticsPanel": {
         "title": "Tanılamayı Çalıştır",
         "subtitle": "Bir şirketin AI yapılandırmasını kullanarak bağlantı ve model yeteneklerini test edin.",
         "company": "Şirket ayarlarını kullan",
@@ -1407,7 +1408,7 @@
         "results": "Sonuçlar",
         "noResults": "Sağlayıcı bağlantısını test etmek için \"Tanılamayı Çalıştır\" seçeneğini tıklayın."
       },
-"certifications": {
+      "certifications": {
         "title": "Sertifikalar",
         "disclaimer": "⚠ Sertifika, ERP modülü uyumluluğunu doğrular. Tanılama yalnızca bağlantıyı test eder.",
         "empty": "Kayıtlı sertifika bulunamadı",
@@ -1881,7 +1882,7 @@
         "permissions": "Izinler",
         "bundles": "Paketler",
         "plans": "Planlar",
-"aiTools": "AI Araçları",
+        "aiTools": "AI Araçları",
         "aiProviders": "AI Sağlayıcıları",
         "aiRuntimeProfiles": "Platform Genel Sağlayıcıları",
         "aiModels": "AI Modelleri"
@@ -2079,8 +2080,6 @@
       "eventCategories": "Etkinlik Kategorileri",
       "hint": "Kategorileri bu şirketteki tüm kullanıcılar için varsayılan olarak kapatmak için burada devre dışı bırakın. Kullanıcılar yine de profillerinde bu varsayılanları geçersiz kılabilir."
     },
-    "runtimeMode": "AI Çalışma Modu",
-    "runtimeModeDesc": "Şirketiniz için AI kimlik bilgilerinin nasıl çözüleceğini belirler.",
     "runtimeMode": {
       "BYOK": "Kendi Anahtarını Getir (BYOK)",
       "BYOK.desc": "Aşağıda kendi API anahtarınızı sağlamanız gerekir. Şirketiniz sağlayıcıya doğrudan ödeme yapar.",
@@ -2088,7 +2087,8 @@
       "CREDITS.desc": "Kredi bakiyesi üzerinden platform tarafından sağlanan AI. Kullanım AI kredilerinizden düşülür.",
       "DISABLED": "Devre Dışı",
       "DISABLED.desc": "AI Asistan şirketiniz için devre dışı bırakıldı."
-    }
+    },
+    "runtimeModeDesc": "Şirketiniz için AI kimlik bilgilerinin nasıl çözüleceğini belirler."
   },
   "success": {
     "SAVE": "Başarıyla kaydedildi"

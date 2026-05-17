@@ -1,4 +1,4 @@
-{
+﻿{
   "appName": "ERP03",
   "language": {
     "label": "Language",
@@ -121,7 +121,8 @@
     "budgetVsActual": "Budget vs Actual",
     "aiAssistant": "AI Assistant",
     "chat": "Chat",
-    "aiProposals": "AI Proposals"
+    "aiProposals": "AI Proposals",
+    "aiUsage": "AI Usage"
   },
   "reportContainer": {
     "refresh": "Refresh",
@@ -1129,7 +1130,7 @@
         "error": "Failed to sync catalog."
       }
     },
-"aiProviders": {
+    "aiProviders": {
       "title": "AI Providers",
       "description": "Manage tenant-selectable AI provider metadata. Tenants use these providers with their own key unless marked ERP03-managed.",
       "loading": "Loading providers...",
@@ -1298,7 +1299,7 @@
       "search": "Search models...",
       "empty": "No AI model profiles found",
       "confirmDelete": "Delete model profile {{model}}?",
-"columns": {
+      "columns": {
         "model": "Model",
         "provider": "Provider",
         "status": "Status",
@@ -1308,7 +1309,7 @@
         "actions": "Actions"
       },
       "filterAllProviders": "All providers",
-"actions": {
+      "actions": {
         "new": "New Model",
         "sync": "Sync Defaults",
         "edit": "Edit",
@@ -1351,7 +1352,7 @@
         "textOnly": "Text only",
         "json": "JSON"
       },
-"form": {
+      "form": {
         "createTitle": "Create Model Profile",
         "editTitle": "Edit Model Profile",
         "provider": "Provider",
@@ -1380,7 +1381,7 @@
         "runtimeConfig": "Runtime Configuration",
         "runtimeConfigSubtitle": "These settings affect how the AI runtime uses this profile. Set data filter and safety policies to pass shell certification."
       },
-"diagnosticsPanel": {
+      "diagnosticsPanel": {
         "title": "Run Diagnostics",
         "subtitle": "Test connectivity and model capabilities using a company's AI configuration.",
         "company": "Use company settings",
@@ -1474,90 +1475,10 @@
     }
   },
   "onboarding": {
-    "landing": {
-      "authFailed": "Authentication failed",
-      "nav": {
-        "features": "Features",
-        "solutions": "Solutions",
-        "pricing": "Pricing",
-        "enterprise": "Enterprise",
-        "login": "Log in",
-        "getStarted": "Get Started"
-      },
-      "badge": "New ERP System v3.0",
-      "hero": {
-        "titlePrefix": "Everything you need to",
-        "titleHighlight": "manage",
-        "titleSuffix": "your business.",
-        "subtitle": "The all-in-one platform built for modern enterprises. Seamlessly integrated accounting, operations, and HR tools.",
-        "freeTrial": "Free Trial",
-        "noCard": "No credit card required"
-      },
-      "authTabs": {
-        "createAccount": "CREATE ACCOUNT",
-        "signIn": "SIGN IN"
-      },
-      "auth": {
-        "joinTitle": "Join ERP03",
-        "welcomeTitle": "Welcome back",
-        "joinSubtitle": "Start your journey with us today.",
-        "welcomeSubtitle": "Please enter your credentials to continue."
-      },
-      "form": {
-        "firstName": "First Name",
-        "firstPlaceholder": "First",
-        "lastName": "Last Name",
-        "lastPlaceholder": "Last",
-        "email": "Email Address",
-        "emailPlaceholder": "email@company.com",
-        "password": "Password",
-        "submitCreate": "Create Account",
-        "submitSignIn": "Sign In"
-      },
-      "admin": {
-        "prefix": "System Admin?",
-        "portal": "Portal Access"
-      },
-      "legal": {
-        "prefix": "By continuing, you agree to our",
-        "terms": "Terms",
-        "privacy": "Privacy"
-      },
-      "stats": {
-        "industryBundles": "Industry Bundles",
-        "activeOrgs": "Active Orgs",
-        "uptimeSla": "Uptime SLA",
-        "globalSupport": "Global Support"
-      },
-      "features": {
-        "titlePrefix": "Everything you need to",
-        "titleHighlight": "scale",
-        "subtitle": "Modular, scalable, and easy to use. Choose the apps you need and add more as you grow."
-      },
-      "cards": {
-        "financials": {
-          "title": "Financials",
-          "desc": "Automate accounting, invoicing, and expenses."
-        },
-        "humanCapital": {
-          "title": "Human Capital",
-          "desc": "Manage payroll, attendance, and recruitment."
-        },
-        "globalOps": {
-          "title": "Global Ops",
-          "desc": "Multi-currency, multi-language, and multi-company."
-        }
-      }
-    },
     "companyWizard": {
       "basic": {
-        "errors": {
-          "invalidImageType": "Only PNG, JPG, ICO or WEBP images are allowed.",
-          "logoSize": "Logo must be smaller than 5MB.",
-          "logoProcessFailed": "Failed to process image. Please try another one.",
-          "companyNameRequired": "Company name is required",
-          "countryRequired": "Please select a country"
-        },
+        "title": "Company Basics",
+        "subtitle": "Let's start with the essentials.",
         "fields": {
           "companyName": "Company Name",
           "country": "Country / Region",
@@ -1569,20 +1490,28 @@
           "searchCountries": "Search countries...",
           "description": "Briefly describe your company..."
         },
-        "optional": "Optional",
-        "noCountriesFound": "No countries found",
-        "optimizing": "Optimizing...",
         "actions": {
-          "upload": "Upload",
-          "removeLogo": "Remove logo",
           "cancel": "Cancel",
-          "nextStep": "Next Step"
+          "nextStep": "Next Step",
+          "upload": "Upload",
+          "removeLogo": "Remove logo"
         },
+        "errors": {
+          "companyNameRequired": "Company name is required",
+          "countryRequired": "Please select a country",
+          "invalidImageType": "Only PNG, JPG, ICO or WEBP images are allowed.",
+          "logoSize": "Logo must be smaller than 5MB.",
+          "logoProcessFailed": "Failed to process image. Please try another one."
+        },
+        "optional": "Optional",
+        "optimizing": "Optimizing...",
         "dragDrop": "or drag & drop",
         "allowedFormats": "PNG, JPG, ICO, WEBP",
         "readyForDocuments": "Ready for Documents",
+        "noCountriesFound": "No countries found",
         "autoConfigEnabled": "Auto-Configuration Enabled",
         "smartDefaultsIntro": "Based on {{country}}, we've applied the following smart defaults:",
+        "customizeLater": "These settings can be customized in your company profile later.",
         "defaults": {
           "currency": "Currency",
           "language": "Language",
@@ -1593,8 +1522,93 @@
           "arabic": "Arabic",
           "turkish": "Turkish",
           "english": "English"
+        }
+      },
+      "bundle": {
+        "title": "Select a Bundle",
+        "subtitle": "Choose the feature set that fits your needs.",
+        "searchPlaceholder": "Search bundles...",
+        "recommended": "Recommended",
+        "noModules": "No modules included",
+        "noBundles": "No bundles found matching your search",
+        "bundleCount": "{{count}} bundles available",
+        "actions": {
+          "back": "Back",
+          "nextStep": "Continue"
         },
-        "customizeLater": "These settings can be customized in your company profile later."
+        "errors": {
+          "selectBundle": "Please select a bundle to continue"
+        }
+      },
+      "contact": {
+        "title": "Admin & Contact",
+        "subtitle": "Set up the primary contact for this company.",
+        "businessEmail": "Business Email Address",
+        "emailPlaceholder": "e.g. admin@company.com",
+        "helper": "This will be the primary administrator for the company.",
+        "actions": {
+          "back": "Back",
+          "nextStep": "Review Details"
+        },
+        "errors": {
+          "invalidEmail": "Please enter a valid email address"
+        }
+      },
+      "review": {
+        "title": "Review & Create",
+        "subtitle": "Verify details before initializing the company.",
+        "companySummary": "Company Summary",
+        "companyName": "Company Name",
+        "location": "Location",
+        "adminEmail": "Admin Email",
+        "selectedBundle": "Selected Bundle",
+        "modulesIncluded": "{{count}} modules included",
+        "modulesToInstall": "Modules to be Installed",
+        "noSpecificModules": "No specific modules selected",
+        "legal": "By creating this company, you agree to our Terms of Service.",
+        "actions": {
+          "back": "Back",
+          "createCompany": "Initialize Company",
+          "creating": "Creating...",
+          "close": "Close",
+          "tryAgain": "Try Again"
+        },
+        "progress": {
+          "creatingCompany": "Creating company record...",
+          "installingModules": "Installing modules...",
+          "settingPermissions": "Setting up permissions...",
+          "finalizing": "Finalizing workspace..."
+        },
+        "errors": {
+          "missingInfo": "Please go back and fill in all required information.",
+          "createFailed": "Failed to create company. Please try again."
+        },
+        "modal": {
+          "creatingCompany": "Initializing Your Workspace",
+          "companyCreated": "Company Ready!",
+          "creationFailed": "Initialization Failed",
+          "error": "Error Details",
+          "pleaseWait": "Please wait, we are setting everything up for you..."
+        },
+        "defaults": {
+          "country": "International"
+        }
+      },
+      "success": {
+        "title": "All Set!",
+        "subtitle": "Your company has been created successfully. You can now start using the system.",
+        "whatsNext": "What's Next?",
+        "steps": {
+          "setupAccounting": "Complete the accounting setup wizard",
+          "inviteUsers": "Invite your team members to join"
+        },
+        "goToDashboard": "Go to Dashboard"
+      },
+      "stepper": {
+        "basicInfo": "Basic Info",
+        "selectBundle": "Select Bundle",
+        "contactInfo": "Contact Info",
+        "review": "Review"
       }
     }
   },
@@ -1795,7 +1809,7 @@
         "permissions": "Permissions",
         "bundles": "Bundles",
         "plans": "Plans",
-"aiTools": "AI Tools",
+        "aiTools": "AI Tools",
         "aiProviders": "AI Providers",
         "aiRuntimeProfiles": "Platform Global Providers",
         "aiModels": "AI Models"
@@ -1993,8 +2007,6 @@
       "eventCategories": "Event Categories",
       "hint": "Disable categories here to turn them off by default for all users in this company. Users can still override these defaults in their profile."
     },
-    "runtimeMode": "AI Runtime Mode",
-    "runtimeModeDesc": "Determines how AI credentials are resolved for your company.",
     "runtimeMode": {
       "BYOK": "Bring Your Own Key (BYOK)",
       "BYOK.desc": "You must provide your own API key below. Your company pays the provider directly.",
@@ -2002,147 +2014,10 @@
       "CREDITS.desc": "Platform-provided AI via credit balance. Usage is deducted from your AI credits.",
       "DISABLED": "Disabled",
       "DISABLED.desc": "AI Assistant is disabled for your company."
-    }
+    },
+    "runtimeModeDesc": "Determines how AI credentials are resolved for your company."
   },
   "success": {
     "SAVE": "Saved successfully"
-  },
-  "onboarding": {
-    "companyWizard": {
-      "basic": {
-        "title": "Company Basics",
-        "subtitle": "Let's start with the essentials.",
-        "fields": {
-          "companyName": "Company Name",
-          "country": "Country / Region",
-          "description": "Description",
-          "companyLogo": "Company Logo"
-        },
-        "placeholders": {
-          "companyName": "e.g. Acme Corp",
-          "searchCountries": "Search countries...",
-          "description": "Briefly describe your company..."
-        },
-        "actions": {
-          "cancel": "Cancel",
-          "nextStep": "Next Step",
-          "upload": "Upload",
-          "removeLogo": "Remove logo"
-        },
-        "errors": {
-          "companyNameRequired": "Company name is required",
-          "countryRequired": "Please select a country",
-          "invalidImageType": "Only PNG, JPG, ICO or WEBP images are allowed.",
-          "logoSize": "Logo must be smaller than 5MB.",
-          "logoProcessFailed": "Failed to process image. Please try another one."
-        },
-        "optional": "Optional",
-        "optimizing": "Optimizing...",
-        "dragDrop": "or drag & drop",
-        "allowedFormats": "PNG, JPG, ICO, WEBP",
-        "readyForDocuments": "Ready for Documents",
-        "noCountriesFound": "No countries found",
-        "autoConfigEnabled": "Auto-Configuration Enabled",
-        "smartDefaultsIntro": "Based on {{country}}, we've applied the following smart defaults:",
-        "customizeLater": "These settings can be customized in your company profile later.",
-        "defaults": {
-          "currency": "Currency",
-          "language": "Language",
-          "timezone": "Timezone",
-          "dateFormat": "Date Format"
-        },
-        "languages": {
-          "arabic": "Arabic",
-          "turkish": "Turkish",
-          "english": "English"
-        }
-      },
-      "bundle": {
-        "title": "Select a Bundle",
-        "subtitle": "Choose the feature set that fits your needs.",
-        "searchPlaceholder": "Search bundles...",
-        "recommended": "Recommended",
-        "noModules": "No modules included",
-        "noBundles": "No bundles found matching your search",
-        "bundleCount": "{{count}} bundles available",
-        "actions": {
-          "back": "Back",
-          "nextStep": "Continue"
-        },
-        "errors": {
-          "selectBundle": "Please select a bundle to continue"
-        }
-      },
-      "contact": {
-        "title": "Admin & Contact",
-        "subtitle": "Set up the primary contact for this company.",
-        "businessEmail": "Business Email Address",
-        "emailPlaceholder": "e.g. admin@company.com",
-        "helper": "This will be the primary administrator for the company.",
-        "actions": {
-          "back": "Back",
-          "nextStep": "Review Details"
-        },
-        "errors": {
-          "invalidEmail": "Please enter a valid email address"
-        }
-      },
-      "review": {
-        "title": "Review & Create",
-        "subtitle": "Verify details before initializing the company.",
-        "companySummary": "Company Summary",
-        "companyName": "Company Name",
-        "location": "Location",
-        "adminEmail": "Admin Email",
-        "selectedBundle": "Selected Bundle",
-        "modulesIncluded": "{{count}} modules included",
-        "modulesToInstall": "Modules to be Installed",
-        "noSpecificModules": "No specific modules selected",
-        "legal": "By creating this company, you agree to our Terms of Service.",
-        "actions": {
-          "back": "Back",
-          "createCompany": "Initialize Company",
-          "creating": "Creating...",
-          "close": "Close",
-          "tryAgain": "Try Again"
-        },
-        "progress": {
-          "creatingCompany": "Creating company record...",
-          "installingModules": "Installing modules...",
-          "settingPermissions": "Setting up permissions...",
-          "finalizing": "Finalizing workspace..."
-        },
-        "errors": {
-          "missingInfo": "Please go back and fill in all required information.",
-          "createFailed": "Failed to create company. Please try again."
-        },
-        "modal": {
-          "creatingCompany": "Initializing Your Workspace",
-          "companyCreated": "Company Ready!",
-          "creationFailed": "Initialization Failed",
-          "error": "Error Details",
-          "pleaseWait": "Please wait, we are setting everything up for you..."
-        },
-        "defaults": {
-          "country": "International"
-        }
-      },
-      "success": {
-        "title": "All Set!",
-        "subtitle": "Your company has been created successfully. You can now start using the system.",
-        "whatsNext": "What's Next?",
-        "steps": {
-          "setupAccounting": "Complete the accounting setup wizard",
-          "inviteUsers": "Invite your team members to join"
-        },
-        "goToDashboard": "Go to Dashboard"
-      },
-      "stepper": {
-        "basicInfo": "Basic Info",
-        "selectBundle": "Select Bundle",
-        "contactInfo": "Contact Info",
-        "review": "Review"
-      }
-    }
   }
 }

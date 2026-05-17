@@ -125,12 +125,17 @@ const authTone = (auth: string): 'slate' | 'green' | 'amber' | 'red' | 'blue' =>
   }
 };
 
+type ViewState = 
+  | { mode: 'list' }
+  | { mode: 'creating' }
+  | { mode: 'editing', providerId: string };
+
 export const AiProvidersPage: React.FC = () => {
   const { t } = useTranslation('common');
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>({ mode: 'list' });
   const [form, setForm] = useState<UpsertAiProviderPayload>(emptyForm);
 
   const loadProviders = async () => {
@@ -150,7 +155,7 @@ export const AiProvidersPage: React.FC = () => {
   }, []);
 
   const selectProvider = (provider: AiProvider) => {
-    setSelectedId(provider.id);
+    setViewState({ mode: 'editing', providerId: provider.id });
     setForm({
       name: provider.name,
       type: provider.type,
@@ -166,7 +171,7 @@ export const AiProvidersPage: React.FC = () => {
   };
 
   const resetForm = () => {
-    setSelectedId(null);
+    setViewState({ mode: 'list' });
     setForm(emptyForm);
   };
 
@@ -187,10 +192,10 @@ export const AiProvidersPage: React.FC = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      if (selectedId) {
-        await superAdminApi.updateAiProvider(selectedId, form);
+      if (viewState.mode === 'editing') {
+        await superAdminApi.updateAiProvider(viewState.providerId, form);
         errorHandler.showSuccess(t('superAdmin.aiProviders.messages.updated'));
-      } else {
+      } else if (viewState.mode === 'creating') {
         await superAdminApi.createAiProvider(form);
         errorHandler.showSuccess(t('superAdmin.aiProviders.messages.created'));
       }
@@ -269,14 +274,16 @@ export const AiProvidersPage: React.FC = () => {
         description={t('superAdmin.aiProviders.description')}
         meta={t('superAdmin.aiProviders.meta', stats)}
         actions={
-          <button onClick={resetForm} className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <Plus className="h-4 w-4" />
-            {t('superAdmin.aiProviders.actions.new')}
-          </button>
+          viewState.mode === 'list' && (
+            <button onClick={() => { setForm(emptyForm); setViewState({ mode: 'creating' }); }} className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <Plus className="h-4 w-4" />
+              {t('superAdmin.aiProviders.actions.new')}
+            </button>
+          )
         }
       />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      {viewState.mode === 'list' ? (
         <div className="space-y-4">
           <SuperAdminSearchInput
             value={searchQuery}
@@ -364,13 +371,16 @@ export const AiProvidersPage: React.FC = () => {
             </tbody>
           </SuperAdminTable>
         </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-4 flex items-center gap-2">
-            <Server className="h-5 w-5 text-slate-500" />
-            <h2 className="text-base font-semibold text-slate-900">
-              {selectedId ? t('superAdmin.aiProviders.form.editTitle') : t('superAdmin.aiProviders.form.createTitle')}
-            </h2>
+      ) : (
+        <div className="mx-auto w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Server className="h-6 w-6 text-slate-500" />
+              <h2 className="text-lg font-semibold text-slate-900">
+                {viewState.mode === 'editing' ? t('superAdmin.aiProviders.form.editTitle') : t('superAdmin.aiProviders.form.createTitle')}
+              </h2>
+            </div>
+            <button onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</button>
           </div>
 
           <div className="space-y-3">
@@ -385,7 +395,7 @@ export const AiProvidersPage: React.FC = () => {
                 value={form.type}
                 onChange={event => {
                   const nextType = event.target.value as AiProviderRegistryType;
-                  if (selectedId) {
+                  if (viewState.mode === 'editing') {
                     setForm({ ...form, type: nextType });
                     return;
                   }
@@ -495,11 +505,11 @@ export const AiProvidersPage: React.FC = () => {
                 className="min-h-20 w-full rounded-md border border-slate-300 px-3 py-2"
               />
             </label>
-            {selectedId && (
+            {viewState.mode === 'editing' && (
               <button
                 type="button"
                 onClick={() => {
-                  const provider = providers.find(p => p.id === selectedId);
+                  const provider = providers.find(p => p.id === viewState.providerId);
                   if (provider) {
                     if (provider.enabled) {
                       handleDisable(provider.id);
@@ -510,12 +520,12 @@ export const AiProvidersPage: React.FC = () => {
                 }}
                 className={clsx(
                   'flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium',
-                  providers.find(p => p.id === selectedId)?.enabled
+                  providers.find(p => p.id === viewState.providerId)?.enabled
                     ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
                     : 'border-green-200 text-green-700 hover:bg-green-50'
                 )}
               >
-                {providers.find(p => p.id === selectedId)?.enabled
+                {providers.find(p => p.id === viewState.providerId)?.enabled
                   ? t('superAdmin.aiProviders.form.disable')
                   : t('superAdmin.aiProviders.form.enable')}
               </button>
@@ -530,7 +540,7 @@ export const AiProvidersPage: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
+      )}
     </SuperAdminPage>
   );
 };

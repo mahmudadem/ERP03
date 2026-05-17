@@ -54,6 +54,11 @@ const formatDateTime = (value?: string | null) => {
   return date.toLocaleString();
 };
 
+type ViewState =
+  | { mode: 'list' }
+  | { mode: 'creating' }
+  | { mode: 'editing', profileId: string };
+
 export const AiRuntimeProfilesPage: React.FC = () => {
   const { t } = useTranslation('common');
   const [profiles, setProfiles] = useState<AiRuntimeProfile[]>([]);
@@ -61,12 +66,12 @@ export const AiRuntimeProfilesPage: React.FC = () => {
   const [models, setModels] = useState<AiModelProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>({ mode: 'list' });
   const [form, setForm] = useState<UpsertAiRuntimeProfilePayload>(emptyForm);
   const [apiKeyInput, setApiKeyInput] = useState('');
 
-  const selectedProfile = profiles.find(profile => profile.id === selectedId) || null;
-  const isEditing = !!selectedId;
+  const selectedProfile = viewState.mode === 'editing' ? profiles.find(profile => profile.id === viewState.profileId) || null : null;
+  const isEditing = viewState.mode === 'editing';
 
   const loadData = async () => {
     try {
@@ -100,7 +105,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
   const resetForm = () => {
     const firstProvider = providers[0];
     const firstModel = firstProvider ? models.find(model => model.providerId === firstProvider.id) : undefined;
-    setSelectedId(null);
+    setViewState({ mode: 'list' });
     setForm({
       ...emptyForm,
       providerId: firstProvider?.id || '',
@@ -110,7 +115,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!loading && !selectedId && providers.length > 0 && !form.providerId) {
+    if (!loading && viewState.mode === 'creating' && providers.length > 0 && !form.providerId) {
       const firstProvider = providers[0];
       const firstModel = models.find(model => model.providerId === firstProvider.id);
       setForm(prev => ({
@@ -119,10 +124,10 @@ export const AiRuntimeProfilesPage: React.FC = () => {
         modelProfileId: firstModel?.id || '',
       }));
     }
-  }, [loading, selectedId, providers, models, form.providerId]);
+  }, [loading, viewState.mode, providers, models, form.providerId]);
 
   const selectProfile = (profile: AiRuntimeProfile) => {
-    setSelectedId(profile.id);
+    setViewState({ mode: 'editing', profileId: profile.id });
     setForm({
       providerId: profile.providerId,
       modelProfileId: profile.modelProfileId,
@@ -154,10 +159,10 @@ export const AiRuntimeProfilesPage: React.FC = () => {
         payload.apiKey = apiKeyInput.trim();
       }
 
-      if (selectedId) {
-        await superAdminApi.updateAiRuntimeProfile(selectedId, payload);
+      if (viewState.mode === 'editing') {
+        await superAdminApi.updateAiRuntimeProfile(viewState.profileId, payload);
         errorHandler.showSuccess(t('superAdmin.aiRuntimeProfiles.messages.updated'));
-      } else {
+      } else if (viewState.mode === 'creating') {
         await superAdminApi.createAiRuntimeProfile(payload);
         errorHandler.showSuccess(t('superAdmin.aiRuntimeProfiles.messages.created'));
       }
@@ -176,7 +181,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
     try {
       await superAdminApi.deleteAiRuntimeProfile(profile.id);
       errorHandler.showSuccess(t('superAdmin.aiRuntimeProfiles.messages.deleted'));
-      if (selectedId === profile.id) resetForm();
+      if (viewState.mode === 'editing' && viewState.profileId === profile.id) resetForm();
       await loadData();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -213,17 +218,29 @@ export const AiRuntimeProfilesPage: React.FC = () => {
         description={t('superAdmin.aiRuntimeProfiles.description')}
         meta={t('superAdmin.aiRuntimeProfiles.meta', stats)}
         actions={
-          <button
-            onClick={resetForm}
-            className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Plus className="h-4 w-4" />
-            {t('superAdmin.aiRuntimeProfiles.actions.new')}
-          </button>
+          viewState.mode === 'list' && (
+            <button
+              onClick={() => {
+                const firstProvider = providers[0];
+                const firstModel = firstProvider ? models.find(model => model.providerId === firstProvider.id) : undefined;
+                setForm({
+                  ...emptyForm,
+                  providerId: firstProvider?.id || '',
+                  modelProfileId: firstModel?.id || '',
+                });
+                setApiKeyInput('');
+                setViewState({ mode: 'creating' });
+              }}
+              className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Plus className="h-4 w-4" />
+              {t('superAdmin.aiRuntimeProfiles.actions.new')}
+            </button>
+          )
         }
       />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
+      {viewState.mode === 'list' ? (
         <div className="space-y-4">
           <SuperAdminSearchInput
             value={searchQuery}
@@ -310,18 +327,21 @@ export const AiRuntimeProfilesPage: React.FC = () => {
             </tbody>
           </SuperAdminTable>
         </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-4 flex items-center gap-2">
-            <Server className="h-5 w-5 text-slate-500" />
-            <h2 className="text-base font-semibold text-slate-900">
-              {selectedId
-                ? t('superAdmin.aiRuntimeProfiles.form.editTitle')
-                : t('superAdmin.aiRuntimeProfiles.form.createTitle')}
-            </h2>
+      ) : (
+        <div className="mx-auto w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Server className="h-6 w-6 text-slate-500" />
+              <h2 className="text-lg font-semibold text-slate-900">
+                {viewState.mode === 'editing'
+                  ? t('superAdmin.aiRuntimeProfiles.form.editTitle')
+                  : t('superAdmin.aiRuntimeProfiles.form.createTitle')}
+              </h2>
+            </div>
+            <button onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiRuntimeProfiles.form.provider')}</span>
               <select
@@ -451,17 +471,25 @@ export const AiRuntimeProfilesPage: React.FC = () => {
               </div>
             )}
 
-            <button
-              onClick={handleSave}
-              disabled={saving || !form.providerId || !form.modelProfileId}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" />
-              {saving ? t('superAdmin.aiRuntimeProfiles.actions.saving') : t('superAdmin.aiRuntimeProfiles.actions.save')}
-            </button>
+            <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
+              <div />
+              <div className="flex items-center gap-2">
+                <button onClick={resetForm} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !form.providerId || !form.modelProfileId}
+                  className="flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {saving ? t('superAdmin.aiRuntimeProfiles.actions.saving') : t('superAdmin.aiRuntimeProfiles.actions.save')}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </SuperAdminPage>
   );
 };

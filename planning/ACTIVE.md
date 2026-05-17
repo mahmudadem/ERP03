@@ -1,5 +1,30 @@
 # 🎯 Current Focus
 
+**Task:** Refactoring AI Management UI (Phase 2 & 4)
+**Status:** ✅ COMPLETE
+**Branch:** `feat/ai-management-ui`
+**Started:** 2026-05-17
+
+### What's been done (this session)
+
+**Appearance Lab UI Redesign & Auto-Theme Generator:**
+- Fixed Dark Mode override bugs by upgrading the `UserAppearanceSettings` schema to explicitly track `light` and `dark` palettes.
+- Updated `UserPreferencesContext.tsx` to react to `theme` (dark/light) and apply the correct nested palette variables.
+- Overhauled `AppearanceSettingsPage.tsx` with a highly organized tab-based layout (Presets, Layout, Advanced) to handle complex settings elegantly.
+- Added **Auto-Theme Generator**: users input a single Brand Color and the system automatically generates perfectly balanced light and dark UI palettes.
+- Added **Typography & Depth Controls**: users can now select from 5 font families (System, Inter, Roboto, Outfit, Mono) and 4 shadow intensities (Flat, Subtle, Pronounced, Glass).
+- Restructured and expanded curated presets in `userAppearance.ts` (adding Ocean Breeze, Sunset Glow, Lavender Field) with deeply harmonious light/dark color mappings.
+- Verified: `frontend` typecheck clean (`npm run typecheck` passed with 0 errors).
+
+### Recommended next move
+
+1. **Backfill Core 4 Documentation:** Begin writing user guides for Accounting, Sales, Purchases, and Inventory.
+2. **Review/Merge:** Commit and merge the current branch since the Appearance Lab enhancements and AI UI state machine patterns are stable and type-checked.
+
+---
+
+## 📦 Previous Focus — Enterprise restructure & doc workflow enforcement ✅ COMPLETE
+
 **Task:** Enterprise restructure & doc workflow enforcement (Phases 1, 2, 4)
 **Status:** 🟡 IN PROGRESS — Phases 1, 2, 4 complete. Phase 3 (pnpm monorepo) deferred. Phase 5 (user guide backfill) pending.
 **Branch:** `chore/enterprise-restructure`

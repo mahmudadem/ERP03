@@ -2,38 +2,17 @@ import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
-  LayoutDashboard, 
-  LayoutTemplate,
-  Users, 
-  Building2, 
-  Blocks, 
-  Shield, 
-  Layers, 
-  Package, 
-  FileText,
   Crown,
   LogOut,
   Menu,
   X,
-  ChevronRight,
-  Search,
-  Palette,
-  Wrench,
-  ShieldCheck,
-  Bot,
-  Server,
-  Globe
+  Search
 } from 'lucide-react';
+import * as Icons from 'lucide-react';
+import { useSidebarConfig } from '../hooks/useSidebarConfig';
 import { PageTitleManager } from '../components/common/PageTitleManager';
 import { useTranslation } from 'react-i18next';
 import { SuperAdminThemeProvider } from '../modules/super-admin/theme/SuperAdminThemeProvider';
-
-interface NavItem {
-  path: string;
-  label: string;
-  icon: React.ComponentType<any>;
-}
-
 export const SuperAdminShell: React.FC = () => {
   const { t } = useTranslation('common');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -41,24 +20,12 @@ export const SuperAdminShell: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const navItems: NavItem[] = [
-    { path: '/super-admin/overview', label: t('shell.superAdmin.nav.overview'), icon: LayoutDashboard },
-    { path: '/super-admin/users', label: t('shell.superAdmin.nav.users'), icon: Users },
-    { path: '/super-admin/companies', label: t('shell.superAdmin.nav.companies'), icon: Building2 },
-    { path: '/super-admin/business-domains', label: t('shell.superAdmin.nav.businessDomains'), icon: Blocks },
-    { path: '/super-admin/modules-registry', label: t('shell.superAdmin.nav.modules'), icon: Layers },
-    { path: '/super-admin/permissions-registry', label: t('shell.superAdmin.nav.permissions'), icon: Shield },
-    { path: '/super-admin/bundles-manager', label: t('shell.superAdmin.nav.bundles'), icon: Package },
-    { path: '/super-admin/plans', label: t('shell.superAdmin.nav.plans'), icon: Crown },
-{ path: '/super-admin/ai-tools', label: t('shell.superAdmin.nav.aiTools'), icon: Wrench },
-    { path: '/super-admin/ai-providers', label: t('shell.superAdmin.nav.aiProviders'), icon: Server },
-    { path: '/super-admin/platform-global-providers', label: t('shell.superAdmin.nav.aiRuntimeProfiles', { defaultValue: 'Platform Global Providers' }), icon: Globe },
-    { path: '/super-admin/ai-models', label: t('shell.superAdmin.nav.aiModels'), icon: Bot },
-    { path: '/super-admin/ai-proposal-policies', label: t('shell.superAdmin.nav.aiProposalPolicies', { defaultValue: 'AI Proposals' }), icon: ShieldCheck },
-    { path: '/super-admin/system-forms', label: t('shell.superAdmin.nav.systemForms', { defaultValue: 'System Forms' }), icon: LayoutTemplate },
-    { path: '/super-admin/voucher-templates', label: t('shell.superAdmin.nav.voucherTemplates', { defaultValue: 'Voucher Templates' }), icon: FileText },
-    { path: '/super-admin/appearance', label: t('shell.superAdmin.nav.appearance', { defaultValue: 'Appearance Lab' }), icon: Palette },
-  ];
+  const sections = useSidebarConfig();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (groupLabel: string) => {
+    setOpenGroups(prev => ({ ...prev, [groupLabel]: !prev[groupLabel] }));
+  };
 
   const handleLogout = async () => {
     if (window.confirm(t('shell.superAdmin.confirmLogout'))) {
@@ -104,31 +71,100 @@ export const SuperAdminShell: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-
+          <nav className="flex-1 overflow-y-auto p-3 space-y-6">
+            {Object.entries(sections).map(([sectionTitle, sectionData]: [string, any]) => {
+              const SectionIcon = (Icons as any)[sectionData.icon] || Icons.Folder;
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`
-                    flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors group
-                    ${isActive
-                      ? 'bg-[var(--sa-accent)] text-[var(--sa-accent-contrast)]'
-                      : 'text-[var(--sa-sidebar-text)] hover:bg-[var(--sa-sidebar-hover)]'
+                <div key={sectionTitle} className="space-y-1">
+                  {/* Section Header */}
+                  {isSidebarOpen ? (
+                    <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-[var(--sa-sidebar-muted)] uppercase tracking-wider">
+                      <SectionIcon className="w-4 h-4" />
+                      <span>{sectionTitle}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-center py-2" title={sectionTitle}>
+                      <SectionIcon className="w-5 h-5 text-[var(--sa-sidebar-muted)]" />
+                    </div>
+                  )}
+
+                  {/* Section Items */}
+                  {sectionData.items.map((item: any) => {
+                    if (item.children) {
+                      const isGroupOpen = openGroups[item.label] ?? true;
+                      return (
+                        <div key={item.label} className="space-y-1">
+                          <button
+                            onClick={() => toggleGroup(item.label)}
+                            className={`
+                              w-full flex items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors group
+                              text-[var(--sa-sidebar-text)] hover:bg-[var(--sa-sidebar-hover)]
+                            `}
+                          >
+                            <div className="flex items-center gap-3">
+                              {item.icon && (Icons as any)[item.icon] ? (
+                                (() => { const ItemIcon = (Icons as any)[item.icon]; return <ItemIcon className="w-4 h-4 text-[var(--sa-sidebar-muted)]" /> })()
+                              ) : (
+                                <div className="w-1.5 h-1.5 rounded-full bg-[var(--sa-sidebar-muted)] ml-1 mr-1" />
+                              )}
+                              {isSidebarOpen && <span className="font-medium text-[var(--sa-sidebar-muted)]">{item.label}</span>}
+                            </div>
+                            {isSidebarOpen && (
+                              <Icons.ChevronDown className={`w-4 h-4 text-[var(--sa-sidebar-muted)] transition-transform ${isGroupOpen ? '' : '-rotate-90'}`} />
+                            )}
+                          </button>
+                          {isGroupOpen && isSidebarOpen && (
+                            <div className="ml-6 space-y-1 border-l border-[var(--sa-border)] pl-2">
+                              {item.children.map((child: any) => {
+                                const isActive = location.pathname === child.path;
+                                return (
+                                  <Link
+                                    key={child.path}
+                                    to={child.path}
+                                    className={`
+                                      block rounded-md px-3 py-2 text-sm transition-colors
+                                      ${isActive
+                                        ? 'bg-[var(--sa-accent)] text-[var(--sa-accent-contrast)]'
+                                        : 'text-[var(--sa-sidebar-text)] hover:bg-[var(--sa-sidebar-hover)]'
+                                      }
+                                    `}
+                                  >
+                                    {child.label}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
                     }
-                  `}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--sa-accent-contrast)]' : 'text-[var(--sa-sidebar-muted)]'}`} />
-                  {isSidebarOpen && (
-                    <span className="font-medium">{item.label}</span>
-                  )}
-                  {isActive && isSidebarOpen && (
-                    <ChevronRight className="w-4 h-4 ml-auto" />
-                  )}
-                </Link>
+
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`
+                          flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors group
+                          ${isActive
+                            ? 'bg-[var(--sa-accent)] text-[var(--sa-accent-contrast)]'
+                            : 'text-[var(--sa-sidebar-text)] hover:bg-[var(--sa-sidebar-hover)]'
+                          }
+                        `}
+                        title={!isSidebarOpen ? item.label : undefined}
+                      >
+                        {item.icon && (Icons as any)[item.icon] ? (
+                          (() => { const ItemIcon = (Icons as any)[item.icon]; return <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--sa-accent-contrast)]' : 'text-[var(--sa-sidebar-muted)]'}`} /> })()
+                        ) : (
+                          <div className={`w-1.5 h-1.5 shrink-0 rounded-full ml-1 mr-1 ${isActive ? 'bg-[var(--sa-accent-contrast)]' : 'bg-[var(--sa-sidebar-muted)]'}`} />
+                        )}
+                        {isSidebarOpen && (
+                          <span className="font-medium">{item.label}</span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
           </nav>

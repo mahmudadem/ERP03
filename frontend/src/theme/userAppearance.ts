@@ -1,10 +1,10 @@
 import React from 'react';
 
 export type UserAppearanceDensity = 'compact' | 'comfortable' | 'spacious';
+export type UserAppearanceShadow = 'flat' | 'subtle' | 'pronounced' | 'glass';
+export type UserAppearanceFont = 'system' | 'inter' | 'roboto' | 'outfit' | 'mono';
 
-export interface UserAppearanceSettings {
-  id: string;
-  name: string;
+export interface UserAppearancePalette {
   bgPrimary: string;
   bgSecondary: string;
   bgTertiary: string;
@@ -12,113 +12,230 @@ export interface UserAppearanceSettings {
   textSecondary: string;
   textMuted: string;
   border: string;
+}
+
+export interface UserAppearanceSettings {
+  id: string;
+  name: string;
+  
   primary: string;
   accent: string;
   success: string;
   warning: string;
   danger: string;
+
+  light: UserAppearancePalette;
+  dark: UserAppearancePalette;
+
   radius: number;
   density: UserAppearanceDensity;
   sidebarSurface: 'default' | 'contrast';
+  shadowIntensity: UserAppearanceShadow;
+  fontFamily: UserAppearanceFont;
 }
 
 export const USER_APPEARANCE_STORAGE_KEY = 'erp_user_appearance_settings';
+
+// Helper to calculate hex color luminance and adjust it. 
+// A robust auto-generator would use HSL, but we'll use predefined harmonious palettes based on the brand.
+export const autoGenerateTheme = (brandHex: string, name: string = 'Custom Generated'): UserAppearanceSettings => {
+  return {
+    id: `auto-${brandHex.replace('#', '')}`,
+    name,
+    primary: brandHex,
+    accent: brandHex, // Can be shifted in a more complex generator
+    success: '#22c55e',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    
+    light: {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f8fafc',
+      bgTertiary: '#f1f5f9',
+      textPrimary: '#0f172a',
+      textSecondary: '#334155',
+      textMuted: '#64748b',
+      border: '#e2e8f0',
+    },
+    
+    dark: {
+      bgPrimary: '#0f172a',
+      bgSecondary: '#020617',
+      bgTertiary: '#1e293b',
+      textPrimary: '#f8fafc',
+      textSecondary: '#cbd5e1',
+      textMuted: '#94a3b8',
+      border: '#334155',
+    },
+    
+    radius: 12,
+    density: 'comfortable',
+    sidebarSurface: 'default',
+    shadowIntensity: 'subtle',
+    fontFamily: 'inter',
+  };
+};
 
 export const USER_APPEARANCE_PRESETS: UserAppearanceSettings[] = [
   {
     id: 'erp-default',
     name: 'ERP Default',
-    bgPrimary: '#ffffff',
-    bgSecondary: '#f9fafb',
-    bgTertiary: '#f3f4f6',
-    textPrimary: '#111827',
-    textSecondary: '#4b5563',
-    textMuted: '#9ca3af',
-    border: '#e5e7eb',
     primary: '#3b82f6',
     accent: '#d946ef',
     success: '#22c55e',
     warning: '#f59e0b',
     danger: '#ef4444',
+    light: {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f9fafb',
+      bgTertiary: '#f3f4f6',
+      textPrimary: '#111827',
+      textSecondary: '#4b5563',
+      textMuted: '#9ca3af',
+      border: '#e5e7eb',
+    },
+    dark: {
+      bgPrimary: '#111827',
+      bgSecondary: '#030712',
+      bgTertiary: '#1f2937',
+      textPrimary: '#f9fafb',
+      textSecondary: '#d1d5db',
+      textMuted: '#9ca3af',
+      border: '#374151',
+    },
     radius: 12,
     density: 'comfortable',
     sidebarSurface: 'default',
+    shadowIntensity: 'subtle',
+    fontFamily: 'inter',
   },
   {
     id: 'ledger',
     name: 'Ledger',
-    bgPrimary: '#ffffff',
-    bgSecondary: '#f4f7f6',
-    bgTertiary: '#eaf1ef',
-    textPrimary: '#10231f',
-    textSecondary: '#48625b',
-    textMuted: '#71837e',
-    border: '#d6e2de',
     primary: '#0f766e',
     accent: '#2563eb',
     success: '#059669',
     warning: '#d97706',
     danger: '#dc2626',
+    light: {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f4f7f6',
+      bgTertiary: '#eaf1ef',
+      textPrimary: '#10231f',
+      textSecondary: '#48625b',
+      textMuted: '#71837e',
+      border: '#d6e2de',
+    },
+    dark: {
+      bgPrimary: '#10231f',
+      bgSecondary: '#081210',
+      bgTertiary: '#16312c',
+      textPrimary: '#f4f7f6',
+      textSecondary: '#b9cbc6',
+      textMuted: '#71837e',
+      border: '#2a4d46',
+    },
     radius: 8,
     density: 'compact',
     sidebarSurface: 'contrast',
+    shadowIntensity: 'flat',
+    fontFamily: 'roboto',
   },
   {
     id: 'graphite',
     name: 'Graphite',
-    bgPrimary: '#1f2937',
-    bgSecondary: '#111827',
-    bgTertiary: '#0f172a',
-    textPrimary: '#f8fafc',
-    textSecondary: '#cbd5e1',
-    textMuted: '#94a3b8',
-    border: '#334155',
     primary: '#38bdf8',
     accent: '#a78bfa',
     success: '#34d399',
     warning: '#fbbf24',
     danger: '#f87171',
+    light: {
+      bgPrimary: '#1f2937',
+      bgSecondary: '#111827',
+      bgTertiary: '#0f172a',
+      textPrimary: '#f8fafc',
+      textSecondary: '#cbd5e1',
+      textMuted: '#94a3b8',
+      border: '#334155',
+    },
+    dark: {
+      bgPrimary: '#1f2937',
+      bgSecondary: '#111827',
+      bgTertiary: '#0f172a',
+      textPrimary: '#f8fafc',
+      textSecondary: '#cbd5e1',
+      textMuted: '#94a3b8',
+      border: '#334155',
+    },
     radius: 10,
     density: 'comfortable',
     sidebarSurface: 'default',
+    shadowIntensity: 'subtle',
+    fontFamily: 'system',
   },
   {
     id: 'executive',
     name: 'Executive',
-    bgPrimary: '#ffffff',
-    bgSecondary: '#f6f5f2',
-    bgTertiary: '#ece8df',
-    textPrimary: '#1f2937',
-    textSecondary: '#57534e',
-    textMuted: '#78716c',
-    border: '#ded8cc',
     primary: '#7c3aed',
     accent: '#0f766e',
     success: '#16a34a',
     warning: '#ca8a04',
     danger: '#dc2626',
+    light: {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f6f5f2',
+      bgTertiary: '#ece8df',
+      textPrimary: '#1f2937',
+      textSecondary: '#57534e',
+      textMuted: '#78716c',
+      border: '#ded8cc',
+    },
+    dark: {
+      bgPrimary: '#1a1816',
+      bgSecondary: '#0f0e0c',
+      bgTertiary: '#24211e',
+      textPrimary: '#f6f5f2',
+      textSecondary: '#dcd8cf',
+      textMuted: '#9b9485',
+      border: '#3b3632',
+    },
     radius: 14,
     density: 'spacious',
     sidebarSurface: 'default',
+    shadowIntensity: 'pronounced',
+    fontFamily: 'outfit',
   },
   {
     id: 'high-contrast',
     name: 'High Contrast',
-    bgPrimary: '#ffffff',
-    bgSecondary: '#ffffff',
-    bgTertiary: '#f3f4f6',
-    textPrimary: '#000000',
-    textSecondary: '#1f2937',
-    textMuted: '#374151',
-    border: '#111827',
     primary: '#000000',
     accent: '#2563eb',
     success: '#166534',
     warning: '#92400e',
     danger: '#991b1b',
+    light: {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#ffffff',
+      bgTertiary: '#f3f4f6',
+      textPrimary: '#000000',
+      textSecondary: '#1f2937',
+      textMuted: '#374151',
+      border: '#111827',
+    },
+    dark: {
+      bgPrimary: '#000000',
+      bgSecondary: '#000000',
+      bgTertiary: '#111827',
+      textPrimary: '#ffffff',
+      textSecondary: '#e5e7eb',
+      textMuted: '#9ca3af',
+      border: '#ffffff',
+    },
     radius: 4,
     density: 'compact',
     sidebarSurface: 'contrast',
+    shadowIntensity: 'flat',
+    fontFamily: 'system',
   },
 ];
 
@@ -142,6 +259,14 @@ const densityVars: Record<UserAppearanceDensity, Record<string, string>> = {
   },
 };
 
+const fontVars: Record<UserAppearanceFont, string> = {
+  system: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  inter: '"Inter", ui-sans-serif, system-ui, sans-serif',
+  roboto: '"Roboto", ui-sans-serif, system-ui, sans-serif',
+  outfit: '"Outfit", ui-sans-serif, system-ui, sans-serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+};
+
 const hexToRgb = (hex: string) => {
   const normalized = hex.replace('#', '');
   const full = normalized.length === 3
@@ -152,12 +277,45 @@ const hexToRgb = (hex: string) => {
   return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
 };
 
-export const normalizeUserAppearance = (input?: Partial<UserAppearanceSettings> | null): UserAppearanceSettings => ({
-  ...DEFAULT_USER_APPEARANCE,
-  ...(input || {}),
-  id: input?.id || DEFAULT_USER_APPEARANCE.id,
-  name: input?.name || DEFAULT_USER_APPEARANCE.name,
-});
+export const normalizeUserAppearance = (input?: any | null): UserAppearanceSettings => {
+  if (!input) return DEFAULT_USER_APPEARANCE;
+  
+  // Migration path: if old flat format is found, wrap into light and clone default dark
+  if (input.bgPrimary && !input.light) {
+    return {
+      ...DEFAULT_USER_APPEARANCE,
+      id: input.id || 'migrated',
+      name: input.name || 'Migrated Custom',
+      primary: input.primary || DEFAULT_USER_APPEARANCE.primary,
+      accent: input.accent || DEFAULT_USER_APPEARANCE.accent,
+      success: input.success || DEFAULT_USER_APPEARANCE.success,
+      warning: input.warning || DEFAULT_USER_APPEARANCE.warning,
+      danger: input.danger || DEFAULT_USER_APPEARANCE.danger,
+      light: {
+        bgPrimary: input.bgPrimary,
+        bgSecondary: input.bgSecondary || DEFAULT_USER_APPEARANCE.light.bgSecondary,
+        bgTertiary: input.bgTertiary || DEFAULT_USER_APPEARANCE.light.bgTertiary,
+        textPrimary: input.textPrimary || DEFAULT_USER_APPEARANCE.light.textPrimary,
+        textSecondary: input.textSecondary || DEFAULT_USER_APPEARANCE.light.textSecondary,
+        textMuted: input.textMuted || DEFAULT_USER_APPEARANCE.light.textMuted,
+        border: input.border || DEFAULT_USER_APPEARANCE.light.border,
+      },
+      dark: DEFAULT_USER_APPEARANCE.dark,
+      radius: input.radius || DEFAULT_USER_APPEARANCE.radius,
+      density: input.density || DEFAULT_USER_APPEARANCE.density,
+      sidebarSurface: input.sidebarSurface || DEFAULT_USER_APPEARANCE.sidebarSurface,
+      shadowIntensity: 'subtle',
+      fontFamily: 'inter',
+    };
+  }
+
+  return {
+    ...DEFAULT_USER_APPEARANCE,
+    ...input,
+    light: { ...DEFAULT_USER_APPEARANCE.light, ...(input.light || {}) },
+    dark: { ...DEFAULT_USER_APPEARANCE.dark, ...(input.dark || {}) },
+  };
+};
 
 export const loadLocalUserAppearance = (): UserAppearanceSettings => {
   try {
@@ -168,21 +326,25 @@ export const loadLocalUserAppearance = (): UserAppearanceSettings => {
   }
 };
 
-export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings) => {
+export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, themeMode: 'light' | 'dark') => {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
+  
+  const palette = themeMode === 'dark' ? settings.dark : settings.light;
+
   const vars: Record<string, string> = {
-    '--color-bg-primary': settings.bgPrimary,
-    '--color-bg-primary-rgb': hexToRgb(settings.bgPrimary),
-    '--color-bg-secondary': settings.bgSecondary,
-    '--color-bg-secondary-rgb': hexToRgb(settings.bgSecondary),
-    '--color-bg-tertiary': settings.bgTertiary,
-    '--color-bg-tertiary-rgb': hexToRgb(settings.bgTertiary),
-    '--color-text-primary': settings.textPrimary,
-    '--color-text-secondary': settings.textSecondary,
-    '--color-text-muted': settings.textMuted,
-    '--color-border': settings.border,
-    '--color-border-light': settings.bgTertiary,
+    '--color-bg-primary': palette.bgPrimary,
+    '--color-bg-primary-rgb': hexToRgb(palette.bgPrimary),
+    '--color-bg-secondary': palette.bgSecondary,
+    '--color-bg-secondary-rgb': hexToRgb(palette.bgSecondary),
+    '--color-bg-tertiary': palette.bgTertiary,
+    '--color-bg-tertiary-rgb': hexToRgb(palette.bgTertiary),
+    '--color-text-primary': palette.textPrimary,
+    '--color-text-secondary': palette.textSecondary,
+    '--color-text-muted': palette.textMuted,
+    '--color-border': palette.border,
+    '--color-border-light': palette.bgTertiary,
+    
     '--color-primary': settings.primary,
     '--color-primary-hover': settings.primary,
     '--color-accent': settings.accent,
@@ -190,21 +352,46 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings) 
     '--color-success': settings.success,
     '--color-warning': settings.warning,
     '--color-danger': settings.danger,
+    
     '--radius-sm': `${Math.max(2, settings.radius - 6)}px`,
     '--radius-md': `${Math.max(4, settings.radius - 4)}px`,
     '--radius-lg': `${settings.radius}px`,
     '--radius-xl': `${settings.radius + 4}px`,
-    '--app-sidebar-surface': settings.sidebarSurface === 'contrast' ? settings.primary : settings.bgPrimary,
-    '--app-sidebar-text': settings.sidebarSurface === 'contrast' ? '#ffffff' : settings.textPrimary,
-    '--app-sidebar-muted': settings.sidebarSurface === 'contrast' ? 'rgba(255,255,255,0.7)' : settings.textMuted,
+    
+    '--app-sidebar-surface': settings.sidebarSurface === 'contrast' ? settings.primary : palette.bgPrimary,
+    '--app-sidebar-text': settings.sidebarSurface === 'contrast' ? '#ffffff' : palette.textPrimary,
+    '--app-sidebar-muted': settings.sidebarSurface === 'contrast' ? 'rgba(255,255,255,0.7)' : palette.textMuted,
+    
+    '--app-font-family': fontVars[settings.fontFamily],
+    
     ...densityVars[settings.density],
   };
 
   Object.entries(vars).forEach(([key, value]) => root.style.setProperty(key, value));
+  
+  // Handle Shadow Intensity by setting a global body class or vars
+  if (settings.shadowIntensity === 'flat') {
+    root.style.setProperty('--tw-shadow', '0 0 #0000');
+    root.style.setProperty('--tw-shadow-colored', '0 0 #0000');
+  } else if (settings.shadowIntensity === 'pronounced') {
+    root.style.setProperty('--tw-shadow', '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)');
+    root.style.setProperty('--tw-shadow-colored', '0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color)');
+  } else if (settings.shadowIntensity === 'glass') {
+    root.style.setProperty('--tw-shadow', '0 8px 32px 0 rgba(31, 38, 135, 0.07)');
+    root.style.setProperty('--tw-shadow-colored', '0 8px 32px 0 var(--tw-shadow-color)');
+  } else {
+    // subtle / default
+    root.style.removeProperty('--tw-shadow');
+    root.style.removeProperty('--tw-shadow-colored');
+  }
+
   window.localStorage.setItem(USER_APPEARANCE_STORAGE_KEY, JSON.stringify(settings));
 };
 
 export const userAppearanceStyleTag = React.createElement('style', null, `
+      body {
+        font-family: var(--app-font-family, ui-sans-serif, system-ui, sans-serif) !important;
+      }
       .bg-primary-600,
       .hover\\:bg-primary-700:hover,
       .bg-primary,

@@ -20,8 +20,13 @@ import {
   SortIcon,
 } from '../components/SuperAdminPage';
 import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
+import { AiToolDetailPage } from './AiToolDetailPage';
 
 const unwrap = <T,>(response: any): T => (response?.data ?? response) as T;
+
+type ViewState =
+  | { mode: 'list' }
+  | { mode: 'viewing', toolName: string };
 
 const statusTone = (status: string): 'slate' | 'green' | 'amber' | 'red' | 'blue' => {
   switch (status) {
@@ -63,9 +68,9 @@ const sensitivityTone = (sensitivity: string): 'slate' | 'green' | 'amber' | 're
 
 export const AiToolCatalogPage: React.FC = () => {
   const { t } = useTranslation('common');
-  const navigate = useNavigate();
   const [tools, setTools] = useState<AiTool[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewState, setViewState] = useState<ViewState>({ mode: 'list' });
   const [syncing, setSyncing] = useState(false);
   const [togglingTool, setTogglingTool] = useState<string | null>(null);
   const [filterModule, setFilterModule] = useState('');
@@ -173,6 +178,10 @@ export const AiToolCatalogPage: React.FC = () => {
         <SuperAdminLoading label={t('superAdmin.aiTools.title', { defaultValue: 'Loading AI Tools' })} />
       </SuperAdminPage>
     );
+  }
+
+  if (viewState.mode === 'viewing') {
+    return <AiToolDetailPage toolNameProp={viewState.toolName} onBack={() => setViewState({ mode: 'list' })} />;
   }
 
   return (
@@ -354,7 +363,7 @@ export const AiToolCatalogPage: React.FC = () => {
                   <tr key={tool.name} className={tableRowClass}>
                     <td className={tableCellClass}>
                       <button
-                        onClick={() => navigate(`/super-admin/ai-tools/${encodeURIComponent(tool.name)}`)}
+                        onClick={() => setViewState({ mode: 'viewing', toolName: tool.name })}
                         className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline"
                       >
                         {tool.name}
@@ -444,7 +453,7 @@ export const AiToolCatalogPage: React.FC = () => {
                           }
                         </button>
                         <button
-                          onClick={() => navigate(`/super-admin/ai-tools/${encodeURIComponent(tool.name)}`)}
+                          onClick={() => setViewState({ mode: 'viewing', toolName: tool.name })}
                           className="text-sm font-medium text-slate-700 hover:text-slate-950"
                         >
                           {t('superAdmin.aiTools.actions.viewDetails', { defaultValue: 'Details' })}

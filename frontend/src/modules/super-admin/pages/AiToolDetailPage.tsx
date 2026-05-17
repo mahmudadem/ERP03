@@ -68,8 +68,9 @@ const JsonBlock: React.FC<{ data: any; fallback?: string }> = ({ data, fallback 
   );
 };
 
-export const AiToolDetailPage: React.FC = () => {
-  const { toolName } = useParams<{ toolName: string }>();
+export const AiToolDetailPage: React.FC<{ toolNameProp?: string; onBack?: () => void }> = ({ toolNameProp, onBack }) => {
+  const params = useParams<{ toolName: string }>();
+  const toolName = toolNameProp || params.toolName;
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [tool, setTool] = useState<AiTool | null>(null);
@@ -177,7 +178,7 @@ export const AiToolDetailPage: React.FC = () => {
         actions={
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate('/super-admin/ai-tools')}
+              onClick={() => onBack ? onBack() : navigate('/super-admin/ai-tools')}
               className="flex items-center gap-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <ArrowLeft className="h-4 w-4" />

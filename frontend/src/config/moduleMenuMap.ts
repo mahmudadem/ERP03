@@ -153,6 +153,8 @@ export const moduleMenuMap: Record<
     icon: 'Bot',
     items: [
       { label: 'Chat', path: '/ai-assistant', permission: 'ai-assistant.chat.use', icon: 'MessageSquare' },
+      { label: 'AI Proposals', path: '/ai-assistant/proposals', permission: 'ai-assistant.proposals.view', icon: 'FileSignature' },
+      { label: 'AI Usage', path: '/ai-assistant/usage', permission: 'ai-assistant.settings.view', icon: 'Activity' },
       { label: 'Settings', path: '/ai-assistant/settings', permission: 'ai-assistant.settings.view', icon: 'Settings' },
     ]
   }

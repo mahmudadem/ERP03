@@ -3,6 +3,59 @@
 > Append new entries at the top. One entry per work session.
 
 ## 2026-05-17 (Sun, continued) — ~0.5h
+**Task:** Organize Appearance Lab UI & Refine Curated Presets
+**Agent:** Antigravity (CTO Mode)
+**Branch:** `feat/ai-management-ui`
+**What I Did:**
+- Completely overhauled the `AppearanceSettingsPage.tsx` layout into a modern, organized tabbed interface (Presets, Layout, Advanced) to reduce vertical scrolling and cognitive load.
+- Redefined the curated theme presets in `userAppearance.ts` by adding highly harmonious new options (Ocean Breeze, Sunset Glow, Lavender Field) and refining the colors of Graphite, Ledger, and Executive to look significantly more premium and coordinated across Light and Dark modes.
+- Verified all UI updates compiled successfully without type errors (`npm run typecheck`).
+**Result:** ✅ Appearance Lab is now exceptionally well-organized and features gorgeous, highly curated preset themes.
+**Next:** Phase 5 — Backfill User Guides for Core modules.
+
+## 2026-05-17 (Sun) — ~0.5h
+**Task:** AI Management UI Refactor (Phase 4)
+**Agent:** Antigravity (CTO Mode)
+**Branch:** `feat/ai-management-ui`
+**What I Did:**
+- Exposed the modernized AI Management suite to the Company-level sidebar.
+- Added 'AI Proposals' and 'AI Usage' to the `ai-assistant` module in `moduleMenuMap.ts`.
+- Added missing translations for 'AI Usage' in `en`, `ar`, and `tr` translation files (`common.json`) and updated `useSidebarConfig.ts`.
+- Discovered and fixed a regression in `AppearanceSettingsPage.tsx` caused by a malformed TypeScript definition (`keyof UserAppearanceSettings['light']`) that failed typecheck. 
+- Successfully passed `npm run typecheck` across the frontend project.
+**Result:** ✅ Phase 4 complete. AI Management pages are now accessible within the company context, properly localized, and the build is stable.
+**Next:** Phase 5 - Backfill User Guides for Core modules.
+
+
+## 2026-05-17 (Sun) — ~1.0h
+**Task:** Enhance Appearance Lab (Auto-Theme, Typography, Layout, Dark Mode Fix)
+**Agent:** Antigravity (CTO Mode)
+**Branch:** `feat/ai-management-ui`
+**What I Did:**
+- Redesigned the global Appearance Lab UI (`AppearanceSettingsPage.tsx`) using a modern grid/card layout with distinct sections for Brand Identity, Typography & Depth, Layout, and Presets.
+- Built an **Auto-Theme Generator** that takes a single Brand Color and instantly computes harmonious Light and Dark mode UI palettes.
+- Added **Typography** controls (Font Family selection: System, Inter, Roboto, Outfit, Mono).
+- Added **Depth** controls (Shadow Intensity: Flat, Subtle, Pronounced, Glass).
+- Fixed the global "Dark Mode" switch: Upgraded the `UserAppearanceSettings` schema in `userAppearance.ts` to maintain both `light` and `dark` palettes simultaneously.
+- Updated `UserPreferencesContext.tsx` to pass the `theme` mode down to the CSS injector so the UI switches to the correct generated palette when Dark Mode is toggled.
+- Verified all changes are type-safe with `npm run typecheck` in the `frontend` directory.
+**Result:** ✅ Appearance Lab is now a premium, fully-featured theming engine. The Dark Mode override bug is fixed, and the UI layout is highly polished.
+**Next:** Recommend reviewing the Appearance Lab UI, then progressing to Company Sidebar Expansion (Phase 4).
+
+## 2026-05-17 (Sun) — ~1.0h
+**Task:** AI Management UI Refactor (Phase 2)
+**Agent:** Antigravity (CTO Mode)
+**Branch:** `feat/ai-management-ui`
+**What I Did:**
+- Refactored `AiToolCatalogPage` to the new state-machine pattern (`ViewState`), rendering `AiToolDetailPage` inline when in `viewing` mode instead of navigating away via the router.
+- Updated `AiToolDetailPage` to support being rendered as a child component with `toolNameProp` and `onBack` props.
+- Standardized `AiProposalPolicyPage` to use the shared `SuperAdminPage`, `SuperAdminHeader`, and `SuperAdminPanel` layout components for consistency with the rest of the refactored AI Management suite.
+- Verified all changes are type-safe with `npm run typecheck` in the `frontend` directory.
+**Result:** ✅ Phase 2 complete. All AI Management pages (`AiProvidersPage`, `AiModelProfilesPage`, `AiRuntimeProfilesPage`, `AiToolCatalogPage`, `AiProposalPolicyPage`) now use a cohesive, modal-free, full-page state-machine layout.
+**Next:** Expose the AI Management suite in the Company-level sidebar (Phase 4).
+
+
+## 2026-05-17 (Sun, continued) — ~0.5h
 **Task:** Emulator data and Firebase export hygiene
 **Agent:** Claude (Sonnet 4.6) — CTO mode
 **Branch:** `chore/enterprise-restructure`

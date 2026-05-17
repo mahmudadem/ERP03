@@ -457,9 +457,9 @@ export const aiAssistantApi = {
     return response as unknown as AiUsageAnalyticsResponse;
   },
 
-  getUsageSummary: async (): Promise<{ success: boolean; data: UsageSummaryResponse }> => {
+  getUsageSummary: async (): Promise<UsageSummaryResponse> => {
     const response = await client.get('/tenant/ai-assistant/usage/summary');
-    return response as unknown as { success: boolean; data: UsageSummaryResponse };
+    return response as unknown as UsageSummaryResponse;
   },
 
   checkProviderHealth: async (): Promise<ProviderHealthResponse> => {
