@@ -172,6 +172,43 @@ export interface UpsertAiProviderPayload {
   notes?: string;
 }
 
+export type AiRuntimeProfileStatus = 'active' | 'paused' | 'disabled';
+export type AiRuntimeInterval = 'minute' | 'hour' | 'day' | 'month';
+
+export interface AiRuntimeProfile {
+  id: string;
+  providerId: string;
+  providerType: string;
+  providerName: string;
+  modelProfileId: string;
+  modelId: string;
+  modelDisplayName: string;
+  hasCredential: boolean;
+  credentialHint?: string | null;
+  status: AiRuntimeProfileStatus;
+  maxRequestsPerInterval?: number | null;
+  requestInterval: AiRuntimeInterval;
+  currentWindowRequestCount: number;
+  currentWindowStartedAt?: string | null;
+  totalSuccessfulRequests: number;
+  lastUsedAt?: string | null;
+  lastFailureAt?: string | null;
+  lastFailureReason?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpsertAiRuntimeProfilePayload {
+  providerId: string;
+  modelProfileId: string;
+  apiKey?: string;
+  status?: AiRuntimeProfileStatus;
+  maxRequestsPerInterval?: number;
+  requestInterval?: AiRuntimeInterval;
+  notes?: string;
+}
+
 // AI Certification Types
 export type AiCertificationCategory =
   | 'GENERAL_CHAT' | 'ACCOUNTING' | 'FINANCE_REPORTING' | 'SALES'
@@ -334,6 +371,7 @@ export interface AiModelProfile {
   revision: number;
   enabled: boolean;
   createdBy?: string;
+  creditCost?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -368,6 +406,7 @@ export interface UpsertAiModelProfilePayload {
   systemPromptPolicyId?: string;
   dataFilterPolicyId?: string;
   enabled?: boolean;
+  creditCost?: number;
 }
 
 // AI Credits Types
@@ -549,6 +588,19 @@ export const superAdminApi = {
   disableAiProvider: (providerId: string): Promise<AiProvider> =>
     client.patch(`/platform/ai-providers/${encodeURIComponent(providerId)}/disable`),
 
+  // Platform AI Runtime Profiles
+  getAiRuntimeProfiles: (): Promise<AiRuntimeProfile[]> =>
+    client.get('/platform/ai-runtime-profiles'),
+
+  createAiRuntimeProfile: (data: UpsertAiRuntimeProfilePayload): Promise<AiRuntimeProfile> =>
+    client.post('/platform/ai-runtime-profiles', data),
+
+  updateAiRuntimeProfile: (profileId: string, data: UpsertAiRuntimeProfilePayload): Promise<AiRuntimeProfile> =>
+    client.patch(`/platform/ai-runtime-profiles/${encodeURIComponent(profileId)}`, data),
+
+  deleteAiRuntimeProfile: (profileId: string): Promise<void> =>
+    client.delete(`/platform/ai-runtime-profiles/${encodeURIComponent(profileId)}`),
+
   // AI Model Profiles
   getAiModelProfiles: (filters?: { provider?: string; status?: string; tag?: string }) =>
     client.get('/platform/ai-model-profiles', { params: filters }),
@@ -600,7 +652,7 @@ export const superAdminApi = {
   grantAiCredits: (payload: GrantAiCreditsPayload): Promise<GrantAiCreditsResponse> =>
     client.post('/platform/ai-assistant/credits/grant', payload),
 
-  getCompanyAiCredits: (companyId: string): Promise<{ success: boolean; data: { balance: number; totalPurchased: number; totalConsumed: number } }> =>
+  getCompanyAiCredits: (companyId: string): Promise<{ balance: number; totalPurchased: number; totalConsumed: number }> =>
     client.get(`/super-admin/companies/${companyId}/ai-credits`),
 };
 

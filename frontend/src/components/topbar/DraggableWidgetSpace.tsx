@@ -296,7 +296,9 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
   const style = widget.style ?? { showBorder: true, showBackground: true };
   const padding = style.padding ?? "small";
   const bgColor = style.bgColor ?? (style.showBackground === false ? "bg-transparent" : "bg-white");
-  const borderClass = style.showBorder ? getBorderClass(bgColor, style.borderVariant) : "";
+  const hasCustomBorder = style.borderColor || style.borderWidth || style.borderStyle;
+  const borderClass = !hasCustomBorder && style.showBorder ? getBorderClass(bgColor, style.borderVariant) : "";
+  const widgetHeight = Math.max(1, Math.min(3, style.height ?? 1));
 
   useEffect(() => {
     setEditSpan(String(span));
@@ -319,11 +321,34 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
     }
   };
 
+  const customBg = style.customBgColor;
   const cssStyle: React.CSSProperties = {
     gridColumn: `${colStart} / span ${span}`,
-    gridRow: 1,
+    gridRow: `auto / span ${widgetHeight}`,
     transform: CSS.Transform.toString(transform),
     zIndex: isDragging ? 80 : isLayoutMode && isSelected ? 50 : 1,
+  };
+
+  const shadowMap: Record<string, string> = {
+    sm: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+    md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+    lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+    xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+  };
+
+  const innerStyle: React.CSSProperties = {
+    ...(customBg && !style.gradientBg ? { backgroundColor: customBg } : {}),
+    ...(style.textColor ? { color: style.textColor } : {}),
+    ...(style.borderColor ? { borderColor: style.borderColor } : {}),
+    ...(style.borderWidth ? { borderWidth: style.borderWidth } : {}),
+    ...(style.borderStyle ? { borderStyle: style.borderStyle } : {}),
+    ...(style.borderRadius ? { borderRadius: style.borderRadius } : {}),
+    ...(style.shadow && style.shadow !== "none" ? { boxShadow: shadowMap[style.shadow] } : {}),
+    ...(style.opacity !== undefined && style.opacity < 100 ? { opacity: style.opacity / 100 } : {}),
+    ...(style.fontSize ? { fontSize: style.fontSize === "xs" ? "10px" : style.fontSize === "sm" ? "12px" : "14px" } : {}),
+    ...(style.textAlign ? { textAlign: style.textAlign } : {}),
+    ...(style.gradientBg ? { background: style.gradientBg } : {}),
+    ...(style.backdropBlur ? { backdropFilter: "blur(4px)" } : {}),
   };
 
   return (
@@ -337,9 +362,10 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
       )}
     >
       <div
+        style={innerStyle}
         className={clsx(
           "box-border flex h-full max-h-full w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-md text-[11px] text-[var(--color-text-primary)]",
-          bgColor,
+          customBg ? "" : bgColor,
           borderClass,
           style.isBold && "[&_*]:!font-black",
           padding === "none" && "px-0 py-0",
@@ -348,6 +374,10 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
           padding === "large" && "px-4 py-1",
           isLayoutMode && "ring-1 ring-inset ring-sky-200",
           isLayoutMode && isSelected && "ring-2 ring-inset ring-sky-500",
+          style.hoverEffect === "scale" && "hover:scale-105 transition-transform duration-200",
+          style.hoverEffect === "shadow" && "hover:shadow-lg transition-shadow duration-200",
+          style.hoverEffect === "glow" && "hover:shadow-[0_0_12px_rgba(99,102,241,0.4)] transition-shadow duration-200",
+          style.backdropBlur && "backdrop-blur-sm",
         )}
       >
         {isLayoutMode ? (
@@ -362,7 +392,13 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
         ) : null}
 
         <div className="flex h-full min-w-0 flex-1 items-center justify-center overflow-hidden">
-          <Component showBorder={false} showBackground={false} />
+          <Component
+            showBorder={false}
+            showBackground={false}
+            clockFormat={style.clockFormat}
+            showSeconds={style.showSeconds}
+            dateFormat={style.dateFormat}
+          />
         </div>
       </div>
 
@@ -498,8 +534,14 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
   );
 };
 
-export const DraggableWidgetSpace: React.FC = () => {
+interface DraggableWidgetSpaceProps {
+  forceLayoutMode?: boolean;
+  onWidgetSelect?: (widgetId: string | null) => void;
+}
+
+export const DraggableWidgetSpace: React.FC<DraggableWidgetSpaceProps> = ({ forceLayoutMode, onWidgetSelect }) => {
   const { widgets, updateWidgetLayouts, isLayoutMode, updateWidgetStyle } = useWidgetStore();
+  const effectiveLayoutMode = forceLayoutMode ?? isLayoutMode;
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
 
@@ -522,6 +564,11 @@ export const DraggableWidgetSpace: React.FC = () => {
     [visibleWidgets],
   );
 
+  const maxRows = useMemo(
+    () => Math.max(1, ...visibleWidgets.map((w) => w.style?.height ?? 1)),
+    [visibleWidgets],
+  );
+
   const positionedWidgets = useMemo(() => {
     let nextColStart = 1;
     return orderedWidgets.map((widget) => {
@@ -538,6 +585,10 @@ export const DraggableWidgetSpace: React.FC = () => {
       setSelectedWidgetId(null);
     }
   }, [selectedWidgetId, visibleWidgets]);
+
+  useEffect(() => {
+    onWidgetSelect?.(selectedWidgetId);
+  }, [selectedWidgetId, onWidgetSelect]);
 
   const persistWidgetLayout = (id: string, colStart: number, span: number) => {
     updateWidgetLayouts([
@@ -593,10 +644,10 @@ export const DraggableWidgetSpace: React.FC = () => {
       dir="ltr"
       className={clsx(
         "box-border flex-1 h-full relative overflow-visible z-10 w-full min-w-[200px] transition-all duration-300 p-1",
-        isLayoutMode && "bg-sky-50/40 border-x border-sky-100",
+        effectiveLayoutMode && "bg-sky-50/40 border-x border-sky-100",
       )}
     >
-      {isLayoutMode ? (
+      {effectiveLayoutMode ? (
         <div className="absolute inset-0 grid gap-0.5 opacity-25 pointer-events-none" style={GRID_STYLE}>
           {Array.from({ length: MAX_CELLS }).map((_, index) => (
             <div
@@ -611,14 +662,14 @@ export const DraggableWidgetSpace: React.FC = () => {
       ) : null}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="relative grid h-full items-stretch gap-0.5" style={GRID_STYLE}>
+        <div className="relative grid h-full items-stretch gap-0.5" style={{ ...GRID_STYLE, gridTemplateRows: `repeat(${maxRows}, minmax(0, 1fr))` }}>
           {positionedWidgets.map(({ widget, span, colStart }) => (
             <PrecisionWidget
               key={widget.id}
               widget={widget}
               span={span}
               colStart={colStart}
-              isLayoutMode={isLayoutMode}
+              isLayoutMode={effectiveLayoutMode}
               isSelected={selectedWidgetId === widget.id}
               onSelect={setSelectedWidgetId}
               onMove={moveWidget}

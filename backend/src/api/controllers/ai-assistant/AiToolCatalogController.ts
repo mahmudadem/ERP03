@@ -379,6 +379,7 @@ static async runModelProfileDiagnostics(req: Request, res: Response, next: NextF
         diContainer.httpClient,
         diContainer.aiModelProfileUseCase,
         diContainer.aiProviderRepository,
+        diContainer.aiPlatformRuntimeProfileRepository,
       );
       const result = await useCase.execute({
         companyId,
@@ -444,6 +445,7 @@ static async runModelProfileDiagnostics(req: Request, res: Response, next: NextF
         diContainer.httpClient,
         diContainer.aiModelProfileUseCase,
         diContainer.aiProviderRepository,
+        diContainer.aiPlatformRuntimeProfileRepository,
       );
       const result = await useCase.executeWithConfig(config, {
         providerOverride: providerOverride || undefined,

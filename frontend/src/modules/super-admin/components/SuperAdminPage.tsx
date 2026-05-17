@@ -80,7 +80,17 @@ export const SuperAdminSearchInput: React.FC<{
       </svg>
     </div>
     <input
-      type="text"
+      type="search"
+      role="searchbox"
+      name="sa-search"
+      autoComplete="off"
+      autoCorrect="off"
+      autoCapitalize="off"
+      spellCheck={false}
+      data-form-type="other"
+      data-lpignore="true"
+      readOnly
+      onFocus={(e) => e.currentTarget.removeAttribute('readonly')}
       className="block w-full rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface)] py-2 pl-10 pr-3 text-sm placeholder:text-[var(--sa-muted)] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm transition-all"
       placeholder={placeholder || 'Search...'}
       value={value}

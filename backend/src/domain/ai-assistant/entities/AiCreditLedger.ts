@@ -105,6 +105,16 @@ export class AiCreditLedger implements AiCreditLedgerProps {
   }
 
   /**
+   * Check if the ledger can cover a debit of the given amount.
+   * Use this when the per-request cost is known (e.g. model creditCost).
+   */
+  canAfford(amount: number): boolean {
+    if (!Number.isFinite(amount) || amount < 0) return false;
+    if (amount === 0) return true;
+    return this.balance >= amount;
+  }
+
+  /**
    * Serialize to JSON for API responses and persistence.
    * Never includes mutation history — only current state.
    */

@@ -19,7 +19,7 @@ const MODULE_CONFIG: Record<string, { isRequired: boolean; autoInit?: boolean }>
   pos: { isRequired: false },
   crm: { isRequired: false },
   invoicing: { isRequired: false },
-  'ai-assistant': { isRequired: false, autoInit: true },
+  'ai-assistant': { isRequired: false },
 };
 
 // Modules that have dedicated setup/entry routes that should remain reachable
@@ -29,6 +29,7 @@ const MODULE_INIT_ROUTES: Record<string, string[]> = {
   inventory: ['/inventory'],
   purchase: ['/purchases'],
   sales: ['/sales', '/sales/settings'],
+  'ai-assistant': ['/ai-assistant/setup'],
 };
 
 /**
@@ -46,6 +47,8 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
   const navigate = useNavigate();
   const location = useLocation();
   const [userSkipped, setUserSkipped] = useState(false);
+  const currentPath = location.pathname.toLowerCase();
+  const isAiAssistantSetupRoute = currentPath === '/ai-assistant/setup' || currentPath.startsWith('/ai-assistant/setup/');
 
   const isAllowedPreInitRoute = (path: string, routes: string[]): boolean =>
     routes.some((route) => {
@@ -69,10 +72,13 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
   // If module not found, treat modules with initialization handlers as not initialized.
   // This keeps routing strict even when installation records are missing.
   if (!module) {
+    if (moduleCode === 'ai-assistant' && !isAiAssistantSetupRoute) {
+      return <Navigate to="/ai-assistant/setup" replace />;
+    }
+
     const initializationRoutes = MODULE_INIT_ROUTES[moduleCode];
     if (initializationRoutes?.length) {
-      const path = location.pathname.toLowerCase();
-      const isInitializationRoute = isAllowedPreInitRoute(path, initializationRoutes);
+      const isInitializationRoute = isAllowedPreInitRoute(currentPath, initializationRoutes);
 
       if (!isInitializationRoute) {
         return <Navigate to={initializationRoutes[0]} replace />;
@@ -95,11 +101,15 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
     return <>{children}</>;
   }
 
+  // AI Assistant must hard-gate everything except setup while uninitialized.
+  if (moduleCode === 'ai-assistant' && !isAiAssistantSetupRoute) {
+    return <Navigate to="/ai-assistant/setup" replace />;
+  }
+
   // Direct redirect to module initialization handler when available
   const initializationRoutes = MODULE_INIT_ROUTES[moduleCode];
   if (initializationRoutes?.length) {
-    const path = location.pathname.toLowerCase();
-    const isInitializationRoute = isAllowedPreInitRoute(path, initializationRoutes);
+    const isInitializationRoute = isAllowedPreInitRoute(currentPath, initializationRoutes);
 
     if (!isInitializationRoute) {
       return <Navigate to={initializationRoutes[0]} replace />;

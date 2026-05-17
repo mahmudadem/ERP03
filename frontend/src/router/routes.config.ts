@@ -88,6 +88,7 @@ const AiToolCatalogPage = lazy(() => import('../modules/super-admin/pages/AiTool
 const AiToolDetailPage = lazy(() => import('../modules/super-admin/pages/AiToolDetailPage').then(m => ({ default: m.AiToolDetailPage })));
 const AiModelProfilesPage = lazy(() => import('../modules/super-admin/pages/AiModelProfilesPage').then(m => ({ default: m.AiModelProfilesPage })));
 const AiProvidersPage = lazy(() => import('../modules/super-admin/pages/AiProvidersPage').then(m => ({ default: m.AiProvidersPage })));
+const AiRuntimeProfilesPage = lazy(() => import('../modules/super-admin/pages/AiRuntimeProfilesPage').then(m => ({ default: m.AiRuntimeProfilesPage })));
 const AiProposalPolicyPage = lazy(() => import('../modules/super-admin/pages/AiProposalPolicyPage').then(m => ({ default: m.AiProposalPolicyPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
 const SystemFormDesignerPage = lazy(() => import('../modules/super-admin/pages/SystemFormDesignerPage').then(m => ({ default: m.default })));
@@ -223,6 +224,7 @@ export const routesConfig: AppRoute[] = [
   // SETTINGS
   { path: '/settings', label: 'General', component: SettingsHomePage, section: 'SETTINGS' },
   { path: '/settings/appearance', label: 'Appearance', component: AppearanceSettingsPage, section: 'SETTINGS', hideInMenu: true },
+  { path: '/settings/widgets', label: 'Topbar Widgets', component: lazy(() => import('../modules/settings/pages/TopbarWidgetDesignerPage')), section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/sidebar', label: 'Menu Config', component: SidebarSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
@@ -246,6 +248,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/ai-tools', label: 'AI Tools', component: AiToolCatalogPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools/:toolName', label: 'AI Tool Detail', component: AiToolDetailPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-providers', label: 'AI Providers', component: AiProvidersPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/platform-global-providers', label: 'Platform Global Providers', component: AiRuntimeProfilesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-models', label: 'AI Models', component: AiModelProfilesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-proposal-policies', label: 'AI Proposal Policies', component: AiProposalPolicyPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/plans', label: 'Plans', component: PlansManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
@@ -340,6 +343,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: false },
 
   // AI ASSISTANT
+  { path: '/ai-assistant/setup', label: 'AI Setup', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSetupPage').then(m => ({ default: m.AiAssistantSetupPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view', hideInMenu: true },
   { path: '/ai-assistant', label: 'AI Assistant', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantHomePage')), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.chat.use' },
   { path: '/ai-assistant/mock', label: 'AI Assistant (Widget Mode)', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantHomePage')), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.chat.use' },
   { path: '/ai-assistant/settings', label: 'AI Settings', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSettingsPage').then(m => ({ default: m.AiAssistantSettingsPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view' },

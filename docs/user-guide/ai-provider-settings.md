@@ -18,6 +18,13 @@ AI provider setup is now provider-driven. Instead of manually typing everything,
 - **ERP03-managed providers**: No key field appears. ERP03 manages the connection. Usage limits/credits will be controlled by future subscription settings.
 - **Custom model**: Advanced/manual setup when listed providers do not fit your needs.
 
+## For Super Admins
+
+- The **AI Providers** page now shows recommended starting values for each provider type.
+- New providers auto-fill sensible defaults for base URL, auth mode, and capability flags.
+- Use **Apply recommended defaults** if you want to reset the form to the recommended starting point.
+- This page does **not** store the platform API key used by AI Credits mode. It only defines provider metadata and tenant-facing defaults.
+
 ## Certified models
 
 Use **Browse Certified Models** to compare models. The table shows certification categories and scores. Current scores may represent structural/connectivity checks; full ERP scenario validation will be expanded later.

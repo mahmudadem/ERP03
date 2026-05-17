@@ -15,6 +15,8 @@
 
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { IAiCreditLedgerRepository } from '../../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
+import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
+import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { ApiError } from '../../../api/errors/ApiError';
@@ -24,6 +26,8 @@ export class AiCredentialResolver {
     private encryptionService: IEncryptionService,
     private providerRepository?: IAiProviderRepository,
     private creditLedgerRepository?: IAiCreditLedgerRepository,
+    private runtimeProfileRepository?: IAiPlatformRuntimeProfileRepository,
+    private modelProfileRepository?: IAiModelProfileRepository,
   ) {}
 
   /**
@@ -101,38 +105,53 @@ export class AiCredentialResolver {
         throw ApiError.internal('Credit system is not configured. Contact support.');
       }
 
-      const ledger = await this.creditLedgerRepository.getByCompanyId(config.companyId);
-      if (!ledger || !ledger.hasCredits()) {
-        throw ApiError.forbidden('No AI credits remaining. Please purchase more credits or switch to BYOK mode.');
+      let ledger: Awaited<ReturnType<IAiCreditLedgerRepository['getByCompanyId']>>;
+      try {
+        ledger = await this.creditLedgerRepository.getByCompanyId(config.companyId);
+      } catch (error) {
+        throw ApiError.internal(
+          `Failed to load AI credits ledger: ${(error as Error).message || 'Unknown error'}`
+        );
       }
 
-      // Resolve platform credential for CREDITS mode
-      if (!this.providerRepository) {
-        throw ApiError.internal('Platform runtime credential is not configured. Contact support.');
+      const creditCost = await this.resolveCreditCost(config);
+      if (!ledger || !ledger.canAfford(creditCost)) {
+        throw ApiError.forbidden(
+          creditCost > 1
+            ? `Insufficient AI credits: this model costs ${creditCost} credits per request. Please purchase more credits or switch to BYOK mode.`
+            : 'No AI credits remaining. Please purchase more credits or switch to BYOK mode.'
+        );
       }
 
       try {
+        const runtimeProfile = await this.tryReserveRuntimeSlot(config);
+        if (runtimeProfile) {
+          const plainKey = this.decryptStoredCredential(runtimeProfile.encryptedCredential!);
+          return AiProviderConfig.fromJSON({
+            ...config.toJSON(),
+            apiKey: plainKey,
+            updatedAt: config.updatedAt.toISOString(),
+          });
+        }
+
+        if (!this.providerRepository) {
+          throw ApiError.internal('Platform runtime credential is not configured. Contact support.');
+        }
+
         const providers = await this.providerRepository.list();
         const provider = providers.find(p =>
+          (config.providerId && p.id === config.providerId) ||
           p.type === config.provider ||
           (p.type === 'openai_compatible' && config.provider === 'openai_compatible')
         );
 
         if (!provider || !provider.platformRuntimeCredential) {
           throw ApiError.forbidden(
-            'Platform AI service is not available. No platform runtime credential configured for this provider. Contact support.'
+            'Platform AI service is not available. No platform runtime profile or provider credential is configured for this provider/model. Contact support.'
           );
         }
 
-        // Decrypt the platform runtime credential
-        let plainKey: string;
-        if (provider.platformRuntimeCredential.startsWith('plain:')) {
-          plainKey = provider.platformRuntimeCredential.substring(6);
-        } else if (provider.platformRuntimeCredential.includes(':')) {
-          plainKey = this.encryptionService.decrypt(provider.platformRuntimeCredential);
-        } else {
-          plainKey = provider.platformRuntimeCredential;
-        }
+        const plainKey = this.decryptStoredCredential(provider.platformRuntimeCredential);
 
         // Apply the platform credential to the config
         return AiProviderConfig.fromJSON({
@@ -153,6 +172,54 @@ export class AiCredentialResolver {
       throw ApiError.forbidden('AI configuration error. Please update your AI Settings.');
     }
     return config;
+  }
+
+  private async resolveRuntimeProfile(config: AiProviderConfig) {
+    if (!this.runtimeProfileRepository || !config.providerId || !config.selectedModelProfileId) {
+      return null;
+    }
+    return this.runtimeProfileRepository.getByProviderAndModel(config.providerId, config.selectedModelProfileId);
+  }
+
+  /**
+   * Look up the per-model credit cost. Defaults to 1 if the model profile is missing or
+   * has no creditCost set (matches legacy "1 chat = 1 credit" behavior).
+   */
+  private async resolveCreditCost(config: AiProviderConfig): Promise<number> {
+    if (!this.modelProfileRepository || !config.selectedModelProfileId) return 1;
+    try {
+      const profile = await this.modelProfileRepository.getById(config.selectedModelProfileId);
+      const cost = profile?.creditCost;
+      return typeof cost === 'number' && Number.isFinite(cost) && cost >= 0 ? cost : 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  /**
+   * Atomically reserve a request slot on the platform runtime profile.
+   * Returns the (post-increment) profile if reservation succeeded, or null if no profile exists.
+   * Throws ApiError.forbidden if a profile exists but the cap is hit / it's paused.
+   */
+  private async tryReserveRuntimeSlot(config: AiProviderConfig) {
+    if (!this.runtimeProfileRepository || !config.providerId || !config.selectedModelProfileId) {
+      return null;
+    }
+    const result = await this.runtimeProfileRepository.tryReserveSlot(
+      config.providerId,
+      config.selectedModelProfileId,
+    );
+    if (!result.profile) return null; // no profile configured — caller will try provider fallback
+    if (!result.allowed) {
+      throw ApiError.forbidden(result.reason || 'Platform AI runtime is not available. Contact support.');
+    }
+    return result.profile;
+  }
+
+  private decryptStoredCredential(value: string): string {
+    if (value.startsWith('plain:')) return value.substring(6);
+    if (value.includes(':')) return this.encryptionService.decrypt(value);
+    return value;
   }
 
   /**

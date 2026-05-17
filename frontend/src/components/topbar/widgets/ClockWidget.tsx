@@ -6,11 +6,15 @@ import { useTranslation } from 'react-i18next';
 interface ClockWidgetProps {
   showBorder?: boolean;
   showBackground?: boolean;
+  clockFormat?: "12h" | "24h";
+  showSeconds?: boolean;
 }
 
-export const ClockWidget: React.FC<ClockWidgetProps> = ({ 
-  showBorder = true, 
-  showBackground = true 
+export const ClockWidget: React.FC<ClockWidgetProps> = ({
+  showBorder = true,
+  showBackground = true,
+  clockFormat = "24h",
+  showSeconds = true,
 }) => {
   const { i18n } = useTranslation('common');
   const [time, setTime] = useState(new Date());
@@ -27,7 +31,12 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({
       showBorder && "border border-slate-200"
     )}>
       <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-      {time.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      {time.toLocaleTimeString(i18n.language, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: showSeconds ? '2-digit' : undefined,
+        hour12: clockFormat === "12h",
+      })}
     </div>
   );
 };

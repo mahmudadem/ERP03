@@ -183,7 +183,11 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     const loadModels = async () => {
       try {
         setErp03ModelsLoading(true);
-        const result = await aiAssistantApi.listTenantCertifiedProfiles({ scope: 'ALL' });
+        // In CREDITS mode, ask the backend to filter out any certified model that doesn't
+        // have an active platform runtime profile — otherwise tenants could pick a model
+        // the platform can't actually serve and get a 403 mid-chat.
+        const mode = runtimeMode === 'CREDITS' ? 'CREDITS' : 'BYOK';
+        const result = await aiAssistantApi.listTenantCertifiedProfiles({ scope: 'ALL', mode });
         if (!cancelled) setErp03AvailableModels(result);
       } catch {
         if (!cancelled) setErp03AvailableModels([]);
@@ -193,7 +197,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     };
     loadModels();
     return () => { cancelled = true; };
-  }, [canView]);
+  }, [canView, runtimeMode]);
 
   useEffect(() => {
     if (!canView) return;

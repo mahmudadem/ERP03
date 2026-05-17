@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Shield, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Coins, Shield, ShieldCheck, Sparkles } from 'lucide-react';
 import type { CertifiedProfileEntry } from '../../../api/aiAssistantApi';
 
 interface CreditsModelSelectorProps {
@@ -93,6 +93,12 @@ export const CreditsModelSelector: React.FC<CreditsModelSelectorProps> = ({
               ?.filter((c) => !['blocked', 'deprecated', 'expired'].includes(String(c.status).toLowerCase()))
               .map((c) => c.category) ?? [];
             const uniqueCats = [...new Set(cats)].slice(0, 3);
+            const creditCostRaw = profile.creditCost;
+            const creditCost = typeof creditCostRaw === 'number' && Number.isFinite(creditCostRaw) && creditCostRaw >= 0
+              ? creditCostRaw
+              : 1;
+            const modelStatus = String(profile.status || '');
+            const isRecommended = modelStatus === 'recommended';
 
             return (
               <div
@@ -114,6 +120,27 @@ export const CreditsModelSelector: React.FC<CreditsModelSelectorProps> = ({
                     <div className="flex flex-wrap gap-1 mb-2">
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${scopeColor}`}>
                         {scopeLabel}
+                      </span>
+                      {isRecommended && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                          <Sparkles className="w-3 h-3" />
+                          {t('settings.modelRecommended', 'Recommended')}
+                        </span>
+                      )}
+                      <span
+                        className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+                          creditCost === 0
+                            ? 'bg-green-100 text-green-800'
+                            : creditCost <= 1
+                            ? 'bg-slate-100 text-slate-700'
+                            : 'bg-orange-100 text-orange-800'
+                        }`}
+                        title={t('settings.modelCreditCostTooltip', { defaultValue: 'Credits consumed per chat using this model.' })}
+                      >
+                        <Coins className="w-3 h-3" />
+                        {creditCost === 0
+                          ? t('settings.modelCreditCostFree', 'Free')
+                          : t('settings.modelCreditCostValue', { defaultValue: '{{count}} credits/chat', count: creditCost })}
                       </span>
                       {uniqueCats.map((cat) => (
                         <span key={cat} className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-700">

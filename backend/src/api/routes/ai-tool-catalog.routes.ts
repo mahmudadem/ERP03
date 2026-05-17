@@ -11,6 +11,7 @@ import { Router } from 'express';
 import { AiToolCatalogController } from '../controllers/ai-assistant/AiToolCatalogController';
 import { AiCreditController } from '../controllers/ai-assistant/AiCreditController';
 import { AiMaintenanceController } from '../controllers/ai-assistant/AiMaintenanceController';
+import { AiRuntimeProfileController } from '../controllers/ai-assistant/AiRuntimeProfileController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { assertSuperAdmin } from '../middlewares/assertSuperAdmin';
 
@@ -75,6 +76,11 @@ router.get('/ai-providers/:providerId', AiToolCatalogController.getProvider);
 router.patch('/ai-providers/:providerId', AiToolCatalogController.updateProvider);
 router.patch('/ai-providers/:providerId/enable', AiToolCatalogController.enableProvider);
 router.patch('/ai-providers/:providerId/disable', AiToolCatalogController.disableProvider);
+router.get('/ai-runtime-profiles', AiRuntimeProfileController.listProfiles);
+router.post('/ai-runtime-profiles', AiRuntimeProfileController.createProfile);
+router.get('/ai-runtime-profiles/:profileId', AiRuntimeProfileController.getProfile);
+router.patch('/ai-runtime-profiles/:profileId', AiRuntimeProfileController.updateProfile);
+router.delete('/ai-runtime-profiles/:profileId', AiRuntimeProfileController.deleteProfile);
 
 router.get('/ai-certifications/valid', AiToolCatalogController.listValidCertifiedProfiles);
 router.patch('/ai-certifications/:certificationId/expire', AiToolCatalogController.expireCertification);

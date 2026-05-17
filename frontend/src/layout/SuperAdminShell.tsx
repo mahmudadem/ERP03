@@ -21,7 +21,8 @@ import {
   Wrench,
   ShieldCheck,
   Bot,
-  Server
+  Server,
+  Globe
 } from 'lucide-react';
 import { PageTitleManager } from '../components/common/PageTitleManager';
 import { useTranslation } from 'react-i18next';
@@ -51,6 +52,7 @@ export const SuperAdminShell: React.FC = () => {
     { path: '/super-admin/plans', label: t('shell.superAdmin.nav.plans'), icon: Crown },
 { path: '/super-admin/ai-tools', label: t('shell.superAdmin.nav.aiTools'), icon: Wrench },
     { path: '/super-admin/ai-providers', label: t('shell.superAdmin.nav.aiProviders'), icon: Server },
+    { path: '/super-admin/platform-global-providers', label: t('shell.superAdmin.nav.aiRuntimeProfiles', { defaultValue: 'Platform Global Providers' }), icon: Globe },
     { path: '/super-admin/ai-models', label: t('shell.superAdmin.nav.aiModels'), icon: Bot },
     { path: '/super-admin/ai-proposal-policies', label: t('shell.superAdmin.nav.aiProposalPolicies', { defaultValue: 'AI Proposals' }), icon: ShieldCheck },
     { path: '/super-admin/system-forms', label: t('shell.superAdmin.nav.systemForms', { defaultValue: 'System Forms' }), icon: LayoutTemplate },

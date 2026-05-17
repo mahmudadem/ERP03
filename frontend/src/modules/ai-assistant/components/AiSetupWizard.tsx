@@ -34,7 +34,7 @@ import {
 // ── Types ───────────────────────────────────────────────────────────────────────
 
 export interface AiSetupWizardProps {
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
   isConfigured: boolean;
 }
 
@@ -253,7 +253,7 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
       }
 
       await aiAssistantApi.updateSettings(payload);
-      onComplete();
+      await onComplete();
     } catch (err: any) {
       setActivationError(
         err?.response?.data?.error?.message ||

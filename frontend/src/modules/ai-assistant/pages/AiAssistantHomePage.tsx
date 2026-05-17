@@ -8,7 +8,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, User, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Mic } from 'lucide-react';
+import { Send, Bot, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, FileText, Wrench, Mic, PanelLeftClose, PanelLeft, Copy, Check, Pin, PinOff, Edit3, Download, Archive, Paperclip, Globe, Lightbulb } from 'lucide-react';
 import {
   aiAssistantApi,
   ChatMessageDTO,
@@ -60,6 +60,20 @@ export const AiAssistantHomePage: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [conversations, setConversations] = useState<ConversationMetaDTO[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [hasSentFirst, setHasSentFirst] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('ai_pinned_msgs') || '[]')); } catch { return new Set<string>(); }
+  });
+  const [pinnedConvs, setPinnedConvs] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('ai_pinned_convs') || '[]')); } catch { return new Set<string>(); }
+  });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msgId: string } | null>(null);
+  const [editingConvId, setEditingConvId] = useState<string | null>(null);
+  const [editingConvTitle, setEditingConvTitle] = useState('');
+  const [followUps, setFollowUps] = useState<string[]>([]);
+  const [hintIdx, setHintIdx] = useState(0);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -189,6 +203,7 @@ export const AiAssistantHomePage: React.FC = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setHasSentFirst(true);
     setIsLoading(true);
     setStreamingContent('');
 
@@ -357,6 +372,14 @@ export const AiAssistantHomePage: React.FC = () => {
     }
   };
 
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {}
+  };
+
   const handleNewConversation = () => {
     setMessages([]);
     setConversationId(undefined);
@@ -459,6 +482,142 @@ export const AiAssistantHomePage: React.FC = () => {
 
   // Quick actions are rendered by QuickActionButtons component
 
+  // ─── Hints & Follow-ups ────────────────────────────────────────
+  const hints =
+    i18n.language.startsWith('ar')
+      ? ['اسأل عن تقرير المبيعات', 'اعرض حالة المخزون', 'حلل التدفق النقدي', 'قارن الأداء الربع سنوي']
+      : i18n.language.startsWith('tr')
+        ? ['Satış raporunu sor', 'Stok durumunu göster', 'Nakit akışını analiz et', 'Çeyreklik performansı karşılaştır']
+        : ['Ask about sales report', 'Show inventory status', 'Analyze cash flow', 'Compare quarterly performance'];
+
+  useEffect(() => {
+    if (hasSentFirst) return;
+    const interval = setInterval(() => setHintIdx(i => (i + 1) % hints.length), 3000);
+    return () => clearInterval(interval);
+  }, [hasSentFirst, hints.length]);
+
+  const suggestionTopics = [
+    'What were our top-selling products last month?',
+    'Show me accounts that are overdue by 60+ days',
+    'Compare Q3 vs Q2 revenue growth',
+    'Which suppliers have the best on-time delivery rate?',
+    'What is our current cash conversion cycle?',
+    'Show me inventory turnover by warehouse',
+    'List employees with pending expense reports',
+    'What is our gross margin trend this year?',
+  ];
+
+  // ─── Context Menu Handlers ─────────────────────────────────────
+  const closeContextMenu = () => setContextMenu(null);
+
+  const handleContextMenu = (e: React.MouseEvent, msgId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, msgId });
+  };
+
+  const handleRenameConv = (convId: string, currentTitle: string) => {
+    setEditingConvId(convId);
+    setEditingConvTitle(currentTitle || '');
+  };
+
+  const handleSaveRename = (convId: string) => {
+    const trimmed = editingConvTitle.trim();
+    if (!trimmed) { setEditingConvId(null); return; }
+    setConversations(prev => prev.map(c => c.conversationId === convId ? { ...c, title: trimmed } : c));
+    if (convId === conversationId) {
+      // Also update the conversation list from server if needed
+    }
+    setEditingConvId(null);
+  };
+
+  const handleTogglePinMsg = (msgId: string) => {
+    setPinnedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId); else next.add(msgId);
+      localStorage.setItem('ai_pinned_msgs', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const handleTogglePinConv = (convId: string) => {
+    setPinnedConvs(prev => {
+      const next = new Set(prev);
+      if (next.has(convId)) next.delete(convId); else next.add(convId);
+      localStorage.setItem('ai_pinned_convs', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const handleDownloadMsg = (content: string) => {
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'ai-response.md';
+    a.click(); URL.revokeObjectURL(url);
+  };
+
+  const isRtl = i18n.dir() === 'rtl';
+
+  // ─── Render conversation sidebar item ──────────────────────────
+  const renderConvItem = (conv: ConversationMetaDTO) => {
+    const isEditing = editingConvId === conv.conversationId;
+    const fullTitle = conv.title || t('chat.untitledConversation', 'New conversation');
+    return (
+      <div key={conv.conversationId} className="relative group">
+        {isEditing ? (
+          <input
+            autoFocus
+            value={editingConvTitle}
+            onChange={e => setEditingConvTitle(e.target.value)}
+            onBlur={() => handleSaveRename(conv.conversationId)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSaveRename(conv.conversationId); if (e.key === 'Escape') setEditingConvId(null); }}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
+            dir="auto"
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <button
+            onClick={() => handleSelectConversation(conv.conversationId)}
+            onDoubleClick={() => handleRenameConv(conv.conversationId, fullTitle)}
+            onContextMenu={e => handleContextMenu(e, conv.conversationId)}
+            title={fullTitle}
+            className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${
+              conv.conversationId === conversationId ? 'bg-gray-200/70' : 'hover:bg-gray-100'
+            }`}
+          >
+            <div className="text-sm text-gray-700 truncate font-medium">{fullTitle}</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              {pinnedConvs.has(conv.conversationId) && <Pin className="w-3 h-3 text-gray-400" />}
+              {conv.messageCount != null && (
+                <span className="text-xs text-gray-400">{conv.messageCount} msgs</span>
+              )}
+              {conv.lastMessageAt && (
+                <span className="text-xs text-gray-400">
+                  {new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Close context menu on click anywhere ──────────────────────
+  useEffect(() => { if (!contextMenu) return; const cb = () => setContextMenu(null); window.addEventListener('click', cb); return () => window.removeEventListener('click', cb); }, [contextMenu]);
+
+  // ─── Follow-ups after last assistant message ───────────────────
+  useEffect(() => {
+    if (messages.length === 0) { setFollowUps([]); return; }
+    const last = messages[messages.length - 1];
+    if (last.role === 'assistant') {
+      const shuffled = [...suggestionTopics].sort(() => Math.random() - 0.5);
+      setFollowUps(shuffled.slice(0, 3));
+    } else {
+      setFollowUps([]);
+    }
+  }, [messages]);
+
   if (!canChat) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -476,73 +635,40 @@ export const AiAssistantHomePage: React.FC = () => {
   }
 
   return (
-    <div className="flex h-[calc(100vh-120px)] max-w-6xl mx-auto">
-      {/* Sidebar - Conversation History */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} flex-shrink-0 border-r bg-white transition-all duration-200 overflow-hidden flex flex-col`}>
-        {/* Sidebar Header */}
-        <div className="flex items-center justify-between px-3 py-3 border-b">
-          <h2 className="text-sm font-semibold text-gray-700 truncate">
-            {t('chat.history', 'History')}
-          </h2>
+    <div className="flex h-full bg-white">
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-[25%] min-w-[200px] max-w-xs' : 'w-0'} flex-shrink-0 bg-gray-50 border-r border-gray-200 transition-all duration-300 overflow-hidden flex flex-col`}>
+        <div className="p-4">
           <button
             onClick={handleNewConversation}
-            className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-            title={t('chat.newConversation', 'New conversation')}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
           >
             <Plus className="w-4 h-4" />
+            {t('chat.newConversation', 'New chat')}
           </button>
         </div>
 
-        {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
           {conversations.length === 0 && (
             <div className="px-3 py-8 text-center text-xs text-gray-400">
               {t('chat.noHistory', 'No previous conversations')}
             </div>
           )}
+          {/* Pinned conversations */}
+          {pinnedConvs.size > 0 && (
+            <div>
+              <div className="px-3 pt-4 pb-1 text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Pin className="w-3 h-3" /> {t('chat.pinned', 'Pinned')}
+              </div>
+              {conversations.filter(c => pinnedConvs.has(c.conversationId)).map(conv => renderConvItem(conv))}
+            </div>
+          )}
           {conversationGroups.map((group) => (
             <div key={group.label}>
-              <div className="px-3 pt-3 pb-1 text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <div className="px-3 pt-4 pb-1 text-xs font-medium text-gray-400 uppercase tracking-wider">
                 {group.label}
               </div>
-              {group.conversations.map((conv) => (
-                <button
-                  key={conv.conversationId}
-                  onClick={() => handleSelectConversation(conv.conversationId)}
-                  className={`w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors group ${
-                    conv.conversationId === conversationId ? 'bg-indigo-50 border-l-2 border-indigo-500' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <MessageSquare className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm text-gray-700 truncate font-medium">
-                        {conv.title || t('chat.untitledConversation', 'New conversation')}
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {conv.messageCount != null && (
-                          <span className="text-xs text-gray-400">{conv.messageCount} {t('chat.messages', 'messages')}</span>
-                        )}
-                        {conv.lastMessageAt && (
-                          <>
-                            <Clock className="w-3 h-3 text-gray-300" />
-                            <span className="text-xs text-gray-400">
-                              {new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv.conversationId); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
-                      title={t('chat.deleteConversation', 'Delete')}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </button>
-              ))}
+              {group.conversations.filter(c => !pinnedConvs.has(c.conversationId)).map(conv => renderConvItem(conv))}
             </div>
           ))}
         </div>
@@ -550,214 +676,308 @@ export const AiAssistantHomePage: React.FC = () => {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
+        {/* Top Bar */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-white/90 backdrop-blur-sm sticky top-0 z-10">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors lg:hidden"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title={sidebarOpen ? t('chat.hideHistory', 'Hide history') : t('chat.showHistory', 'Show history')}
             >
-              <MessageSquare className="w-5 h-5" />
+              {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
             </button>
-            <Bot className="w-6 h-6 text-indigo-600" />
-            <h1 className="text-lg font-semibold text-gray-900">
+            <Bot className="w-5 h-5 text-gray-500" />
+            <h1 className="text-sm font-medium text-gray-600">
               {t('chat.title', 'AI Assistant')}
             </h1>
+            <span className="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 text-[11px] text-gray-500 bg-gray-100/60 rounded-full">
+              <Globe className="w-3 h-3" />
+              ERP Data · Advisory
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden lg:flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-              title={sidebarOpen ? t('chat.hideHistory', 'Hide history') : t('chat.showHistory', 'Show history')}
-            >
-              <MessageSquare className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-1">
             <button
               onClick={handleNewConversation}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title={t('chat.newConversation', 'New conversation')}
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('chat.newConversation', 'New')}</span>
+              <Plus className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-4">
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                  <Sparkles className="w-10 h-10 text-indigo-600" />
+        {/* Messages Container */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto w-full">
+            {/* Welcome Screen */}
+            {messages.length === 0 && !streamingContent && (
+              <div className="flex flex-col items-center justify-center min-h-[50vh] px-4 py-12">
+                <div className="w-20 h-20 mb-6 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl animate-pulse-slow opacity-30 blur-xl" />
+                  <div className="relative w-full h-full bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <Sparkles className="w-10 h-10 text-white" />
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-3 tracking-tight">
+                <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-3 tracking-tight text-center">
                   {t('chat.welcome', 'Welcome to AI Assistant')}
-                </h2>
-                <p className="text-base text-gray-500">
+                </h1>
+                <p className="text-gray-500 text-center max-w-md leading-relaxed mb-8">
                   {t('chat.welcomeDesc', 'Ask questions about your ERP data, get explanations, summaries, and suggestions. The assistant is advisory-only and cannot modify business records.')}
                 </p>
+                <QuickActionButtons
+                  onSendMessage={(msg) => handleSend(msg)}
+                  hasMessages={messages.length > 0}
+                  compact={false}
+                />
               </div>
-              
-              <QuickActionButtons
-                onSendMessage={(msg) => handleSend(msg)}
-                hasMessages={messages.length > 0}
-                compact={false}
-              />
-            </div>
-          )}
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
-            >
-              {msg.role === 'assistant' && (
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 shadow-sm flex items-center justify-center mt-1">
-                  <Sparkles className="w-5 h-5 text-indigo-600" />
+            )}
+
+            {/* Messages */}
+            <div className="pb-6">
+              {messages.map((msg, idx) => {
+                const prevMsg = idx > 0 ? messages[idx - 1] : null;
+                const isSameRole = prevMsg?.role === msg.role;
+                const showAvatar = !isSameRole;
+
+                return (
+                  <div
+                    key={msg.id}
+                    onContextMenu={e => handleContextMenu(e, msg.id)}
+                    className={`flex gap-4 px-4 sm:px-6 lg:px-8 py-5 ${
+                      msg.role === 'assistant' ? 'bg-gray-50/60' : 'bg-white'
+                    } animate-fade-in`}
+                    style={{ animationDuration: '0.3s' }}
+                  >
+                    <div className="flex-shrink-0">
+                      {showAvatar ? (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-sm">
+                          <Bot className="w-4 h-4 text-white" />
+                        </div>
+                      ) : (
+                        <div className="w-8" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 pt-0.5 group">
+                      <div className="text-sm sm:text-base text-gray-800 leading-relaxed">
+                        {msg.role === 'assistant' ? (
+                          <MarkdownRenderer content={msg.content} />
+                        ) : (
+                          <div dir="auto">{msg.content}</div>
+                        )}
+                      </div>
+
+                      {/* Meta badges row */}
+                      {msg.role === 'assistant' && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                          {(msg.provider || msg.model || msg.modelProfile) && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100/60 px-2 py-1 text-[11px] text-gray-500">
+                              <Info className="w-3 h-3" />
+                              {formatModelProvider(msg)}
+                            </span>
+                          )}
+                          {msg.modelProfile?.status && msg.modelProfile.status !== 'recommended' && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] text-amber-700 border border-amber-100">
+                              <AlertTriangle className="w-3 h-3" />
+                              {formatModelStatus(msg.modelProfile.status)}
+                            </span>
+                          )}
+                          {msg.modelProfile?.textOnlyMode && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] text-slate-600 border border-slate-100">
+                              <Bot className="w-3 h-3" />
+                              {t('chat.textOnlyMode', 'Text-only mode')}
+                            </span>
+                          )}
+                          {((msg.toolResults && msg.toolResults.length > 0) || (msg.toolCallsRequested && msg.toolCallsRequested.length > 0)) && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700 border border-indigo-100">
+                              <Wrench className="w-3 h-3" />
+                              {t('chat.toolsUsed', 'Tools used')}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Runtime Warnings */}
+                      {msg.role === 'assistant' && getVisibleRuntimeWarnings(msg).length > 0 && (
+                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          <div className="flex items-center gap-1.5 font-medium mb-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            {t('chat.runtimeWarning', 'Runtime warning')}
+                          </div>
+                          <ul className="list-disc pl-5 rtl:pl-0 rtl:pr-5 space-y-1">
+                            {getVisibleRuntimeWarnings(msg).map((warning, index) => (
+                              <li key={`${msg.id}-warning-${index}`}>{warning}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Clarification */}
+                      {msg.role === 'assistant' && isClarificationMessage(msg) && (
+                        <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                          <div className="flex items-center gap-1.5 font-medium mb-1">
+                            <Info className="w-3.5 h-3.5" />
+                            {t('chat.clarificationTitle', 'AI needs more information')}
+                          </div>
+                          <div>{t('chat.clarificationPrompt', 'Please provide the requested details before any tool execution or proposal can continue.')}</div>
+                        </div>
+                      )}
+
+                      {/* Tool Results */}
+                      {msg.role === 'assistant' && msg.toolResults && msg.toolResults.length > 0 && (
+                        <AiToolResultsPanel toolResults={msg.toolResults} />
+                      )}
+
+                      {/* Proposal Card */}
+                      {msg.role === 'assistant' && msg.proposal && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800">
+                              {t('proposals.sandboxBadge', 'AI Proposal · Sandbox · No ERP changes')}
+                            </span>
+                          </div>
+                          <Link
+                            to={`/ai-assistant/proposals/${msg.proposal.id}`}
+                            className="text-sm text-blue-600 hover:underline font-medium"
+                          >
+                            {msg.proposal.title}
+                          </Link>
+                          <p className="text-xs text-blue-600 mt-1">
+                            {t(`proposals.status.${msg.proposal.status}`, msg.proposal.status)} · {t('proposals.table.risk', 'Risk')}: {t(`proposals.risk.${msg.proposal.riskLevel}`, msg.proposal.riskLevel)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Provider Error */}
+                      {msg.isProviderError && msg.role === 'assistant' && (
+                        <div className="mt-3 pt-2 border-t border-amber-100">
+                          <Link
+                            to="/ai-assistant/settings"
+                            className="inline-flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-800 hover:underline font-medium"
+                          >
+                            <AlertCircle className="w-4 h-4" />
+                            {t('chat.checkSettingsAndDiag', 'Check AI Settings & Run Diagnostics')}
+                          </Link>
+                        </div>
+                      )}
+
+                      {/* Copy + Timestamp footer */}
+                      <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[11px] text-gray-400">
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {msg.role === 'assistant' && (
+                          <button
+                            onClick={() => copyToClipboard(msg.content, msg.id)}
+                            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            {copiedId === msg.id ? (
+                              <><Check className="w-3 h-3" /> Copied</>
+                            ) : (
+                              <><Copy className="w-3 h-3" /> Copy</>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Streaming Content */}
+              {streamingContent && (
+                <div className="flex gap-4 px-4 sm:px-6 lg:px-8 py-5 bg-gray-50/60 animate-fade-in">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-sm">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <div className="text-sm sm:text-base text-gray-800 leading-relaxed">
+                      <MarkdownRenderer content={streamingContent} />
+                      <span className="inline-block w-[3px] h-[1.1em] bg-blue-500 animate-pulse align-text-bottom ml-0.5 rounded-sm" />
+                    </div>
+                  </div>
                 </div>
               )}
-              <div
-                className={`max-w-[85%] sm:max-w-[75%] px-5 py-3.5 shadow-sm ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl rounded-tr-sm'
-                    : 'bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-tl-sm'
-                }`}
-              >
-                {msg.role === 'assistant' && (
-                  <div className="flex items-center gap-1.5 mb-2 text-indigo-600">
-                    <Bot className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">AI Assistant</span>
-                  </div>
-                )}
-                <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {msg.role === 'assistant' ? (
-                     <MarkdownRenderer content={msg.content} />
-                  ) : (
-                     <div dir="auto">{msg.content}</div>
-                  )}
-                </div>
 
-                {msg.role === 'assistant' && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                    {(msg.provider || msg.model || msg.modelProfile) && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1 text-gray-600 border border-gray-100">
-                        <Info className="w-3 h-3" />
-                        {formatModelProvider(msg)}
-                      </span>
-                    )}
-                    {msg.modelProfile?.status && msg.modelProfile.status !== 'recommended' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700 border border-amber-100">
-                        <AlertTriangle className="w-3 h-3" />
-                        {formatModelStatus(msg.modelProfile.status)}
-                      </span>
-                    )}
-                    {msg.modelProfile?.textOnlyMode && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-slate-600 border border-slate-100">
-                        <Bot className="w-3 h-3" />
-                        {t('chat.textOnlyMode', 'Text-only mode')}
-                      </span>
-                    )}
-                    {((msg.toolResults && msg.toolResults.length > 0) || (msg.toolCallsRequested && msg.toolCallsRequested.length > 0)) && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-indigo-700 border border-indigo-100">
-                        <Wrench className="w-3 h-3" />
-                        {t('chat.toolsUsed', 'Tools used')}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {msg.role === 'assistant' && getVisibleRuntimeWarnings(msg).length > 0 && (
-                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    <div className="flex items-center gap-1.5 font-medium mb-1">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      {t('chat.runtimeWarning', 'Runtime warning')}
-                    </div>
-                    <ul className="list-disc pl-5 rtl:pl-0 rtl:pr-5 space-y-1">
-                      {getVisibleRuntimeWarnings(msg).map((warning, index) => (
-                        <li key={`${msg.id}-warning-${index}`}>{warning}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {msg.role === 'assistant' && isClarificationMessage(msg) && (
-                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                    <div className="flex items-center gap-1.5 font-medium mb-1">
-                      <Info className="w-3.5 h-3.5" />
-                      {t('chat.clarificationTitle', 'AI needs more information')}
-                    </div>
-                    <div>{t('chat.clarificationPrompt', 'Please provide the requested details before any tool execution or proposal can continue.')}</div>
-                  </div>
-                )}
-
-                {msg.role === 'assistant' && msg.toolResults && msg.toolResults.length > 0 && (
-                  <AiToolResultsPanel toolResults={msg.toolResults} />
-                )}
-                {/* Proposal Card */}
-                {msg.role === 'assistant' && msg.proposal && (
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">
-                        {t('proposals.sandboxBadge', 'AI Proposal · Sandbox · No ERP changes')}
-                      </span>
-                    </div>
-                    <Link
-                      to={`/ai-assistant/proposals/${msg.proposal.id}`}
-                      className="text-sm text-blue-600 hover:underline font-medium"
-                    >
-                      {msg.proposal.title}
-                    </Link>
-                    <p className="text-xs text-blue-600 mt-1">
-                      {t(`proposals.status.${msg.proposal.status}`, msg.proposal.status)} · {t('proposals.table.risk', 'Risk')}: {t(`proposals.risk.${msg.proposal.riskLevel}`, msg.proposal.riskLevel)}
-                    </p>
-                  </div>
-                )}
-                {msg.isProviderError && msg.role === 'assistant' && (
-                  <div className="mt-3 pt-2 border-t border-amber-100">
-                    <Link
-                      to="/ai-assistant/settings"
-                      className="inline-flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-800 hover:underline font-medium"
-                    >
-                      <AlertCircle className="w-4 h-4" />
-                      {t('chat.checkSettingsAndDiag', 'Check AI Settings & Run Diagnostics')}
-                    </Link>
-                  </div>
-                )}
-              </div>
+              <div ref={messagesEndRef} />
             </div>
-          ))}
-          {streamingContent && (
-            <div className="flex gap-4 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 shadow-sm flex items-center justify-center mt-1">
-                <Bot className="w-5 h-5 text-indigo-600 animate-pulse" />
-              </div>
-              <div className="max-w-[85%] sm:max-w-[75%] px-5 py-3.5 shadow-sm bg-white border border-indigo-100 text-gray-800 rounded-2xl rounded-tl-sm ring-1 ring-indigo-500/10">
-                <div className="flex items-center gap-1.5 mb-2 text-indigo-600">
-                  <Bot className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">AI Assistant is typing...</span>
+
+            {/* Follow-up suggestions after last assistant message */}
+            {followUps.length > 0 && !streamingContent && (
+              <div className="px-4 sm:px-6 lg:px-8 pb-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] text-gray-400 font-medium mr-1">{t('chat.followUp', 'Follow up')}:</span>
+                  {followUps.map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSend(q)}
+                      className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 hover:border-gray-300 hover:text-gray-700 transition-all"
+                    >
+                      {q}
+                    </button>
+                  ))}
                 </div>
-                <div className="text-sm whitespace-pre-wrap leading-relaxed font-sans text-gray-800">
-                  {streamingContent}
-                  <span className="inline-block w-1.5 h-4 ml-0.5 bg-indigo-400 animate-pulse align-middle" />
-                </div>
               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+            )}
+          </div>
         </div>
 
-        {/* Input */}
-        <div className="p-4 sm:p-6 bg-gradient-to-t from-gray-50/80 to-transparent sticky bottom-0 z-10">
-          <div className="max-w-4xl mx-auto w-full relative">
+        {/* Context Menu Overlay */}
+        {contextMenu && (
+          <div
+            className="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px] animate-fade-in"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={e => e.stopPropagation()}
+          >
+            {contextMenu.msgId.startsWith('conv') ? (
+              // Conversation context menu
+              <>
+                <button onClick={() => { handleRenameConv(contextMenu.msgId, conversations.find(c => c.conversationId === contextMenu.msgId)?.title || ''); setContextMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Edit3 className="w-4 h-4" /> Rename
+                </button>
+                <button onClick={() => { handleTogglePinConv(contextMenu.msgId); setContextMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                  {pinnedConvs.has(contextMenu.msgId) ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                  {pinnedConvs.has(contextMenu.msgId) ? 'Unpin' : 'Pin'}
+                </button>
+                <div className="border-t border-gray-100 my-1" />
+                <button onClick={() => { handleDeleteConversation(contextMenu.msgId); setContextMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                  <Trash2 className="w-4 h-4" /> Delete
+                </button>
+              </>
+            ) : (
+              // Message context menu
+              <>
+                <button onClick={() => { copyToClipboard(messages.find(m => m.id === contextMenu.msgId)?.content || '', contextMenu.msgId); setContextMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Copy className="w-4 h-4" /> {copiedId === contextMenu.msgId ? 'Copied' : 'Copy'}
+                </button>
+                <button onClick={() => { handleTogglePinMsg(contextMenu.msgId); setContextMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                  {pinnedIds.has(contextMenu.msgId) ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                  {pinnedIds.has(contextMenu.msgId) ? 'Unpin' : 'Pin'}
+                </button>
+                <button onClick={() => { handleDownloadMsg(messages.find(m => m.id === contextMenu.msgId)?.content || ''); setContextMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Download className="w-4 h-4" /> Download
+                </button>
+                <div className="border-t border-gray-100 my-1" />
+                <button onClick={() => { setMessages(prev => prev.filter(m => m.id !== contextMenu.msgId)); setContextMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                  <Trash2 className="w-4 h-4" /> Delete
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Input Bar */}
+        <div className="border-t border-gray-100 bg-white">
+          <div className="max-w-3xl mx-auto w-full px-4 py-3">
             {error && (
               <div className="mb-3 px-4 py-2.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 shadow-sm">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             )}
-            <div className="relative bg-white border border-gray-300 rounded-3xl shadow-sm focus-within:shadow-md focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <div className="relative bg-white border border-gray-300 rounded-2xl shadow-sm focus-within:border-gray-400 focus-within:shadow-md transition-all">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -771,33 +991,61 @@ export const AiAssistantHomePage: React.FC = () => {
                 disabled={isLoading}
                 rows={1}
                 dir="auto"
-                className="block w-full max-h-[200px] min-h-[64px] py-5 pr-[110px] pl-6 rtl:pl-[110px] rtl:pr-6 bg-transparent border-none outline-none focus:ring-0 resize-none disabled:opacity-50 text-sm md:text-base leading-relaxed overflow-y-auto m-0 rounded-3xl"
-                style={{ boxShadow: 'none' }}
+                className={`block w-full max-h-[200px] min-h-[52px] py-3 bg-transparent border-none outline-none focus:ring-0 resize-none disabled:opacity-50 text-sm leading-relaxed rounded-2xl ${
+                  isRtl ? 'pl-28 pr-3 pb-12' : 'pr-28 pl-3 pb-12'
+                }`}
               />
-              <div className="absolute right-2 rtl:right-auto rtl:left-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {/* Gradient fade covering button area */}
+              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none rounded-b-2xl z-[1]" />
+              {/* Attachment — opposite side from send */}
+              <div className={`absolute bottom-1.5 flex items-center z-[2] ${isRtl ? 'right-1.5' : 'left-1.5'}`}>
+                <button
+                  className="w-9 h-9 rounded-xl transition-all flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  title={t('chat.upload', 'Upload file')}
+                >
+                  <Paperclip className="w-[18px] h-[18px]" />
+                </button>
+              </div>
+              {/* Mic + Send — always on the reading-direction side (right for LTR, left for RTL) */}
+              <div className={`absolute bottom-1.5 flex items-center gap-0.5 z-[2] ${isRtl ? 'left-1.5' : 'right-1.5'}`}>
                 <button
                   onClick={toggleRecording}
-                  className={`w-12 h-12 rounded-2xl transition-all flex items-center justify-center ${
-                    isRecording 
-                      ? 'bg-red-500 text-white animate-pulse shadow-lg' 
-                      : 'text-gray-400 hover:bg-gray-100'
+                  className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center ${
+                    isRecording
+                      ? 'bg-red-500 text-white animate-pulse shadow-lg'
+                      : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                   }`}
                   title="Voice Message"
                 >
-                  <Mic className="w-5 h-5" />
+                  <Mic className="w-[18px] h-[18px]" />
                 </button>
                 <button
                   onClick={() => handleSend()}
                   disabled={isLoading || !input.trim()}
-                  className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 hover:shadow-lg disabled:opacity-40 disabled:hover:shadow-none disabled:cursor-not-allowed transition-all flex items-center justify-center"
+                  className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center ${
+                    input.trim()
+                      ? 'bg-gray-800 text-white hover:bg-gray-700 shadow-sm'
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
                 >
-                  <Send className="w-5 h-5 rtl:-scale-x-100" />
+                  <Send className={`w-[18px] h-[18px] ${isRtl ? 'scale-x-[-1]' : ''}`} />
                 </button>
               </div>
             </div>
-            <p className="text-[11px] text-gray-500 mt-2.5 text-center font-medium">
-              {t('chat.disclaimer', 'AI responses are advisory-only. They cannot create, modify, or delete business records.')}
-            </p>
+            {/* Rotating hints — show until first message sent */}
+            {!hasSentFirst && !streamingContent && (
+              <div className="flex items-center justify-center gap-2 mt-2.5">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                <span className="text-xs text-gray-400 animate-fade-in" key={hintIdx}>
+                  {hints[hintIdx]}
+                </span>
+              </div>
+            )}
+            {hasSentFirst && (
+              <p className="text-[11px] text-gray-400 text-center mt-2.5">
+                {t('chat.disclaimer', 'AI responses are advisory-only. They cannot create, modify, or delete business records.')}
+              </p>
+            )}
           </div>
         </div>
       </div>

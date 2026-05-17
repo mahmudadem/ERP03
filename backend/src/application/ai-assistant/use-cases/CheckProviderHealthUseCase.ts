@@ -19,6 +19,7 @@ import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assista
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
+import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { ProviderFactory, ProviderProviderError } from '../providers/ProviderFactory';
 import { ProviderError } from '../../../errors/ProviderErrors';
@@ -150,6 +151,7 @@ export class CheckProviderHealthUseCase {
     private httpClient: IHttpClient,
     private modelProfileUseCase: AiModelProfileUseCase,
     private providerRepository?: IAiProviderRepository,
+    private runtimeProfileRepository?: IAiPlatformRuntimeProfileRepository,
   ) {}
 
   async execute(companyIdOrInput: string | CheckProviderHealthInput): Promise<ProviderHealthResult> {
@@ -899,14 +901,33 @@ export class CheckProviderHealthUseCase {
     }
 
     if (runtimeMode === 'CREDITS') {
-      // Credits mode: use the platform runtime credential from the provider registry
-      if (!this.providerRepository) {
-        return config; // Can't resolve — let diagnostics fail naturally
-      }
-
       try {
+        if (this.runtimeProfileRepository && config.providerId && config.selectedModelProfileId) {
+          const runtimeProfile = await this.runtimeProfileRepository.getByProviderAndModel(
+            config.providerId,
+            config.selectedModelProfileId,
+          );
+          if (runtimeProfile) {
+            const capacity = runtimeProfile.canConsume();
+            if (!capacity.allowed) {
+              return config;
+            }
+            const plainKey = this.decryptStoredCredential(runtimeProfile.encryptedCredential!);
+            return AiProviderConfig.fromJSON({
+              ...config.toJSON(),
+              apiKey: plainKey,
+              updatedAt: config.updatedAt.toISOString(),
+            });
+          }
+        }
+
+        if (!this.providerRepository) {
+          return config; // Can't resolve — let diagnostics fail naturally
+        }
+
         const providers = await this.providerRepository.list();
         const provider = providers.find(p =>
+          (config.providerId && p.id === config.providerId) ||
           p.type === config.provider ||
           (p.type === 'openai_compatible' && config.provider === 'openai_compatible')
         );
@@ -915,15 +936,7 @@ export class CheckProviderHealthUseCase {
           return config; // No platform credential — let diagnostics fail naturally
         }
 
-        // Decrypt the platform runtime credential
-        let plainKey: string;
-        if (provider.platformRuntimeCredential.startsWith('plain:')) {
-          plainKey = provider.platformRuntimeCredential.substring(6);
-        } else if (provider.platformRuntimeCredential.includes(':')) {
-          plainKey = this.encryptionService.decrypt(provider.platformRuntimeCredential);
-        } else {
-          plainKey = provider.platformRuntimeCredential;
-        }
+        const plainKey = this.decryptStoredCredential(provider.platformRuntimeCredential);
 
         // Apply the platform credential to the config
         return AiProviderConfig.fromJSON({
@@ -940,6 +953,12 @@ export class CheckProviderHealthUseCase {
 
     // Unknown mode — treat as BYOK
     return config;
+  }
+
+  private decryptStoredCredential(value: string): string {
+    if (value.startsWith('plain:')) return value.substring(6);
+    if (value.includes(':')) return this.encryptionService.decrypt(value);
+    return value;
   }
 
   /**

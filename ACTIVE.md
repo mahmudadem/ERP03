@@ -1,10 +1,41 @@
 # 🎯 Current Focus
 
-**Task:** Task 94 — AI Module Finalization COMPLETE
-**Status:** ✅ ALL SUBTASKS A-F DONE — ALL 924 TESTS PASSING
+**Task:** Topbar Widget Designer — 8 New Customization Features
+**Status:** ✅ COMPLETE
 **Branch:** `feat/phase-1a-core-bugs`
+**Estimate:** 30-45m
+**Actual:** ~25m
 
-### What Was Built (Task 93 — Phase 1)
+### What Was Built
+
+A full-page widget designer at `/settings/widgets` with 3-panel layout:
+- **Left Panel (Widget Palette):** Lists all 9 widget types with visibility toggles (green/gray dot)
+- **Center (Live Preview):** Simulated topbar with `DraggableWidgetSpace` in layout mode — drag, resize, reposition widgets in real-time
+- **Right Panel (Style Editor):** Per-widget controls for all styling options
+
+**Phase 1 — Core Designer (previous session):** Visibility, width, background, border, text color, shadow, opacity, padding, bold text. Auto Align, Reset Defaults, back/done navigation, "Widget Designer" link in topbar edit dropdown.
+
+**Phase 2 — 8 New Features (this session):**
+1. **Font Size** (XS/Sm/Base) — inline style applied via `fontSize` in `innerStyle`
+2. **Text Alignment** (Left/Center/Right) — `textAlign` CSS property
+3. **Height (rows)** (1/2/3) — Dynamic `gridTemplateRows` in the preview grid, mock topbar height scales (h-12/h-20/h-28)
+4. **Hover Effect** (Off/Scale/Shadow/Glow) — Tailwind `hover:` classes on the widget inner div
+5. **Gradient Background** — 7 presets (Sunset, Ocean, Forest, Royal, Fire, Frost + None) rendered as inline `background` style; stored as full CSS gradient string
+6. **Backdrop Blur** — Toggle checkbox, applies `backdrop-filter: blur(4px)` + `backdrop-blur-sm` class
+7. **Clock Format** (12h AM/PM / 24h) + Show Seconds toggle — visible only when clock widget selected; props passed through to `ClockWidget`
+8. **Date Format** — 7 pattern buttons (EEE MMM d, MMM d yyyy, dd/MM/yyyy, etc.) — visible only when date widget selected; maps to `Intl.DateTimeFormatOptions` in `DateWidget`
+
+**Files changed (this session):**
+- MOD `frontend/src/store/widgetStore.ts` — Added 8 new fields to `WidgetStyle` interface
+- MOD `frontend/src/components/topbar/DraggableWidgetSpace.tsx` — Applied new styles in `PrecisionWidget` (innerStyle + hover classes + dynamic grid rows + format props)
+- MOD `frontend/src/components/topbar/widgets/ClockWidget.tsx` — Accepts `clockFormat` + `showSeconds` props
+- MOD `frontend/src/components/topbar/widgets/DateWidget.tsx` — Accepts `dateFormat` prop with `FORMAT_MAP`
+- MOD `frontend/src/modules/settings/pages/TopbarWidgetDesignerPage.tsx` — 8 new `Section` panels in `StyleEditorPanel`, dynamic mock topbar height
+- MOD `frontend/src/locales/{en,ar,tr}/common.json` — 14 new i18n keys in `widgets.designer.*`
+
+**Verification:** `npx tsc --noEmit` ✅, `npm run build` ✅
+
+---
 
 8 authoritative AI report tools that call the exact same use cases as the ERP UI reports, returning full context (dates, currency, filters, warnings, truncation). Old summary tools preserved alongside with a per-tenant gate.
 
@@ -37,6 +68,12 @@ The AI module is complete for pre-alpha. Next focus should shift to non-AI ERP m
 3. **Deferred AI items** (currency conversion, Cost Center/Budget tools, API key encryption audit) are tracked but non-blocking for pre-alpha.
 
 ### 🛠️ Recent Fixes (AI Assistant Tooling & Stabilization)
+- **Platform Global Providers:** Added a dedicated Super Admin runtime registry for AI Credits mode. Super Admin can now configure provider + global model + platform API key + request-cap interval on `/super-admin/platform-global-providers`. Credits-mode execution resolves this runtime registry first and increments runtime usage counters after successful responses.
+- **Super Admin Provider Hints:** Added provider-type defaults and plain-language guidance to the Super Admin AI Providers page. New provider records now start with sensible defaults, and the page explicitly warns that AI Credits runtime credentials/limits are not configured there.
+- **AI Credits Error Visibility:** Wrapped AI credits ledger loading in `AiCredentialResolver` so credits-mode failures now surface a concrete ledger-loading error instead of the generic `"Failed to load AI configuration"` fallback.
+- **AI Setup Flag Rule:** Removed AI setup detours based on provider/settings completeness. Pre-init AI access is now controlled only by `companyModules.ai-assistant.initialized`, matching other modules.
+- **AI Setup Loop + Completion Fix:** Fixed the `/ai-assistant/setup` hook-order crash and removed the pre-init redirect loop between setup and settings. Successful AI wizard activation now also marks `companyModules.ai-assistant.initialized=true` and refreshes module status cache.
+- **Forced AI Initialization Gate:** Removed `ai-assistant` auto-init bypass in `ModuleConfigurationGuard` and added a strict pre-init redirect to `/ai-assistant/setup`. If AI Assistant is uninitialized, users are now forced into setup instead of only seeing dashboard notice.
 - **Streaming Tool Result Reliability:** Fixed the stream route so real tool errors, execution round, and latency reach the frontend. The streaming loop now feeds only current-round tool results back to the model, reuses duplicate successful same-argument tool results, and renders `accounting.getAccountBalance` data as a proper balance card.
 - **Tool Result Deduplication:** Implemented real-time deduplication in `AiAssistantHomePage` and `GlobalAiWidget`. Retry attempts for the same tool now overwrite previous results, eliminating visual clutter in multi-round planning loops.
 - **Debug & Observability Metadata:** Enriched `StreamChatMessageUseCase` and SSE events with `actualRounds`, `durationMs` (latency), and detailed `error` messages. Updated `AiToolResultsPanel` to render these metrics in tool headers.
@@ -50,6 +87,8 @@ The AI module is complete for pre-alpha. Next focus should shift to non-AI ERP m
 ---
 
 ## Where We Left Off
+
+**Last session:** Added 8 new customization features to the Widget Designer: Font Size, Text Alignment, Height (rows), Hover Effect, Gradient Background, Backdrop Blur, Clock Format (12h/24h + seconds), and Date Format patterns. All new controls wired through `WidgetStyle`, `PrecisionWidget`, and `StyleEditorPanel`. ClockWidget and DateWidget accept format props. Mock topbar height scales dynamically (h-12/h-20/h-28). Build clean.
 
 The AI Assistant Fixing Plan audit was completed on `feat/ai-proposal-sandbox` (25 PASS / 1 PARTIAL / 2 pre-existing). The branch was **not merged**; instead, work pivoted to Phase 1A core stabilization on a new branch `feat/phase-1a-core-bugs`
 
@@ -89,8 +128,8 @@ The CTO audit against `docs/architecture/ai-assistant-fixing-plan.md` and `docs/
 
 ## Next Recommended Move
 
-1. Manual browser QA for AI Assistant account-balance prompts in the full page and global widget.
-2. Merge `feat/ai-proposal-sandbox` to main after QA.
+1. Browser QA the widget designer: browse to `/settings/widgets`, test all 8 new controls on different widget types, verify clock/date format controls only show for their respective widgets, verify hover effects in preview, verify gradient backgrounds, verify height scaling.
+2. End-to-end AI Credits QA with a tenant: grant credits, switch AI mode to `Use AI Credits`, select a configured provider/model, send a chat, and confirm success plus runtime usage increment.
 3. Begin Phase 1 core stabilization: end-to-end testing of the 4 core ERP modules.
 4. Before June 1: Firestore security rules.
 
@@ -886,6 +925,7 @@ Added explicit truncation signals (`truncated`, `displayedCount`/`totalCount`, `
 
 - Prisma `allowedRuntimeModes` read path appears to store JSON as a string but pass it directly to `AiProviderConfig.fromJSON()`, causing stored restrictions to fall back to defaults. This is pre-existing and should be fixed before/with Prisma credit-readiness work; current active runtime is Firestore-oriented.
 - DTOs are still missing some pre-existing settings fields (`conversationContextMode`, `includePreviousToolResults`) in response/request contracts. Not part of Phase 1A.
+- `npm run graph:update` on Windows completed AST extraction but exited non-zero with `Invalid argument: 'graphify-out\\graph.json'`. The new AI Credits runtime-profile feature is unaffected; graphify maintenance needs a separate toolchain check.
 
 ---
 

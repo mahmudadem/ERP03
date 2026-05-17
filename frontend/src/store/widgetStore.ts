@@ -26,8 +26,25 @@ export interface WidgetStyle {
   showBackground: boolean;
   isBold?: boolean;
   bgColor?: string;
+  customBgColor?: string;
   borderVariant?: string;
+  borderColor?: string;
+  borderWidth?: string;
+  borderStyle?: "solid" | "dashed" | "dotted" | "double" | "none";
+  borderRadius?: string;
+  textColor?: string;
+  shadow?: "none" | "sm" | "md" | "lg" | "xl";
+  opacity?: number;
   padding?: "none" | "small" | "medium" | "large";
+  fontSize?: "xs" | "sm" | "base";
+  textAlign?: "left" | "center" | "right";
+  height?: 1 | 2 | 3;
+  hoverEffect?: "none" | "scale" | "shadow" | "glow";
+  gradientBg?: string;
+  backdropBlur?: boolean;
+  clockFormat?: "12h" | "24h";
+  showSeconds?: boolean;
+  dateFormat?: string;
 }
 
 export interface WidgetConfig {

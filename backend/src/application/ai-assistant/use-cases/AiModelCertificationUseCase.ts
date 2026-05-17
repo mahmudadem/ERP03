@@ -4,6 +4,7 @@ import { AiModelCertificationResult, AiModelCertificationStatus } from '../../..
 import { AiModelProfile } from '../../../domain/ai-assistant/entities/AiModelProfile';
 import { IAiModelCertificationRepository } from '../../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
+import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
 import { AiCertificationEngine } from '../services/AiCertificationEngine';
 import { AI_DATA_FILTER_POLICY_VERSION, AI_TOOL_CONTRACT_VERSION } from '../services/AiModelRoutingGuard';
 
@@ -43,6 +44,7 @@ export class AiModelCertificationUseCase {
     private readonly encryptionService: IEncryptionService,
     private readonly httpClient: IHttpClient,
     private readonly engine: AiCertificationEngine,
+    private readonly runtimeProfileRepository?: IAiPlatformRuntimeProfileRepository,
   ) {}
 
   async listResultsForProfile(modelProfileId: string): Promise<AiModelCertificationResult[]> {
@@ -80,9 +82,10 @@ export class AiModelCertificationUseCase {
       },
     });
 
-    // Graduation Flow: Automatically promote model to 'tested' if it reaches 'CERTIFIED' status
-    if (result.status === 'CERTIFIED' && profile.status !== 'recommended' && profile.status !== 'tested') {
-      const graduated = profile.withStatus('tested');
+    // Graduation Flow: Automatically promote model to 'recommended' when it earns CERTIFIED.
+    // Super Admin doesn't manually toggle recommended status — passing the cert IS the badge.
+    if (result.status === 'CERTIFIED' && profile.status !== 'recommended') {
+      const graduated = profile.withStatus('recommended');
       await this.profileRepository.save(graduated);
     }
 
@@ -111,7 +114,9 @@ export class AiModelCertificationUseCase {
       throw ApiError.badRequest('profileHash does not match current model profile hash');
     }
 
-    // Load and resolve provider for deep testing
+    // Load and resolve provider for deep testing.
+    // - TENANT scope: use the tenant's own AI settings (BYOK key).
+    // - GLOBAL scope: use the platform runtime profile's credential (Super Admin's stored key).
     let provider: IAiProvider | undefined;
     if (input.tenantId) {
       try {
@@ -125,6 +130,41 @@ export class AiModelCertificationUseCase {
         // If provider cannot be created (e.g. missing API key), we continue without it
         // and the engine will perform structural-only checks (WARNING status).
         console.warn(`[Certification] Could not create provider for deep test: ${(err as Error).message}`);
+      }
+    } else if (input.scope === 'GLOBAL' && this.runtimeProfileRepository) {
+      try {
+        // Runtime profiles are keyed by (AiProvider.id, modelProfileId). The model profile's
+        // providerId is the provider TYPE string ('openai_compatible'), not the AiProvider's
+        // actual id — so we match on modelProfileId only and pick the first active one.
+        const allRuntimeProfiles = await this.runtimeProfileRepository.list();
+        const runtimeProfile = allRuntimeProfiles.find(
+          p => p.modelProfileId === profile.id && p.status === 'active' && !!p.encryptedCredential,
+        );
+        if (runtimeProfile) {
+          const plainKey = this.decryptStoredCredential(runtimeProfile.encryptedCredential!);
+          const certConfig = new AiProviderConfig(
+            'cert-engine-global',
+            profile.provider as any,
+            profile.modelId,
+            plainKey,
+            profile.baseUrl,
+            profile.maxOutputTokens || 1024,
+            undefined,
+            0,
+            undefined,
+            true,
+            new Date(),
+            'balanced',
+            true,
+            'legacy_unverified',
+            profile.providerId,
+          );
+          provider = ProviderFactory.getProviderStrict(certConfig, this.httpClient);
+        } else {
+          console.warn(`[Certification] No active runtime profile with credential for modelProfileId=${profile.id} — running structural checks only.`);
+        }
+      } catch (err) {
+        console.warn(`[Certification] Could not create GLOBAL provider for deep test: ${(err as Error).message}`);
       }
     }
 
@@ -140,9 +180,10 @@ export class AiModelCertificationUseCase {
       approvedBy: input.approvedBy,
     }, provider);
 
-    // Graduation Flow: Automatically promote model to 'tested' if it reaches 'CERTIFIED' status
-    if (result.status === 'CERTIFIED' && profile.status !== 'recommended' && profile.status !== 'tested') {
-      const graduated = profile.withStatus('tested');
+    // Graduation Flow: Automatically promote model to 'recommended' when it earns CERTIFIED.
+    // Super Admin doesn't manually toggle recommended status — passing the cert IS the badge.
+    if (result.status === 'CERTIFIED' && profile.status !== 'recommended') {
+      const graduated = profile.withStatus('recommended');
       await this.profileRepository.save(graduated);
     }
 
@@ -177,6 +218,12 @@ export class AiModelCertificationUseCase {
     }
   }
 
+  private decryptStoredCredential(value: string): string {
+    if (value.startsWith('plain:')) return value.substring(6);
+    if (value.includes(':')) return this.encryptionService.decrypt(value);
+    return value;
+  }
+
   async expireCertification(id: string, userId: string): Promise<AiModelCertificationResult> {
     const existing = await this.certificationRepository.getById(id);
     if (!existing) throw ApiError.notFound(`AI certification '${id}' not found`);
@@ -199,6 +246,12 @@ export class AiModelCertificationUseCase {
     tenantId?: string;
     category?: AiCertificationCategory;
     moduleId?: string;
+    /**
+     * When 'CREDITS', filter to only profiles that have an active platform runtime profile
+     * (i.e. the platform has a configured API key + active status for this provider+model).
+     * Prevents tenants from picking models the platform can't actually serve.
+     */
+    runtimeMode?: 'BYOK' | 'CREDITS';
   }): Promise<Array<{
     profile: Record<string, unknown>;
     certifications: Record<string, unknown>[];
@@ -214,6 +267,35 @@ export class AiModelCertificationUseCase {
 
     const results = await this.certificationRepository.list(repoFilters);
     const grouped = new Map<string, { profile: AiModelProfile; certifications: AiModelCertificationResult[] }>();
+
+    // CREDITS mode: source the list from active platform runtime profiles directly.
+    // The Super Admin's act of configuring a runtime profile IS the verification — we
+    // don't gate on certifications. Any certifications that DO exist are attached as
+    // informational. Tenants see exactly what the platform offers.
+    if (input.runtimeMode === 'CREDITS' && this.runtimeProfileRepository) {
+      const runtimeProfiles = await this.runtimeProfileRepository.list();
+      const activeProfiles = runtimeProfiles.filter(p => p.status === 'active' && !!p.encryptedCredential);
+
+      for (const rp of activeProfiles) {
+        const modelProfile = await this.profileRepository.getById(rp.modelProfileId);
+        if (!modelProfile) continue;
+        if (!modelProfile.enabled || modelProfile.status === 'blocked' || modelProfile.status === 'deprecated') continue;
+
+        const certsForProfile = results.filter(
+          r =>
+            r.modelProfileId === modelProfile.id &&
+            r.profileHash === modelProfile.profileHash &&
+            (r.status === 'CERTIFIED' || r.status === 'WARNING') &&
+            (r.scope !== 'TENANT' || r.tenantId === input.tenantId),
+        );
+        grouped.set(modelProfile.id, { profile: modelProfile, certifications: certsForProfile });
+      }
+
+      return Array.from(grouped.values()).map(item => ({
+        profile: item.profile.toJSON(),
+        certifications: item.certifications.map(cert => cert.toJSON()),
+      }));
+    }
 
     for (const result of results) {
       if (result.status !== 'CERTIFIED' && result.status !== 'WARNING') continue;

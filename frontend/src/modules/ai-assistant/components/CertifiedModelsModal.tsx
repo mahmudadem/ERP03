@@ -164,7 +164,7 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
             <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
               <ShieldCheck className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
               <span>
-                {t('settings.certifiedModels.description', 'These models have been certified for ERP module compatibility. Selecting a certified model will configure your settings to use it safely.')}
+                {t('settings.certifiedModels.description', { defaultValue: 'Index of models the platform has tested. Compare capabilities, certifications, and credit cost per chat to pick the best fit for your work.' })}
               </span>
             </div>
           </div>
@@ -230,6 +230,9 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
                       </th>
                       <th className="text-left px-4 py-2.5 font-medium text-gray-600">
                         {t('settings.certifiedModels.columnScore', 'Score')}
+                      </th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-600">
+                        {t('settings.certifiedModels.columnCreditCost', { defaultValue: 'Credits/Chat' })}
                       </th>
                       <th className="text-right px-4 py-2.5 font-medium text-gray-600">
                         {/* Select column */}
@@ -310,6 +313,17 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
                             ) : (
                               <span className="text-gray-400">—</span>
                             )}
+                          </td>
+                          <td className="px-4 py-2.5 text-xs">
+                            {(() => {
+                              const c = profile.creditCost;
+                              const cost = typeof c === 'number' && Number.isFinite(c) && c >= 0 ? c : 1;
+                              if (cost === 0) {
+                                return <span className="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 font-medium text-green-800">{t('settings.modelCreditCostFree', 'Free')}</span>;
+                              }
+                              const tone = cost <= 1 ? 'bg-slate-100 text-slate-700' : cost <= 5 ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800';
+                              return <span className={`inline-flex items-center rounded-md px-2 py-0.5 font-medium ${tone}`}>{cost}</span>;
+                            })()}
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <button

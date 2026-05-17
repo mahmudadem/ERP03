@@ -196,6 +196,26 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                   )}
                 </HeadlessMenu.Item>
 
+                <HeadlessMenu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate("/settings/widgets");
+                      }}
+                      className={clsx(
+                        "flex items-center gap-2 w-full px-2 py-2 text-xs rounded-lg transition-colors font-bold tracking-tight",
+                        active
+                          ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-secondary)]",
+                      )}
+                    >
+                      <Palette className="w-3.5 h-3.5 text-slate-400" />
+                      {t("widgets.designer.subtitle", "Widget Designer")}
+                    </button>
+                  )}
+                </HeadlessMenu.Item>
+
                 <div className="my-1.5 border-t border-[var(--color-border)]" />
 
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">

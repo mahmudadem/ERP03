@@ -70,11 +70,9 @@ export default function CompanyEntitlementsPage() {
       setEntitledModules(entitlementsRes.modules || []);
       setEntitlements(entitlementsRes.entitlements || []);
       setAiReportMode(reportModeRes.aiReportMode || 'standard');
-      if (creditsRes.data) {
-        setCreditBalance(creditsRes.data.balance);
-        setTotalPurchased(creditsRes.data.totalPurchased);
-        setTotalConsumed(creditsRes.data.totalConsumed);
-      }
+      setCreditBalance(creditsRes.balance || 0);
+      setTotalPurchased(creditsRes.totalPurchased || 0);
+      setTotalConsumed(creditsRes.totalConsumed || 0);
     } catch (error: any) {
       errorHandler.showError(error);
     } finally {

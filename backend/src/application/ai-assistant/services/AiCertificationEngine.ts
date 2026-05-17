@@ -116,7 +116,14 @@ export class AiCertificationEngine {
     if (input.profile.status === 'blocked' || input.profile.status === 'deprecated') {
       failureReasons.push(`Model profile status is ${input.profile.status}`);
     }
-    if (!input.profile.dataFilterPolicyId && ['ACCOUNTING', 'FINANCE_REPORTING', 'DATA_FILTERING', 'TOOL_CALLING'].includes(input.category)) {
+    // dataFilterPolicyId is a per-tenant data-redaction policy. GLOBAL certifications
+    // (Super-Admin-blessed models) don't need one — the platform vouches for the model
+    // independently of how any specific tenant filters output.
+    if (
+      input.scope !== 'GLOBAL' &&
+      !input.profile.dataFilterPolicyId &&
+      ['ACCOUNTING', 'FINANCE_REPORTING', 'DATA_FILTERING', 'TOOL_CALLING'].includes(input.category)
+    ) {
       failureReasons.push('No dataFilterPolicyId is assigned to the runtime profile');
     }
     if (['TOOL_CALLING', 'ACCOUNTING', 'FINANCE_REPORTING'].includes(input.category) && input.profile.toolMode === 'none') {

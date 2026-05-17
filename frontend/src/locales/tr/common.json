@@ -1180,8 +1180,30 @@
         "byokHint": "Etkin olduğunda kiracı AI Ayarları içinde kendi sağlayıcı anahtarını girmelidir. Devre dışı olduğunda bağlantıyı ERP03 ayrı bir yetki/kredi motoruyla yönetir.",
         "authType": "Kimlik Doğrulama Türü",
         "notes": "Notlar",
+        "applyDefaults": "Önerilen varsayılanları uygula",
         "enable": "Sağlayıcıyı Etkinleştir",
         "disable": "Sağlayıcıyı Devre Dışı Bırak"
+      },
+      "hints": {
+        "defaultsTitle": "Önerilen başlangıç değerleri",
+        "modeLabel": "Önerilen mod",
+        "capabilitiesLabel": "Önerilen yetenekler",
+        "capabilitiesNone": "Temkinli başlayın. Tanılama geçmeden yetenekleri açmayın.",
+        "metadataOnlyTitle": "Bu sayfa yalnızca sağlayıcı meta verisini saklar",
+        "metadataOnlyBody": "Platform kredi anahtarları ve kullanım limitleri burada yapılandırılmaz. Bu sayfayı sağlayıcı varsayılanlarını ve kiracıya görünen yetenekleri tanımlamak için kullanın.",
+        "recommendedBaseUrlValue": "{{value}}",
+        "modes": {
+          "byok": "Kiracı yönetir / BYOK",
+          "platform": "Platform yönetir"
+        },
+        "recommendations": {
+          "openai": "OpenAI için varsayılan uç nokta ve üç yetenek bayrağının açık başlaması en uygunudur.",
+          "openaiCompatible": "OpenAI uyumlu sağlayıcılar genelde özel bir uç nokta ister. Sağlayıcı güvenilir bir /models API sunmuyorsa model senkronizasyonunu kapalı tutun.",
+          "gemini": "Gemini'yi uyumlu bir ağ geçidi üzerinden yönlendiriyorsanız uç noktayı girin. Destek doğrulanana kadar yetenekleri kapalı tutun.",
+          "anthropic": "Anthropic burada, uyumlu bir ağ geçidi ve test edilmiş çalışma davranışı yoksa yalnızca meta veri olarak başlamalıdır.",
+          "ollama": "Ollama yereldir. Yerel uç noktayı ve kimlik doğrulama olmadan kullanın; sonra yerel tanılamalar geçerse yetenekleri açın.",
+          "custom": "Özel sağlayıcılar için yetenekleri kapalı başlayın. Tanılamadan geçen bayrakları tek tek açın."
+        }
       },
       "actions": {
         "new": "Yeni Sağlayıcı",
@@ -1197,6 +1219,76 @@
         "enabled": "Sağlayıcı etkinleştirildi",
         "disabled": "Sağlayıcı devre dışı bırakıldı"
       }
+    },
+    "aiRuntimeProfiles": {
+      "title": "Platform Global Providers",
+      "description": "AI Kredileri modunda kullanılan platform sağlayıcı + model çalışma kayıtlarını yönetin.",
+      "loading": "Platform çalışma kayıtları yükleniyor...",
+      "empty": "Platform çalışma kaydı bulunamadı",
+      "search": "Platform çalışma kayıtlarında ara...",
+      "meta": "{{total}} çalışma kaydı · {{active}} etkin",
+      "confirmDelete": "{{model}} için çalışma kaydı silinsin mi?",
+      "columns": {
+        "provider": "Sağlayıcı",
+        "model": "Model",
+        "credential": "Kimlik Bilgisi",
+        "limit": "Limit",
+        "usage": "Kullanım",
+        "status": "Durum",
+        "actions": "İşlemler"
+      },
+      "credential": {
+        "configured": "Yapılandırıldı",
+        "missing": "Eksik"
+      },
+      "status": {
+        "active": "Etkin",
+        "paused": "Duraklatıldı",
+        "disabled": "Devre Dışı"
+      },
+      "intervals": {
+        "minute": "dakika",
+        "hour": "saat",
+        "day": "gün",
+        "month": "ay"
+      },
+      "form": {
+        "createTitle": "Çalışma Kaydı Oluştur",
+        "editTitle": "Çalışma Kaydını Düzenle",
+        "provider": "Sağlayıcı",
+        "selectProvider": "Sağlayıcı seçin",
+        "model": "Model",
+        "selectModel": "Model seçin",
+        "identityLocked": "Oluşturulduktan sonra sağlayıcı ve model sabitlenir. Farklı bir eşleşme için yeni kayıt oluşturun.",
+        "apiKey": "Platform API Anahtarı",
+        "apiKeyPlaceholder": "Platform API anahtarını girin",
+        "apiKeyHint": "Şifreli saklanır ve tarayıcıya geri dönmez.",
+        "apiKeyReplacePlaceholder": "Mevcut anahtarı korumak için boş bırakın veya yenisini girin",
+        "apiKeyReplaceHint": "Yeni anahtarı yalnızca saklanan kimlik bilgisini döndürürken girin.",
+        "status": "Durum",
+        "maxRequests": "Maksimum istek",
+        "interval": "Aralık",
+        "notes": "Notlar",
+        "runtimeStats": "Çalışma istatistikleri",
+        "lastUsed": "Son kullanım",
+        "lastFailure": "Son hata"
+      },
+      "actions": {
+        "new": "Yeni Çalışma Kaydı",
+        "save": "Çalışma Kaydını Kaydet",
+        "saving": "Kaydediliyor...",
+        "edit": "Düzenle",
+        "delete": "Sil"
+      },
+      "messages": {
+        "created": "Çalışma kaydı oluşturuldu",
+        "updated": "Çalışma kaydı güncellendi",
+        "deleted": "Çalışma kaydı silindi"
+      },
+      "unlimited": "Sınırsız",
+      "limitValue": "{{interval}} başına {{count}}",
+      "windowUsage": "Geçerli pencere: {{count}}",
+      "totalUsage": "Toplam başarılı istek: {{count}}"
     },
     "aiModels": {
       "title": "AI Model Profilleri",
@@ -1727,6 +1819,49 @@
       "base-currency": "Temel Para Birimi",
       "approval-mode": "Onay Modu",
       "ui-mode": "Arayuz Modu"
+    },
+    "designer": {
+      "subtitle": "Üst çubuk araçlarını düzenleyin, biçimlendirin ve yönetin",
+      "palette": "Araç Paleti",
+      "paletteHint": "Araçları aç/kapat",
+      "preview": "Önizleme",
+      "resetDefaults": "Varsayılanlara Sıfırla",
+      "confirmReset": "Sıfırlamayı Onayla",
+      "cancel": "İptal",
+      "noSelection": "Bir araç seçin",
+      "noSelectionHint": "Yukarıdaki önizlemede bir araca tıklayın",
+      "clickToEdit": "Stilleri düzenlemek için önizlemede bir araca tıklayın",
+      "visibility": "Görünürlük",
+      "visible": "Görünür",
+      "hidden": "Gizli",
+      "width": "Genişlik (hücre)",
+      "background": "Arka Plan",
+      "customColor": "Özel",
+      "pickColor": "Renk seç",
+      "textColor": "Yazı Rengi",
+      "defaultColor": "Varsayılan",
+      "reset": "Sıfırla",
+      "borderStyle": "Kenarlık Stili",
+      "borderWidth": "Kenarlık Kalınlığı",
+      "borderColor": "Kenarlık Rengi",
+      "corners": "Köşeler",
+      "shadow": "Gölge",
+      "opacity": "Opaklık",
+      "bold": "Kalın yazı",
+      "padding": "İç Boşluk",
+      "fontSize": "Yazı Boyutu",
+      "textAlignment": "Yazı Hizalaması",
+      "heightRows": "Yükseklik (satır)",
+      "hoverEffect": "Fare Efekti",
+      "gradientBg": "Gradyan Arka Plan",
+      "gradientPresets": "Yukarıdaki hazır ayarlar",
+      "backdropBlur": "Arka Plan Bulanıklığı",
+      "blurOn": "Bulanık Açık",
+      "blurOff": "Bulanık Kapalı",
+      "clockFormat": "Saat Formatı",
+      "showSeconds": "Saniyeyi göster",
+      "dateFormat": "Tarih Formatı",
+      "livePreview": "Canlı Önizleme"
     }
   },
   "shell": {
@@ -1748,6 +1883,7 @@
         "plans": "Planlar",
 "aiTools": "AI Araçları",
         "aiProviders": "AI Sağlayıcıları",
+        "aiRuntimeProfiles": "Platform Genel Sağlayıcıları",
         "aiModels": "AI Modelleri"
       }
     }

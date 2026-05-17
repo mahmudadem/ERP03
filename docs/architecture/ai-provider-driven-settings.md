@@ -49,6 +49,12 @@ The provider endpoint returns enabled provider metadata only. It never returns p
 
 The model endpoint returns enabled GLOBAL model profiles under the provider and joins valid certification rows when available.
 
+## Super Admin UX notes
+
+- `frontend/src/modules/super-admin/pages/AiProvidersPage.tsx` now applies provider-type defaults for new records.
+- The page also shows a recommendation panel describing the suggested base URL, auth mode, and capability flags for the selected provider type.
+- The page explicitly warns that AI Credits runtime credentials and future usage caps do not belong to provider metadata. They require a separate platform runtime profile/control surface.
+
 ## Runtime safety
 
 - Sensitive ERP tools still require model/profile certification through `AiModelRoutingGuard` and `AiRuntimeGuard`.

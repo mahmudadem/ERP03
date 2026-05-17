@@ -15,12 +15,10 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { Shield, ShieldCheck, ExternalLink, Globe, BarChart3, ToggleLeft, Loader2 } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { CertifiedModelsModal } from '../components/CertifiedModelsModal';
-import { AiSetupWizard } from '../components/AiSetupWizard';
 
 import { useAiSettings } from '../hooks/useAiSettings';
 
@@ -40,40 +38,13 @@ import { SettingsAnalyticsTab } from '../components/SettingsAnalyticsTab';
 
 export const AiAssistantSettingsPage: React.FC = () => {
   const { t } = useTranslation('aiAssistant');
-  const navigate = useNavigate();
   const { hasPermission } = useRBAC();
   const [activeTab, setActiveTab] = useState('provider');
-  const [setupComplete, setSetupComplete] = useState(false);
 
   const canManage = hasPermission('ai-assistant.settings.manage');
   const canView = hasPermission('ai-assistant.settings.view');
-  const canChat = hasPermission('ai-assistant.chat.use');
 
   const ai = useAiSettings(canView, canManage);
-
-  const hasConfiguredAi = Boolean(
-    ai.settings && (
-      ai.settings.runtimeMode === 'DISABLED' ||
-      (ai.settings.runtimeMode === 'CREDITS' && ai.settings.selectedModelProfileId && ai.settings.selectedProfileHash) ||
-      (ai.settings.runtimeMode === 'BYOK' && ai.settings.provider !== 'mock' && (ai.settings.hasApiKey || ai.settings.provider === 'ollama'))
-    )
-  );
-
-  const shouldShowSetupWizard = Boolean(
-    canManage &&
-    !ai.loading &&
-    !ai.error &&
-    !setupComplete &&
-    ai.settings?.isEnabled &&
-    !hasConfiguredAi
-  );
-
-  const handleSetupComplete = () => {
-    setSetupComplete(true);
-    if (canChat) {
-      navigate('/ai-assistant');
-    }
-  };
 
   // ── Early return: no permission ────────────────────────────────────────────
 
@@ -106,7 +77,7 @@ export const AiAssistantSettingsPage: React.FC = () => {
           onSave={canManage ? ai.handleSave : () => {}}
           disabled={!ai.hasChanges || ai.saving}
           saving={ai.saving}
-          hideSaveButton={ai.loading || shouldShowSetupWizard}
+          hideSaveButton={ai.loading}
         >
           {ai.loading && (
             <div className="flex items-center justify-center py-16 text-sm text-gray-500">
@@ -115,14 +86,7 @@ export const AiAssistantSettingsPage: React.FC = () => {
             </div>
           )}
 
-          {shouldShowSetupWizard && (
-            <AiSetupWizard
-              isConfigured={hasConfiguredAi}
-              onComplete={handleSetupComplete}
-            />
-          )}
-
-          {!ai.loading && !shouldShowSetupWizard && (
+          {!ai.loading && (
             <>
           {ai.error && (
             <div className="mb-4 px-3 py-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">

@@ -29,16 +29,77 @@ const unwrap = <T,>(response: any): T => (response?.data ?? response) as T;
 const PROVIDER_TYPES: AiProviderRegistryType[] = ['openai', 'openai_compatible', 'google_gemini', 'anthropic', 'ollama', 'custom'];
 const AUTH_TYPES: AiProviderAuthType[] = ['api_key', 'bearer', 'none', 'custom'];
 
+type ProviderDefaults = Pick<UpsertAiProviderPayload, 'defaultBaseUrl' | 'authType' | 'byok' | 'supportsTools' | 'supportsJsonMode' | 'supportsModelSync'> & {
+  recommendationKey: string;
+};
+
+const PROVIDER_DEFAULTS: Record<AiProviderRegistryType, ProviderDefaults> = {
+  openai: {
+    defaultBaseUrl: 'https://api.openai.com/v1',
+    authType: 'api_key',
+    byok: true,
+    supportsTools: true,
+    supportsJsonMode: true,
+    supportsModelSync: true,
+    recommendationKey: 'openai',
+  },
+  openai_compatible: {
+    defaultBaseUrl: '',
+    authType: 'api_key',
+    byok: true,
+    supportsTools: true,
+    supportsJsonMode: true,
+    supportsModelSync: false,
+    recommendationKey: 'openaiCompatible',
+  },
+  google_gemini: {
+    defaultBaseUrl: '',
+    authType: 'api_key',
+    byok: true,
+    supportsTools: false,
+    supportsJsonMode: false,
+    supportsModelSync: false,
+    recommendationKey: 'gemini',
+  },
+  anthropic: {
+    defaultBaseUrl: '',
+    authType: 'api_key',
+    byok: true,
+    supportsTools: false,
+    supportsJsonMode: false,
+    supportsModelSync: false,
+    recommendationKey: 'anthropic',
+  },
+  ollama: {
+    defaultBaseUrl: 'http://localhost:11434/v1',
+    authType: 'none',
+    byok: true,
+    supportsTools: false,
+    supportsJsonMode: false,
+    supportsModelSync: false,
+    recommendationKey: 'ollama',
+  },
+  custom: {
+    defaultBaseUrl: '',
+    authType: 'custom',
+    byok: true,
+    supportsTools: false,
+    supportsJsonMode: false,
+    supportsModelSync: false,
+    recommendationKey: 'custom',
+  },
+};
+
 const emptyForm: UpsertAiProviderPayload = {
   name: '',
   type: 'openai',
-  defaultBaseUrl: '',
-  authType: 'api_key',
-  byok: true,
+  defaultBaseUrl: PROVIDER_DEFAULTS.openai.defaultBaseUrl,
+  authType: PROVIDER_DEFAULTS.openai.authType,
+  byok: PROVIDER_DEFAULTS.openai.byok,
   enabled: true,
-  supportsTools: false,
-  supportsJsonMode: false,
-  supportsModelSync: false,
+  supportsTools: PROVIDER_DEFAULTS.openai.supportsTools,
+  supportsJsonMode: PROVIDER_DEFAULTS.openai.supportsJsonMode,
+  supportsModelSync: PROVIDER_DEFAULTS.openai.supportsModelSync,
   notes: '',
 };
 
@@ -109,6 +170,20 @@ export const AiProvidersPage: React.FC = () => {
     setForm(emptyForm);
   };
 
+  const applyRecommendedDefaults = (type: AiProviderRegistryType) => {
+    const defaults = PROVIDER_DEFAULTS[type];
+    setForm(prev => ({
+      ...prev,
+      type,
+      defaultBaseUrl: defaults.defaultBaseUrl,
+      authType: defaults.authType,
+      byok: defaults.byok,
+      supportsTools: defaults.supportsTools,
+      supportsJsonMode: defaults.supportsJsonMode,
+      supportsModelSync: defaults.supportsModelSync,
+    }));
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -162,6 +237,22 @@ export const AiProvidersPage: React.FC = () => {
     total: providers.length,
     enabled: providers.filter(p => p.enabled).length,
   }), [providers]);
+
+  const providerDefaults = PROVIDER_DEFAULTS[form.type];
+  const recommendationItems = [
+    providerDefaults.defaultBaseUrl
+      ? t('superAdmin.aiProviders.hints.recommendedBaseUrlValue', { value: providerDefaults.defaultBaseUrl })
+      : t(`superAdmin.aiProviders.hints.recommendations.${providerDefaults.recommendationKey}`),
+    t(`superAdmin.aiProviders.authTypes.${providerDefaults.authType}`),
+    providerDefaults.byok
+      ? t('superAdmin.aiProviders.hints.modes.byok')
+      : t('superAdmin.aiProviders.hints.modes.platform'),
+  ];
+  const recommendedFlags = [
+    providerDefaults.supportsTools ? t('superAdmin.aiProviders.flags.tools') : null,
+    providerDefaults.supportsJsonMode ? t('superAdmin.aiProviders.flags.json') : null,
+    providerDefaults.supportsModelSync ? t('superAdmin.aiProviders.flags.sync') : null,
+  ].filter(Boolean) as string[];
 
   if (loading) {
     return (
@@ -292,7 +383,14 @@ export const AiProvidersPage: React.FC = () => {
               <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiProviders.form.type')}</span>
               <select
                 value={form.type}
-                onChange={event => setForm({ ...form, type: event.target.value as AiProviderRegistryType })}
+                onChange={event => {
+                  const nextType = event.target.value as AiProviderRegistryType;
+                  if (selectedId) {
+                    setForm({ ...form, type: nextType });
+                    return;
+                  }
+                  applyRecommendedDefaults(nextType);
+                }}
                 className="w-full rounded-md border border-slate-300 px-3 py-2"
               >
                 {PROVIDER_TYPES.map(type => (
@@ -300,6 +398,47 @@ export const AiProvidersPage: React.FC = () => {
                 ))}
               </select>
             </label>
+            <div className="rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-slate-700">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium text-slate-900">{t('superAdmin.aiProviders.hints.defaultsTitle')}</div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {t(`superAdmin.aiProviders.hints.recommendations.${providerDefaults.recommendationKey}`)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => applyRecommendedDefaults(form.type)}
+                  className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  {t('superAdmin.aiProviders.form.applyDefaults')}
+                </button>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                <div>
+                  <div className="font-medium text-slate-700">{t('superAdmin.aiProviders.form.baseUrl')}</div>
+                  <div className="font-mono">{recommendationItems[0]}</div>
+                </div>
+                <div>
+                  <div className="font-medium text-slate-700">{t('superAdmin.aiProviders.form.authType')}</div>
+                  <div>{recommendationItems[1]}</div>
+                </div>
+                <div>
+                  <div className="font-medium text-slate-700">{t('superAdmin.aiProviders.hints.modeLabel')}</div>
+                  <div>{recommendationItems[2]}</div>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="mb-1 text-xs font-medium text-slate-700">{t('superAdmin.aiProviders.hints.capabilitiesLabel')}</div>
+                <div className="flex flex-wrap gap-1">
+                  {recommendedFlags.length > 0 ? recommendedFlags.map(flag => (
+                    <SuperAdminBadge key={flag} tone="blue">{flag}</SuperAdminBadge>
+                  )) : (
+                    <span className="text-xs text-slate-500">{t('superAdmin.aiProviders.hints.capabilitiesNone')}</span>
+                  )}
+                </div>
+              </div>
+            </div>
             <FormInput
               label={t('superAdmin.aiProviders.form.baseUrl')}
               value={form.defaultBaseUrl || ''}
@@ -314,6 +453,10 @@ export const AiProvidersPage: React.FC = () => {
               <p className="mt-2 text-xs text-slate-500">
                 {t('superAdmin.aiProviders.form.byokHint')}
               </p>
+            </div>
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <div className="font-medium">{t('superAdmin.aiProviders.hints.metadataOnlyTitle')}</div>
+              <p className="mt-1">{t('superAdmin.aiProviders.hints.metadataOnlyBody')}</p>
             </div>
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiProviders.form.authType')}</span>

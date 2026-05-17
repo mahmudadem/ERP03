@@ -16,6 +16,8 @@
 import { IAiChatRepository } from '../../../repository/interfaces/ai-assistant/IAiChatRepository';
 import { IAiUsageLogRepository } from '../../../repository/interfaces/ai-assistant/IAiUsageLogRepository';
 import { IAiCreditLedgerRepository } from '../../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
+import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
+import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 import { AiChatMessage } from '../../../domain/ai-assistant/entities/AiChatMessage';
 import { AiUsageLog } from '../../../domain/ai-assistant/entities/AiUsageLog';
 import { AiAuditService, AiAuditMeta } from './AiAuditService';
@@ -64,6 +66,8 @@ export interface LogUsageInput {
 
 export interface DebitCreditsInput {
   config: { runtimeMode?: string; companyId: string; provider: string; model?: string };
+  providerId?: string;
+  selectedModelProfileId?: string;
   aiRunId: string;
   runContext?: AiRunContext;
   companyId: string;
@@ -77,6 +81,8 @@ export class AiResponsePersister {
     private usageLogRepository?: IAiUsageLogRepository,
     private creditLedgerRepository?: IAiCreditLedgerRepository,
     private auditService?: AiAuditService,
+    private runtimeProfileRepository?: IAiPlatformRuntimeProfileRepository,
+    private modelProfileRepository?: IAiModelProfileRepository,
   ) {}
 
   /**
@@ -194,9 +200,14 @@ export class AiResponsePersister {
     try {
       const ledger = await this.creditLedgerRepository.getByCompanyId(companyId);
       if (ledger) {
-        ledger.debit(1, `chat_request_${runContext?.aiRunId ?? aiRunId}`);
-        await this.creditLedgerRepository.save(ledger);
+        const cost = await this.resolveCreditCost(input.selectedModelProfileId);
+        if (cost > 0) {
+          ledger.debit(cost, `chat_request_${runContext?.aiRunId ?? aiRunId}`);
+          await this.creditLedgerRepository.save(ledger);
+        }
       }
+      // Runtime profile counter was already incremented atomically by
+      // AiCredentialResolver.tryReserveRuntimeSlot() at pre-flight. No second increment here.
     } catch (debitError) {
       if (debitError instanceof Error && debitError.message.includes('Insufficient AI credits')) {
         throw ApiError.forbidden('Insufficient AI credits. Please purchase more credits or switch to BYOK mode.');
@@ -211,6 +222,20 @@ export class AiResponsePersister {
         errorMessage: (debitError as Error).message?.substring(0, 500),
       });
       console.warn('[AI Assistant] Failed to debit credits:', (debitError as Error).message);
+    }
+  }
+
+  /**
+   * Look up the per-model credit cost. Defaults to 1 if profile missing or unset.
+   */
+  private async resolveCreditCost(selectedModelProfileId?: string): Promise<number> {
+    if (!this.modelProfileRepository || !selectedModelProfileId) return 1;
+    try {
+      const profile = await this.modelProfileRepository.getById(selectedModelProfileId);
+      const cost = profile?.creditCost;
+      return typeof cost === 'number' && Number.isFinite(cost) && cost >= 0 ? cost : 1;
+    } catch {
+      return 1;
     }
   }
 

@@ -49,6 +49,7 @@ const emptyForm: UpsertAiModelProfilePayload = {
   dataFilterPolicyId: undefined,
   safetyPolicyId: undefined,
   systemPromptPolicyId: undefined,
+  creditCost: 1,
 };
 
 const statusTone = (status: string): 'slate' | 'green' | 'amber' | 'red' | 'blue' => {
@@ -177,6 +178,7 @@ export const AiModelProfilesPage: React.FC = () => {
       systemPromptPolicyId: profile.systemPromptPolicyId || undefined,
       dataFilterPolicyId: profile.dataFilterPolicyId || undefined,
       enabled: profile.enabled,
+      creditCost: profile.creditCost ?? 1,
     });
     setShowProfileModal(true);
   };
@@ -578,6 +580,24 @@ export const AiModelProfilesPage: React.FC = () => {
                 <FormInput label={t('superAdmin.aiModels.form.safetyPolicyId')} value={form.safetyPolicyId || ''} onChange={value => setForm({ ...form, safetyPolicyId: value || undefined })} />
               </div>
               <FormInput label={t('superAdmin.aiModels.form.systemPromptPolicyId')} value={form.systemPromptPolicyId || ''} onChange={value => setForm({ ...form, systemPromptPolicyId: value || undefined })} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <FormInput
+                    label={t('superAdmin.aiModels.form.creditCost', { defaultValue: 'Credit cost per chat' })}
+                    type="number"
+                    value={String(form.creditCost ?? 1)}
+                    onChange={value => {
+                      const n = Number(value);
+                      setForm({ ...form, creditCost: Number.isFinite(n) && n >= 0 ? n : 1 });
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t('superAdmin.aiModels.form.creditCostHint', {
+                      defaultValue: 'Credits debited per successful chat. Use higher values (e.g. 30 for GPT-4) for expensive models so the platform doesn\'t lose money on flat-rate pricing. Default: 1.',
+                    })}
+                  </p>
+                </div>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <FormCheckbox label={t('superAdmin.aiModels.form.enabled')} checked={form.enabled ?? true} onChange={checked => setForm({ ...form, enabled: checked })} />
               </div>

@@ -117,6 +117,7 @@ import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRe
   import { AiModelCapabilityCatalog } from '../../application/ai-assistant/services/AiModelCapabilityCatalog';
   import { AiToolCatalogUseCase } from '../../application/ai-assistant/use-cases/AiToolCatalogUseCase';
   import { AiModelProfileUseCase } from '../../application/ai-assistant/use-cases/AiModelProfileUseCase';
+  import { AiPlatformRuntimeProfileUseCase } from '../../application/ai-assistant/use-cases/AiPlatformRuntimeProfileUseCase';
   import { AiProviderRegistryUseCase } from '../../application/ai-assistant/use-cases/AiProviderRegistryUseCase';
   import { AiModelCertificationUseCase } from '../../application/ai-assistant/use-cases/AiModelCertificationUseCase';
 import { AiAutoSeedCertification } from '../../application/ai-assistant/services/AiAutoSeedCertification';
@@ -150,12 +151,14 @@ import { IAiToolCatalogRepository } from '../../repository/interfaces/ai-assista
 import { IAiToolEnablementRepository } from '../../repository/interfaces/ai-assistant/IAiToolEnablementRepository';
 import { IAiModelToolPolicyRepository } from '../../repository/interfaces/ai-assistant/IAiModelToolPolicyRepository';
 import { IAiModelProfileRepository } from '../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
+import { IAiPlatformRuntimeProfileRepository } from '../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
 import { IAiProviderRepository } from '../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { IAiModelCertificationRepository } from '../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { FirestoreAiToolCatalogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolCatalogRepository';
 import { FirestoreAiToolEnablementRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolEnablementRepository';
 import { FirestoreAiModelToolPolicyRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelToolPolicyRepository';
 import { FirestoreAiModelProfileRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelProfileRepository';
+import { FirestoreAiPlatformRuntimeProfileRepository } from '../firestore/repositories/ai-assistant/FirestoreAiPlatformRuntimeProfileRepository';
 import { FirestoreAiProviderRepository } from '../firestore/repositories/ai-assistant/FirestoreAiProviderRepository';
 import { FirestoreAiModelCertificationRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelCertificationRepository';
 import { IAiCreditLedgerRepository } from '../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
@@ -812,6 +815,9 @@ export const diContainer = {
   get aiModelProfileRepository(): IAiModelProfileRepository {
     return new FirestoreAiModelProfileRepository(getDb());
   },
+  get aiPlatformRuntimeProfileRepository(): IAiPlatformRuntimeProfileRepository {
+    return new FirestoreAiPlatformRuntimeProfileRepository(getDb());
+  },
   get aiProviderRepository(): IAiProviderRepository {
     return new FirestoreAiProviderRepository(getDb());
   },
@@ -832,7 +838,15 @@ get aiModelCertificationRepository(): IAiModelCertificationRepository {
     );
   },
   get aiModelProfileUseCase(): AiModelProfileUseCase {
-    return new AiModelProfileUseCase(this.aiModelProfileRepository);
+    return new AiModelProfileUseCase(this.aiModelProfileRepository, this.aiAutoSeedCertification);
+  },
+  get aiPlatformRuntimeProfileUseCase(): AiPlatformRuntimeProfileUseCase {
+    return new AiPlatformRuntimeProfileUseCase(
+      this.aiPlatformRuntimeProfileRepository,
+      this.aiProviderRepository,
+      this.aiModelProfileRepository,
+      this.encryptionService,
+    );
   },
 get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
     return new AiProviderRegistryUseCase(this.aiProviderRepository, this.encryptionService);
@@ -847,7 +861,8 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
       new AiCertificationEngine(
         this.httpClient,
         (config) => ProviderFactory.getProvider(config, this.httpClient)
-      )
+      ),
+      this.aiPlatformRuntimeProfileRepository,
     );
   },
   get aiAutoSeedCertification(): AiAutoSeedCertification {
@@ -1059,7 +1074,10 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
       this.aiModelRoutingGuard,
       this.aiProviderRepository,
       this.aiCreditLedgerRepository,
+      this.aiPlatformRuntimeProfileRepository,
       this.aiConversationMetaRepository,
+      undefined, // sendChatMessageUseCase — not used in DI-built stream path
+      this.aiModelProfileRepository,
     );
   },
 

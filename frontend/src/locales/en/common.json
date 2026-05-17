@@ -1180,8 +1180,30 @@
         "byokHint": "When enabled, tenants must provide their own provider key in AI Settings. When disabled, ERP03 manages the connection through a separate entitlement/credits engine.",
         "authType": "Authentication Type",
         "notes": "Notes",
+        "applyDefaults": "Apply recommended defaults",
         "enable": "Enable Provider",
         "disable": "Disable Provider"
+      },
+      "hints": {
+        "defaultsTitle": "Recommended starting values",
+        "modeLabel": "Recommended mode",
+        "capabilitiesLabel": "Recommended capabilities",
+        "capabilitiesNone": "Start conservative. Enable capabilities only after diagnostics pass.",
+        "metadataOnlyTitle": "This page stores provider metadata only",
+        "metadataOnlyBody": "Platform credits credentials and usage caps are not configured here. Use this page to define provider defaults and tenant-facing capabilities.",
+        "recommendedBaseUrlValue": "{{value}}",
+        "modes": {
+          "byok": "Tenant-managed / BYOK",
+          "platform": "Platform-managed"
+        },
+        "recommendations": {
+          "openai": "OpenAI works best with the default endpoint and all three capability flags enabled.",
+          "openaiCompatible": "OpenAI-compatible providers usually need a custom endpoint. Keep model sync off unless the provider exposes a reliable /models API.",
+          "gemini": "Enter the provider endpoint only if you are routing Gemini through a compatible gateway. Keep capabilities off until diagnostics confirm support.",
+          "anthropic": "Anthropic should start as metadata only here unless you have a compatible gateway and tested runtime behavior.",
+          "ollama": "Ollama is local. Use the local endpoint and no auth, then enable capabilities only after local diagnostics pass.",
+          "custom": "Custom providers should start with no capabilities enabled. Add only the exact flags your runtime has passed in diagnostics."
+        }
       },
       "actions": {
         "new": "New Provider",
@@ -1197,6 +1219,76 @@
         "enabled": "Provider enabled",
         "disabled": "Provider disabled"
       }
+    },
+    "aiRuntimeProfiles": {
+      "title": "Platform Global Providers",
+      "description": "Manage platform provider + model runtimes used by AI Credits mode.",
+      "loading": "Loading platform runtimes...",
+      "empty": "No platform runtimes found",
+      "search": "Search platform runtimes...",
+      "meta": "{{total}} runtimes · {{active}} active",
+      "confirmDelete": "Delete runtime for {{model}}?",
+      "columns": {
+        "provider": "Provider",
+        "model": "Model",
+        "credential": "Credential",
+        "limit": "Limit",
+        "usage": "Usage",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "credential": {
+        "configured": "Configured",
+        "missing": "Missing"
+      },
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "disabled": "Disabled"
+      },
+      "intervals": {
+        "minute": "minute",
+        "hour": "hour",
+        "day": "day",
+        "month": "month"
+      },
+      "form": {
+        "createTitle": "Create Runtime",
+        "editTitle": "Edit Runtime",
+        "provider": "Provider",
+        "selectProvider": "Select provider",
+        "model": "Model",
+        "selectModel": "Select model",
+        "identityLocked": "Provider and model are fixed after creation. Create a new runtime if you need a different pair.",
+        "apiKey": "Platform API Key",
+        "apiKeyPlaceholder": "Enter platform API key",
+        "apiKeyHint": "Stored encrypted and never returned to the browser.",
+        "apiKeyReplacePlaceholder": "Leave blank to keep current key, or enter a new one",
+        "apiKeyReplaceHint": "Enter a new key only when rotating the stored credential.",
+        "status": "Status",
+        "maxRequests": "Max requests",
+        "interval": "Interval",
+        "notes": "Notes",
+        "runtimeStats": "Runtime stats",
+        "lastUsed": "Last used",
+        "lastFailure": "Last failure"
+      },
+      "actions": {
+        "new": "New Runtime",
+        "save": "Save Runtime",
+        "saving": "Saving...",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "messages": {
+        "created": "Runtime created successfully",
+        "updated": "Runtime updated successfully",
+        "deleted": "Runtime deleted successfully"
+      },
+      "unlimited": "Unlimited",
+      "limitValue": "{{count}} per {{interval}}",
+      "windowUsage": "Current window: {{count}}",
+      "totalUsage": "Total successful requests: {{count}}"
     },
     "aiModels": {
       "title": "AI Model Profiles",
@@ -1641,6 +1733,49 @@
       "base-currency": "Base Currency",
       "approval-mode": "Approval Mode",
       "ui-mode": "UI Mode"
+    },
+    "designer": {
+      "subtitle": "Arrange, style, and manage your topbar widgets",
+      "palette": "Widget Palette",
+      "paletteHint": "Toggle widgets on/off",
+      "preview": "Preview",
+      "resetDefaults": "Reset Defaults",
+      "confirmReset": "Confirm Reset",
+      "cancel": "Cancel",
+      "noSelection": "Select a widget",
+      "noSelectionHint": "Click a widget in the preview above",
+      "clickToEdit": "Click a widget in the preview to edit styles",
+      "visibility": "Visibility",
+      "visible": "Visible",
+      "hidden": "Hidden",
+      "width": "Width (cells)",
+      "background": "Background",
+      "customColor": "Custom",
+      "pickColor": "Pick a color",
+      "textColor": "Text Color",
+      "defaultColor": "Default",
+      "reset": "Reset",
+      "borderStyle": "Border Style",
+      "borderWidth": "Border Width",
+      "borderColor": "Border Color",
+      "corners": "Corners",
+      "shadow": "Shadow",
+      "opacity": "Opacity",
+      "bold": "Bold text",
+      "padding": "Padding",
+      "fontSize": "Font Size",
+      "textAlignment": "Text Alignment",
+      "heightRows": "Height (rows)",
+      "hoverEffect": "Hover Effect",
+      "gradientBg": "Gradient Background",
+      "gradientPresets": "Presets above",
+      "backdropBlur": "Backdrop Blur",
+      "blurOn": "Blur On",
+      "blurOff": "Blur Off",
+      "clockFormat": "Clock Format",
+      "showSeconds": "Show seconds",
+      "dateFormat": "Date Format",
+      "livePreview": "Live Preview"
     }
   },
   "shell": {
@@ -1662,6 +1797,7 @@
         "plans": "Plans",
 "aiTools": "AI Tools",
         "aiProviders": "AI Providers",
+        "aiRuntimeProfiles": "Platform Global Providers",
         "aiModels": "AI Models"
       }
     }

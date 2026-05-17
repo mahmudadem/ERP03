@@ -550,7 +550,7 @@ export const aiAssistantApi = {
     return response as unknown as AiCertificationResult;
   },
 
-  listTenantCertifiedProfiles: async (params?: { scope?: 'GLOBAL' | 'TENANT' | 'ALL'; category?: string; moduleId?: string }): Promise<CertifiedProfileEntry[]> => {
+  listTenantCertifiedProfiles: async (params?: { scope?: 'GLOBAL' | 'TENANT' | 'ALL'; category?: string; moduleId?: string; mode?: 'BYOK' | 'CREDITS' }): Promise<CertifiedProfileEntry[]> => {
     const response = await client.get('/tenant/ai-assistant/certified-profiles', { params });
     return response as unknown as CertifiedProfileEntry[];
   },

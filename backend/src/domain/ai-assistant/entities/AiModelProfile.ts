@@ -54,6 +54,12 @@ export interface AiModelProfileProps {
   revision: number;
   enabled: boolean;
   createdBy?: string;
+  /**
+   * Credits consumed per successful chat using this model.
+   * Defaults to 1 for legacy data. Super Admin sets higher values for expensive models
+   * (e.g. GPT-4 = 30) so the platform doesn't lose money on flat-rate tenant credit pricing.
+   */
+  creditCost: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -114,7 +120,11 @@ export class AiModelProfile implements AiModelProfileProps {
     public readonly revision: number = 1,
     public readonly enabled: boolean = true,
     public readonly createdBy: string | undefined = undefined,
+    public readonly creditCost: number = 1,
   ) {
+    if (creditCost < 0 || !Number.isFinite(creditCost)) {
+      throw new Error('AI model creditCost must be a non-negative finite number');
+    }
     if (!provider.trim()) {
       throw new Error('AI model provider is required');
     }
@@ -238,6 +248,7 @@ export class AiModelProfile implements AiModelProfileProps {
       this.revision,
       this.enabled,
       this.createdBy,
+      this.creditCost,
     );
   }
 
@@ -282,6 +293,7 @@ export class AiModelProfile implements AiModelProfileProps {
       this.revision,
       this.enabled,
       this.createdBy,
+      this.creditCost,
     );
   }
 
@@ -324,6 +336,7 @@ export class AiModelProfile implements AiModelProfileProps {
       revision: this.revision,
       enabled: this.enabled,
       createdBy: this.createdBy,
+      creditCost: this.creditCost,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
     };
@@ -403,6 +416,9 @@ export class AiModelProfile implements AiModelProfileProps {
       Number(data.revision || 1),
       data.enabled !== false,
       data.createdBy || undefined,
+      Number.isFinite(Number(data.creditCost)) && Number(data.creditCost) >= 0
+        ? Number(data.creditCost)
+        : 1,
     );
   }
 }

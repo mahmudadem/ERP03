@@ -2,6 +2,119 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-16 (Sat) — ~2.0h
+**Task:** Build Platform Global Providers for AI Credits mode
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Added a new backend domain entity and repository for `AiPlatformRuntimeProfile`, stored separately from provider metadata.
+- Added Super Admin CRUD endpoints for runtime profiles at `/platform/ai-runtime-profiles`.
+- Built `AiPlatformRuntimeProfileUseCase` to validate provider/model selection, enforce global-model usage, encrypt stored platform API keys, and block active profiles without credentials.
+- Updated AI credits runtime resolution so `CREDITS` mode now looks up a platform runtime profile by selected provider + model first, then falls back to the legacy provider-level credential only for backward compatibility.
+- Updated credits-mode success persistence so runtime profiles increment their request-window counters and total successful usage after a successful response.
+- Added new Super Admin page `Platform Global Providers` at `/super-admin/platform-global-providers` with provider/model selection, write-only platform API key input, runtime status, request cap, interval, and notes.
+- Added EN/TR/AR locale coverage for the new runtime page.
+- Updated architecture and user docs for the new operational flow.
+- Ran `backend` build: `npm run build` ✅.
+- Ran `frontend` typecheck: `npm run typecheck` ✅.
+- Attempted `npm run graph:update`; AST extraction completed, but graphify exited non-zero on Windows with `Invalid argument: 'graphify-out\\graph.json'`. Logged as a non-blocking toolchain rabbit hole because the feature work itself is unaffected.
+**Result:** ✅ Super Admin can now configure provider + model + platform API key + request-cap interval for AI Credits mode from the UI. Tenant AI Credits no longer depends on hidden provider metadata edits.
+**Next:** Browser QA the new runtime page, then run a real tenant AI Credits flow and confirm both successful chat and runtime usage-counter updates.
+
+## 2026-05-16 (Sat) — ~0.3h
+**Task:** Add Super Admin defaults and guidance for AI provider setup
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Updated `frontend/src/modules/super-admin/pages/AiProvidersPage.tsx` to auto-apply provider-type defaults for new provider records.
+- Added a recommendation panel showing the suggested base URL, auth mode, and capability flags for the currently selected provider type.
+- Added a clear warning that the AI Providers page manages provider metadata only and does not configure the platform credential or usage caps required by AI Credits runtime.
+- Added matching EN/TR/AR locale strings.
+- Updated user/developer docs: `docs/user-guide/ai-provider-settings.md` and `docs/architecture/ai-provider-driven-settings.md`.
+- Ran `frontend` typecheck: `npm run typecheck` ✅.
+**Result:** ✅ Super Admin now gets actionable defaults and setup guidance on the AI Providers page, reducing misconfiguration before the separate runtime-profile screen exists.
+**Next:** Build the dedicated platform runtime profile page for provider+model credentials, budgets, and usage caps so AI Credits can be fully operated from the UI.
+
+## 2026-05-16 (Sat) — ~0.1h
+**Task:** Expose real AI Credits configuration failure
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Traced the `"Failed to load AI configuration"` message in AI Credits mode to the runtime credential resolver path.
+- Confirmed explicit credits-mode errors already exist for:
+  - no remaining credits,
+  - missing platform runtime credential,
+  - disabled AI mode.
+- Identified the generic message path: if `aiCreditLedgerRepository.getByCompanyId(companyId)` throws a plain exception, the outer chat use case collapses it into the generic configuration failure.
+- Wrapped AI credits ledger loading in `AiCredentialResolver` with a clear `ApiError.internal(...)` so the user now sees the real ledger-loading failure instead of the generic fallback.
+- Ran `backend` typecheck: `npx tsc --noEmit` ✅.
+**Result:** ✅ AI Credits runtime now exposes a specific error when the credit ledger cannot be loaded.
+**Next:** Re-test AI Credits chat and capture the new concrete error message. That message will identify whether the issue is missing ledger data, Firestore access, or another backend dependency.
+
+## 2026-05-16 (Sat) — ~0.1h
+**Task:** Enforce AI setup by module initialized flag only
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Removed AI setup detours based on saved provider/settings shape.
+- `AiAssistantSetupPage` now uses only `companyModules.ai-assistant.initialized` to decide whether setup is required.
+- `AiAssistantSettingsPage` no longer embeds the setup wizard or checks AI config completeness to decide routing.
+- Setup page always renders the AI wizard while the module remains uninitialized, and only successful setup completion marks the module initialized.
+- Ran `frontend` typecheck: `npm run typecheck` ✅.
+**Result:** ✅ AI setup now follows the same route invariant as other modules: only the module initialization flag controls access.
+**Next:** Browser QA: with `initialized=false`, confirm all AI routes go to `/ai-assistant/setup`; after wizard completion, confirm AI settings/chat open normally.
+
+## 2026-05-16 (Sat) — ~0.2h
+**Task:** Fix AI setup redirect loop and initialization completion
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Fixed `AiAssistantSetupPage.tsx` hook-order crash by keeping `useEffect` before conditional returns.
+- Removed the setup-page redirect based on `ai.settings.isEnabled === false`; setup now remains reachable for uninitialized AI modules.
+- Updated AI setup completion so successful wizard activation also calls `companyModulesApi.initialize(companyId, 'ai-assistant', ...)`.
+- Emitted company-modules refresh after initialization so guards stop treating AI as pending without requiring manual cache drift.
+- Allowed `AiSetupWizard` `onComplete` callback to be async and awaited it from the activation step.
+- Ran `frontend` typecheck: `npm run typecheck` ✅.
+**Result:** ✅ AI setup no longer bounces between setup/settings and now properly marks the module initialized after successful activation.
+**Next:** Browser QA: open `/ai-assistant/setup`, finish the wizard, then confirm AI routes no longer redirect and the dashboard setup card disappears.
+
+## 2026-05-16 (Sat) — ~0.2h
+**Task:** AI setup wizard route parity with module UX
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Introduced a dedicated AI setup route: `/ai-assistant/setup`.
+- Added new setup page `AiAssistantSetupPage.tsx` that renders only `AiSetupWizard` for uninitialized tenants and redirects to settings after completion.
+- Updated `ModuleConfigurationGuard` so pre-init AI access allows only `/ai-assistant/setup`; all other AI routes redirect there.
+- Updated route config to register `/ai-assistant/setup` and keep it hidden from menu.
+- Ran `frontend` typecheck: `npm run typecheck` ✅.
+**Result:** ✅ AI now follows the same setup-first route pattern as other modules.
+**Next:** Manual QA with `initialized=false`: verify `/ai-assistant`, `/ai-assistant/settings`, `/ai-assistant/usage`, `/ai-assistant/proposals` all redirect to `/ai-assistant/setup`.
+
+## 2026-05-16 (Sat) — ~0.1h
+**Task:** Tighten AI pre-init route enforcement
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Added an AI-specific hard gate in `ModuleConfigurationGuard`:
+  - When `ai-assistant` is uninitialized, only `/ai-assistant/settings` is accessible.
+  - Any other AI route now redirects to `/ai-assistant/settings`, including when module status record is missing.
+- Ran `frontend` typecheck: `npm run typecheck` ✅.
+**Result:** ✅ Pre-init AI route behavior is now deterministic and strict.
+**Next:** Manual QA with `initialized=false`: verify `/ai-assistant/usage` and `/ai-assistant/proposals` redirect to settings.
+
+## 2026-05-16 (Sat) — ~0.2h
+**Task:** Enforce AI Assistant initialization flow
+**Agent:** Codex (CTO Mode)
+**Branch:** `feat/phase-1a-core-bugs`
+**What I Did:**
+- Removed `ai-assistant` auto-init bypass from `ModuleConfigurationGuard`.
+- Added explicit pre-init redirect route for AI Assistant: `'/ai-assistant/settings'`.
+- This now forces uninitialized AI Assistant users into setup/settings flow instead of allowing normal module access with only dashboard notice.
+- Ran `frontend` typecheck: `npm run typecheck` ✅.
+**Result:** ✅ Forced initialization behavior now matches other guarded modules.
+**Next:** Manual QA: use a tenant with `ai-assistant.initialized=false` and verify navigation to `/ai-assistant` and `/ai-assistant/usage` redirects to `/ai-assistant/settings`.
+
 ## 2026-05-15 (Fri) — ~3h
 **Task:** Task 94 — AI Module Finalization
 **Agent:** opencode (CTO Mode)

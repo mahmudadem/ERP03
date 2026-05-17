@@ -81,7 +81,9 @@ const useCase = new SendChatMessageUseCase(
         diContainer.aiModelRoutingGuard,
         diContainer.aiProviderRepository,
         diContainer.aiCreditLedgerRepository,
+        diContainer.aiPlatformRuntimeProfileRepository,
         diContainer.aiConversationMetaRepository,
+        diContainer.aiModelProfileRepository,
       );
 
       const result = await useCase.execute({
@@ -472,6 +474,7 @@ const useCase = new SendChatMessageUseCase(
         diContainer.httpClient,
         diContainer.aiModelProfileUseCase,
         diContainer.aiProviderRepository,
+        diContainer.aiPlatformRuntimeProfileRepository,
       );
 
       const result = await useCase.execute(companyId);
@@ -534,6 +537,7 @@ const useCase = new SendChatMessageUseCase(
         diContainer.httpClient,
         diContainer.aiModelProfileUseCase,
         diContainer.aiProviderRepository,
+        diContainer.aiPlatformRuntimeProfileRepository,
       );
       const result = await useCase.execute({
         companyId,
@@ -581,11 +585,16 @@ const scopeParam = (req.query.scope as string) || 'TENANT';
       if (scopeParam !== 'GLOBAL' && scopeParam !== 'TENANT' && scopeParam !== 'ALL') {
         throw ApiError.badRequest('scope must be one of: GLOBAL, TENANT, ALL');
       }
+      const modeParam = req.query.mode as string | undefined;
+      if (modeParam && modeParam !== 'BYOK' && modeParam !== 'CREDITS') {
+        throw ApiError.badRequest('mode must be one of: BYOK, CREDITS');
+      }
       const data = await diContainer.aiModelCertificationUseCase.listValidCertifiedProfiles({
         scope: scopeParam as 'GLOBAL' | 'TENANT' | 'ALL',
         tenantId: companyId,
         category: category as any,
         moduleId: req.query.moduleId as string | undefined,
+        runtimeMode: modeParam as 'BYOK' | 'CREDITS' | undefined,
       });
       (res as any).status(200).json({ success: true, data });
     } catch (error) {

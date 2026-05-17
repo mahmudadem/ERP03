@@ -7,6 +7,7 @@ import {
 } from '../../../domain/ai-assistant/entities/AiModelProfile';
 import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 import { AiModelCapabilityCatalog, AiModelProfile as RuntimeModelProfile } from '../services/AiModelCapabilityCatalog';
+import type { AiAutoSeedCertification } from '../services/AiAutoSeedCertification';
 
 export interface UpsertAiModelProfileInput {
   id?: string;
@@ -36,6 +37,7 @@ export interface UpsertAiModelProfileInput {
   systemPromptPolicyId?: string;
   dataFilterPolicyId?: string;
   enabled?: boolean;
+  creditCost?: number;
 }
 
 export interface CreateTenantCustomModelProfileInput {
@@ -58,7 +60,25 @@ export interface CreateTenantCustomModelProfileInput {
 }
 
 export class AiModelProfileUseCase {
-  constructor(private readonly modelProfileRepo: IAiModelProfileRepository) {}
+  constructor(
+    private readonly modelProfileRepo: IAiModelProfileRepository,
+    private readonly autoSeedCertification?: AiAutoSeedCertification,
+  ) {}
+
+  /**
+   * After saving a GLOBAL profile, re-run the auto-cert seeder so well-known models
+   * (gpt-4o, claude-3-5-*, gemini-1.5-*, etc.) get a fresh certification matching
+   * the new profileHash. This eliminates the "editing breaks cert" footgun.
+   */
+  private async maybeRecertify(profile: AiModelProfile): Promise<void> {
+    if (!this.autoSeedCertification) return;
+    if (profile.scope !== 'GLOBAL') return;
+    try {
+      await this.autoSeedCertification.seed();
+    } catch (err) {
+      console.warn(`[AiModelProfileUseCase] auto-recertify failed: ${(err as Error).message}`);
+    }
+  }
 
   async listProfiles(filters?: { provider?: string; status?: string; tag?: string }): Promise<AiModelProfile[]> {
     let profiles = await this.modelProfileRepo.list();
@@ -184,8 +204,11 @@ export class AiModelProfileUseCase {
         profileHash,
         (existing?.revision ?? 0) + 1,
         input.enabled ?? true,
+        undefined,
+        this.resolveCreditCost(input.creditCost, existing?.creditCost),
       );
       await this.modelProfileRepo.save(profile);
+      await this.maybeRecertify(profile);
       return profile;
     }
 
@@ -211,10 +234,53 @@ export class AiModelProfileUseCase {
       existing?.lastDiagnosticDetail,
       existing?.createdAt ?? now,
       now,
+      existing?.scope ?? 'GLOBAL',
+      existing?.tenantId,
+      existing?.providerId ?? provider,
+      existing?.modelId ?? modelName,
+      existing?.displayName ?? modelName,
+      existing?.baseUrl,
+      existing?.endpointFingerprint ?? AiModelProfile.fingerprintEndpoint(existing?.baseUrl || provider),
+      existing?.temperature ?? 0.7,
+      existing?.maxOutputTokens ?? input.maxContextTokens,
+      existing?.jsonMode ?? input.supportsStructuredJson,
+      existing?.toolMode ?? (input.supportsToolCalling ? 'native_tools' : (input.textOnlyMode ? 'none' : 'text_plan')),
+      existing?.timeoutMs ?? 120000,
+      existing?.retryPolicy ?? 'default',
+      existing?.safetyPolicyId,
+      existing?.systemPromptPolicyId,
+      existing?.dataFilterPolicyId,
+      existing?.profileHash ?? AiModelProfile.generateProfileHash({
+        scope: existing?.scope ?? 'GLOBAL',
+        tenantId: existing?.tenantId,
+        providerId: existing?.providerId ?? provider,
+        modelId: existing?.modelId ?? modelName,
+        endpointFingerprint: existing?.endpointFingerprint ?? AiModelProfile.fingerprintEndpoint(provider),
+        temperature: existing?.temperature ?? 0.7,
+        maxOutputTokens: existing?.maxOutputTokens ?? input.maxContextTokens,
+        jsonMode: existing?.jsonMode ?? input.supportsStructuredJson,
+        toolMode: existing?.toolMode ?? (input.supportsToolCalling ? 'native_tools' : (input.textOnlyMode ? 'none' : 'text_plan')),
+        timeoutMs: existing?.timeoutMs ?? 120000,
+        retryPolicy: existing?.retryPolicy ?? 'default',
+        safetyPolicyId: existing?.safetyPolicyId,
+        systemPromptPolicyId: existing?.systemPromptPolicyId,
+        dataFilterPolicyId: existing?.dataFilterPolicyId,
+      }),
+      (existing?.revision ?? 0) + 1,
+      existing?.enabled ?? true,
+      existing?.createdBy,
+      this.resolveCreditCost(input.creditCost, existing?.creditCost),
     );
 
     await this.modelProfileRepo.save(profile);
+    await this.maybeRecertify(profile);
     return profile;
+  }
+
+  private resolveCreditCost(input: number | undefined, existing: number | undefined): number {
+    if (typeof input === 'number' && Number.isFinite(input) && input >= 0) return input;
+    if (typeof existing === 'number' && Number.isFinite(existing) && existing >= 0) return existing;
+    return 1;
   }
 
   async deleteProfile(id: string): Promise<void> {
@@ -332,6 +398,7 @@ export class AiModelProfileUseCase {
       (existing?.revision ?? 0) + 1,
       true,
       input.createdBy,
+      existing?.creditCost ?? 1,
     );
     await this.modelProfileRepo.save(profile);
     return profile;
@@ -430,6 +497,7 @@ export class AiModelProfileUseCase {
       existing.revision + 1,
       existing.enabled,
       existing.createdBy,
+      existing.creditCost,
     );
     await this.modelProfileRepo.save(updated);
     return updated;
@@ -493,6 +561,7 @@ export class AiModelProfileUseCase {
       existing.revision + 1,
       false, // enabled = false
       existing.createdBy,
+      existing.creditCost,
     );
     await this.modelProfileRepo.save(deprecated);
     return deprecated;

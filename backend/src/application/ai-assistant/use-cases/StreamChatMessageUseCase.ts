@@ -25,6 +25,8 @@ import { IAiSettingsRepository } from '../../../repository/interfaces/ai-assista
 import { IAiUsageLogRepository } from '../../../repository/interfaces/ai-assistant/IAiUsageLogRepository';
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { IAiCreditLedgerRepository } from '../../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
+import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
+import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 import { IAiConversationMetaRepository } from '../../../repository/interfaces/ai-assistant/IAiConversationMetaRepository';
 import { IEncryptionService } from '../../../infrastructure/crypto/IEncryptionService';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
@@ -97,13 +99,15 @@ export class StreamChatMessageUseCase {
     private modelRoutingGuard?: AiModelRoutingGuard,
     private providerRepository?: IAiProviderRepository,
     private creditLedgerRepository?: IAiCreditLedgerRepository,
+    private runtimeProfileRepository?: IAiPlatformRuntimeProfileRepository,
     private conversationMetaRepository?: IAiConversationMetaRepository,
     private sendChatMessageUseCase?: SendChatMessageUseCase,
+    private modelProfileRepository?: IAiModelProfileRepository,
   ) {
     this.rateLimiter = new AiRateLimiterService(settingsRepository);
-    this.credentialResolver = new AiCredentialResolver(encryptionService, providerRepository, creditLedgerRepository);
+    this.credentialResolver = new AiCredentialResolver(encryptionService, providerRepository, creditLedgerRepository, runtimeProfileRepository, modelProfileRepository);
     this.contextBuilder = new AiContextBuilder(toolOrchestrator);
-    this.responsePersister = new AiResponsePersister(chatRepository, usageLogRepository, creditLedgerRepository, auditService);
+    this.responsePersister = new AiResponsePersister(chatRepository, usageLogRepository, creditLedgerRepository, auditService, runtimeProfileRepository, modelProfileRepository);
   }
 
   /**
@@ -618,6 +622,8 @@ export class StreamChatMessageUseCase {
 
           await this.responsePersister.debitCredits({
             config: { runtimeMode: config.runtimeMode, companyId: config.companyId, provider: config.provider, model: config.model },
+            providerId: config.providerId,
+            selectedModelProfileId: config.selectedModelProfileId,
             aiRunId: runContext?.aiRunId ?? aiRunId,
             runContext, companyId, userId, conversationId: convId,
           });
