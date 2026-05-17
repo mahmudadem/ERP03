@@ -82,9 +82,9 @@ Briefly restate what the user wants to accomplish. Confirm understanding.
 
 ### Step 2: Inspect Current State
 Read these files to understand project status:
-- `ACTIVE.md` — current task and where we left off
-- `JOURNAL.md` — recent development history
-- `VISION.md` — product vision and "done" criteria
+- `planning/ACTIVE.md` — current task and where we left off
+- `planning/JOURNAL.md` — recent development history
+- `planning/VISION.md` — product vision and "done" criteria
 
 ### Step 3: Delegate Analysis
 Based on task scope, delegate parallel read-only analysis:

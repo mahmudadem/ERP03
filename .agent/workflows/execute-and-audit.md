@@ -23,7 +23,7 @@ Open a **fresh AI conversation** (not this one). Use this prompt template:
 You are working on an ERP accounting module project located at d:\DEV2026\ERP03
 
 Your task is to implement the feature described in this plan file:
-d:\DEV2026\ERP03\1-TODO\[XX-plan-name].md
+d:\DEV2026\ERP03\planning\tasks\[XX-plan-name].md
 
 IMPORTANT RULES:
 1. Read the plan file FIRST. It contains everything: business context, current state, 
@@ -37,7 +37,7 @@ IMPORTANT RULES:
 4. After implementation, run through the verification plan in the document.
 5. Do NOT modify any files outside the scope of this plan unless absolutely necessary.
 6. When done, create a summary of what you changed at:
-   d:\DEV2026\ERP03\1-TODO\done\[XX]-completion-report.md
+   d:\DEV2026\ERP03\planning\done\[XX]-completion-report.md
 
 Backend is Express+TypeScript at backend/
 Frontend is React+TypeScript+Vite at frontend/
@@ -53,7 +53,7 @@ Frontend runs with: cd frontend && npm run dev
 You are working on an ERP accounting module project located at d:\DEV2026\ERP03
 
 Your task is to implement the feature described in this plan file:
-d:\DEV2026\ERP03\1-TODO\23-firestore-security-rules.md
+d:\DEV2026\ERP03\planning\tasks\23-firestore-security-rules.md
 
 IMPORTANT RULES:
 1. Read the plan file FIRST. It contains everything: business context, current state, 
@@ -67,7 +67,7 @@ IMPORTANT RULES:
 4. After implementation, run through the verification plan in the document.
 5. Do NOT modify any files outside the scope of this plan unless absolutely necessary.
 6. When done, create a summary of what you changed at:
-   d:\DEV2026\ERP03\1-TODO\done\23-completion-report.md
+   d:\DEV2026\ERP03\planning\done\23-completion-report.md
 
 Backend is Express+TypeScript at backend/
 Frontend is React+TypeScript+Vite at frontend/
@@ -96,7 +96,7 @@ Plan [XX] is done. Audit it.
 
 ### What I Will Do:
 
-1. **Read the completion report** at `1-TODO/done/[XX]-completion-report.md`
+1. **Read the completion report** at `planning/done/[NN]-completion-report.md`
 2. **Scan all changed files** for correctness
 3. **Check against acceptance criteria** from the plan
 4. **Verify architecture compliance**:

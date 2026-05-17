@@ -42,3 +42,15 @@ emulator-data-before-*/
 emulator-data-empty-*/
 emulator-data.backup/
 !emulator-data/
+
+# Test/build output files
+tsc_output.txt
+test_results.txt
+tmp/
+
+# TypeScript error logs from previous frontend debug sessions
+frontend/ts-errors*.log
+frontend/typescript-errors.txt
+frontend/build*.log
+frontend/build_err*.txt
+frontend/build_error.log

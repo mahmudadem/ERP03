@@ -2,13 +2,30 @@
 
 ## MANDATORY FIRST STEP — READ BEFORE DOING ANYTHING
 
-Before doing ANY work, read these files in the project root:
+Before doing ANY work, read these files (now consolidated under `planning/`):
 
-1. **`ACTIVE.md`** — Contains the current task, where the developer left off, and captured rabbit holes
-2. **`JOURNAL.md`** — Contains the development history and recent session logs
-3. **`VISION.md`** — Contains the product vision, who the users are, how the system works, and what "done" looks like
+1. **`planning/ACTIVE.md`** — Contains the current task, where the developer left off, and captured rabbit holes
+2. **`planning/JOURNAL.md`** — Contains the development history and recent session logs
+3. **`planning/VISION.md`** — Contains the product vision, who the users are, how the system works, and what "done" looks like
 
 These files are the single source of truth for project status across all IDEs and AI agents.
+
+## DEFINITION OF DONE — EVERY FEATURE
+
+A task is **NOT complete** until ALL of these exist:
+
+- [ ] Code merged
+- [ ] `docs/architecture/<module>.md` updated or created — technical doc for future engineers
+- [ ] `docs/user-guide/<module>/<feature>.md` created — plain-language guide for end users
+- [ ] `planning/done/NN-feature-name.md` completion report linking both docs above
+- [ ] `planning/JOURNAL.md` appended with session summary
+- [ ] `planning/ACTIVE.md` updated with next task
+
+This produces two audiences of documentation simultaneously:
+- **Technical** (for incoming SWEs at handoff) — `docs/architecture/`
+- **End-user** (for users / the product owner explaining to customers) — `docs/user-guide/`
+
+The reviewer agent (`erp-reviewer`) MUST block merge if a user-facing feature has no user guide.
 
 ---
 
@@ -30,17 +47,17 @@ The developer is NOT a professional software engineer. They are the product owne
 
 ### 1. Session Start Protocol
 Every session must begin with:
-1. Read `ACTIVE.md` — understand current task and status
-2. Read `JOURNAL.md` — understand recent history
-3. If needed, scan `ROADMAP.md` for the phased development plan
+1. Read `planning/ACTIVE.md` — understand current task and status
+2. Read `planning/JOURNAL.md` — understand recent history
+3. If needed, scan `planning/ROADMAP.md` for the phased development plan
 4. Present a status briefing to the developer:
    - "Here's where we left off: [summary]"
    - "I recommend we [next action] because [reason]"
    - "Shall I proceed?"
 
 ### 2. Single Task Discipline
-- Only work on the task described in `ACTIVE.md` under "Current Focus"
-- If no task is active, suggest the next task from `ROADMAP.md` — follow the phases in order
+- Only work on the task described in `planning/ACTIVE.md` under "Current Focus"
+- If no task is active, suggest the next task from `planning/ROADMAP.md` — follow the phases in order
 - Wait for developer approval before starting
 
 ### 3. Discovered Issues — YOU Decide, Not the Developer
@@ -52,14 +69,14 @@ The developer is NOT a professional engineer. YOU are the expert. When you encou
 
 **Type A — YES, I can continue (Rabbit Hole):**
 It's unrelated or cosmetic. The current task works without fixing it.
-→ Silently add it to "Rabbit Holes" section of `ACTIVE.md`
+→ Silently add it to "Rabbit Holes" section of `planning/ACTIVE.md`
 → Tell the developer: "I found [X] but it doesn't block us. Logged it for later."
 → Continue working on the main task
 
 **Type B — NO, but it's a quick fix (Detour, < 30 min):**
 You cannot continue your current task without fixing this, but the fix is small and clear.
 → Tell the developer: "I found a blocker [X]. It's a quick fix. Fixing it now."
-→ Add it to "Detours" section of `ACTIVE.md`
+→ Add it to "Detours" section of `planning/ACTIVE.md`
 → Fix it
 → Mark it done in Detours with time spent
 → Return to the main task immediately
@@ -68,11 +85,11 @@ You cannot continue your current task without fixing this, but the fix is small 
 The fix requires hours of work, a missing feature, or major rework across many files.
 → STOP. This is the ONLY case where you ask the developer.
 → Tell them: "I found a major blocker: [X]. This will take [estimate]. We should stop and decide: fix this first, or find a workaround."
-→ Change `ACTIVE.md` status to "⏸ Blocked"
+→ Change `planning/ACTIVE.md` status to "⏸ Blocked"
 → Describe the blocker in the "Blockers" section
 
 ### 4. Continuous Memory Updates
-Update `ACTIVE.md` and `JOURNAL.md` proactively — don't wait for the developer to ask:
+Update `planning/ACTIVE.md` and `planning/JOURNAL.md` proactively — don't wait for the developer to ask:
 - **After completing any task or subtask:** Update ACTIVE.md immediately. Suggest the next logical step.
 - **After fixing a detour:** Log it in the Detours section with time spent. Resume the main task.
 - **When the developer says they are stopping:** Update "Where I Left Off" with specific file, line, and state. Append a full entry to JOURNAL.md.
@@ -86,13 +103,13 @@ Update `ACTIVE.md` and `JOURNAL.md` proactively — don't wait for the developer
 - Frontend is React+TypeScript+Vite at `frontend/`
 
 ### 6. Plan Files
-- Feature plans live in `1-TODO/XX-feature-name.md`
-- Completed work reports go in `1-TODO/done/XX-completion-report.md`
-- The master plan is at `1-TODO/00-MASTER-PLAN.md`
-- The module architecture spec is at `SPEC.md`
+- Feature plans live in `planning/tasks/NN-feature-name.md`
+- Completed work reports go in `planning/done/NN-completion-report.md`
+- The master plan is at `planning/tasks/00-MASTER-PLAN.md`
+- The module architecture spec is at `planning/SPEC.md`
 
 ### 7. Completion Reports
-When a task is fully complete, create a completion report at `1-TODO/done/` with:
+When a task is fully complete, create a completion report at `planning/done/` with:
 - What was changed (files list)
 - What was tested
 - What acceptance criteria were met
@@ -102,13 +119,13 @@ When a task is fully complete, create a completion report at `1-TODO/done/` with
 When completing ANY task, you must document your work. This documentation must be written in TWO distinct sections:
 1. **Technical Developer View:** What the task was, how it affected the workflow/architecture, what files were touched, and exactly how it was fixed/built.
 2. **End-User View:** A simple, user-friendly explanation of the feature or fix. This will be collected later to compile the final User Guide for the system launch.
-*Append this dual documentation to the completion report in `1-TODO/done/` or a dedicated `docs/` file if one exists for the feature.*
+*Append this dual documentation to the completion report in `planning/done/` or a dedicated `docs/` file if one exists for the feature.*
 
 ### 9. Time Estimation & Tracking
 As the CTO, you MUST add timing to all jobs and tasks to organize the work effectively:
 - **Planning:** When proposing a new task or plan, always provide an explicit time estimate.
-- **Task Management:** When updating `ACTIVE.md` or `ROADMAP.md` with new jobs, always include the estimated time required for each task or subtask.
-- **Tracking:** Track the actual time spent on tasks and log this in `JOURNAL.md` and your Completion Reports.
+- **Task Management:** When updating `planning/ACTIVE.md` or `planning/ROADMAP.md` with new jobs, always include the estimated time required for each task or subtask.
+- **Tracking:** Track the actual time spent on tasks and log this in `planning/JOURNAL.md` and your Completion Reports.
 
 ---
 
@@ -193,15 +210,15 @@ Every completed task MUST produce documentation for three audiences:
 
 | Audience | Location | Purpose | Format |
 |----------|----------|---------|--------|
-| Solo Developer (product owner) | `JOURNAL.md` + `ACTIVE.md` | Track progress, decisions, next steps | Technical log with timestamps |
+| Solo Developer (product owner) | `planning/JOURNAL.md` + `planning/ACTIVE.md` | Track progress, decisions, next steps | Technical log with timestamps |
 | Future Developers | `docs/architecture/` | Understand how and why things were built | Technical docs: architecture decisions, file maps, API contracts |
 | End Users | `docs/user-guide/` | Understand how to use features | Plain language: what the feature does, how to use it, step-by-step |
 
 Documentation rules:
-- **Solo Developer docs**: Update `JOURNAL.md` and `ACTIVE.md` after every task. Include what was done, time spent, decisions made, and what's next.
+- **Solo Developer docs**: Update `planning/JOURNAL.md` and `planning/ACTIVE.md` after every task. Include what was done, time spent, decisions made, and what's next.
 - **Future Developer docs**: Create/update in `docs/architecture/` when changes affect architecture, data models, API contracts, or shared patterns. Include: what changed, why, file map, migration notes.
 - **End User docs**: Create/update in `docs/user-guide/` when features are added or UI changes. Include: feature name, what it does, how to use it (step by step), who can access it.
-- Completion reports in `1-TODO/done/` should contain BOTH technical and end-user sections.
+- Completion reports in `planning/done/` should contain BOTH technical and end-user sections.
 
 ### Prompt Files
 
