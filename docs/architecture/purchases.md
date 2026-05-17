@@ -1,0 +1,143 @@
+# Architecture: Purchases Module
+
+**Last updated:** 2026-05-17
+**Status:** Feature-complete for V1 (4 document types). Requisitions and Debit Notes deferred.
+**Module-level docs:** [`docs/modules/purchases/`](../modules/purchases/)
+
+---
+
+## Purpose
+
+The Purchases module covers the procure-to-pay cycle: place an order with a supplier, receive the goods, record the bill, pay it, handle returns. It is a mirror image of Sales:
+
+| Sales | Purchases |
+|---|---|
+| Customer | Vendor / Supplier |
+| Sales Order → Delivery Note → Sales Invoice → Receipt | Purchase Order → Goods Receipt → Purchase Invoice → Payment |
+| Decrements inventory | Increments inventory |
+| Posts AR + Revenue | Posts AP + Inventory/Expense |
+
+## Document Model
+
+```
+Purchase Order (PO) → Goods Receipt (GRN) → Purchase Invoice (PI) → Payment
+                                       └→ Purchase Return (PR)
+```
+
+- **Purchase Order (PO)** — pre-purchase commitment to a vendor. Tracks `orderedQty`, `receivedQty`, `invoicedQty`, `returnedQty`. Status: DRAFT → CONFIRMED → PARTIALLY_RECEIVED / FULLY_RECEIVED → CLOSED / CANCELLED.
+- **Goods Receipt (GRN)** — physical receipt of goods. Creates a `PURCHASE_RECEIPT` inventory movement. **Does NOT** post GL entries — purely operational.
+- **Purchase Invoice (PI)** — the financial event. Posts AP + Inventory (for stock items) or AP + Expense (for services). Three personas: Direct (standalone), Linked (PO-linked), Service.
+- **Purchase Return (PR)** — reverses a delivery and/or invoice. Two contexts: `AFTER_INVOICE` (reverses AP and inventory) and `BEFORE_INVOICE` (reverses inventory only).
+
+## Workflow Modes
+
+Configured in `Purchases → Settings`. Same SIMPLE vs OPERATIONAL split as Sales.
+
+| Aspect | SIMPLE | OPERATIONAL |
+|---|---|---|
+| PO required (stock items) | No | Yes |
+| Standalone PI allowed | Yes | No (must reference a GRN) |
+| GRN required for stock | No | Yes |
+| Inventory recognized at | PI posting (if no GRN) | GRN posting |
+
+## Vendors
+
+Vendors are not a separate Purchases entity — they are **Party** records (shared module) with `role = 'VENDOR'`. Same legal entity can be both a vendor and a customer.
+
+Vendor-specific overrides:
+- `defaultAPAccountId` — overrides company default AP account
+- `paymentTermsDays`
+- `defaultCurrency`
+
+The Vendors list at `/purchases/vendors` is a filtered view of the Party API.
+
+## Accounting Integration
+
+Purchases never writes to the ledger directly. It builds vouchers and submits them to Accounting's `PostVoucherUseCase` with the `PurchaseInvoiceStrategy` (or return strategy).
+
+**Purchase Invoice posting** creates (for stock items):
+```
+Dr  Inventory            (item → category → company default)
+    Cr  Accounts Payable  (vendor override → company default)
+    Dr  Tax Receivable    (from TaxCode)
+```
+
+For service items:
+```
+Dr  Expense              (account on the line)
+    Cr  Accounts Payable
+    Dr  Tax Receivable
+```
+
+**Purchase Return posting** (AFTER_INVOICE) reverses the above. (BEFORE_INVOICE reverses inventory only, no AP impact since none was created.)
+
+**Payment posting** happens via Accounting's Payment Voucher (the user clicks "Create Payment" from the PI):
+```
+Dr  Accounts Payable
+    Cr  Cash / Bank
+```
+
+All vouchers carry `sourceModule='purchases'`, `sourceType=<doctype>`, `sourceId=<docId>` for traceability.
+
+## Inventory Integration
+
+Purchases calls the inventory contract `IPurchasesInventoryService`:
+- `processIN()` for GRN postings — creates `PURCHASE_RECEIPT` movement with the unit cost from the PI/PO.
+- `processIN()` for PI postings in SIMPLE mode when there's no prior GRN — creates `PURCHASE_RECEIPT` directly.
+- `processOUT()` for returns — creates `PURCHASE_RETURN` movement, reversing the cost.
+
+**No GRNI accrual in V1.** The system does not maintain a "Goods Received Not Invoiced" interim account. Inventory cost lands at GRN, AP lands at PI — there is a timing gap, but it's acceptable because the cost is correct from GRN and the AP is recognized at PI.
+
+## Validation Rules
+
+- **OPERATIONAL + stock items:** `invoicedQty ≤ receivedQty` per PI line (blocks at posting).
+- **OPERATIONAL + services:** `servicedQty ≤ orderedQty` per PI line (no GRN required for services).
+- **SIMPLE + SO-linked:** `invoicedQty ≤ orderedQty × (1 + tolerance%)`.
+- **SIMPLE + standalone:** no qty constraint.
+- Workflow mode switch (OPERATIONAL → SIMPLE) is blocked if open POs or draft GRNs exist.
+- Tax codes are snapshotted onto PI lines at posting.
+
+## Multi-Currency
+
+- PO / GRN / PI / PR support a document currency with a frozen exchange rate.
+- GL posting lands in base currency.
+- Inventory cost is converted at the document FX rate.
+
+## Key Use Cases
+
+| Use case | Purpose |
+|---|---|
+| `CreatePurchaseOrderUseCase` / `ConfirmPurchaseOrderUseCase` / `CancelPurchaseOrderUseCase` / `ClosePurchaseOrderUseCase` | PO lifecycle |
+| `CreateGoodsReceiptUseCase` / `PostGoodsReceiptUseCase` | GRN flow; calls `processIN()` |
+| `CreatePurchaseInvoiceUseCase` / `PostPurchaseInvoiceUseCase` | PI flow; AP + Inventory/Expense GL |
+| `CreatePurchaseReturnUseCase` / `PostPurchaseReturnUseCase` | Return flow; context-aware reversals |
+| `PaymentSyncUseCases` | Sync payment status from Accounting payment vouchers |
+| `InitializePurchasesUseCase` / `GetPurchaseSettingsUseCase` / `UpdatePurchaseSettingsUseCase` | Setup and config |
+
+All under `backend/src/application/purchases/use-cases/`.
+
+## File Map
+
+| Concern | Path |
+|---|---|
+| Domain entities | `backend/src/domain/purchases/entities/` |
+| Use cases | `backend/src/application/purchases/use-cases/` |
+| Routes | `backend/src/api/routes/purchases.routes.ts` |
+| Frontend module | `frontend/src/modules/purchases/` |
+| Inventory contract | `backend/src/application/inventory/contracts/InventoryIntegrationContracts.ts` |
+| Module deep-dive | `docs/modules/purchases/MASTER_PLAN.md`, `ALGORITHMS.md` |
+
+## What Is NOT Implemented
+
+| Feature | Status |
+|---|---|
+| **Purchase Requisitions** | Planned. Internal request-to-purchase workflow before PO. |
+| **Debit Notes (as separate type)** | Planned. Currently rolled into Purchase Return. |
+| **Withholding Tax** | Deferred V2. Market-specific complexity. |
+| **Landed Cost Allocation** | Deferred V2. Freight/duty allocation across received items. |
+| **Vendor Price Lists** | Deferred V2. |
+| **Approval Workflow** | Deferred V2. Needs a generic approval engine. |
+| **GRNI Accrual** | Deferred V2. No "Goods Received Not Invoiced" interim account. |
+| **Three-Way Matching Reports** | Deferred V2. Compare PO ↔ GRN ↔ PI. |
+| **Vendor Credit Limits** | Deferred V2. |
+| **Blanket POs** | Deferred V2. |

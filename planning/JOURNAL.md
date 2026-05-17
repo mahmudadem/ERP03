@@ -2,6 +2,23 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-17 (Sun, continued) — ~1.5h
+**Task:** Enterprise restructure Phase 5 — Core 4 user-guide backfill
+**Agent:** Claude (Sonnet 4.6) — CTO mode
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Ran 4 parallel Explore agents to produce accurate module maps for Accounting, Sales, Purchases, Inventory directly from code (not from planning docs).
+- Wrote 8 docs to fill the Core 4 gap:
+  - `docs/architecture/accounting.md` + `docs/user-guide/accounting/README.md`
+  - `docs/architecture/sales.md` + `docs/user-guide/sales/README.md`
+  - `docs/architecture/purchases.md` + `docs/user-guide/purchases/README.md`
+  - `docs/architecture/inventory.md` + `docs/user-guide/inventory/README.md`
+- Each architecture doc covers: purpose, document model, key use cases, repository interfaces, accounting/inventory integration points, multi-currency handling, what is NOT implemented (honest gaps).
+- Each user guide covers: features list, first-time setup, daily workflow, returns/corrections, multi-currency, permissions, common questions.
+- Updated `docs/README.md` gap analysis — Core 4 now marked DONE.
+**Result:** ✅ Core 4 user-guide backfill complete. The doc system created in Phase 4 is now battle-tested with real content. Incoming engineers have an entry point per module; end users have step-by-step guides for the main flows.
+**Next:** Continue Phase 5 — Super Admin, Settings, Widget Designer guides. Then Reports/RBAC/multi-company. Phase 3 (pnpm monorepo) still deferred.
+
 ## 2026-05-17 (Sun) — ~2.5h
 **Task:** Enterprise restructure & documentation workflow (Phases 1, 2, 4 of 5)
 **Agent:** Claude (Sonnet 4.6) — CTO mode

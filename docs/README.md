@@ -105,14 +105,15 @@ The reviewer agent (`erp-reviewer`) is configured to block merge if a user-facin
 
 | Module | Architecture | User Guide | Priority |
 |---|---|---|---|
-| Accounting | ⚠️ Only backend domain doc | ❌ Missing | Core 4 |
-| Sales | ⚠️ Only planning docs in `docs/sales/` | ❌ Missing | Core 4 |
-| Purchases | ⚠️ Only planning docs in `docs/purchases/` | ❌ Missing | Core 4 |
-| Inventory | ⚠️ Only planning docs in `docs/inventory/` | ❌ Missing | Core 4 |
-| Super Admin | ❌ Missing | ❌ Missing | High |
-| Settings | ❌ Missing | ❌ Missing | High |
-| Reports (P&L, Balance Sheet, etc.) | ❌ Missing | ❌ Missing | Medium |
+| Accounting | ✅ [accounting.md](architecture/accounting.md) | ✅ [accounting/](user-guide/accounting/) | Core 4 — DONE |
+| Sales | ✅ [sales.md](architecture/sales.md) | ✅ [sales/](user-guide/sales/) | Core 4 — DONE |
+| Purchases | ✅ [purchases.md](architecture/purchases.md) | ✅ [purchases/](user-guide/purchases/) | Core 4 — DONE |
+| Inventory | ✅ [inventory.md](architecture/inventory.md) | ✅ [inventory/](user-guide/inventory/) | Core 4 — DONE |
+| Super Admin | ❌ Missing | ❌ Missing | High — next |
+| Settings | ❌ Missing | ❌ Missing | High — next |
+| Topbar Widget Designer | ⚠️ [topbar-precision-widget-layout.md](architecture/topbar-precision-widget-layout.md) | ⚠️ [topbar-widget-layout.md](user-guide/topbar-widget-layout.md) | High — partial |
+| Reports (P&L, Balance Sheet, etc.) | ⚠️ Covered in accounting.md | ❌ Per-report user guides missing | Medium |
 | RBAC / Permissions | ❌ Missing | ❌ Missing | Medium |
 | Multi-Company / Multi-Tenancy | ❌ Missing | ❌ Missing | Medium |
 
-Phase 5 of the [restructure plan](../planning/JOURNAL.md) addresses these gaps.
+Phase 5 of the [restructure plan](../planning/JOURNAL.md) addresses these gaps. Core 4 complete as of 2026-05-17.
