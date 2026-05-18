@@ -36,7 +36,7 @@ import {
   AiStreamEvent,
 } from './IAiProvider';
 import { IHttpClient } from '../../../infrastructure/http/IHttpClient';
-import { ProviderError } from '../../../errors/ProviderErrors';
+import { ProviderError, ProviderAuthError, ProviderRateLimitError } from '../../../errors/ProviderErrors';
 
 export interface OpenAICompatibleConfig {
   apiKey: string;           // Required for OpenAI; for Ollama use 'local-no-key'
@@ -157,6 +157,7 @@ export class OpenAICompatibleProvider implements IAiProvider {
     if (this.config.organization) {
       headers['OpenAI-Organization'] = this.config.organization;
     }
+    this.applyOpenRouterIdentityHeaders(headers);
 
     const requestBody: Record<string, unknown> = {
       model: this.config.model,
@@ -322,6 +323,7 @@ export class OpenAICompatibleProvider implements IAiProvider {
     if (this.config.organization) {
       headers['OpenAI-Organization'] = this.config.organization;
     }
+    this.applyOpenRouterIdentityHeaders(headers);
 
     const requestBody: Record<string, unknown> = {
       model: this.config.model,
@@ -458,6 +460,7 @@ export class OpenAICompatibleProvider implements IAiProvider {
     if (!isLocalProvider) {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
+    this.applyOpenRouterIdentityHeaders(headers);
 
     try {
       const response = await this.httpClient.request<OpenAIModelsResponse>({
@@ -469,11 +472,30 @@ export class OpenAICompatibleProvider implements IAiProvider {
 
       // If we got a successful response, the provider is available
       return response.status >= 200 && response.status < 300;
-    } catch {
-      // If the models endpoint fails, the provider might still be available
-      // (some providers don't implement it). Fall back to config check.
+    } catch (error) {
+      // Auth errors (401/403) and rate limits (429) MUST surface — they prove the
+      // endpoint exists but the key can't use it. Silently returning true here
+      // produced false-positive "Provider connection: Passed" results.
+      if (error instanceof ProviderAuthError || error instanceof ProviderRateLimitError) {
+        throw error;
+      }
+      // For other failures (404, network errors), some providers don't implement
+      // /models — fall back to config sanity check.
       return !!(this.config.apiKey && this.config.apiEndpoint && this.config.model);
     }
+  }
+
+  /**
+   * OpenRouter (and a few other gateways) anti-abuse anonymous traffic by
+   * requiring identifying headers for some models — most notably Anthropic
+   * routes. Adding HTTP-Referer + X-Title fixes intermittent 401s on
+   * /chat/completions even when /models authenticates fine.
+   */
+  private applyOpenRouterIdentityHeaders(headers: Record<string, string>): void {
+    const endpoint = this.config.apiEndpoint || '';
+    if (!endpoint.includes('openrouter.ai')) return;
+    if (!headers['HTTP-Referer']) headers['HTTP-Referer'] = 'https://erp03.local';
+    if (!headers['X-Title']) headers['X-Title'] = 'ERP03';
   }
 
   /** Update configuration (e.g., when company changes their BYOK settings) */

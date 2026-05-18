@@ -104,7 +104,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'Cairo', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['var(--app-font-family)', 'Inter', 'Cairo', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],

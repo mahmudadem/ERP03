@@ -138,6 +138,8 @@ const VouchersListPage: React.FC = () => {
   const isLoading = vouchersLoading || typesLoading;
 
   const resolveVoucherForm = React.useCallback((voucherLike: any) => {
+    const normalize = (value: unknown) => String(value || '').trim().toLowerCase();
+
     const getVoucherFormId = (v: any): string | undefined => {
       return v?.formId || v?.metadata?.formId;
     };
@@ -168,12 +170,62 @@ const VouchersListPage: React.FC = () => {
       formDefinition = matchByFormId(getVoucherFormId(parentVoucher));
     }
 
-    // Deterministic fallback: if source form is missing, open in JV form (no heuristic guessing by type/keywords).
     if (!formDefinition) {
-      formDefinition = getJournalFallbackForm();
+      const rawType = normalize(voucherLike?.type);
+      const originType = normalize(voucherLike?.metadata?.originType);
+      const candidateTypes = [rawType, originType].filter(Boolean);
+
+      formDefinition = voucherTypes.find((type) => {
+        const code = normalize(type.code);
+        const id = normalize(type.id);
+        const formType = normalize((type as any)?.formType);
+        const baseType = normalize((type as any)?.baseType);
+        const voucherType = normalize((type as any)?.voucherType);
+        return candidateTypes.some((candidate) =>
+          candidate === code ||
+          candidate === id ||
+          candidate === formType ||
+          candidate === baseType ||
+          candidate === voucherType
+        );
+      });
     }
 
-    return formDefinition;
+    if (!formDefinition) {
+      const typeKeywords: Record<string, string[]> = {
+        journal_entry: ['journal', 'journal_entry', 'jv'],
+        jv: ['journal', 'journal_entry', 'jv'],
+        payment: ['payment', 'pv'],
+        payment_voucher: ['payment', 'pv'],
+        receipt: ['receipt', 'rv'],
+        receipt_voucher: ['receipt', 'rv'],
+        opening_balance: ['opening', 'balance'],
+        fx_revaluation: ['fx_revaluation', 'revaluation', 'journal'],
+        reversal: ['reversal', 'reverse', 'journal'],
+        purchase_invoice: ['purchase_invoice', 'purchase', 'invoice', 'pinv', 'ap_invoice', 'journal'],
+        purchase_return: ['purchase_return', 'purchase', 'return', 'pr', 'journal'],
+        sales_invoice: ['sales_invoice', 'sales', 'invoice', 'sinv', 'ar_invoice', 'journal'],
+        sales_return: ['sales_return', 'sales', 'return', 'sr', 'journal'],
+      };
+      const candidateTypes = [
+        normalize(voucherLike?.type),
+        normalize(voucherLike?.metadata?.originType),
+      ].filter(Boolean);
+      const keywords = Array.from(new Set(candidateTypes.flatMap((type) => typeKeywords[type] || [])));
+
+      formDefinition = voucherTypes.find((type) => {
+        const id = normalize(type.id);
+        const code = normalize(type.code);
+        const name = normalize(type.name);
+        return keywords.some((keyword) =>
+          id.includes(keyword) ||
+          code.includes(keyword) ||
+          name.includes(keyword)
+        );
+      });
+    }
+
+    return formDefinition || getJournalFallbackForm();
   }, [voucherTypes, vouchers]);
 
   const handleCreate = () => {

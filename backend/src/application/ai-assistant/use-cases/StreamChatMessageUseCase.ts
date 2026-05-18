@@ -47,6 +47,7 @@ import { AiModelProfileUseCase } from './AiModelProfileUseCase';
 import { AiCredentialResolver } from '../services/AiCredentialResolver';
 import { AiContextBuilder } from '../services/AiContextBuilder';
 import { AiResponsePersister } from '../services/AiResponsePersister';
+import { AiTenantContextResolver } from '../services/AiTenantContextResolver';
 import { SendChatMessageInput } from './SendChatMessageTypes';
 import { AiStreamEvent, AiStreamDoneMetadata } from './SendChatMessageStreamTypes';
 import { upsertConversationMeta, resolveModelProfile } from '../services/chatMessageHelpers';
@@ -103,6 +104,7 @@ export class StreamChatMessageUseCase {
     private conversationMetaRepository?: IAiConversationMetaRepository,
     private sendChatMessageUseCase?: SendChatMessageUseCase,
     private modelProfileRepository?: IAiModelProfileRepository,
+    private tenantContextResolver?: AiTenantContextResolver,
   ) {
     this.rateLimiter = new AiRateLimiterService(settingsRepository);
     this.credentialResolver = new AiCredentialResolver(encryptionService, providerRepository, creditLedgerRepository, runtimeProfileRepository, modelProfileRepository);
@@ -194,14 +196,22 @@ export class StreamChatMessageUseCase {
     StreamChatMessageUseCase.activeLocks.add(lockKey);
 
     try {
+      yield { type: 'status', stage: 'thinking' } as const;
+
       // 6. Build model capability profile
-      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, companyId, config.provider, config.model);
+      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, companyId, config.provider, config.model, config.selectedModelProfileId);
       if (modelProfile.textOnlyMode) {
         runtimeWarnings.push(modelProfile.warningMessage || `Model '${config.model}' is running in text-only mode.`);
       }
       if (modelProfile.warningLevel === 'danger') {
         runtimeWarnings.push(`Model '${config.model}' on provider '${config.provider}' is not recognized.`);
       }
+
+      // 6b. Resolve tenant context (company, user, currency, locale) for system prompt
+      const tenantCtx = this.tenantContextResolver
+        ? await this.tenantContextResolver.resolve(companyId, userId)
+        : null;
+      const tenantContextMessage = tenantCtx ? AiTenantContextResolver.formatForPrompt(tenantCtx) : undefined;
 
       // 7. Select domain skills
       let selectedSkills: string[] = ['base-orchestration'];
@@ -352,6 +362,8 @@ export class StreamChatMessageUseCase {
             toolPlanningContextMessage,
             recentToolDataContextMessage: recentToolDataContext.content,
             skipToolDescriptions: isLikelySimpleChat || !toolRoutingDecision?.allowed,
+            noToolsAvailable: allowedContracts.length === 0,
+            tenantContextMessage,
           }),
         },
         ...recentProviderMessages,
@@ -390,6 +402,8 @@ export class StreamChatMessageUseCase {
       let actualRounds = 0;
 
       if (typeof provider.chatStream === 'function') {
+        yield { type: 'status', stage: 'generating' } as const;
+
         for (let round = 0; round < maxRounds; round++) {
           actualRounds = round + 1;
           let hasToolCallsThisRound = false;
@@ -417,6 +431,7 @@ export class StreamChatMessageUseCase {
                   toolCallsRequested.push(event.toolName);
 
                   // Execute the tool server-side
+                  yield { type: 'status', stage: 'fetching_data' } as const;
                   if (this.toolOrchestrator && runContext) {
                     try {
                       const toolStartTime = Date.now();
@@ -643,6 +658,15 @@ export class StreamChatMessageUseCase {
             } : undefined,
           });
 
+          // Resolve credit cost for metadata
+          let creditsUsed = 1;
+          if (this.modelProfileRepository && config.selectedModelProfileId) {
+            try {
+              const profileEntity = await this.modelProfileRepository.getById(config.selectedModelProfileId);
+              creditsUsed = profileEntity?.creditCost ?? 1;
+            } catch { /* default 1 */ }
+          }
+
           // Yield final done event with full metadata
           const doneMetadata: AiStreamDoneMetadata = {
             provider: streamProvider || config.provider,
@@ -667,6 +691,8 @@ export class StreamChatMessageUseCase {
               toolResults: allToolSummaries,
             },
             usage: streamUsage,
+            durationMs: Date.now() - startTime,
+            creditsUsed,
           };
 
           yield { type: 'done', metadata: doneMetadata };

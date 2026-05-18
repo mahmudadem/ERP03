@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Check, RotateCcw, Save, SlidersHorizontal } from 'lucide-react';
+import { Check, RotateCcw, Save, Palette, Wand2, Type, Layers, Settings2, Code } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
@@ -8,12 +8,14 @@ import {
   normalizeUserAppearance,
   USER_APPEARANCE_PRESETS,
   UserAppearanceSettings,
+  autoGenerateTheme,
+  UserAppearancePalette,
 } from '../../../theme/userAppearance';
 
-const fieldClass = 'h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-sm text-[var(--color-text-primary)]';
-const labelClass = 'mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]';
+const fieldClass = 'h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]';
+const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]';
 
-const colorFields: Array<{ key: keyof UserAppearanceSettings; label: string }> = [
+const colorFieldsLight: Array<{ key: keyof UserAppearancePalette; label: string }> = [
   { key: 'bgPrimary', label: 'Primary surface' },
   { key: 'bgSecondary', label: 'Page background' },
   { key: 'bgTertiary', label: 'Muted surface' },
@@ -21,6 +23,19 @@ const colorFields: Array<{ key: keyof UserAppearanceSettings; label: string }> =
   { key: 'textSecondary', label: 'Secondary text' },
   { key: 'textMuted', label: 'Muted text' },
   { key: 'border', label: 'Border' },
+];
+
+const colorFieldsDark: Array<{ key: keyof UserAppearancePalette; label: string }> = [
+  { key: 'bgPrimary', label: 'Primary surface' },
+  { key: 'bgSecondary', label: 'Page background' },
+  { key: 'bgTertiary', label: 'Muted surface' },
+  { key: 'textPrimary', label: 'Primary text' },
+  { key: 'textSecondary', label: 'Secondary text' },
+  { key: 'textMuted', label: 'Muted text' },
+  { key: 'border', label: 'Border' },
+];
+
+const brandColorFields: Array<{ key: keyof UserAppearanceSettings; label: string }> = [
   { key: 'primary', label: 'Primary action' },
   { key: 'accent', label: 'Accent' },
   { key: 'success', label: 'Success' },
@@ -29,9 +44,9 @@ const colorFields: Array<{ key: keyof UserAppearanceSettings; label: string }> =
 ];
 
 const PreviewCard = ({ title, value }: { title: string; value: string }) => (
-  <Card className="p-4">
-    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{title}</p>
-    <p className="mt-2 text-2xl font-bold text-[var(--color-text-primary)]">{value}</p>
+  <Card className="p-4 shadow-sm border border-[var(--color-border)] flex flex-col items-center justify-center text-center h-24">
+    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">{title}</p>
+    <p className="mt-2 text-lg font-bold text-[var(--color-text-primary)] capitalize">{value}</p>
   </Card>
 );
 
@@ -46,14 +61,14 @@ const AppearanceSettingsPage: React.FC = () => {
     setSidebarMode,
     theme,
     setTheme,
-    showWidgetsOnMobile,
-    setShowWidgetsOnMobile,
-    showTopbarActionsOnMobile,
-    setShowTopbarActionsOnMobile,
   } = useUserPreferences();
+  
   const [draft, setDraft] = useState<UserAppearanceSettings>(() => normalizeUserAppearance(appearanceSettings));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [activeColorTab, setActiveColorTab] = useState<'brand' | 'light' | 'dark'>('brand');
+  const [magicColor, setMagicColor] = useState('#3b82f6');
+  
   const serialized = useMemo(() => JSON.stringify(draft, null, 2), [draft]);
 
   const applyDraft = (next: UserAppearanceSettings) => {
@@ -63,8 +78,24 @@ const AppearanceSettingsPage: React.FC = () => {
     setMessage(null);
   };
 
-  const update = <K extends keyof UserAppearanceSettings>(key: K, value: UserAppearanceSettings[K]) => {
+  const updateRoot = <K extends keyof UserAppearanceSettings>(key: K, value: UserAppearanceSettings[K]) => {
     applyDraft({ ...draft, id: 'custom', name: 'Custom', [key]: value });
+  };
+
+  const updatePalette = (mode: 'light' | 'dark', key: keyof UserAppearancePalette, value: string) => {
+    applyDraft({ ...draft, id: 'custom', name: 'Custom', [mode]: { ...draft[mode], [key]: value } });
+  };
+
+  const handleMagicGenerate = () => {
+    const generated = autoGenerateTheme(magicColor, 'Magic Generated Theme');
+    applyDraft({
+      ...generated,
+      radius: draft.radius,
+      density: draft.density,
+      fontFamily: draft.fontFamily,
+      shadowIntensity: draft.shadowIntensity,
+      sidebarSurface: draft.sidebarSurface,
+    });
   };
 
   const save = async () => {
@@ -73,7 +104,8 @@ const AppearanceSettingsPage: React.FC = () => {
     try {
       setAppearanceSettings(draft);
       await savePreferences();
-      setMessage('Appearance preferences saved.');
+      setMessage('Appearance preferences saved successfully.');
+      setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
       setMessage(error?.message || 'Could not save appearance preferences.');
     } finally {
@@ -86,235 +118,356 @@ const AppearanceSettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto flex max-w-[1500px] flex-col gap-6 p-[var(--app-content-padding,1.5rem)]">
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-8 p-[var(--app-content-padding,1.5rem)]">
+      {/* Header */}
       <div className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">User preferences</div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text-primary)]">Appearance</h1>
-          <p className="mt-1 max-w-3xl text-sm text-[var(--color-text-secondary)]">
-            Change how the main application looks for your user account. This uses the same concept tested in Super Admin, but it is saved as your personal preference.
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">User Preferences</div>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">Appearance Lab</h1>
+          <p className="mt-2 max-w-3xl text-sm text-[var(--color-text-secondary)]">
+            Design your personal workspace. Choose from beautiful presets, generate an auto-theme, or fine-tune every detail.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={reset} leftIcon={<RotateCcw className="h-4 w-4" />}>Reset</Button>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" onClick={reset} leftIcon={<RotateCcw className="h-4 w-4" />}>Reset to Default</Button>
           <Button onClick={save} isLoading={saving} leftIcon={<Save className="h-4 w-4" />}>Save Preferences</Button>
         </div>
       </div>
 
       {message && (
-        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+        <div className="rounded-lg border border-[var(--color-success)]/30 bg-[var(--color-success)]/10 px-4 py-3 text-sm font-medium text-[var(--color-success)] shadow-sm animate-in fade-in slide-in-from-top-2">
           {message}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[420px_1fr]">
-        <div className="space-y-6">
-          <Card className="p-[var(--app-panel-padding,1.25rem)]">
-            <div className="mb-4 flex items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4 text-[var(--color-text-muted)]" />
-              <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Presets</h2>
+      {/* Main Content Layout */}
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_400px]">
+        
+        {/* Left Column: Interactive Controls */}
+        <div className="space-y-8">
+          
+          {/* AUTO THEME GENERATOR */}
+          <Card className="p-[var(--app-panel-padding,1.25rem)] overflow-hidden relative border border-[var(--color-primary)]/30 shadow-sm bg-gradient-to-br from-[var(--color-bg-primary)] to-[var(--color-primary)]/5">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <Wand2 className="w-32 h-32 text-[var(--color-primary)]" />
             </div>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="mb-4 flex items-center gap-2 relative z-10">
+              <div className="p-2 bg-[var(--color-primary)]/10 rounded-lg">
+                <Wand2 className="h-5 w-5 text-[var(--color-primary)]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Auto-Theme Generator</h2>
+                <p className="text-xs text-[var(--color-text-secondary)]">AI-powered color harmony</p>
+              </div>
+            </div>
+            <p className="mb-5 text-sm text-[var(--color-text-secondary)] relative z-10 max-w-md">
+              Pick your core brand color. We will instantly compute perfectly balanced Light and Dark mode UI palettes.
+            </p>
+            <div className="flex gap-3 relative z-10 items-end max-w-sm">
+              <label className="flex-1">
+                <span className={labelClass}>Base Color</span>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    className="h-10 w-14 rounded-md border border-[var(--color-border)] bg-transparent p-1 cursor-pointer shadow-sm"
+                    value={magicColor}
+                    onChange={event => setMagicColor(event.target.value)}
+                  />
+                  <input
+                    className={fieldClass}
+                    value={magicColor}
+                    onChange={event => setMagicColor(event.target.value)}
+                  />
+                </div>
+              </label>
+              <Button onClick={handleMagicGenerate} className="shrink-0 h-10 px-6 shadow-sm">
+                Generate
+              </Button>
+            </div>
+          </Card>
+
+          {/* PRESETS GRID */}
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <Palette className="h-5 w-5 text-[var(--color-text-primary)]" />
+              <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Curated Presets</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {USER_APPEARANCE_PRESETS.map(preset => (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => applyDraft(preset)}
-                  className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2 text-left text-sm hover:border-[var(--color-primary)]"
+                  className={`group flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-all ${
+                    draft.id === preset.id 
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-md ring-1 ring-[var(--color-primary)]' 
+                      : 'border-[var(--color-border)] bg-[var(--color-bg-primary)] hover:border-[var(--color-primary)]/50 hover:shadow-sm'
+                  }`}
                 >
-                  <span className="font-medium text-[var(--color-text-primary)]">{preset.name}</span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-4 w-4 rounded-full border border-white/60" style={{ background: preset.primary }} />
-                    {draft.id === preset.id && <Check className="h-4 w-4 text-[var(--color-primary)]" />}
-                  </span>
+                  <div className="w-full flex justify-between items-center">
+                    <span className="block font-semibold text-[var(--color-text-primary)]">{preset.name}</span>
+                    <div className="flex overflow-hidden rounded border border-[var(--color-border)] shadow-sm h-5 w-12">
+                      <div className="flex-1" style={{ background: preset.light.bgPrimary }} />
+                      <div className="flex-1" style={{ background: preset.primary }} />
+                      <div className="flex-1" style={{ background: preset.dark.bgPrimary }} />
+                    </div>
+                  </div>
+                  <span className="block text-xs text-[var(--color-text-muted)] capitalize">{preset.fontFamily} • {preset.shadowIntensity}</span>
                 </button>
               ))}
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-[var(--app-panel-padding,1.25rem)]">
-            <h2 className="mb-4 text-base font-semibold text-[var(--color-text-primary)]">Core Preferences</h2>
-            <div className="grid grid-cols-1 gap-4">
-              <label>
-                <span className={labelClass}>Theme Mode</span>
-                <select className={fieldClass} value={theme} onChange={event => setTheme(event.target.value as any)}>
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                </select>
-              </label>
-              <label>
-                <span className={labelClass}>Application Layout</span>
-                <select className={fieldClass} value={uiMode} onChange={event => setUiMode(event.target.value as any)}>
-                  <option value="classic">Web Mode</option>
-                  <option value="windows">Windows Mode</option>
-                </select>
-              </label>
-              <label>
-                <span className={labelClass}>Sidebar Navigation</span>
-                <select className={fieldClass} value={sidebarMode} onChange={event => setSidebarMode(event.target.value as any)}>
-                  <option value="classic">Accordion</option>
-                  <option value="submenus">Flyout Sub-menus</option>
-                </select>
-              </label>
-            </div>
-          </Card>
-
-          <Card className="p-[var(--app-panel-padding,1.25rem)]">
-            <h2 className="mb-4 text-base font-semibold text-[var(--color-text-primary)]">Mobile Display</h2>
-            <p className="mb-4 text-xs text-[var(--color-text-muted)]">
-              Controls what is visible when the browser window is narrow or on tablet/mobile devices.
-            </p>
-            <div className="grid grid-cols-1 gap-4">
-              <label className="flex items-center justify-between cursor-pointer rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-3">
-                <div>
-                  <span className="text-sm font-medium text-[var(--color-text-primary)]">Show Widgets on Mobile</span>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Display the topbar widget space on small screens (fits what the screen allows).</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* TYPOGRAPHY & DEPTH */}
+            <Card className="p-[var(--app-panel-padding,1.25rem)] shadow-sm">
+              <div className="mb-5 flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
+                <div className="p-1.5 bg-[var(--color-bg-tertiary)] rounded-md">
+                  <Type className="h-4 w-4 text-[var(--color-text-primary)]" />
                 </div>
-                <input
-                  type="checkbox"
-                  checked={showWidgetsOnMobile}
-                  onChange={(e) => setShowWidgetsOnMobile(e.target.checked)}
-                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-              </label>
-              <label className="flex items-center justify-between cursor-pointer rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-3">
-                <div>
-                  <span className="text-sm font-medium text-[var(--color-text-primary)]">Show Topbar Actions on Mobile</span>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Display theme toggle, widget manager, and notification bell on small screens.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={showTopbarActionsOnMobile}
-                  onChange={(e) => setShowTopbarActionsOnMobile(e.target.checked)}
-                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-              </label>
-            </div>
-          </Card>
-
-          <Card className="p-[var(--app-panel-padding,1.25rem)]">
-            <h2 className="mb-4 text-base font-semibold text-[var(--color-text-primary)]">Visual Controls</h2>
-            <div className="grid grid-cols-1 gap-4">
-              {colorFields.map(field => (
-                <label key={field.key}>
-                  <span className={labelClass}>{field.label}</span>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      className="h-10 w-12 rounded-md border border-[var(--color-border)] bg-transparent p-1"
-                      value={String(draft[field.key])}
-                      onChange={event => update(field.key, event.target.value as any)}
-                    />
-                    <input
-                      className={fieldClass}
-                      value={String(draft[field.key])}
-                      onChange={event => update(field.key, event.target.value as any)}
-                    />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">Typography & Depth</h2>
+              </div>
+              <div className="space-y-4">
+                <label>
+                  <span className={labelClass}>Font Family</span>
+                  <select className={fieldClass} value={draft.fontFamily} onChange={event => updateRoot('fontFamily', event.target.value as any)}>
+                    <option value="system">System Default</option>
+                    <option value="inter">Inter (Modern & Clean)</option>
+                    <option value="roboto">Roboto (Classic UI)</option>
+                    <option value="outfit">Outfit (Geometric & Bold)</option>
+                    <option value="cairo">Cairo (Arabic & Modern)</option>
+                    <option value="mono">Monospace (Technical)</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>Shadow Intensity</span>
+                  <select className={fieldClass} value={draft.shadowIntensity} onChange={event => updateRoot('shadowIntensity', event.target.value as any)}>
+                    <option value="flat">Flat (Minimalist, no shadows)</option>
+                    <option value="subtle">Subtle (Elegant depth)</option>
+                    <option value="pronounced">Pronounced (Deep floating)</option>
+                    <option value="glass">Glassmorphism (Soft glow)</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>Corner Radius ({draft.radius}px)</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={24}
+                    value={draft.radius}
+                    onChange={event => updateRoot('radius', Number(event.target.value))}
+                    className="w-full h-2 bg-[var(--color-bg-tertiary)] rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
+                  />
+                  <div className="flex justify-between text-xs text-[var(--color-text-muted)] mt-1">
+                    <span>Sharp</span>
+                    <span>Rounded</span>
                   </div>
                 </label>
-              ))}
+              </div>
+            </Card>
 
-              <label>
-                <span className={labelClass}>Radius</span>
-                <input
-                  type="range"
-                  min={2}
-                  max={20}
-                  value={draft.radius}
-                  onChange={event => update('radius', Number(event.target.value))}
-                  className="w-full"
-                />
-                <div className="mt-1 text-xs text-[var(--color-text-muted)]">{draft.radius}px</div>
-              </label>
+            {/* LAYOUT & BEHAVIOR */}
+            <Card className="p-[var(--app-panel-padding,1.25rem)] shadow-sm">
+              <div className="mb-5 flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
+                <div className="p-1.5 bg-[var(--color-bg-tertiary)] rounded-md">
+                  <Layers className="h-4 w-4 text-[var(--color-text-primary)]" />
+                </div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">Layout & Behavior</h2>
+              </div>
+              <div className="space-y-4">
+                <label>
+                  <span className={labelClass}>Theme Mode</span>
+                  <select className={fieldClass} value={theme} onChange={event => setTheme(event.target.value as any)}>
+                    <option value="light">Light Mode</option>
+                    <option value="dark">Dark Mode</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>UI Density</span>
+                  <select className={fieldClass} value={draft.density} onChange={event => updateRoot('density', event.target.value as any)}>
+                    <option value="compact">Compact (High info density)</option>
+                    <option value="comfortable">Comfortable (Balanced)</option>
+                    <option value="spacious">Spacious (Touch-friendly)</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>Sidebar Navigation</span>
+                  <select className={fieldClass} value={sidebarMode} onChange={event => setSidebarMode(event.target.value as any)}>
+                    <option value="classic">Accordion (Expand inline)</option>
+                    <option value="submenus">Flyout (Hover menus)</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>Sidebar Surface</span>
+                  <select className={fieldClass} value={draft.sidebarSurface} onChange={event => updateRoot('sidebarSurface', event.target.value as any)}>
+                    <option value="default">Default (Matches background)</option>
+                    <option value="contrast">Contrast (Brand colored)</option>
+                  </select>
+                </label>
+              </div>
+            </Card>
+          </div>
 
-              <label>
-                <span className={labelClass}>Density</span>
-                <select className={fieldClass} value={draft.density} onChange={event => update('density', event.target.value as any)}>
-                  <option value="compact">Compact</option>
-                  <option value="comfortable">Comfortable</option>
-                  <option value="spacious">Spacious</option>
-                </select>
-              </label>
+          {/* ADVANCED COLORS (Collapsible) */}
+          <details className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-sm open:pb-5">
+            <summary className="flex cursor-pointer items-center justify-between p-5 font-bold text-[var(--color-text-primary)] marker:content-none focus:outline-none">
+              <div className="flex items-center gap-3">
+                <Settings2 className="h-5 w-5 text-[var(--color-text-muted)]" />
+                <span>Advanced Colors</span>
+              </div>
+              <span className="text-[var(--color-text-muted)] transition-transform group-open:rotate-180">▼</span>
+            </summary>
+            
+            <div className="px-5 border-t border-[var(--color-border)] pt-5">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between pb-4 gap-4">
+                <p className="text-sm text-[var(--color-text-secondary)]">Absolute control over every token</p>
+                <div className="flex gap-1 bg-[var(--color-bg-tertiary)] p-1 rounded-lg">
+                  {['brand', 'light', 'dark'].map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveColorTab(tab as any)}
+                      className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${activeColorTab === tab ? 'bg-[var(--color-bg-primary)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                {activeColorTab === 'brand' && brandColorFields.map(field => (
+                  <label key={field.key} className="flex flex-col">
+                    <span className={labelClass}>{field.label}</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        className="h-10 w-14 rounded-md border border-[var(--color-border)] bg-transparent p-1 cursor-pointer shadow-sm"
+                        value={String(draft[field.key as keyof UserAppearanceSettings])}
+                        onChange={event => updateRoot(field.key as any, event.target.value as any)}
+                      />
+                      <input
+                        className={`${fieldClass} font-mono uppercase`}
+                        value={String(draft[field.key as keyof UserAppearanceSettings])}
+                        onChange={event => updateRoot(field.key as any, event.target.value as any)}
+                      />
+                    </div>
+                  </label>
+                ))}
 
-              <label>
-                <span className={labelClass}>Sidebar Surface</span>
-                <select className={fieldClass} value={draft.sidebarSurface} onChange={event => update('sidebarSurface', event.target.value as any)}>
-                  <option value="default">Default</option>
-                  <option value="contrast">Contrast</option>
-                </select>
-              </label>
+                {activeColorTab === 'light' && colorFieldsLight.map(field => (
+                  <label key={field.key} className="flex flex-col">
+                    <span className={labelClass}>{field.label}</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        className="h-10 w-14 rounded-md border border-[var(--color-border)] bg-transparent p-1 cursor-pointer shadow-sm"
+                        value={String(draft.light[field.key])}
+                        onChange={event => updatePalette('light', field.key, event.target.value)}
+                      />
+                      <input
+                        className={`${fieldClass} font-mono uppercase`}
+                        value={String(draft.light[field.key])}
+                        onChange={event => updatePalette('light', field.key, event.target.value)}
+                      />
+                    </div>
+                  </label>
+                ))}
+
+                {activeColorTab === 'dark' && colorFieldsDark.map(field => (
+                  <label key={field.key} className="flex flex-col">
+                    <span className={labelClass}>{field.label}</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        className="h-10 w-14 rounded-md border border-[var(--color-border)] bg-transparent p-1 cursor-pointer shadow-sm"
+                        value={String(draft.dark[field.key])}
+                        onChange={event => updatePalette('dark', field.key, event.target.value)}
+                      />
+                      <input
+                        className={`${fieldClass} font-mono uppercase`}
+                        value={String(draft.dark[field.key])}
+                        onChange={event => updatePalette('dark', field.key, event.target.value)}
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
-          </Card>
+          </details>
+
         </div>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <PreviewCard title="Preset" value={draft.name} />
-            <PreviewCard title="Density" value={draft.density} />
-            <PreviewCard title="Radius" value={`${draft.radius}px`} />
+        {/* Right Column: Live Preview (Sticky) */}
+        <div className="xl:sticky xl:top-6 space-y-6 self-start">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-1">Live Preview</h2>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <PreviewCard title="Font" value={draft.fontFamily} />
+            <PreviewCard title="Shadows" value={draft.shadowIntensity} />
           </div>
 
-          <Card className="p-[var(--app-panel-padding,1.25rem)]">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Preview</h2>
-                <p className="text-sm text-[var(--color-text-secondary)]">Representative controls from the main app visual system.</p>
-              </div>
-              <Button>Primary Action</Button>
+          <Card className="p-[var(--app-panel-padding,1.25rem)] shadow-sm border border-[var(--color-border)]">
+            <div className="mb-4 flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--color-text-primary)]">UI Components</h3>
+              <Button size="sm">Action</Button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Card className="p-4">
-                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Voucher Workbench</h3>
-                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">Tables, selectors, cards, and action buttons inherit the selected tokens.</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded bg-[var(--color-success-bg)] px-2 py-1 text-xs font-medium text-[var(--color-success)]">Posted</span>
-                  <span className="rounded bg-[var(--color-warning-bg)] px-2 py-1 text-xs font-medium text-[var(--color-warning)]">Draft</span>
-                  <span className="rounded bg-[var(--color-danger-bg)] px-2 py-1 text-xs font-medium text-[var(--color-danger)]">Blocked</span>
+            <div className="space-y-6">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Badges</p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded bg-[var(--color-success)]/10 border border-[var(--color-success)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-success)]">Approved</span>
+                  <span className="rounded bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-warning)]">Pending</span>
+                  <span className="rounded bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-danger)]">Failed</span>
                 </div>
-              </Card>
+              </div>
 
-              <Card className="p-4">
-                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Form Sample</h3>
-                <div className="mt-3 space-y-3">
-                  <input className={fieldClass} value="Customer invoice" readOnly />
-                  <select className={fieldClass} value="windows" onChange={() => undefined}>
-                    <option>Windows Mode</option>
-                  </select>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Form Inputs</p>
+                <div className="space-y-3">
+                  <input className={fieldClass} value="Focus me" readOnly />
+                  <div className="flex gap-2">
+                    <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                      <input type="checkbox" className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]" defaultChecked /> Active
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                      <input type="radio" className="text-[var(--color-primary)] focus:ring-[var(--color-primary)]" defaultChecked /> Option
+                    </label>
+                  </div>
                 </div>
-              </Card>
+              </div>
+            </div>
+            
+            <div className="mt-6 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-sm">
+              <table className="min-w-full divide-y divide-[var(--color-border)] text-sm">
+                <thead className="bg-[var(--color-bg-tertiary)]">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Doc</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  <tr className="hover:bg-[var(--color-bg-tertiary)]/50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">INV-001</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">Draft</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--color-bg-tertiary)]/50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">INV-002</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">Paid</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </Card>
 
-          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-sm">
-            <table className="min-w-full divide-y divide-[var(--color-border)] text-sm">
-              <thead className="bg-[var(--color-bg-tertiary)]">
-                <tr>
-                  <th className="px-4 py-[var(--app-row-padding-y,0.75rem)] text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Document</th>
-                  <th className="px-4 py-[var(--app-row-padding-y,0.75rem)] text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Module</th>
-                  <th className="px-4 py-[var(--app-row-padding-y,0.75rem)] text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">State</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {[
-                  ['Sales Invoice', 'Sales', 'Ready'],
-                  ['Journal Voucher', 'Accounting', 'Review'],
-                  ['Goods Receipt', 'Purchases', 'Draft'],
-                ].map(row => (
-                  <tr key={row[0]} className="hover:bg-[var(--color-bg-tertiary)]">
-                    <td className="px-4 py-[var(--app-row-padding-y,0.75rem)] font-medium text-[var(--color-text-primary)]">{row[0]}</td>
-                    <td className="px-4 py-[var(--app-row-padding-y,0.75rem)] text-[var(--color-text-secondary)]">{row[1]}</td>
-                    <td className="px-4 py-[var(--app-row-padding-y,0.75rem)] text-[var(--color-text-secondary)]">{row[2]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <Card className="p-[var(--app-panel-padding,1.25rem)]">
-            <h2 className="mb-3 text-base font-semibold text-[var(--color-text-primary)]">Exported Preference JSON</h2>
+          <Card className="p-[var(--app-panel-padding,1.25rem)] shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <Code className="h-4 w-4 text-[var(--color-text-muted)]" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">JSON Export</h2>
+            </div>
             <textarea
-              className="h-56 w-full rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-3 font-mono text-xs text-[var(--color-text-primary)]"
+              className="h-40 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4 font-mono text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] shadow-inner resize-none"
               value={serialized}
               readOnly
               spellCheck={false}

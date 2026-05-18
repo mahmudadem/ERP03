@@ -349,9 +349,18 @@ static async updateProvider(req: Request, res: Response, next: NextFunction) {
     }
   }
 
+  static async resetModelProfileCertifications(req: Request, res: Response, next: NextFunction) {
+    try {
+      const removed = await diContainer.aiModelProfileUseCase.resetCertificationsForProfile(req.params.profileId);
+      res.json({ success: true, data: { removed, message: `${removed} certification record(s) deleted` } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async syncModelProfiles(req: Request, res: Response, next: NextFunction) {
     try {
-      const synced = await diContainer.aiModelProfileUseCase.syncBuiltInProfiles();
+      const synced = await diContainer.aiModelProfileUseCase.syncBuiltInProfiles(true);
       res.json({ success: true, data: { synced, message: `${synced} model profiles synced to DB` } });
     } catch (error) {
       next(error);
@@ -449,6 +458,89 @@ static async runModelProfileDiagnostics(req: Request, res: Response, next: NextF
       );
       const result = await useCase.executeWithConfig(config, {
         providerOverride: providerOverride || undefined,
+        modelOverride: profile.modelName || profile.modelId,
+      });
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Run diagnostics for a global model profile using the API key stored in the
+   * active platform runtime profile. This is what the Super Admin "Set up AI"
+   * wizard uses in Step 4 — the admin just saved the platform key in Step 3,
+   * so we test that exact stored configuration end-to-end. No key in the
+   * request body.
+   */
+  static async runPlatformModelProfileDiagnostics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const profile = await diContainer.aiModelProfileUseCase.getProfileById(req.params.profileId);
+      if (!profile) {
+        throw ApiError.notFound(`AI model profile '${req.params.profileId}' not found`);
+      }
+
+      // Find the active platform runtime profile for this model. Runtime profiles
+      // are keyed by (AiProvider.id, modelProfileId), and a model may match more
+      // than one entry — pick the first active one with a credential.
+      const runtimes = await diContainer.aiPlatformRuntimeProfileRepository.list();
+      const runtime = runtimes.find(
+        r => r.modelProfileId === profile.id && r.status === 'active' && !!r.encryptedCredential,
+      );
+      if (!runtime || !runtime.encryptedCredential) {
+        throw ApiError.badRequest(
+          `No active platform runtime profile with a credential exists for "${profile.displayName || profile.modelId}". ` +
+            `Save a platform API key first (wizard Step 3 or Platform Global Providers page).`,
+        );
+      }
+
+      const plainKey = diContainer.encryptionService.decrypt(runtime.encryptedCredential);
+
+      // Resolve base URL the same way certification does: model profile's explicit
+      // URL takes precedence, falling back to the registered provider's defaultBaseUrl
+      // so providers like OpenRouter (which keep their URL on AiProvider, not the
+      // model profile) don't silently fall through to api.openai.com.
+      let resolvedBaseUrl = profile.baseUrl;
+      if (!resolvedBaseUrl) {
+        try {
+          const providerEntity = await diContainer.aiProviderRepository.getById(runtime.providerId);
+          resolvedBaseUrl = providerEntity?.defaultBaseUrl || undefined;
+        } catch { /* best-effort */ }
+      }
+
+      const { AiProviderConfig } = await import('../../../domain/ai-assistant/entities/AiProviderConfig');
+      const config = new AiProviderConfig(
+        'platform-diagnostic',
+        profile.provider as any,
+        profile.modelName || profile.modelId || 'unknown',
+        plainKey,
+        resolvedBaseUrl,
+        profile.maxOutputTokens || 4096,
+        undefined,
+        0,
+        undefined,
+        true,
+        new Date(),
+        'balanced',
+        true,
+        'legacy_unverified',
+        profile.providerId || profile.provider,
+        profile.id,
+        profile.profileHash,
+      );
+
+      const { CheckProviderHealthUseCase } = await import(
+        '../../../application/ai-assistant/use-cases/CheckProviderHealthUseCase'
+      );
+      const useCase = new CheckProviderHealthUseCase(
+        diContainer.aiSettingsRepository,
+        diContainer.encryptionService,
+        diContainer.httpClient,
+        diContainer.aiModelProfileUseCase,
+        diContainer.aiProviderRepository,
+        diContainer.aiPlatformRuntimeProfileRepository,
+      );
+      const result = await useCase.executeWithConfig(config, {
         modelOverride: profile.modelName || profile.modelId,
       });
       res.json({ success: true, data: result });

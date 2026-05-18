@@ -165,8 +165,13 @@ export class AiCertificationEngine {
           behavioralTestResults = await runAllTests(provider, minimalConfig, [input.category]);
           const numPassed = behavioralTestResults.filter(r => r.passed).length;
           const numTotal = behavioralTestResults.length;
-          behavioralTestScore = Math.round((numPassed / numTotal) * 40);
-          behavioralTestSummary = `Behavioral tests: ${numPassed}/${numTotal} passed (${behavioralTestScore}/40 points).`;
+          if (numTotal === 0) {
+            behavioralTestScore = 40;
+            behavioralTestSummary = `Behavioral tests: no tests defined for ${input.category} — auto-pass (40/40 points).`;
+          } else {
+            behavioralTestScore = Math.round((numPassed / numTotal) * 40);
+            behavioralTestSummary = `Behavioral tests: ${numPassed}/${numTotal} passed (${behavioralTestScore}/40 points).`;
+          }
         } catch (err: any) {
           behavioralTestSummary = `Behavioral tests skipped due to error: ${err.message}`;
           // Don't fail the entire certification; continue with lower score

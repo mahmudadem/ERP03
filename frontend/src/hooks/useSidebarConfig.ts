@@ -89,7 +89,8 @@ export const useSidebarConfig = () => {
     Bundles: 'sidebar.bundles',
     'AI Assistant': 'sidebar.aiAssistant',
     Chat: 'sidebar.chat',
-    'AI Proposals': 'sidebar.aiProposals'
+    'AI Proposals': 'sidebar.aiProposals',
+    'AI Usage': 'sidebar.aiUsage'
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });
@@ -199,7 +200,55 @@ export const useSidebarConfig = () => {
     const sections: Record<string, { icon: string; items: SidebarItem[] }> = {};
 
     if (isSuperAdmin) {
-      return {};
+      return {
+        'System': {
+          icon: 'Settings',
+          items: [
+            { label: translateLabel('System Overview'), path: '/super-admin/overview' },
+            { label: translateLabel('Appearance Lab'), path: '/super-admin/appearance' },
+            { label: translateLabel('System Forms'), path: '/super-admin/system-forms' },
+            { label: translateLabel('Voucher Templates'), path: '/super-admin/voucher-templates' }
+          ]
+        },
+        'Companies': {
+          icon: 'Building2',
+          items: [
+            { label: translateLabel('All Companies'), path: '/super-admin/companies' },
+            { label: translateLabel('Business Domains'), path: '/super-admin/business-domains' },
+            { label: translateLabel('Plans'), path: '/super-admin/plans' },
+            { label: translateLabel('Bundles'), path: '/super-admin/bundles-manager' }
+          ]
+        },
+        'Permissions': {
+          icon: 'Shield',
+          items: [
+            { label: translateLabel('Users Management'), path: '/super-admin/users' },
+            { label: translateLabel('Modules Registry'), path: '/super-admin/modules-registry' },
+            { label: translateLabel('Permissions Registry'), path: '/super-admin/permissions-registry' }
+          ]
+        },
+        'AI Management': {
+          icon: 'Bot',
+          items: [
+            { label: translateLabel('Overview'), path: '/super-admin/ai-management' },
+            {
+              label: translateLabel('Configuration'),
+              children: [
+                { label: translateLabel('Providers'), path: '/super-admin/ai-providers' },
+                { label: translateLabel('Model Profiles'), path: '/super-admin/ai-models' },
+                { label: translateLabel('Runtime Profiles'), path: '/super-admin/ai-runtime-profiles' }
+              ]
+            },
+            {
+              label: translateLabel('Governance'),
+              children: [
+                { label: translateLabel('Tool Catalog'), path: '/super-admin/ai-tools' },
+                { label: translateLabel('Proposal Policies'), path: '/super-admin/ai-proposal-policies' }
+              ]
+            }
+          ]
+        }
+      };
     }
 
     const normalizedBundles = (moduleBundles || [])

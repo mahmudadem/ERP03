@@ -31,12 +31,16 @@ const mockSettingsRepo: any = {
 };
 
 const mockAccountRepo: any = {
-  getById: async (id: string) => ({ 
+  getById: async (_companyId: string, id: string) => ({
     id, 
     active: true, 
+    accountRole: 'POSTING',
+    status: 'ACTIVE',
     type: id.includes('expense') ? 'expense' : 'asset', 
     code: id.toUpperCase(), 
-    name: id.includes('expense') ? 'Expense Account' : 'Asset Account' 
+    userCode: id.toUpperCase(),
+    name: id.includes('expense') ? 'Expense Account' : 'Asset Account',
+    hasChildren: false,
   }),
 };
 
@@ -48,7 +52,7 @@ async function verifyPolicyErrorModes() {
 
   // Setup repositories
   const voucherRepo = new FirestoreVoucherRepositoryV2(db);
-  const ledgerRepo = new FirestoreLedgerRepository(db);
+  const ledgerRepo = new FirestoreLedgerRepository(db, mockAccountRepo);
   const transactionManager = new FirestoreTransactionManager(db);
   const configProvider = new FirestoreAccountingPolicyConfigProvider(db);
   const userScopeProvider = new FirestoreUserAccessScopeProvider(db);

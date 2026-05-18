@@ -1,6 +1,7 @@
-﻿export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
+export type SalesDiscountType = 'PERCENT' | 'AMOUNT';
 
 export interface SalesInvoiceLine {
   lineId: string;
@@ -15,8 +16,14 @@ export interface SalesInvoiceLine {
   uomId?: string;
   uom: string;
   unitPriceDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: SalesDiscountType;
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxCode?: string;
@@ -30,6 +37,21 @@ export interface SalesInvoiceLine {
   unitCostBase?: number;
   lineCostBase?: number;
   stockMovementId?: string | null;
+  description?: string;
+}
+
+export interface SalesInvoiceCharge {
+  chargeId: string;
+  code?: string;
+  name: string;
+  amountDoc: number;
+  amountBase?: number;
+  taxCodeId?: string;
+  taxCode?: string;
+  taxRate?: number;
+  taxAmountDoc?: number;
+  taxAmountBase?: number;
+  revenueAccountId?: string;
   description?: string;
 }
 
@@ -50,6 +72,7 @@ export interface SalesInvoiceProps {
   currency: string;
   exchangeRate: number;
   lines: SalesInvoiceLine[];
+  charges?: SalesInvoiceCharge[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -73,6 +96,7 @@ export interface SalesInvoiceProps {
 const SI_STATUSES: SIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
+const DISCOUNT_TYPES: SalesDiscountType[] = ['PERCENT', 'AMOUNT'];
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const REF_KEYS = [
@@ -154,6 +178,29 @@ const toDate = (value: any): Date => {
   return new Date(value);
 };
 
+const normalizeDiscountType = (value: any): SalesDiscountType | undefined => {
+  const token = toOptionalStringRef(value)?.toUpperCase();
+  return token && DISCOUNT_TYPES.includes(token as SalesDiscountType) ? (token as SalesDiscountType) : undefined;
+};
+
+const calculateDiscountAmountDoc = (
+  grossLineTotalDoc: number,
+  discountType: SalesDiscountType | undefined,
+  discountValue: number,
+  explicitDiscountAmountDoc: number | undefined
+): number => {
+  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
+    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
+  }
+  if (discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
+  }
+  if (discountType === 'AMOUNT') {
+    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
+  }
+  return 0;
+};
+
 export class SalesInvoice {
   readonly id: string;
   readonly companyId: string;
@@ -171,6 +218,7 @@ export class SalesInvoice {
   currency: string;
   exchangeRate: number;
   lines: SalesInvoiceLine[];
+  charges: SalesInvoiceCharge[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -235,12 +283,25 @@ export class SalesInvoice {
     this.currency = currency.toUpperCase();
     this.exchangeRate = exchangeRate;
     this.lines = props.lines.map((line, index) => this.normalizeLine(line, index));
+    this.charges = (props.charges || []).map((charge, index) => this.normalizeCharge(charge, index));
 
-    this.subtotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
-    this.taxTotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
+    this.subtotalDoc = roundMoney(
+      this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
+      + this.charges.reduce((sum, charge) => sum + charge.amountDoc, 0)
+    );
+    this.taxTotalDoc = roundMoney(
+      this.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0)
+      + this.charges.reduce((sum, charge) => sum + (charge.taxAmountDoc || 0), 0)
+    );
     this.grandTotalDoc = roundMoney(this.subtotalDoc + this.taxTotalDoc);
-    this.subtotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
-    this.taxTotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
+    this.subtotalBase = roundMoney(
+      this.lines.reduce((sum, line) => sum + line.lineTotalBase, 0)
+      + this.charges.reduce((sum, charge) => sum + (charge.amountBase || 0), 0)
+    );
+    this.taxTotalBase = roundMoney(
+      this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0)
+      + this.charges.reduce((sum, charge) => sum + (charge.taxAmountBase || 0), 0)
+    );
     this.grandTotalBase = roundMoney(this.subtotalBase + this.taxTotalBase);
 
     this.paymentTermsDays = props.paymentTermsDays ?? 0;
@@ -292,8 +353,16 @@ export class SalesInvoice {
 
     const taxRateValue = Number(line.taxRate);
     const taxRate = Number.isNaN(taxRateValue) ? 0 : taxRateValue;
-    const lineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
+    const grossLineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
+    const discountType = normalizeDiscountType(line.discountType);
+    const discountValueRaw = Number(line.discountValue);
+    const discountValue = Number.isNaN(discountValueRaw) ? 0 : discountValueRaw;
+    const explicitDiscountDoc = line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
+    const discountAmountDoc = calculateDiscountAmountDoc(grossLineTotalDoc, discountType, discountValue, explicitDiscountDoc);
+    const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
     const unitPriceBase = roundMoney(unitPriceDoc * this.exchangeRate);
+    const grossLineTotalBase = roundMoney(grossLineTotalDoc * this.exchangeRate);
+    const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
     const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
     const taxAmountBase = roundMoney(lineTotalBase * taxRate);
@@ -311,8 +380,14 @@ export class SalesInvoice {
       uomId: toOptionalStringRef(line.uomId),
       uom,
       unitPriceDoc,
+      grossLineTotalDoc,
+      discountType,
+      discountValue: discountType ? discountValue : undefined,
+      discountAmountDoc,
       lineTotalDoc,
       unitPriceBase,
+      grossLineTotalBase,
+      discountAmountBase,
       lineTotalBase,
       taxCodeId: toOptionalStringRef(line.taxCodeId),
       taxCode: toOptionalDisplayText(line.taxCode),
@@ -327,6 +402,40 @@ export class SalesInvoice {
       lineCostBase: line.lineCostBase,
       stockMovementId: toOptionalStringRef(line.stockMovementId) ?? null,
       description: toOptionalDisplayText(line.description),
+    };
+  }
+
+  private normalizeCharge(charge: SalesInvoiceCharge, index: number): SalesInvoiceCharge {
+    const chargeId = toStringRef(charge.chargeId);
+    const name = toDisplayText(charge.name);
+    const amountDocRaw = Number(charge.amountDoc);
+    const taxRateRaw = Number(charge.taxRate);
+    const taxRate = Number.isNaN(taxRateRaw) ? 0 : taxRateRaw;
+
+    if (!chargeId) throw new Error(`SalesInvoice charge ${index + 1}: chargeId is required`);
+    if (!name) throw new Error(`SalesInvoice charge ${index + 1}: name is required`);
+    if (amountDocRaw < 0 || Number.isNaN(amountDocRaw)) {
+      throw new Error(`SalesInvoice charge ${index + 1}: amountDoc must be greater than or equal to 0`);
+    }
+
+    const amountDoc = roundMoney(amountDocRaw);
+    const amountBase = roundMoney(charge.amountBase !== undefined ? Number(charge.amountBase) : amountDoc * this.exchangeRate);
+    const taxAmountDoc = roundMoney(charge.taxAmountDoc !== undefined ? Number(charge.taxAmountDoc) : amountDoc * taxRate);
+    const taxAmountBase = roundMoney(charge.taxAmountBase !== undefined ? Number(charge.taxAmountBase) : amountBase * taxRate);
+
+    return {
+      chargeId,
+      code: toOptionalStringRef(charge.code),
+      name,
+      amountDoc,
+      amountBase,
+      taxCodeId: toOptionalStringRef(charge.taxCodeId),
+      taxCode: toOptionalDisplayText(charge.taxCode),
+      taxRate,
+      taxAmountDoc,
+      taxAmountBase,
+      revenueAccountId: toOptionalStringRef(charge.revenueAccountId),
+      description: toOptionalDisplayText(charge.description),
     };
   }
 
@@ -349,6 +458,7 @@ export class SalesInvoice {
       currency: this.currency,
       exchangeRate: this.exchangeRate,
       lines: this.lines.map((line) => ({ ...line })),
+      charges: this.charges.map((charge) => ({ ...charge })),
       subtotalDoc: this.subtotalDoc,
       taxTotalDoc: this.taxTotalDoc,
       grandTotalDoc: this.grandTotalDoc,
@@ -401,6 +511,7 @@ export class SalesInvoice {
       currency: data.currency,
       exchangeRate: data.exchangeRate,
       lines: data.lines || [],
+      charges: data.charges || [],
       subtotalDoc: data.subtotalDoc ?? 0,
       taxTotalDoc: data.taxTotalDoc ?? 0,
       grandTotalDoc: data.grandTotalDoc ?? 0,

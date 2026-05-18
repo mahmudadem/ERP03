@@ -42,6 +42,15 @@ export interface BuildSystemPromptParams {
   toolPlanningContextMessage?: string;
   recentToolDataContextMessage?: string;
   skipToolDescriptions?: boolean;
+  tenantContextMessage?: string;
+  /**
+   * True when the runtime stripped all tools (text-only mode, routing-guard
+   * block, or empty allowed-contracts list). The system prompt then injects
+   * an explicit no-tools block telling the model it MUST NOT emit any
+   * tool-call-shaped output (no <tool_code>, <tool_output>, <tool_result>,
+   * no synthetic JSON tool responses, no `print(...)` of fake values).
+   */
+  noToolsAvailable?: boolean;
 }
 
 const CONVERSATION_CONTEXT_BUDGETS: Record<AiConversationContextMode, Omit<ConversationContextBudget, 'includePreviousToolResults'>> = {
@@ -92,9 +101,16 @@ export class AiContextBuilder {
       toolPlanningContextMessage,
       recentToolDataContextMessage,
       skipToolDescriptions,
+      noToolsAvailable,
+      tenantContextMessage,
     } = params;
 
+    const todayISO = new Date().toISOString().split('T')[0];
+
     let prompt = `You are the AI Assistant for an ERP system. Your role is STRICTLY advisory.
+
+CURRENT DATE: ${todayISO}
+Use this date for any "today", "this month", "this week", "this year" references. When calling tools with date parameters, always derive dates from this value — never guess or use your training data cutoff.
 
 RULES YOU MUST FOLLOW:
 1. You may ONLY answer, explain, validate, summarize, or suggest drafts.
@@ -129,11 +145,40 @@ You are helpful, professional, and knowledgeable about business processes includ
 
 Keep responses concise and actionable. Use markdown formatting when it helps readability.`;
 
+    // Append tenant context (company, user, currency, locale)
+    if (tenantContextMessage) {
+      prompt += `\n\n${tenantContextMessage}`;
+    }
+
     // Append model profile warnings
     if (modelProfile && modelProfile.textOnlyMode) {
       prompt += `\n\n⚠️ MODEL NOTICE: ${modelProfile.warningMessage || 'This model is running in text-only mode. Tool calling is disabled.'}`;
     } else if (modelProfile && modelProfile.warningLevel === 'info') {
       prompt += `\n\nℹ️ MODEL NOTICE: ${modelProfile.warningMessage}`;
+    }
+
+    // When no tools are available we explicitly forbid the model from cosplaying
+    // tool calls. Small / uncertified models otherwise hallucinate
+    // <tool_code>…</tool_code> and <tool_output>…</tool_output> blocks with
+    // fabricated values, which look like real ERP data to the user.
+    if (noToolsAvailable) {
+      prompt += `
+
+🚫 NO ERP TOOLS ARE AVAILABLE IN THIS TURN.
+You do NOT have access to any ERP tools (no accounting.*, no sales.*, no inventory.*, no purchases.*). You cannot read, compute, or fetch any real business data.
+
+ABSOLUTELY FORBIDDEN in your reply:
+- Do NOT write <tool_code>, <tool_output>, <tool_result>, <tool_call>, or any XML / pseudo-XML block that looks like a tool call.
+- Do NOT print fake JSON that looks like a tool response (no transactions arrays, no opening_balance / closing_balance / debit / credit, no account names with numbers).
+- Do NOT invent account codes, balances, customer names, invoice numbers, stock quantities, dates, or any other business value.
+- Do NOT say "the system returned" / "the tool returned" / "according to the database" — no tool ran.
+
+REQUIRED behavior:
+- Tell the user plainly: "I cannot access your ERP data right now." Then explain why in one short sentence (no certified model, model in text-only mode, or AI is paused).
+- Recommend the relevant ERP module screen where the user can see the real value.
+- If they ask "why" — refer them to AI Settings → Certification Manager.
+
+If you violate any of these rules, your reply will be discarded and the user will be told the model misbehaved.`;
     }
 
     // Append skill context

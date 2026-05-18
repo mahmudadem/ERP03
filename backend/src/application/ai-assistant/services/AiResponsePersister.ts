@@ -26,6 +26,7 @@ import { ToolCallingResult } from './AiToolCallingOrchestrator';
 import { AiModelProfile } from './AiModelCapabilityCatalog';
 import { AiRunContext } from './AiRuntimeGuard';
 import { AiProviderResponse } from '../providers/IAiProvider';
+import { AiResponseSanitizer } from './AiResponseSanitizer';
 
 export interface SaveMessagesInput {
   companyId: string;
@@ -120,7 +121,19 @@ export class AiResponsePersister {
     const savedUserMessage = await this.chatRepository.create(userMessage);
 
     // Ensure assistant content is never null — safe string even for tool-call-only first responses
-    const assistantContent = finalResponse.content || '[Processing complete. Please see the data above.]';
+    const rawAssistantContent = finalResponse.content || '[Processing complete. Please see the data above.]';
+
+    // Strip hallucinated tool-call blocks. When the model only had real tools
+    // available and used them, this is a no-op. When tools were stripped
+    // (no certified profile, text-only mode, blocked) and the model still
+    // emitted <tool_code>/<tool_output>/etc. blocks, the sanitizer replaces
+    // them with a visible warning and pushes a user-facing notice into
+    // runtimeWarnings so the chat UI can flag the misbehavior.
+    const sanitizeResult = AiResponseSanitizer.sanitize(rawAssistantContent);
+    const assistantContent = sanitizeResult.text || '[Processing complete. Please see the data above.]';
+    if (sanitizeResult.modified && sanitizeResult.warning) {
+      runtimeWarnings.push(sanitizeResult.warning);
+    }
 
     const assistantMessage = AiChatMessage.create({
       companyId,
@@ -151,6 +164,7 @@ export class AiResponsePersister {
         toolResults: toolResultsForMetadata,
         ...(toolResultSummaries.length > 0 ? { toolCallResults: toolResultSummaries } : {}),
         ...(proposalResultForMetadata ? { proposal: proposalResultForMetadata } : {}),
+        ...(sanitizeResult.modified ? { responseSanitized: { matchedPatterns: sanitizeResult.matchedPatterns } } : {}),
       },
     });
     assistantMessage.tokenCount = finalResponse.tokenCount;

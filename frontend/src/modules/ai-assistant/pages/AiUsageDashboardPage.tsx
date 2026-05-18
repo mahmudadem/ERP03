@@ -27,7 +27,7 @@ export const AiUsageDashboardPage: React.FC = () => {
     setError(null);
     aiAssistantApi.getUsageSummary()
       .then((res: any) => {
-        setSummary(res.data);
+        setSummary(res);
       })
       .catch((err: any) => {
         setError(err?.message || t('usageDashboard.loadError', 'Failed to load usage data'));

@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreateSalesInvoicePayload,
+  InvoiceableLinkedSalesSourceDTO,
   SalesInvoiceDTO,
   SalesInvoiceLineInputDTO,
   SalesOrderDTO,
@@ -15,8 +17,10 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -33,8 +37,20 @@ interface EditableLine {
   uomId?: string;
   uom: string;
   unitPriceDoc: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   taxCodeId?: string;
   warehouseId?: string;
+  description?: string;
+}
+
+interface EditableCharge {
+  chargeId?: string;
+  code?: string;
+  name: string;
+  amountDoc: number;
+  taxCodeId?: string;
+  revenueAccountId?: string;
   description?: string;
 }
 
@@ -49,6 +65,16 @@ interface EditableForm {
   exchangeRate: number;
   notes: string;
   lines: EditableLine[];
+  charges: EditableCharge[];
+}
+
+interface SettlementRowState {
+  settlementAccountId: string;
+  amountBase: number;
+  paymentMethod: string;
+  reference: string;
+  notes: string;
+  paymentDate: string;
 }
 
 const createEmptyLine = (): EditableLine => ({
@@ -57,8 +83,18 @@ const createEmptyLine = (): EditableLine => ({
   uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
+  discountType: undefined,
+  discountValue: 0,
   taxCodeId: undefined,
   warehouseId: undefined,
+  description: '',
+});
+
+const createEmptyCharge = (): EditableCharge => ({
+  name: '',
+  amountDoc: 0,
+  taxCodeId: undefined,
+  revenueAccountId: undefined,
   description: '',
 });
 
@@ -72,9 +108,11 @@ const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
   exchangeRate: 1,
   notes: '',
   lines: [createEmptyLine()],
+  charges: [],
 });
 
 const SalesInvoiceDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const { company } = useCompanyAccess();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
@@ -102,8 +140,30 @@ const SalesInvoiceDetailPage: React.FC = () => {
   // Settlement state
   const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
   const [arAccountId, setArAccountId] = useState('');
-  const [settlementRows, setSettlementRows] = useState<{ settlementAccountId: string; amountBase: number; paymentMethod: string; reference: string; notes: string; paymentDate: string }[]>([]);
+  const [settlementRows, setSettlementRows] = useState<SettlementRowState[]>([]);
   const [showSettlement, setShowSettlement] = useState(false);
+  const enabledPaymentMethodConfigs = useMemo(
+    () => (settings?.paymentMethodConfigs || []).filter((config) => config.isEnabled !== false),
+    [settings]
+  );
+  const currentInvoiceFormType = form.salesOrderId ? 'sales_invoice_linked' : 'sales_invoice_direct';
+  const currentInvoicePersona = form.salesOrderId ? 'linked' : 'direct';
+  const isCurrentPersonaAllowed = settings
+    ? isPersonaAllowedByGovernance(
+        resolveSalesWorkflowMode(settings),
+        settings.governanceRules,
+        currentInvoicePersona,
+        { formType: currentInvoiceFormType }
+      )
+    : true;
+  const isDirectInvoiceAllowed = settings
+    ? isPersonaAllowedByGovernance(
+        resolveSalesWorkflowMode(settings),
+        settings.governanceRules,
+        'direct',
+        { formType: 'sales_invoice_direct' }
+      )
+    : false;
 
   const customerNameById = useMemo(
     () =>
@@ -149,12 +209,21 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
       const taxRate = line.taxCodeId ? taxById[line.taxCodeId]?.rate ?? 0 : 0;
-      const lineTotalDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
+      const grossLineTotalDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
+      const discountValue = Number(line.discountValue || 0);
+      const discountAmountDoc = line.discountType === 'PERCENT'
+        ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))))
+        : line.discountType === 'AMOUNT'
+          ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, discountValue)))
+          : 0;
+      const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
       const lineTotalBase = roundMoney(lineTotalDoc * (form.exchangeRate || 0));
       const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
       const taxAmountBase = roundMoney(lineTotalBase * taxRate);
 
       return {
+        grossLineTotalDoc,
+        discountAmountDoc,
         lineTotalDoc,
         lineTotalBase,
         taxAmountDoc,
@@ -163,11 +232,34 @@ const SalesInvoiceDetailPage: React.FC = () => {
     });
   }, [form.exchangeRate, form.lines, taxById]);
 
+  const computedCharges = useMemo(() => {
+    return form.charges.map((charge) => {
+      const taxRate = charge.taxCodeId ? taxById[charge.taxCodeId]?.rate ?? 0 : 0;
+      const amountDoc = roundMoney(charge.amountDoc || 0);
+      const amountBase = roundMoney(amountDoc * (form.exchangeRate || 0));
+      const taxAmountDoc = roundMoney(amountDoc * taxRate);
+      const taxAmountBase = roundMoney(amountBase * taxRate);
+      return { amountDoc, amountBase, taxAmountDoc, taxAmountBase };
+    });
+  }, [form.charges, form.exchangeRate, taxById]);
+
   const totals = useMemo(() => {
-    const subtotalDoc = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
-    const subtotalBase = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalBase, 0));
-    const taxTotalDoc = roundMoney(computedLines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
-    const taxTotalBase = roundMoney(computedLines.reduce((sum, line) => sum + line.taxAmountBase, 0));
+    const subtotalDoc = roundMoney(
+      computedLines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
+      + computedCharges.reduce((sum, charge) => sum + charge.amountDoc, 0)
+    );
+    const subtotalBase = roundMoney(
+      computedLines.reduce((sum, line) => sum + line.lineTotalBase, 0)
+      + computedCharges.reduce((sum, charge) => sum + charge.amountBase, 0)
+    );
+    const taxTotalDoc = roundMoney(
+      computedLines.reduce((sum, line) => sum + line.taxAmountDoc, 0)
+      + computedCharges.reduce((sum, charge) => sum + charge.taxAmountDoc, 0)
+    );
+    const taxTotalBase = roundMoney(
+      computedLines.reduce((sum, line) => sum + line.taxAmountBase, 0)
+      + computedCharges.reduce((sum, charge) => sum + charge.taxAmountBase, 0)
+    );
 
     return {
       subtotalDoc,
@@ -177,29 +269,23 @@ const SalesInvoiceDetailPage: React.FC = () => {
       grandTotalDoc: roundMoney(subtotalDoc + taxTotalDoc),
       grandTotalBase: roundMoney(subtotalBase + taxTotalBase),
     };
-  }, [computedLines]);
+  }, [computedCharges, computedLines]);
 
-  const toEditableLinesFromSalesOrder = (so: SalesOrderDTO): EditableLine[] => {
-    return so.lines
-      .map((line) => {
-        const remainingQty = Math.max(line.orderedQty - line.invoicedQty, 0);
-        if (remainingQty <= 0) return null;
-
-        return {
-          soLineId: line.lineId,
-          itemId: line.itemId,
-          itemCode: line.itemCode,
-          itemName: line.itemName,
-          invoicedQty: remainingQty,
-          uomId: line.uomId,
-          uom: line.uom,
-          unitPriceDoc: line.unitPriceDoc,
-          taxCodeId: line.taxCodeId,
-          warehouseId: line.warehouseId,
-          description: line.description,
-        } as EditableLine;
-      })
-      .filter((line): line is EditableLine => line !== null);
+  const toEditableLinesFromLinkedSource = (source: InvoiceableLinkedSalesSourceDTO): EditableLine[] => {
+    return source.lines.map((line) => ({
+      soLineId: line.soLineId,
+      dnLineId: line.dnLineId,
+      itemId: line.itemId,
+      itemCode: line.itemCode,
+      itemName: line.itemName,
+      invoicedQty: line.remainingQty,
+      uomId: line.uomId,
+      uom: line.uom,
+      unitPriceDoc: line.unitPriceDoc,
+      taxCodeId: line.taxCodeId,
+      warehouseId: line.warehouseId,
+      description: line.description,
+    }));
   };
 
   const loadReferenceData = async () => {
@@ -253,25 +339,26 @@ const SalesInvoiceDetailPage: React.FC = () => {
       setOrderLineLoading(true);
       setError(null);
 
-      const orderResult = await salesApi.getSO(trimmedOrderId);
-      const so = unwrap<SalesOrderDTO>(orderResult);
-      const nextLines = toEditableLinesFromSalesOrder(so);
+      const sourceResult = await salesApi.getInvoiceableLinkedSource(trimmedOrderId);
+      const source = unwrap<InvoiceableLinkedSalesSourceDTO>(sourceResult);
+      const nextLines = toEditableLinesFromLinkedSource(source);
 
       setForm((prev) => ({
         ...prev,
         salesOrderId: trimmedOrderId,
-        customerId: so.customerId,
-        currency: so.currency,
-        exchangeRate: so.exchangeRate,
+        customerId: source.customerId,
+        customerName: source.customerName,
+        currency: source.currency,
+        exchangeRate: source.exchangeRate,
         lines: nextLines.length ? nextLines : [createEmptyLine()],
       }));
     } catch (err: any) {
-      console.error('Failed to load sales order lines', err);
+      console.error('Failed to load invoiceable linked lines', err);
       setError(
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load sales order lines.'
+          'Failed to load invoiceable linked lines.'
       );
     } finally {
       setOrderLineLoading(false);
@@ -356,6 +443,25 @@ const SalesInvoiceDetailPage: React.FC = () => {
     setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] }));
   };
 
+  const setCharge = (index: number, patch: Partial<EditableCharge>) => {
+    setForm((prev) => {
+      const charges = [...prev.charges];
+      charges[index] = { ...charges[index], ...patch };
+      return { ...prev, charges };
+    });
+  };
+
+  const addCharge = () => {
+    setForm((prev) => ({ ...prev, charges: [...prev.charges, createEmptyCharge()] }));
+  };
+
+  const removeCharge = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      charges: prev.charges.filter((_, idx) => idx !== index),
+    }));
+  };
+
   const removeLine = (index: number) => {
     setForm((prev) => {
       if (prev.lines.length <= 1) return prev;
@@ -379,10 +485,21 @@ const SalesInvoiceDetailPage: React.FC = () => {
       if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) {
         return `Line ${i + 1}: unit price must be greater than or equal to 0.`;
       }
+      if (line.discountType && (Number.isNaN(line.discountValue || 0) || (line.discountValue || 0) < 0)) {
+        return `Line ${i + 1}: discount must be greater than or equal to 0.`;
+      }
 
       const item = itemById[line.itemId];
-      if (item?.trackInventory && !line.warehouseId) {
+      if (item?.trackInventory && !line.dnLineId && !line.warehouseId) {
         return `Line ${i + 1}: warehouse is required for stock item ${item.name}.`;
+      }
+    }
+
+    for (let i = 0; i < form.charges.length; i += 1) {
+      const charge = form.charges[i];
+      if (!charge.name.trim()) return `Charge ${i + 1}: name is required.`;
+      if (Number.isNaN(charge.amountDoc) || charge.amountDoc < 0) {
+        return `Charge ${i + 1}: amount must be greater than or equal to 0.`;
       }
     }
 
@@ -401,6 +518,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
       uomId: line.uomId,
       uom: line.uom || item?.salesUom || item?.baseUom || 'EA',
       unitPriceDoc: line.unitPriceDoc,
+      discountType: line.discountType,
+      discountValue: line.discountType ? line.discountValue || 0 : undefined,
       taxCodeId: line.taxCodeId || undefined,
       warehouseId: line.warehouseId || undefined,
       description: line.description || undefined,
@@ -428,6 +547,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
         lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        charges: form.charges.map((charge) => ({
+          chargeId: charge.chargeId,
+          code: charge.code || undefined,
+          name: charge.name,
+          amountDoc: charge.amountDoc,
+          taxCodeId: charge.taxCodeId || undefined,
+          revenueAccountId: charge.revenueAccountId || undefined,
+          description: charge.description || undefined,
+        })),
         notes: form.notes || undefined,
       };
 
@@ -463,9 +591,9 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
       const settlementInput = useSettlement ? {
         settlementMode,
-        receivablePayableAccountId: arAccountId,
+        receivablePayableAccountId: arAccountId || undefined,
         settlements: settlementRows.map(r => ({
-          settlementAccountId: r.settlementAccountId,
+          settlementAccountId: r.settlementAccountId || undefined,
           amountBase: r.amountBase,
           paymentMethod: r.paymentMethod as any,
           reference: r.reference || undefined,
@@ -484,6 +612,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
         lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        charges: form.charges.map((charge) => ({
+          chargeId: charge.chargeId,
+          code: charge.code || undefined,
+          name: charge.name,
+          amountDoc: charge.amountDoc,
+          taxCodeId: charge.taxCodeId || undefined,
+          revenueAccountId: charge.revenueAccountId || undefined,
+          description: charge.description || undefined,
+        })),
         notes: form.notes || undefined,
         settlementInput,
       };
@@ -512,9 +649,9 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
       const settlementInput = settlementMode !== 'DEFERRED' ? {
         settlementMode,
-        receivablePayableAccountId: arAccountId,
+        receivablePayableAccountId: arAccountId || undefined,
         settlements: settlementRows.map(r => ({
-          settlementAccountId: r.settlementAccountId,
+          settlementAccountId: r.settlementAccountId || undefined,
           amountBase: r.amountBase,
           paymentMethod: r.paymentMethod as any,
           reference: r.reference || undefined,
@@ -544,7 +681,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     const outstanding = roundMoney((invoice.grandTotalBase || 0) - (invoice.paidAmountBase || 0));
     if (outstanding > 0.005) {
       setShowSettlement(true);
-      setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+      setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
     } else {
       postDraft();
     }
@@ -575,6 +712,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
+        {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.')}
+          </div>
+        )}
+
         <Card className="p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -598,7 +741,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
                   onClick={() => loadSalesOrderLines(form.salesOrderId)}
                   disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
                 >
-                  {orderLineLoading ? 'Loading...' : 'Load SO Lines'}
+                  {orderLineLoading ? 'Loading...' : 'Load Invoiceable Lines'}
                 </button>
               </div>
             </div>
@@ -671,7 +814,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </div>
 
           <div className="mt-4 text-xs text-slate-500">
-            If a Sales Order is selected, you can load the remaining order lines into this draft.
+            If a Sales Order is selected, stock lines load from posted Delivery Notes and service lines load from uninvoiced Sales Order quantities.
           </div>
         </Card>
 
@@ -696,8 +839,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
                   <th className="py-2 text-right">Qty</th>
                   <th className="py-2 text-left">UOM</th>
                   <th className="py-2 text-right">Unit Price</th>
+                  <th className="py-2 text-left">Discount Type</th>
+                  <th className="py-2 text-right">Discount</th>
                   <th className="py-2 text-left">Tax Code</th>
                   <th className="py-2 text-left">Warehouse</th>
+                  <th className="py-2 text-right">Discount Amt</th>
                   <th className="py-2 text-right">Line Total</th>
                   <th className="py-2 text-right">Tax</th>
                   <th className="py-2 text-right">Line Base</th>
@@ -777,6 +923,28 @@ const SalesInvoiceDetailPage: React.FC = () => {
                     </td>
                     <td className="py-2 pr-2">
                       <select
+                        className="w-28 rounded-lg border border-slate-300 px-2 py-1.5"
+                        value={line.discountType || ''}
+                        onChange={(e) => setLine(index, { discountType: (e.target.value || undefined) as any, discountValue: 0 })}
+                      >
+                        <option value="">No Discount</option>
+                        <option value="PERCENT">Percent</option>
+                        <option value="AMOUNT">Amount</option>
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="number"
+                        min={0}
+                        step={line.discountType === 'PERCENT' ? 0.01 : 0.01}
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                        value={line.discountValue || 0}
+                        disabled={!line.discountType}
+                        onChange={(e) => setLine(index, { discountValue: Number(e.target.value) })}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
                         className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
                         value={line.taxCodeId || ''}
                         onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
@@ -790,10 +958,19 @@ const SalesInvoiceDetailPage: React.FC = () => {
                       </select>
                     </td>
                     <td className="py-2 pr-2">
-                      <WarehouseSelector 
-                        value={line.warehouseId}
-                        onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })}
-                      />
+                      {line.dnLineId ? (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
+                          Auto from Delivery Note
+                        </div>
+                      ) : (
+                        <WarehouseSelector
+                          value={line.warehouseId}
+                          onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })}
+                        />
+                      )}
+                    </td>
+                    <td className="py-2 pr-2 text-right">
+                      {form.currency} {computedLines[index]?.discountAmountDoc.toFixed(2)}
                     </td>
                     <td className="py-2 pr-2 text-right">
                       {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
@@ -855,6 +1032,75 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </div>
         </Card>
 
+        <Card className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Charges / Additions</h3>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+              onClick={addCharge}
+              disabled={busy}
+            >
+              Add Charge
+            </button>
+          </div>
+          <div className="space-y-3">
+            {form.charges.length === 0 && (
+              <div className="text-sm text-slate-500">No charges added.</div>
+            )}
+            {form.charges.map((charge, index) => (
+              <div key={charge.chargeId || `charge-${index}`} className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-6">
+                <input
+                  type="text"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Charge name"
+                  value={charge.name}
+                  onChange={(e) => setCharge(index, { name: e.target.value })}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-right"
+                  placeholder="Amount"
+                  value={charge.amountDoc}
+                  onChange={(e) => setCharge(index, { amountDoc: Number(e.target.value) })}
+                />
+                <select
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={charge.taxCodeId || ''}
+                  onChange={(e) => setCharge(index, { taxCodeId: e.target.value || undefined })}
+                >
+                  <option value="">No Tax</option>
+                  {salesTaxCodes.map((taxCode) => (
+                    <option key={taxCode.id} value={taxCode.id}>
+                      {taxCode.code} ({Math.round(taxCode.rate * 100)}%)
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Description (optional)"
+                  value={charge.description || ''}
+                  onChange={(e) => setCharge(index, { description: e.target.value })}
+                />
+                <div className="flex items-center justify-end text-sm font-medium text-slate-700">
+                  {form.currency} {computedCharges[index]?.amountDoc.toFixed(2)} + Tax {computedCharges[index]?.taxAmountDoc.toFixed(2)}
+                </div>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-red-700"
+                  onClick={() => removeCharge(index)}
+                  disabled={busy}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+
         {showSettlement && (
           <Card className="p-5 border-blue-200 bg-blue-50">
             <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Save & Post</h2>
@@ -875,13 +1121,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
               {settlementMode !== 'DEFERRED' && (
                 <>
                   <div>
-                    <label className="mb-1 block text-sm font-medium">AR Account</label>
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    <label className="mb-1 block text-sm font-medium">AR Account (Optional Override)</label>
+                    <AccountSelector
                       value={arAccountId}
-                      onChange={(e) => setArAccountId(e.target.value)}
-                      placeholder="Account ID or Code"
+                      placeholder="Leave empty to use Sales default AR"
+                      onChange={(account) => setArAccountId(account?.id || '')}
                     />
                   </div>
 
@@ -890,17 +1134,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
                       <div className="text-sm font-medium text-slate-700">Payment Row {idx + 1}</div>
                       <div className="grid gap-2 md:grid-cols-2">
                         <div>
-                          <label className="mb-1 block text-xs font-medium">Settlement Account</label>
-                          <input
-                            type="text"
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          <label className="mb-1 block text-xs font-medium">Settlement Account (Optional Override)</label>
+                          <AccountSelector
                             value={row.settlementAccountId}
-                            onChange={(e) => {
+                            placeholder="Leave empty to use payment method mapping"
+                            onChange={(account) => {
                               const updated = [...settlementRows];
-                              updated[idx].settlementAccountId = e.target.value;
+                              updated[idx].settlementAccountId = account?.id || '';
                               setSettlementRows(updated);
                             }}
-                            placeholder="Account ID or Code"
                           />
                         </div>
                         <div>
@@ -991,7 +1233,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
                     <button
                       type="button"
                       className="rounded-lg border border-blue-300 px-3 py-1 text-sm text-blue-700 hover:bg-blue-100"
-                      onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: roundMoney(totals.grandTotalBase / (settlementRows.length + 1)), paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
+                      onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: roundMoney(totals.grandTotalBase / (settlementRows.length + 1)), paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
                     >
                       + Add Payment Row
                     </button>
@@ -1037,7 +1279,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
               const outstanding = roundMoney(totals.grandTotalBase);
               if (outstanding > 0.005) {
                 setShowSettlement(true);
-                setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+                setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
               } else {
                 setSettlementMode('DEFERRED');
                 createAndPostDraft();
@@ -1107,9 +1349,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.exchangeRate}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Direct Invoicing</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              {t('sales.governance.directInvoicingStatusLabel', 'Direct Invoicing')}
+            </div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {settings ? (settings.allowDirectInvoicing ? 'Enabled' : 'Disabled') : '-'}
+              {settings
+                ? isDirectInvoiceAllowed
+                  ? t('sales.governance.directAllowed', 'Allowed')
+                  : t('sales.governance.directBlockedOperational', 'Blocked (Operational)')
+                : '-'}
             </div>
           </div>
         </div>
@@ -1189,13 +1437,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
             {settlementMode !== 'DEFERRED' && (
               <>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">AR/AP Account</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  <label className="mb-1 block text-sm font-medium">AR/AP Account (Optional Override)</label>
+                  <AccountSelector
                     value={arAccountId}
-                    onChange={(e) => setArAccountId(e.target.value)}
-                    placeholder="Account ID or Code"
+                    placeholder="Leave empty to use Sales default AR"
+                    onChange={(account) => setArAccountId(account?.id || '')}
                   />
                 </div>
 
@@ -1204,17 +1450,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
                     <div className="text-sm font-medium text-slate-700">Payment Row {idx + 1}</div>
                     <div className="grid gap-2 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs font-medium">Settlement Account</label>
-                        <input
-                          type="text"
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          <label className="mb-1 block text-xs font-medium">Settlement Account (Optional Override)</label>
+                        <AccountSelector
                           value={row.settlementAccountId}
-                          onChange={(e) => {
+                          placeholder="Leave empty to use payment method mapping"
+                          onChange={(account) => {
                             const updated = [...settlementRows];
-                            updated[idx].settlementAccountId = e.target.value;
+                            updated[idx].settlementAccountId = account?.id || '';
                             setSettlementRows(updated);
                           }}
-                          placeholder="Account ID or Code"
                         />
                       </div>
                       <div>
@@ -1242,11 +1486,21 @@ const SalesInvoiceDetailPage: React.FC = () => {
                             setSettlementRows(updated);
                           }}
                         >
-                          <option value="CASH">Cash</option>
-                          <option value="BANK_TRANSFER">Bank Transfer</option>
-                          <option value="CHECK">Check</option>
-                          <option value="CREDIT_CARD">Credit Card</option>
-                          <option value="OTHER">Other</option>
+                          {enabledPaymentMethodConfigs.length > 0 ? (
+                            enabledPaymentMethodConfigs.map((config) => (
+                              <option key={config.method} value={config.method}>
+                                {config.label || config.method}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="CASH">Cash</option>
+                              <option value="BANK_TRANSFER">Bank Transfer</option>
+                              <option value="CHECK">Check</option>
+                              <option value="CREDIT_CARD">Credit Card</option>
+                              <option value="OTHER">Other</option>
+                            </>
+                          )}
                         </select>
                       </div>
                       <div>
@@ -1305,7 +1559,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
                   <button
                     type="button"
                     className="rounded-lg border border-blue-300 px-3 py-1 text-sm text-blue-700 hover:bg-blue-100"
-                    onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: 0, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
+                    onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: 0, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
                   >
                     + Add Payment Row
                   </button>

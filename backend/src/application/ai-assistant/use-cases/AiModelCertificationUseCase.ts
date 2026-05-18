@@ -5,6 +5,7 @@ import { AiModelProfile } from '../../../domain/ai-assistant/entities/AiModelPro
 import { IAiModelCertificationRepository } from '../../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
+import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { AiCertificationEngine } from '../services/AiCertificationEngine';
 import { AI_DATA_FILTER_POLICY_VERSION, AI_TOOL_CONTRACT_VERSION } from '../services/AiModelRoutingGuard';
 
@@ -45,6 +46,7 @@ export class AiModelCertificationUseCase {
     private readonly httpClient: IHttpClient,
     private readonly engine: AiCertificationEngine,
     private readonly runtimeProfileRepository?: IAiPlatformRuntimeProfileRepository,
+    private readonly providerRepository?: IAiProviderRepository,
   ) {}
 
   async listResultsForProfile(modelProfileId: string): Promise<AiModelCertificationResult[]> {
@@ -118,6 +120,7 @@ export class AiModelCertificationUseCase {
     // - TENANT scope: use the tenant's own AI settings (BYOK key).
     // - GLOBAL scope: use the platform runtime profile's credential (Super Admin's stored key).
     let provider: IAiProvider | undefined;
+    let providerCreationError: string | undefined;
     if (input.tenantId) {
       try {
         let config = await this.settingsRepository.getConfig(input.tenantId);
@@ -125,11 +128,12 @@ export class AiModelCertificationUseCase {
           config = this.decryptConfig(config);
           // For diagnostics/certification, we use strict provider creation
           provider = ProviderFactory.getProviderStrict(config, this.httpClient);
+        } else {
+          providerCreationError = 'No AI settings configured for this tenant. Configure a provider and API key in AI Settings first.';
         }
       } catch (err) {
-        // If provider cannot be created (e.g. missing API key), we continue without it
-        // and the engine will perform structural-only checks (WARNING status).
-        console.warn(`[Certification] Could not create provider for deep test: ${(err as Error).message}`);
+        providerCreationError = `Could not create provider: ${(err as Error).message}`;
+        console.warn(`[Certification] ${providerCreationError}`);
       }
     } else if (input.scope === 'GLOBAL' && this.runtimeProfileRepository) {
       try {
@@ -142,12 +146,23 @@ export class AiModelCertificationUseCase {
         );
         if (runtimeProfile) {
           const plainKey = this.decryptStoredCredential(runtimeProfile.encryptedCredential!);
+          // Resolve base URL: model profile's explicit URL takes precedence,
+          // fall back to the registered provider's defaultBaseUrl so that
+          // providers like OpenRouter (which store their URL on the AiProvider entity,
+          // not on each model profile) don't silently fall through to api.openai.com.
+          let resolvedBaseUrl = profile.baseUrl;
+          if (!resolvedBaseUrl && this.providerRepository) {
+            try {
+              const providerEntity = await this.providerRepository.getById(runtimeProfile.providerId);
+              resolvedBaseUrl = providerEntity?.defaultBaseUrl;
+            } catch { /* best-effort — ProviderFactory will fall back to its own default */ }
+          }
           const certConfig = new AiProviderConfig(
             'cert-engine-global',
             profile.provider as any,
             profile.modelId,
             plainKey,
-            profile.baseUrl,
+            resolvedBaseUrl,
             profile.maxOutputTokens || 1024,
             undefined,
             0,
@@ -161,11 +176,66 @@ export class AiModelCertificationUseCase {
           );
           provider = ProviderFactory.getProviderStrict(certConfig, this.httpClient);
         } else {
-          console.warn(`[Certification] No active runtime profile with credential for modelProfileId=${profile.id} — running structural checks only.`);
+          providerCreationError = `No active platform runtime profile with credential for model "${profile.displayName || profile.modelId}". Configure a platform runtime profile with an API key in Super Admin → Platform Global Providers.`;
+          console.warn(`[Certification] ${providerCreationError}`);
         }
       } catch (err) {
-        console.warn(`[Certification] Could not create GLOBAL provider for deep test: ${(err as Error).message}`);
+        providerCreationError = `Could not create GLOBAL provider: ${(err as Error).message}`;
+        console.warn(`[Certification] ${providerCreationError}`);
       }
+    } else if (input.scope === 'GLOBAL' && !this.runtimeProfileRepository) {
+      providerCreationError = 'Platform runtime profile repository not available. Cannot resolve provider credentials for GLOBAL certification.';
+    }
+
+    // ── Pre-flight diagnostic: verify provider connectivity before running full tests ──
+    // This catches "No provider available" / "API key invalid" / "network unreachable"
+    // early, producing a specific diagnostic reason instead of a generic failure.
+    let preflightDiagnostic: { networkOk: boolean; inferenceOk: boolean; detail?: string } | undefined;
+
+    if (provider) {
+      try {
+        const networkOk = await provider.isAvailable();
+        if (!networkOk) {
+          preflightDiagnostic = { networkOk: false, inferenceOk: false, detail: 'Provider network check failed — the endpoint is not reachable.' };
+          console.warn(`[Certification] Pre-flight diagnostic FAILED: network check failed for ${profile.modelId}`);
+          // Clear the provider so the engine doesn't attempt the expensive Deep Probe
+          provider = undefined;
+        } else {
+          // Quick inference test — same safe prompt as CheckProviderHealthUseCase
+          try {
+            await provider.chat({
+              messages: [{ role: 'user', content: 'Reply with only: provider-ok' }],
+              maxTokens: 10,
+              temperature: 0,
+            });
+            preflightDiagnostic = { networkOk: true, inferenceOk: true, detail: 'Pre-flight diagnostic passed: provider is reachable and can generate responses.' };
+          } catch (inferenceErr) {
+            preflightDiagnostic = {
+              networkOk: true,
+              inferenceOk: false,
+              detail: `Provider is reachable but inference failed: ${(inferenceErr as Error).message}. Check your API key and model name.`,
+            };
+            console.warn(`[Certification] Pre-flight diagnostic FAILED: inference check failed for ${profile.modelId}: ${(inferenceErr as Error).message}`);
+            // Clear the provider — no point running Deep Probe if basic inference fails
+            provider = undefined;
+          }
+        }
+      } catch (diagErr) {
+        preflightDiagnostic = {
+          networkOk: false,
+          inferenceOk: false,
+          detail: `Pre-flight diagnostic error: ${(diagErr as Error).message}`,
+        };
+        console.warn(`[Certification] Pre-flight diagnostic error for ${profile.modelId}: ${(diagErr as Error).message}`);
+        provider = undefined;
+      }
+    } else {
+      // No provider was created — record why
+      preflightDiagnostic = {
+        networkOk: false,
+        inferenceOk: false,
+        detail: providerCreationError || 'No provider available. Configure AI provider credentials before running certification.',
+      };
     }
 
     const result = await this.engine.run({
@@ -180,16 +250,35 @@ export class AiModelCertificationUseCase {
       approvedBy: input.approvedBy,
     }, provider);
 
+    // Enrich the certification result with pre-flight diagnostic details.
+    // Since AiModelCertificationResult fields are readonly, we create a new instance
+    // via fromJSON to incorporate the diagnostic metadata and summary override.
+    let enrichedResult = result;
+    if (preflightDiagnostic) {
+      const enrichedData = result.toJSON();
+      enrichedData.metadata = {
+        ...(enrichedData.metadata as Record<string, unknown> || {}),
+        preflightDiagnostic,
+      };
+      // If provider was unavailable, override the generic summary with the specific reason
+      if (!preflightDiagnostic.networkOk || !preflightDiagnostic.inferenceOk) {
+        if (result.status !== 'CERTIFIED') {
+          enrichedData.summary = `Certification incomplete. Pre-flight diagnostic: ${preflightDiagnostic.detail}`;
+        }
+      }
+      enrichedResult = AiModelCertificationResult.fromJSON(enrichedData);
+    }
+
     // Graduation Flow: Automatically promote model to 'recommended' when it earns CERTIFIED.
     // Super Admin doesn't manually toggle recommended status — passing the cert IS the badge.
-    if (result.status === 'CERTIFIED' && profile.status !== 'recommended') {
+    if (enrichedResult.status === 'CERTIFIED' && profile.status !== 'recommended') {
       const graduated = profile.withStatus('recommended');
       await this.profileRepository.save(graduated);
     }
 
     await this.certificationRepository.expireByProfileAndCategory(input.modelProfileId, input.category);
-    await this.certificationRepository.save(result);
-    return result;
+    await this.certificationRepository.save(enrichedResult);
+    return enrichedResult;
   }
 
   private decryptConfig(config: AiProviderConfig): AiProviderConfig {

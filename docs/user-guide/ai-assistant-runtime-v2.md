@@ -157,6 +157,14 @@ Certification is tied to the exact selected profile and profile hash. If the pro
 
 The current certification engine is an initial shell. It performs structural safety checks and supports manual certification records. Full automated ERP behavior tests will be added later.
 
+### Certification Pre-Flight Diagnostics
+
+When you trigger model certification, the system proactively runs a lightweight pre-flight health diagnostic before running the extensive behavioral tests. This diagnostic verifies that the AI provider is fully reachable and responsive.
+
+If the diagnostic fails (for example, due to a missing/invalid API key, incorrect provider base URL, or server outage), the certification halts early and reports the exact diagnostic error in the certification summary (e.g., `"Certification incomplete. Pre-flight diagnostic: Provider is reachable but inference failed: API key invalid."`).
+
+This prevents you from waiting for a full test suite to finish when the provider configuration is incorrect, giving you clear, immediate steps to resolve the issue.
+
 ## Account Balance Tool Results
 
 When you ask the AI Assistant for the balance of a specific account, include the account code when possible.

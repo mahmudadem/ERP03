@@ -11,6 +11,15 @@ const asNumber = (v: unknown): number => (typeof v === 'number' ? v : 0);
 
 const fmt = (n: number) => new Intl.NumberFormat().format(n);
 
+/**
+ * Authoritative report tools (reports.*) wrap data in { reportContext, moneyContext, data }.
+ * Legacy tools (accounting.*) return data flat. This helper unwraps to the inner data.
+ */
+const unwrapReportData = (raw: Record<string, unknown>): Record<string, unknown> =>
+  raw.reportContext && raw.data && typeof raw.data === 'object'
+    ? (raw.data as Record<string, unknown>)
+    : raw;
+
 export const AiToolResultsPanel: React.FC<Props> = ({ toolResults }) => {
   const { t } = useTranslation('aiAssistant');
 
@@ -43,20 +52,20 @@ export const AiToolResultsPanel: React.FC<Props> = ({ toolResults }) => {
             </div>
           )}
 
-          {tool.result?.success && tool.toolName === 'accounting.getTrialBalanceSummary' && (
-            <TrialBalanceView data={tool.result.data || {}} />
+          {tool.result?.success && (tool.toolName === 'accounting.getTrialBalanceSummary' || tool.toolName === 'reports.trialBalance') && (
+            <TrialBalanceView data={unwrapReportData(tool.result.data || {})} />
           )}
 
           {tool.result?.success && tool.toolName === 'accounting.getAccountBalance' && (
             <AccountBalanceView data={tool.result.data || {}} />
           )}
 
-          {tool.result?.success && tool.toolName === 'accounting.getProfitAndLoss' && (
-            <ProfitAndLossView data={tool.result.data || {}} />
+          {tool.result?.success && (tool.toolName === 'accounting.getProfitAndLoss' || tool.toolName === 'reports.profitAndLoss') && (
+            <ProfitAndLossView data={unwrapReportData(tool.result.data || {})} />
           )}
 
-          {tool.result?.success && tool.toolName === 'accounting.getBalanceSheet' && (
-            <BalanceSheetView data={tool.result.data || {}} />
+          {tool.result?.success && (tool.toolName === 'accounting.getBalanceSheet' || tool.toolName === 'reports.balanceSheet') && (
+            <BalanceSheetView data={unwrapReportData(tool.result.data || {})} />
           )}
         </div>
       ))}
@@ -153,6 +162,20 @@ const ProfitAndLossView: React.FC<{ data: Record<string, unknown> }> = ({ data }
 
 const BalanceSheetView: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
   const { t } = useTranslation('aiAssistant');
+  const difference = typeof data.difference === 'number'
+    ? data.difference
+    : Math.round((asNumber(data.totalAssets) - asNumber(data.totalLiabilities) - asNumber(data.totalEquity)) * 100) / 100;
+
+  const sectionItems = (section: unknown): Array<Record<string, unknown>> => {
+    if (!section || typeof section !== 'object') return [];
+    const s = section as Record<string, unknown>;
+    return Array.isArray(s.items) ? s.items : [];
+  };
+
+  const assetItems = sectionItems(data.assets);
+  const liabilityItems = sectionItems(data.liabilities);
+  const equityItems = sectionItems(data.equity);
+  const hasBreakdown = assetItems.length > 0 || liabilityItems.length > 0 || equityItems.length > 0;
 
   return (
     <div className="space-y-2 text-xs text-gray-700">
@@ -160,12 +183,20 @@ const BalanceSheetView: React.FC<{ data: Record<string, unknown> }> = ({ data })
         <Stat label={t('chat.totalAssets', 'Total Assets')} value={fmt(asNumber(data.totalAssets))} />
         <Stat label={t('chat.totalLiabilities', 'Total Liabilities')} value={fmt(asNumber(data.totalLiabilities))} />
         <Stat label={t('chat.totalEquity', 'Total Equity')} value={fmt(asNumber(data.totalEquity))} />
-        <Stat label={t('chat.difference', 'Difference')} value={fmt(asNumber(data.difference))} />
+        <Stat label={t('chat.difference', 'Difference')} value={fmt(difference)} />
       </div>
 
       <div className="text-[11px] text-gray-600">
         {t('chat.balanceStatus', 'Balance status')}: {Boolean(data.isBalanced) ? t('chat.balanced', 'Balanced') : t('chat.imbalanced', 'Imbalanced')}
       </div>
+
+      {hasBreakdown && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {assetItems.length > 0 && <MiniList title={t('chat.topAssets', 'Top Assets')} items={assetItems.slice(0, 5)} />}
+          {liabilityItems.length > 0 && <MiniList title={t('chat.topLiabilities', 'Top Liabilities')} items={liabilityItems.slice(0, 5)} />}
+          {equityItems.length > 0 && <MiniList title={t('chat.topEquity', 'Top Equity')} items={equityItems.slice(0, 5)} />}
+        </div>
+      )}
     </div>
   );
 };

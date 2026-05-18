@@ -206,8 +206,17 @@ const makeSI = (input: {
   exchangeRate?: number;
   invoicedQty: number;
   unitPriceDoc: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   taxCodeId?: string;
   warehouseId?: string;
+  charges?: Array<{
+    chargeId?: string;
+    name: string;
+    amountDoc: number;
+    taxCodeId?: string;
+    revenueAccountId?: string;
+  }>;
 }): SalesInvoice =>
   new SalesInvoice({
     id: input.id,
@@ -236,6 +245,8 @@ const makeSI = (input: {
         invoicedQty: input.invoicedQty,
         uom: 'EA',
         unitPriceDoc: input.unitPriceDoc,
+        discountType: input.discountType,
+        discountValue: input.discountValue,
         lineTotalDoc: input.invoicedQty * input.unitPriceDoc,
         unitPriceBase: (input.exchangeRate ?? 1) * input.unitPriceDoc,
         lineTotalBase: input.invoicedQty * input.unitPriceDoc * (input.exchangeRate ?? 1),
@@ -250,6 +261,13 @@ const makeSI = (input: {
         stockMovementId: null,
       },
     ],
+    charges: (input.charges || []).map((charge, index) => ({
+      chargeId: charge.chargeId || `chg-${index + 1}`,
+      name: charge.name,
+      amountDoc: charge.amountDoc,
+      taxCodeId: charge.taxCodeId,
+      revenueAccountId: charge.revenueAccountId || input.item.revenueAccountId || '',
+    })),
     subtotalDoc: 0,
     taxTotalDoc: 0,
     grandTotalDoc: 0,
@@ -326,10 +344,15 @@ const makeInventoryService = (costBase = 10) => {
   };
 };
 
-const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL') => ({
+const makeInventorySettingsRepository = (
+  method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL',
+  overrides: Record<string, any> = {}
+) => ({
   getSettings: jest.fn(async () => ({
     inventoryAccountingMethod: method,
     defaultInventoryAssetAccountId: 'INV-100',
+    defaultCOGSAccountId: 'COGS-100',
+    ...overrides,
   })),
 });
 
@@ -423,6 +446,52 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(voucher.metadata.sourceModule).toBe('sales');
     expect(voucher.metadata.sourceType).toBe('DELIVERY_NOTE');
     expect(voucher.metadata.sourceId).toBe(dn.id);
+  });
+
+  it('2b) PostDN uses Inventory financial settings as the COGS fallback', async () => {
+    const settings = makeSettings('CONTROLLED', {
+      defaultCOGSAccountId: undefined,
+      defaultInventoryAccountId: undefined,
+    });
+    const item = makeItem('stock-2b', { trackInventory: true });
+    (item as any).cogsAccountId = undefined;
+    (item as any).inventoryAssetAccountId = undefined;
+    const so = makeSO({ id: 'so-2b', item, orderedQty: 10, deliveredQty: 0 });
+    const dn = makeDN({ id: 'dn-2b', salesOrderId: so.id, item, deliveredQty: 2 });
+
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+
+    const useCase = new PostDeliveryNoteUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERPETUAL', {
+        defaultCOGSAccountId: 'INV-COGS-FALLBACK',
+        defaultInventoryAssetAccountId: 'INV-ASSET-FALLBACK',
+      }) as any,
+      { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    await useCase.execute(COMPANY_ID, dn.id);
+
+    const voucher = (voucherRepo.save as any).mock.calls[0][0];
+    const hasCogsDebit = voucher.lines.some((line: any) => line.accountId === 'INV-COGS-FALLBACK' && line.side === 'Debit');
+    const hasInventoryCredit = voucher.lines.some((line: any) => line.accountId === 'INV-ASSET-FALLBACK' && line.side === 'Credit');
+    expect(hasCogsDebit).toBe(true);
+    expect(hasInventoryCredit).toBe(true);
   });
 
   it('3) PostDN updates SO line deliveredQty', async () => {
@@ -821,6 +890,83 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(revenueVoucher.metadata.sourceId).toBe(si.id);
   });
 
+  it('10b) PostSI applies discount and charges to totals and revenue voucher', async () => {
+    const settings = makeSettings('SIMPLE', { defaultSalesExpenseAccountId: 'EXP-DISC-10B' });
+    const customer = makeCustomer();
+    const serviceItem = makeItem('svc-10b', {
+      trackInventory: false,
+      type: 'SERVICE',
+      revenueAccountId: 'REV-100',
+    });
+    const si = makeSI({
+      id: 'si-10b',
+      item: serviceItem,
+      invoicedQty: 2,
+      unitPriceDoc: 10,
+      discountType: 'PERCENT',
+      discountValue: 10,
+      taxCodeId: 'tax-1',
+      charges: [
+        {
+          chargeId: 'chg-10b',
+          name: 'Delivery Fee',
+          amountDoc: 5,
+        },
+      ],
+    });
+
+    const taxCode = makeTaxCode(0.1);
+    const invoiceStore = new Map([[si.id, si]]);
+    const savedVouchers: any[] = [];
+
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => {
+          invoiceStore.set(entity.id, entity);
+        }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => taxCode) } as any,
+      { getItem: jest.fn(async () => serviceItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }), delete: jest.fn(async () => true) } as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, si.id);
+    expect(posted.lines[0].discountAmountDoc).toBe(2);
+    expect(posted.subtotalDoc).toBe(23);
+    expect(posted.taxTotalDoc).toBe(1.8);
+    expect(posted.grandTotalDoc).toBe(24.8);
+
+    const revenueVoucher = savedVouchers.find((voucher) => voucher.voucherNo === `SI-${si.invoiceNumber}`);
+    expect(revenueVoucher).toBeTruthy();
+    const creditLines = revenueVoucher.lines.filter((line: any) => line.side === 'Credit');
+    const debitLines = revenueVoucher.lines.filter((line: any) => line.side === 'Debit');
+    expect(debitLines.some((line: any) => line.accountId === 'AR-200' && line.debitAmount === 24.8)).toBe(true);
+    expect(debitLines.some((line: any) => line.accountId === 'EXP-DISC-10B' && line.debitAmount === 2)).toBe(true);
+    expect(creditLines.filter((line: any) => line.accountId === 'REV-100' && line.creditAmount === 20)).toHaveLength(1);
+    expect(creditLines.filter((line: any) => line.accountId === 'REV-100' && line.creditAmount === 5)).toHaveLength(1);
+    expect(creditLines.some((line: any) => line.accountId === 'TAX-OUT-100' && line.creditAmount === 1.8)).toBe(true);
+    expect(revenueVoucher.totalDebit).toBe(26.8);
+    expect(revenueVoucher.totalCredit).toBe(26.8);
+  });
+
   it('11) PostDN: accounting failure does not persist posted DN or SO status', async () => {
     const settings = makeSettings('CONTROLLED');
     const item = makeItem('stock-11', {
@@ -1038,6 +1184,62 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(voucherRepo.save).not.toHaveBeenCalled();
     expect(deliveryNoteRepo.update).not.toHaveBeenCalled();
     expect(salesOrderRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('14b) PostDN: invoice-driven allows zero cost and posts with unsettled movement', async () => {
+    const settings = makeSettings('CONTROLLED', {
+      defaultCOGSAccountId: undefined,
+      defaultInventoryAccountId: undefined,
+    });
+    const item = makeItem('stock-14b', { trackInventory: true });
+    (item as any).cogsAccountId = undefined;
+    (item as any).inventoryAssetAccountId = undefined;
+    const so = makeSO({ id: 'so-14b', item, orderedQty: 10, deliveredQty: 0 });
+    const dn = makeDN({ id: 'dn-14b', salesOrderId: so.id, item, deliveredQty: 3 });
+
+    const deliveryNoteRepo = {
+      getById: jest.fn(async () => dn),
+      update: jest.fn(async () => undefined),
+    };
+    const salesOrderRepo = {
+      getById: jest.fn(async () => so),
+      update: jest.fn(async () => undefined),
+    };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const inventoryService = {
+      ...makeInventoryService(0),
+    };
+
+    const useCase = new PostDeliveryNoteUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC', {
+        defaultCOGSAccountId: undefined,
+        defaultInventoryAssetAccountId: undefined,
+      }) as any,
+      deliveryNoteRepo as any,
+      salesOrderRepo as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, dn.id);
+    expect(posted.status).toBe('POSTED');
+    expect(posted.lines[0].unitCostBase).toBe(0);
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(deliveryNoteRepo.update).toHaveBeenCalled();
+    expect(salesOrderRepo.update).toHaveBeenCalled();
   });
 
   it('15) PostSI: missing tracked-item cost basis aborts posting before vouchers are created', async () => {

@@ -24,6 +24,7 @@ interface EditableLine {
   itemCode?: string;
   itemName?: string;
   deliveredQty: number;
+  maxDeliverableQty?: number;
   uomId?: string;
   uom: string;
   warehouseId?: string;
@@ -119,6 +120,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
           itemCode: line.itemCode,
           itemName: line.itemName,
           deliveredQty: remainingQty,
+          maxDeliverableQty: remainingQty,
           uomId: line.uomId,
           uom: line.uom,
           warehouseId: line.warehouseId,
@@ -198,6 +200,19 @@ const DeliveryNoteDetailPage: React.FC = () => {
       );
     } finally {
       setOrderLineLoading(false);
+    }
+  };
+
+  const handleSalesOrderChange = (orderId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      salesOrderId: orderId,
+      customerId: orderId ? '' : prev.customerId,
+      lines: orderId ? [] : [createEmptyLine()],
+    }));
+
+    if (orderId) {
+      void loadSalesOrderLines(orderId);
     }
   };
 
@@ -298,6 +313,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
         if (!line.itemId) return `Line ${i + 1}: item is required.`;
         if (Number.isNaN(line.deliveredQty) || line.deliveredQty <= 0) {
           return `Line ${i + 1}: delivered quantity must be greater than 0.`;
+        }
+      }
+    } else if (form.lines.length > 0) {
+      for (let i = 0; i < form.lines.length; i += 1) {
+        const line = form.lines[i];
+        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (Number.isNaN(line.deliveredQty) || line.deliveredQty <= 0) {
+          return `Line ${i + 1}: delivered quantity must be greater than 0.`;
+        }
+        if (line.maxDeliverableQty !== undefined && line.deliveredQty > line.maxDeliverableQty + 0.000001) {
+          return `Line ${i + 1}: delivered quantity cannot exceed the open Sales Order quantity.`;
         }
       }
     }
@@ -413,7 +439,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   value={form.salesOrderId}
-                  onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
+                  onChange={(e) => handleSalesOrderChange(e.target.value)}
                 >
                   <option value="">No sales order</option>
                   {salesOrders.map((order) => (
@@ -490,18 +516,20 @@ const DeliveryNoteDetailPage: React.FC = () => {
           </div>
         </Card>
 
-        {!form.salesOrderId && (
+        {(!form.salesOrderId || form.lines.length > 0) && (
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-              <button
-                type="button"
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-                onClick={addLine}
-                disabled={busy}
-              >
-                Add Item
-              </button>
+              {!form.salesOrderId && (
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+                  onClick={addLine}
+                  disabled={busy}
+                >
+                  Add Item
+                </button>
+              )}
             </div>
 
             <div className="overflow-x-auto">
@@ -522,6 +550,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
                         <select
                           className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
                           value={line.itemId}
+                          disabled={!!form.salesOrderId}
                           onChange={(e) => setLine(index, { itemId: e.target.value })}
                         >
                           <option value="">Select item</option>
@@ -541,6 +570,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
                         <input
                           type="number"
                           min={0.000001}
+                          max={line.maxDeliverableQty}
                           step={0.000001}
                           className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
                           value={line.deliveredQty}
@@ -555,7 +585,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
                             line.uomId ||
                             line.uom
                           }
-                          disabled={!line.itemId}
+                          disabled={!line.itemId || !!form.salesOrderId}
                           onChange={(e) => {
                             const selected = (uomOptionsByItemId[line.itemId] || []).find(
                               (option) => (option.uomId || option.code) === e.target.value

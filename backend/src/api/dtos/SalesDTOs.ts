@@ -13,6 +13,13 @@ export interface GovernanceRuleDTO {
   formType?: string;
 }
 
+export interface SalesPaymentMethodConfigDTO {
+  method: 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
+  settlementAccountId: string;
+  label?: string;
+  isEnabled?: boolean;
+}
+
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
@@ -27,6 +34,7 @@ export interface SalesSettingsDTO {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
+  paymentMethodConfigs: SalesPaymentMethodConfigDTO[];
   governanceRules: GovernanceRuleDTO[];
   defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -144,8 +152,14 @@ export interface SalesInvoiceLineDTO {
   uomId?: string;
   uom: string;
   unitPriceDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxCode?: string;
@@ -159,6 +173,21 @@ export interface SalesInvoiceLineDTO {
   unitCostBase?: number;
   lineCostBase?: number;
   stockMovementId?: string | null;
+  description?: string;
+}
+
+export interface SalesInvoiceChargeDTO {
+  chargeId: string;
+  code?: string;
+  name: string;
+  amountDoc: number;
+  amountBase?: number;
+  taxCodeId?: string;
+  taxCode?: string;
+  taxRate?: number;
+  taxAmountDoc?: number;
+  taxAmountBase?: number;
+  revenueAccountId?: string;
   description?: string;
 }
 
@@ -181,6 +210,7 @@ export interface SalesInvoiceDTO {
   currency: string;
   exchangeRate: number;
   lines: SalesInvoiceLineDTO[];
+  charges?: SalesInvoiceChargeDTO[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -199,6 +229,35 @@ export interface SalesInvoiceDTO {
   createdAt: string;
   updatedAt: string;
   postedAt?: string;
+}
+
+export interface InvoiceableLinkedSalesLineDTO {
+  sourceType: 'DELIVERY_NOTE' | 'SALES_ORDER';
+  deliveryNoteId?: string;
+  deliveryNoteNumber?: string;
+  deliveryDate?: string;
+  soLineId?: string;
+  dnLineId?: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  trackInventory: boolean;
+  remainingQty: number;
+  uomId?: string;
+  uom: string;
+  unitPriceDoc: number;
+  taxCodeId?: string;
+  warehouseId?: string;
+  description?: string;
+}
+
+export interface InvoiceableLinkedSalesSourceDTO {
+  salesOrderId: string;
+  customerId: string;
+  customerName: string;
+  currency: string;
+  exchangeRate: number;
+  lines: InvoiceableLinkedSalesLineDTO[];
 }
 
 export interface SalesReturnLineDTO {
@@ -273,6 +332,7 @@ export type DeliveryNoteResponseDTO = ApiResponse<DeliveryNoteDTO>;
 export type DeliveryNoteListResponseDTO = ApiResponse<DeliveryNoteDTO[]>;
 export type SalesInvoiceResponseDTO = ApiResponse<SalesInvoiceDTO>;
 export type SalesInvoiceListResponseDTO = ApiResponse<SalesInvoiceDTO[]>;
+export type InvoiceableLinkedSalesSourceResponseDTO = ApiResponse<InvoiceableLinkedSalesSourceDTO>;
 export type SalesReturnResponseDTO = ApiResponse<SalesReturnDTO>;
 export type SalesReturnListResponseDTO = ApiResponse<SalesReturnDTO[]>;
 
@@ -292,6 +352,7 @@ export class SalesDTOMapper {
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
+      paymentMethodConfigs: settings.paymentMethodConfigs || [],
       governanceRules: settings.governanceRules,
       defaultSalesInvoicePersona: settings.defaultSalesInvoicePersona,
       defaultWarehouseId: settings.defaultWarehouseId,
@@ -419,8 +480,14 @@ export class SalesDTOMapper {
       uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
+      grossLineTotalDoc: line.grossLineTotalDoc,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
+      discountAmountDoc: line.discountAmountDoc,
       lineTotalDoc: line.lineTotalDoc,
       unitPriceBase: line.unitPriceBase,
+      grossLineTotalBase: line.grossLineTotalBase,
+      discountAmountBase: line.discountAmountBase,
       lineTotalBase: line.lineTotalBase,
       taxCodeId: line.taxCodeId,
       taxCode: line.taxCode,
@@ -457,6 +524,7 @@ export class SalesDTOMapper {
       currency: si.currency,
       exchangeRate: si.exchangeRate,
       lines: si.lines.map((line) => SalesDTOMapper.toSalesInvoiceLineDTO(line)),
+      charges: (si.charges || []).map((charge) => ({ ...charge })),
       subtotalDoc: si.subtotalDoc,
       taxTotalDoc: si.taxTotalDoc,
       grandTotalDoc: si.grandTotalDoc,

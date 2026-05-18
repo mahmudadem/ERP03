@@ -42,15 +42,19 @@ export class AiAssistantController {
 
   /**
    * Decode profile ID from route param.
-   * Profile IDs may contain '/' which gets double-encoded in URLs.
-   * Express auto-decodes once, so we decode a second time to get the original ID.
+   *
+   * Profile IDs are pre-encoded by AiModelProfile.makeRuntimeId (each component
+   * is `encodeURIComponent`'d before joining with ':'). The frontend therefore
+   * applies one more `encodeURIComponent` before sending, so that Express's own
+   * single decode of req.params returns the original stored ID with its escapes
+   * (%2F, %3A, ...) intact.
+   *
+   * DO NOT decode again here — doing so converts `%2F` back to `/` and Firestore
+   * then interprets the id as a subcollection path. See planning/done/101-* for
+   * the incident report.
    */
   private static decodeProfileId(raw: string): string {
-    try {
-      return decodeURIComponent(raw);
-    } catch {
-      return raw; // Already decoded or invalid encoding
-    }
+    return raw;
   }
 
   /**
@@ -84,6 +88,7 @@ const useCase = new SendChatMessageUseCase(
         diContainer.aiPlatformRuntimeProfileRepository,
         diContainer.aiConversationMetaRepository,
         diContainer.aiModelProfileRepository,
+        diContainer.aiTenantContextResolver,
       );
 
       const result = await useCase.execute({

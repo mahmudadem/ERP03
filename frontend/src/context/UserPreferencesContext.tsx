@@ -126,8 +126,8 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   }, [theme]);
 
   useEffect(() => {
-    applyUserAppearanceToDocument(appearanceSettings || DEFAULT_USER_APPEARANCE);
-  }, [appearanceSettings]);
+    applyUserAppearanceToDocument(appearanceSettings || DEFAULT_USER_APPEARANCE, theme);
+  }, [appearanceSettings, theme]);
 
   useEffect(() => {
     localStorage.setItem('erp_ui_mode', uiMode);

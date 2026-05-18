@@ -8,11 +8,18 @@
 
 import { PrismaClient } from '@prisma/client';
 import { ILedgerRepository, TrialBalanceRow, ForeignBalanceRow, GLFilters, AccountStatementEntry, AccountStatementData } from '../../../../repository/interfaces/accounting/ILedgerRepository';
+import { IAccountRepository } from '../../../../repository/interfaces/accounting/IAccountRepository';
 import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
 import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
+import { VoucherValidationService } from '../../../../domain/accounting/services/VoucherValidationService';
 
 export class PrismaLedgerRepository implements ILedgerRepository {
-  constructor(private prisma: PrismaClient) {}
+  private readonly validationService = new VoucherValidationService();
+
+  constructor(
+    private prisma: PrismaClient,
+    private accountRepo?: IAccountRepository
+  ) {}
 
   // =========================================================================
   // MAPPING HELPERS
@@ -51,6 +58,8 @@ export class PrismaLedgerRepository implements ILedgerRepository {
   // =========================================================================
 
   async recordForVoucher(voucher: VoucherEntity, transaction?: any): Promise<void> {
+    await this.validateVoucherForLedger(voucher);
+
     const tx = transaction || this.prisma;
     const dateValue = typeof voucher.date === 'string' ? new Date(voucher.date) : voucher.date;
 
@@ -73,6 +82,15 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     await tx.ledgerEntry.createMany({
       data: entries as any,
     });
+  }
+
+  private async validateVoucherForLedger(voucher: VoucherEntity): Promise<void> {
+    if (!this.accountRepo) {
+      throw new Error('Ledger repository is missing account validation dependency');
+    }
+
+    this.validationService.validateCore(voucher);
+    await this.validationService.validateAccounts(voucher, this.accountRepo);
   }
 
   async deleteForVoucher(companyId: string, voucherId: string, transaction?: any): Promise<void> {

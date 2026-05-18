@@ -34,6 +34,7 @@ const unwrap = <T,>(response: any): T => (response?.data ?? response) as T;
 const emptyForm: UpsertAiModelProfilePayload = {
   provider: 'openai_compatible',
   modelName: '',
+  displayName: '',
   status: 'custom',
   supportsToolCalling: false,
   supportsStructuredJson: false,
@@ -85,6 +86,13 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; badge?: Re
   </div>
 );
 
+type ViewState =
+  | { mode: 'list' }
+  | { mode: 'creating' }
+  | { mode: 'editing', profileId: string }
+  | { mode: 'diagnostics', profileId: string }
+  | { mode: 'certifications', profileId: string };
+
 export const AiModelProfilesPage: React.FC = () => {
   const { t } = useTranslation('common');
   const [profiles, setProfiles] = useState<AiModelProfile[]>([]);
@@ -94,20 +102,13 @@ export const AiModelProfilesPage: React.FC = () => {
   const [providers, setProviders] = useState<AiProvider[]>([]);
 
   // Profile edit modal state
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>({ mode: 'list' });
   const [form, setForm] = useState<UpsertAiModelProfilePayload>(emptyForm);
 
-  // Diagnostics modal state (dedicated SuperAdminDiagnosticsModal)
-  const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false);
-  const [diagnosticsProfile, setDiagnosticsProfile] = useState<AiModelProfile | null>(null);
-
-  // Certification modal state (dedicated CertificationManagerModal)
-  const [showCertModal, setShowCertModal] = useState(false);
-  const [certProfile, setCertProfile] = useState<AiModelProfile | null>(null);
-
-  const isEditing = selectedId !== null;
-  const selectedProfile = profiles.find(p => p.id === selectedId);
+  const isEditing = viewState.mode === 'editing';
+  const selectedProfile = viewState.mode === 'editing' || viewState.mode === 'diagnostics' || viewState.mode === 'certifications' 
+    ? profiles.find(p => p.id === viewState.profileId) 
+    : null;
 
   // ── Data loading ──
   const loadProfiles = async () => {
@@ -145,13 +146,11 @@ export const AiModelProfilesPage: React.FC = () => {
   });
 
   const openCreateModal = () => {
-    setSelectedId(null);
     setForm(providers[0] ? applyProviderToForm(emptyForm, providers[0]) : emptyForm);
-    setShowProfileModal(true);
+    setViewState({ mode: 'creating' });
   };
 
   const openEditModal = (profile: AiModelProfile) => {
-    setSelectedId(profile.id);
     setForm({
       provider: profile.provider,
       modelName: profile.modelName,
@@ -180,12 +179,11 @@ export const AiModelProfilesPage: React.FC = () => {
       enabled: profile.enabled,
       creditCost: profile.creditCost ?? 1,
     });
-    setShowProfileModal(true);
+    setViewState({ mode: 'editing', profileId: profile.id });
   };
 
   const closeModal = () => {
-    setShowProfileModal(false);
-    setSelectedId(null);
+    setViewState({ mode: 'list' });
     setForm(emptyForm);
   };
 
@@ -193,8 +191,8 @@ export const AiModelProfilesPage: React.FC = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      if (selectedId) {
-        await superAdminApi.updateAiModelProfile(selectedId, form);
+      if (viewState.mode === 'editing') {
+        await superAdminApi.updateAiModelProfile(viewState.profileId, form);
         errorHandler.showSuccess(t('superAdmin.aiModels.messages.updated'));
       } else {
         await superAdminApi.createAiModelProfile(form);
@@ -214,7 +212,7 @@ export const AiModelProfilesPage: React.FC = () => {
     try {
       await superAdminApi.deleteAiModelProfile(profile.id);
       errorHandler.showSuccess(t('superAdmin.aiModels.messages.deleted'));
-      if (selectedId === profile.id) closeModal();
+      if (viewState.mode === 'editing' && viewState.profileId === profile.id) closeModal();
       await loadProfiles();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -284,26 +282,39 @@ export const AiModelProfilesPage: React.FC = () => {
   // ── Render ──
   return (
     <SuperAdminPage>
+      <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
+        <span>
+          <strong>Setting up a new AI model?</strong> Use the guided wizard instead of editing each piece by hand.
+        </span>
+        <button
+          type="button"
+          onClick={() => window.location.assign('/super-admin/ai-setup')}
+          className="flex-shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+        >
+          Open setup wizard
+        </button>
+      </div>
       {/* ── Page header ── */}
       <SuperAdminHeader
         title={t('superAdmin.aiModels.title')}
         description={t('superAdmin.aiModels.description')}
         meta={t('superAdmin.aiModels.meta', stats)}
         actions={
-          <div className="flex flex-wrap gap-2">
-            <button onClick={openCreateModal} className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              <Plus className="h-4 w-4" />
-              {t('superAdmin.aiModels.actions.new')}
-            </button>
-            <button onClick={handleSync} disabled={syncing} className="flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
-              <RefreshCw className={clsx('h-4 w-4', syncing && 'animate-spin')} />
-              {t('superAdmin.aiModels.actions.sync')}
-            </button>
-          </div>
+          viewState.mode === 'list' && (
+            <div className="flex flex-wrap gap-2">
+              <button onClick={openCreateModal} className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <Plus className="h-4 w-4" />
+                {t('superAdmin.aiModels.actions.new')}
+              </button>
+              <button onClick={handleSync} disabled={syncing} className="flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+                <RefreshCw className={clsx('h-4 w-4', syncing && 'animate-spin')} />
+                {t('superAdmin.aiModels.actions.sync')}
+              </button>
+            </div>
+          )
         }
       />
 
-      {/* ── Full-width table ── */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <SuperAdminSearchInput
@@ -353,7 +364,7 @@ export const AiModelProfilesPage: React.FC = () => {
                 <tr key={profile.id} className={tableRowClass}>
                   <td className={tableCellClass}>
                     <button onClick={() => openEditModal(profile)} className="text-left">
-                      <div className="font-medium text-blue-700 hover:underline">{profile.modelName}</div>
+                      <div className="font-medium text-blue-700 hover:underline">{profile.displayName || profile.modelName}</div>
                       {profile.modelId && <div className="font-mono text-xs text-slate-500">{profile.modelId}</div>}
                     </button>
                   </td>
@@ -388,35 +399,36 @@ export const AiModelProfilesPage: React.FC = () => {
                     </div>
                   </td>
                   <td className={tableCellClass}>
-                    <ActionMenu items={[
-                      {
-                        label: t('superAdmin.aiModels.actions.edit'),
-                        icon: <Bot className="h-3.5 w-3.5" />,
-                        onClick: () => openEditModal(profile),
-                      },
-                      {
-                        label: t('superAdmin.aiModels.actions.runDiagnostics', 'Run Diagnostics'),
-                        icon: <Activity className="h-3.5 w-3.5" />,
-                        onClick: () => {
-                          setDiagnosticsProfile(profile);
-                          setShowDiagnosticsModal(true);
-                        },
-                      },
-                      {
-                        label: t('superAdmin.aiModels.certifications.openModal', 'Manage Certifications'),
-                        icon: <ShieldCheck className="h-3.5 w-3.5" />,
-                        onClick: () => {
-                          setCertProfile(profile);
-                          setShowCertModal(true);
-                        },
-                      },
-                      {
-                        label: t('superAdmin.aiModels.actions.delete'),
-                        icon: <Trash2 className="h-3.5 w-3.5" />,
-                        onClick: () => handleDelete(profile),
-                        variant: 'danger' as const,
-                      },
-                    ]} />
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEditModal(profile)}
+                        title={t('superAdmin.aiModels.actions.edit')}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                      >
+                        <Bot className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setViewState({ mode: 'diagnostics', profileId: profile.id })}
+                        title={t('superAdmin.aiModels.actions.runDiagnostics', 'Run Diagnostics')}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                      >
+                        <Activity className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setViewState({ mode: 'certifications', profileId: profile.id })}
+                        title={t('superAdmin.aiModels.certifications.openModal', 'Manage Certifications')}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-green-50 hover:text-green-600 transition-colors"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(profile)}
+                        title={t('superAdmin.aiModels.actions.delete')}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -424,16 +436,13 @@ export const AiModelProfilesPage: React.FC = () => {
           </tbody>
         </SuperAdminTable>
       </div>
-
-      {/* ── Profile Modal ── */}
-      {showProfileModal && (
+      {(viewState.mode === 'creating' || viewState.mode === 'editing') && (
         <SuperAdminModal
           title={isEditing ? t('superAdmin.aiModels.form.editTitle') : t('superAdmin.aiModels.form.createTitle')}
-          subtitle={isEditing && selectedProfile ? `${selectedProfile.provider} / ${selectedProfile.modelId || selectedProfile.modelName}` : undefined}
           onClose={closeModal}
-          size="xl"
+          size="lg"
           footer={
-            <div className="flex items-center justify-between">
+            <div className="flex w-full items-center justify-between">
               <div>
                 {isEditing && selectedProfile && (
                   <button
@@ -461,6 +470,7 @@ export const AiModelProfilesPage: React.FC = () => {
             </div>
           }
         >
+
           <div className="space-y-6">
             {/* ── Section 1: Profile Details ── */}
             <div className="space-y-4">
@@ -499,7 +509,25 @@ export const AiModelProfilesPage: React.FC = () => {
                     <p className="mt-1 text-xs text-slate-500">{form.providerId}</p>
                   )}
                 </label>
-                <FormInput label={t('superAdmin.aiModels.form.modelName')} value={form.modelName} onChange={value => setForm({ ...form, modelName: value })} />
+                <FormInput
+                  label={t('superAdmin.aiModels.form.modelName', 'Technical Model Name')}
+                  value={form.modelName}
+                  disabled={isEditing}
+                  onChange={value => {
+                    const updated: Partial<UpsertAiModelProfilePayload> = { modelName: value };
+                    if (!isEditing && (!form.displayName || form.displayName === form.modelName)) {
+                      updated.displayName = value;
+                    }
+                    setForm({ ...form, ...updated });
+                  }}
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormInput
+                  label={t('superAdmin.aiModels.form.displayName', 'Display Name (Friendly Label)')}
+                  value={form.displayName || ''}
+                  onChange={value => setForm({ ...form, displayName: value })}
+                />
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <label className="block text-sm">
@@ -576,11 +604,6 @@ export const AiModelProfilesPage: React.FC = () => {
                 <FormInput label={t('superAdmin.aiModels.form.retryPolicy')} value={form.retryPolicy || 'default'} onChange={value => setForm({ ...form, retryPolicy: value || 'default' })} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormInput label={t('superAdmin.aiModels.form.dataFilterPolicyId')} value={form.dataFilterPolicyId || ''} onChange={value => setForm({ ...form, dataFilterPolicyId: value || undefined })} />
-                <FormInput label={t('superAdmin.aiModels.form.safetyPolicyId')} value={form.safetyPolicyId || ''} onChange={value => setForm({ ...form, safetyPolicyId: value || undefined })} />
-              </div>
-              <FormInput label={t('superAdmin.aiModels.form.systemPromptPolicyId')} value={form.systemPromptPolicyId || ''} onChange={value => setForm({ ...form, systemPromptPolicyId: value || undefined })} />
-              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <FormInput
                     label={t('superAdmin.aiModels.form.creditCost', { defaultValue: 'Credit cost per chat' })}
@@ -601,31 +624,28 @@ export const AiModelProfilesPage: React.FC = () => {
               <div className="grid gap-3 sm:grid-cols-2">
                 <FormCheckbox label={t('superAdmin.aiModels.form.enabled')} checked={form.enabled ?? true} onChange={checked => setForm({ ...form, enabled: checked })} />
               </div>
+              </div>
             </div>
-          </div>
         </SuperAdminModal>
       )}
-
       {/* ── Diagnostics Modal ── */}
-      {showDiagnosticsModal && diagnosticsProfile && (
+      {viewState.mode === 'diagnostics' && selectedProfile && (
         <SuperAdminDiagnosticsModal
-          profile={diagnosticsProfile}
-          isOpen={showDiagnosticsModal}
+          profile={selectedProfile}
+          isOpen={true}
           onClose={() => {
-            setShowDiagnosticsModal(false);
-            setDiagnosticsProfile(null);
+            setViewState({ mode: 'list' });
           }}
         />
       )}
 
       {/* ── Certification Manager Modal ── */}
-      {showCertModal && certProfile && (
+      {viewState.mode === 'certifications' && selectedProfile && (
         <CertificationManagerModal
-          profile={certProfile}
-          isOpen={showCertModal}
+          profile={selectedProfile}
+          isOpen={true}
           onClose={() => {
-            setShowCertModal(false);
-            setCertProfile(null);
+            setViewState({ mode: 'list' });
           }}
           onCertChange={() => { loadProfiles(); }}
         />
@@ -640,11 +660,18 @@ const FormInput: React.FC<{
   label: string;
   value: string;
   type?: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
-}> = ({ label, value, type = 'text', onChange }) => (
+}> = ({ label, value, type = 'text', disabled = false, onChange }) => (
   <label className="block text-sm">
     <span className="mb-1 block font-medium text-slate-700">{label}</span>
-    <input type={type} value={value} onChange={event => onChange(event.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2" />
+    <input
+      type={type}
+      value={value}
+      disabled={disabled}
+      onChange={event => onChange(event.target.value)}
+      className="w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
+    />
   </label>
 );
 

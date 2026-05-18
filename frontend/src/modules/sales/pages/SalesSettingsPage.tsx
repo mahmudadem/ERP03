@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { SalesSettingsDTO, salesApi, GovernanceRuleDTO } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
@@ -20,6 +21,7 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
 
 const SalesSettingsPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
@@ -80,14 +82,14 @@ const SalesSettingsPage: React.FC = () => {
 
   const addRule = () => {
     if (!newRule.persona || !newRule.action || !newRule.scope) return;
+    if (newRule.scope === 'form' && !newRule.formType?.trim()) return;
 
     const rule: GovernanceRuleDTO = {
       id: Date.now().toString(36),
       persona: newRule.persona as any,
       action: newRule.action as any,
       scope: newRule.scope as any,
-      branchId: newRule.branchId,
-      formType: newRule.formType,
+      formType: newRule.scope === 'form' ? newRule.formType?.trim() : undefined,
     };
 
     const currentRules = settings?.governanceRules || [];
@@ -231,18 +233,15 @@ const SalesSettingsPage: React.FC = () => {
 
                 {settings.workflowMode === 'OPERATIONAL' ? (
                   <>
-                    <label className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-indigo-200 transition shadow-sm">
-                      <div>
-                        <div className="text-sm font-bold text-gray-900">Allow Direct Invoicing</div>
-                        <div className="text-xs text-gray-500 uppercase tracking-tight">Invoice customers without a preceding SO/DN.</div>
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm">
+                      <div className="flex gap-2">
+                        <Info size={14} className="flex-shrink-0 text-amber-700 mt-0.5" />
+                        <div className="text-xs text-amber-800">
+                          {t('sales.governance.settingsOperationalHint', 'Operational workflow blocks direct invoicing by default. To allow direct invoices, add a governance rule in the')}{' '}
+                          <button onClick={() => setActiveTab('governance')} className="underline font-semibold hover:text-amber-900">{t('sales.governance.goToGovernanceTab', 'Governance tab')}</button>.
+                        </div>
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={settings.allowDirectInvoicing}
-                        onChange={(e) => updateSetting('allowDirectInvoicing', e.target.checked)}
-                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </label>
+                    </div>
 
                     <label className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-indigo-200 transition shadow-sm">
                       <div>
@@ -259,7 +258,7 @@ const SalesSettingsPage: React.FC = () => {
                   </>
                 ) : (
                   <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
-                    Simple workflow automatically enables direct invoicing and hides Sales Orders and Delivery Notes from end users.
+                    Simple workflow enables direct invoicing by default. Sales Orders and Delivery Notes are hidden from end users.
                   </div>
                 )}
               </div>
@@ -429,7 +428,7 @@ const SalesSettingsPage: React.FC = () => {
       {activeTab === 'governance' && (
         <SettingsSection
           title="Governance Rules"
-          description="Override default document policies at the company, branch, or form level."
+          description={t('sales.governance.sectionDescription', 'Override default document policies at the company or form level.')}
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
@@ -519,28 +518,20 @@ const SalesSettingsPage: React.FC = () => {
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.scope}
-                        onChange={(e) => setNewRule({ ...newRule, scope: e.target.value as any })}
+                        onChange={(e) => setNewRule({
+                          ...newRule,
+                          scope: e.target.value as any,
+                          branchId: undefined,
+                          formType: e.target.value === 'form' ? newRule.formType : undefined,
+                        })}
                       >
                         <option value="company">Company</option>
-                        <option value="branch">Branch</option>
                         <option value="form">Form</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    {newRule.scope === 'branch' && (
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Branch ID</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. branch-001"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          value={newRule.branchId || ''}
-                          onChange={(e) => setNewRule({ ...newRule, branchId: e.target.value })}
-                        />
-                      </div>
-                    )}
                     {newRule.scope === 'form' && (
                       <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Form Type</label>
@@ -590,7 +581,11 @@ const SalesSettingsPage: React.FC = () => {
                           <td className="px-4 py-3 font-medium capitalize">{rule.persona}</td>
                           <td className="px-4 py-3 capitalize text-gray-600">{rule.scope}</td>
                           <td className="px-4 py-3 text-gray-500 italic">
-                            {rule.scope === 'company' ? 'Global' : rule.scope === 'branch' ? rule.branchId : rule.formType}
+                            {rule.scope === 'company'
+                              ? 'Global'
+                              : rule.scope === 'branch'
+                                ? t('sales.governance.branchRuleDeferred', '{{branchId}} (not active on invoices yet)', { branchId: rule.branchId || 'Branch rule' })
+                                : rule.formType}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${rule.action === 'allow' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

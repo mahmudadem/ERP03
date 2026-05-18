@@ -4,6 +4,8 @@ import { AiModelCertificationResult } from '../../../domain/ai-assistant/entitie
 import { AiModelProfile } from '../../../domain/ai-assistant/entities/AiModelProfile';
 import { IAiModelCertificationRepository } from '../../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
+import { ProviderFactory } from '../../../application/ai-assistant/providers/ProviderFactory';
+import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 
 class InMemoryProfileRepo implements IAiModelProfileRepository {
   profiles = new Map<string, AiModelProfile>();
@@ -103,7 +105,7 @@ describe('AiModelCertificationUseCase', () => {
       get: jest.fn(),
     } as any;
     const mockEngine = {
-      run: jest.fn().mockImplementation((input: any) => {
+      run: jest.fn().mockImplementation((input: any, provider?: any) => {
         const base = {
           id: `cert-${Date.now()}`,
           scope: input.scope,
@@ -113,15 +115,15 @@ describe('AiModelCertificationUseCase', () => {
           profileHash: input.profileHash,
           category: input.category,
           moduleId: input.moduleId || '',
-          score: 100,
+          score: provider ? 100 : 40,
           maxScore: 100,
-          status: 'CERTIFIED',
+          status: provider ? 'CERTIFIED' : 'FAILED',
           testSuiteVersion: input.manual?.testSuiteVersion || 'manual-v1',
           toolContractVersion: input.manual?.toolContractVersion || AI_TOOL_CONTRACT_VERSION,
           dataFilterPolicyVersion: input.manual?.dataFilterPolicyVersion || AI_DATA_FILTER_POLICY_VERSION,
           testedAt: new Date().toISOString(),
           testedBy: input.testedBy || 'test',
-          summary: input.manual?.summary || 'Certified',
+          summary: input.manual?.summary || (provider ? 'Certified' : 'AI Deep Probe skipped'),
           failureReasons: input.manual?.failureReasons || [],
           metadata: input.manual?.metadata || {},
         };
@@ -243,5 +245,118 @@ describe('AiModelCertificationUseCase', () => {
 
     expect(sameTenant).toHaveLength(1);
     expect(otherTenant).toHaveLength(0);
+  });
+
+  describe('runShellCertification with pre-flight diagnostics', () => {
+    let mockProvider: any;
+
+    beforeEach(() => {
+      mockProvider = {
+        isAvailable: jest.fn(),
+        chat: jest.fn(),
+      };
+      jest.spyOn(ProviderFactory, 'getProviderStrict').mockReturnValue(mockProvider);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('records network check failure when isAvailable returns false', async () => {
+      const profile = makeProfile({ scope: 'TENANT', tenantId: 'tenant-1' });
+      await profileRepo.save(profile);
+      mockProvider.isAvailable.mockResolvedValue(false);
+
+      const mockSettingsRepo = (useCase as any).settingsRepository;
+      mockSettingsRepo.getConfig.mockResolvedValue(AiProviderConfig.fromJSON({
+        companyId: 'tenant-1',
+        isEnabled: true,
+        provider: 'openai_compatible',
+        model: 'gpt-4o',
+        apiKey: 'plain:test-key',
+        updatedAt: new Date().toISOString(),
+      }));
+
+      const result = await useCase.runShellCertification({
+        scope: 'TENANT',
+        tenantId: 'tenant-1',
+        modelProfileId: profile.id,
+        profileHash: profile.profileHash,
+        category: 'ACCOUNTING',
+        testedBy: 'test-user',
+      });
+
+      expect(result.status).toBe('FAILED');
+      expect(result.summary).toContain('Provider network check failed');
+      expect(result.metadata?.preflightDiagnostic).toMatchObject({
+        networkOk: false,
+        inferenceOk: false,
+      });
+    });
+
+    it('records inference failure when chat throws an error', async () => {
+      const profile = makeProfile({ scope: 'TENANT', tenantId: 'tenant-1' });
+      await profileRepo.save(profile);
+      mockProvider.isAvailable.mockResolvedValue(true);
+      mockProvider.chat.mockRejectedValue(new Error('Inference limit exceeded'));
+
+      const mockSettingsRepo = (useCase as any).settingsRepository;
+      mockSettingsRepo.getConfig.mockResolvedValue(AiProviderConfig.fromJSON({
+        companyId: 'tenant-1',
+        isEnabled: true,
+        provider: 'openai_compatible',
+        model: 'gpt-4o',
+        apiKey: 'plain:test-key',
+        updatedAt: new Date().toISOString(),
+      }));
+
+      const result = await useCase.runShellCertification({
+        scope: 'TENANT',
+        tenantId: 'tenant-1',
+        modelProfileId: profile.id,
+        profileHash: profile.profileHash,
+        category: 'ACCOUNTING',
+        testedBy: 'test-user',
+      });
+
+      expect(result.status).toBe('FAILED');
+      expect(result.summary).toContain('Inference limit exceeded');
+      expect(result.metadata?.preflightDiagnostic).toMatchObject({
+        networkOk: true,
+        inferenceOk: false,
+      });
+    });
+
+    it('records success and passes the provider when pre-flight succeeds', async () => {
+      const profile = makeProfile({ scope: 'TENANT', tenantId: 'tenant-1' });
+      await profileRepo.save(profile);
+      mockProvider.isAvailable.mockResolvedValue(true);
+      mockProvider.chat.mockResolvedValue({ content: 'provider-ok' });
+
+      const mockSettingsRepo = (useCase as any).settingsRepository;
+      mockSettingsRepo.getConfig.mockResolvedValue(AiProviderConfig.fromJSON({
+        companyId: 'tenant-1',
+        isEnabled: true,
+        provider: 'openai_compatible',
+        model: 'gpt-4o',
+        apiKey: 'plain:test-key',
+        updatedAt: new Date().toISOString(),
+      }));
+
+      const result = await useCase.runShellCertification({
+        scope: 'TENANT',
+        tenantId: 'tenant-1',
+        modelProfileId: profile.id,
+        profileHash: profile.profileHash,
+        category: 'ACCOUNTING',
+        testedBy: 'test-user',
+      });
+
+      expect(result.status).toBe('CERTIFIED');
+      expect(result.metadata?.preflightDiagnostic).toMatchObject({
+        networkOk: true,
+        inferenceOk: true,
+      });
+    });
   });
 });

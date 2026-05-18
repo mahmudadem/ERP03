@@ -9,6 +9,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import client from '../../../api/client';
+import {
+  SuperAdminHeader,
+  SuperAdminPage,
+  SuperAdminPanel,
+  SuperAdminLoading,
+} from '../components/SuperAdminPage';
 
 interface ProposalPolicy {
   id: string;
@@ -78,144 +84,173 @@ export function AiProposalPolicyPage() {
     }
   }, [summary, fetchSummary, t]);
 
-  if (loading) return <div className="p-6 text-center text-gray-500">{t('superAdmin.aiProposalPolicies.loading', 'Loading...')}</div>;
-  if (error && !summary) return <div className="p-6 text-red-600">{error}</div>;
+  if (loading) {
+    return (
+      <SuperAdminPage>
+        <SuperAdminLoading label={t('superAdmin.aiProposalPolicies.loading', 'Loading...')} />
+      </SuperAdminPage>
+    );
+  }
+
+  if (error && !summary) {
+    return (
+      <SuperAdminPage>
+        <SuperAdminHeader title={t('superAdmin.aiProposalPolicies.title', 'AI Proposal Policies')} />
+        <div className="p-6 text-red-600">{error}</div>
+      </SuperAdminPage>
+    );
+  }
+
   if (!summary) return null;
 
   const policy = summary.globalPolicy;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">
-        {t('superAdmin.aiProposalPolicies.title', 'AI Proposal Policies')}
-      </h1>
-      <p className="text-sm text-gray-500 mb-6">
-        {t('superAdmin.aiProposalPolicies.subtitle', 'Control which AI proposal types are enabled and set limits.')}
-      </p>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.aiProposalPolicies.title', 'AI Proposal Policies')}
+        description={t('superAdmin.aiProposalPolicies.subtitle', 'Control which AI proposal types are enabled and set limits.')}
+      />
 
-      {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>}
-      {successMsg && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">{successMsg}</div>}
+      <div className="mx-auto w-full max-w-4xl space-y-6">
+        {error && <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>}
+        {successMsg && <div className="p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">{successMsg}</div>}
 
-      {/* Global Settings */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">{t('superAdmin.aiProposalPolicies.globalSettings', 'Global Settings')}</h2>
-
-        {/* Enabled toggle */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="font-medium">{t('superAdmin.aiProposalPolicies.proposalSystemEnabled', 'Proposal System Enabled')}</p>
-            <p className="text-sm text-gray-500">{t('superAdmin.aiProposalPolicies.proposalSystemEnabledHelp', 'Master switch for the AI proposal sandbox')}</p>
+        {/* Global Settings */}
+        <SuperAdminPanel>
+          <div className="border-b border-slate-200 px-5 py-4">
+            <h2 className="text-base font-semibold text-slate-900">{t('superAdmin.aiProposalPolicies.globalSettings', 'Global Settings')}</h2>
           </div>
-          <button
-            onClick={() => updatePolicy({ enabled: !policy.enabled })}
-            disabled={saving}
-            className={`px-4 py-2 rounded text-sm font-medium ${policy.enabled ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            {policy.enabled ? t('superAdmin.aiProposalPolicies.status.enabled', 'Enabled') : t('superAdmin.aiProposalPolicies.status.disabled', 'Disabled')}
-          </button>
-        </div>
-
-        {/* Require Review */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="font-medium">{t('superAdmin.aiProposalPolicies.requireReview', 'Require Review')}</p>
-            <p className="text-sm text-gray-500">{t('superAdmin.aiProposalPolicies.requireReviewHelp', 'Proposals must be reviewed before acceptance')}</p>
-          </div>
-          <button
-            onClick={() => updatePolicy({ requireReview: !policy.requireReview })}
-            disabled={saving}
-            className={`px-4 py-2 rounded text-sm font-medium ${policy.requireReview ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            {policy.requireReview ? t('superAdmin.aiProposalPolicies.status.required', 'Required') : t('superAdmin.aiProposalPolicies.status.optional', 'Optional')}
-          </button>
-        </div>
-
-        {/* Safety lock */}
-        <div className="flex items-center justify-between mb-4 p-3 bg-red-50 border border-red-200 rounded">
-          <div>
-            <p className="font-medium text-red-800">{t('superAdmin.aiProposalPolicies.businessExecution', 'Business Execution')}</p>
-            <p className="text-sm text-red-600">{t('superAdmin.aiProposalPolicies.businessExecutionHelp', 'Proposals must NEVER execute real business actions')}</p>
-          </div>
-          <span className="px-4 py-2 rounded text-sm font-medium bg-red-600 text-white cursor-not-allowed">
-            {t('superAdmin.aiProposalPolicies.alwaysFalseLocked', 'ALWAYS FALSE (Locked)')}
-          </span>
-        </div>
-      </div>
-
-      {/* Daily Limits */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">{t('superAdmin.aiProposalPolicies.dailyLimits', 'Daily Limits')}</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('superAdmin.aiProposalPolicies.maxPerCompanyDay', 'Max Per Company/Day')}</label>
-            <input
-              type="number"
-              value={policy.maxProposalsPerDayPerCompany}
-              onChange={e => updatePolicy({ maxProposalsPerDayPerCompany: parseInt(e.target.value) || 50 })}
-              disabled={saving}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('superAdmin.aiProposalPolicies.maxPerUserDay', 'Max Per User/Day')}</label>
-            <input
-              type="number"
-              value={policy.maxProposalsPerDayPerUser}
-              onChange={e => updatePolicy({ maxProposalsPerDayPerUser: parseInt(e.target.value) || 20 })}
-              disabled={saving}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Proposal Type Controls */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">{t('superAdmin.aiProposalPolicies.proposalTypeControls', 'Proposal Type Controls')}</h2>
-        <p className="text-sm text-gray-500 mb-3">{t('superAdmin.aiProposalPolicies.proposalTypeControlsHelp', 'Enable or disable specific proposal types. Disabled types take precedence.')}</p>
-
-        <div className="space-y-2">
-          {summary.registeredProposalTypes.map(type => {
-            const isDisabled = policy.disabledProposalTypes.includes(type);
-            return (
-              <div key={type} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                <span className="text-sm font-medium">{type}</span>
-                <button
-                  onClick={() => {
-                    const newDisabled = isDisabled
-                      ? policy.disabledProposalTypes.filter(t => t !== type)
-                      : [...policy.disabledProposalTypes, type];
-                    updatePolicy({ disabledProposalTypes: newDisabled });
-                  }}
-                  disabled={saving}
-                  className={`px-3 py-1 rounded text-xs font-medium ${isDisabled ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
-                >
-                  {isDisabled ? t('superAdmin.aiProposalPolicies.status.disabled', 'Disabled') : t('superAdmin.aiProposalPolicies.status.enabled', 'Enabled')}
-                </button>
+          <div className="p-5 space-y-6">
+            {/* Enabled toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm text-slate-900">{t('superAdmin.aiProposalPolicies.proposalSystemEnabled', 'Proposal System Enabled')}</p>
+                <p className="text-xs text-slate-500">{t('superAdmin.aiProposalPolicies.proposalSystemEnabledHelp', 'Master switch for the AI proposal sandbox')}</p>
               </div>
-            );
-          })}
-        </div>
-      </div>
+              <button
+                onClick={() => updatePolicy({ enabled: !policy.enabled })}
+                disabled={saving}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${policy.enabled ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+              >
+                {policy.enabled ? t('superAdmin.aiProposalPolicies.status.enabled', 'Enabled') : t('superAdmin.aiProposalPolicies.status.disabled', 'Disabled')}
+              </button>
+            </div>
 
-      {/* Summary Stats */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">{t('superAdmin.aiProposalPolicies.systemSummary', 'System Summary')}</h2>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="p-4 bg-gray-50 rounded">
-            <p className="text-2xl font-bold text-gray-900">{summary.registeredProposalTypes.length}</p>
-            <p className="text-sm text-gray-500">{t('superAdmin.aiProposalPolicies.registeredTypes', 'Registered Types')}</p>
+            {/* Require Review */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm text-slate-900">{t('superAdmin.aiProposalPolicies.requireReview', 'Require Review')}</p>
+                <p className="text-xs text-slate-500">{t('superAdmin.aiProposalPolicies.requireReviewHelp', 'Proposals must be reviewed before acceptance')}</p>
+              </div>
+              <button
+                onClick={() => updatePolicy({ requireReview: !policy.requireReview })}
+                disabled={saving}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${policy.requireReview ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+              >
+                {policy.requireReview ? t('superAdmin.aiProposalPolicies.status.required', 'Required') : t('superAdmin.aiProposalPolicies.status.optional', 'Optional')}
+              </button>
+            </div>
+
+            {/* Safety lock */}
+            <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div>
+                <p className="font-medium text-sm text-red-800">{t('superAdmin.aiProposalPolicies.businessExecution', 'Business Execution')}</p>
+                <p className="text-xs text-red-600">{t('superAdmin.aiProposalPolicies.businessExecutionHelp', 'Proposals must NEVER execute real business actions')}</p>
+              </div>
+              <span className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white cursor-not-allowed">
+                {t('superAdmin.aiProposalPolicies.alwaysFalseLocked', 'ALWAYS FALSE (Locked)')}
+              </span>
+            </div>
           </div>
-          <div className="p-4 bg-gray-50 rounded">
-            <p className="text-2xl font-bold text-gray-900">{summary.disabledTypes.length}</p>
-            <p className="text-sm text-gray-500">{t('superAdmin.aiProposalPolicies.disabledTypes', 'Disabled Types')}</p>
+        </SuperAdminPanel>
+
+        {/* Daily Limits */}
+        <SuperAdminPanel>
+          <div className="border-b border-slate-200 px-5 py-4">
+            <h2 className="text-base font-semibold text-slate-900">{t('superAdmin.aiProposalPolicies.dailyLimits', 'Daily Limits')}</h2>
           </div>
-          <div className="p-4 bg-gray-50 rounded">
-            <p className="text-2xl font-bold text-gray-900">{summary.companyPolicyCount}</p>
-            <p className="text-sm text-gray-500">{t('superAdmin.aiProposalPolicies.companyOverrides', 'Company Overrides')}</p>
+          <div className="p-5">
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t('superAdmin.aiProposalPolicies.maxPerCompanyDay', 'Max Per Company/Day')}</label>
+                <input
+                  type="number"
+                  value={policy.maxProposalsPerDayPerCompany}
+                  onChange={e => updatePolicy({ maxProposalsPerDayPerCompany: parseInt(e.target.value) || 50 })}
+                  disabled={saving}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t('superAdmin.aiProposalPolicies.maxPerUserDay', 'Max Per User/Day')}</label>
+                <input
+                  type="number"
+                  value={policy.maxProposalsPerDayPerUser}
+                  onChange={e => updatePolicy({ maxProposalsPerDayPerUser: parseInt(e.target.value) || 20 })}
+                  disabled={saving}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        </SuperAdminPanel>
+
+        {/* Proposal Type Controls */}
+        <SuperAdminPanel>
+          <div className="border-b border-slate-200 px-5 py-4">
+            <h2 className="text-base font-semibold text-slate-900">{t('superAdmin.aiProposalPolicies.proposalTypeControls', 'Proposal Type Controls')}</h2>
+            <p className="mt-1 text-xs text-slate-500">{t('superAdmin.aiProposalPolicies.proposalTypeControlsHelp', 'Enable or disable specific proposal types. Disabled types take precedence.')}</p>
+          </div>
+          <div className="p-5">
+            <div className="space-y-3">
+              {summary.registeredProposalTypes.map(type => {
+                const isDisabled = policy.disabledProposalTypes.includes(type);
+                return (
+                  <div key={type} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                    <span className="text-sm font-medium text-slate-700">{type}</span>
+                    <button
+                      onClick={() => {
+                        const newDisabled = isDisabled
+                          ? policy.disabledProposalTypes.filter(t => t !== type)
+                          : [...policy.disabledProposalTypes, type];
+                        updatePolicy({ disabledProposalTypes: newDisabled });
+                      }}
+                      disabled={saving}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-medium ${isDisabled ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                    >
+                      {isDisabled ? t('superAdmin.aiProposalPolicies.status.disabled', 'Disabled') : t('superAdmin.aiProposalPolicies.status.enabled', 'Enabled')}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </SuperAdminPanel>
+
+        {/* Summary Stats */}
+        <SuperAdminPanel>
+          <div className="border-b border-slate-200 px-5 py-4">
+            <h2 className="text-base font-semibold text-slate-900">{t('superAdmin.aiProposalPolicies.systemSummary', 'System Summary')}</h2>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-3 gap-6 text-center">
+              <div className="p-6 bg-slate-50 border border-slate-100 rounded-lg">
+                <p className="text-3xl font-bold text-slate-900">{summary.registeredProposalTypes.length}</p>
+                <p className="mt-1 text-xs font-medium text-slate-500 uppercase tracking-wider">{t('superAdmin.aiProposalPolicies.registeredTypes', 'Registered Types')}</p>
+              </div>
+              <div className="p-6 bg-slate-50 border border-slate-100 rounded-lg">
+                <p className="text-3xl font-bold text-slate-900">{summary.disabledTypes.length}</p>
+                <p className="mt-1 text-xs font-medium text-slate-500 uppercase tracking-wider">{t('superAdmin.aiProposalPolicies.disabledTypes', 'Disabled Types')}</p>
+              </div>
+              <div className="p-6 bg-slate-50 border border-slate-100 rounded-lg">
+                <p className="text-3xl font-bold text-slate-900">{summary.companyPolicyCount}</p>
+                <p className="mt-1 text-xs font-medium text-slate-500 uppercase tracking-wider">{t('superAdmin.aiProposalPolicies.companyOverrides', 'Company Overrides')}</p>
+              </div>
+            </div>
+          </div>
+        </SuperAdminPanel>
       </div>
-    </div>
+    </SuperAdminPage>
   );
 }

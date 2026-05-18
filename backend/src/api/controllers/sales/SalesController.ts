@@ -12,6 +12,7 @@ import {
   CreateSalesInvoiceUseCase,
   CreateAndPostSalesInvoiceUseCase,
   GetSalesInvoiceUseCase,
+  GetInvoiceableLinkedSalesSourceUseCase,
   ListSalesInvoicesUseCase,
   PostSalesInvoiceUseCase,
   UpdateSalesInvoiceUseCase,
@@ -336,6 +337,26 @@ export class SalesController {
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toOrderDTO(so),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getInvoiceableLinkedSource(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const salesOrderId = String((req as any).params.id);
+      const useCase = new GetInvoiceableLinkedSalesSourceUseCase(
+        diContainer.salesOrderRepository,
+        diContainer.deliveryNoteRepository,
+        diContainer.salesInvoiceRepository
+      );
+      const source = await useCase.execute(companyId, salesOrderId);
+
+      (res as any).json({
+        success: true,
+        data: source,
       });
     } catch (error) {
       next(error);
@@ -919,7 +940,8 @@ export class SalesController {
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
         diContainer.companyCurrencyRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        diContainer.accountRepository
       );
       const result = await useCase.execute(companyId, userId, id, {
         settlementMode: body.settlementMode || 'CASH_FULL',

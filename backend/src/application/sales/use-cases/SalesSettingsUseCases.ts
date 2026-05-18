@@ -1,6 +1,10 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
-import { SalesSettings, GovernanceRule } from '../../../domain/sales/entities/SalesSettings';
+import {
+  GovernanceRule,
+  SalesPaymentMethodConfig,
+  SalesSettings,
+} from '../../../domain/sales/entities/SalesSettings';
 import { PostingRole } from '../../../domain/designer/entities/PostingRole';
 import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
@@ -149,6 +153,7 @@ export interface InitializeSalesInput {
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
+  paymentMethodConfigs?: SalesPaymentMethodConfig[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -176,6 +181,7 @@ export interface UpdateSalesSettingsInput {
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
+  paymentMethodConfigs?: SalesPaymentMethodConfig[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -249,6 +255,7 @@ export class InitializeSalesUseCase {
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? 30,
+      paymentMethodConfigs: input.paymentMethodConfigs ?? [],
       governanceRules: input.governanceRules ?? [],
       defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId,
@@ -389,6 +396,7 @@ export class UpdateSalesSettingsUseCase {
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? existing.overDeliveryTolerancePct,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? existing.overInvoiceTolerancePct,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? existing.defaultPaymentTermsDays,
+      paymentMethodConfigs: input.paymentMethodConfigs ?? existing.paymentMethodConfigs,
       governanceRules: input.governanceRules ?? existing.governanceRules,
       defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? existing.defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId ?? existing.defaultWarehouseId,

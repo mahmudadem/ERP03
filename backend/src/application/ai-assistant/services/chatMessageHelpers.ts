@@ -105,6 +105,8 @@ export function generateTitle(message: string): string {
 
 /**
  * Resolve the model capability profile for a given provider/model combination.
+ * When selectedModelProfileId is available, fetches the profile directly by ID
+ * to avoid provider/modelName string-matching mismatches.
  * Falls back to the default catalog if no profile use case is available.
  */
 export async function resolveModelProfile(
@@ -112,8 +114,15 @@ export async function resolveModelProfile(
   tenantId: string,
   provider: string,
   modelName: string | null | undefined,
+  selectedModelProfileId?: string,
 ): Promise<AiModelProfile> {
   if (modelProfileUseCase) {
+    if (selectedModelProfileId) {
+      const profile = await modelProfileUseCase.getProfileById(selectedModelProfileId);
+      if (profile) {
+        return modelProfileUseCase.toRuntimeProfile(profile);
+      }
+    }
     return modelProfileUseCase.resolveRuntimeProfile(tenantId, provider, modelName);
   }
   return AiModelCapabilityCatalog.getProfile(provider, modelName);

@@ -308,7 +308,12 @@ describe('Sales document number uniqueness', () => {
   it('allows direct sales invoices in operational mode when direct invoicing is enabled', async () => {
     const settings = makeSettings();
     settings.workflowMode = 'OPERATIONAL';
+    // In the new governance model, allowDirectInvoicing alone is not enough.
+    // A company-scope governance rule is required to allow direct invoicing in OPERATIONAL mode.
     settings.allowDirectInvoicing = true;
+    settings.governanceRules = [
+      { id: 'g1', scope: 'company', action: 'allow', persona: 'direct' },
+    ];
     const item = makeItem();
     const createdInvoices: any[] = [];
     const useCase = new CreateSalesInvoiceUseCase(
@@ -350,6 +355,56 @@ describe('Sales document number uniqueness', () => {
     expect(createdInvoices).toHaveLength(1);
     expect(createdInvoices[0].formType).toBe('sales_invoice_direct');
     expect(createdInvoices[0].voucherType).toBe('sales_invoice');
+    expect(createdInvoices[0].persona).toBe('direct');
+  });
+
+  it('allows direct sales invoices in operational mode through a matching form governance rule', async () => {
+    const settings = makeSettings();
+    settings.workflowMode = 'OPERATIONAL';
+    settings.allowDirectInvoicing = true;
+    settings.governanceRules = [
+      { id: 'g-form', scope: 'form', action: 'allow', persona: 'direct', formType: 'sales_invoice_direct' },
+    ];
+    const item = makeItem();
+    const createdInvoices: any[] = [];
+    const useCase = new CreateSalesInvoiceUseCase(
+      {
+        getSettings: jest.fn(async () => settings),
+        saveSettings: jest.fn(async () => undefined),
+      } as any,
+      {
+        create: jest.fn(async (si: any) => createdInvoices.push(si)),
+        update: jest.fn(),
+        getById: jest.fn(),
+        getByNumber: jest.fn(async () => null),
+        list: jest.fn(),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn() } as any,
+      { getById: jest.fn(async () => makeCustomer()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      {
+        getBaseCurrency: jest.fn(async () => 'USD'),
+        isEnabled: jest.fn(async () => true),
+      } as any
+    );
+
+    await useCase.execute({
+      companyId: COMPANY_ID,
+      formType: 'sales_invoice_direct',
+      voucherType: 'sales_invoice_direct',
+      persona: 'direct',
+      customerId: 'cus-1',
+      invoiceDate: '2026-01-12',
+      currency: 'USD',
+      exchangeRate: 1,
+      lines: [{ itemId: 'item-1', invoicedQty: 1, unitPriceDoc: 10, warehouseId: 'wh-1' }],
+      createdBy: USER_ID,
+    });
+
+    expect(createdInvoices).toHaveLength(1);
+    expect(createdInvoices[0].formType).toBe('sales_invoice_direct');
     expect(createdInvoices[0].persona).toBe('direct');
   });
 

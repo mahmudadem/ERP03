@@ -1,8 +1,10 @@
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { ILedgerRepository, TrialBalanceRow, GLFilters, AccountStatementData, AccountStatementEntry, ForeignBalanceRow } from '../../../../repository/interfaces/accounting/ILedgerRepository';
+import { IAccountRepository } from '../../../../repository/interfaces/accounting/IAccountRepository';
 import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
 import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
+import { VoucherValidationService } from '../../../../domain/accounting/services/VoucherValidationService';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
 // serverTimestamp and toTimestamp moved to usage points for clarity or kept as helpers
@@ -121,7 +123,12 @@ const getAmountsBySide = (entry: any, targetAccountCurrency: string | undefined,
 };
 
 export class FirestoreLedgerRepository implements ILedgerRepository {
-  constructor(private db: admin.firestore.Firestore) {}
+  private readonly validationService = new VoucherValidationService();
+
+  constructor(
+    private db: admin.firestore.Firestore,
+    private accountRepo?: IAccountRepository
+  ) {}
 
   private col(companyId: string) {
     // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> ledger (coll)
@@ -129,6 +136,8 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
   }
 
   async recordForVoucher(voucher: VoucherEntity, transaction?: admin.firestore.Transaction): Promise<void> {
+    await this.validateVoucherForLedger(voucher);
+
     try {
       const batch = !transaction ? this.db.batch() : null;
       
@@ -177,6 +186,15 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
     } catch (error) {
       throw new InfrastructureError('Failed to record ledger for voucher', error);
     }
+  }
+
+  private async validateVoucherForLedger(voucher: VoucherEntity): Promise<void> {
+    if (!this.accountRepo) {
+      throw new Error('Ledger repository is missing account validation dependency');
+    }
+
+    this.validationService.validateCore(voucher);
+    await this.validationService.validateAccounts(voucher, this.accountRepo);
   }
 
   async deleteForVoucher(companyId: string, voucherId: string, transaction?: admin.firestore.Transaction): Promise<void> {

@@ -229,7 +229,7 @@ export class CreatePurchaseInvoiceUseCase {
     const settings = await this.settingsRepo.getSettings(input.companyId);
     if (!settings) throw new Error('Purchases module is not initialized');
 
-    if (!DocumentPolicyResolver.isPurchaseInvoicePersonaAllowed(settings, input.persona as 'direct' | 'linked' | 'service')) {
+    if (!DocumentPolicyResolver.isPurchaseInvoicePersonaAllowed(settings, input.persona as 'direct' | 'linked' | 'service', { formType: input.formType })) {
       throw new Error(`Purchase invoice persona '${input.persona}' is not allowed by company governance policy`);
     }
 

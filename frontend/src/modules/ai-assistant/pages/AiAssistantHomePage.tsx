@@ -8,7 +8,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, FileText, Wrench, Mic, PanelLeftClose, PanelLeft, Copy, Check, Pin, PinOff, Edit3, Download, Archive, Paperclip, Globe, Lightbulb } from 'lucide-react';
+import { Send, Bot, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, FileText, Wrench, Mic, PanelLeftClose, PanelLeft, Copy, Check, Pin, PinOff, Edit3, Download, Archive, Paperclip, Globe, Lightbulb, Loader2 } from 'lucide-react';
 import {
   aiAssistantApi,
   ChatMessageDTO,
@@ -46,6 +46,9 @@ interface DisplayMessage {
   toolCallsRequested?: string[];
   toolCallResults?: ChatRuntimeMetadataDTO['toolResults'];
   actualRounds?: number;
+  usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+  durationMs?: number;
+  creditsUsed?: number;
 }
 
 export const AiAssistantHomePage: React.FC = () => {
@@ -57,6 +60,7 @@ export const AiAssistantHomePage: React.FC = () => {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState('');
+  const [streamingStage, setStreamingStage] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [conversations, setConversations] = useState<ConversationMetaDTO[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -73,6 +77,8 @@ export const AiAssistantHomePage: React.FC = () => {
   const [editingConvTitle, setEditingConvTitle] = useState('');
   const [followUps, setFollowUps] = useState<string[]>([]);
   const [hintIdx, setHintIdx] = useState(0);
+  const [currentModel, setCurrentModel] = useState<string | null>(null);
+  const [isModelReachable, setIsModelReachable] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -135,30 +141,39 @@ export const AiAssistantHomePage: React.FC = () => {
     }
   }, []);
 
-  // Load a specific conversation's messages
-  const loadConversation = useCallback(async (convId: string) => {
-    try {
-      const result = await aiAssistantApi.getConversationMessages(convId);
-      const historyMessages: DisplayMessage[] = (result.messages || []).map((msg: ChatMessageDTO) => {
-        const runtime = extractRuntimeMetadata(msg.metadata);
-        return {
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
-          timestamp: msg.createdAt,
-          provider: msg.provider,
-          model: msg.model,
-          toolResults: extractToolResults(msg.metadata),
-          proposal: (msg.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
-          ...runtime,
-        };
-      });
-      setConversationId(convId);
-      setMessages(historyMessages);
-    } catch {
-      console.warn('[AI Assistant] Could not load conversation');
-    }
-  }, [extractRuntimeMetadata, extractToolResults]);
+   // Load a specific conversation's messages
+   const loadConversation = useCallback(async (convId: string) => {
+     try {
+       const result = await aiAssistantApi.getConversationMessages(convId);
+       const historyMessages: DisplayMessage[] = (result.messages || []).map((msg: ChatMessageDTO) => {
+         const runtime = extractRuntimeMetadata(msg.metadata);
+         return {
+           id: msg.id,
+           role: msg.role as 'user' | 'assistant' | 'system',
+           content: msg.content,
+           timestamp: msg.createdAt,
+           provider: msg.provider,
+           model: msg.model,
+           toolResults: extractToolResults(msg.metadata),
+           proposal: (msg.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
+           ...runtime,
+         };
+       });
+       setConversationId(convId);
+       setMessages(historyMessages);
+       
+       // Set current model from the most recent assistant message if available
+       const recentAssistantMsg = historyMessages
+         .slice()
+         .reverse()
+         .find(m => m.role === 'assistant' && m.model);
+       if (recentAssistantMsg?.model) {
+         setCurrentModel(recentAssistantMsg.model);
+       }
+     } catch {
+       console.warn('[AI Assistant] Could not load conversation');
+     }
+   }, [extractRuntimeMetadata, extractToolResults]);
 
   // Initial load: conversation list + most recent conversation
   useEffect(() => {
@@ -206,8 +221,10 @@ export const AiAssistantHomePage: React.FC = () => {
     setHasSentFirst(true);
     setIsLoading(true);
     setStreamingContent('');
+    setStreamingStage('thinking');
 
     // Accumulate streaming state outside React for synchronous updates within the callback
+    const sendStartTime = Date.now();
     let accumulatedContent = '';
     const toolCallsRequested: string[] = [];
     const toolCallResults: ChatRuntimeMetadataDTO['toolResults'] = [];
@@ -218,7 +235,10 @@ export const AiAssistantHomePage: React.FC = () => {
       await streamMessage(
         { message: trimmed, conversationId },
         (event: AiStreamEvent) => {
-          if (event.type === 'token') {
+          if (event.type === 'status') {
+            setStreamingStage(event.stage);
+          } else if (event.type === 'token') {
+            setStreamingStage(null);
             accumulatedContent += event.content;
             setStreamingContent(accumulatedContent);
           } else if (event.type === 'tool_result') {
@@ -247,29 +267,46 @@ export const AiAssistantHomePage: React.FC = () => {
             } else {
               toolResults.push(newEntry);
             }
-          } else if (event.type === 'done') {
-            const meta = event.metadata;
-            const runtimeMeta = meta.runtimeMeta;
-            setStreamingContent('');
-            
-            const assistantMsg: DisplayMessage = {
-              id: `final_${Date.now()}`,
-              role: 'assistant',
-              content: accumulatedContent || '...',
-              timestamp: new Date().toISOString(),
-              provider: meta.provider,
-              model: meta.model,
-              runtimeStatus: runtimeMeta?.runtimeStatus,
-              selectedSkills: runtimeMeta?.selectedSkills,
-              allowedToolIds: runtimeMeta?.allowedToolIds,
-              modelProfile: runtimeMeta?.modelProfile,
-              runtimeWarnings: runtimeMeta?.runtimeWarnings,
-              toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
-              toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
-              toolResults: toolResults.length > 0 ? toolResults : undefined,
-              proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
-              actualRounds: runtimeMeta?.actualRounds || actualRounds,
-            };
+            } else if (event.type === 'done') {
+              const meta = event.metadata;
+              const runtimeMeta = meta.runtimeMeta;
+              setStreamingContent('');
+              setStreamingStage(null);
+              
+              const assistantMsg: DisplayMessage = {
+                id: `final_${Date.now()}`,
+                role: 'assistant',
+                content: accumulatedContent || '...',
+                timestamp: new Date().toISOString(),
+                provider: meta.provider,
+                model: meta.model,
+                runtimeStatus: runtimeMeta?.runtimeStatus,
+                selectedSkills: runtimeMeta?.selectedSkills,
+                allowedToolIds: runtimeMeta?.allowedToolIds,
+                modelProfile: runtimeMeta?.modelProfile,
+                runtimeWarnings: runtimeMeta?.runtimeWarnings,
+                toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
+                toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
+                toolResults: toolResults.length > 0 ? toolResults : undefined,
+                proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
+                actualRounds: runtimeMeta?.actualRounds || actualRounds,
+                usage: meta.usage,
+                durationMs: meta.durationMs ?? (Date.now() - sendStartTime),
+                creditsUsed: meta.creditsUsed,
+              };
+              
+              // Update current model state and reachability
+              if (meta.model) {
+                setCurrentModel(meta.model);
+                setIsModelReachable(true);
+              } else {
+                setIsModelReachable(false);
+              }
+             
+             // Update current model state
+             if (meta.model) {
+               setCurrentModel(meta.model);
+             }
 
             setMessages(prev => [...prev, assistantMsg]);
 
@@ -279,6 +316,7 @@ export const AiAssistantHomePage: React.FC = () => {
           } else if (event.type === 'error') {
             setError(event.message);
             setStreamingContent('');
+            setStreamingStage(null);
           }
         },
       );
@@ -321,6 +359,7 @@ export const AiAssistantHomePage: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+      setStreamingStage(null);
       inputRef.current?.focus();
     }
   }, [input, isLoading, conversationId, t, refreshConversations]);
@@ -469,6 +508,9 @@ export const AiAssistantHomePage: React.FC = () => {
 
   const formatModelStatus = (status: string): string => {
     switch (status) {
+      case 'recommended':
+      case 'CERTIFIED':
+        return t('chat.certifiedModel', 'Certified model');
       case 'tested':
         return t('chat.testedModel', 'Tested model');
       case 'experimental':
@@ -690,10 +732,19 @@ export const AiAssistantHomePage: React.FC = () => {
             <h1 className="text-sm font-medium text-gray-600">
               {t('chat.title', 'AI Assistant')}
             </h1>
-            <span className="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 text-[11px] text-gray-500 bg-gray-100/60 rounded-full">
-              <Globe className="w-3 h-3" />
-              ERP Data · Advisory
-            </span>
+              <span className="sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 text-[11px] text-gray-500 bg-gray-100/60 rounded-full">
+                <Globe className="w-3 h-3" />
+                ERP Data · Advisory
+              </span>
+              {currentModel && (
+                <span className="sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 text-[11px] text-gray-500 bg-gray-100/60 rounded-full ml-2">
+                  <Bot className="w-3 h-3" />
+                  <span className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded-full ${isModelReachable ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span>{currentModel}</span>
+                  </span>
+                </span>
+              )}
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -775,7 +826,7 @@ export const AiAssistantHomePage: React.FC = () => {
                               {formatModelProvider(msg)}
                             </span>
                           )}
-                          {msg.modelProfile?.status && msg.modelProfile.status !== 'recommended' && (
+                          {msg.modelProfile?.status && msg.modelProfile.status !== 'recommended' && msg.modelProfile.status !== 'CERTIFIED' && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] text-amber-700 border border-amber-100">
                               <AlertTriangle className="w-3 h-3" />
                               {formatModelStatus(msg.modelProfile.status)}
@@ -791,6 +842,26 @@ export const AiAssistantHomePage: React.FC = () => {
                             <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700 border border-indigo-100">
                               <Wrench className="w-3 h-3" />
                               {t('chat.toolsUsed', 'Tools used')}
+                            </span>
+                          )}
+                          {msg.durationMs != null && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100/60 px-2 py-1 text-[11px] text-gray-500">
+                              <Clock className="w-3 h-3" />
+                              {msg.durationMs < 1000
+                                ? `${msg.durationMs}ms`
+                                : `${(msg.durationMs / 1000).toFixed(1)}s`}
+                            </span>
+                          )}
+                          {msg.usage?.totalTokens != null && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100/60 px-2 py-1 text-[11px] text-gray-500" title={`Prompt: ${msg.usage.promptTokens ?? '?'} · Completion: ${msg.usage.completionTokens ?? '?'}`}>
+                              <Sparkles className="w-3 h-3" />
+                              {msg.usage.totalTokens.toLocaleString()} tokens
+                            </span>
+                          )}
+                          {msg.creditsUsed != null && msg.creditsUsed > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] text-emerald-700 border border-emerald-100">
+                              <Sparkles className="w-3 h-3" />
+                              {msg.creditsUsed} {msg.creditsUsed === 1 ? 'credit' : 'credits'}
                             </span>
                           )}
                         </div>
@@ -883,6 +954,26 @@ export const AiAssistantHomePage: React.FC = () => {
                   </div>
                 );
               })}
+
+              {/* Thinking / Status Indicator */}
+              {streamingStage && !streamingContent && (
+                <div className="flex gap-4 px-4 sm:px-6 lg:px-8 py-5 bg-gray-50/60 animate-fade-in">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-sm">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                    <span className="text-sm text-gray-500 animate-pulse">
+                      {streamingStage === 'thinking' && t('chat.status.thinking', 'Thinking...')}
+                      {streamingStage === 'fetching_data' && t('chat.status.fetchingData', 'Fetching data...')}
+                      {streamingStage === 'analyzing' && t('chat.status.analyzing', 'Analyzing...')}
+                      {streamingStage === 'generating' && t('chat.status.generating', 'Generating response...')}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Streaming Content */}
               {streamingContent && (

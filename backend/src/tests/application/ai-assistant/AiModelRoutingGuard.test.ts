@@ -144,7 +144,7 @@ describe('AiModelRoutingGuard', () => {
     expect(decision.code).toBe('PROVIDER_PROFILE_MISMATCH');
   });
 
-  it('rejects same modelId with a different endpoint/profile hash', async () => {
+  it('rejects same modelId with a different endpoint/profile hash as CERTIFICATION_STALE when prior cert exists for this profile+category', async () => {
     const profile = makeProfile();
     const differentEndpointProfile = makeProfile({
       id: 'profile-2',
@@ -152,6 +152,8 @@ describe('AiModelRoutingGuard', () => {
       profileHash: undefined,
     });
     await profileRepo.save(differentEndpointProfile);
+    // A cert exists for THIS profile id + category, but with a different profileHash
+    // (it was run against an older configuration of this same profile).
     await certRepo.save(makeCertification(profile, { modelProfileId: differentEndpointProfile.id }));
 
     const decision = await guard.validateSensitiveWorkflow({
@@ -162,7 +164,7 @@ describe('AiModelRoutingGuard', () => {
     });
 
     expect(decision.allowed).toBe(false);
-    expect(decision.code).toBe('CERTIFICATION_NOT_FOUND');
+    expect(decision.code).toBe('CERTIFICATION_STALE');
   });
 
   it('rejects stale selectedProfileHash', async () => {
@@ -253,5 +255,96 @@ describe('AiModelRoutingGuard', () => {
 
     expect(decision.allowed).toBe(false);
     expect(decision.code).toBe('TENANT_PROFILE_SCOPE_MISMATCH');
+  });
+
+  // ─── CREDITS-mode (platform-managed profile) behavior ─────────────────
+  //
+  // Tenants on CREDITS mode do NOT own the GLOBAL profile they pick. When
+  // superadmin edits the profile, the tenant's stored selectedProfileHash
+  // goes stale instantly. The tenant cannot fix that — it is the platform
+  // team's responsibility to keep certs in sync. The guard must therefore
+  // ignore the tenant's stored hash on this path and look up certs against
+  // the profile's CURRENT hash.
+
+  it('CREDITS + GLOBAL profile: allows even when tenant selectedProfileHash is stale, as long as a cert exists for the live hash', async () => {
+    const profile = makeProfile();
+    await profileRepo.save(profile);
+    await certRepo.save(makeCertification(profile));
+
+    const decision = await guard.validateSensitiveWorkflow({
+      tenantId: 'tenant-1',
+      config: makeConfig(profile, { runtimeMode: 'CREDITS', selectedProfileHash: 'something-old' }),
+      category: 'ACCOUNTING',
+      moduleId: 'accounting',
+    });
+
+    expect(decision.allowed).toBe(true);
+    expect(decision.certificationId).toBe('cert-1');
+  });
+
+  it('CREDITS + GLOBAL profile: when superadmin has not re-certified after editing the profile, returns PLATFORM_PROFILE_NEEDS_RECERT', async () => {
+    const profile = makeProfile();
+    await profileRepo.save(profile);
+    // Cert was created against an older config of this profile.
+    await certRepo.save(makeCertification(profile, { profileHash: 'old-hash-from-before-edit' }));
+
+    const decision = await guard.validateSensitiveWorkflow({
+      tenantId: 'tenant-1',
+      config: makeConfig(profile, { runtimeMode: 'CREDITS' }),
+      category: 'ACCOUNTING',
+      moduleId: 'accounting',
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.code).toBe('PLATFORM_PROFILE_NEEDS_RECERT');
+  });
+
+  it('CREDITS + GLOBAL profile: never honours the tenant allowUnverifiedModels opt-out', async () => {
+    const profile = makeProfile();
+    await profileRepo.save(profile);
+    // No cert at all — platform-managed profile is never opt-outable by tenant.
+
+    const decision = await guard.validateSensitiveWorkflow({
+      tenantId: 'tenant-1',
+      config: makeConfig(profile, { runtimeMode: 'CREDITS', allowUnverifiedModels: true }),
+      category: 'ACCOUNTING',
+      moduleId: 'accounting',
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.code).toBe('PLATFORM_PROFILE_NEEDS_RECERT');
+  });
+
+  it('BYOK + TENANT profile: still enforces the hash check (stored selectedProfileHash must match the live profile)', async () => {
+    const profile = makeProfile({ id: 'tenant-profile-1', scope: 'TENANT', tenantId: 'tenant-1' });
+    await profileRepo.save(profile);
+    await certRepo.save(makeCertification(profile));
+
+    const decision = await guard.validateSensitiveWorkflow({
+      tenantId: 'tenant-1',
+      config: makeConfig(profile, { runtimeMode: 'BYOK', selectedProfileHash: 'stale-hash' }),
+      category: 'ACCOUNTING',
+      moduleId: 'accounting',
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.code).toBe('STALE_PROFILE_HASH');
+  });
+
+  it('every rejection code carries a non-empty human-readable reason', async () => {
+    const profile = makeProfile();
+    await profileRepo.save(profile);
+
+    const decision = await guard.validateSensitiveWorkflow({
+      tenantId: 'tenant-1',
+      config: makeConfig(profile),
+      category: 'ACCOUNTING',
+      moduleId: 'accounting',
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.code).toBe('CERTIFICATION_NOT_FOUND');
+    expect(decision.reason && decision.reason.length).toBeGreaterThan(10);
+    expect(decision.reason).not.toBe('This model profile is not certified for this ERP module/workflow. Please select a certified profile or run company certification.');
   });
 });

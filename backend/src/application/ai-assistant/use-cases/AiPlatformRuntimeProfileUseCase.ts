@@ -8,12 +8,21 @@ import {
 import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
 import { IAiProviderRepository } from '../../../repository/interfaces/ai-assistant/IAiProviderRepository';
+import { IAiPlatformApiKeyRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformApiKeyRepository';
 
 export interface UpsertAiPlatformRuntimeProfileInput {
   id?: string;
   providerId: string;
   modelProfileId: string;
+  /** Inline API key — paste-once flow. Mutually exclusive with apiKeyId. */
   apiKey?: string;
+  /**
+   * Reference to a vault key. When provided, the use case looks the key up,
+   * decrypts it server-side, and stores it as the runtime profile's credential
+   * (with proper hint). Lets the wizard "pick from vault" without round-tripping
+   * the plaintext key through the frontend.
+   */
+  apiKeyId?: string;
   status?: AiPlatformRuntimeProfileStatus;
   maxRequestsPerInterval?: number;
   requestInterval?: AiPlatformRuntimeInterval;
@@ -26,6 +35,7 @@ export class AiPlatformRuntimeProfileUseCase {
     private readonly providerRepository: IAiProviderRepository,
     private readonly modelProfileRepository: IAiModelProfileRepository,
     private readonly encryptionService: IEncryptionService,
+    private readonly apiKeyRepository?: IAiPlatformApiKeyRepository,
   ) {}
 
   async listProfiles(): Promise<AiPlatformRuntimeProfile[]> {
@@ -64,7 +74,25 @@ export class AiPlatformRuntimeProfileUseCase {
 
     let encryptedCredential = existing?.encryptedCredential;
     let credentialHint = existing?.credentialHint;
-    if (input.apiKey !== undefined) {
+
+    // Vault reference wins over inline key when both are sent (apiKeyId is more
+    // specific). Looking up the vault key requires the apiKeyRepository to be
+    // wired — fall back to inline behavior if it isn't.
+    if (input.apiKeyId && this.apiKeyRepository) {
+      const vaultKey = await this.apiKeyRepository.getById(input.apiKeyId);
+      if (!vaultKey) {
+        throw ApiError.badRequest(`Vault key '${input.apiKeyId}' not found`);
+      }
+      if (vaultKey.providerId !== provider.id) {
+        throw ApiError.badRequest('Vault key does not belong to the selected provider');
+      }
+      // Re-encrypt the decrypted vault key so the runtime profile owns its own
+      // copy of the credential. This keeps existing decrypt paths (cert flow,
+      // diagnostics) working without needing to dereference the vault every time.
+      const plain = this.encryptionService.decrypt(vaultKey.encryptedKey);
+      encryptedCredential = this.encryptApiKey(plain);
+      credentialHint = vaultKey.credentialHint;
+    } else if (input.apiKey !== undefined) {
       const trimmed = input.apiKey.trim();
       if (!trimmed) {
         encryptedCredential = undefined;
