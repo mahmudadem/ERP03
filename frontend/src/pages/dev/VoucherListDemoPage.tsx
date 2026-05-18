@@ -541,7 +541,6 @@ const VoucherListDemoPage: React.FC = () => {
           renderExpanded={renderExpanded}
           expandedIds={expandedIds}
           onExpandedChange={setExpandedIds}
-          resizable
           onRowClick={(row) => console.log('Row clicked:', row.number)}
           stickyHeader
           emptyMessage="No vouchers match your filters"

@@ -5,6 +5,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useVouchersWithCache, VoucherFilters } from '../../../hooks/useVouchersWithCache';
+import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { VoucherFiltersBar } from '../components/VoucherFiltersBar';
 import { Button } from '../../../components/ui/Button';
 import { AlertTriangle, RefreshCw, Eye, Edit, Trash2, Printer, CheckCircle, XCircle, RotateCcw, RefreshCw as RefreshIcon, Ban, Lock, FilePlus } from 'lucide-react';
@@ -30,32 +31,6 @@ import {
   ActiveFilters,
   BadgeVariant,
 } from '../../../components/ui/DataTable';
-
-// ── Types ────────────────────────────────────────────────────────────
-
-interface VoucherListItem {
-  id: string;
-  voucherNo?: string;
-  date?: string;
-  type?: string;
-  name?: string;
-  description?: string;
-  debitAccount?: string;
-  creditAccount?: string;
-  creationMode?: string;
-  approvedAt?: string;
-  status?: string;
-  currency?: string;
-  amount?: number;
-  totalAmount?: number;
-  ref?: string;
-  reference?: string;
-  reversalOfVoucherId?: string;
-  postedAt?: string;
-  locked?: boolean;
-  metadata?: Record<string, any>;
-  formId?: string;
-}
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -384,17 +359,16 @@ const VouchersListPage: React.FC = () => {
 
   const columns: ColumnDefinition<VoucherListItem>[] = useMemo(() => [
     {
-      key: 'number', label: t('voucherTable.columns.number') || 'Voucher #', width: '15%', priority: 1,
-      accessor: (row) => row.voucherNo || row.ref || '-',
-      sortable: true,
+      key: 'number', label: t('voucherTable.columns.number') || '#', width: '14%', priority: 1,
+      accessor: (row) => row.voucherNo || '-',
       render: (val: string) => <span className="font-mono text-primary-600 dark:text-primary-400">{val}</span>,
     },
     {
-      key: 'date', label: t('voucherTable.columns.date') || 'Date', width: '14%', priority: 1,
-      accessor: 'date', sortable: true,
+      key: 'date', label: t('voucherTable.columns.date') || 'Date', width: '12%', priority: 1,
+      accessor: 'date',
     },
     {
-      key: 'status', label: t('voucherTable.columns.status') || 'Status', width: '12%', priority: 1,
+      key: 'status', label: t('voucherTable.columns.status') || 'Status', width: '11%', priority: 1,
       accessor: 'status',
       badge: {
         variantMap: { posted: 'success', approved: 'success', pending: 'warning', draft: 'default', cancelled: 'error', locked: 'info' },
@@ -402,25 +376,18 @@ const VouchersListPage: React.FC = () => {
       },
     },
     {
-      key: 'type', label: t('voucherTable.columns.type') || 'Type', width: '14%', priority: 2,
+      key: 'type', label: t('voucherTable.columns.type') || 'Type', width: '13%', priority: 2,
       accessor: 'type',
-      render: (val: string) => {
-        const colors: Record<string, string> = {
-          journal_entry: 'text-blue-600', payment: 'text-red-600', receipt: 'text-green-600',
-          sales_invoice: 'text-purple-600', purchase_invoice: 'text-orange-600', reversal: 'text-gray-500',
-        };
-        return <span className={colors[val?.toLowerCase()] || 'text-[var(--color-text-primary)]'}>{val}</span>;
-      },
     },
     {
-      key: 'name', label: t('voucherTable.columns.name') || 'Description', width: '25%', priority: 2,
-      accessor: (row) => row.name || row.description || '-',
+      key: 'description', label: t('voucherTable.columns.name') || 'Description', width: '22%', priority: 2,
+      accessor: (row) => row.description || '-',
       truncate: true,
     },
     {
-      key: 'amount', label: t('voucherTable.columns.amount') || 'Amount', width: '12%', priority: 2,
-      accessor: (row) => row.amount ?? row.totalAmount ?? 0,
-      align: 'right', sortable: true,
+      key: 'amount', label: t('voucherTable.columns.amount') || 'Amount', width: '14%', priority: 2,
+      accessor: (row) => row.voucherAmount ?? 0,
+      align: 'right',
       render: (val: number, row: VoucherListItem) => (
         <span className="font-mono font-medium">
           {val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -429,30 +396,22 @@ const VouchersListPage: React.FC = () => {
       ),
     },
     {
-      key: 'debitAccount', label: t('voucherTable.columns.debitAccount') || 'Debit Account', width: '14%', priority: 3,
-      accessor: 'debitAccount', truncate: true,
+      key: 'debit', label: t('voucherTable.columns.debitAccount') || 'Debit', width: '12%', priority: 3,
+      accessor: (row) => row.totalDebit ?? 0,
+      align: 'right',
+      render: (val: number, row: VoucherListItem) => (
+        <span className="font-mono">{val.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      ),
     },
     {
-      key: 'creditAccount', label: t('voucherTable.columns.creditAccount') || 'Credit Account', width: '14%', priority: 3,
-      accessor: 'creditAccount', truncate: true,
+      key: 'credit', label: t('voucherTable.columns.creditAccount') || 'Credit', width: '12%', priority: 3,
+      accessor: (row) => row.totalCredit ?? 0,
+      align: 'right',
+      render: (val: number, row: VoucherListItem) => (
+        <span className="font-mono">{val.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      ),
     },
-    {
-      key: 'creationMode', label: t('voucherTable.columns.creationMode') || 'Mode', width: '10%', priority: 3,
-      accessor: 'creationMode',
-      render: (val: string) => {
-        if (!val || val === '-') return <span className="text-[var(--color-text-muted)]">-</span>;
-        const variant = val === 'STRICT' ? 'info' : val === 'FLEXIBLE' ? 'default' : 'warning';
-        return (
-          <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${
-            variant === 'info' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-            variant === 'warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
-            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-          }`}>{val}</span>
-        );
-      },
-    },
-    { key: 'approvedAt', label: t('voucherTable.columns.approvedAt') || 'Approved', width: '12%', priority: 3, accessor: 'approvedAt' },
-    { key: 'ref', label: t('voucherTable.columns.ref') || 'Reference', width: '12%', priority: 3, accessor: (row) => row.ref || row.reference || '-', truncate: true },
+    { key: 'reference', label: t('voucherTable.columns.ref') || 'Ref', width: '12%', priority: 3, accessor: (row) => row.reference || '-', truncate: true },
   ], [t]);
 
   // ── Row actions ────────────────────────────────────────────────────
@@ -464,7 +423,7 @@ const VouchersListPage: React.FC = () => {
     { key: 'approve', label: 'Approve', icon: CheckCircle, onClick: (row) => handleApprove(row.id), variant: 'success', isEnabled: (row) => row.status?.toLowerCase() === 'pending' },
     { key: 'post', label: 'Post', icon: RefreshIcon, onClick: (row) => handlePost(row.id), variant: 'primary', isEnabled: (row) => row.status?.toLowerCase() === 'approved' },
     { key: 'cancel', label: 'Cancel', icon: XCircle, onClick: (row) => handleCancel(row.id), variant: 'danger', isEnabled: (row) => !['cancelled', 'posted'].includes(row.status?.toLowerCase() || '') },
-    { key: 'reverse', label: 'Reverse', icon: RotateCcw, onClick: (row) => handleReverse(row.id), variant: 'warning', isEnabled: (row) => row.status?.toLowerCase() === 'posted' && !row.locked },
+    { key: 'reverse', label: 'Reverse', icon: RotateCcw, onClick: (row) => handleReverse(row.id), variant: 'warning', isEnabled: (row) => row.status?.toLowerCase() === 'posted' && !row.postingLockPolicy },
     { key: 'delete', label: 'Delete', icon: Trash2, onClick: (row) => setDeleteVoucherId(row.id), variant: 'danger', isEnabled: (row) => row.status?.toLowerCase() === 'draft' },
   ], [handleApprove, handleCancel, handlePost, handleReverse]);
 
@@ -475,15 +434,15 @@ const VouchersListPage: React.FC = () => {
     if (!children || children.length === 0) {
       return (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-          <div><span className="text-[var(--color-text-muted)]">Debit: </span><span className="text-[var(--color-text-primary)]">{row.debitAccount || '-'}</span></div>
-          <div><span className="text-[var(--color-text-muted)]">Credit: </span><span className="text-[var(--color-text-primary)]">{row.creditAccount || '-'}</span></div>
-          <div><span className="text-[var(--color-text-muted)]">Reference: </span><span className="text-[var(--color-text-primary)] font-mono">{row.ref || row.reference || '-'}</span></div>
-          <div><span className="text-[var(--color-text-muted)]">Mode: </span><span className="text-[var(--color-text-primary)]">{row.creationMode || '-'}</span></div>
-          <div><span className="text-[var(--color-text-muted)]">Approved: </span><span className="text-[var(--color-text-primary)]">{row.approvedAt || '-'}</span></div>
-          {row.locked && (
+          <div><span className="text-[var(--color-text-muted)]">Debit: </span><span className="text-[var(--color-text-primary)] font-mono">{(row.totalDebit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+          <div><span className="text-[var(--color-text-muted)]">Credit: </span><span className="text-[var(--color-text-primary)] font-mono">{(row.totalCredit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+          <div><span className="text-[var(--color-text-muted)]">Reference: </span><span className="text-[var(--color-text-primary)] font-mono">{row.reference || '-'}</span></div>
+          <div><span className="text-[var(--color-text-muted)]">Form: </span><span className="text-[var(--color-text-primary)]">{row.formId ? 'Custom' : 'Default'}</span></div>
+          <div><span className="text-[var(--color-text-muted)]">Created: </span><span className="text-[var(--color-text-primary)]">{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-'}</span></div>
+          {row.postingLockPolicy && (
             <div className="flex items-center gap-1 text-amber-600">
               <Lock className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">Audit Locked</span>
+              <span className="text-xs font-medium">{row.postingLockPolicy}</span>
             </div>
           )}
         </div>
@@ -503,7 +462,7 @@ const VouchersListPage: React.FC = () => {
                 {child.status}
               </span>
               <span className="text-[var(--color-text-muted)]">{child.date || '-'}</span>
-              <span className="font-mono ml-auto">{(child.amount ?? child.totalAmount ?? 0).toLocaleString()} {child.currency || ''}</span>
+              <span className="font-mono ml-auto">{(child.voucherAmount ?? 0).toLocaleString()} {child.currency || ''}</span>
             </div>
           ))}
         </div>
@@ -582,7 +541,6 @@ const VouchersListPage: React.FC = () => {
               renderExpanded={renderExpanded}
               expandedIds={expandedIds}
               onExpandedChange={setExpandedIds}
-              resizable
               onRowClick={handleRowClick}
               stickyHeader
               idKey="id"

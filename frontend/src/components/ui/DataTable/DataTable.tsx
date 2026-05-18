@@ -16,7 +16,6 @@ const PRIORITY_LABELS: Record<number, string> = {
 
 const FONT_STORAGE_KEY = 'erp_datatable_font_size';
 const DENSITY_STORAGE_KEY = 'erp_datatable_density';
-const WIDTH_STORAGE_KEY_PREFIX = 'erp_datatable_widths_';
 
 function getDefaultFontSize(): FontSize {
   try {
@@ -32,21 +31,6 @@ function getDefaultDensity(): Density {
     if (saved === 'compact' || saved === 'comfortable' || saved === 'spacious') return saved;
   } catch { /* ignore */ }
   return 'comfortable';
-}
-
-function loadColumnWidths(tableId: string): Record<string, number> {
-  try {
-    const raw = localStorage.getItem(`${WIDTH_STORAGE_KEY_PREFIX}${tableId}`);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveColumnWidths(tableId: string, widths: Record<string, number>) {
-  try {
-    localStorage.setItem(`${WIDTH_STORAGE_KEY_PREFIX}${tableId}`, JSON.stringify(widths));
-  } catch { /* ignore */ }
 }
 
 export function DataTable<T = any>({
@@ -82,9 +66,6 @@ export function DataTable<T = any>({
   density: densityProp,
 
   toolbar,
-
-  resizable = false,
-  onColumnResize,
 }: DataTableProps<T>) {
   const tableId = `table-${columns.map(c => c.key).join('-')}`;
   const {
@@ -101,7 +82,6 @@ export function DataTable<T = any>({
   const [searchTerm, setSearchTerm] = useState('');
   const [localExpandedIds, setLocalExpandedIds] = useState<Set<string>>(new Set());
   const [localSelectedIds, setLocalSelectedIds] = useState<Set<string>>(new Set());
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => loadColumnWidths(tableId));
   const settingsRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -199,26 +179,6 @@ export function DataTable<T = any>({
       effectiveOnExpandedChange(next);
     }
   }, [allExpanded, data, effectiveExpandedIds, effectiveOnExpandedChange, getRowIdFn]);
-
-  // Column resize
-  const handleColumnResize = useCallback((columnKey: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnKey]: newWidth };
-      saveColumnWidths(tableId, next);
-      return next;
-    });
-    onColumnResize?.(columnKey, newWidth);
-  }, [tableId, onColumnResize]);
-
-  // Apply column widths to visible columns
-  const resizedColumns = useMemo(() => {
-    if (Object.keys(columnWidths).length === 0) return visibleColumns;
-    return visibleColumns.map(col => {
-      const savedWidth = columnWidths[col.key];
-      if (!savedWidth) return col;
-      return { ...col, computedWidth: `${savedWidth}px` };
-    });
-  }, [visibleColumns, columnWidths]);
 
   // Filter change handler
   const handleFilterChange = useCallback((columnKey: string, value: ActiveFilters[string] | undefined) => {
@@ -389,11 +349,11 @@ export function DataTable<T = any>({
 
       {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        <div className="flex-1 overflow-auto min-h-0">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
           {hasVisibleColumns ? (
             <table className="w-full table-fixed divide-y divide-[var(--color-border)]">
             <DataTableHeader
-              columns={resizedColumns}
+              columns={visibleColumns}
               sorting={sorting ? { field: sorting.field, direction: sorting.direction } : undefined}
               onSort={sorting?.onSort}
               sortCycle={sorting?.sortCycle}
@@ -406,14 +366,12 @@ export function DataTable<T = any>({
               expandable={expandable}
               allExpanded={allExpanded}
               onToggleExpandAll={handleToggleExpandAll}
-              resizable={resizable}
-              onColumnResize={handleColumnResize}
               onFilterChange={handleFilterChange}
               activeFilters={activeFilters}
               hasRowActions={hasRowActions}
             />
             <DataTableBody
-              columns={resizedColumns}
+              columns={visibleColumns}
               data={data}
               loading={loading}
               emptyMessage={emptyMessage}

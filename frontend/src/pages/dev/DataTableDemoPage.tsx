@@ -279,7 +279,6 @@ const DataTableDemoPage: React.FC = () => {
             </div>
           </div>
         )}
-        resizable
         onRowClick={(row) => console.log('Row clicked:', row.voucherNo)}
         stickyHeader
         emptyMessage="No vouchers match your search"
