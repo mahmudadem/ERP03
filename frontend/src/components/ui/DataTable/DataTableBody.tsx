@@ -119,7 +119,7 @@ export function DataTableBody<T>({
                 <div className="h-4 bg-[var(--color-bg-tertiary)] rounded w-3/4" />
               </td>
             ))}
-            {rowActions && rowActions.length > 0 && <td className="px-3 py-3 w-20" />}
+            {rowActions && rowActions.length > 0 && <td className="px-4 py-3 w-24" />}
           </tr>
         ))}
       </tbody>
@@ -259,7 +259,7 @@ export function DataTableBody<T>({
               })}
 
               {rowActions && rowActions.length > 0 && (
-                <td className="px-3 py-3 w-20 text-center">
+                <td className="px-4 py-3 w-24 text-center">
                   <RowActionsMenu
                     primaryActions={primaryActions}
                     secondaryActions={secondaryActions}
@@ -272,7 +272,7 @@ export function DataTableBody<T>({
             {expandable && isExpanded && renderExpanded && (
               <tr className="bg-[var(--color-bg-secondary)]/50">
                 <td colSpan={columns.length + (expandable ? 1 : 0) + (selectable ? 1 : 0) + (rowActions?.length ? 1 : 0)}>
-                  <div className="px-4 py-3 border-l-4 border-primary-300 dark:border-primary-700 ml-8">
+                  <div className="px-4 py-3 ml-8">
                     {renderExpanded(row)}
                   </div>
                 </td>

@@ -200,7 +200,7 @@ export function DataTableHeader<T>({
         {hasRowActions && (
           <th
             className={clsx(
-              'px-3 py-3 w-20 text-center text-[var(--color-text-secondary)] uppercase tracking-wider',
+              'px-4 py-3 w-24 text-center text-[var(--color-text-secondary)] uppercase tracking-wider',
               sticky && 'sticky top-0 z-20 bg-[var(--color-bg-secondary)]',
               fontClass
             )}
