@@ -54,6 +54,10 @@ const makeDeps = (invoice: SalesInvoice, opts?: { settlementFail?: boolean }) =>
   const settings = {
     defaultRevenueAccountId: 'REV-1',
     defaultARAccountId: 'AR-1',
+    paymentMethodConfigs: [
+      { method: 'CASH', settlementAccountId: 'CASH-1', isEnabled: true },
+      { method: 'BANK_TRANSFER', settlementAccountId: 'BANK-1', isEnabled: true },
+    ],
     allowDirectInvoicing: true,
     overInvoiceTolerancePct: 0,
   };
@@ -103,11 +107,28 @@ const makeSettlementInput = (amountBase: number, mode: 'CASH_FULL' | 'MULTI' | '
   settlementMode: mode,
   receivablePayableAccountId: 'AR-1',
   settlements: mode === 'DEFERRED' ? [] : [{
-    settlementAccountId: 'CASH-1',
     amountBase,
     paymentMethod: 'CASH',
     paymentDate: '2026-05-02',
-  }],
+    }],
+});
+
+const postingAccount = (id: string, userCode = id) => ({
+  id,
+  userCode,
+  code: userCode,
+  name: userCode,
+  accountRole: 'POSTING',
+  status: 'ACTIVE',
+});
+
+const headerAccount = (id: string, userCode = id) => ({
+  id,
+  userCode,
+  code: userCode,
+  name: userCode,
+  accountRole: 'HEADER',
+  status: 'ACTIVE',
 });
 
 const buildUseCase = (deps: ReturnType<typeof makeDeps>) =>
@@ -174,8 +195,8 @@ describe('PostSalesInvoiceUseCase — Settlement Modes', () => {
       settlementMode: 'MULTI',
       receivablePayableAccountId: 'AR-1',
       settlements: [
-        { settlementAccountId: 'CASH-1', amountBase: 40, paymentMethod: 'CASH', paymentDate: '2026-05-02' },
-        { settlementAccountId: 'BANK-1', amountBase: 30, paymentMethod: 'BANK_TRANSFER', paymentDate: '2026-05-02' },
+        { amountBase: 40, paymentMethod: 'CASH', paymentDate: '2026-05-02' },
+        { amountBase: 30, paymentMethod: 'BANK_TRANSFER', paymentDate: '2026-05-02' },
       ],
     });
 
@@ -195,6 +216,51 @@ describe('PostSalesInvoiceUseCase — Settlement Modes', () => {
       'Payment history save failed'
     );
 
+    expect(deps.salesInvoiceRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('uses payment method mapping when settlement account is omitted', async () => {
+    const invoice = buildPostedInvoice(100);
+    const deps = makeDeps(invoice);
+    const useCase = buildUseCase(deps);
+
+    const result = await useCase.execute('cmp-1', invoice.id, true, undefined, {
+      settlementMode: 'MULTI',
+      settlements: [{ amountBase: 20, paymentMethod: 'BANK_TRANSFER', paymentDate: '2026-05-02' }],
+    });
+
+    expect(result.paymentStatus).toBe('PARTIALLY_PAID');
+    expect(result.paidAmountBase).toBe(20);
+    expect(deps.paymentHistoryRepo.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects non-posting settlement accounts before receipt voucher reaches the ledger', async () => {
+    const invoice = buildPostedInvoice(100);
+    const deps = makeDeps(invoice);
+    const accounts = new Map<string, any>([
+      ['AR-1', postingAccount('AR-1')],
+      ['CASH-HEADER', headerAccount('CASH-HEADER')],
+    ]);
+    (deps as any).accountRepo = {
+      getById: jest.fn(async (_companyId: string, accountId: string) => accounts.get(accountId) ?? null),
+      getByUserCode: jest.fn(async (_companyId: string, userCode: string) => accounts.get(userCode) ?? null),
+    } as any;
+    const useCase = buildUseCase(deps);
+
+    await expect(useCase.execute('cmp-1', invoice.id, true, undefined, {
+      settlementMode: 'CASH_FULL',
+      receivablePayableAccountId: 'AR-1',
+      settlements: [{
+        amountBase: 100,
+        paymentMethod: 'CASH',
+        settlementAccountId: 'CASH-HEADER',
+        paymentDate: '2026-05-02',
+      }],
+    })).rejects.toThrow(/non-POSTING|HEADER/);
+
+    expect(deps.ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+    expect(deps.voucherRepo.save).not.toHaveBeenCalled();
+    expect(deps.paymentHistoryRepo.create).not.toHaveBeenCalled();
     expect(deps.salesInvoiceRepo.update).not.toHaveBeenCalled();
   });
 });

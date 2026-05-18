@@ -145,28 +145,134 @@ export class DocumentPolicyResolver {
       ...DocumentPolicyResolver.getBasePolicyForMode(workflowMode),
     };
 
-    if (settings.allowDirectInvoicing) {
+    // allowDirectInvoicing is deprecated as a broad override for OPERATIONAL.
+    // It is preserved only for backward compatibility in SIMPLE mode where it
+    // was historically the primary toggle. In OPERATIONAL mode, governance rules
+    // are the only valid way to re-enable direct invoicing.
+    if (workflowMode === 'SIMPLE' && settings.allowDirectInvoicing) {
       basePolicy.direct = true;
     }
 
     return basePolicy;
   }
 
+  /**
+   * Governance-aware persona resolution with full precedence chain.
+   *
+   * Precedence (most specific wins):
+   *   1. form-specific rule (matching formType)
+   *   2. branch-specific rule (matching branchId)
+   *   3. company-scope rule
+   *   4. base workflow mode default
+   *
+   * If no matching rule exists at a given level, falls through to the next
+   * less specific level. If multiple rules exist at the same specificity,
+   * the last one in array order wins (stored-order convention).
+   */
   static isSalesInvoicePersonaAllowed(
     settings: Pick<SalesSettings, 'workflowMode' | 'allowDirectInvoicing' | 'governanceRules'>,
-    persona: 'direct' | 'linked' | 'service'
+    persona: 'direct' | 'linked' | 'service',
+    context?: { branchId?: string; formType?: string }
   ): boolean {
-    const basePolicy = DocumentPolicyResolver.getSalesInvoiceBasePolicy(settings);
+    const workflowMode = DocumentPolicyResolver.resolveSalesWorkflowMode(settings);
+    const basePolicy = DocumentPolicyResolver.getBasePolicyForMode(workflowMode);
     let allowed = basePolicy[persona] ?? false;
 
-    for (const rule of settings.governanceRules || []) {
+    const rules = settings.governanceRules || [];
+
+    // Level 1: company-scope rules
+    for (const rule of rules) {
       if (rule.persona !== persona) continue;
       if (rule.scope === 'company') {
         allowed = rule.action === 'allow';
       }
     }
 
+    // Level 2: branch-scope rules (only if branchId is provided)
+    if (context?.branchId) {
+      for (const rule of rules) {
+        if (rule.persona !== persona) continue;
+        if (rule.scope === 'branch' && rule.branchId === context.branchId) {
+          allowed = rule.action === 'allow';
+        }
+      }
+    }
+
+    // Level 3: form-scope rules (only if formType is provided)
+    if (context?.formType) {
+      for (const rule of rules) {
+        if (rule.persona !== persona) continue;
+        if (rule.scope === 'form' && rule.formType === context.formType) {
+          allowed = rule.action === 'allow';
+        }
+      }
+    }
+
     return allowed;
+  }
+
+  /**
+   * Returns the full resolved policy for all personas, plus metadata about
+   * which rule determined each decision. Useful for UI rendering and debugging.
+   */
+  static resolveEffectiveSalesPersonaPolicy(
+    settings: Pick<SalesSettings, 'workflowMode' | 'allowDirectInvoicing' | 'governanceRules'>,
+    context?: { branchId?: string; formType?: string }
+  ): {
+    policy: Record<'direct' | 'linked' | 'service', boolean>;
+    resolvedBy: Record<'direct' | 'linked' | 'service', 'base' | 'company' | 'branch' | 'form'>;
+  } {
+    const workflowMode = DocumentPolicyResolver.resolveSalesWorkflowMode(settings);
+    const basePolicy = DocumentPolicyResolver.getBasePolicyForMode(workflowMode);
+    const rules = settings.governanceRules || [];
+    const personas: Array<'direct' | 'linked' | 'service'> = ['direct', 'linked', 'service'];
+
+    const policy: Record<string, boolean> = {};
+    const resolvedBy: Record<string, 'base' | 'company' | 'branch' | 'form'> = {};
+
+    for (const persona of personas) {
+      let allowed = basePolicy[persona] ?? false;
+      let source: 'base' | 'company' | 'branch' | 'form' = 'base';
+
+      // Company-scope rules
+      for (const rule of rules) {
+        if (rule.persona !== persona) continue;
+        if (rule.scope === 'company') {
+          allowed = rule.action === 'allow';
+          source = 'company';
+        }
+      }
+
+      // Branch-scope rules
+      if (context?.branchId) {
+        for (const rule of rules) {
+          if (rule.persona !== persona) continue;
+          if (rule.scope === 'branch' && rule.branchId === context.branchId) {
+            allowed = rule.action === 'allow';
+            source = 'branch';
+          }
+        }
+      }
+
+      // Form-scope rules
+      if (context?.formType) {
+        for (const rule of rules) {
+          if (rule.persona !== persona) continue;
+          if (rule.scope === 'form' && rule.formType === context.formType) {
+            allowed = rule.action === 'allow';
+            source = 'form';
+          }
+        }
+      }
+
+      policy[persona] = allowed;
+      resolvedBy[persona] = source;
+    }
+
+    return {
+      policy: policy as Record<'direct' | 'linked' | 'service', boolean>,
+      resolvedBy: resolvedBy as Record<'direct' | 'linked' | 'service', 'base' | 'company' | 'branch' | 'form'>,
+    };
   }
 
   static isPersonaAllowed(
@@ -195,7 +301,9 @@ export class DocumentPolicyResolver {
       ...DocumentPolicyResolver.getBasePolicyForMode(workflowMode),
     };
 
-    if (settings.allowDirectInvoicing) {
+    // allowDirectInvoicing is deprecated as a broad override for OPERATIONAL.
+    // Preserved only for backward compatibility in SIMPLE mode.
+    if (workflowMode === 'SIMPLE' && settings.allowDirectInvoicing) {
       basePolicy.direct = true;
     }
 
@@ -204,18 +312,100 @@ export class DocumentPolicyResolver {
 
   static isPurchaseInvoicePersonaAllowed(
     settings: Pick<PurchaseSettings, 'workflowMode' | 'allowDirectInvoicing' | 'governanceRules'>,
-    persona: 'direct' | 'linked' | 'service'
+    persona: 'direct' | 'linked' | 'service',
+    context?: { branchId?: string; formType?: string }
   ): boolean {
-    const basePolicy = DocumentPolicyResolver.getPurchaseInvoiceBasePolicy(settings);
+    const workflowMode = DocumentPolicyResolver.resolvePurchaseWorkflowMode(settings);
+    const basePolicy = DocumentPolicyResolver.getBasePolicyForMode(workflowMode);
     let allowed = basePolicy[persona] ?? false;
 
-    for (const rule of settings.governanceRules || []) {
+    const rules = settings.governanceRules || [];
+
+    // Level 1: company-scope rules
+    for (const rule of rules) {
       if (rule.persona !== persona) continue;
       if (rule.scope === 'company') {
         allowed = rule.action === 'allow';
       }
     }
 
+    // Level 2: branch-scope rules
+    if (context?.branchId) {
+      for (const rule of rules) {
+        if (rule.persona !== persona) continue;
+        if (rule.scope === 'branch' && rule.branchId === context.branchId) {
+          allowed = rule.action === 'allow';
+        }
+      }
+    }
+
+    // Level 3: form-scope rules
+    if (context?.formType) {
+      for (const rule of rules) {
+        if (rule.persona !== persona) continue;
+        if (rule.scope === 'form' && rule.formType === context.formType) {
+          allowed = rule.action === 'allow';
+        }
+      }
+    }
+
     return allowed;
+  }
+
+  static resolveEffectivePurchasePersonaPolicy(
+    settings: Pick<PurchaseSettings, 'workflowMode' | 'allowDirectInvoicing' | 'governanceRules'>,
+    context?: { branchId?: string; formType?: string }
+  ): {
+    policy: Record<'direct' | 'linked' | 'service', boolean>;
+    resolvedBy: Record<'direct' | 'linked' | 'service', 'base' | 'company' | 'branch' | 'form'>;
+  } {
+    const workflowMode = DocumentPolicyResolver.resolvePurchaseWorkflowMode(settings);
+    const basePolicy = DocumentPolicyResolver.getBasePolicyForMode(workflowMode);
+    const rules = settings.governanceRules || [];
+    const personas: Array<'direct' | 'linked' | 'service'> = ['direct', 'linked', 'service'];
+
+    const policy: Record<string, boolean> = {};
+    const resolvedBy: Record<string, 'base' | 'company' | 'branch' | 'form'> = {};
+
+    for (const persona of personas) {
+      let allowed = basePolicy[persona] ?? false;
+      let source: 'base' | 'company' | 'branch' | 'form' = 'base';
+
+      for (const rule of rules) {
+        if (rule.persona !== persona) continue;
+        if (rule.scope === 'company') {
+          allowed = rule.action === 'allow';
+          source = 'company';
+        }
+      }
+
+      if (context?.branchId) {
+        for (const rule of rules) {
+          if (rule.persona !== persona) continue;
+          if (rule.scope === 'branch' && rule.branchId === context.branchId) {
+            allowed = rule.action === 'allow';
+            source = 'branch';
+          }
+        }
+      }
+
+      if (context?.formType) {
+        for (const rule of rules) {
+          if (rule.persona !== persona) continue;
+          if (rule.scope === 'form' && rule.formType === context.formType) {
+            allowed = rule.action === 'allow';
+            source = 'form';
+          }
+        }
+      }
+
+      policy[persona] = allowed;
+      resolvedBy[persona] = source;
+    }
+
+    return {
+      policy: policy as Record<'direct' | 'linked' | 'service', boolean>,
+      resolvedBy: resolvedBy as Record<'direct' | 'linked' | 'service', 'base' | 'company' | 'branch' | 'form'>,
+    };
   }
 }

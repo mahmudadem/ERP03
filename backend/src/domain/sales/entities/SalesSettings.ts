@@ -2,6 +2,7 @@ export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
 
 export type GovernanceRuleScope = 'company' | 'branch' | 'form';
 export type GovernanceAction = 'allow' | 'block';
+export type SalesPaymentMethodCode = 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
 
 export interface GovernanceRule {
   id: string;
@@ -10,6 +11,13 @@ export interface GovernanceRule {
   persona: 'direct' | 'linked' | 'service';
   branchId?: string;
   formType?: string;
+}
+
+export interface SalesPaymentMethodConfig {
+  method: SalesPaymentMethodCode;
+  settlementAccountId: string;
+  label?: string;
+  isEnabled?: boolean;
 }
 
 export interface SalesSettingsProps {
@@ -26,6 +34,7 @@ export interface SalesSettingsProps {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
+  paymentMethodConfigs?: SalesPaymentMethodConfig[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -53,6 +62,7 @@ export class SalesSettings {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
+  paymentMethodConfigs: SalesPaymentMethodConfig[];
   governanceRules: GovernanceRule[];
   defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -82,6 +92,14 @@ export class SalesSettings {
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
     this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
     this.defaultPaymentTermsDays = props.defaultPaymentTermsDays;
+    this.paymentMethodConfigs = (props.paymentMethodConfigs ?? [])
+      .filter((config) => !!config?.method && !!config?.settlementAccountId)
+      .map((config) => ({
+        method: config.method,
+        settlementAccountId: config.settlementAccountId.trim(),
+        label: config.label?.trim() || undefined,
+        isEnabled: config.isEnabled ?? true,
+      }));
     this.governanceRules = props.governanceRules ?? [];
     this.defaultSalesInvoicePersona = props.defaultSalesInvoicePersona ?? 'direct';
     this.defaultWarehouseId = props.defaultWarehouseId;
@@ -111,6 +129,7 @@ export class SalesSettings {
       overDeliveryTolerancePct: 0,
       overInvoiceTolerancePct: 0,
       defaultPaymentTermsDays: 30,
+      paymentMethodConfigs: [],
       governanceRules: [],
       defaultSalesInvoicePersona: 'direct',
       soNumberPrefix: 'SO',
@@ -139,6 +158,7 @@ export class SalesSettings {
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
       overInvoiceTolerancePct: this.overInvoiceTolerancePct,
       defaultPaymentTermsDays:     this.defaultPaymentTermsDays,
+      paymentMethodConfigs: this.paymentMethodConfigs,
       governanceRules: this.governanceRules,
       defaultSalesInvoicePersona: this.defaultSalesInvoicePersona,
       defaultWarehouseId: this.defaultWarehouseId,
@@ -168,6 +188,7 @@ export class SalesSettings {
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: data.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: data.defaultPaymentTermsDays ?? 30,
+      paymentMethodConfigs: data.paymentMethodConfigs ?? [],
       governanceRules: data.governanceRules ?? [],
       defaultSalesInvoicePersona: data.defaultSalesInvoicePersona ?? 'direct',
       defaultWarehouseId: data.defaultWarehouseId,

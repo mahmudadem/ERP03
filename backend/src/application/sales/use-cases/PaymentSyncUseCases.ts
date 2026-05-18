@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
+import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
@@ -8,16 +9,18 @@ import { IVoucherRepository } from '../../../domain/accounting/repositories/IVou
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity, roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney as roundSalesMoney } from './SalesPostingHelpers';
 
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
 
 export interface SettlementRow {
-  settlementAccountId: string;
+  settlementAccountId?: string;
   amountBase: number;
   paymentMethod?: PaymentMethod;
   reference?: string;
@@ -27,12 +30,22 @@ export interface SettlementRow {
 
 export interface PostSalesInvoiceWithSettlementInput {
   settlementMode: SettlementMode;
-  receivablePayableAccountId: string;
+  receivablePayableAccountId?: string;
   settlements: SettlementRow[];
 }
 
 const SETTLEMENT_MODES: SettlementMode[] = ['DEFERRED', 'CASH_FULL', 'MULTI'];
 const VALID_PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
+const resolvePaymentMethodAccount = (
+  settings: SalesSettings | null,
+  paymentMethod: PaymentMethod | undefined
+): string | undefined => {
+  if (!settings || !paymentMethod) return undefined;
+  const config = (settings.paymentMethodConfigs || []).find(
+    (entry) => entry.method === paymentMethod && (entry.isEnabled ?? true)
+  );
+  return config?.settlementAccountId;
+};
 
 const recalcPaymentStatus = (invoice: SalesInvoice): void => {
   if (invoice.outstandingAmountBase <= 0) {
@@ -69,6 +82,8 @@ export class UpdateSalesInvoicePaymentStatusUseCase {
 }
 
 export class PostSalesInvoiceWithSettlementUseCase {
+  private readonly voucherValidationService = new VoucherValidationService();
+
   constructor(
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly paymentHistoryRepo: IPaymentHistoryRepository,
@@ -77,8 +92,18 @@ export class PostSalesInvoiceWithSettlementUseCase {
     private readonly voucherSequenceRepo: IVoucherSequenceRepository,
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly accountRepo?: IAccountRepository
   ) {}
+
+  private async resolveAccountId(companyId: string, idOrCode: string): Promise<string> {
+    if (!idOrCode) return '';
+    if (!this.accountRepo) return idOrCode;
+    const account =
+      (await this.accountRepo.getById(companyId, idOrCode)) ||
+      (await this.accountRepo.getByUserCode(companyId, idOrCode));
+    return account ? account.id : idOrCode;
+  }
 
   async execute(
     companyId: string,
@@ -92,10 +117,6 @@ export class PostSalesInvoiceWithSettlementUseCase {
       throw new Error(`Invalid settlementMode: ${settlementMode}. Must be one of: ${SETTLEMENT_MODES.join(', ')}`);
     }
 
-    if (!receivablePayableAccountId?.trim()) {
-      throw new Error('receivablePayableAccountId is required');
-    }
-
     const invoice = await this.salesInvoiceRepo.getById(companyId, siId);
     if (!invoice) throw new Error(`Sales invoice not found: ${siId}`);
     if (invoice.status !== 'POSTED') {
@@ -104,6 +125,12 @@ export class PostSalesInvoiceWithSettlementUseCase {
 
     const baseCurrency = await this.companyCurrencyRepo.getBaseCurrency(companyId);
     if (!baseCurrency) throw new Error('Company base currency is not configured');
+    const settings = await this.salesSettingsRepo.getSettings(companyId);
+    const effectiveReceivablePayableAccountId = receivablePayableAccountId?.trim() || settings?.defaultARAccountId;
+    if (!effectiveReceivablePayableAccountId) {
+      throw new Error('receivablePayableAccountId is required or Sales default AR account must be configured');
+    }
+    const resolvedReceivablePayableAccountId = await this.resolveAccountId(companyId, effectiveReceivablePayableAccountId);
 
     const settlementTotal = settlements.reduce((sum, s) => sum + roundMoney(s.amountBase), 0);
 
@@ -126,14 +153,15 @@ export class PostSalesInvoiceWithSettlementUseCase {
         throw new Error('MULTI mode requires at least one settlement row');
       }
       for (const s of settlements) {
-        if (!s.settlementAccountId?.trim()) {
-          throw new Error('Each settlement row requires a settlementAccountId');
-        }
         if (s.amountBase <= 0 || Number.isNaN(s.amountBase)) {
           throw new Error('Each settlement row amount must be positive');
         }
         if (s.paymentMethod && !VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
           throw new Error(`Invalid paymentMethod: ${s.paymentMethod}`);
+        }
+        const effectiveSettlementAccountId = s.settlementAccountId?.trim() || resolvePaymentMethodAccount(settings, s.paymentMethod);
+        if (!effectiveSettlementAccountId) {
+          throw new Error('Each settlement row requires a settlementAccountId or configured paymentMethod mapping');
         }
       }
     }
@@ -152,6 +180,12 @@ export class PostSalesInvoiceWithSettlementUseCase {
         const settlementAmountBase = roundMoney(settlement.amountBase);
         const settlementDate = settlement.paymentDate || now.toISOString().split('T')[0];
         const settlementMethod = settlement.paymentMethod || 'CASH';
+        const effectiveSettlementAccountId =
+          settlement.settlementAccountId?.trim() || resolvePaymentMethodAccount(settings, settlementMethod);
+        if (!effectiveSettlementAccountId) {
+          throw new Error(`No settlement account configured for payment method ${settlementMethod}`);
+        }
+        const resolvedSettlementAccountId = await this.resolveAccountId(companyId, effectiveSettlementAccountId);
 
         const voucherNo = await this.voucherSequenceRepo.getNextNumber(companyId, 'RV');
         const voucherId = `vch_${randomUUID()}`;
@@ -161,7 +195,7 @@ export class PostSalesInvoiceWithSettlementUseCase {
 
         const drLine = new VoucherLineEntity(
           1,
-          settlement.settlementAccountId,
+          resolvedSettlementAccountId,
           'Debit',
           settlementAmountBase,
           baseCurrencyUpper,
@@ -172,7 +206,7 @@ export class PostSalesInvoiceWithSettlementUseCase {
         );
         const crLine = new VoucherLineEntity(
           2,
-          receivablePayableAccountId,
+          resolvedReceivablePayableAccountId,
           'Credit',
           settlementAmountBase,
           baseCurrencyUpper,
@@ -210,6 +244,11 @@ export class PostSalesInvoiceWithSettlementUseCase {
         );
 
         const postedVoucher = approvedVoucher.post(userId, now, PostingLockPolicy.FLEXIBLE_LOCKED);
+
+        this.voucherValidationService.validateCore(postedVoucher);
+        if (this.accountRepo) {
+          await this.voucherValidationService.validateAccounts(postedVoucher, this.accountRepo);
+        }
 
         await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
         await this.voucherRepo.save(postedVoucher, transaction);
@@ -265,7 +304,8 @@ export class RecordSalesInvoicePaymentUseCase {
     private readonly voucherSequenceRepo: IVoucherSequenceRepository,
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly accountRepo?: IAccountRepository
   ) {}
 
   async execute(
@@ -282,7 +322,8 @@ export class RecordSalesInvoicePaymentUseCase {
       this.voucherSequenceRepo,
       this.ledgerRepo,
       this.companyCurrencyRepo,
-      this.transactionManager
+      this.transactionManager,
+      this.accountRepo
     );
     return useCase.execute(companyId, userId, siId, input);
   }

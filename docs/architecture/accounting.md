@@ -1,6 +1,6 @@
 # Architecture: Accounting Module
 
-**Last updated:** 2026-05-17
+**Last updated:** 2026-05-18
 **Status:** Implemented (core), with explicitly deferred features listed below.
 **Code-near docs:** [`backend/src/domain/accounting/ARCHITECTURE.md`](../../backend/src/domain/accounting/ARCHITECTURE.md), [`backend/src/domain/accounting/CORRECTIONS.md`](../../backend/src/domain/accounting/CORRECTIONS.md)
 
@@ -27,7 +27,8 @@ It owns:
 2. **Ledger always in base currency.** A voucher can be in any currency, but ledger entries are converted to the company base currency at posting time. FX amounts are tracked per line. The frontend cannot override this.
 3. **Immutable posted entries.** Once a voucher is posted, its ledger lines are immutable. Mistakes are corrected via the **Reverse & Replace** flow ([CORRECTIONS.md](../../backend/src/domain/accounting/CORRECTIONS.md)), which creates a paired reversal voucher and (optionally) a replacement DRAFT.
 4. **Repository pattern.** All persistence is behind interfaces (`IVoucherRepository`, `ILedgerRepository`, `IAccountRepository`, etc.) so the system can migrate from Firestore to SQL without touching domain or application code.
-5. **Policy enforcement at one gate.** `PostVoucherUseCase` applies all policies (`ApprovalRequiredPolicy`, `PeriodLockPolicy`, account-active checks, balance check). Modules that originate vouchers (Sales, Purchases) call into this single gate.
+5. **Policy enforcement at the normal posting gate.** `PostVoucherUseCase` applies posting policies (`ApprovalRequiredPolicy`, `PeriodLockPolicy`, account access, etc.). Modules that originate vouchers (Sales, Purchases, Inventory) should call into this gate through the accounting posting service.
+6. **Final ledger boundary is also guarded.** Because a cross-module caller once bypassed the normal posting gate, `ILedgerRepository.recordForVoucher()` now also invokes `VoucherValidationService.validateCore()` and `validateAccounts()` before any ledger rows are persisted. This is the non-negotiable last line of backend defense.
 
 ## Key Use Cases
 
@@ -46,11 +47,58 @@ It owns:
 ## Repository Interfaces (key)
 
 - `IVoucherRepository` — voucher CRUD, find by status / date / type
-- `ILedgerRepository` — ledger entry read (no direct write; entries are produced by posting strategies)
+- `ILedgerRepository` — ledger entry read and controlled posting persistence via `recordForVoucher()`. Direct callers are allowed only through DI and still pass the final `VoucherValidationService` guard before write.
 - `IAccountRepository` — chart of accounts, account-active checks
 - `ICompanyModuleSettingsRepository` — base currency, exchange rates, policy flags, default accounts
 
 All Firestore implementations live under `backend/src/infrastructure/firestore/repositories/`. Domain and application layers must NEVER import these directly — only via the DI container.
+
+## Posting Security Boundary
+
+### Normal path
+
+The intended accounting path is:
+
+1. A source module builds a voucher draft or subledger voucher.
+2. The module calls the Accounting posting service / `PostVoucherUseCase`.
+3. `VoucherValidationService.validateCore()` verifies invariant rules:
+   - at least two lines
+   - debit and credit balance
+   - valid non-negative amounts
+   - account IDs present
+   - currency/base-currency consistency
+4. `VoucherValidationService.validateAccounts()` verifies every voucher line account:
+   - account exists in the same company
+   - account is `POSTING`, not `HEADER`
+   - account is `ACTIVE`
+   - account has not been replaced
+   - account has no children
+5. Posting policies run, then ledger rows are written.
+
+### Discovered bypass and fix
+
+Manual QA found a critical bypass in the Sales receipt settlement path. Sales created a receipt `VoucherEntity`, marked it posted, and called `ledgerRepo.recordForVoucher()` / `voucherRepo.save()` directly. The Accounting validation rule was correct, but this path skipped `VoucherValidationService.validateAccounts()`, so a HEADER account selected through a free-text UI field reached the ledger.
+
+The fix has two layers:
+
+- Sales receipt paths now validate before ledger, voucher, payment-history, or invoice-status writes.
+- `ILedgerRepository.recordForVoucher()` now runs `VoucherValidationService.validateCore()` and `validateAccounts()` itself in both Firestore and SQL implementations.
+
+This means future backend callers cannot reach the ledger with an invalid voucher or non-posting account just by forgetting to use the higher-level posting service.
+
+### Remaining security gap
+
+The backend is now protected, but TypeScript cannot stop writes made outside the backend process. Any actor with direct Firestore/SQL write credentials, emulator access, admin SDK access, or overly broad service-account permissions could still bypass application-layer validation and write ledger documents directly.
+
+Required infrastructure hardening before production:
+
+- Firestore/SQL credentials must be held only by the backend runtime and controlled migration/seeding jobs.
+- Frontend clients must never have direct write permission to ledger, voucher, account, or accounting settings collections/tables.
+- Firestore security rules / SQL permissions must deny client-side writes to ledger paths and restrict admin SDK usage to trusted service accounts.
+- Production seeding and maintenance scripts must use the same DI-wired repositories or explicit accounting validation services.
+- Add periodic integrity checks that scan posted ledger rows for non-posting, inactive, missing, replaced, or parent accounts.
+
+This is a defense-in-depth rule: the application validates at the posting service and the ledger repository; infrastructure must still prevent direct database writes that bypass the application entirely.
 
 ## Voucher Correction Flow (Reverse & Replace)
 

@@ -1438,6 +1438,12 @@
         "recordManual": "Manuel Sertifika Kaydet",
         "runShell": "Shell Sertifikası Çalıştır",
         "expire": "Süresini Doldur",
+        "stale": "Eski",
+        "staleTooltip": "Bu sertifika, bu profilin eski bir yapılandırmasında çalıştırıldı. Çalışma zamanı, geçerli yapılandırmada testi yeniden çalıştırana kadar bunu yok sayar.",
+        "staleBannerTitle": "Bazı sertifikalar eski",
+        "staleBannerBody": "Bu profil, bu testler çalıştırıldıktan sonra düzenlendi ve artık geçerli yapılandırmaya uygulanmıyor. Sohbet çalışma zamanı eski sertifikaları yok sayar — ERP araçlarını yeniden etkinleştirmek için bunları yeniden çalıştırın.",
+        "staleHeroTitle": "Sertifikalar artık bu profille eşleşmiyor",
+        "staleHeroBody": "Testleri çalıştırdıktan sonra bu profili düzenlediniz. Çalışma zamanı eski sertifikaları yok sayar, bu nedenle bu modeli kullanan kiracıların şu anda araç erişimi yoktur. Yeniden etkinleştirmek istediğiniz her kategori için sertifikayı yeniden çalıştırın.",
         "confirmExpire": "Bu sertifikanın süresini doldurmak istediğinizden emin misiniz?",
         "form": {
           "category": "Kategori",
@@ -2092,5 +2098,17 @@
   },
   "success": {
     "SAVE": "Başarıyla kaydedildi"
+  },
+  "sales": {
+    "governance": {
+      "operationalWarning": "Operasyonel iş akışı: Doğrudan faturalandırma varsayılan olarak engellenmiştir. Bağlı bir fatura oluşturmak için yukarıdan bir Satış Siparişi seçin veya doğrudan faturalandırma yönetimi istisnası eklemek için yöneticinize başvurun.",
+      "settingsOperationalHint": "Operasyonel iş akışı varsayılan olarak doğrudan faturalandırmayı engeller. Doğrudan faturalara izin vermek için şuradan bir yönetim kuralı ekleyin:",
+      "goToGovernanceTab": "Yönetim sekmesi",
+      "sectionDescription": "Varsayılan belge politikalarını şirket veya form düzeyinde geçersiz kılın.",
+      "branchRuleDeferred": "{{branchId}} (şu anda faturalarda aktif değil)",
+      "directInvoicingStatusLabel": "Doğrudan Faturalandırma",
+      "directAllowed": "İzin verildi",
+      "directBlockedOperational": "Engellendi (Operasyonel)"
+    }
   }
 }

@@ -25,6 +25,13 @@ export interface GovernanceRuleDTO {
   formType?: string;
 }
 
+export interface SalesPaymentMethodConfigDTO {
+  method: 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
+  settlementAccountId: string;
+  label?: string;
+  isEnabled?: boolean;
+}
+
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: WorkflowMode;
@@ -39,6 +46,7 @@ export interface SalesSettingsDTO {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
+  paymentMethodConfigs: SalesPaymentMethodConfigDTO[];
   governanceRules: GovernanceRuleDTO[];
   defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -141,6 +149,35 @@ export interface DeliveryNoteDTO {
   createdAt: string;
   updatedAt: string;
   postedAt?: string;
+}
+
+export interface InvoiceableLinkedSalesLineDTO {
+  sourceType: 'DELIVERY_NOTE' | 'SALES_ORDER';
+  deliveryNoteId?: string;
+  deliveryNoteNumber?: string;
+  deliveryDate?: string;
+  soLineId?: string;
+  dnLineId?: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  trackInventory: boolean;
+  remainingQty: number;
+  uomId?: string;
+  uom: string;
+  unitPriceDoc: number;
+  taxCodeId?: string;
+  warehouseId?: string;
+  description?: string;
+}
+
+export interface InvoiceableLinkedSalesSourceDTO {
+  salesOrderId: string;
+  customerId: string;
+  customerName: string;
+  currency: string;
+  exchangeRate: number;
+  lines: InvoiceableLinkedSalesLineDTO[];
 }
 
 export interface SalesInvoiceLineDTO {
@@ -284,6 +321,7 @@ export interface InitializeSalesPayload {
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
+  paymentMethodConfigs?: SalesPaymentMethodConfigDTO[];
   salesVoucherTypeId?: string;
   defaultWarehouseId?: string;
   soNumberPrefix?: string;
@@ -384,8 +422,21 @@ export interface SalesInvoiceLineInputDTO {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   taxCodeId?: string;
   warehouseId?: string;
+  description?: string;
+}
+
+export interface SalesInvoiceChargeInputDTO {
+  chargeId?: string;
+  code?: string;
+  name: string;
+  amountDoc: number;
+  taxCodeId?: string;
+  revenueAccountId?: string;
   description?: string;
 }
 
@@ -404,6 +455,7 @@ export interface CreateSalesInvoicePayload {
   currency?: string;
   exchangeRate?: number;
   lines?: SalesInvoiceLineInputDTO[];
+  charges?: SalesInvoiceChargeInputDTO[];
   notes?: string;
   settlementInput?: SettlementInputPayload;
 }
@@ -422,6 +474,7 @@ export interface UpdateSalesInvoicePayload {
   currency?: string;
   exchangeRate?: number;
   lines?: SalesInvoiceLineInputDTO[];
+  charges?: SalesInvoiceChargeInputDTO[];
   notes?: string;
   settlementInput?: SettlementInputPayload;
 }
@@ -433,7 +486,7 @@ export interface SettlementInputPayload {
 }
 
 export interface SettlementRowPayload {
-  settlementAccountId: string;
+  settlementAccountId?: string;
   amountBase: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
   reference?: string;
@@ -501,6 +554,13 @@ export interface UpdateSalesInvoicePaymentStatusPayload {
 
 export interface RecordSalesInvoicePaymentPayload {
   paymentAmountBase: number;
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
+  settlementAccountId?: string;
+  receivablePayableAccountId?: string;
+  arAccountId?: string;
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
 }
 
 export const salesApi = {
@@ -521,6 +581,9 @@ export const salesApi = {
 
   getSO: (id: string): Promise<SalesOrderDTO> =>
     client.get(`/tenant/sales/orders/${id}`),
+
+  getInvoiceableLinkedSource: (salesOrderId: string): Promise<InvoiceableLinkedSalesSourceDTO> =>
+    client.get(`/tenant/sales/orders/${salesOrderId}/invoiceable-linked-source`),
 
   listSOs: (opts?: ListSalesOrdersOptions): Promise<SalesOrderDTO[]> =>
     client.get('/tenant/sales/orders', { params: opts }),

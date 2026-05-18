@@ -1,7 +1,7 @@
 # Architecture: Sales Module
 
-**Last updated:** 2026-05-17
-**Status:** Feature-complete for V1 (4 document types). Quotations and Price Lists deferred.
+**Last updated:** 2026-05-18
+**Status:** Core workflows stable for direct invoicing and operational linked invoicing. Promotions and price lists deferred.
 **Module-level docs:** [`docs/modules/sales/`](../modules/sales/)
 
 ---
@@ -24,19 +24,65 @@ Sales Order (SO) → Delivery Note (DN) → Sales Invoice (SI) → Receipt
 - **Sales Invoice (SI)** — the financial event. Posts AR + Revenue (+ COGS in SIMPLE mode). Drives payment tracking.
 - **Sales Return (SR)** — reverses a delivery and/or invoice. Two contexts: `AFTER_INVOICE` (full reversal) and `BEFORE_INVOICE` (delivery-only reversal, COGS only).
 
-## Workflow Modes
+## Workflow Modes and Product Modes
 
-Configured in `Sales → Settings`. Trades off rigor vs simplicity.
+ERP03 treats these as separate concepts:
+
+- **Sales Standalone**: Sales is the visible app. Accounting and Inventory may still run as hidden engines.
+- **SIMPLE** workflow: direct invoicing is the primary path.
+- **OPERATIONAL** workflow: Sales Order -> Delivery Note -> Sales Invoice.
+
+Configured in `Sales -> Settings`. Trades off rigor vs simplicity.
+
+### Governance precedence
+
+Sales workflow behavior should be read in this order:
+
+1. **Company workflow mode** - default rule for the whole company
+2. **Company governance override** - company-wide persona exception
+3. **Form governance override** - specific document/form exception when allowed
+
+The backend resolver also supports branch-scoped rules, but Sales invoice creation does not yet carry a reliable branch context. Until the invoice contract includes branch context, branch-scope rules must not be exposed as active Sales invoice governance.
+
+This is important because mixed businesses can have both strict operational flows and approved direct-invoice forms, for example POS-facing forms.
+
+### Default company rule
+
+- If company workflow mode is **SIMPLE**, direct invoicing is the default behavior and operational documents may still be used.
+- If company workflow mode is **OPERATIONAL**, direct invoicing is blocked by default. In that case, stock sales must follow `Sales Order -> Delivery Note -> Linked Sales Invoice`.
+
+This makes the workflow mode meaningful at company level.
+
+### Allowed exception model
+
+Global OPERATIONAL is not meant to be bypassed casually.
+Direct behavior may only reappear through an explicit governance exception, for example:
+
+- a POS-facing form
+- another explicitly approved form scenario
+
+So the correct rule is:
+
+> **Company OPERATIONAL blocks direct invoicing by default.**
+> **Company/form governance may explicitly re-enable direct invoicing for approved runtime contexts.**
 
 | Aspect | SIMPLE | OPERATIONAL (a.k.a. CONTROLLED) |
 |---|---|---|
 | Sales Order required (stock items) | No | Yes |
-| Standalone Sales Invoice allowed | Yes | No (must reference a Delivery Note) |
+| Standalone Sales Invoice allowed | Yes | No by default; only possible through explicit company/form governance override |
 | Delivery Note | Optional | Mandatory for stock items |
 | COGS recognized at | Sales Invoice posting | Delivery Note posting |
 | Invoice quantity ceiling (stock) | `orderedQty × (1 + tolerance)` if SO-linked | `deliveredQty` |
 
 Most small businesses pick SIMPLE. Larger or warehouse-driven businesses pick OPERATIONAL. Switching modes is restricted once documents exist.
+
+### Canonical Workflow Matrix
+
+| Context | Visible user flow | Hidden engine behavior | Hard limits |
+|---|---|---|---|
+| Sales Standalone + SIMPLE | Direct Invoice -> Payment | Hidden Accounting posts revenue/AR/receipt; hidden Inventory can move stock on invoice post | One visible base currency, one default warehouse if stock is used, no accounting reports UI |
+| Sales Standalone + OPERATIONAL | Sales Order -> Delivery Note -> Sales Invoice -> Payment | Hidden Inventory moves stock on DN; hidden Accounting posts COGS on DN and AR/revenue on SI | Warehouse chosen on DN, not linked SI |
+| Sales + visible Accounting | Same flows, but accounting setup/reports are visible | Same engine, visible traceability | Advanced accounting and multi-currency available through Accounting |
 
 ## Customers
 
@@ -55,9 +101,11 @@ Every posted SI / SR / Receipt calls into Accounting's `PostVoucherUseCase` (Acc
 
 **Sales Invoice posting** creates:
 ```
-Dr  Accounts Receivable      (customer override → company default)
-    Cr  Revenue               (item → category → company default)
-    Cr  Tax Payable            (from TaxCode on each line)
+Dr  Accounts Receivable       (final invoice total)
+Dr  Sales Discount / Expense  (when line discounts exist)
+    Cr  Revenue                (gross line revenue before discount)
+    Cr  Charge Revenue         (document charges / additions)
+    Cr  Tax Payable             (from TaxCode on discounted lines and charges)
 ```
 Plus (in SIMPLE mode for stock items):
 ```
@@ -72,6 +120,24 @@ Dr  COGS
 Dr  Cash / Bank
     Cr  Accounts Receivable
 ```
+
+### Commercial Terms Posting
+
+Direct Sales Invoices now support canonical commercial terms:
+
+- **Line discount**: `discountType` (`PERCENT` or `AMOUNT`) plus `discountValue`
+- **Document charges**: additive commercial rows such as delivery fee, service fee, or packaging
+- **Payment method mapping**: Sales-facing payment methods resolve hidden settlement accounts through Sales settings
+
+Posting behavior:
+
+- tax is calculated on the **discounted line base**
+- gross item revenue stays visible as revenue
+- line discounts post as a separate debit to the configured Sales expense/discount account
+- charge rows post as separate revenue/tax buckets
+- pay-now settlements can resolve `settlementAccountId` internally from Sales settings when the UI only sends `paymentMethod`
+
+If an invoice contains a discount, `SalesSettings.defaultSalesExpenseAccountId` is required. This prevents discounts from disappearing into a net revenue number with no expense/contra-revenue trace.
 
 Voucher metadata always includes `sourceModule='sales'`, `sourceType=<doctype>`, `sourceId=<docId>` so the ledger can be traced back to the originating document.
 
@@ -95,13 +161,84 @@ Configured per posting call. Three modes:
 
 Payment status (`UNPAID` → `PARTIALLY_PAID` → `PAID`) is auto-computed from `paidAmount` vs `grandTotal`.
 
+### Sales Payment Abstraction
+
+Standalone Sales should not expose raw accounting IDs as the primary UX. The current contract supports:
+
+- `CASH`
+- `BANK_TRANSFER`
+- `CHECK`
+- `CREDIT_CARD`
+- `OTHER`
+
+These are configured in `SalesSettings.paymentMethodConfigs`, where each method maps to a hidden settlement account. Raw AR / settlement account IDs remain as optional overrides for advanced or visible-accounting cases.
+
+All settlement receipt vouchers still pass through the Accounting voucher validation gate before ledger write, both for invoice Save & Post settlements and later Record Payment actions. The backend blocks HEADER, inactive, missing, replaced, parent-with-children, or otherwise non-posting accounts even if a UI or API request sends one.
+
+### QA root cause: header account accepted in receipt voucher
+
+The Accounting validation service already knew how to reject HEADER accounts. The failure was in the Sales payment integration path:
+
+1. Sales built a `VoucherEntity` for the receipt.
+2. Sales immediately called `postedVoucher = approvedVoucher.post(...)`.
+3. Sales then called `ledgerRepo.recordForVoucher(postedVoucher)` and `voucherRepo.save(postedVoucher)` directly.
+4. That bypassed `SubledgerVoucherPostingService` / `VoucherValidationService.validateAccounts()`, so the ledger write never checked whether each account was POSTING.
+
+The immediate fix is to run `VoucherValidationService.validateCore()` and `validateAccounts()` in both Sales receipt paths before any ledger/voucher/payment-history write happens.
+
+The defense-in-depth fix is lower level: `ILedgerRepository.recordForVoucher()` now invokes the same `VoucherValidationService.validateCore()` and `validateAccounts()` methods before writing ledger entries. Both Firestore and SQL implementations block:
+
+- missing accounts
+- HEADER accounts
+- inactive accounts
+- replaced accounts
+- parent accounts with children
+
+This means a future module can no longer reach the ledger with an invalid voucher or non-posting account just by forgetting to call the higher-level posting service. The final persistence boundary still goes through the Accounting engine rules.
+
 ## Validation Rules (key)
 
 - Tax codes are snapshotted onto invoice lines at posting (the historical tax rate is preserved even if the master tax code changes later).
 - Over-delivery tolerance configurable per company.
 - Quantity ceilings enforced at SI posting based on workflow mode (see table above).
+- Linked stock invoice lines must carry `dnLineId`.
+- Linked stock invoice warehouse comes from the posted Delivery Note; direct stock invoice warehouse comes from the invoice line itself.
 - Returns can only reference posted SIs / DNs.
 - Customer's outstanding amount is recomputed on every settle/return.
+
+## Linked Invoice Source Contract
+
+Operational linked invoicing now uses an explicit read contract instead of trying to derive invoiceable stock quantities in the page from Sales Order lines alone.
+
+### Backend contract
+
+Endpoint:
+
+`GET /tenant/sales/orders/:id/invoiceable-linked-source`
+
+Returns:
+
+- stock lines from **posted Delivery Notes**
+- service lines from remaining **Sales Order** quantities
+- delivered-not-yet-invoiced stock quantity per `dnLineId`
+
+### Why this exists
+
+The frontend cannot safely compute stock invoiceability from the Sales Order snapshot because:
+
+- Delivery Notes are the source of stock fulfillment in OPERATIONAL mode
+- partial deliveries can exist across multiple DN documents
+- already-invoiced quantity must be tracked per `dnLineId`, not only per Sales Order line
+
+### Current frontend behavior
+
+`SalesInvoiceDetailPage.tsx` now loads:
+
+- stock linked lines from the invoiceable-source endpoint
+- service linked lines from the same response
+- DN-derived warehouse as read-only/automatic for linked stock lines
+
+This keeps the business rule intact: **deliver first, then invoice what was actually delivered**.
 
 ## Multi-Currency
 
@@ -116,6 +253,7 @@ Payment status (`UNPAID` → `PARTIALLY_PAID` → `PAID`) is auto-computed from 
 | `CreateSalesOrderUseCase` / `ConfirmSalesOrderUseCase` / `CancelSalesOrderUseCase` / `CloseSalesOrderUseCase` | SO lifecycle |
 | `CreateDeliveryNoteUseCase` / `PostDeliveryNoteUseCase` | Delivery flow — calls `processOUT()` and emits COGS GL in OPERATIONAL mode |
 | `CreateSalesInvoiceUseCase` / `PostSalesInvoiceUseCase` / `CreateAndPostSalesInvoiceUseCase` | Invoice creation and posting |
+| `GetInvoiceableLinkedSalesSourceUseCase` | Read contract for linked invoice creation from posted Delivery Notes + remaining SO service lines |
 | `PostSalesInvoiceWithSettlementUseCase` | Post invoice + receipt voucher(s) in one call (CASH_FULL or MULTI) |
 | `CreateSalesReturnUseCase` / `PostSalesReturnUseCase` | Return flow, context-aware GL reversals |
 | `RecordSalesInvoicePaymentUseCase` | Standalone payment recording |
@@ -144,4 +282,5 @@ All under `backend/src/application/sales/use-cases/`.
 | **Customer Master (dedicated)** | Currently uses Party. A dedicated customer entity is planned but the Party-based flow is sufficient for V1. |
 | **Sales Reports (detailed)** | Dashboard exists. Detailed reports (AR Aging, Sales Register, Customer Statement, by-item/by-customer breakdowns) are deferred. |
 | **Credit limit enforcement** | Not validated at SI posting. Could be added as a validation rule. |
-| **Discount engine** | Manual line discount only. No automatic volume-break or promotional rules. |
+| **Promotion engine / free-goods rules** | Manual invoice commercial terms exist, but automatic buy-X-get-Y and campaign rules are deferred. |
+| **Price lists** | Deferred. Manual price entry is still the active workflow. |

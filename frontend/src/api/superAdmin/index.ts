@@ -202,11 +202,31 @@ export interface AiRuntimeProfile {
 export interface UpsertAiRuntimeProfilePayload {
   providerId: string;
   modelProfileId: string;
+  /** Paste-once inline key. Mutually exclusive with apiKeyId. */
   apiKey?: string;
+  /** Reference to a saved vault key. Backend dereferences this server-side. */
+  apiKeyId?: string;
   status?: AiRuntimeProfileStatus;
   maxRequestsPerInterval?: number;
   requestInterval?: AiRuntimeInterval;
   notes?: string;
+}
+
+// API Key Vault — Super Admin's personal labelled keys
+export type AiPlatformApiKeyValidationStatus = 'unknown' | 'valid' | 'invalid';
+
+export interface AiPlatformApiKey {
+  id: string;
+  label: string;
+  providerId: string;
+  providerName: string;
+  credentialHint: string;
+  lastValidatedAt: string | null;
+  lastValidationStatus: AiPlatformApiKeyValidationStatus;
+  lastValidationDetail: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // AI Certification Types
@@ -624,6 +644,35 @@ export const superAdminApi = {
       { timeout: 180_000 },
     ),
 
+  /**
+   * Run diagnostics using the API key stored in the active platform runtime
+   * profile for this model. Used by the Super Admin "Set up AI" wizard — the
+   * key was just saved in Step 3 and we want to verify it end-to-end without
+   * the admin having to paste it again.
+   */
+  runPlatformDiagnostics: (profileId: string): Promise<ProviderHealthResponse> =>
+    client.post(
+      `/platform/ai-model-profiles/${encodeURIComponent(profileId)}/diagnostics/platform`,
+      {},
+      { timeout: 180_000 },
+    ),
+
+  // ─── Platform API Key Vault ───────────────────────────────────────────────
+  getAiApiKeys: (): Promise<AiPlatformApiKey[]> =>
+    client.get('/platform/ai-api-keys'),
+
+  createAiApiKey: (data: { label: string; providerId: string; apiKey: string; notes?: string }): Promise<AiPlatformApiKey> =>
+    client.post('/platform/ai-api-keys', data),
+
+  updateAiApiKey: (keyId: string, data: { label?: string; apiKey?: string; notes?: string }): Promise<AiPlatformApiKey> =>
+    client.patch(`/platform/ai-api-keys/${encodeURIComponent(keyId)}`, data),
+
+  deleteAiApiKey: (keyId: string): Promise<void> =>
+    client.delete(`/platform/ai-api-keys/${encodeURIComponent(keyId)}`),
+
+  validateAiApiKey: (keyId: string): Promise<AiPlatformApiKey> =>
+    client.post(`/platform/ai-api-keys/${encodeURIComponent(keyId)}/validate`, {}, { timeout: 30_000 }),
+
   // AI Certifications
   getAiModelProfileCertifications: (profileId: string): Promise<AiCertificationResult[]> =>
     client.get(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications`),
@@ -632,10 +681,17 @@ export const superAdminApi = {
     client.post(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications/manual`, data),
 
   runGlobalCertification: (profileId: string, data: RunCertificationPayload): Promise<AiCertificationResult> =>
-    client.post(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications/run`, data),
+    client.post(
+      `/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications/run`,
+      data,
+      { timeout: 180_000 }, // Cert hits the live model — same generous timeout as diagnostics
+    ),
 
   expireCertification: (certificationId: string): Promise<AiCertificationResult> =>
     client.patch(`/platform/ai-certifications/${encodeURIComponent(certificationId)}/expire`),
+
+  resetAiModelProfileCertifications: (profileId: string): Promise<{ removed: number; message: string }> =>
+    client.delete(`/platform/ai-model-profiles/${encodeURIComponent(profileId)}/certifications`),
 
   listValidCertifiedProfiles: (params?: { scope?: 'GLOBAL' | 'TENANT' | 'ALL'; category?: string; moduleId?: string }): Promise<CertifiedProfileEntry[]> =>
     client.get('/platform/ai-certifications/valid', { params }),

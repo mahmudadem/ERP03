@@ -16,6 +16,7 @@ router.put('/settings', SalesController.updateSettings);
 router.post('/orders', SalesController.createSO);
 router.get('/orders', SalesController.listSOs);
 router.get('/orders/:id', SalesController.getSO);
+router.get('/orders/:id/invoiceable-linked-source', SalesController.getInvoiceableLinkedSource);
 router.put('/orders/:id', SalesController.updateSO);
 router.post('/orders/:id/confirm', SalesController.confirmSO);
 router.post('/orders/:id/cancel', SalesController.cancelSO);

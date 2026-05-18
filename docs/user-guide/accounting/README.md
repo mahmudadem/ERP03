@@ -48,6 +48,24 @@ Once posted, the voucher is **immutable**. To correct it, use **Reverse & Replac
 
 ---
 
+## Posting account safety
+
+Only real posting accounts can be used on vouchers. Header accounts are grouping rows in the Chart of Accounts, such as "Cash" or "Accounts Receivable" parent headings. They are useful for reports, but they are not valid places to post money.
+
+When you post a voucher, ERP03 now checks this at the Accounting engine boundary. It blocks:
+
+- header / non-posting accounts
+- inactive accounts
+- accounts that were replaced by another account
+- parent accounts that still have child accounts
+- missing or invalid account IDs
+
+This protection applies to manual Accounting vouchers and automatic vouchers created from Sales or other modules. If a voucher is rejected, select a child posting account such as a specific cashbox, bank account, customer receivable account, revenue account, or expense account.
+
+**Admin note:** This protects normal ERP03 screens and backend APIs. Direct database access is still a separate security responsibility. Production database permissions must prevent users or external tools from writing directly to ledger data outside the ERP03 backend.
+
+---
+
 ## Fixing a mistake after posting: Reverse & Replace
 
 You can't edit a posted voucher (this is by design — financial records must be auditable). Instead:

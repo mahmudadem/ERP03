@@ -118,6 +118,7 @@ import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRe
   import { AiToolCatalogUseCase } from '../../application/ai-assistant/use-cases/AiToolCatalogUseCase';
   import { AiModelProfileUseCase } from '../../application/ai-assistant/use-cases/AiModelProfileUseCase';
   import { AiPlatformRuntimeProfileUseCase } from '../../application/ai-assistant/use-cases/AiPlatformRuntimeProfileUseCase';
+  import { AiPlatformApiKeyUseCase } from '../../application/ai-assistant/use-cases/AiPlatformApiKeyUseCase';
   import { AiProviderRegistryUseCase } from '../../application/ai-assistant/use-cases/AiProviderRegistryUseCase';
   import { AiModelCertificationUseCase } from '../../application/ai-assistant/use-cases/AiModelCertificationUseCase';
 import { AiAutoSeedCertification } from '../../application/ai-assistant/services/AiAutoSeedCertification';
@@ -152,6 +153,7 @@ import { IAiToolEnablementRepository } from '../../repository/interfaces/ai-assi
 import { IAiModelToolPolicyRepository } from '../../repository/interfaces/ai-assistant/IAiModelToolPolicyRepository';
 import { IAiModelProfileRepository } from '../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
 import { IAiPlatformRuntimeProfileRepository } from '../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
+import { IAiPlatformApiKeyRepository } from '../../repository/interfaces/ai-assistant/IAiPlatformApiKeyRepository';
 import { IAiProviderRepository } from '../../repository/interfaces/ai-assistant/IAiProviderRepository';
 import { IAiModelCertificationRepository } from '../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { FirestoreAiToolCatalogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiToolCatalogRepository';
@@ -159,6 +161,7 @@ import { FirestoreAiToolEnablementRepository } from '../firestore/repositories/a
 import { FirestoreAiModelToolPolicyRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelToolPolicyRepository';
 import { FirestoreAiModelProfileRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelProfileRepository';
 import { FirestoreAiPlatformRuntimeProfileRepository } from '../firestore/repositories/ai-assistant/FirestoreAiPlatformRuntimeProfileRepository';
+import { FirestoreAiPlatformApiKeyRepository } from '../firestore/repositories/ai-assistant/FirestoreAiPlatformApiKeyRepository';
 import { FirestoreAiProviderRepository } from '../firestore/repositories/ai-assistant/FirestoreAiProviderRepository';
 import { FirestoreAiModelCertificationRepository } from '../firestore/repositories/ai-assistant/FirestoreAiModelCertificationRepository';
 import { IAiCreditLedgerRepository } from '../../repository/interfaces/ai-assistant/IAiCreditLedgerRepository';
@@ -432,8 +435,8 @@ export const diContainer = {
   },
   get ledgerRepository(): AccRepo.ILedgerRepository {
     return DB_TYPE === 'SQL'
-      ? new PrismaLedgerRepository(getPrismaClient())
-      : new FirestoreLedgerRepository(getDb());
+      ? new PrismaLedgerRepository(getPrismaClient(), this.accountRepository)
+      : new FirestoreLedgerRepository(getDb(), this.accountRepository);
   },
   get fiscalYearRepository(): AccRepo.IFiscalYearRepository {
     return DB_TYPE === 'SQL'
@@ -818,6 +821,17 @@ export const diContainer = {
   get aiPlatformRuntimeProfileRepository(): IAiPlatformRuntimeProfileRepository {
     return new FirestoreAiPlatformRuntimeProfileRepository(getDb());
   },
+  get aiPlatformApiKeyRepository(): IAiPlatformApiKeyRepository {
+    return new FirestoreAiPlatformApiKeyRepository(getDb());
+  },
+  get aiPlatformApiKeyUseCase(): AiPlatformApiKeyUseCase {
+    return new AiPlatformApiKeyUseCase(
+      this.aiPlatformApiKeyRepository,
+      this.aiProviderRepository,
+      this.encryptionService,
+      this.httpClient,
+    );
+  },
   get aiProviderRepository(): IAiProviderRepository {
     return new FirestoreAiProviderRepository(getDb());
   },
@@ -838,7 +852,7 @@ get aiModelCertificationRepository(): IAiModelCertificationRepository {
     );
   },
   get aiModelProfileUseCase(): AiModelProfileUseCase {
-    return new AiModelProfileUseCase(this.aiModelProfileRepository, this.aiAutoSeedCertification);
+    return new AiModelProfileUseCase(this.aiModelProfileRepository, this.aiAutoSeedCertification, this.aiModelCertificationRepository);
   },
   get aiPlatformRuntimeProfileUseCase(): AiPlatformRuntimeProfileUseCase {
     return new AiPlatformRuntimeProfileUseCase(
@@ -846,6 +860,7 @@ get aiModelCertificationRepository(): IAiModelCertificationRepository {
       this.aiProviderRepository,
       this.aiModelProfileRepository,
       this.encryptionService,
+      this.aiPlatformApiKeyRepository,
     );
   },
 get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
@@ -863,6 +878,7 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
         (config) => ProviderFactory.getProvider(config, this.httpClient)
       ),
       this.aiPlatformRuntimeProfileRepository,
+      this.aiProviderRepository,
     );
   },
   get aiAutoSeedCertification(): AiAutoSeedCertification {

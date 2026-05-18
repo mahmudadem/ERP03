@@ -22,7 +22,7 @@ import { IAiProviderRepository } from '../../../repository/interfaces/ai-assista
 import { IAiPlatformRuntimeProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiPlatformRuntimeProfileRepository';
 import { AiProviderConfig } from '../../../domain/ai-assistant/entities/AiProviderConfig';
 import { ProviderFactory, ProviderProviderError } from '../providers/ProviderFactory';
-import { ProviderError } from '../../../errors/ProviderErrors';
+import { ProviderError, ProviderAuthError, ProviderRateLimitError, ProviderUnavailableError } from '../../../errors/ProviderErrors';
 import { ApiError } from '../../../api/errors/ApiError';
 import { AiModelCapabilityCatalog, AiModelProfile } from '../services/AiModelCapabilityCatalog';
 import { IAiProvider } from '../providers/IAiProvider';
@@ -301,6 +301,13 @@ export class CheckProviderHealthUseCase {
       inferenceOk = true;
     } catch (error) {
       inferenceError = this.sanitizeError(error);
+      // Context-aware refinement: if the API key authenticated against /v1/models
+      // (networkOk) but the chat call returns 401/403, the key is valid — it just
+      // lacks access to this specific model. Common with Anthropic models on
+      // OpenRouter (BYOK / per-model tier required).
+      if (networkOk && (error instanceof ProviderAuthError)) {
+        inferenceError = 'API key is valid for the provider, but is not authorized to use this specific model. On OpenRouter this usually means the model requires BYOK (Bring Your Own Key) or a paid tier — check your model access in the provider dashboard.';
+      }
     }
 
     // Step 3: Native OpenAI-style tool calling probe.
@@ -317,7 +324,14 @@ export class CheckProviderHealthUseCase {
       networkOk &&
       inferenceOk &&
       (!nativeToolCalling.ok || modelProfile.textOnlyMode || !providerCapabilities.supportsToolCalling);
-    const textPlan = await this.runTextPlanDiagnostic(provider, shouldRunTextPlan);
+    const textPlanSkipReason = !networkOk
+      ? 'Skipped because provider connectivity failed'
+      : !inferenceOk
+        ? 'Skipped because provider connectivity or inference failed'
+        : nativeToolCalling.ok
+          ? 'Skipped because native tool calling worked'
+          : undefined;
+    const textPlan = await this.runTextPlanDiagnostic(provider, shouldRunTextPlan, textPlanSkipReason);
     const nativeEnabledForRuntime =
       nativeToolCalling.ok &&
       modelProfile.supportsToolCalling &&
@@ -352,6 +366,7 @@ export class CheckProviderHealthUseCase {
         detail: nativeToolCalling.ok
           ? nativeToolCalling.detail
           : textPlan.detail || nativeToolCalling.detail || reason,
+        profileId: config.selectedModelProfileId || undefined,
       });
     }
 
@@ -450,7 +465,7 @@ export class CheckProviderHealthUseCase {
     }
 
     const modelName = config.model || 'unknown';
-    const modelProfile = await this.resolveModelProfile(companyId, config.provider, modelName);
+    const modelProfile = await this.resolveModelProfile(config.companyId || 'admin-test', config.provider, modelName);
 
     // Use strict provider creation for diagnostics — never silently fall back to mock.
     // If the provider can't be created (e.g., no API key), report it as a diagnostic failure.
@@ -529,6 +544,9 @@ export class CheckProviderHealthUseCase {
       inferenceOk = true;
     } catch (error) {
       inferenceError = this.sanitizeError(error);
+      if (networkOk && (error instanceof ProviderAuthError)) {
+        inferenceError = 'API key is valid for the provider, but is not authorized to use this specific model. On OpenRouter this usually means the model requires BYOK (Bring Your Own Key) or a paid tier — check your model access in the provider dashboard.';
+      }
     }
 
     // Step 3: Native OpenAI-style tool calling probe
@@ -544,7 +562,14 @@ export class CheckProviderHealthUseCase {
       networkOk &&
       inferenceOk &&
       (!nativeToolCalling.ok || modelProfile.textOnlyMode || !providerCapabilities.supportsToolCalling);
-    const textPlan = await this.runTextPlanDiagnostic(provider, shouldRunTextPlan);
+    const textPlanSkipReason = !networkOk
+      ? 'Skipped because provider connectivity failed'
+      : !inferenceOk
+        ? 'Skipped because provider connectivity or inference failed'
+        : nativeToolCalling.ok
+          ? 'Skipped because native tool calling worked'
+          : undefined;
+    const textPlan = await this.runTextPlanDiagnostic(provider, shouldRunTextPlan, textPlanSkipReason);
     const nativeEnabledForRuntime =
       nativeToolCalling.ok &&
       modelProfile.supportsToolCalling &&
@@ -577,6 +602,7 @@ export class CheckProviderHealthUseCase {
         detail: nativeToolCalling.ok
           ? nativeToolCalling.detail
           : textPlan.detail || nativeToolCalling.detail || reason,
+        profileId: config.selectedModelProfileId || undefined,
       });
     }
 
@@ -744,12 +770,13 @@ export class CheckProviderHealthUseCase {
   private async runTextPlanDiagnostic(
     provider: IAiProvider,
     shouldAttempt: boolean,
+    skipReason?: string,
   ): Promise<TextPlanDiagnostic> {
     if (!shouldAttempt) {
       return {
         attempted: false,
         ok: false,
-        detail: 'Skipped because native tool calling worked',
+        detail: skipReason || 'Skipped because native tool calling worked',
       };
     }
 
@@ -771,7 +798,7 @@ export class CheckProviderHealthUseCase {
               `${TEXT_PLAN_END}`,
           },
         ],
-        maxTokens: 160,
+        maxTokens: 512,
         temperature: 0,
       });
 
@@ -967,13 +994,35 @@ export class CheckProviderHealthUseCase {
    */
   private sanitizeError(error: unknown): string {
     if (error instanceof ProviderError) {
-      const pe = error as ProviderError;
-      // Map to normalized status descriptions — never include raw messages
-      const statusCode = (pe as any).statusCode;
-      if (statusCode === 401) return 'Authentication failed — check your API key';
-      if (statusCode === 429) return 'Rate limit exceeded — try again later';
-      if (statusCode === 503) return 'Provider is temporarily unavailable';
-      if (statusCode === 502) return 'Provider returned an error response';
+      // Subclasses encode the HTTP family directly
+      if (error instanceof ProviderAuthError) return 'Authentication failed — check your API key';
+      if (error instanceof ProviderRateLimitError) return 'Rate limit exceeded — try again later';
+      if (error instanceof ProviderUnavailableError) {
+        // ProviderUnavailableError covers 5xx and network failures — extract code if present
+        const m = error.message.match(/\((\d{3})\)/);
+        return m ? `Provider server error (${m[1]}) — try again later` : 'Provider is temporarily unavailable';
+      }
+      // Base ProviderError carries the status code inside the message:
+      // "AI provider error (NNN): MESSAGE"
+      const match = error.message.match(/AI provider error \((\d{3})\)/);
+      const statusCode = match ? parseInt(match[1], 10) : null;
+      if (statusCode === 400) return 'Bad request (400) — the provider rejected the request format or model id';
+      if (statusCode === 402) return 'Insufficient credits or payment required at the provider — top up your account';
+      if (statusCode === 403) return 'Forbidden (403) — the API key does not have access to this model';
+      if (statusCode === 404) return 'Model not found (404) — verify the model id is correct for this endpoint';
+      if (statusCode === 422) return 'Request rejected (422) — the model or parameters are not supported';
+      if (typeof statusCode === 'number') {
+        // Include the response body message after the colon when present — strip URLs/tokens.
+        const detailMatch = error.message.match(/AI provider error \(\d{3}\):\s*(.*)$/);
+        const detail = detailMatch ? detailMatch[1].replace(/https?:\/\/\S+/g, '').trim().slice(0, 160) : '';
+        return detail
+          ? `Provider returned HTTP ${statusCode} — ${detail}`
+          : `Provider returned HTTP ${statusCode} — please check your configuration`;
+      }
+      // No status code in the message — handle the known string patterns thrown by the provider
+      if (/empty response/i.test(error.message)) return 'Provider returned an empty response — the model may be unavailable or not configured for chat';
+      if (/invalid response format/i.test(error.message)) return 'Provider returned an invalid response format — model may not support this request shape';
+      if (/Unexpected error/i.test(error.message)) return 'Unexpected error talking to the provider — check network and model availability';
       return 'Provider error — please check your configuration';
     }
 

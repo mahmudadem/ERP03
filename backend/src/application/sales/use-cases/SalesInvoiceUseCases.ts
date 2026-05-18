@@ -2,7 +2,14 @@ import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
-import { DocumentSource, SalesInvoice, SalesInvoiceLine, PaymentStatus } from '../../../domain/sales/entities/SalesInvoice';
+import {
+  DocumentSource,
+  PaymentStatus,
+  SalesDiscountType,
+  SalesInvoice,
+  SalesInvoiceCharge,
+  SalesInvoiceLine,
+} from '../../../domain/sales/entities/SalesInvoice';
 import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import { Party } from '../../../domain/shared/entities/Party';
@@ -32,6 +39,7 @@ import { IVoucherSequenceRepository } from '../../../repository/interfaces/accou
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import {
   ItemQtyToBaseUomResult,
@@ -39,15 +47,30 @@ import {
 } from '../../inventory/services/UomResolutionService';
 import { addDaysToISODate, roundMoney } from './SalesPostingHelpers';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
+import {
+  calculateSalesInvoiceChargeAmounts,
+  calculateSalesInvoiceLineAmounts,
+  calculateSalesInvoiceTotals,
+} from '../services/SalesInvoiceCalculationService';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
 export const SETTLEMENT_MODES: SettlementMode[] = ['DEFERRED', 'CASH_FULL', 'MULTI'];
 export const VALID_PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
+const resolvePaymentMethodAccount = (
+  settings: SalesSettings,
+  paymentMethod: PaymentMethod | undefined
+): string | undefined => {
+  if (!paymentMethod) return undefined;
+  const config = (settings.paymentMethodConfigs || []).find(
+    (entry) => entry.method === paymentMethod && (entry.isEnabled ?? true)
+  );
+  return config?.settlementAccountId;
+};
 
 export interface SettlementRow {
-  settlementAccountId: string;
+  settlementAccountId?: string;
   amountBase: number;
   paymentMethod?: PaymentMethod;
   reference?: string;
@@ -57,7 +80,7 @@ export interface SettlementRow {
 
 export interface SettlementInput {
   settlementMode: SettlementMode;
-  receivablePayableAccountId: string;
+  receivablePayableAccountId?: string;
   settlements: SettlementRow[];
 }
 
@@ -71,8 +94,21 @@ export interface SalesInvoiceLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  discountType?: SalesDiscountType;
+  discountValue?: number;
+  discountAmountDoc?: number;
   taxCodeId?: string;
   warehouseId?: string;
+  description?: string;
+}
+
+export interface SalesInvoiceChargeInput {
+  chargeId?: string;
+  code?: string;
+  name: string;
+  amountDoc: number;
+  taxCodeId?: string;
+  revenueAccountId?: string;
   description?: string;
 }
 
@@ -90,6 +126,7 @@ export interface CreateSalesInvoiceInput {
   currency?: string;
   exchangeRate?: number;
   lines?: SalesInvoiceLineInput[];
+  charges?: SalesInvoiceChargeInput[];
   notes?: string;
   createdBy: string;
 }
@@ -104,6 +141,7 @@ export interface UpdateSalesInvoiceInput {
   currency?: string;
   exchangeRate?: number;
   lines?: SalesInvoiceLineInput[];
+  charges?: SalesInvoiceChargeInput[];
   notes?: string;
 }
 
@@ -115,11 +153,45 @@ export interface ListSalesInvoicesFilters {
   limit?: number;
 }
 
+export interface InvoiceableLinkedSalesLine {
+  sourceType: 'DELIVERY_NOTE' | 'SALES_ORDER';
+  deliveryNoteId?: string;
+  deliveryNoteNumber?: string;
+  deliveryDate?: string;
+  soLineId?: string;
+  dnLineId?: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  trackInventory: boolean;
+  remainingQty: number;
+  uomId?: string;
+  uom: string;
+  unitPriceDoc: number;
+  taxCodeId?: string;
+  warehouseId?: string;
+  description?: string;
+}
+
+export interface InvoiceableLinkedSalesSource {
+  salesOrderId: string;
+  customerId: string;
+  customerName: string;
+  currency: string;
+  exchangeRate: number;
+  lines: InvoiceableLinkedSalesLine[];
+}
+
 interface VoucherAccumulatedLine {
   accountId: string;
   baseAmount: number;
   docAmount: number;
   side: 'Debit' | 'Credit';
+}
+
+interface ResolvedChargeAccount {
+  revenueId: string;
+  taxId?: string;
 }
 
 interface AccumulatedCOGS {
@@ -240,7 +312,8 @@ export class CreateSalesInvoiceUseCase {
 
     const isPersonaAllowed = DocumentPolicyResolver.isSalesInvoicePersonaAllowed(
       settings,
-      input.persona as 'direct' | 'linked' | 'service'
+      input.persona as 'direct' | 'linked' | 'service',
+      { formType: input.formType }
     );
     if (!isPersonaAllowed) {
       throw new Error(`Sales invoice persona '${input.persona}' is not allowed by company governance policy`);
@@ -299,10 +372,6 @@ export class CreateSalesInvoiceUseCase {
 
       const invoicedQty = sourceLine.invoicedQty;
       const unitPriceDoc = sourceLine.unitPriceDoc ?? soLine?.unitPriceDoc ?? 0;
-      const lineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
-      const unitPriceBase = roundMoney(unitPriceDoc * exchangeRate);
-      const lineTotalBase = roundMoney(lineTotalDoc * exchangeRate);
-
       const taxCodeId = await this.resolveTaxCodeId(
         input.companyId,
         sourceLine.taxCodeId || soLine?.taxCodeId,
@@ -318,6 +387,18 @@ export class CreateSalesInvoiceUseCase {
         taxRate = selectedTaxCode.rate;
         taxCode = selectedTaxCode.code;
       }
+
+      const discountType = sourceLine.discountType;
+      const discountValue = sourceLine.discountValue;
+      const lineAmounts = calculateSalesInvoiceLineAmounts({
+        invoicedQty,
+        unitPriceDoc,
+        exchangeRate,
+        taxRate,
+        discountType,
+        discountValue,
+        discountAmountDoc: sourceLine.discountAmountDoc,
+      });
 
       const revenueAccountId = await this.resolveRevenueAccount(
         input.companyId,
@@ -338,14 +419,20 @@ export class CreateSalesInvoiceUseCase {
         uomId: sourceLine.uomId || soLine?.uomId || item.salesUomId || item.baseUomId,
         uom: sourceLine.uom || soLine?.uom || item.salesUom || item.baseUom,
         unitPriceDoc,
-        lineTotalDoc,
-        unitPriceBase,
-        lineTotalBase,
+        grossLineTotalDoc: lineAmounts.grossLineTotalDoc,
+        discountType,
+        discountValue,
+        discountAmountDoc: lineAmounts.discountAmountDoc,
+        lineTotalDoc: lineAmounts.lineTotalDoc,
+        unitPriceBase: lineAmounts.unitPriceBase,
+        grossLineTotalBase: lineAmounts.grossLineTotalBase,
+        discountAmountBase: lineAmounts.discountAmountBase,
+        lineTotalBase: lineAmounts.lineTotalBase,
         taxCodeId,
         taxCode,
         taxRate,
-        taxAmountDoc: roundMoney(lineTotalDoc * taxRate),
-        taxAmountBase: roundMoney(lineTotalBase * taxRate),
+        taxAmountDoc: lineAmounts.taxAmountDoc,
+        taxAmountBase: lineAmounts.taxAmountBase,
         warehouseId: sourceLine.warehouseId || soLine?.warehouseId || settings.defaultWarehouseId,
         revenueAccountId,
         cogsAccountId: item.cogsAccountId,
@@ -354,6 +441,44 @@ export class CreateSalesInvoiceUseCase {
         lineCostBase: undefined,
         stockMovementId: null,
         description: sourceLine.description || soLine?.description,
+      });
+    }
+
+    const charges: SalesInvoiceCharge[] = [];
+    for (let i = 0; i < (input.charges || []).length; i += 1) {
+      const sourceCharge = input.charges![i];
+      let taxRate = 0;
+      let taxCode: string | undefined;
+      let taxCodeId: string | undefined;
+
+      if (sourceCharge.taxCodeId) {
+        const selectedTaxCode = await this.taxCodeRepo.getById(input.companyId, sourceCharge.taxCodeId);
+        if (!selectedTaxCode) throw new Error(`Tax code not found: ${sourceCharge.taxCodeId}`);
+        assertValidSalesTaxCode(selectedTaxCode, sourceCharge.taxCodeId);
+        taxCodeId = selectedTaxCode.id;
+        taxRate = selectedTaxCode.rate;
+        taxCode = selectedTaxCode.code;
+      }
+
+      const chargeAmounts = calculateSalesInvoiceChargeAmounts({
+        amountDoc: sourceCharge.amountDoc,
+        exchangeRate,
+        taxRate,
+      });
+
+      charges.push({
+        chargeId: sourceCharge.chargeId || randomUUID(),
+        code: sourceCharge.code,
+        name: sourceCharge.name,
+        amountDoc: roundMoney(sourceCharge.amountDoc),
+        amountBase: chargeAmounts.amountBase,
+        taxCodeId,
+        taxCode,
+        taxRate,
+        taxAmountDoc: chargeAmounts.taxAmountDoc,
+        taxAmountBase: chargeAmounts.taxAmountBase,
+        revenueAccountId: sourceCharge.revenueAccountId || settings.defaultRevenueAccountId,
+        description: sourceCharge.description,
       });
     }
 
@@ -383,6 +508,7 @@ export class CreateSalesInvoiceUseCase {
       currency,
       exchangeRate,
       lines,
+      charges,
       subtotalDoc: 0,
       taxTotalDoc: 0,
       grandTotalDoc: 0,
@@ -500,6 +626,7 @@ export class CreateSalesInvoiceUseCase {
 export class PostSalesInvoiceUseCase {
   private readonly accountingPostingService: SubledgerVoucherPostingService;
   private readonly accountRepo?: IAccountRepository;
+  private readonly voucherValidationService = new VoucherValidationService();
 
   constructor(
     private readonly settingsRepo: ISalesSettingsRepository,
@@ -564,7 +691,12 @@ export class PostSalesInvoiceUseCase {
 
     // PHASE 1A: PRE-FETCH ALL MASTER DATA (bare reads — before transaction)
     const distinctItemIds = [...new Set(si.lines.map(l => l.itemId))];
-    const distinctTaxCodeIds = [...new Set(si.lines.filter(l => l.taxCodeId).map(l => l.taxCodeId as string))];
+    const distinctTaxCodeIds = [
+      ...new Set([
+        ...si.lines.filter((l) => l.taxCodeId).map((l) => l.taxCodeId as string),
+        ...(si.charges || []).filter((c) => c.taxCodeId).map((c) => c.taxCodeId as string),
+      ]),
+    ];
     const distinctWarehouseIds = [...new Set(si.lines.filter(l => l.warehouseId).map(l => (l.warehouseId as string)))];
     if (settings.defaultWarehouseId) distinctWarehouseIds.push(settings.defaultWarehouseId);
 
@@ -774,6 +906,9 @@ export class PostSalesInvoiceUseCase {
       const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
       this.freezeTaxSnapshotSync(line, si.exchangeRate, taxCode || undefined);
     }
+    for (const charge of si.charges || []) {
+      this.freezeChargeTaxSnapshotSync(charge, si.exchangeRate, charge.taxCodeId ? taxCodesMap.get(charge.taxCodeId) : undefined);
+    }
     const accountCache = new Map<string, string>();
     const resolveAccountCached = async (idOrCode: string): Promise<string> => {
       if (!idOrCode) return '';
@@ -814,9 +949,29 @@ export class PostSalesInvoiceUseCase {
       }
       lineResolvedAccounts.set(line.lineId, { revenueId, taxId, cogsId, inventoryId });
     }
+    const chargeResolvedAccounts = new Map<string, ResolvedChargeAccount>();
+    for (const charge of si.charges || []) {
+      const revenueId = await resolveAccountCached(charge.revenueAccountId || settings.defaultRevenueAccountId);
+      let taxId: string | undefined;
+      if ((charge.taxAmountBase || 0) > 0 && charge.taxCodeId) {
+        const chargeTaxCode = taxCodesMap.get(charge.taxCodeId);
+        if (chargeTaxCode?.salesTaxAccountId) {
+          taxId = await resolveAccountCached(chargeTaxCode.salesTaxAccountId);
+        }
+      }
+      chargeResolvedAccounts.set(charge.chargeId, { revenueId, taxId });
+    }
 
     const arAccountId = this.resolveARAccount(customer, settings);
     const resolvedARId = await resolveAccountCached(arAccountId);
+    const hasInvoiceDiscount = si.lines.some((line) =>
+      (line.discountAmountBase || 0) > 0 ||
+      (line.discountAmountDoc || 0) > 0 ||
+      (line.discountValue || 0) > 0
+    );
+    const resolvedDiscountAccountId = hasInvoiceDiscount
+      ? await resolveAccountCached(this.resolveSalesDiscountAccount(settings))
+      : undefined;
     const postingLogic = async (transaction: any) => {
       // --- Write inventory movements and stock levels ---
       for (const [lineId, { movement, updatedLevel }] of inventoryMovements) {
@@ -826,6 +981,8 @@ export class PostSalesInvoiceUseCase {
 
       // --- Accumulate voucher lines using pre-resolved accounts ---
       const revenueCredits = new Map<string, VoucherAccumulatedLine>();
+      const discountDebits = new Map<string, VoucherAccumulatedLine>();
+      const chargeCredits: VoucherAccumulatedLine[] = [];
       const taxCredits = new Map<string, VoucherAccumulatedLine>();
       const cogsBucket = new Map<string, AccumulatedCOGS>();
 
@@ -835,7 +992,10 @@ export class PostSalesInvoiceUseCase {
 
         const accounts = lineResolvedAccounts.get(line.lineId);
         if (accounts) {
-          this.addToBucket(revenueCredits, accounts.revenueId, line.lineTotalBase, line.lineTotalDoc);
+          this.addToBucket(revenueCredits, accounts.revenueId, line.grossLineTotalBase, line.grossLineTotalDoc);
+          if ((line.discountAmountBase || 0) > 0 && resolvedDiscountAccountId) {
+            this.addToBucket(discountDebits, resolvedDiscountAccountId, line.discountAmountBase || 0, line.discountAmountDoc || 0);
+          }
           if (line.taxAmountBase > 0 && accounts.taxId) {
             this.addToBucket(taxCredits, accounts.taxId, line.taxAmountBase, line.taxAmountDoc);
           }
@@ -846,6 +1006,20 @@ export class PostSalesInvoiceUseCase {
         if (so) {
           const soLine = findSOLine(so, line.soLineId, line.itemId);
           if (soLine) soLine.invoicedQty = roundMoney(soLine.invoicedQty + line.invoicedQty);
+        }
+      }
+      for (const charge of si.charges || []) {
+        this.freezeChargeTaxSnapshotSync(charge, si.exchangeRate, charge.taxCodeId ? taxCodesMap.get(charge.taxCodeId) : undefined);
+        const accounts = chargeResolvedAccounts.get(charge.chargeId);
+        if (!accounts) continue;
+        chargeCredits.push({
+          accountId: accounts.revenueId,
+          side: 'Credit',
+          baseAmount: roundMoney(charge.amountBase || 0),
+          docAmount: roundMoney(charge.amountDoc || 0),
+        });
+        if ((charge.taxAmountBase || 0) > 0 && accounts.taxId) {
+          this.addToBucket(taxCredits, accounts.taxId, charge.taxAmountBase || 0, charge.taxAmountDoc || 0);
         }
       }
 
@@ -860,7 +1034,9 @@ export class PostSalesInvoiceUseCase {
             baseAmount: roundMoney(si.grandTotalBase),
             docAmount: roundMoney(si.grandTotalDoc),
           },
+          ...Array.from(discountDebits.values()).map((line) => ({ ...line, side: 'Debit' as const })),
           ...Array.from(revenueCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
+          ...chargeCredits,
           ...Array.from(taxCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
         ];
 
@@ -884,7 +1060,6 @@ export class PostSalesInvoiceUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: si.invoiceNumber,
             baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
-            skipAccountValidation: true,
           },
           transaction
         );
@@ -931,7 +1106,6 @@ export class PostSalesInvoiceUseCase {
                 postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
                 reference: si.invoiceNumber,
                 baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
-                skipAccountValidation: true,
               },
               transaction
             );
@@ -948,7 +1122,7 @@ export class PostSalesInvoiceUseCase {
       // --- Process settlements inside the same transaction (atomic) ---
       if (settlementInput && settlementInput.settlementMode !== 'DEFERRED') {
         await this.processSettlementsInTransaction(
-          companyId, si, settlementInput, baseCurrency, transaction
+          companyId, si, settlementInput, settings, customer, baseCurrency, transaction
         );
       } else {
         // DEFERRED: ensure payment fields reflect unpaid state
@@ -1004,13 +1178,40 @@ export class PostSalesInvoiceUseCase {
   }
 
   private freezeTaxSnapshotSync(line: SalesInvoiceLine, rate: number, tax?: TaxCode): void {
-    line.lineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    line.unitPriceBase = roundMoney(line.unitPriceDoc * rate);
-    line.lineTotalBase = roundMoney(line.lineTotalDoc * rate);
+    const amounts = calculateSalesInvoiceLineAmounts({
+      invoicedQty: line.invoicedQty,
+      unitPriceDoc: line.unitPriceDoc,
+      exchangeRate: rate,
+      taxRate: tax?.rate || 0,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
+      discountAmountDoc: line.discountAmountDoc,
+    });
+    line.grossLineTotalDoc = amounts.grossLineTotalDoc;
+    line.discountAmountDoc = amounts.discountAmountDoc;
+    line.lineTotalDoc = amounts.lineTotalDoc;
+    line.unitPriceBase = amounts.unitPriceBase;
+    line.grossLineTotalBase = amounts.grossLineTotalBase;
+    line.discountAmountBase = amounts.discountAmountBase;
+    line.lineTotalBase = amounts.lineTotalBase;
     line.taxCode = tax?.code;
     line.taxRate = tax?.rate || 0;
-    line.taxAmountDoc = roundMoney(line.lineTotalDoc * line.taxRate);
-    line.taxAmountBase = roundMoney(line.lineTotalBase * line.taxRate);
+    line.taxAmountDoc = amounts.taxAmountDoc;
+    line.taxAmountBase = amounts.taxAmountBase;
+  }
+
+  private freezeChargeTaxSnapshotSync(charge: SalesInvoiceCharge, rate: number, tax?: TaxCode): void {
+    const amounts = calculateSalesInvoiceChargeAmounts({
+      amountDoc: charge.amountDoc,
+      exchangeRate: rate,
+      taxRate: tax?.rate || 0,
+      taxAmountDoc: charge.taxAmountDoc,
+    });
+    charge.amountBase = amounts.amountBase;
+    charge.taxCode = tax?.code;
+    charge.taxRate = tax?.rate || 0;
+    charge.taxAmountDoc = amounts.taxAmountDoc;
+    charge.taxAmountBase = amounts.taxAmountBase;
   }
 
   private resolveRevenueAccountSync(cid: string, item: Item, cats: Map<string, any>, dRev: string): string {
@@ -1034,6 +1235,8 @@ export class PostSalesInvoiceUseCase {
     companyId: string,
     si: SalesInvoice,
     settlementInput: SettlementInput,
+    settings: SalesSettings,
+    customer: Party,
     baseCurrency: string | null,
     transaction: any
   ): Promise<void> {
@@ -1044,9 +1247,8 @@ export class PostSalesInvoiceUseCase {
       throw new Error('Payment settlement requires payment history, voucher, sequence, and ledger repositories');
     }
 
-    if (!receivablePayableAccountId?.trim()) {
-      throw new Error('receivablePayableAccountId is required for settlement');
-    }
+    const effectiveReceivablePayableAccountId = receivablePayableAccountId?.trim() || this.resolveARAccount(customer, settings);
+    const resolvedReceivablePayableAccountId = await this.resolveAccountId(companyId, effectiveReceivablePayableAccountId);
 
     const settlementTotal = settlements.reduce((sum, s) => sum + roundMoney(s.amountBase), 0);
 
@@ -1069,14 +1271,15 @@ export class PostSalesInvoiceUseCase {
         throw new Error('MULTI mode requires at least one settlement row');
       }
       for (const s of settlements) {
-        if (!s.settlementAccountId?.trim()) {
-          throw new Error('Each settlement row requires a settlementAccountId');
-        }
         if (s.amountBase <= 0 || Number.isNaN(s.amountBase)) {
           throw new Error('Each settlement row amount must be positive');
         }
         if (s.paymentMethod && !VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
           throw new Error(`Invalid paymentMethod: ${s.paymentMethod}`);
+        }
+        const effectiveSettlementAccountId = s.settlementAccountId?.trim() || resolvePaymentMethodAccount(settings, s.paymentMethod);
+        if (!effectiveSettlementAccountId) {
+          throw new Error('Each settlement row requires a settlementAccountId or configured paymentMethod mapping');
         }
       }
     }
@@ -1087,6 +1290,12 @@ export class PostSalesInvoiceUseCase {
       const settlementAmountBase = roundMoney(settlement.amountBase);
       const settlementDate = settlement.paymentDate || now.toISOString().split('T')[0];
       const settlementMethod = settlement.paymentMethod || 'CASH';
+      const effectiveSettlementAccountId =
+        settlement.settlementAccountId?.trim() || resolvePaymentMethodAccount(settings, settlementMethod);
+      if (!effectiveSettlementAccountId) {
+        throw new Error(`No settlement account configured for payment method ${settlementMethod}`);
+      }
+      const resolvedSettlementAccountId = await this.resolveAccountId(companyId, effectiveSettlementAccountId);
 
       const voucherNo = await this.voucherSequenceRepo!.getNextNumber(companyId, 'RV');
       const voucherId = `vch_${randomUUID()}`;
@@ -1095,7 +1304,7 @@ export class PostSalesInvoiceUseCase {
 
       const drLine = new VoucherLineEntity(
         1,
-        settlement.settlementAccountId,
+        resolvedSettlementAccountId,
         'Debit',
         settlementAmountBase,
         baseCurrencyUpper,
@@ -1106,7 +1315,7 @@ export class PostSalesInvoiceUseCase {
       );
       const crLine = new VoucherLineEntity(
         2,
-        receivablePayableAccountId,
+        resolvedReceivablePayableAccountId,
         'Credit',
         settlementAmountBase,
         baseCurrencyUpper,
@@ -1144,6 +1353,11 @@ export class PostSalesInvoiceUseCase {
       );
 
       const postedVoucher = approvedVoucher.post(si.createdBy, now, PostingLockPolicy.FLEXIBLE_LOCKED);
+
+      this.voucherValidationService.validateCore(postedVoucher);
+      if (this.accountRepo) {
+        await this.voucherValidationService.validateAccounts(postedVoucher, this.accountRepo);
+      }
 
       await this.ledgerRepo!.recordForVoucher(postedVoucher, transaction);
       await this.voucherRepo!.save(postedVoucher, transaction);
@@ -1193,6 +1407,11 @@ export class PostSalesInvoiceUseCase {
     }
   }
 
+  private resolveSalesDiscountAccount(settings: SalesSettings): string {
+    if (settings.defaultSalesExpenseAccountId) return settings.defaultSalesExpenseAccountId;
+    throw new Error('Default sales expense account is required when a sales invoice contains discounts.');
+  }
+
   private addToCOGSBucket(bucket: Map<string, AccumulatedCOGS>, cogsId: string, invId: string, amount: number): void {
     const key = `${cogsId}|${invId}`;
     const existing = bucket.get(key);
@@ -1231,12 +1450,13 @@ export class PostSalesInvoiceUseCase {
   }
 
   private recalcInvoiceTotals(si: SalesInvoice): void {
-    si.subtotalDoc = roundMoney(si.lines.reduce((s, l) => s + l.lineTotalDoc, 0));
-    si.taxTotalDoc = roundMoney(si.lines.reduce((s, l) => s + l.taxAmountDoc, 0));
-    si.grandTotalDoc = roundMoney(si.subtotalDoc + si.taxTotalDoc);
-    si.subtotalBase = roundMoney(si.lines.reduce((s, l) => s + l.lineTotalBase, 0));
-    si.taxTotalBase = roundMoney(si.lines.reduce((s, l) => s + l.taxAmountBase, 0));
-    si.grandTotalBase = roundMoney(si.subtotalBase + si.taxTotalBase);
+    const totals = calculateSalesInvoiceTotals(si.lines, si.charges || []);
+    si.subtotalDoc = totals.subtotalDoc;
+    si.taxTotalDoc = totals.taxTotalDoc;
+    si.grandTotalDoc = totals.grandTotalDoc;
+    si.subtotalBase = totals.subtotalBase;
+    si.taxTotalBase = totals.taxTotalBase;
+    si.grandTotalBase = totals.grandTotalBase;
   }
 
   private async convertToBaseUom(
@@ -1341,8 +1561,14 @@ export class UpdateSalesInvoiceUseCase {
           uomId: line.uomId ?? existing?.uomId,
           uom: line.uom || existing?.uom || 'EA',
           unitPriceDoc: line.unitPriceDoc ?? existing?.unitPriceDoc ?? 0,
+          grossLineTotalDoc: existing?.grossLineTotalDoc ?? existing?.lineTotalDoc ?? 0,
+          discountType: line.discountType ?? existing?.discountType,
+          discountValue: line.discountValue ?? existing?.discountValue,
+          discountAmountDoc: line.discountAmountDoc ?? existing?.discountAmountDoc,
           lineTotalDoc: existing?.lineTotalDoc ?? 0,
           unitPriceBase: existing?.unitPriceBase ?? 0,
+          grossLineTotalBase: existing?.grossLineTotalBase ?? existing?.lineTotalBase ?? 0,
+          discountAmountBase: existing?.discountAmountBase,
           lineTotalBase: existing?.lineTotalBase ?? 0,
           taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
           taxCode: existing?.taxCode,
@@ -1361,6 +1587,27 @@ export class UpdateSalesInvoiceUseCase {
       });
 
       current.lines = mappedLines;
+    }
+
+    if (input.charges) {
+      const existingById = new Map((current.charges || []).map((charge) => [charge.chargeId, charge]));
+      current.charges = input.charges.map((charge, index) => {
+        const existing = charge.chargeId ? existingById.get(charge.chargeId) : undefined;
+        return {
+          chargeId: charge.chargeId || randomUUID(),
+          code: charge.code ?? existing?.code,
+          name: charge.name ?? existing?.name ?? `Charge ${index + 1}`,
+          amountDoc: charge.amountDoc ?? existing?.amountDoc ?? 0,
+          amountBase: existing?.amountBase,
+          taxCodeId: charge.taxCodeId ?? existing?.taxCodeId,
+          taxCode: existing?.taxCode,
+          taxRate: existing?.taxRate ?? 0,
+          taxAmountDoc: existing?.taxAmountDoc ?? 0,
+          taxAmountBase: existing?.taxAmountBase ?? 0,
+          revenueAccountId: charge.revenueAccountId ?? existing?.revenueAccountId,
+          description: charge.description ?? existing?.description,
+        };
+      });
     }
 
     current.updatedAt = new Date();
@@ -1391,5 +1638,103 @@ export class ListSalesInvoicesUseCase {
       paymentStatus: filters.paymentStatus,
       limit: filters.limit,
     });
+  }
+}
+
+export class GetInvoiceableLinkedSalesSourceUseCase {
+  constructor(
+    private readonly salesOrderRepo: ISalesOrderRepository,
+    private readonly deliveryNoteRepo: IDeliveryNoteRepository,
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository
+  ) {}
+
+  async execute(companyId: string, salesOrderId: string): Promise<InvoiceableLinkedSalesSource> {
+    const so = await this.salesOrderRepo.getById(companyId, salesOrderId);
+    if (!so) throw new Error(`Sales order not found: ${salesOrderId}`);
+    if (so.status === 'CANCELLED') {
+      throw new Error(`Sales order is cancelled: ${salesOrderId}`);
+    }
+
+    const [postedDNs, postedSIs] = await Promise.all([
+      this.deliveryNoteRepo.list(companyId, { salesOrderId, status: 'POSTED', limit: 500 }),
+      this.salesInvoiceRepo.list(companyId, { salesOrderId, status: 'POSTED', limit: 500 }),
+    ]);
+
+    const postedQtyByDnLineId = new Map<string, number>();
+    for (const si of postedSIs) {
+      for (const line of si.lines) {
+        if (!line.dnLineId) continue;
+        postedQtyByDnLineId.set(
+          line.dnLineId,
+          roundMoney((postedQtyByDnLineId.get(line.dnLineId) || 0) + line.invoicedQty)
+        );
+      }
+    }
+
+    const lines: InvoiceableLinkedSalesLine[] = [];
+
+    for (const dn of postedDNs) {
+      for (const dnLine of dn.lines) {
+        const soLine = dnLine.soLineId
+          ? so.lines.find((candidate) => candidate.lineId === dnLine.soLineId)
+          : so.lines.find((candidate) => candidate.itemId === dnLine.itemId && candidate.trackInventory);
+        if (!soLine || !soLine.trackInventory) continue;
+
+        const alreadyInvoicedQty = postedQtyByDnLineId.get(dnLine.lineId) || 0;
+        const remainingQty = roundMoney(Math.max(dnLine.deliveredQty - alreadyInvoicedQty, 0));
+        if (remainingQty <= 0) continue;
+
+        lines.push({
+          sourceType: 'DELIVERY_NOTE',
+          deliveryNoteId: dn.id,
+          deliveryNoteNumber: dn.dnNumber,
+          deliveryDate: dn.deliveryDate,
+          soLineId: soLine.lineId,
+          dnLineId: dnLine.lineId,
+          itemId: dnLine.itemId,
+          itemCode: dnLine.itemCode || soLine.itemCode,
+          itemName: dnLine.itemName || soLine.itemName,
+          trackInventory: true,
+          remainingQty,
+          uomId: dnLine.uomId || soLine.uomId,
+          uom: dnLine.uom || soLine.uom,
+          unitPriceDoc: soLine.unitPriceDoc,
+          taxCodeId: soLine.taxCodeId,
+          warehouseId: dn.warehouseId,
+          description: dnLine.description || soLine.description,
+        });
+      }
+    }
+
+    for (const soLine of so.lines) {
+      if (soLine.trackInventory) continue;
+      const remainingQty = roundMoney(Math.max(soLine.orderedQty - soLine.invoicedQty, 0));
+      if (remainingQty <= 0) continue;
+
+      lines.push({
+        sourceType: 'SALES_ORDER',
+        soLineId: soLine.lineId,
+        itemId: soLine.itemId,
+        itemCode: soLine.itemCode,
+        itemName: soLine.itemName,
+        trackInventory: false,
+        remainingQty,
+        uomId: soLine.uomId,
+        uom: soLine.uom,
+        unitPriceDoc: soLine.unitPriceDoc,
+        taxCodeId: soLine.taxCodeId,
+        warehouseId: undefined,
+        description: soLine.description,
+      });
+    }
+
+    return {
+      salesOrderId: so.id,
+      customerId: so.customerId,
+      customerName: so.customerName,
+      currency: so.currency,
+      exchangeRate: so.exchangeRate,
+      lines,
+    };
   }
 }

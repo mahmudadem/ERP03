@@ -1438,6 +1438,12 @@
         "recordManual": "Record Manual Certification",
         "runShell": "Run Shell Certification",
         "expire": "Expire",
+        "stale": "Stale",
+        "staleTooltip": "This certification was run against an older configuration of this profile. The runtime ignores it until you re-run the test on the current config.",
+        "staleBannerTitle": "Some certifications are stale",
+        "staleBannerBody": "This profile was edited after these tests were run, so they no longer apply to the current configuration. The chat runtime ignores stale certifications — re-run them to re-enable ERP tools.",
+        "staleHeroTitle": "Certifications no longer match this profile",
+        "staleHeroBody": "You edited this profile after running these tests. The chat runtime ignores stale certifications, so tenants on this model currently have no tool access. Re-run certification for each category you want to re-enable.",
         "confirmExpire": "Are you sure you want to expire this certification?",
         "form": {
           "category": "Category",
@@ -2019,5 +2025,17 @@
   },
   "success": {
     "SAVE": "Saved successfully"
+  },
+  "sales": {
+    "governance": {
+      "operationalWarning": "Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.",
+      "settingsOperationalHint": "Operational workflow blocks direct invoicing by default. To allow direct invoices, add a governance rule in the",
+      "goToGovernanceTab": "Governance tab",
+      "sectionDescription": "Override default document policies at the company or form level.",
+      "branchRuleDeferred": "{{branchId}} (not active on invoices yet)",
+      "directInvoicingStatusLabel": "Direct Invoicing",
+      "directAllowed": "Allowed",
+      "directBlockedOperational": "Blocked (Operational)"
+    }
   }
 }

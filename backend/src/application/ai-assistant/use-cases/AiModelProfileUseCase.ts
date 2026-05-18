@@ -6,6 +6,7 @@ import {
   AiModelWarningLevel,
 } from '../../../domain/ai-assistant/entities/AiModelProfile';
 import { IAiModelProfileRepository } from '../../../repository/interfaces/ai-assistant/IAiModelProfileRepository';
+import { IAiModelCertificationRepository } from '../../../repository/interfaces/ai-assistant/IAiModelCertificationRepository';
 import { AiModelCapabilityCatalog, AiModelProfile as RuntimeModelProfile } from '../services/AiModelCapabilityCatalog';
 import type { AiAutoSeedCertification } from '../services/AiAutoSeedCertification';
 
@@ -63,6 +64,7 @@ export class AiModelProfileUseCase {
   constructor(
     private readonly modelProfileRepo: IAiModelProfileRepository,
     private readonly autoSeedCertification?: AiAutoSeedCertification,
+    private readonly certificationRepository?: IAiModelCertificationRepository,
   ) {}
 
   /**
@@ -284,10 +286,45 @@ export class AiModelProfileUseCase {
   }
 
   async deleteProfile(id: string): Promise<void> {
+    // Cascade: wipe certification records for this profile first. Otherwise old
+    // certs hang around in storage and reattach when a profile with the same
+    // hash (provider + model + config) is recreated — leaving the user with
+    // "zombie" cert rows they cannot get rid of.
+    if (this.certificationRepository) {
+      const certs = await this.certificationRepository.listByModelProfile(id);
+      for (const cert of certs) {
+        await this.certificationRepository.delete(cert.id);
+      }
+    }
     await this.modelProfileRepo.delete(id);
   }
 
-  async syncBuiltInProfiles(): Promise<number> {
+  /**
+   * Wipe all certification records for a model profile WITHOUT deleting the
+   * profile itself. Used by the "Reset certification history" admin action so
+   * a superadmin can start a clean cert cycle on the same profile.
+   */
+  async resetCertificationsForProfile(id: string): Promise<number> {
+    if (!this.certificationRepository) {
+      throw new Error('Certification repository is not wired — cannot reset history');
+    }
+    const certs = await this.certificationRepository.listByModelProfile(id);
+    for (const cert of certs) {
+      await this.certificationRepository.delete(cert.id);
+    }
+    return certs.length;
+  }
+
+  async syncBuiltInProfiles(force: boolean = false): Promise<number> {
+    if (!force) {
+      const existingProfiles = await this.modelProfileRepo.list();
+      // If there are already any profiles in the database, we skip auto-syncing
+      // at startup to allow admins to permanently delete built-in profiles.
+      if (existingProfiles.length > 0) {
+        return 0;
+      }
+    }
+
     let synced = 0;
     for (const seed of AiModelCapabilityCatalog.getAllKnownProfilesAsEntities()) {
       const existing = await this.modelProfileRepo.getById(seed.id);
@@ -306,11 +343,20 @@ export class AiModelProfileUseCase {
     mode: AiModelRuntimeMode;
     companyId: string;
     detail?: string;
+    profileId?: string;
   }): Promise<AiModelProfile> {
-    // Try to find an existing profile (tenant-specific preferred, then global)
-    let existing = await this.modelProfileRepo.getByProviderAndModel(input.provider, input.modelName, input.companyId);
-    
-    // Fallback: search globally if not found for tenant
+    // Try to find an existing profile by its known ID first (most reliable),
+    // then fall back to provider+model search.
+    let existing: AiModelProfile | null = null;
+
+    if (input.profileId) {
+      existing = await this.modelProfileRepo.getById(input.profileId);
+    }
+
+    if (!existing) {
+      existing = await this.modelProfileRepo.getByProviderAndModel(input.provider, input.modelName, input.companyId);
+    }
+
     if (!existing) {
       existing = await this.modelProfileRepo.getByProviderAndModel(input.provider, input.modelName);
     }
@@ -567,7 +613,7 @@ export class AiModelProfileUseCase {
     return deprecated;
   }
 
-  private toRuntimeProfile(profile: AiModelProfile): RuntimeModelProfile {
+  toRuntimeProfile(profile: AiModelProfile): RuntimeModelProfile {
     return {
       provider: profile.provider,
       modelName: profile.modelName,

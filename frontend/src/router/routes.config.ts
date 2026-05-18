@@ -90,6 +90,8 @@ const AiManagementOverviewPage = lazy(() => import('../modules/super-admin/pages
 const AiModelProfilesPage = lazy(() => import('../modules/super-admin/pages/AiModelProfilesPage').then(m => ({ default: m.AiModelProfilesPage })));
 const AiProvidersPage = lazy(() => import('../modules/super-admin/pages/AiProvidersPage').then(m => ({ default: m.AiProvidersPage })));
 const AiRuntimeProfilesPage = lazy(() => import('../modules/super-admin/pages/AiRuntimeProfilesPage').then(m => ({ default: m.AiRuntimeProfilesPage })));
+const AiSetupWizardPage = lazy(() => import('../modules/super-admin/pages/AiSetupWizardPage').then(m => ({ default: m.AiSetupWizardPage })));
+const AiApiKeysPage = lazy(() => import('../modules/super-admin/pages/AiApiKeysPage').then(m => ({ default: m.AiApiKeysPage })));
 const AiProposalPolicyPage = lazy(() => import('../modules/super-admin/pages/AiProposalPolicyPage').then(m => ({ default: m.AiProposalPolicyPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
 const SystemFormDesignerPage = lazy(() => import('../modules/super-admin/pages/SystemFormDesignerPage').then(m => ({ default: m.default })));
@@ -249,6 +251,8 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/ai-tools', label: 'AI Tools', component: AiToolCatalogPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-tools/:toolName', label: 'AI Tool Detail', component: AiToolDetailPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-management', label: 'AI Overview', component: AiManagementOverviewPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/ai-setup', label: 'AI Setup Wizard', component: AiSetupWizardPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/ai-api-keys', label: 'AI API Keys', component: AiApiKeysPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-providers', label: 'AI Providers', component: AiProvidersPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-runtime-profiles', label: 'Runtime Profiles', component: AiRuntimeProfilesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/ai-models', label: 'AI Models', component: AiModelProfilesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },

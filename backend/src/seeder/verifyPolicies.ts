@@ -29,7 +29,16 @@ const mockSettingsRepo: any = {
 };
 
 const mockAccountRepo: any = {
-  getById: async () => ({ id: 'test', active: true }),
+  getById: async (_companyId: string, id: string) => ({
+    id,
+    active: true,
+    accountRole: 'POSTING',
+    status: 'ACTIVE',
+    userCode: id,
+    code: id,
+    name: id,
+    hasChildren: false,
+  }),
 };
 
 const mockVoucherTypeRepo: any = {
@@ -44,7 +53,7 @@ async function verifyPolicyIntegration() {
 
   // Setup repositories
   const voucherRepo = new FirestoreVoucherRepositoryV2(db);
-  const ledgerRepo = new FirestoreLedgerRepository(db);
+  const ledgerRepo = new FirestoreLedgerRepository(db, mockAccountRepo);
   const transactionManager = new FirestoreTransactionManager(db);
   const configProvider = new FirestoreAccountingPolicyConfigProvider(db);
   const policyRegistry = new AccountingPolicyRegistry(configProvider);

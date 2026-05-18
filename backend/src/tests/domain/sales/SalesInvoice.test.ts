@@ -49,4 +49,58 @@ describe('SalesInvoice', () => {
     expect(invoice.lines[0].uom).toBe('PCS');
     expect(invoice.grandTotalDoc).toBe(10);
   });
+
+  it('calculates line discounts and document charges in totals', () => {
+    const invoice = SalesInvoice.fromJSON({
+      id: 'si_2',
+      companyId: 'co_1',
+      invoiceNumber: 'SI-2',
+      formType: 'sales_invoice_direct',
+      voucherType: 'sales_invoice',
+      persona: 'direct',
+      customerId: 'cus_1',
+      customerName: 'Customer One',
+      invoiceDate: '2026-05-01',
+      currency: 'USD',
+      exchangeRate: 1,
+      lines: [
+        {
+          lineId: 'line_1',
+          lineNo: 1,
+          itemId: 'item_1',
+          itemCode: '0001',
+          itemName: 'Test Item',
+          trackInventory: false,
+          invoicedQty: 2,
+          uom: 'PCS',
+          unitPriceDoc: 10,
+          discountType: 'PERCENT',
+          discountValue: 10,
+          taxRate: 0.1,
+          revenueAccountId: 'rev_1',
+        },
+      ],
+      charges: [
+        {
+          chargeId: 'chg_1',
+          name: 'Delivery',
+          amountDoc: 5,
+          taxRate: 0,
+          revenueAccountId: 'rev_1',
+        },
+      ],
+      paymentTermsDays: 0,
+      outstandingAmountBase: 0,
+      createdBy: 'user_1',
+      createdAt: new Date('2026-05-01T00:00:00Z'),
+      updatedAt: new Date('2026-05-01T00:00:00Z'),
+    });
+
+    expect(invoice.lines[0].grossLineTotalDoc).toBe(20);
+    expect(invoice.lines[0].discountAmountDoc).toBe(2);
+    expect(invoice.lines[0].lineTotalDoc).toBe(18);
+    expect(invoice.taxTotalDoc).toBe(1.8);
+    expect(invoice.subtotalDoc).toBe(23);
+    expect(invoice.grandTotalDoc).toBe(24.8);
+  });
 });

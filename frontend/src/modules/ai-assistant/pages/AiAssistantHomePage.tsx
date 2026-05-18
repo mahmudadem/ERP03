@@ -73,6 +73,8 @@ export const AiAssistantHomePage: React.FC = () => {
   const [editingConvTitle, setEditingConvTitle] = useState('');
   const [followUps, setFollowUps] = useState<string[]>([]);
   const [hintIdx, setHintIdx] = useState(0);
+  const [currentModel, setCurrentModel] = useState<string | null>(null);
+  const [isModelReachable, setIsModelReachable] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -135,30 +137,39 @@ export const AiAssistantHomePage: React.FC = () => {
     }
   }, []);
 
-  // Load a specific conversation's messages
-  const loadConversation = useCallback(async (convId: string) => {
-    try {
-      const result = await aiAssistantApi.getConversationMessages(convId);
-      const historyMessages: DisplayMessage[] = (result.messages || []).map((msg: ChatMessageDTO) => {
-        const runtime = extractRuntimeMetadata(msg.metadata);
-        return {
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
-          timestamp: msg.createdAt,
-          provider: msg.provider,
-          model: msg.model,
-          toolResults: extractToolResults(msg.metadata),
-          proposal: (msg.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
-          ...runtime,
-        };
-      });
-      setConversationId(convId);
-      setMessages(historyMessages);
-    } catch {
-      console.warn('[AI Assistant] Could not load conversation');
-    }
-  }, [extractRuntimeMetadata, extractToolResults]);
+   // Load a specific conversation's messages
+   const loadConversation = useCallback(async (convId: string) => {
+     try {
+       const result = await aiAssistantApi.getConversationMessages(convId);
+       const historyMessages: DisplayMessage[] = (result.messages || []).map((msg: ChatMessageDTO) => {
+         const runtime = extractRuntimeMetadata(msg.metadata);
+         return {
+           id: msg.id,
+           role: msg.role as 'user' | 'assistant' | 'system',
+           content: msg.content,
+           timestamp: msg.createdAt,
+           provider: msg.provider,
+           model: msg.model,
+           toolResults: extractToolResults(msg.metadata),
+           proposal: (msg.metadata as ChatMessageMetadata)?.proposal as AiProposalDTO || null,
+           ...runtime,
+         };
+       });
+       setConversationId(convId);
+       setMessages(historyMessages);
+       
+       // Set current model from the most recent assistant message if available
+       const recentAssistantMsg = historyMessages
+         .slice()
+         .reverse()
+         .find(m => m.role === 'assistant' && m.model);
+       if (recentAssistantMsg?.model) {
+         setCurrentModel(recentAssistantMsg.model);
+       }
+     } catch {
+       console.warn('[AI Assistant] Could not load conversation');
+     }
+   }, [extractRuntimeMetadata, extractToolResults]);
 
   // Initial load: conversation list + most recent conversation
   useEffect(() => {
@@ -247,29 +258,42 @@ export const AiAssistantHomePage: React.FC = () => {
             } else {
               toolResults.push(newEntry);
             }
-          } else if (event.type === 'done') {
-            const meta = event.metadata;
-            const runtimeMeta = meta.runtimeMeta;
-            setStreamingContent('');
-            
-            const assistantMsg: DisplayMessage = {
-              id: `final_${Date.now()}`,
-              role: 'assistant',
-              content: accumulatedContent || '...',
-              timestamp: new Date().toISOString(),
-              provider: meta.provider,
-              model: meta.model,
-              runtimeStatus: runtimeMeta?.runtimeStatus,
-              selectedSkills: runtimeMeta?.selectedSkills,
-              allowedToolIds: runtimeMeta?.allowedToolIds,
-              modelProfile: runtimeMeta?.modelProfile,
-              runtimeWarnings: runtimeMeta?.runtimeWarnings,
-              toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
-              toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
-              toolResults: toolResults.length > 0 ? toolResults : undefined,
-              proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
-              actualRounds: runtimeMeta?.actualRounds || actualRounds,
-            };
+            } else if (event.type === 'done') {
+              const meta = event.metadata;
+              const runtimeMeta = meta.runtimeMeta;
+              setStreamingContent('');
+              
+              const assistantMsg: DisplayMessage = {
+                id: `final_${Date.now()}`,
+                role: 'assistant',
+                content: accumulatedContent || '...',
+                timestamp: new Date().toISOString(),
+                provider: meta.provider,
+                model: meta.model,
+                runtimeStatus: runtimeMeta?.runtimeStatus,
+                selectedSkills: runtimeMeta?.selectedSkills,
+                allowedToolIds: runtimeMeta?.allowedToolIds,
+                modelProfile: runtimeMeta?.modelProfile,
+                runtimeWarnings: runtimeMeta?.runtimeWarnings,
+                toolCallsRequested: toolCallsRequested.length > 0 ? toolCallsRequested : runtimeMeta?.toolCallsRequested,
+                toolCallResults: toolCallResults.length > 0 ? toolCallResults : runtimeMeta?.toolResults,
+                toolResults: toolResults.length > 0 ? toolResults : undefined,
+                proposal: (runtimeMeta?.proposal as unknown as AiProposalDTO) || null,
+                actualRounds: runtimeMeta?.actualRounds || actualRounds,
+              };
+              
+              // Update current model state and reachability
+              if (meta.model) {
+                setCurrentModel(meta.model);
+                setIsModelReachable(true);
+              } else {
+                setIsModelReachable(false);
+              }
+             
+             // Update current model state
+             if (meta.model) {
+               setCurrentModel(meta.model);
+             }
 
             setMessages(prev => [...prev, assistantMsg]);
 
@@ -690,10 +714,19 @@ export const AiAssistantHomePage: React.FC = () => {
             <h1 className="text-sm font-medium text-gray-600">
               {t('chat.title', 'AI Assistant')}
             </h1>
-            <span className="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 text-[11px] text-gray-500 bg-gray-100/60 rounded-full">
-              <Globe className="w-3 h-3" />
-              ERP Data · Advisory
-            </span>
+              <span className="sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 text-[11px] text-gray-500 bg-gray-100/60 rounded-full">
+                <Globe className="w-3 h-3" />
+                ERP Data · Advisory
+              </span>
+              {currentModel && (
+                <span className="sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 text-[11px] text-gray-500 bg-gray-100/60 rounded-full ml-2">
+                  <Bot className="w-3 h-3" />
+                  <span className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded-full ${isModelReachable ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span>{currentModel}</span>
+                  </span>
+                </span>
+              )}
           </div>
           <div className="flex items-center gap-1">
             <button

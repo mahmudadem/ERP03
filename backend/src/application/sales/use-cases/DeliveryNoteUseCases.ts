@@ -413,7 +413,9 @@ export class PostDeliveryNoteUseCase {
       line.stockMovementId = movement.id;
       line.unitCostBase = roundMoney(movement.unitCostBase || 0);
       line.lineCostBase = roundMoney(qtyInBaseUom * line.unitCostBase);
-      this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `delivery note ${dn.dnNumber}`);
+      if (accountingMode === 'PERPETUAL') {
+        this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `delivery note ${dn.dnNumber}`);
+      }
       line.moveCurrency = movement.movementCurrency;
       line.fxRateMovToBase = movement.fxRateMovToBase;
       line.fxRateCCYToBase = movement.fxRateCCYToBase;

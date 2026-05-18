@@ -184,6 +184,28 @@ export class VoucherValidationService {
           correlationId
         );
       }
+
+      if (account.replacedByAccountId) {
+        throw createPostingError(
+          'REPLACED_ACCOUNT',
+          `Line ${line.id}: Account "${account.userCode || account.code} - ${account.name}" has been replaced. Use account ${account.replacedByAccountId} instead.`,
+          ErrorCategory.CORE_INVARIANT,
+          [`lines[${line.id - 1}].accountId`],
+          undefined,
+          correlationId
+        );
+      }
+
+      if (account.hasChildren) {
+        throw createPostingError(
+          'NON_POSTABLE_ACCOUNT',
+          `Line ${line.id}: Account "${account.userCode || account.code} - ${account.name}" has sub-accounts. Direct posting to parent accounts is forbidden.`,
+          ErrorCategory.CORE_INVARIANT,
+          [`lines[${line.id - 1}].accountId`],
+          undefined,
+          correlationId
+        );
+      }
     }
   }
 

@@ -1,7 +1,9 @@
 # Policy Configuration Guide (Backend Only - NO UI)
 
 ## Overview
-The accounting policy system allows you to enable "Strict when needed" behavior through backend configuration. Policies are enforced at the validation gate in `PostVoucherUseCase` before any ledger writes occur.
+The accounting policy system allows you to enable "Strict when needed" behavior through backend configuration. Policies are enforced at the validation gate in `PostVoucherUseCase` before normal ledger writes occur.
+
+Core accounting invariants are also enforced at the lower ledger persistence boundary. `ILedgerRepository.recordForVoucher()` runs `VoucherValidationService.validateCore()` and `validateAccounts()` before writing ledger rows, so direct backend callers cannot bypass basic voucher/account safety by skipping `PostVoucherUseCase`.
 
 ## Available Policies
 
@@ -82,6 +84,19 @@ companies/{companyId}/settings/accounting
   "accountAccessEnabled": false
 }
 ```
+
+Even when optional policies are disabled, core invariants remain mandatory. A voucher still cannot post if it is unbalanced, has invalid currency data, or uses a missing, HEADER/non-posting, inactive, replaced, or parent-with-children account.
+
+## Security Boundary Note
+
+Application-layer protection covers all normal backend code paths and direct repository callers inside the ERP03 backend. It does not protect against someone writing directly to Firestore or SQL with privileged database credentials.
+
+Production hardening requirements:
+
+- frontend clients must not have direct write access to ledger/voucher/accounting collections or tables
+- service-account credentials must be limited to trusted backend and migration jobs
+- seeding/maintenance scripts must use DI-wired repositories or call the Accounting validation service explicitly
+- periodic integrity checks should scan ledger rows for non-posting, inactive, missing, replaced, or parent accounts
 
 ## Account Access Control Setup
 

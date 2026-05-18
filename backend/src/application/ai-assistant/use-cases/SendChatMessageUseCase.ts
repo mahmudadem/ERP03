@@ -203,7 +203,7 @@ export class SendChatMessageUseCase {
 
     try {
       // 6. Build model capability profile
-      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, companyId, config.provider, config.model);
+      const modelProfile = await resolveModelProfile(this.modelProfileUseCase, companyId, config.provider, config.model, config.selectedModelProfileId);
       if (modelProfile.textOnlyMode) {
         runtimeWarnings.push(modelProfile.warningMessage || `Model '${config.model}' is running in text-only mode. Tool calling is disabled.`);
       }
@@ -402,6 +402,7 @@ export class SendChatMessageUseCase {
             toolPlanningContextMessage,
             recentToolDataContextMessage: recentToolDataContext.content,
             skipToolDescriptions: isLikelySimpleChat || !toolRoutingDecision?.allowed,
+            noToolsAvailable: allowedContracts.length === 0,
           }),
         },
         ...recentProviderMessages,

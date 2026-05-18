@@ -2,6 +2,397 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-18 (Mon) — ~2.5h
+**Task:** Task 101 — AI routing stale-cert UX & fake tool-call defense
+**Agent:** Claude Code (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**Trigger:** Product owner observed qwen/qwen3.6-flash printing fully-fabricated accounting data while a "WARNING — not certified" runtime banner was active. A third-party audit flagged 6 bugs; only 1 (URL double-decode) was real and the proposed "fixes" for the others were actively dangerous (would have weakened safety defaults). Real cause was a different bug: CREDITS-mode tenants were being silently invalidated by platform-side profile edits, leaving the model with no tools but a prompt that still mentioned them — and small models then cosplayed tool calls in plain text.
+
+**What I Did:**
+- Audited the third-party bug list — kept #1 (URL double-decode), reclassified #2/#3/#5/#6 as misdiagnoses, established #4 was already implemented in stronger form. Traced the actual hallucination to a different chain: `AiModelRoutingGuard` enforcing `selectedProfileHash` for CREDITS+GLOBAL profiles where superadmin edits had drifted the hash and the tenant had no power to fix it.
+- Backend:
+  - `AiAssistantController.decodeProfileId` → documented no-op (removed double `decodeURIComponent`).
+  - `AiModelRoutingGuard.validateSensitiveWorkflow` rewritten. CREDITS+GLOBAL skips the hash check, looks up certs against the live profile hash, returns `PLATFORM_PROFILE_NEEDS_RECERT` when no fresh cert matches. BYOK/TENANT path keeps the hash check. New `REASON_BY_CODE` map gives every rejection a specific actionable sentence. New `hasAnyCertificationForProfileCategory` distinguishes never-tested from tested-but-stale (`CERTIFICATION_STALE`). `allowUnverifiedModels` is now ignored on the platform-managed path so tenants cannot disable the platform safety bar.
+  - `AiContextBuilder.buildSystemPrompt` gained `noToolsAvailable` flag. When `true` it appends a 🚫 block forbidding `<tool_code>` / `<tool_output>` / `<tool_result>` / `<tool_call>` / `<function_call>` / `<function_response>` and pseudo-`print(<ns>.<method>(...))` lines. Both chat use cases pass `allowedContracts.length === 0`.
+  - New `AiResponseSanitizer` — stateless module that strips fake tool-call blocks from assistant content, replaces them with a visible banner, returns a user-facing warning, and records matched patterns. Wired into `AiResponsePersister.saveMessages` so it runs on every chat turn (streaming and non-streaming). Records `metadata.responseSanitized.matchedPatterns` for future telemetry.
+- Frontend:
+  - `CertificationManagerModal` now compares each cert's `profileHash` to the live profile hash. Stale certs show an amber STALE chip + tinted row. A banner above the table appears when any cert is stale. A new `stale` readiness state with its own hero card stops the modal from showing a green "ready" hero over a stale table. `highestStatus` and `readiness` use the live-only filter.
+  - i18n: six new keys under `superAdmin.aiModels.certifications.*` in en / ar / tr.
+- Tests:
+  - `AiModelRoutingGuard.test.ts` — updated one existing test (was `CERTIFICATION_NOT_FOUND`, is now `CERTIFICATION_STALE`); added five new tests covering CREDITS-mode allow-with-stale-hash, CREDITS-mode reject as `PLATFORM_PROFILE_NEEDS_RECERT`, CREDITS-mode ignoring `allowUnverifiedModels`, BYOK still enforcing the hash, and every rejection carrying a non-generic reason.
+  - New `AiResponseSanitizer.test.ts` covering clean-text passthrough, multi-line stripping for each tag family, orphan tags, null/empty guards, and banner-collapsing.
+- Docs:
+  - `docs/architecture/ai-assistant-runtime-v2.md` — appended a "2026-05-18 Certification, Routing, and Response Hardening" section with the full design, file map, and a future-update checklist for engineers touching profile hashing, contract-version bumps, new fake-tool patterns, and new rejection codes.
+  - `docs/user-guide/ai-certification-stale-and-tool-faking.md` — new user-facing guide written in plain language for the non-technical product owner; two stories (stale certifications + fake tool calls), CREDITS vs BYOK responsibility table, what each warning means, what to do.
+  - `planning/done/101-ai-routing-stale-cert-and-fake-tool-fix.md` — completion report (technical + end-user audience).
+
+**Verification:**
+- `backend`: `npx tsc --noEmit --pretty false` ✅.
+- `frontend`: `npm run typecheck` ✅.
+- `backend`: `npx jest --testPathPatterns "AiModelRoutingGuard|AiResponseSanitizer|AiRuntimeGuard"` ✅ — 36/36.
+- Confirmed 3 pre-existing `SendChatMessageUseCase` failures (`ledger.canAfford is not a function`) exist on the unchanged base — unrelated to this task; logged for follow-up.
+
+**Decisions of note:**
+- Did NOT change `AiModelProfile.fromJSON` line 358 (`textOnlyMode = data.textOnlyMode !== false`). The third-party audit wanted to flip the default to `false`, which would silently grant tool calling to legacy / hand-written profile docs missing the field — the opposite of safety. The conservative default stands; we'll re-evaluate if it actually causes problems with current data.
+- Did NOT auto-invalidate certs on profile edit. Considered calling `expireByProfileAndCategory` from `updateGlobalProfile`, but that would force a full 12-category re-cert after a tiny display-name change. Logged as follow-up #1 below.
+- Did NOT touch `AiModelCapabilityCatalog` PATTERN_RULES. The audit called those "unsafe" but they are explicit safety conservatism (unknown models default to text-only). The runtime now finds certified profiles correctly after fix #1+#2, so the catalog fallback is rarely hit anyway.
+
+**Result:** ✅ Five real problems fixed (URL double-decode, CREDITS hash punishment, stale-cert UX lie, generic rejection messages, fake tool-call cosplay). All checks green.
+
+**Next:** Follow-ups logged in `planning/done/101-…`: (1) auto-invalidate certs on profile edit (needs product decision), (2) tenant BYOK staleness UI, (3) streaming-time fake-tool detection, (4) telemetry dashboard for sanitized-pattern stats.
+
+---
+
+## 2026-05-18 (Mon) — ~0.2h
+**Task:** Accounting module docs update — posting security boundary
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Updated `docs/architecture/accounting.md` to document the discovered Sales receipt bypass, the normal `PostVoucherUseCase` posting gate, and the final `ILedgerRepository.recordForVoucher()` validation guard.
+- Documented that `VoucherValidationService.validateCore()` and `validateAccounts()` are now enforced at ledger persistence for Firestore and SQL repositories.
+- Added the remaining production security gap: direct Firestore/SQL writes with privileged credentials can bypass TypeScript validation, so IAM/security rules must deny direct ledger writes outside the backend.
+- Updated `docs/architecture/accounting-policy-configuration.md` to clarify that optional policies can be disabled, but core voucher/account invariants remain mandatory.
+- Updated `docs/user-guide/accounting/README.md` with a plain-language explanation of posting-account safety for users/admins.
+**Verification:**
+- Documentation-only change; no code tests required.
+**Result:** ✅ Accounting docs now capture the security lesson and remaining infrastructure hardening requirement.
+**Next:** Manual retest Test 2, then schedule production DB/IAM hardening for Accounting ledger paths.
+
+---
+
+## 2026-05-18 (Mon) — ~1.9h
+**Task:** Task 95 manual QA blocker fixes — Sales accounting vouchers
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Fixed Sales Invoice revenue voucher posting so discounts and additions remain visible:
+  - AR debit uses the final invoice total,
+  - line discounts debit the configured Sales expense/discount account,
+  - item revenue credits at gross line value,
+  - document charges/additions credit their revenue account,
+  - output tax remains separate.
+- Added backend receipt-voucher validation for Sales invoice settlements before ledger writes. HEADER/non-posting accounts are now rejected by the Accounting validation gate.
+- Found and fixed the same validation bypass in the later Sales invoice Record Payment path.
+- Added final ledger persistence guard in both Firestore and SQL ledger repositories. `recordForVoucher()` now invokes `VoucherValidationService.validateCore()` and `validateAccounts()` before writing ledger rows.
+- Added `LedgerRepositoryGuard.test.ts` to prove the repository guard blocks HEADER, replaced, and parent-with-children accounts before persistence.
+- Updated accounting verifier scripts that instantiate ledger repositories directly so they also provide account validation dependencies.
+- Replaced free-text Sales invoice settlement account overrides with the shared account selector in the native Sales invoice page.
+- Fixed Accounting voucher list form resolution so receipt vouchers open in a receipt form first instead of falling back to a cloned Journal Voucher form when `formId` is absent.
+- Updated Sales architecture docs, user guide, Task 98 completion report, and ACTIVE.md with the manual QA blocker fixes.
+**Root Cause:**
+- The Accounting rule itself was correct. The failure happened because Sales payment code directly posted/saved receipt vouchers through `ledgerRepo.recordForVoucher()` and `voucherRepo.save()` without calling `VoucherValidationService.validateAccounts()`. The final ledger boundary now calls the Accounting engine validation service itself, so direct callers cannot bypass core voucher/account rules.
+**Verification:**
+- `backend`: `npm run test -- SalesPostingUseCases SalesInvoiceSettlementPosting` ✅ — 22/22
+- `backend`: `npm run test -- LedgerRepositoryGuard SalesInvoiceSettlementPosting SalesPaymentSyncUseCases` ✅ — 18/18
+- `backend`: `npm run test -- "SalesPostingUseCases|SalesInvoiceSettlementPosting|SalesPaymentSyncUseCases|SalesDocumentNumberUniqueness|DocumentPolicyResolver"` ✅ — 65/65
+- `backend`: `npm run test -- "LedgerRepositoryGuard|SalesPostingUseCases|SalesInvoiceSettlementPosting|SalesPaymentSyncUseCases|SalesDocumentNumberUniqueness|DocumentPolicyResolver"` ✅ — 69/69
+- `backend`: `npx tsc --noEmit --pretty false` ✅
+- `frontend`: `npm run typecheck -- --pretty false` ✅
+**Result:** ✅ Manual Test 2 blockers fixed. Ready for user retest.
+**Next:** Retest direct invoice with discount + charge + immediate payment, then open the generated SI and receipt vouchers from Accounting.
+
+---
+
+## 2026-05-18 (Mon) — ~0.3h
+**Task:** Task 100 — Audit follow-up fixes
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Added shared frontend governance resolution in `frontend/src/utils/documentPolicy.ts` so the native invoice warning and detail status use the same company/form precedence as the backend.
+- Removed branch-scope rule creation from the Sales Settings governance UI because invoice creation does not yet carry branch context. Existing branch rules are shown as deferred if present.
+- Fixed the Sales Settings governance banner i18n composition and added missing EN/AR/TR keys for the direct-invoice status and governance section text.
+- Updated `docs/architecture/sales.md`, `docs/user-guide/sales/direct-invoice-and-operational-linked-invoice.md`, and `planning/done/100-sales-governance-enforcement.md` to state that branch-scope invoice governance is deferred until branch context exists.
+- Added a focused integration regression in `SalesDocumentNumberUniqueness.test.ts` proving an OPERATIONAL direct invoice can be created through a matching form-scope governance rule.
+**Verification:**
+- `backend`: `npm run test -- SalesDocumentNumberUniqueness DocumentPolicyResolver` ✅ — 35/35
+- `backend`: `npm run test -- "sales|DocumentPolicy"` ✅ — 80/80
+- `backend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run typecheck` ✅
+- `frontend`: `npm run build` ✅
+- `graphify update .` attempted ❌ — command unavailable on PATH
+**Result:** ✅ Remaining audit findings resolved. Company/form governance is enforced and reflected consistently; branch-scope invoice governance is accurately deferred.
+**Next:** Return to Task 95 operational stock QA.
+
+---
+
+## 2026-05-18 (Mon) — ~3.5h
+**Task:** Task 100 — Sales Governance Enforcement (including audit fixes)
+**Agent:** opencode (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Implemented full governance-aware persona resolution in `DocumentPolicyResolver`:
+  - Deprecated `allowDirectInvoicing` as broad OPERATIONAL override (preserved for SIMPLE backward compat)
+  - Added precedence chain: form → branch → company → base workflow mode
+  - Added context-aware API with `branchId`/`formType` parameters
+  - Added `resolveEffectiveSalesPersonaPolicy()` and `resolveEffectivePurchasePersonaPolicy()` for UI/debugging
+- **Audit fix P1:** Plumbed `formType` context into `SalesInvoiceUseCases.ts` and `PurchaseInvoiceUseCases.ts` resolver calls so form-scope rules are actually enforced at runtime
+- **Audit fix P2:** Moved hardcoded UI strings to i18n (`sales.governance.*` keys in en/ar/tr common.json)
+- **Audit fix P2:** Fixed stale "Direct Invoicing" display in invoice detail view to use effective governance policy instead of deprecated `allowDirectInvoicing`
+- Wrote 22 new governance tests (79 total sales/policy tests, all passing)
+- Updated Sales Settings UI: removed "Allow Direct Invoicing" checkbox, replaced with governance-aware guidance
+- Added governance warning banner on native invoice create page for OPERATIONAL workflow
+- Added `sales_invoice_linked` and `purchase_invoice_linked` to operational document visibility checks
+- Fixed `SalesDocumentNumberUniqueness.test.ts` to use governance rules
+- Created completion report at `planning/done/100-sales-governance-enforcement.md`
+**Verification:**
+- `backend`: `npm run test -- "sales|DocumentPolicy"` ✅ — 79/79
+- `backend`: `npx tsc --noEmit` ✅
+- `frontend`: `npm run typecheck` ✅
+**Result:** ✅ Task 100 complete. Sales workflow governance is now enforced consistently across backend policy, native UI, and dynamic forms. All audit findings resolved.
+**Next:** Return to Task 95 operational stock QA, or proceed to next Sales feature layer (free goods/promotions).
+
+---
+
+## 2026-05-18 (Mon) — ~0.2h
+**Task:** Sales architecture clarification — workflow governance precedence
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Clarified a missing architecture rule that had previously been only partially implied:
+  - company workflow mode is the default governance layer,
+  - global `OPERATIONAL` blocks direct invoicing by default,
+  - branch/form governance may explicitly re-enable direct invoicing for approved retail/POS contexts.
+- Updated:
+  - `docs/architecture/sales.md`
+  - `planning/tasks/95-sales-standalone-operational-workflow-contract.md`
+**Result:** ✅ The Sales workflow mode meaning is now explicit enough for implementation, audit, and QA. This should reduce future drift between native pages, cloned forms, and governance behavior.
+**Next:** Audit native pages and cloneable forms against this clarified governance rule, then continue manual QA planning.
+
+## 2026-05-17 → 2026-05-18 — AI Setup Wizard, API Key Vault, and AI assistant flow overhaul
+**Task:** Consolidate the Super Admin AI setup flow + fix a string of related bugs
+**Agent:** Claude (Sonnet 4.6)
+**Branch:** `chore/enterprise-restructure`
+**Why:** Setting up an AI model required hopping between four CRUD pages with no flow. Diagnostics lied, cert records resurrected after profile deletion, the same OpenRouter key had to be pasted into every model's runtime profile, and Anthropic-via-OpenRouter returned 401 because identity headers were missing. The user wanted a clear linear flow + a key vault.
+
+**What I Did:**
+
+- **Bug fixes (backend)**
+  - `AiModelProfileUseCase.deleteProfile()` now cascades to `AiModelCertificationResult` records — no more zombie cert rows reappearing when a profile with the same hash is recreated.
+  - Added `resetCertificationsForProfile()` + `DELETE /platform/ai-model-profiles/:id/certifications` endpoint for the new "Reset certification history" button in the Cert Manager modal.
+  - `AiModelCertificationUseCase` now looks up `AiProvider.defaultBaseUrl` as a fallback when `profile.baseUrl` is unset (was silently falling through to `https://api.openai.com/v1` and 401-ing OpenRouter keys).
+  - `OpenAICompatibleProvider.isAvailable()` no longer silently swallows auth errors — `ProviderAuthError` / `ProviderRateLimitError` now propagate so "Provider connection: Passed" stops lying.
+  - `OpenAICompatibleProvider.applyOpenRouterIdentityHeaders()` automatically adds `HTTP-Referer` and `X-Title` headers on chat/stream/models calls when the endpoint contains `openrouter.ai` — fixes the Anthropic-via-OpenRouter 401s.
+  - `CheckProviderHealthUseCase.sanitizeError()` now parses the real HTTP status code out of `ProviderError.message` (the `statusCode` property never existed) and surfaces actionable messages for 400/402/403/404/422 etc.
+  - Context-aware 401 messaging in the inference check: if `/models` authenticates but `/chat/completions` returns 401, the message is now "API key is valid, but not authorized to use this specific model" instead of generic "Authentication failed".
+  - Fixed misleading text-plan skip reason ("Skipped because native tool calling worked" even when network/inference failed).
+  - Raised `runTextPlanDiagnostic` `maxTokens` from 160 → 512 for extended-thinking models.
+  - New endpoint `POST /platform/ai-model-profiles/:id/diagnostics/platform` that reads the credential from the active runtime profile (no fake `companyId` needed for wizard Step 4).
+
+- **API Key Vault (new feature)**
+  - New entity `AiPlatformApiKey` + Firestore repo at `system_metadata/ai_api_keys/items/{id}`.
+  - `AiPlatformApiKeyUseCase` with CRUD + `validate()` that hits the provider's `/models` endpoint and persists `lastValidationStatus` / `lastValidationDetail`.
+  - 5 new endpoints under `/platform/ai-api-keys`.
+  - Vault page at `/super-admin/ai-api-keys` — grouped by provider, per-key Test/Edit/Delete actions, validation badges (green Valid / red Invalid / gray Not tested), orphan-key warning when a provider gets disabled.
+  - `AiPlatformRuntimeProfileUseCase.upsertProfile()` now accepts `apiKeyId` — when sent, dereferences the vault server-side, re-encrypts for the runtime profile's own credential, and copies the credential hint. Mutually exclusive with inline `apiKey`.
+
+- **Setup Wizard (new flow)**
+  - New page `AiSetupWizardPage` at `/super-admin/ai-setup` with a 5-step stepper: Provider → Model → Platform Key → Test → Certify.
+  - Stepper shows live status badges; clicking a completed step jumps back to edit it.
+  - Each step persists immediately to the actual backend entity — no in-memory wizard state; `completedSteps` is recomputed from what's actually in the database.
+  - Step 1 (Provider) and Step 2 (Model) include inline "register new" forms.
+  - Step 3 (Platform Key) has a Vault ↔ Paste toggle; defaults to vault if any keys exist for the provider; has an inline "+ Also save to vault" form when pasting.
+  - Step 4 (Test) calls the new platform-scoped diagnostic endpoint.
+  - Step 5 (Certify) has both a single-category Certify button AND a "Run all categories" button that loops through all 12 sequentially with live progress.
+
+- **Cert Manager modal redesign**
+  - Status hero with traffic-light readiness (untested / needs-runtime / failed / expired / ready).
+  - Detects "no active runtime profile" failure pattern and shows a bold "**Fix it — set up platform API key**" button that deep-links to `/super-admin/ai-runtime-profiles?modelProfileId=<id>`.
+  - Policies + profile hash + manual cert demoted to a collapsible "Advanced" section.
+  - New "Reset certification history" button (only when there are existing certs).
+
+- **Runtime Profiles page**
+  - Same Vault ↔ Paste toggle as wizard Step 3, so editing existing runtime profiles honors the vault.
+  - Deep-link handler for `?modelProfileId=<id>` — opens edit form if a profile exists for that model, otherwise opens create form pre-filled with the right provider/model.
+  - Indigo "Open setup wizard" banner at top of list view.
+
+- **Overview page**
+  - Big primary "Set up a new AI model" gradient card linking to the wizard.
+
+- **API client**
+  - Raised `runGlobalCertification` timeout from 30s default → 180s (cert hits live models).
+  - Added vault types + 5 new methods.
+  - Added `runPlatformDiagnostics`, `resetAiModelProfileCertifications`.
+
+- **Docs**
+  - Updated `docs/user-guide/ai-setup-superadmin.md` — added Vault section (Step 0), updated Step 3 description, added "Run all categories" section, added "Where everything lives" reference table.
+  - Created `docs/architecture/ai-setup-wizard-and-vault.md` — technical overview of new entities, endpoints, wizard architecture, rotation semantics, DI wiring, and full files-touched list.
+  - Created `planning/done/99-ai-setup-wizard-and-vault.md` (completion report).
+  - Wrote `planning/ai-flow-rewrite.md` earlier in session as the initial design doc.
+
+**Verification:**
+- Backend type-check: ✅ clean (only pre-existing jest types / firebase-functions unrelated errors)
+- Frontend type-check: ✅ clean
+- User confirmed live: Vault page renders, wizard runs, "Fix it" button works, cascade delete works, "Run all categories" button visible
+- Live cert run still pending user confirmation post-rebuild
+
+**Notes for next session:**
+- Tenant-side wizard mirroring this flow (Deliverable D from the plan) is still ahead.
+- Integration test for the cert flow against a mocked OpenRouter (Deliverable B) is still ahead.
+- Vault key rotation does not auto-propagate to existing runtime profiles by design — future enhancement: add a "refresh credentials from vault" action.
+
+---
+
+## 2026-05-17 (Sun, continued) — ~0.9h
+**Task:** Sales Standalone / Simple / Operational workflow contract — QA pass
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Started frontend dev server on `http://localhost:5173` and confirmed existing emulator/backend ports were already active locally.
+- Used the in-app browser to inspect the running app and reach the Super Admin company list.
+- Seeded a local demo company with emulator data using `backend npm run seed:demo`.
+- Found a QA environment gap: the seeded demo company did not include the Sales module entitlement by default, and tenant impersonation through the in-app browser was unreliable enough to block a full UI walkthrough.
+- Switched to a backend smoke approach against emulator data to validate the real Sales use cases:
+  - initialized Inventory + Sales for the seeded demo company,
+  - created a QA customer and service item,
+  - created and posted a direct Sales Invoice with:
+    - line discount,
+    - document charge,
+    - `CASH_FULL` settlement.
+- Corrected one smoke-script mistake where settlement input was passed into the wrong `PostSalesInvoiceUseCase.execute` argument slot; after rerun, the posted invoice reached the expected paid state.
+**Verification:**
+- Frontend reachable at `http://localhost:5173` ✅
+- Existing local backend/emulator stack detected on ports `5001`, `8080`, `9099`, `9199`, `4000` ✅
+- Direct invoice backend smoke result on emulator data ✅
+  - invoice `SI-00003`
+  - status `POSTED`
+  - payment status `PAID`
+  - subtotal `115`
+  - outstanding `0`
+**Result:** 🟡 Direct invoice QA is effectively validated through real emulator data. Full operational stock-flow QA is still pending because it needs either stable tenant impersonation in the browser or a more complete stock/cost fixture for SO -> DN -> linked SI.
+**Next:** Prepare a stock-enabled tenant fixture or stable tenant session, then QA operational linked stock invoicing and mixed stock/service orders.
+
+## 2026-05-17 (Sun, continued) — ~0.6h
+**Task:** Sales Standalone / Simple / Operational workflow contract — documentation close-out
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Updated the Sales architecture doc in `docs/architecture/sales.md` to reflect the implemented behavior instead of the earlier contract-only state:
+  - clarified Sales Standalone vs SIMPLE vs OPERATIONAL,
+  - documented direct invoice commercial terms,
+  - documented Sales payment method abstraction,
+  - documented the linked invoice source contract from posted Delivery Notes.
+- Added end-user guide `docs/user-guide/sales/direct-invoice-and-operational-linked-invoice.md`.
+- Updated `docs/user-guide/sales/README.md` to link the new guide.
+- Created completion report `planning/done/98-sales-commercial-terms-and-linked-invoice-workflow.md`.
+- Updated `planning/tasks/95-sales-standalone-operational-workflow-contract.md` to move the remaining work to manual QA.
+**Result:** 🟡 This Sales slice now satisfies the documentation requirements. Remaining work is manual QA only before moving to the next Sales feature layer.
+**Next:** Run manual QA for direct invoice and operational linked invoice workflows, then start free goods / promotions foundation.
+
+## 2026-05-17 (Sun, continued) — ~0.8h
+**Task:** Sales Standalone / Simple / Operational workflow contract — linked invoice workflow alignment
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Added a backend read contract for operational linked invoicing so the UI no longer has to guess invoiceable stock quantities from Sales Order lines.
+- Implemented `GetInvoiceableLinkedSalesSourceUseCase` in `backend/src/application/sales/use-cases/SalesInvoiceUseCases.ts`.
+  - Loads the Sales Order,
+  - loads posted Delivery Notes for that order,
+  - loads posted Sales Invoices for that order,
+  - computes remaining delivered-not-invoiced quantity per `dnLineId`,
+  - returns stock lines from posted Delivery Notes and service lines from remaining Sales Order quantities.
+- Added the tenant endpoint `GET /tenant/sales/orders/:id/invoiceable-linked-source` through:
+  - `backend/src/api/controllers/sales/SalesController.ts`
+  - `backend/src/api/routes/sales.routes.ts`
+- Extended backend/frontend DTO contracts in:
+  - `backend/src/api/dtos/SalesDTOs.ts`
+  - `frontend/src/api/salesApi.ts`
+- Updated `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` so linked loading now:
+  - calls the new invoiceable-source endpoint,
+  - fills `dnLineId` for stock lines,
+  - auto-uses Delivery Note warehouse for linked stock lines,
+  - stops treating linked stock invoicing like raw Sales Order remaining quantity.
+- Fixed DTO hygiene by removing the duplicate `SalesPaymentMethodConfigDTO` declaration from backend Sales DTOs.
+- Added focused regression test:
+  - `backend/src/tests/application/sales/GetInvoiceableLinkedSalesSourceUseCase.test.ts`
+**Verification:**
+- `backend`: `npx tsc --noEmit -p backend/tsconfig.json --pretty false` ✅
+- `frontend`: `npm run typecheck -- --pretty false` ✅
+- `backend`: focused Sales test pack ✅
+  - `GetInvoiceableLinkedSalesSourceUseCase.test.ts`
+  - `SalesPostingUseCases.test.ts`
+  - `SalesPaymentSyncUseCases.test.ts`
+  - `SalesInvoiceSettlementPosting.test.ts`
+  - `SalesInvoice.test.ts`
+**Result:** 🟡 Operational linked invoice creation now follows the intended business rule: stock invoicing is derived from posted Delivery Notes, while service invoicing remains Sales Order based. The remaining work on this task is the mandatory architecture doc, user guide, completion report, and then manual workflow QA.
+**Next:** Write the Sales architecture/user docs and completion report for the direct-invoice commercial terms + linked-invoice workflow slice, then run manual SO -> DN -> SI QA.
+
+## 2026-05-17 (Sun, continued) — ~0.7h
+**Task:** Sales Standalone / Simple / Operational workflow contract — direct invoice UI pass
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Updated `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` so `sales_invoice_direct` can actually use the backend commercial-terms/payment work:
+  - added line-level discount type/value fields,
+  - added document charge rows,
+  - updated frontend totals to include discounted lines plus charge tax,
+  - updated create/create-and-post payloads to send `discountType`, `discountValue`, and `charges`,
+  - updated settlement UI so `paymentMethod` is the primary input and raw AR/settlement account fields are optional overrides.
+- Updated `frontend/src/api/salesApi.ts` to match the new Sales settings, line discount, charges, and optional settlement-account contracts.
+- Kept scope intentionally narrow: no operational linked-invoice UI changes and no redesign of unrelated Sales pages.
+- Verified `frontend` typecheck: `npm run typecheck` ✅
+**Result:** 🟡 `sales_invoice_direct` is now testable from the UI for discount + charges + pay-now, backed by the hidden-account payment mapping. Remaining functional gap is operational linked invoice alignment, plus the required docs/completion report.
+**Next:** Rework linked invoice sourcing to posted Delivery Note lines, then close the documentation set for the direct-invoice commercial terms/payment feature.
+
+## 2026-05-17 (Sun, continued) — ~0.7h
+**Task:** Sales Standalone / Simple / Operational workflow contract — payment method mapping backend
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Added Sales-level payment method configuration to `SalesSettings` so standalone Sales can map `CASH`, `BANK_TRANSFER`, `CHECK`, `CREDIT_CARD`, and `OTHER` to hidden settlement accounts.
+- Updated Sales settings use cases, DTOs, validators, and frontend API types so the mapping is part of the Sales settings contract.
+- Relaxed settlement input so `settlementAccountId` is optional when a payment method mapping exists.
+- Updated both Sales settlement paths:
+  - `PostSalesInvoiceUseCase.processSettlementsInTransaction`
+  - `PostSalesInvoiceWithSettlementUseCase` / `RecordSalesInvoicePaymentUseCase`
+- Added fallback behavior:
+  - settlement account resolves from Sales settings by `paymentMethod`,
+  - AR/receivable account can fall back to Sales default AR when omitted in the later-payment path.
+- Extended focused tests to cover mapped payment methods without raw account IDs.
+- Verified:
+  - `backend` typecheck: `npx tsc --noEmit -p backend/tsconfig.json` ✅
+  - focused backend Sales tests (4 files) ✅
+  - `frontend` typecheck: `npm run typecheck` ✅
+**Result:** 🟡 Backend payment abstraction is complete enough for standalone Sales. The remaining gap is UI: direct invoice still needs user-facing fields for discount, charges, and pay-now.
+**Next:** Implement the smallest `sales_invoice_direct` UI pass that uses the new backend contract, while staying out of the other UI agent's active work area as much as possible.
+
+## 2026-05-17 (Sun, continued) — ~0.7h
+**Task:** Sales Standalone / Simple / Operational workflow contract — backend commercial terms foundation
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Implemented the first backend slice for `sales_invoice_direct` so the invoice model can carry real commercial terms instead of only raw line totals.
+- Extended `SalesInvoice` with canonical line discount fields (`discountType`, `discountValue`, `discountAmountDoc/Base`, gross line totals) and document-level `charges`.
+- Added `SalesInvoiceCalculationService.ts` to centralize discounted line math, charge math, and invoice total recomputation.
+- Updated `CreateSalesInvoiceUseCase` and `PostSalesInvoiceUseCase` to:
+  - calculate tax after discount,
+  - include document charges in totals,
+  - post charge revenue and charge tax alongside line revenue/tax,
+  - keep COGS/inventory logic intact.
+- Updated Sales API DTOs and validators so the backend accepts and returns the new discount/charge fields.
+- Added focused regression coverage in:
+  - `backend/src/tests/domain/sales/SalesInvoice.test.ts`
+  - `backend/src/tests/application/sales/SalesPostingUseCases.test.ts`
+- Verified:
+  - `backend` typecheck: `npx tsc --noEmit -p backend/tsconfig.json` ✅
+  - focused backend tests: `npm test -- --runTestsByPath src/tests/domain/sales/SalesInvoice.test.ts src/tests/application/sales/SalesPostingUseCases.test.ts` ✅
+**Result:** 🟡 Backend foundation complete for discount + charges on direct sales invoices. The feature is not yet user-testable end-to-end because Sales-facing payment methods and UI fields are still missing.
+**Next:** Add Sales payment method / cashbox abstraction, then the smallest direct-invoice UI pass for discount/charges/pay-now. After that, return to linked-invoice OPERATIONAL alignment (invoice from posted Delivery Notes).
+
+## 2026-05-17 (Sun, continued) — ~0.7h
+**Task:** Sales Standalone / Simple / Operational workflow contract
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Clarified the product model: Sales Standalone is a visible app/module mode; Sales Simple and Sales Operational are workflow modes; hidden Accounting/Inventory engines may run behind Sales.
+- Audited current Sales backend use cases, native Sales UI flow, dynamic document profiles, Sales docs, payment settlement UX, and system voucher seeding signals.
+- Confirmed backend flow is mostly coherent: Delivery Note owns stock movement, linked stock invoices require `dnLineId`, direct invoices can post stock/COGS/revenue, and returns are context-aware.
+- Identified critical gaps: linked invoice UI still loads from Sales Order instead of posted Delivery Notes, standalone payment UX exposes raw account IDs, canonical Sales form seeding needs verification, and dynamic web form save parity is incomplete.
+- Extended the contract with the commercial terms layer: invoice-level payment timing, tax, line/document discounts, additions/charges, free goods/promotions, and price-list staging.
+- Created `planning/tasks/95-sales-standalone-operational-workflow-contract.md` with workflow matrix, document contract, gap list, implementation phases, estimates, and acceptance criteria.
+- Updated `planning/ACTIVE.md` to make Sales workflow contract the current focus. No frontend/backend source files were edited.
+**Result:** 🔶 Analysis and implementation contract complete; coding not started.
+**Next:** Phase 1 — fix/verify canonical Sales form seeds, OPERATIONAL-only linked invoice visibility, and stock-aware warehouse validation. Then Phase 2 — implement commercial terms foundation before operational invoice UI polish. Avoid `SalesInvoiceDetailPage.tsx` until the UI agent's current work is stable.
+
 ## 2026-05-17 (Sun, continued) — ~0.5h
 **Task:** Organize Appearance Lab UI & Refine Curated Presets
 **Agent:** Antigravity (CTO Mode)
@@ -1390,3 +1781,231 @@
 **Next:** Browser QA the production top bar on desktop and narrow widths, then tune any launch-default widget widths if needed.
 
 ---
+
+## 2026-05-17 (Sun) — ~0.5h
+**Task:** Task 96 — Proactive AI Certification Diagnostics
+## 2026-04-27 (Sun) — 1h
+**Task:** Audit & Update Master Plan
+**Agent:** Antigravity (VS Code)
+**What I Did:**
+- Audited all 27 master plan items against actual codebase
+- Confirmed 22/27 original items are done + 5 bonus plans (34-38)
+- Found Plan 17 (Opening Balance) and Plan 18 (Balance Enforcement) are already implemented
+- Found Plan 19 (Settings UX) is done via ModuleSettingsLayout
+- Identified 8 truly remaining items
+- Rewrote 00-MASTER-PLAN.md with accurate status
+- Flagged: Firestore security rules expire June 1, 2026!
+**Result:** ✅ Done
+**Next:** Resume Forms Designer work (most recent active dev), then tackle Firestore Security Rules before June 1
+
+---
+
+## 2026-04-26 (Sat) — 2h
+**Task:** Build Command Center Dashboard + Organize Development Process
+**Agent:** Antigravity (VS Code)
+**What I Did:**
+- Created ACTIVE.md, JOURNAL.md, and AGENTS.md workflow system
+- Built Command Center dashboard (localhost:5555) with project status, progress, subscriptions
+- Created ERP03.bat launcher for one-click startup of all services
+- Configured all 3 AI agents as autonomous CTOs
+- Established the 3-Type Rule for handling discovered issues
+**Result:** ✅ Done
+**Next:** Audit master plan (outdated since Feb 2026)
+
+---
+
+## 2026-04-26 (Sat) — Session 0: Process Setup
+**Task:** Organize development process
+**Agent:** Antigravity (VS Code)
+**What I Did:**
+- Created `ACTIVE.md`, `JOURNAL.md`, and `AGENTS.md`
+- Established the "5-Minute Resume" workflow
+- Configured all 3 AI agents (OpenCode, Codex, Antigravity) to read ACTIVE.md first
+**Result:** ✅ Process framework in place
+**Next:** Pick first task from MASTER-PLAN and begin work
+
+---
+
+<!-- TEMPLATE — copy this for each new session:
+
+## YYYY-MM-DD (Day) — Xh
+**Task:** (task name)
+**Agent:** (which AI agent / IDE)
+**What I Did:**
+- (bullet points)
+**Result:** ✅ Done / 🔶 Partial / ❌ Blocked
+**Commit:** (hash if committed)
+## 2026-05-02 (Sat) — 2.7h
+**Task:** Purchases Module Parity with Sales
+**Agent:** Codex (CTO Mode)
+**What I Did:**
+- Reworked Purchase voucher seeder templates to use canonical Purchases fields and complete persona forms for Direct, Linked, and Service Purchase Invoice.
+- Fixed Purchases initialization cloning so company voucher types preserve `voucherType` and `persona`.
+- Added Purchases runtime normalization and validation parity so `purchase_invoice_direct|linked|service` are treated as Purchases and validated against persona-specific fields.
+- Routed dynamic Purchase saves through the Purchases API for PI/PO/GRN/PR, including Direct PI `createAndPostPI` / `updateAndPostPI` in flexible mode.
+- Added focused tests for Purchase persona seeding and Purchase settings/company clone metadata.
+- Fixed the Purchase Invoice posting stock movement contract so precomputed IN movements include required settlement metadata.
+- Updated targeted purchase posting/return tests to match the Firestore-safe inventory write API.
+**Verification:**
+- ✅ Backend targeted tests: 21/21 pass for Purchase seeder, Purchase settings clone, Purchase posting, and Purchase return.
+- ✅ `npm run build` in `backend/`.
+- ✅ `npm run build` in `frontend/`.
+**Result:** ✅ Done — Purchases is code-ready for Sales-style persona architecture; manual browser QA and company reseed/sync remain.
+**Next:** Reseed/sync Purchase forms into the company, then browser QA Purchase Forms Designer, Direct PI Save & Post, Linked PI, Service PI, and Purchase Settings Governance persistence.
+
+**Next:** (what to do next session)
+
+## 2026-05-01 (Fri) — 0.2h
+**Task:** Sales direct invoice visibility after save
+**Agent:** Codex (CTO Mode)
+**What I Did:**
+- Fixed `DynamicDocumentPage` first-load classification so custom Sales form routes use their loaded form config before querying records.
+- Broadened dynamic record matching to canonical `voucherType + persona`, so saved `sales_invoice_direct` records show under cloned/custom direct invoice forms.
+- Routed dynamic Sales rows to native Sales detail pages.
+- Added Recent Sales Invoices to the Sales dashboard while Operational workflow mode is active.
+**Result:** ✅ Done — needs browser refresh QA
+**Next:** Hard refresh the frontend and confirm the saved direct invoice appears in `/sales/<formCode>` and the Sales dashboard Recent Sales Invoices card.
+
+## 2026-04-28 (Tuesday) — 0.5h
+**Task:** Voucher Data Contract Mismatch (Task 43) — Audit Phase
+**Agent:** Antigravity (CTO Mode)
+**What I Did:**
+- Audited `seedSystemVoucherTypes.ts` vs `SalesDTOs.ts` and `PurchaseDTOs.ts`.
+- Confirmed that PO, PI, SR, and PR templates in the seeder use `quantity` instead of the semantic names required by the DTOs (`orderedQty`, `invoicedQty`, `returnQty`).
+- Identified that `GenericVoucherRenderer.tsx` needs refinement to prioritize these semantic fields during data extraction.
+- Updated [Task 43](file:///d:/DEV2026/ERP03/1-TODO/43-voucher-data-contract-mismatch.md) with specific field mapping instructions.
+- Set Task 43 as the active focus in `ACTIVE.md`.
+**Result:** 🔶 Audit Complete, Execution Ready
+**Next:** Update seeder and renderer to align contracts.
+## 2026-04-29 (Wednesday) — 1.5h
+**Task:** Standardizing Sales Voucher Architecture (Task 43) — Planning Phase
+**Agent:** Antigravity (CTO Mode)
+**What I Did:**
+- Created a comprehensive **Sales Canonical Field Dictionary** to unify Frontend and Backend data contracts.
+- Defined five specialized Sales Personas (`sales_order`, `delivery_note`, `sales_invoice_direct`, `sales_invoice_linked`, `sales_invoice_service`).
+- Established strict validation rules for stock movements and item types based on persona.
+- Prepared the `payments[]` contract to handle future requirements while safely rejecting current inputs.
+- Decoupled Sales Workflows from Inventory Accounting methods in the policy layer.
+- Produced the final [Implementation Plan](file:///C:/Users/mahmu/.gemini/antigravity/brain/6bddc246-acf7-4502-aaeb-8af06294d785/implementation_plan.md).
+**Result:** ✅ Planning Complete
+**Next:** Executor Agent to perform the "Breaking Cleanup" and reseed.
+
+## 2026-05-01 (Fri) — 0.1h
+**Task:** Backend build failure check
+**Agent:** Codex (CTO Mode)
+**What I Did:**
+- Ran `npm run build` in `backend/` and reproduced TypeScript errors in Prisma sales repositories.
+- Fixed invalid runtime uses of `SOStatus` and `DNStatus`, which are TypeScript type aliases, not enum values.
+- Replaced those references with canonical sales status string literals.
+**Result:** ✅ Done — backend build passes
+**Next:** Continue manual UI QA for Direct Sales Invoice Save & Post lifecycle.
+
+## 2026-05-01 (Fri) — 0.4h
+**Task:** Emulator system metadata recovery
+**Agent:** Codex (CTO Mode)
+**What I Did:**
+- Confirmed the Firestore emulator was reachable after accidental termination.
+- Ran `npm run seed:system` to restore system voucher templates, system metadata, plans/bundles/permissions, and role templates into the emulator.
+- Synced restored system voucher templates into initialized company Accounting/Sales modules.
+- Fixed `CompanyVoucherTemplateSyncService` so company voucher types preserve `voucherType`/`persona` and existing official default forms are refreshed from the system templates.
+- Removed the stale official `sales_invoice` system template and stale system-generated default Sales Invoice forms, leaving custom copies untouched.
+- Verified system Sales catalog now exposes only `sales_invoice_direct`, `sales_invoice_linked`, and `sales_invoice_service` for invoice personas.
+- Verified `npm run build` in `backend/` passes.
+**Result:** ✅ Done — emulator metadata restored from code
+**Next:** Hard refresh the frontend and use Form Designer/Sync Catalog only for manual QA; export emulator data after confirming the recovered metadata is correct.
+
+## 2026-05-01 (Fri) — 0.1h
+**Task:** Emulator persistence guardrail
+**Agent:** Codex (CTO Mode)
+**What I Did:**
+- Updated `ERP03.bat` so the Firebase emulator launcher uses `--export-on-exit=emulator-data`.
+- Updated root `npm run db:export` to use `--force`, making manual emulator snapshots overwrite the existing export without extra prompts.
+**Result:** ✅ Done
+**Next:** Use `ERP03.bat` or `npm run emulators` for normal startup, and run `npm run db:export` after important metadata changes.
+
+## 2026-05-02 (Sat) — 0.2h
+**Task:** Debugging Purchase Module Visibility
+**Agent:** Antigravity (CTO Mode)
+**What I Did:**
+- Identified a pluralization mismatch in `ToolsFormsDesignerPage.tsx` where the Purchase module was incorrectly mapped to `'purchases'` instead of the canonical backend ID `'purchase'`.
+- Fixed `MODULE_BUNDLE_MAP` and `getInitialActiveModule` to use `'purchase'`.
+- Confirmed that this mismatch was preventing the "Purchase" tab from appearing in the Forms Designer UI, as the `moduleBundles` list (loaded from the backend) uses the singular `'purchase'`.
+- Verified that once the tab is visible, the catalog loading logic (which already handled `'PURCHASE'` normalization) correctly pulls forms from the platform catalog.
+**Result:** ✅ Done — Purchase module forms are now visible in the Forms Designer.
+**Next:** Resume the Firestore Transaction Safety restructure, starting with `PostPurchaseReturnUseCase`.
+
+---
+
+## 2026-05-09 (Fri) — 1.5h
+**Task:** Systemic Responsiveness Fix — Infrastructure & UI Stabilization
+**Agent:** Antigravity (CTO Mode)
+**What I Did:**
+- Implemented centralized responsive logic using a new `useBreakpoint` hook aligned with Tailwind CSS breakpoints.
+- Cleaned up `AppShell.tsx`: removed legacy resize listeners, implemented mobile-specific sidebar auto-close and backdrop overlay for the overlay sidebar mode.
+- Extended `UserPreferencesContext` with persisted toggles for `showWidgetsOnMobile` and `showTopbarActionsOnMobile`, including backend DTO/API synchronization.
+- Optimized `TopBar.tsx`: merged layout-mode and widget-manager into a single unified dropdown to save space. Implemented conditional rendering for top-bar actions based on screen size and user preferences.
+- Refactored `DraggableWidgetSpace.tsx`: moved per-widget style toggles to the bottom-right within widgets to prevent top-bar overflow on mobile.
+- Exposed new mobile settings in `AppearanceSettingsPage.tsx`.
+- Fixed hardcoded grid columns in `SalesReturnDetailPage`, `SalesSettingsPage`, and `PurchaseSettingsPage` by adding `sm:` responsive prefixes to allow stacking on small screens.
+**Verification:**
+- ✅ `npm run typecheck` (frontend) — pass
+- ✅ `npm run build` (frontend) — pass
+- ✅ Manual QA of sidebar backdrop and auto-close logic.
+**Result:** ✅ Done — Systemic responsiveness issues resolved.
+**Next:** Module-specific audits for Inventory and Accounting screens to ensure consistent responsive grid behavior.
+
+---
+
+## 2026-05-10 (Sun) — 2.3h
+**Task:** Production Topbar Precision Widget Layout
+**Agent:** Codex (CTO Mode)
+**What I Did:**
+- Promoted the Canvas Dev 96-cell widget layout into the production top-bar widget area.
+- Replaced the legacy widget edit buttons with one list-style layout actions menu.
+- Added selected-widget precision controls for one-cell movement, typed width, bold, background color, and border variant.
+- Updated auto-align so visible widgets divide the full 96-cell bar evenly.
+- Expanded background colors and made border intensity follow the selected widget background.
+- Fixed stacked controls and color panels by keeping controls scoped to the selected widget.
+- Updated widget persistence to use 96-cell defaults and a new storage key.
+- Added completion, architecture, and user-guide documentation.
+**Verification:**
+- ✅ `npm run typecheck` (frontend) — pass
+- ✅ `npm run build` (frontend) — pass
+**Result:** ✅ Done — Main top bar now uses the precision widget layout.
+**Next:** Browser QA the production top bar on desktop and narrow widths, then tune any launch-default widget widths if needed.
+
+---
+
+## 2026-05-17 (Sun) — ~0.5h
+**Task:** Task 96 — Proactive AI Certification Diagnostics
+**Agent:** Antigravity (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Integrated proactive pre-flight checks inside `AiModelCertificationUseCase.runShellCertification` before calling the certification engine.
+- Implemented network check via `provider.isAvailable()` and inference check using a lightweight, cheap chat request (`Reply with only: provider-ok`).
+- Handled connectivity and inference failures gracefully: clears the provider and skips expensive Deep Probe checks, enriching the certification record metadata with diagnostic details and setting a descriptive summary.
+- Wrote full unit test suite in `AiModelCertificationUseCase.test.ts` validating connection failures, chat inference failures, and successful diagnostics.
+- Refined `mockEngine.run` inside the test file to behave like the real `AiCertificationEngine` by failing with score 40/100 when `provider` is undefined.
+- Verified all certification tests pass (8/8 passed) and backend typescript compiles with zero type errors.
+- Documented changes in architecture and user guides: `docs/architecture/ai-assistant-runtime-v2.md` and `docs/user-guide/ai-assistant-runtime-v2.md`.
+- Created task completion report `planning/done/96-ai-model-certification-diagnostics.md`.
+**Result:** ✅ Proactive pre-flight diagnostics prevent certification from failing silently or producing generic failures, early-failing with clear error messages instead.
+**Next:** Recommend proceeding with next roadmap tasks or pending user requests.
+
+---
+
+## 2026-05-17 (Sun) — ~0.65h
+**Task:** Task 97 — Fix Diagnostics companyId Error, Permanent Profile Deletion, Inline Action Icons, and Friendly Display Name
+**Agent:** Antigravity (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**What I Did:**
+- Resolved a critical runtime crash (`ReferenceError: companyId is not defined`) inside `CheckProviderHealthUseCase.executeWithConfig` by replacing the free-floating `companyId` with `config.companyId || 'admin-test'`.
+- Fixed the issue where deleting a model profile did not persist across restarts/hot-reloads. Updated `syncBuiltInProfiles(force)` in `AiModelProfileUseCase` to skip auto-syncing at server startup if the database already contains profiles.
+- Updated `syncModelProfiles` in `AiToolCatalogController` to pass `true` to force manual synchronization when triggered on-demand via the Super Admin UI.
+- Replaced the 3-dots actions menu on the AI Model Profiles table with beautiful inline icon buttons (`Bot`, `Activity`, `ShieldCheck`, `Trash2`) for a single-click experience.
+- Resolved the model ID mismatch bug (where editing the model name only changed `modelName` but not `modelId`). Made the **Technical Model Name / ID** input field read-only during edit (`disabled={isEditing}`) to lock unique keys, and exposed a new editable **Display Name** input field (`displayName`) in the form.
+- Updated the table row renderer in `AiModelProfilesPage.tsx` to display `profile.displayName || profile.modelName` as the primary link text. This guarantees that your saved friendly Display Names are immediately visible in the table list columns.
+- Verified that both the backend compiles cleanly (`npm run build` with 0 errors) and the frontend typechecks cleanly (`npm run typecheck` with 0 errors).
+- Updated task completion report `planning/done/97-diagnostics-company-id-reference-error.md`.
+**Result:** ✅ AI model diagnostics run successfully, deleting model profiles is permanent, the table features sleek inline icon actions, and Display Name customization is beautifully rendered and locked.
+**Next:** Recommend proceeding with next roadmap tasks or pending user requests.

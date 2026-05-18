@@ -269,6 +269,19 @@ export const AiProvidersPage: React.FC = () => {
 
   return (
     <SuperAdminPage>
+      <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
+        <span>
+          <strong>Setting up a new AI model?</strong> Use the guided wizard — it handles provider, model,
+          key, test, and certification in one flow.
+        </span>
+        <button
+          type="button"
+          onClick={() => window.location.assign('/super-admin/ai-setup')}
+          className="flex-shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+        >
+          Open setup wizard
+        </button>
+      </div>
       <SuperAdminHeader
         title={t('superAdmin.aiProviders.title')}
         description={t('superAdmin.aiProviders.description')}

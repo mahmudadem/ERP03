@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, Key, Plus, Save, Server } from 'lucide-react';
+import { clsx } from 'clsx';
+import { Activity, CheckCircle2, Key, Plus, Save, Server, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import {
   AiModelProfile,
+  AiPlatformApiKey,
   AiProvider,
   AiRuntimeInterval,
   AiRuntimeProfile,
@@ -61,6 +64,7 @@ type ViewState =
 
 export const AiRuntimeProfilesPage: React.FC = () => {
   const { t } = useTranslation('common');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [profiles, setProfiles] = useState<AiRuntimeProfile[]>([]);
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [models, setModels] = useState<AiModelProfile[]>([]);
@@ -69,6 +73,10 @@ export const AiRuntimeProfilesPage: React.FC = () => {
   const [viewState, setViewState] = useState<ViewState>({ mode: 'list' });
   const [form, setForm] = useState<UpsertAiRuntimeProfilePayload>(emptyForm);
   const [apiKeyInput, setApiKeyInput] = useState('');
+  const [deepLinkApplied, setDeepLinkApplied] = useState(false);
+  const [vaultKeys, setVaultKeys] = useState<AiPlatformApiKey[]>([]);
+  const [keyMode, setKeyMode] = useState<'vault' | 'paste'>('vault');
+  const [selectedVaultKeyId, setSelectedVaultKeyId] = useState<string>('');
 
   const selectedProfile = viewState.mode === 'editing' ? profiles.find(profile => profile.id === viewState.profileId) || null : null;
   const isEditing = viewState.mode === 'editing';
@@ -76,22 +84,44 @@ export const AiRuntimeProfilesPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [profileRes, providerRes, modelRes] = await Promise.all([
+      const [profileRes, providerRes, modelRes, keyRes] = await Promise.all([
         superAdminApi.getAiRuntimeProfiles(),
         superAdminApi.getAiProviders(),
         superAdminApi.getAiModelProfiles(),
+        superAdminApi.getAiApiKeys(),
       ]);
       setProfiles(unwrap<AiRuntimeProfile[]>(profileRes));
       setProviders(unwrap<AiProvider[]>(providerRes).filter(provider => provider.enabled));
       setModels(
         unwrap<AiModelProfile[]>(modelRes).filter(profile => profile.scope === 'GLOBAL' && profile.enabled !== false)
       );
+      setVaultKeys(unwrap<AiPlatformApiKey[]>(keyRes));
     } catch (error: any) {
       errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
   };
+
+  const providerVaultKeys = useMemo(
+    () => vaultKeys.filter(k => k.providerId === form.providerId),
+    [vaultKeys, form.providerId],
+  );
+
+  // Whenever the selected provider changes, reset mode + selection to a sensible default.
+  useEffect(() => {
+    if (providerVaultKeys.length > 0) {
+      setKeyMode('vault');
+      if (!providerVaultKeys.some(k => k.id === selectedVaultKeyId)) {
+        setSelectedVaultKeyId(providerVaultKeys[0].id);
+      }
+    } else {
+      setKeyMode('paste');
+      setSelectedVaultKeyId('');
+    }
+    // intentionally not depending on selectedVaultKeyId to avoid loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerVaultKeys.length, form.providerId]);
 
   useEffect(() => {
     loadData();
@@ -126,6 +156,43 @@ export const AiRuntimeProfilesPage: React.FC = () => {
     }
   }, [loading, viewState.mode, providers, models, form.providerId]);
 
+  // Deep-link from the Certification Manager's "Fix it" button: if the URL has
+  // ?modelProfileId=<id>, jump straight into the edit or create flow for that
+  // model so the superadmin doesn't have to hunt for the row.
+  useEffect(() => {
+    if (loading || deepLinkApplied) return;
+    const targetModelProfileId = searchParams.get('modelProfileId');
+    if (!targetModelProfileId) return;
+    const targetModel = models.find(m => m.id === targetModelProfileId);
+    if (!targetModel) return;
+    const existing = profiles.find(p => p.modelProfileId === targetModelProfileId);
+    if (existing) {
+      // Open the existing runtime profile so they can update the key
+      setViewState({ mode: 'editing', profileId: existing.id });
+      setForm({
+        providerId: existing.providerId,
+        modelProfileId: existing.modelProfileId,
+        status: existing.status,
+        maxRequestsPerInterval: existing.maxRequestsPerInterval || undefined,
+        requestInterval: existing.requestInterval,
+        notes: existing.notes || '',
+      });
+    } else {
+      // No runtime profile yet — open the create form pre-filled with this model
+      setViewState({ mode: 'creating' });
+      setForm({
+        ...emptyForm,
+        providerId: targetModel.providerId,
+        modelProfileId: targetModel.id,
+      });
+    }
+    setDeepLinkApplied(true);
+    // Clear the query param so a refresh doesn't keep re-applying it
+    const next = new URLSearchParams(searchParams);
+    next.delete('modelProfileId');
+    setSearchParams(next, { replace: true });
+  }, [loading, deepLinkApplied, searchParams, models, profiles, setSearchParams]);
+
   const selectProfile = (profile: AiRuntimeProfile) => {
     setViewState({ mode: 'editing', profileId: profile.id });
     setForm({
@@ -155,7 +222,9 @@ export const AiRuntimeProfilesPage: React.FC = () => {
         ...form,
         notes: form.notes?.trim() || '',
       };
-      if (apiKeyInput.trim()) {
+      if (keyMode === 'vault' && selectedVaultKeyId) {
+        payload.apiKeyId = selectedVaultKeyId;
+      } else if (apiKeyInput.trim()) {
         payload.apiKey = apiKeyInput.trim();
       }
 
@@ -213,6 +282,21 @@ export const AiRuntimeProfilesPage: React.FC = () => {
 
   return (
     <SuperAdminPage>
+      {viewState.mode === 'list' && (
+        <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
+          <span>
+            <strong>Setting up a new AI model?</strong> Use the guided wizard — it handles provider, model,
+            key, test, and certification in one linear flow.
+          </span>
+          <button
+            type="button"
+            onClick={() => window.location.assign('/super-admin/ai-setup')}
+            className="flex-shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+          >
+            Open setup wizard
+          </button>
+        </div>
+      )}
       <SuperAdminHeader
         title={t('superAdmin.aiRuntimeProfiles.title')}
         description={t('superAdmin.aiRuntimeProfiles.description')}
@@ -382,26 +466,116 @@ export const AiRuntimeProfilesPage: React.FC = () => {
               </div>
             )}
 
-            <label className="block text-sm">
-              <span className="mb-1 flex items-center gap-1 font-medium text-slate-700">
-                <Key className="h-4 w-4" />
-                {t('superAdmin.aiRuntimeProfiles.form.apiKey')}
-              </span>
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={event => setApiKeyInput(event.target.value)}
-                placeholder={isEditing
-                  ? t('superAdmin.aiRuntimeProfiles.form.apiKeyReplacePlaceholder')
-                  : t('superAdmin.aiRuntimeProfiles.form.apiKeyPlaceholder')}
-                className="w-full rounded-md border border-slate-300 px-3 py-2"
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                {isEditing
-                  ? t('superAdmin.aiRuntimeProfiles.form.apiKeyReplaceHint')
-                  : t('superAdmin.aiRuntimeProfiles.form.apiKeyHint')}
-              </p>
-            </label>
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <span className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                  <Key className="h-4 w-4" />
+                  {t('superAdmin.aiRuntimeProfiles.form.apiKey', 'API key')}
+                </span>
+                <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setKeyMode('vault')}
+                    disabled={providerVaultKeys.length === 0}
+                    className={clsx(
+                      'rounded-md px-3 py-1 font-medium transition',
+                      keyMode === 'vault' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900',
+                      providerVaultKeys.length === 0 && 'opacity-50 cursor-not-allowed',
+                    )}
+                  >
+                    Pick from vault ({providerVaultKeys.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKeyMode('paste')}
+                    className={clsx(
+                      'rounded-md px-3 py-1 font-medium transition',
+                      keyMode === 'paste' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900',
+                    )}
+                  >
+                    Paste a new key
+                  </button>
+                </div>
+              </div>
+
+              {keyMode === 'vault' && providerVaultKeys.length > 0 && (
+                <div className="grid gap-2">
+                  {providerVaultKeys.map(k => (
+                    <button
+                      key={k.id}
+                      type="button"
+                      onClick={() => setSelectedVaultKeyId(k.id)}
+                      className={clsx(
+                        'flex items-start gap-3 rounded-lg border p-2.5 text-left transition',
+                        selectedVaultKeyId === k.id
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-slate-200 bg-white hover:bg-slate-50',
+                      )}
+                    >
+                      <Key className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-slate-900">{k.label}</span>
+                          <span className="font-mono text-xs text-slate-500">{k.credentialHint}</span>
+                          {k.lastValidationStatus === 'valid' && (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                              <CheckCircle2 className="h-3 w-3" /> Valid
+                            </span>
+                          )}
+                          {k.lastValidationStatus === 'invalid' && (
+                            <span className="inline-flex items-center gap-1 text-xs text-red-700">
+                              <XCircle className="h-3 w-3" /> Invalid
+                            </span>
+                          )}
+                          {k.lastValidationStatus === 'unknown' && (
+                            <span className="text-xs text-slate-400">Not tested</span>
+                          )}
+                        </div>
+                        {k.notes && <div className="text-xs text-slate-500 mt-0.5 italic">{k.notes}</div>}
+                      </div>
+                      {selectedVaultKeyId === k.id && (
+                        <CheckCircle2 className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                  <p className="text-xs text-slate-500">
+                    Manage saved keys at{' '}
+                    <a href="/super-admin/ai-api-keys" target="_blank" rel="noreferrer" className="text-indigo-700 underline">
+                      API Key Vault
+                    </a>
+                    .
+                  </p>
+                </div>
+              )}
+
+              {keyMode === 'paste' && (
+                <div>
+                  <input
+                    type="password"
+                    value={apiKeyInput}
+                    onChange={event => setApiKeyInput(event.target.value)}
+                    placeholder={isEditing
+                      ? t('superAdmin.aiRuntimeProfiles.form.apiKeyReplacePlaceholder', 'Leave blank to keep existing key')
+                      : t('superAdmin.aiRuntimeProfiles.form.apiKeyPlaceholder', 'sk-…')}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono"
+                    autoComplete="off"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    {isEditing
+                      ? t('superAdmin.aiRuntimeProfiles.form.apiKeyReplaceHint', 'Leave blank to keep the existing key, or paste a new one to replace it.')
+                      : t('superAdmin.aiRuntimeProfiles.form.apiKeyHint', 'Encrypted at rest. Never displayed back to anyone after save.')}
+                    {' '}
+                    {providerVaultKeys.length === 0 && (
+                      <>Tip: save this key to the{' '}
+                        <a href="/super-admin/ai-api-keys" target="_blank" rel="noreferrer" className="text-indigo-700 underline">
+                          API Key Vault
+                        </a>{' '}to reuse it on other models.
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm">

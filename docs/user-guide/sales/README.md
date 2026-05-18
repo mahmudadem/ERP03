@@ -4,6 +4,10 @@ The Sales module is where you handle everything that happens between "the custom
 
 It works in close coordination with **Accounting** (invoices become journal entries) and **Inventory** (deliveries decrement stock). You don't have to think about that wiring — just use Sales and the rest happens automatically.
 
+Key guides:
+
+- [Direct Invoice and Operational Linked Invoice](D:/DEV2026/ERP03/docs/user-guide/sales/direct-invoice-and-operational-linked-invoice.md)
+
 ---
 
 ## What you can do here

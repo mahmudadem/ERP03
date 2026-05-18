@@ -150,11 +150,42 @@ const validateSILine = (line: any, index: number) => {
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
   if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   if (line.unitPriceDoc !== undefined) ensureNonNegativeNumber(line.unitPriceDoc, `lines[${index}].unitPriceDoc`);
+  if (line.discountType !== undefined && !['PERCENT', 'AMOUNT'].includes(String(line.discountType))) {
+    throw ApiError.badRequest(`lines[${index}].discountType must be PERCENT or AMOUNT`);
+  }
+  if (line.discountValue !== undefined) ensureNonNegativeNumber(line.discountValue, `lines[${index}].discountValue`);
+  if (line.discountAmountDoc !== undefined) ensureNonNegativeNumber(line.discountAmountDoc, `lines[${index}].discountAmountDoc`);
   if (line.taxCodeId !== undefined) ensureOptionalString(line.taxCodeId, `lines[${index}].taxCodeId`);
   if (line.warehouseId !== undefined) ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
   }
+};
+
+const validateSICharge = (charge: any, index: number) => {
+  if (!charge.name || typeof charge.name !== 'string') {
+    throw ApiError.badRequest(`charges[${index}].name is required`);
+  }
+  ensureNonNegativeNumber(charge.amountDoc, `charges[${index}].amountDoc`);
+  if (charge.chargeId !== undefined) ensureOptionalString(charge.chargeId, `charges[${index}].chargeId`);
+  if (charge.code !== undefined) ensureOptionalString(charge.code, `charges[${index}].code`);
+  if (charge.taxCodeId !== undefined) ensureOptionalString(charge.taxCodeId, `charges[${index}].taxCodeId`);
+  if (charge.revenueAccountId !== undefined) ensureOptionalString(charge.revenueAccountId, `charges[${index}].revenueAccountId`);
+  if (charge.description !== undefined && typeof charge.description !== 'string') {
+    throw ApiError.badRequest(`charges[${index}].description must be a string`);
+  }
+};
+
+const validateSalesPaymentMethodConfig = (config: any, index: number) => {
+  if (!config || typeof config !== 'object') {
+    throw ApiError.badRequest(`paymentMethodConfigs[${index}] must be an object`);
+  }
+  if (!['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'].includes(String(config.method))) {
+    throw ApiError.badRequest(`paymentMethodConfigs[${index}].method must be one of: CASH, BANK_TRANSFER, CHECK, CREDIT_CARD, OTHER`);
+  }
+  ensureRequiredString(config.settlementAccountId, `paymentMethodConfigs[${index}].settlementAccountId`);
+  if (config.label !== undefined) ensureOptionalString(config.label, `paymentMethodConfigs[${index}].label`);
+  if (config.isEnabled !== undefined) ensureBoolean(config.isEnabled, `paymentMethodConfigs[${index}].isEnabled`);
 };
 
 const validateSRLine = (line: any, index: number) => {
@@ -180,6 +211,12 @@ export const validateInitializeSalesInput = (body: any) => {
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
+  if (body.paymentMethodConfigs !== undefined) {
+    if (!Array.isArray(body.paymentMethodConfigs)) {
+      throw ApiError.badRequest('paymentMethodConfigs must be an array');
+    }
+    body.paymentMethodConfigs.forEach((config: any, index: number) => validateSalesPaymentMethodConfig(config, index));
+  }
 
   ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
   ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
@@ -231,6 +268,12 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
+  if (body.paymentMethodConfigs !== undefined) {
+    if (!Array.isArray(body.paymentMethodConfigs)) {
+      throw ApiError.badRequest('paymentMethodConfigs must be an array');
+    }
+    body.paymentMethodConfigs.forEach((config: any, index: number) => validateSalesPaymentMethodConfig(config, index));
+  }
   if (body.governanceRules !== undefined) {
     if (!Array.isArray(body.governanceRules)) {
       throw ApiError.badRequest('governanceRules must be an array');
@@ -382,6 +425,12 @@ export const validateCreateSalesInvoiceInput = (body: any) => {
     }
     body.lines.forEach((line: any, index: number) => validateSILine(line, index));
   }
+  if (body.charges !== undefined) {
+    if (!Array.isArray(body.charges)) {
+      throw ApiError.badRequest('charges must be an array when provided');
+    }
+    body.charges.forEach((charge: any, index: number) => validateSICharge(charge, index));
+  }
 
   if (body.settlementInput !== undefined) {
     validateSettlementInput(body.settlementInput);
@@ -401,6 +450,12 @@ export const validateUpdateSalesInvoiceInput = (body: any) => {
       throw ApiError.badRequest('lines must be a non-empty array when provided');
     }
     body.lines.forEach((line: any, index: number) => validateSILine(line, index));
+  }
+  if (body.charges !== undefined) {
+    if (!Array.isArray(body.charges)) {
+      throw ApiError.badRequest('charges must be an array when provided');
+    }
+    body.charges.forEach((charge: any, index: number) => validateSICharge(charge, index));
   }
 
   if (body.settlementInput !== undefined) {
@@ -426,8 +481,8 @@ const validateSettlementInput = (settlement: any) => {
       throw ApiError.badRequest('settlementInput.settlements must be an array');
     }
     settlement.settlements.forEach((s: any, index: number) => {
-      if (!s.settlementAccountId) {
-        throw ApiError.badRequest(`settlements[${index}].settlementAccountId is required`);
+      if (s.settlementAccountId !== undefined) {
+        ensureOptionalString(s.settlementAccountId, `settlements[${index}].settlementAccountId`);
       }
       if (typeof s.amountBase !== 'number' || s.amountBase <= 0) {
         throw ApiError.badRequest(`settlements[${index}].amountBase must be a positive number`);
@@ -517,6 +572,12 @@ export const validateUpdateSalesInvoicePaymentStatusInput = (body: any) => {
 
 export const validateRecordSalesInvoicePaymentInput = (body: any) => {
   ensurePositiveNumber(body.paymentAmountBase, 'paymentAmountBase');
+  if (body.settlementAccountId !== undefined) ensureOptionalString(body.settlementAccountId, 'settlementAccountId');
+  if (body.receivablePayableAccountId !== undefined) ensureOptionalString(body.receivablePayableAccountId, 'receivablePayableAccountId');
+  if (body.arAccountId !== undefined) ensureOptionalString(body.arAccountId, 'arAccountId');
+  if (body.paymentMethod !== undefined && !VALID_PAYMENT_METHODS.includes(String(body.paymentMethod))) {
+    throw ApiError.badRequest(`paymentMethod must be one of: ${VALID_PAYMENT_METHODS.join(', ')}`);
+  }
 };
 
 export const validateUpdateDeliveryNoteInput = (body: any) => {

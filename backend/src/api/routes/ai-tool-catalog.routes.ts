@@ -12,6 +12,7 @@ import { AiToolCatalogController } from '../controllers/ai-assistant/AiToolCatal
 import { AiCreditController } from '../controllers/ai-assistant/AiCreditController';
 import { AiMaintenanceController } from '../controllers/ai-assistant/AiMaintenanceController';
 import { AiRuntimeProfileController } from '../controllers/ai-assistant/AiRuntimeProfileController';
+import { AiPlatformApiKeyController } from '../controllers/ai-assistant/AiPlatformApiKeyController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { assertSuperAdmin } from '../middlewares/assertSuperAdmin';
 
@@ -82,6 +83,13 @@ router.get('/ai-runtime-profiles/:profileId', AiRuntimeProfileController.getProf
 router.patch('/ai-runtime-profiles/:profileId', AiRuntimeProfileController.updateProfile);
 router.delete('/ai-runtime-profiles/:profileId', AiRuntimeProfileController.deleteProfile);
 
+// ─── Platform API Key Vault ──────────────────────────────────────────────
+router.get('/ai-api-keys', AiPlatformApiKeyController.list);
+router.post('/ai-api-keys', AiPlatformApiKeyController.create);
+router.patch('/ai-api-keys/:keyId', AiPlatformApiKeyController.update);
+router.delete('/ai-api-keys/:keyId', AiPlatformApiKeyController.remove);
+router.post('/ai-api-keys/:keyId/validate', AiPlatformApiKeyController.validate);
+
 router.get('/ai-certifications/valid', AiToolCatalogController.listValidCertifiedProfiles);
 router.patch('/ai-certifications/:certificationId/expire', AiToolCatalogController.expireCertification);
 
@@ -90,12 +98,14 @@ router.post('/ai-model-profiles', AiToolCatalogController.createModelProfile);
 router.post('/ai-model-profiles/sync', AiToolCatalogController.syncModelProfiles);
 router.post('/ai-model-profiles/:profileId/diagnostics', AiToolCatalogController.runModelProfileDiagnostics);
 router.post('/ai-model-profiles/:profileId/diagnostics/admin', AiToolCatalogController.runAdminModelProfileDiagnostics);
+router.post('/ai-model-profiles/:profileId/diagnostics/platform', AiToolCatalogController.runPlatformModelProfileDiagnostics);
 router.get('/ai-model-profiles/:profileId/certifications', AiToolCatalogController.listModelProfileCertifications);
 router.post('/ai-model-profiles/:profileId/certifications/manual', AiToolCatalogController.recordGlobalCertification);
 router.post('/ai-model-profiles/:profileId/certifications/run', AiToolCatalogController.runGlobalCertification);
 router.get('/ai-model-profiles/:profileId', AiToolCatalogController.getModelProfile);
 router.patch('/ai-model-profiles/:profileId', AiToolCatalogController.updateModelProfile);
 router.delete('/ai-model-profiles/:profileId', AiToolCatalogController.deleteModelProfile);
+router.delete('/ai-model-profiles/:profileId/certifications', AiToolCatalogController.resetModelProfileCertifications);
 
 // ─── Enablement Policies ──────────────────────────────────────────────────
 
