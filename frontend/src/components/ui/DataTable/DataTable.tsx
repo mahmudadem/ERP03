@@ -231,7 +231,7 @@ export function DataTable<T = any>({
 
   return (
     <div className={clsx(
-      'bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300',
+      'bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col h-full transition-colors duration-300',
       className
     )}>
       {/* Toolbar: Search + Settings */}
@@ -388,9 +388,10 @@ export function DataTable<T = any>({
       )}
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        {hasVisibleColumns ? (
-          <table className="w-full table-fixed divide-y divide-[var(--color-border)]">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="flex-1 overflow-auto min-h-0">
+          {hasVisibleColumns ? (
+            <table className="w-full table-fixed divide-y divide-[var(--color-border)]">
             <DataTableHeader
               columns={resizedColumns}
               sorting={sorting ? { field: sorting.field, direction: sorting.direction } : undefined}
@@ -442,19 +443,22 @@ export function DataTable<T = any>({
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Pagination */}
       {pagination && (
-        <DataTablePagination
-          page={pagination.page}
-          pageSize={pagination.pageSize}
-          totalItems={pagination.totalItems}
-          totalPages={pagination.totalPages}
-          onPageChange={pagination.onPageChange}
-          onPageSizeChange={pagination.onPageSizeChange}
-          pageSizeOptions={pagination.pageSizeOptions}
-        />
+        <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] sticky bottom-0 z-10">
+          <DataTablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.onPageChange}
+            onPageSizeChange={pagination.onPageSizeChange}
+            pageSizeOptions={pagination.pageSizeOptions}
+          />
+        </div>
       )}
     </div>
   );
