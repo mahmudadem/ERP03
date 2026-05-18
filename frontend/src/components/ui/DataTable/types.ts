@@ -76,6 +76,7 @@ export interface ColumnDefinition<T = any> {
   filter?: ColumnFilterConfig;
   badge?: BadgeConfig;
   sticky?: 'left' | 'right';
+  resizable?: boolean;
 }
 
 // ── Pagination State ─────────────────────────────────────────────────
@@ -148,6 +149,10 @@ export interface DataTableProps<T = any> {
 
   // Toolbar slot
   toolbar?: React.ReactNode;
+
+  // Column resizing
+  resizable?: boolean;
+  onColumnResize?: (columnKey: string, newWidth: number) => void;
 }
 
 // ── Responsive Column ────────────────────────────────────────────────

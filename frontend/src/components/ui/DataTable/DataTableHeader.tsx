@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowUp, ArrowDown, ArrowUpDown, GripVertical, Filter } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ResponsiveColumn, SortDirection, ActiveFilters } from './types';
 import { DataTableFilter } from './DataTableFilter';
+
+const MIN_COLUMN_WIDTH = 50;
 
 interface DataTableHeaderProps<T> {
   columns: ResponsiveColumn<T>[];
@@ -18,6 +20,8 @@ interface DataTableHeaderProps<T> {
   expandable?: boolean;
   allExpanded?: boolean;
   onToggleExpandAll?: () => void;
+  resizable?: boolean;
+  onColumnResize?: (columnKey: string, newWidth: number) => void;
   onFilterChange?: (columnKey: string, value: ActiveFilters[string] | undefined) => void;
   activeFilters?: ActiveFilters;
   hasRowActions?: boolean;
@@ -43,6 +47,8 @@ export function DataTableHeader<T>({
   expandable,
   allExpanded,
   onToggleExpandAll,
+  resizable,
+  onColumnResize,
   onFilterChange,
   activeFilters,
   hasRowActions,
@@ -180,6 +186,13 @@ export function DataTableHeader<T>({
                   </span>
                 )}
               </div>
+
+              {resizable && col.resizable !== false && (
+                <ColumnResizeHandle
+                  columnKey={col.key}
+                  onResize={onColumnResize}
+                />
+              )}
             </th>
           );
         })}
@@ -227,5 +240,54 @@ function Checkbox({ state, onChange }: {
         </svg>
       )}
     </button>
+  );
+}
+
+// ── Column Resize Handle ─────────────────────────────────────────────
+
+function ColumnResizeHandle({ columnKey, onResize }: {
+  columnKey: string;
+  onResize?: (columnKey: string, newWidth: number) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+  const thRef = useRef<HTMLTableCellElement>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onResize || !thRef.current) return;
+
+    const th = thRef.current.parentElement as HTMLElement;
+    startX.current = e.clientX;
+    startWidth.current = th.offsetWidth;
+    setDragging(true);
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX.current;
+      const newWidth = Math.max(MIN_COLUMN_WIDTH, startWidth.current + delta);
+      onResize(columnKey, newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [columnKey, onResize]);
+
+  return (
+    <div
+      ref={thRef}
+      onMouseDown={handleMouseDown}
+      className={clsx(
+        'absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary-400/40 transition-colors z-30',
+        dragging && 'bg-primary-500/60'
+      )}
+    />
   );
 }

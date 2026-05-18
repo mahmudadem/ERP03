@@ -94,6 +94,48 @@ const VouchersListPage: React.FC = () => {
   const [pendingSaveData, setPendingSaveData] = React.useState<any>(null);
   const [isCheckingRates, setIsCheckingRates] = React.useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
+
+  const statusOptions = useMemo(() => [
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'cancelled', label: 'Cancelled' },
+  ], []);
+
+  const handleSearch = useCallback((term: string) => {
+    setClientFilters(prev => ({ ...prev, search: term }));
+  }, [setClientFilters]);
+
+  const handleFilterChange = useCallback((filters: ActiveFilters) => {
+    setActiveFilters(prev => {
+      const next: ActiveFilters = { ...prev };
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value === undefined) delete next[key];
+        else next[key] = value;
+      });
+      return next;
+    });
+
+    // Map DataTable filters to VoucherFilters
+    const voucherFilterUpdates: Partial<VoucherFilters> = {};
+    Object.entries(filters).forEach(([key, value]) => {
+      if (key === 'number' && typeof value === 'string') {
+        voucherFilterUpdates.search = value;
+      }
+      if (key === 'status' && Array.isArray(value) && value.length > 0) {
+        voucherFilterUpdates.status = value[0] as string;
+      }
+      if (key === 'date' && typeof value === 'object' && !Array.isArray(value)) {
+        const { from, to } = value as { from?: string; to?: string };
+        if (from) setClientFilters(prev => ({ ...prev, from }));
+        if (to) setClientFilters(prev => ({ ...prev, to }));
+      }
+    });
+    if (Object.keys(voucherFilterUpdates).length > 0) {
+      setClientFilters(prev => ({ ...prev, ...voucherFilterUpdates }));
+    }
+  }, [setClientFilters]);
 
   // ── Sync URL type with filters ─────────────────────────────────────
 
@@ -361,15 +403,18 @@ const VouchersListPage: React.FC = () => {
     {
       key: 'number', label: t('voucherTable.columns.number') || '#', width: '14%', priority: 1,
       accessor: (row) => row.voucherNo || '-',
+      filter: { type: 'text' },
       render: (val: string) => <span className="font-mono text-primary-600 dark:text-primary-400">{val}</span>,
     },
     {
       key: 'date', label: t('voucherTable.columns.date') || 'Date', width: '12%', priority: 1,
       accessor: 'date',
+      filter: { type: 'date-range' },
     },
     {
       key: 'status', label: t('voucherTable.columns.status') || 'Status', width: '11%', priority: 1,
       accessor: 'status',
+      filter: { type: 'multi-select', options: statusOptions },
       badge: {
         variantMap: { posted: 'success', approved: 'success', pending: 'warning', draft: 'default', cancelled: 'error', locked: 'info' },
         iconMap: { posted: CheckCircle, approved: CheckCircle, pending: RefreshIcon, cancelled: Ban, draft: FilePlus },
@@ -388,6 +433,7 @@ const VouchersListPage: React.FC = () => {
       key: 'amount', label: t('voucherTable.columns.amount') || 'Amount', width: '14%', priority: 2,
       accessor: (row) => row.voucherAmount ?? 0,
       align: 'right',
+      filter: { type: 'number-range' },
       render: (val: number, row: VoucherListItem) => (
         <span className="font-mono font-medium">
           {val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -412,7 +458,7 @@ const VouchersListPage: React.FC = () => {
       ),
     },
     { key: 'reference', label: t('voucherTable.columns.ref') || 'Ref', width: '12%', priority: 3, accessor: (row) => row.reference || '-', truncate: true },
-  ], [t]);
+  ], [t, statusOptions]);
 
   // ── Row actions ────────────────────────────────────────────────────
 
@@ -530,6 +576,9 @@ const VouchersListPage: React.FC = () => {
               loading={isLoading}
               error={error ? error.message : null}
               emptyMessage={t('voucherList.empty') || 'No vouchers found'}
+              searchable
+              searchPlaceholder="Search vouchers..."
+              onSearch={handleSearch}
               pagination={pagination ? {
                 page: pagination.page,
                 pageSize: pagination.pageSize,
@@ -541,6 +590,9 @@ const VouchersListPage: React.FC = () => {
               renderExpanded={renderExpanded}
               expandedIds={expandedIds}
               onExpandedChange={setExpandedIds}
+              resizable
+              onFilterChange={handleFilterChange}
+              activeFilters={activeFilters}
               onRowClick={handleRowClick}
               stickyHeader
               idKey="id"
