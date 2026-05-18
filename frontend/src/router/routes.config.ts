@@ -347,6 +347,7 @@ export const routesConfig: AppRoute[] = [
   // TOOLS
   { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },
   { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/data-table', label: 'DataTable Demo', component: lazy(() => import('../pages/dev/DataTableDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
 
   // AI ASSISTANT
   { path: '/ai-assistant/setup', label: 'AI Setup', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSetupPage').then(m => ({ default: m.AiAssistantSetupPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view', hideInMenu: true },
