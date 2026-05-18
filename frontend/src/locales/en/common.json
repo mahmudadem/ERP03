@@ -122,7 +122,11 @@
     "aiAssistant": "AI Assistant",
     "chat": "Chat",
     "aiProposals": "AI Proposals",
-    "aiUsage": "AI Usage"
+    "aiUsage": "AI Usage",
+    "dev": "Dev",
+    "dataTableDemo": "DataTable Demo",
+    "voucherListDemo": "Voucher List Demo",
+    "demo": "Demo"
   },
   "reportContainer": {
     "refresh": "Refresh",

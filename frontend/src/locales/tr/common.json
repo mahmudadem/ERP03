@@ -122,7 +122,11 @@
     "aiAssistant": "AI Asistani",
     "chat": "Sohbet",
     "aiProposals": "Yapay Zeka Teklifleri",
-    "aiUsage": "Yapay Zeka Kullanımı"
+    "aiUsage": "Yapay Zeka Kullanımı",
+    "dev": "Geliştirici",
+    "dataTableDemo": "Veri Tablosu Demo",
+    "voucherListDemo": "Fiş Listesi Demo",
+    "demo": "Demo"
   },
   "reportContainer": {
     "refresh": "Yenile",

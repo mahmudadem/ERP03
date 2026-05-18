@@ -15,6 +15,7 @@ type SidebarItem = {
   path?: string;
   permission?: string;
   icon?: string;
+  badge?: string;
   children?: SidebarItem[];
 };
 
@@ -90,7 +91,11 @@ export const useSidebarConfig = () => {
     'AI Assistant': 'sidebar.aiAssistant',
     Chat: 'sidebar.chat',
     'AI Proposals': 'sidebar.aiProposals',
-    'AI Usage': 'sidebar.aiUsage'
+    'AI Usage': 'sidebar.aiUsage',
+    'Dev': 'sidebar.dev',
+    'DataTable Demo': 'sidebar.dataTableDemo',
+    'Voucher List Demo': 'sidebar.voucherListDemo',
+    'Demo': 'sidebar.demo'
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });
@@ -342,6 +347,7 @@ export const useSidebarConfig = () => {
             label: translateLabel(i.label),
             path: i.path,
             permission: i.permission,
+            badge: (i as any).badge,
             children: (i as any).children
               ? (i as any).children.map((c: any) => ({
                   label: translateLabel(c.label),
@@ -356,6 +362,26 @@ export const useSidebarConfig = () => {
         };
       }
     });
+
+    // === DEV SECTION ===
+    // Always visible, placed after all module sections
+    sections[translateLabel('Dev')] = {
+      icon: 'Code',
+      items: [
+        { 
+          label: translateLabel('DataTable Demo'), 
+          path: '/dev/data-table',
+          icon: 'Table',
+          badge: 'Demo'
+        },
+        { 
+          label: translateLabel('Voucher List Demo'), 
+          path: '/dev/voucher-list',
+          icon: 'FileText',
+          badge: 'Demo'
+        }
+      ]
+    };
 
     return sections;
   }, [
