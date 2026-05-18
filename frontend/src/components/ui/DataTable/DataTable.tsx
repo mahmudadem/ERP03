@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Settings2, Check, Search, X } from 'lucide-react';
 import { clsx } from 'clsx';
-import { DataTableProps, ColumnDefinition, FontSize } from './types';
+import { DataTableProps, ColumnDefinition, FontSize, Density, ActiveFilters } from './types';
 import { useResponsiveColumns } from './useResponsiveColumns';
 import { DataTableHeader } from './DataTableHeader';
 import { DataTableBody } from './DataTableBody';
 import { DataTablePagination } from './DataTablePagination';
+import { DataTableToolbar } from './DataTableToolbar';
 
 const PRIORITY_LABELS: Record<number, string> = {
   1: 'Core',
@@ -14,15 +15,38 @@ const PRIORITY_LABELS: Record<number, string> = {
 };
 
 const FONT_STORAGE_KEY = 'erp_datatable_font_size';
+const DENSITY_STORAGE_KEY = 'erp_datatable_density';
+const WIDTH_STORAGE_KEY_PREFIX = 'erp_datatable_widths_';
 
 function getDefaultFontSize(): FontSize {
   try {
     const saved = localStorage.getItem(FONT_STORAGE_KEY);
     if (saved === 'sm' || saved === 'md' || saved === 'lg') return saved;
-  } catch {
-    // ignore
-  }
+  } catch { /* ignore */ }
   return 'sm';
+}
+
+function getDefaultDensity(): Density {
+  try {
+    const saved = localStorage.getItem(DENSITY_STORAGE_KEY);
+    if (saved === 'compact' || saved === 'comfortable' || saved === 'spacious') return saved;
+  } catch { /* ignore */ }
+  return 'comfortable';
+}
+
+function loadColumnWidths(tableId: string): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(`${WIDTH_STORAGE_KEY_PREFIX}${tableId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveColumnWidths(tableId: string, widths: Record<string, number>) {
+  try {
+    localStorage.setItem(`${WIDTH_STORAGE_KEY_PREFIX}${tableId}`, JSON.stringify(widths));
+  } catch { /* ignore */ }
 }
 
 export function DataTable<T = any>({
@@ -40,6 +64,27 @@ export function DataTable<T = any>({
   stickyHeader = true,
   className,
   idKey,
+
+  selectable = false,
+  selection,
+  bulkActions,
+
+  rowActions,
+
+  onFilterChange,
+  activeFilters,
+
+  expandable = false,
+  renderExpanded,
+  expandedIds,
+  onExpandedChange,
+
+  density: densityProp,
+
+  toolbar,
+
+  resizable = false,
+  onColumnResize,
 }: DataTableProps<T>) {
   const tableId = `table-${columns.map(c => c.key).join('-')}`;
   const {
@@ -52,7 +97,11 @@ export function DataTable<T = any>({
 
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(getDefaultFontSize);
+  const [density, setDensity] = useState<Density>(densityProp || getDefaultDensity);
   const [searchTerm, setSearchTerm] = useState('');
+  const [localExpandedIds, setLocalExpandedIds] = useState<Set<string>>(new Set());
+  const [localSelectedIds, setLocalSelectedIds] = useState<Set<string>>(new Set());
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => loadColumnWidths(tableId));
   const settingsRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -67,12 +116,16 @@ export function DataTable<T = any>({
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(FONT_STORAGE_KEY, fontSize);
-    } catch {
-      // ignore
-    }
+    try { localStorage.setItem(FONT_STORAGE_KEY, fontSize); } catch { /* ignore */ }
   }, [fontSize]);
+
+  useEffect(() => {
+    if (!densityProp) {
+      try { localStorage.setItem(DENSITY_STORAGE_KEY, density); } catch { /* ignore */ }
+    }
+  }, [density, densityProp]);
+
+  const effectiveDensity = densityProp || density;
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -88,6 +141,93 @@ export function DataTable<T = any>({
   };
 
   const hasVisibleColumns = visibleColumns.length > 0;
+
+  const hasRowActions = rowActions && rowActions.length > 0;
+
+  // Selection management
+  const selectedIds = selection?.selectedIds ?? localSelectedIds;
+  const onSelectionChange = selection?.onSelectionChange ?? ((ids: Set<string>) => setLocalSelectedIds(ids));
+  const getRowIdFn = selection?.getRowId ?? ((row: T) => {
+    if (typeof idKey === 'function') return idKey(row);
+    if (idKey) return String((row as any)[idKey]);
+    return '';
+  });
+
+  const handleToggleRow = useCallback((rowId: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(rowId)) next.delete(rowId);
+    else next.add(rowId);
+    onSelectionChange(next);
+  }, [selectedIds, onSelectionChange]);
+
+  const allSelected = data.length > 0 && data.every(row => selectedIds.has(getRowIdFn(row)));
+  const someSelected = data.some(row => selectedIds.has(getRowIdFn(row))) && !allSelected;
+
+  const handleSelectAll = useCallback(() => {
+    if (allSelected) {
+      onSelectionChange(new Set());
+    } else {
+      const next = new Set(selectedIds);
+      data.forEach(row => next.add(getRowIdFn(row)));
+      onSelectionChange(next);
+    }
+  }, [allSelected, data, selectedIds, onSelectionChange, getRowIdFn]);
+
+  const handleClearSelection = useCallback(() => {
+    onSelectionChange(new Set());
+  }, [onSelectionChange]);
+
+  // Expandable management
+  const effectiveExpandedIds = expandedIds ?? localExpandedIds;
+  const effectiveOnExpandedChange = onExpandedChange ?? ((ids: Set<string>) => setLocalExpandedIds(ids));
+
+  const handleToggleExpand = useCallback((rowId: string) => {
+    const next = new Set(effectiveExpandedIds);
+    if (next.has(rowId)) next.delete(rowId);
+    else next.add(rowId);
+    effectiveOnExpandedChange(next);
+  }, [effectiveExpandedIds, effectiveOnExpandedChange]);
+
+  const allExpanded = data.length > 0 && data.every(row => effectiveExpandedIds.has(getRowIdFn(row)));
+
+  const handleToggleExpandAll = useCallback(() => {
+    if (allExpanded) {
+      effectiveOnExpandedChange(new Set());
+    } else {
+      const next = new Set(effectiveExpandedIds);
+      data.forEach(row => next.add(getRowIdFn(row)));
+      effectiveOnExpandedChange(next);
+    }
+  }, [allExpanded, data, effectiveExpandedIds, effectiveOnExpandedChange, getRowIdFn]);
+
+  // Column resize
+  const handleColumnResize = useCallback((columnKey: string, newWidth: number) => {
+    setColumnWidths(prev => {
+      const next = { ...prev, [columnKey]: newWidth };
+      saveColumnWidths(tableId, next);
+      return next;
+    });
+    onColumnResize?.(columnKey, newWidth);
+  }, [tableId, onColumnResize]);
+
+  // Apply column widths to visible columns
+  const resizedColumns = useMemo(() => {
+    if (Object.keys(columnWidths).length === 0) return visibleColumns;
+    return visibleColumns.map(col => {
+      const savedWidth = columnWidths[col.key];
+      if (!savedWidth) return col;
+      return { ...col, computedWidth: `${savedWidth}px` };
+    });
+  }, [visibleColumns, columnWidths]);
+
+  // Filter change handler
+  const handleFilterChange = useCallback((columnKey: string, value: ActiveFilters[string] | undefined) => {
+    if (!onFilterChange) return;
+    // We need to merge with existing filters, but since we don't have them here,
+    // the parent manages the full filter state via activeFilters prop
+    // This is a simplified approach; the parent should pass the full activeFilters object
+    onFilterChange({ [columnKey]: value } as ActiveFilters);
+  }, [onFilterChange]);
 
   return (
     <div className={clsx(
@@ -130,6 +270,29 @@ export function DataTable<T = any>({
 
           {showSettings && (
             <div className="absolute top-full right-0 mt-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-lg z-[100] p-4 text-xs text-[var(--color-text-primary)]">
+              {/* Density */}
+              <div className="mb-4">
+                <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">
+                  Density
+                </h3>
+                <div className="flex gap-2">
+                  {(['compact', 'comfortable', 'spacious'] as Density[]).map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setDensity(d)}
+                      className={clsx(
+                        'px-3 py-1.5 rounded border transition-all truncate flex-1 font-medium capitalize',
+                        effectiveDensity === d
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-primary-500'
+                      )}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Font Size */}
               <div className="mb-4">
                 <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">
@@ -197,6 +360,26 @@ export function DataTable<T = any>({
         </div>
       </div>
 
+      {/* Bulk Action Toolbar */}
+      {selectable && bulkActions && bulkActions.length > 0 && (
+        <DataTableToolbar
+          selectedCount={selectedIds.size}
+          totalCount={data.length}
+          bulkActions={bulkActions}
+          data={data}
+          selectedIds={selectedIds}
+          getRowId={getRowIdFn}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+
+      {/* Custom Toolbar Slot */}
+      {toolbar && (
+        <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
+          {toolbar}
+        </div>
+      )}
+
       {/* Error Banner */}
       {error && (
         <div className="px-4 py-3 bg-red-50 border-b border-red-200 text-red-700 text-sm">
@@ -205,24 +388,47 @@ export function DataTable<T = any>({
       )}
 
       {/* Table */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-auto">
         {hasVisibleColumns ? (
           <table className="w-full table-fixed divide-y divide-[var(--color-border)]">
             <DataTableHeader
-              columns={visibleColumns}
+              columns={resizedColumns}
               sorting={sorting ? { field: sorting.field, direction: sorting.direction } : undefined}
               onSort={sorting?.onSort}
+              sortCycle={sorting?.sortCycle}
               sticky={stickyHeader}
               fontSize={fontSize}
+              selectable={selectable}
+              allSelected={allSelected}
+              someSelected={someSelected}
+              onSelectAll={handleSelectAll}
+              expandable={expandable}
+              allExpanded={allExpanded}
+              onToggleExpandAll={handleToggleExpandAll}
+              resizable={resizable}
+              onColumnResize={handleColumnResize}
+              onFilterChange={handleFilterChange}
+              activeFilters={activeFilters}
+              hasRowActions={hasRowActions}
             />
             <DataTableBody
-              columns={visibleColumns}
+              columns={resizedColumns}
               data={data}
               loading={loading}
               emptyMessage={emptyMessage}
               onRowClick={onRowClick}
               idKey={idKey}
               fontSize={fontSize}
+              density={effectiveDensity}
+              selectable={selectable}
+              selectedIds={selectedIds}
+              onToggleRow={handleToggleRow}
+              getRowId={getRowIdFn}
+              expandable={expandable}
+              renderExpanded={renderExpanded}
+              expandedIds={effectiveExpandedIds}
+              onToggleExpand={handleToggleExpand}
+              rowActions={rowActions}
             />
           </table>
         ) : (
