@@ -126,7 +126,9 @@
     "dev": "Geliştirici",
     "dataTableDemo": "Veri Tablosu Demo",
     "voucherListDemo": "Fiş Listesi Demo",
-    "demo": "Demo"
+    "smartVoucherList": "Akıllı Fiş Listesi",
+    "demo": "Demo",
+    "new": "Yeni"
   },
   "reportContainer": {
     "refresh": "Yenile",

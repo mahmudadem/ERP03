@@ -143,6 +143,10 @@ export interface DataTableProps<T = any> {
   renderExpanded?: (row: T) => React.ReactNode;
   expandedIds?: Set<string>;
   onExpandedChange?: (expandedIds: Set<string>) => void;
+  /** If provided, only rows returning true show the expand toggle */
+  isRowExpandable?: (row: T) => boolean;
+  /** Custom row class name function */
+  getRowClassName?: (row: T) => string;
 
   // Density
   density?: Density;

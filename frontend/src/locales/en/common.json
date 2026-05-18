@@ -126,7 +126,9 @@
     "dev": "Dev",
     "dataTableDemo": "DataTable Demo",
     "voucherListDemo": "Voucher List Demo",
-    "demo": "Demo"
+    "smartVoucherList": "Smart Voucher List",
+    "demo": "Demo",
+    "new": "New"
   },
   "reportContainer": {
     "refresh": "Refresh",

@@ -21,6 +21,10 @@ interface DataTableBodyProps<T> {
   expandedIds?: Set<string>;
   onToggleExpand?: (rowId: string) => void;
   rowActions?: RowAction<T>[];
+  /** If provided, only rows returning true show the expand toggle */
+  isRowExpandable?: (row: T) => boolean;
+  /** Custom row class name function */
+  getRowClassName?: (row: T) => string;
 }
 
 const FONT_SIZE_MAP = {
@@ -91,6 +95,8 @@ export function DataTableBody<T>({
   expandedIds,
   onToggleExpand,
   rowActions,
+  isRowExpandable,
+  getRowClassName,
 }: DataTableBodyProps<T>) {
   const fontClass = FONT_SIZE_MAP[fontSize];
   const cellPadding = DENSITY_PADDING[density];
@@ -144,16 +150,18 @@ export function DataTableBody<T>({
         const isExpanded = expandedIds?.has(rowId) ?? false;
         const primaryActions = rowActions?.filter(a => a.primary) ?? [];
         const secondaryActions = rowActions?.filter(a => !a.primary) ?? [];
+        const canExpand = isRowExpandable ? isRowExpandable(row) : true;
 
         return (
           <React.Fragment key={rowId}>
             <tr
               className={clsx(
                 'transition-colors',
-                isSelected && 'bg-primary-50/50 dark:bg-primary-900/10',
-                isClickable && !selectable && 'cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/10',
-                !isSelected && index % 2 === 0 && 'bg-[var(--color-bg-primary)]',
-                !isSelected && index % 2 !== 0 && 'bg-[var(--color-bg-secondary)]/30'
+                getRowClassName?.(row),
+                !getRowClassName && isSelected && 'bg-primary-50/50 dark:bg-primary-900/10',
+                !getRowClassName && isClickable && !selectable && 'cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/10',
+                !getRowClassName && !isSelected && index % 2 === 0 && 'bg-[var(--color-bg-primary)]',
+                !getRowClassName && !isSelected && index % 2 !== 0 && 'bg-[var(--color-bg-secondary)]/30'
               )}
               onClick={(e) => {
                 if ((e.target as HTMLElement).closest('button, a, input, select, [role="button"]')) return;
@@ -169,16 +177,20 @@ export function DataTableBody<T>({
             >
               {expandable && (
                 <td className="px-2 py-3 w-10 text-center">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onToggleExpand?.(rowId); }}
-                    className="p-0.5 hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
-                    aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
-                  >
-                    {isExpanded
-                      ? <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />
-                      : <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-                    }
-                  </button>
+                  {canExpand ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onToggleExpand?.(rowId); }}
+                      className="p-0.5 hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+                      aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+                    >
+                      {isExpanded
+                        ? <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />
+                        : <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
+                      }
+                    </button>
+                  ) : (
+                    <div className="w-4 h-4" />
+                  )}
                 </td>
               )}
 

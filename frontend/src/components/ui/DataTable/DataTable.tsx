@@ -78,6 +78,8 @@ export function DataTable<T = any>({
   renderExpanded,
   expandedIds,
   onExpandedChange,
+  isRowExpandable,
+  getRowClassName,
 
   density: densityProp,
 
@@ -430,6 +432,8 @@ export function DataTable<T = any>({
               expandedIds={effectiveExpandedIds}
               onToggleExpand={handleToggleExpand}
               rowActions={rowActions}
+              isRowExpandable={isRowExpandable}
+              getRowClassName={getRowClassName}
             />
           </table>
         ) : (

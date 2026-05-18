@@ -126,7 +126,9 @@
     "dev": "تطوير",
     "dataTableDemo": "عرض جدول البيانات",
     "voucherListDemo": "عرض قائمة القيود",
-    "demo": "عرض تجريبي"
+    "smartVoucherList": "قائمة القيود الذكية",
+    "demo": "عرض تجريبي",
+    "new": "جديد"
   },
   "reportContainer": {
     "refresh": "تحديث",

@@ -95,7 +95,9 @@ export const useSidebarConfig = () => {
     'Dev': 'sidebar.dev',
     'DataTable Demo': 'sidebar.dataTableDemo',
     'Voucher List Demo': 'sidebar.voucherListDemo',
-    'Demo': 'sidebar.demo'
+    'Smart Voucher List': 'sidebar.smartVoucherList',
+    'Demo': 'sidebar.demo',
+    'New': 'sidebar.new'
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });
@@ -379,6 +381,12 @@ export const useSidebarConfig = () => {
           path: '/dev/voucher-list',
           icon: 'FileText',
           badge: 'Demo'
+        },
+        { 
+          label: translateLabel('Smart Voucher List'), 
+          path: '/dev/smart-vouchers',
+          icon: 'Brain',
+          badge: 'New'
         }
       ]
     };
