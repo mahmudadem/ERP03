@@ -57,6 +57,7 @@ import { AiCredentialResolver } from '../services/AiCredentialResolver';
 import { AiContextBuilder } from '../services/AiContextBuilder';
 import { AiToolPlanningLoop } from '../services/AiToolPlanningLoop';
 import { AiResponsePersister } from '../services/AiResponsePersister';
+import { AiTenantContextResolver } from '../services/AiTenantContextResolver';
 import { SendChatMessageInput, SendChatMessageOutput } from './SendChatMessageTypes';
 import { upsertConversationMeta, resolveModelProfile } from '../services/chatMessageHelpers';
 
@@ -116,6 +117,7 @@ export class SendChatMessageUseCase {
     private runtimeProfileRepository?: IAiPlatformRuntimeProfileRepository,
     private conversationMetaRepository?: IAiConversationMetaRepository,
     private modelProfileRepository?: IAiModelProfileRepository,
+    private tenantContextResolver?: AiTenantContextResolver,
   ) {
     this.rateLimiter = new AiRateLimiterService(settingsRepository);
     this.credentialResolver = new AiCredentialResolver(encryptionService, providerRepository, creditLedgerRepository, runtimeProfileRepository, modelProfileRepository);
@@ -210,6 +212,12 @@ export class SendChatMessageUseCase {
       if (modelProfile.warningLevel === 'danger') {
         runtimeWarnings.push(`Model '${config.model}' on provider '${config.provider}' is not recognized. Responses may be unreliable.`);
       }
+
+      // 6b. Resolve tenant context (company, user, currency, locale) for system prompt
+      const tenantCtx = this.tenantContextResolver
+        ? await this.tenantContextResolver.resolve(companyId, userId)
+        : null;
+      const tenantContextMessage = tenantCtx ? AiTenantContextResolver.formatForPrompt(tenantCtx) : undefined;
 
       // 7. Select domain skills from message
       let selectedSkills: string[] = ['base-orchestration'];
@@ -403,6 +411,7 @@ export class SendChatMessageUseCase {
             recentToolDataContextMessage: recentToolDataContext.content,
             skipToolDescriptions: isLikelySimpleChat || !toolRoutingDecision?.allowed,
             noToolsAvailable: allowedContracts.length === 0,
+            tenantContextMessage,
           }),
         },
         ...recentProviderMessages,

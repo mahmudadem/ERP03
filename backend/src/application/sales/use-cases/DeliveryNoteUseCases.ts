@@ -230,6 +230,8 @@ export class PostDeliveryNoteUseCase {
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
     const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
+    const shouldPostDeliveryNoteAccounting =
+      shouldPostAccounting && DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode);
 
     const dn = await this.deliveryNoteRepo.getById(companyId, id);
     if (!dn) throw new Error(`Delivery note not found: ${id}`);
@@ -423,31 +425,35 @@ export class PostDeliveryNoteUseCase {
       inventoryMovements.set(line.lineId, { movement, updatedLevel: level, qtyInBaseUom });
 
       // PHASE 1E: PRE-RESOLVE COGS ACCOUNTS (bare reads before transaction)
-      const cogsAccountId = item.cogsAccountId
-        || (item.categoryId ? categoriesMap.get(item.categoryId)?.defaultCogsAccountId : null)
-        || settings.defaultCOGSAccountId;
-      const inventoryAccountId = item.inventoryAssetAccountId
-        || (item.categoryId ? categoriesMap.get(item.categoryId)?.defaultInventoryAssetAccountId : null)
-        || settings.defaultInventoryAccountId;
+      if (shouldPostDeliveryNoteAccounting) {
+        const cogsAccountId = item.cogsAccountId
+          || (item.categoryId ? categoriesMap.get(item.categoryId)?.defaultCogsAccountId : null)
+          || invSettings?.defaultCOGSAccountId
+          || settings.defaultCOGSAccountId;
+        const inventoryAccountId = item.inventoryAssetAccountId
+          || (item.categoryId ? categoriesMap.get(item.categoryId)?.defaultInventoryAssetAccountId : null)
+          || invSettings?.defaultInventoryAssetAccountId
+          || settings.defaultInventoryAccountId;
 
-      if (!cogsAccountId) throw new Error(`No COGS account configured for item ${item.code}`);
-      if (!inventoryAccountId) throw new Error(`No inventory account configured for item ${item.code}`);
+        if (!cogsAccountId) throw new Error(`No COGS account configured for item ${item.code}`);
+        if (!inventoryAccountId) throw new Error(`No inventory account configured for item ${item.code}`);
 
-      // Resolve account IDs through account repo (cache for duplicates)
-      const resolvedCogsId = await this.resolveAccountId(companyId, cogsAccountId);
-      const resolvedInventoryId = await this.resolveAccountId(companyId, inventoryAccountId);
+        // Resolve account IDs through account repo (cache for duplicates)
+        const resolvedCogsId = await this.resolveAccountId(companyId, cogsAccountId);
+        const resolvedInventoryId = await this.resolveAccountId(companyId, inventoryAccountId);
 
-      if (resolvedCogsId && resolvedInventoryId && line.lineCostBase > 0) {
-        const key = `${resolvedCogsId}|${resolvedInventoryId}`;
-        const existing = cogsBucket.get(key);
-        if (existing) {
-          existing.amountBase = roundMoney(existing.amountBase + line.lineCostBase);
-        } else {
-          cogsBucket.set(key, {
-            cogsAccountId: resolvedCogsId,
-            inventoryAccountId: resolvedInventoryId,
-            amountBase: roundMoney(line.lineCostBase),
-          });
+        if (resolvedCogsId && resolvedInventoryId && line.lineCostBase > 0) {
+          const key = `${resolvedCogsId}|${resolvedInventoryId}`;
+          const existing = cogsBucket.get(key);
+          if (existing) {
+            existing.amountBase = roundMoney(existing.amountBase + line.lineCostBase);
+          } else {
+            cogsBucket.set(key, {
+              cogsAccountId: resolvedCogsId,
+              inventoryAccountId: resolvedInventoryId,
+              amountBase: roundMoney(line.lineCostBase),
+            });
+          }
         }
       }
 
@@ -468,7 +474,7 @@ export class PostDeliveryNoteUseCase {
       }
 
       // Create COGS voucher if needed
-      if (shouldPostAccounting && DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
+      if (shouldPostDeliveryNoteAccounting && cogsBucket.size > 0) {
         const cogsVoucherLines: Array<Record<string, any>> = [];
         for (const entry of Array.from(cogsBucket.values())) {
           const amount = roundMoney(entry.amountBase);

@@ -80,6 +80,8 @@ I recommend (1) first — lower risk, clear deliverable — and parking (2) for 
 - Sales invoice payment account overrides now use the shared account selector instead of free-form text.
 - Accounting voucher list now resolves receipt vouchers by receipt type before falling back to Journal Voucher, preventing receipt vouchers from opening in unrelated cloned JV forms.
 - Accounting module docs now document the discovered posting bypass, the new final ledger validation boundary, and the remaining production security gap around direct database writes.
+- Delivery Note posting now resolves fallback COGS/inventory accounts from Inventory financial settings before legacy Sales settings, and invoice-driven Delivery Notes no longer require COGS accounts when no DN GL voucher will be posted.
+- Delivery Note create page now loads Sales Order lines into an editable grid so partial deliveries can be entered before creating the draft DN.
 
 ### Root cause
 
@@ -95,10 +97,13 @@ Both Sales receipt paths now validate before any ledger/voucher/payment write, a
 - `backend`: `npm run test -- "LedgerRepositoryGuard|SalesPostingUseCases|SalesInvoiceSettlementPosting|SalesPaymentSyncUseCases|SalesDocumentNumberUniqueness|DocumentPolicyResolver"` ✅ — 69/69
 - `backend`: `npx tsc --noEmit --pretty false` ✅
 - `frontend`: `npm run typecheck -- --pretty false` ✅
+- `backend`: `npm run test -- SalesPostingUseCases` ✅ — 18/18 after DN COGS fallback fix
+- `backend`: `npx tsc --noEmit --pretty false` ✅ after DN COGS fallback fix
+- `frontend`: `npm run typecheck -- --pretty false` ✅ after DN partial-delivery UI fix
 
 ### Recommended next move
 
-Manual retest Test 2: create/post a direct invoice with discount, addition/charge, and payment. Then open the generated SI and receipt vouchers from Accounting and confirm voucher lines and form type.
+Manual retest Test 5: create SO qty 10, create DN from the SO, edit Delivered Qty to 4, create/post the DN, then confirm linked invoiceable stock qty is 4.
 
 ---
 

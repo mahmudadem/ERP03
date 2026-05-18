@@ -98,6 +98,10 @@ async function handleStream(req: Request, res: Response, _next: NextFunction): P
           sendSSE('token', { content: event.content });
           break;
 
+        case 'status':
+          sendSSE('status', { stage: event.stage });
+          break;
+
         case 'tool_call':
           sendSSE('tool_call', {
             toolName: event.toolName,

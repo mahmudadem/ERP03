@@ -463,3 +463,110 @@ The streaming chat path now treats tool execution as a separate result from runt
 - Repeated successful calls with the same resolved tool name and normalized arguments reuse the already returned result within the same run.
 
 This keeps multi-round planning from repeatedly calling tools such as `accounting.getAccountBalance` after the needed data has already been returned, and it preserves the actual backend failure reason when a model supplies missing or invalid arguments.
+
+## 2026-05-17 Proactive Certification Diagnostics
+
+To prevent certification processes from failing silently or producing generic test failures when a provider is unavailable, we implemented a proactive pre-flight diagnostic check within `AiModelCertificationUseCase.runShellCertification`.
+
+### Pre-flight Diagnostic Flow
+
+Before executing the expensive behavioral and deep probe test suites via the certification engine, a lightweight pre-flight connectivity and capabilities check is performed:
+
+1. **Provider Resolution**: The use case resolves the provider based on scope (`TENANT` BYOK settings or `GLOBAL` platform runtime profiles).
+2. **Provider Availability Check**:
+   - The use case verifies network connectivity using `provider.isAvailable()`.
+   - If connectivity fails, it halts early with `networkOk: false`.
+3. **Provider Inference Check**:
+   - The use case runs a lightweight inference check using a secure, low-latency, and cost-efficient test prompt (`Reply with only: provider-ok`).
+   - If the model throws an error (e.g. invalid API key, model not found, rate limits exceeded), it halts early with `networkOk: true` and `inferenceOk: false`.
+4. **Early Failure Grace**:
+   - If either check fails, the provider instance is cleared (`provider = undefined`).
+   - The certification engine still executes structural checks to produce a formal certification record.
+   - The result is enriched with specific pre-flight details (`preflightDiagnostic` in `metadata`), and the certification summary is updated with the detailed diagnostic error (e.g., `"Certification incomplete. Pre-flight diagnostic: Provider is reachable but inference failed: API key invalid."`).
+
+This early-failure mechanism prevents wasted server-side resources and provides immediate, actionable feedback to users.
+
+## 2026-05-18 Certification, Routing, and Response Hardening
+
+Incident report: `planning/done/101-ai-routing-stale-cert-and-fake-tool-fix.md`.
+
+Three production-grade problems were observed in the AI Assistant chat flow and addressed together because they share the same blast radius (the tenant sees fabricated ERP data instead of a clear error):
+
+1. **Profile-id double-decode** in `AiAssistantController.decodeProfileId`. Profile ids are pre-encoded by `AiModelProfile.makeRuntimeId` (each component is `encodeURIComponent`'d before joining with `:`). The frontend then re-encodes once before sending. Express decodes once. The controller used to decode AGAIN, turning `%2F` back into `/`, which Firestore interprets as a sub-collection path and rejects with *"Value for argument 'documentPath' must point to a document"*. The fix is to return `req.params.profileId` untouched; the helper is kept (with a long comment) so future engineers do not re-introduce the decode.
+
+2. **Routing-guard hash check punished CREDITS-mode tenants** for edits made by the platform team. The guard required `config.selectedProfileHash === profile.profileHash` for every request, including for GLOBAL profiles served to CREDITS-mode tenants. Any superadmin edit (display name, temperature, baseUrl, anything that changes the hash) silently invalidated every CREDITS tenant's stored hash, so the per-tool `validateSensitiveWorkflow` call in `AiToolCallingOrchestrator.buildAllowedToolContracts` rejected with `STALE_PROFILE_HASH`, the orchestrator dropped every tool contract, and the model was left with no tools — but a chatty prompt that still mentioned tools. Small models (qwen, gemma, gpt-oss) then emitted `<tool_code>`/`<tool_output>` blocks with fabricated values.
+
+3. **No defense against models that cosplay tool calls.** Even with the prompt asking for honesty, small models will fake tool blocks. There was no scrub on the response and no explicit "no tools available" instruction in the prompt.
+
+### Routing guard changes — `AiModelRoutingGuard`
+
+- For `runtimeMode === 'CREDITS' && profile.scope === 'GLOBAL'` (called "platform-managed" in code), the hash check is skipped. Certifications are looked up against the profile's CURRENT hash. If the platform team has not re-certified after editing the profile, the rejection is `PLATFORM_PROFILE_NEEDS_RECERT`, signaling that the failure is the platform's problem and not the tenant's. The `allowUnverifiedModels` opt-out is also no longer honored on this path — a tenant cannot disable the platform's safety bar on a profile they do not own.
+- For BYOK and TENANT-scoped profiles, the hash check is retained. The tenant owns these profiles and the hash is their tamper seal.
+- All rejection branches now return a specific, human-readable `reason` per code, via the `REASON_BY_CODE` map. Generic "not certified for this ERP module/workflow" is only used as a fallback. The chat use cases pass `toolRoutingDecision.reason` straight into `runtimeWarnings`, so the user sees the actual cause (stale, missing, blocked, etc.).
+- A new private helper `hasAnyCertificationForProfileCategory` distinguishes `CERTIFICATION_NOT_FOUND` (never tested) from `CERTIFICATION_STALE` (tested at an older hash / tool-contract version).
+
+### System prompt change — `AiContextBuilder.buildSystemPrompt`
+
+`BuildSystemPromptParams` now accepts `noToolsAvailable: boolean`. When `true`, the prompt appends a 🚫 block that explicitly forbids `<tool_code>`, `<tool_output>`, `<tool_result>`, `<tool_call>`, `<function_call>`, `<function_response>`, and pseudo-`print(<ns>.<method>(...))` lines. Both chat use cases (`SendChatMessageUseCase`, `StreamChatMessageUseCase`) pass `allowedContracts.length === 0` for this flag, so the prompt automatically hardens itself whenever the runtime stripped tools.
+
+### Response sanitizer — `AiResponseSanitizer`
+
+A new pure module strips hallucinated tool-call blocks from assistant content. It runs inside `AiResponsePersister.saveMessages` after every chat turn (streaming and non-streaming). When it modifies content:
+- The blocks are replaced with a visible "[⚠️ The model attempted to fake a tool call here…]" banner so the user can see what happened.
+- A user-facing warning is pushed into `runtimeWarnings` ("The selected model tried to fabricate a tool call in this reply…").
+- The assistant message's `metadata.responseSanitized.matchedPatterns` records which patterns matched, for telemetry / model-quality dashboards.
+
+The sanitizer never throws and is a no-op when no patterns match — clean responses round-trip byte-for-byte.
+
+### Frontend — `CertificationManagerModal`
+
+The cert manager modal compares each cert's `profileHash` to the live `profile.profileHash` and now:
+- Renders a `STALE` chip next to the status badge when the hashes diverge.
+- Tints the row amber.
+- Shows a banner above the table when at least one cert is stale.
+- Adds a `stale` readiness state with its own hero card, so the top of the modal explains the situation rather than displaying a green "ready" hero over a stale table.
+
+`isCertStale` and the new copy live in the modal; the same logic should be lifted to a shared helper if the tenant-side BYOK cert view (`ByokCertificationSection.tsx`) is also updated to surface staleness.
+
+### Tests added
+
+- `AiModelRoutingGuard.test.ts` — three new CREDITS-mode tests (allow with stale hash + live cert; reject as `PLATFORM_PROFILE_NEEDS_RECERT` when re-cert is missing; never honour `allowUnverifiedModels` for GLOBAL profile in CREDITS); one new test that exercises BYOK hash enforcement remains; one regression test verifying every rejection carries a human-readable reason. An existing test was updated from `CERTIFICATION_NOT_FOUND` to `CERTIFICATION_STALE` to match the new behavior.
+- `AiResponseSanitizer.test.ts` — covers tool_code/tool_output/tool_result/orphan-tag/fake-print stripping, no-op for clean text, null/empty guards, and banner-collapsing.
+
+### Files touched
+
+Backend:
+- `backend/src/api/controllers/ai-assistant/AiAssistantController.ts` — `decodeProfileId` is now a documented no-op.
+- `backend/src/application/ai-assistant/services/AiModelRoutingGuard.ts` — full rewrite of `validateSensitiveWorkflow`, new `REASON_BY_CODE` map, new `hasAnyCertificationForProfileCategory` helper.
+- `backend/src/application/ai-assistant/services/AiContextBuilder.ts` — added `noToolsAvailable` flag and 🚫 block.
+- `backend/src/application/ai-assistant/services/AiResponseSanitizer.ts` (new).
+- `backend/src/application/ai-assistant/services/AiResponsePersister.ts` — invokes the sanitizer and stores match metadata.
+- `backend/src/application/ai-assistant/use-cases/SendChatMessageUseCase.ts` — passes `noToolsAvailable`.
+- `backend/src/application/ai-assistant/use-cases/StreamChatMessageUseCase.ts` — passes `noToolsAvailable`.
+- `backend/src/tests/application/ai-assistant/AiModelRoutingGuard.test.ts` — updated + extended.
+- `backend/src/tests/application/ai-assistant/AiResponseSanitizer.test.ts` (new).
+
+Frontend:
+- `frontend/src/modules/super-admin/components/CertificationManagerModal.tsx` — stale detection, badges, banner, hero.
+- `frontend/src/locales/{en,ar,tr}/common.json` — six new i18n keys under `superAdmin.aiModels.certifications.*`.
+
+### Future-update checklist for engineers touching this surface
+
+When adding a new field to `AiModelProfileProps` that ends up in `generateProfileHash`:
+- A change in that field changes `profileHash`.
+- All existing certs become stale.
+- For CREDITS users this is invisible at chat time and the new routing guard will now correctly surface `PLATFORM_PROFILE_NEEDS_RECERT` — but **superadmin must re-run certifications** before tools work again.
+
+When bumping `AI_TOOL_CONTRACT_VERSION` or `AI_DATA_FILTER_POLICY_VERSION`:
+- Every cert at the old version stops matching `findValidForRouting`.
+- The rejection is `CERTIFICATION_STALE` (BYOK) or `PLATFORM_PROFILE_NEEDS_RECERT` (CREDITS + GLOBAL).
+- Plan a re-cert sweep across all production profiles immediately after the bump.
+
+When adding a new way for the model to "cosplay" tools (e.g. a new provider emits `<tool_request>`):
+- Add the pattern to `FAKE_BLOCK_PATTERNS` in `AiResponseSanitizer.ts`.
+- Add a test in `AiResponseSanitizer.test.ts`.
+- Order matters: paired-tag patterns must come before the orphan-tag pattern.
+
+When the routing guard is changed to add a new rejection code:
+- Add the code to `REASON_BY_CODE` with a sentence the end user can act on (e.g. "Open AI Settings and …", "Ask your platform admin to …").
+- Do not reuse the generic `ROUTING_ERROR` fallback for new codes — the whole point of this hardening is to never leave the user staring at a generic message again.

@@ -95,12 +95,13 @@ Typical fit:
 
 1. Create and confirm the Sales Order
 2. Create the Delivery Note from the Sales Order
-3. Post the Delivery Note
-4. Open `Sales -> Invoices -> New Sales Invoice`
-5. Select the Sales Order
-6. Click **Load Invoiceable Lines**
-7. Review the generated invoice lines
-8. Save or post the invoice
+3. Review the loaded Sales Order lines and edit **Delivered Qty** if this is a partial delivery
+4. Post the Delivery Note
+5. Open `Sales -> Invoices -> New Sales Invoice`
+6. Select the Sales Order
+7. Click **Load Invoiceable Lines**
+8. Review the generated invoice lines
+9. Save or post the invoice
 
 ### What the system does
 
@@ -118,6 +119,10 @@ For linked operational invoicing:
 - Partial delivery creates partial invoiceable quantity.
 - If a Delivery Note line was already fully invoiced, it should not appear again.
 - Service lines do not need Delivery Notes.
+- Cost validation follows inventory accounting mode:
+  - `Perpetual`: posting requires positive stock cost.
+  - `Invoice-driven` (`Periodic`): posting can proceed with zero cost; unresolved cost appears in unsettled-cost reporting until receipts establish cost.
+- Delivery Note COGS posting uses the default COGS and inventory asset accounts from Inventory Settings when the item or category does not have its own accounts.
 
 ---
 
@@ -189,6 +194,9 @@ Because the stock item must first be delivered on a posted Delivery Note.
 
 **Why is warehouse not editable on some linked lines?**  
 Because those stock lines came from a Delivery Note. The warehouse is already fixed by that document.
+
+**Why did a Delivery Note mention COGS setup?**  
+In perpetual inventory accounting, posting a Delivery Note also posts the stock cost to Accounting. The item, item category, or Inventory Settings must provide COGS and inventory asset accounts. In invoice-driven mode, Delivery Notes move stock but do not create the COGS accounting entry.
 
 **Why did the invoice total change after I added a discount?**  
 Because tax is recalculated on the discounted amount.

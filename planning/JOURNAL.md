@@ -2,6 +2,47 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-18 (Mon) — ~0.25h
+**Task:** Task 95 manual QA detour — Delivery Note partial delivery UI
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**Trigger:** Manual Test 5 showed that the New Delivery Note page did not expose editable line quantities after selecting a Sales Order, so the tester could not create a partial delivery.
+
+**What I Did:**
+- Fixed `DeliveryNoteDetailPage.tsx` so selecting a Sales Order loads open SO lines into the line grid automatically.
+- Kept SO-derived item and UOM locked, while leaving `Delivered Qty` editable and capped by the open SO quantity.
+- Updated Sales architecture and user-guide docs to document partial Delivery Note behavior.
+
+**Verification:**
+- `frontend`: `npm run typecheck -- --pretty false` ✅.
+
+**Result:** ✅ Test 5 can now create a partial DN by changing Delivered Qty before creating the draft.
+**Next:** Retest SO qty 10 -> DN qty 4 -> linked invoiceable qty 4.
+
+---
+
+## 2026-05-18 (Mon) — ~0.35h
+**Task:** Task 95 manual QA detour — Delivery Note COGS fallback
+**Agent:** Codex (CTO Mode)
+**Branch:** `chore/enterprise-restructure`
+**Trigger:** Manual QA hit `No COGS account configured for item 002` when posting Delivery Note `DN-00002`, even though Inventory Settings showed a default COGS account.
+
+**What I Did:**
+- Traced the error to `PostDeliveryNoteUseCase`: the DN posting path always resolved COGS accounts before checking whether a DN accounting voucher was needed, and it used legacy Sales settings before Inventory financial settings.
+- Fixed DN posting so COGS/inventory account resolution runs only when Accounting is initialized and Inventory accounting mode is `PERPETUAL`.
+- Updated fallback order to item account -> item category default -> Inventory financial settings default -> legacy Sales settings default.
+- Added regression coverage proving DN posting uses Inventory financial settings for fallback accounts and invoice-driven DN posting does not require COGS mappings.
+- Updated Sales architecture and user-guide docs with the account fallback and invoice-driven behavior.
+
+**Verification:**
+- `backend`: `npm run test -- SalesPostingUseCases` ✅ — 18/18.
+- `backend`: `npx tsc --noEmit --pretty false` ✅.
+
+**Result:** ✅ Delivery Notes no longer raise a false COGS setup error when Inventory Settings already provides the defaults, and invoice-driven Delivery Notes do not require DN COGS accounts.
+**Next:** Retest posting `DN-00002`, then continue the Sales operational flow QA into linked Sales Invoice creation.
+
+---
+
 ## 2026-05-18 (Mon) — ~2.5h
 **Task:** Task 101 — AI routing stale-cert UX & fake tool-call defense
 **Agent:** Claude Code (CTO Mode)

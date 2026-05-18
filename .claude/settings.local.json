@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\DEV2026\\\\ERP03\" -Directory)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

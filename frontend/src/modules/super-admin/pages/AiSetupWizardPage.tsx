@@ -558,6 +558,7 @@ const StepModel: React.FC<{
     displayName: '',
     maxContextTokens: 128000,
     supportsToolCalling: true,
+    scope: 'GLOBAL' as 'GLOBAL' | 'TENANT',
   });
 
   const modelsForProvider = useMemo(
@@ -584,7 +585,7 @@ const StepModel: React.FC<{
         maxContextTokens: form.maxContextTokens,
         textOnlyMode: !form.supportsToolCalling,
         baseUrl: provider.defaultBaseUrl || undefined,
-        scope: 'GLOBAL',
+        scope: form.scope,
         enabled: true,
       });
       const created = unwrap<AiModelProfile>(result);
@@ -707,6 +708,17 @@ const StepModel: React.FC<{
                 />
                 Supports tool calling
               </label>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Scope</label>
+                <select
+                  value={form.scope}
+                  onChange={e => setForm(f => ({ ...f, scope: e.target.value as 'GLOBAL' | 'TENANT' }))}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="GLOBAL">Global (available to all tenants)</option>
+                  <option value="TENANT">Tenant (company-specific)</option>
+                </select>
+              </div>
             </div>
             <div className="flex gap-2">
               <button

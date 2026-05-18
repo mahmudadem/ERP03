@@ -17,6 +17,7 @@
  */
 export type AiStreamEvent =
   | { type: 'token'; content: string }
+  | { type: 'status'; stage: 'thinking' | 'fetching_data' | 'analyzing' | 'generating' }
   | { type: 'tool_call'; toolName: string; toolCallId: string; toolArgs: Record<string, unknown> }
   | { type: 'tool_result'; toolName: string; data: unknown; approved: boolean; error?: string; durationMs?: number; round?: number }
   | { type: 'done'; metadata: AiStreamDoneMetadata }
@@ -58,4 +59,6 @@ export interface AiStreamDoneMetadata {
     completionTokens?: number;
     totalTokens?: number;
   };
+  durationMs?: number;
+  creditsUsed?: number;
 }

@@ -149,6 +149,15 @@ Sales calls the inventory contract `ISalesInventoryService`:
 
 The cost returned by inventory is **frozen on the document**. Subsequent inventory cost changes do not retroactively affect already-posted COGS.
 
+### Cost enforcement by accounting mode
+
+- **PERPETUAL**: DN/SI/SR posting requires positive tracked-item cost for stock issue quantities.
+- **INVOICE_DRIVEN** (`PERIODIC` inventory accounting method): zero-cost stock issues are allowed and recorded as unsettled cost when no positive cost basis exists yet.
+
+This keeps operational flow unblocked in invoice-driven businesses while preserving strict real-time cost control in perpetual mode.
+
+Delivery Note COGS vouchers are created only when Accounting is initialized and Inventory accounting mode is `PERPETUAL`. The COGS/inventory account fallback order is item account -> item category default -> Inventory financial settings default -> legacy Sales settings default. Invoice-driven Delivery Notes still move stock, but they must not require COGS account mappings because inventory cost is recognized later by the invoice/accounting flow.
+
 ## Settlement Modes
 
 Configured per posting call. Three modes:
@@ -239,6 +248,8 @@ The frontend cannot safely compute stock invoiceability from the Sales Order sna
 - DN-derived warehouse as read-only/automatic for linked stock lines
 
 This keeps the business rule intact: **deliver first, then invoice what was actually delivered**.
+
+`DeliveryNoteDetailPage.tsx` supports partial deliveries by loading open Sales Order stock lines into an editable Delivery Note line grid. The item/UOM come from the Sales Order, while `deliveredQty` remains editable and is capped by the open SO quantity before the draft DN is created.
 
 ## Multi-Currency
 

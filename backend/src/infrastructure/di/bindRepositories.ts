@@ -125,6 +125,7 @@ import { AiAutoSeedCertification } from '../../application/ai-assistant/services
 import { AiCertificationEngine } from '../../application/ai-assistant/services/AiCertificationEngine';
 import { AiConversationCleanupService } from '../../application/ai-assistant/services/AiConversationCleanupService';
 import { StreamChatMessageUseCase } from '../../application/ai-assistant/use-cases/StreamChatMessageUseCase';
+import { AiTenantContextResolver } from '../../application/ai-assistant/services/AiTenantContextResolver';
 import { SendChatMessageUseCase } from '../../application/ai-assistant/use-cases/SendChatMessageUseCase';
 import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
 import { GetProfitAndLossTool } from '../../application/ai-assistant/tools/GetProfitAndLossTool';
@@ -1075,6 +1076,14 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
   get aiModelCapabilityCatalog(): typeof AiModelCapabilityCatalog {
     return AiModelCapabilityCatalog;
   },
+  get aiTenantContextResolver(): AiTenantContextResolver {
+    return new AiTenantContextResolver(
+      this.companyRepository,
+      this.companySettingsRepository,
+      this.userRepository,
+      this.companyUserRepository,
+    );
+  },
   get streamChatMessageUseCase(): StreamChatMessageUseCase {
     return new StreamChatMessageUseCase(
       this.aiChatRepository,
@@ -1094,6 +1103,7 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
       this.aiConversationMetaRepository,
       undefined, // sendChatMessageUseCase — not used in DI-built stream path
       this.aiModelProfileRepository,
+      this.aiTenantContextResolver,
     );
   },
 

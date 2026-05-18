@@ -344,10 +344,15 @@ const makeInventoryService = (costBase = 10) => {
   };
 };
 
-const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL') => ({
+const makeInventorySettingsRepository = (
+  method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL',
+  overrides: Record<string, any> = {}
+) => ({
   getSettings: jest.fn(async () => ({
     inventoryAccountingMethod: method,
     defaultInventoryAssetAccountId: 'INV-100',
+    defaultCOGSAccountId: 'COGS-100',
+    ...overrides,
   })),
 });
 
@@ -441,6 +446,52 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(voucher.metadata.sourceModule).toBe('sales');
     expect(voucher.metadata.sourceType).toBe('DELIVERY_NOTE');
     expect(voucher.metadata.sourceId).toBe(dn.id);
+  });
+
+  it('2b) PostDN uses Inventory financial settings as the COGS fallback', async () => {
+    const settings = makeSettings('CONTROLLED', {
+      defaultCOGSAccountId: undefined,
+      defaultInventoryAccountId: undefined,
+    });
+    const item = makeItem('stock-2b', { trackInventory: true });
+    (item as any).cogsAccountId = undefined;
+    (item as any).inventoryAssetAccountId = undefined;
+    const so = makeSO({ id: 'so-2b', item, orderedQty: 10, deliveredQty: 0 });
+    const dn = makeDN({ id: 'dn-2b', salesOrderId: so.id, item, deliveredQty: 2 });
+
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+
+    const useCase = new PostDeliveryNoteUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERPETUAL', {
+        defaultCOGSAccountId: 'INV-COGS-FALLBACK',
+        defaultInventoryAssetAccountId: 'INV-ASSET-FALLBACK',
+      }) as any,
+      { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    await useCase.execute(COMPANY_ID, dn.id);
+
+    const voucher = (voucherRepo.save as any).mock.calls[0][0];
+    const hasCogsDebit = voucher.lines.some((line: any) => line.accountId === 'INV-COGS-FALLBACK' && line.side === 'Debit');
+    const hasInventoryCredit = voucher.lines.some((line: any) => line.accountId === 'INV-ASSET-FALLBACK' && line.side === 'Credit');
+    expect(hasCogsDebit).toBe(true);
+    expect(hasInventoryCredit).toBe(true);
   });
 
   it('3) PostDN updates SO line deliveredQty', async () => {
@@ -1133,6 +1184,62 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(voucherRepo.save).not.toHaveBeenCalled();
     expect(deliveryNoteRepo.update).not.toHaveBeenCalled();
     expect(salesOrderRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('14b) PostDN: invoice-driven allows zero cost and posts with unsettled movement', async () => {
+    const settings = makeSettings('CONTROLLED', {
+      defaultCOGSAccountId: undefined,
+      defaultInventoryAccountId: undefined,
+    });
+    const item = makeItem('stock-14b', { trackInventory: true });
+    (item as any).cogsAccountId = undefined;
+    (item as any).inventoryAssetAccountId = undefined;
+    const so = makeSO({ id: 'so-14b', item, orderedQty: 10, deliveredQty: 0 });
+    const dn = makeDN({ id: 'dn-14b', salesOrderId: so.id, item, deliveredQty: 3 });
+
+    const deliveryNoteRepo = {
+      getById: jest.fn(async () => dn),
+      update: jest.fn(async () => undefined),
+    };
+    const salesOrderRepo = {
+      getById: jest.fn(async () => so),
+      update: jest.fn(async () => undefined),
+    };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const inventoryService = {
+      ...makeInventoryService(0),
+    };
+
+    const useCase = new PostDeliveryNoteUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC', {
+        defaultCOGSAccountId: undefined,
+        defaultInventoryAssetAccountId: undefined,
+      }) as any,
+      deliveryNoteRepo as any,
+      salesOrderRepo as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, dn.id);
+    expect(posted.status).toBe('POSTED');
+    expect(posted.lines[0].unitCostBase).toBe(0);
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(deliveryNoteRepo.update).toHaveBeenCalled();
+    expect(salesOrderRepo.update).toHaveBeenCalled();
   });
 
   it('15) PostSI: missing tracked-item cost basis aborts posting before vouchers are created', async () => {

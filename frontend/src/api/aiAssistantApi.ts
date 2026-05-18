@@ -105,6 +105,7 @@ export interface SendChatMessageResponse {
 
 export type AiStreamEvent =
   | { type: 'token'; content: string }
+  | { type: 'status'; stage: 'thinking' | 'fetching_data' | 'analyzing' | 'generating' }
   | { type: 'tool_call'; toolName: string; toolCallId: string; toolArgs: Record<string, unknown> }
   | { type: 'tool_result'; toolName: string; data: unknown; approved: boolean; error?: string; durationMs?: number; round?: number }
   | { type: 'done'; metadata: AiStreamDoneMetadata }
@@ -115,6 +116,8 @@ export interface AiStreamDoneMetadata {
   model: string;
   runtimeMeta?: ChatRuntimeMetadataDTO;
   usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+  durationMs?: number;
+  creditsUsed?: number;
 }
 
 /**
@@ -688,6 +691,9 @@ function parseSSEEvent(eventText: string, onEvent: (event: AiStreamEvent) => voi
     switch (eventName) {
       case 'token':
         onEvent({ type: 'token', content: parsed.content ?? '' });
+        break;
+      case 'status':
+        onEvent({ type: 'status', stage: parsed.stage ?? 'thinking' });
         break;
       case 'tool_call':
         onEvent({

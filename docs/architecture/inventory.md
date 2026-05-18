@@ -91,6 +91,13 @@ Where the integration *does* exist:
 - **Sales** calls into Inventory via `ISalesInventoryService.processOUT()` and posts COGS itself using the returned unit cost.
 - **Purchases** calls into Inventory via `IPurchasesInventoryService.processIN()` to record the receipt.
 
+### Sales-mode behavior for missing cost
+
+For stock issues created by Sales documents (DN/SI/SR):
+
+- In **PERPETUAL** mode, Sales enforces positive cost at posting.
+- In **INVOICE_DRIVEN** mode (`PERIODIC`), Sales permits zero-cost issues and marks cost settlement metadata (`costSettled=false`, `unsettledCostBasis`) so unresolved cost is visible in reporting.
+
 V2 plans automatic Accounting vouchers from inventory movements (decoupled from Sales/Purchases), gated by the Accounting integration setting.
 
 ## Multi-Warehouse
