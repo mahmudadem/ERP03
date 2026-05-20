@@ -143,6 +143,10 @@ const SalesReturnDetailPage = lazy(() => import('../modules/sales/pages/SalesRet
 const PriceListsPage = lazy(() => import('../modules/sales/pages/PriceListsPage'));
 const CustomerGroupsPage = lazy(() => import('../modules/sales/pages/CustomerGroupsPage'));
 const SalespersonsPage = lazy(() => import('../modules/sales/pages/SalespersonsPage'));
+const QuotationsPage = lazy(() => import('../modules/sales/pages/QuotationsPage'));
+const QuotationDetailPage = lazy(() => import('../modules/sales/pages/QuotationDetailPage'));
+const PromotionsPage = lazy(() => import('../modules/sales/pages/PromotionsPage'));
+const AgedBacklogPage = lazy(() => import('../modules/sales/pages/AgedBacklogPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
 
@@ -320,6 +324,11 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/price-lists', label: 'Price Lists', component: PriceListsPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/customer-groups', label: 'Customer Groups', component: CustomerGroupsPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/salespersons', label: 'Salespersons', component: SalespersonsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/quotes', label: 'Quotations', component: QuotationsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/quotes/new', label: 'New Quotation', component: QuotationDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/quotes/:id', label: 'Quotation Detail', component: QuotationDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/promotions', label: 'Promotions', component: PromotionsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/aged-backlog', label: 'Aged Backlog', component: AgedBacklogPage, section: 'INVENTORY', requiredModule: 'sales' },
 
   // Dynamic Sales Documents (designed in Forms Designer)
   { path: '/sales/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },

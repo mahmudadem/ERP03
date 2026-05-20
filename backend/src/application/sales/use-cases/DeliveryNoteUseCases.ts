@@ -45,6 +45,7 @@ export interface CreateDeliveryNoteInput {
   warehouseId: string;
   lines?: DeliveryNoteLineInput[];
   notes?: string;
+  promisedDate?: string;
   createdBy: string;
 }
 
@@ -168,6 +169,7 @@ export class CreateDeliveryNoteUseCase {
       lines,
       status: 'DRAFT',
       notes: input.notes,
+      promisedDate: input.promisedDate,
       cogsVoucherId: null,
       createdBy: input.createdBy,
       createdAt: now,
@@ -589,6 +591,7 @@ export interface UpdateDeliveryNoteInput {
   warehouseId?: string;
   lines?: DeliveryNoteLineInput[];
   notes?: string;
+  promisedDate?: string;
 }
 
 export class UpdateDeliveryNoteUseCase {
@@ -613,6 +616,7 @@ export class UpdateDeliveryNoteUseCase {
     if (input.deliveryDate !== undefined) current.deliveryDate = input.deliveryDate;
     if (input.warehouseId !== undefined) current.warehouseId = input.warehouseId;
     if (input.notes !== undefined) current.notes = input.notes;
+    if (input.promisedDate !== undefined) current.promisedDate = input.promisedDate;
 
     if (input.lines) {
       const existingById = new Map(current.lines.map((line) => [line.lineId, line]));

@@ -2,6 +2,36 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-20 (Wed) — Phase B (sales operational features)
+**Task:** Task 109 — Phase B of the sales completion roadmap: quotations, credit control, promotions, delivery scheduling
+**Agent:** Claude Opus 4.7 (CTO Mode) orchestrating; sub-tasks delegated to Sonnet/Haiku
+**Branch:** `feat/phase-a-sales-master-data`
+**Trigger:** User said "do next phases" — authorised running the remaining roadmap phases autonomously, accepting that manual QA gates are deferred.
+
+**What I did (7 sub-phases, each delegated then audited):**
+- **B.0** Commission accrual auto-wired into `SalesController` postSI / createAndPostSI / updateAndPostSI (non-fatal).
+- **B.1** Quotation domain — `Quote` entity with full lifecycle, versioned revisions, repo, use cases incl. ConvertToSalesOrder / ConvertToSalesInvoice. 12 tests.
+- **B.2** Credit-limit enforcement at SO confirm — `CreditCheckService`, rebuilt `ConfirmSalesOrderUseCase` with NONE/WARN/BLOCK policy, `CreditOverride` audit entity, `CreditLimitExceededError`. 12 tests.
+- **B.3** Promotions engine — `PromotionRule` (BUY_X_GET_Y, THRESHOLD_DISCOUNT), pure `PromotionApplicationService`, manual-discount precedence. 22 tests.
+- **B.4** Delivery scheduling (`promisedDate` on SO/DN, `GetAgedBacklogUseCase`) + `SalesOperationalController` (24 handlers) + routes. 10 tests.
+- **B.5** Frontend — Quotations list/detail with status-driven actions, Promotions admin, Aged Backlog page, credit-override modal on SO confirm, promisedDate fields, `salesOperationalApi` client.
+- **B.6** Docs — `quotations.md`, `credit-control.md`, `promotions.md` + three user guides; `sales.md` updated.
+
+**Mid-phase interruption:** the B.4 delegation initially hit the account usage limit; B.0–B.3 were committed as a checkpoint (`4e9ce801`) and B.4 re-run after the reset.
+
+**Audit catches:** SO detail WARN banner read `creditCheck.limit` instead of `creditLimit` — fixed.
+
+**Verification:**
+- `backend` + `frontend`: `npx tsc --noEmit` → exit 0
+- 56 new backend tests across 4 suites, all green
+- Full backend suite: 1153 pass / 18 skip / 3 fail (the 3 are pre-existing `SendChatMessageUseCase` AI-credit failures — unrelated). Zero Phase B regressions.
+
+**Result:** ✅ Phase B code + docs complete.
+
+**Follow-ups carried forward:** promotion evaluator not yet auto-invoked in SO/SI creation; credit check is SO-confirm-only (not on direct SIs); backorder UX deferred; quote numbering uses a timestamp fallback.
+
+**Next:** Phase C — Sales finance & reporting (AR aging, customer statements, customer ledger, sales reports, backend P&L, inventory valuation as-of-date).
+
 ## 2026-05-20 (Wed) — Phase A (sales master data & pricing)
 **Task:** Task 108 — Phase A of the sales completion roadmap: master data & pricing engine
 **Agent:** Claude Opus 4.7 (CTO Mode) orchestrating; mechanical sub-tasks delegated to Sonnet/Haiku

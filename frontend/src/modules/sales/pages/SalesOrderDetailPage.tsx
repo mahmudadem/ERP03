@@ -52,6 +52,7 @@ interface EditableForm {
   salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate: string;
+  promisedDate: string;
   currency: string;
   exchangeRate: number;
   notes: string;
@@ -79,6 +80,7 @@ const createEmptyForm = (): EditableForm => ({
   salespersonId: undefined,
   orderDate: todayIso(),
   expectedDeliveryDate: '',
+  promisedDate: '',
   currency: 'USD',
   exchangeRate: 1,
   notes: '',
@@ -114,6 +116,11 @@ const SalesOrderDetailPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creditWarnBanner, setCreditWarnBanner] = useState<string | null>(null);
+  const [creditOverrideOpen, setCreditOverrideOpen] = useState(false);
+  const [creditOverrideReason, setCreditOverrideReason] = useState('');
+  const [creditOverrideInfo, setCreditOverrideInfo] = useState<Record<string, any> | null>(null);
+  const [pendingConfirmOrderId, setPendingConfirmOrderId] = useState<string | null>(null);
 
   const itemById = useMemo(
     () =>
@@ -180,6 +187,7 @@ const SalesOrderDetailPage: React.FC = () => {
     salespersonId: so.salespersonId,
     orderDate: so.orderDate,
     expectedDeliveryDate: so.expectedDeliveryDate || '',
+    promisedDate: so.promisedDate || '',
     currency: so.currency,
     exchangeRate: so.exchangeRate,
     notes: so.notes || '',
@@ -401,6 +409,7 @@ const SalesOrderDetailPage: React.FC = () => {
         salespersonId: form.salespersonId || undefined,
         orderDate: form.orderDate,
         expectedDeliveryDate: form.expectedDeliveryDate || undefined,
+        promisedDate: form.promisedDate || undefined,
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
         lines: form.lines.map((line, index) => buildLinePayload(line, index)),
@@ -461,8 +470,53 @@ const SalesOrderDetailPage: React.FC = () => {
         currentId = saved.id;
       }
 
-      const result = await salesApi.confirmSO(currentId);
-      setForm(toEditableForm(unwrap<SalesOrderDTO>(result)));
+      try {
+        const result = await salesApi.confirmSO(currentId);
+        const so = unwrap<SalesOrderDTO>(result);
+        setForm(toEditableForm(so));
+        // Check for WARN outcome in the raw response payload
+        const raw = result as any;
+        const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
+        if (creditCheck?.outcome === 'WARN') {
+          setCreditWarnBanner(
+            `Order confirmed — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
+          );
+        }
+      } catch (err: any) {
+        const data = err?.response?.data;
+        const code = data?.code ?? data?.error?.code ?? '';
+        const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+        const isCreditBlock =
+          code === 'CREDIT_LIMIT_EXCEEDED' ||
+          msg.toLowerCase().includes('credit limit') ||
+          msg.toLowerCase().includes('credit_limit');
+        if (isCreditBlock) {
+          // Store info for the dialog
+          setPendingConfirmOrderId(currentId);
+          setCreditOverrideInfo(data?.details ?? data?.creditCheck ?? null);
+          setCreditOverrideReason('');
+          setCreditOverrideOpen(true);
+          // re-throw so withBusyAction doesn't hide it — actually we DON'T
+          // want withBusyAction to set the error banner for this case
+          return;
+        }
+        throw err;
+      }
+    });
+  };
+
+  const submitCreditOverride = async () => {
+    if (!pendingConfirmOrderId || !creditOverrideReason.trim()) return;
+    await withBusyAction(async () => {
+      const result = await salesApi.confirmSO(pendingConfirmOrderId, {
+        override: { reason: creditOverrideReason.trim() },
+      });
+      const so = unwrap<SalesOrderDTO>(result);
+      setForm(toEditableForm(so));
+      setCreditOverrideOpen(false);
+      setPendingConfirmOrderId(null);
+      setCreditOverrideInfo(null);
+      setCreditOverrideReason('');
     });
   };
 
@@ -507,6 +561,60 @@ const SalesOrderDetailPage: React.FC = () => {
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
+      {creditWarnBanner && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start justify-between gap-2">
+          <span>{creditWarnBanner}</span>
+          <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
+        </div>
+      )}
+
+      {/* Credit Override Dialog */}
+      {creditOverrideOpen && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Credit Limit Exceeded</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              This customer is over their credit limit and the policy is set to <strong>BLOCK</strong>. You can override by providing a reason.
+            </p>
+            {creditOverrideInfo && (
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                {creditOverrideInfo.limit !== undefined && <div>Credit Limit: <strong>{creditOverrideInfo.limit}</strong></div>}
+                {creditOverrideInfo.currentExposure !== undefined && <div>Current Exposure: <strong>{creditOverrideInfo.currentExposure}</strong></div>}
+                {creditOverrideInfo.orderAmount !== undefined && <div>This Order: <strong>{creditOverrideInfo.orderAmount}</strong></div>}
+                {creditOverrideInfo.projectedExposure !== undefined && <div>Projected Exposure: <strong>{creditOverrideInfo.projectedExposure}</strong></div>}
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Override Reason <span className="text-red-500">*</span></label>
+              <textarea
+                rows={3}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                placeholder="Explain why this credit limit override is approved…"
+                value={creditOverrideReason}
+                onChange={(e) => setCreditOverrideReason(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => { setCreditOverrideOpen(false); setPendingConfirmOrderId(null); }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+                disabled={!creditOverrideReason.trim() || actionBusy}
+                onClick={submitCreditOverride}
+              >
+                {actionBusy ? 'Confirming…' : 'Confirm with Override'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
@@ -548,10 +656,18 @@ const SalesOrderDetailPage: React.FC = () => {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Expected Delivery</label>
-            <DatePicker 
+            <DatePicker
               value={form.expectedDeliveryDate}
               disabled={isReadOnly}
               onChange={(val) => setForm((prev) => ({ ...prev, expectedDeliveryDate: val }))}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Promised Delivery Date</label>
+            <DatePicker
+              value={form.promisedDate}
+              disabled={isReadOnly}
+              onChange={(val) => setForm((prev) => ({ ...prev, promisedDate: val }))}
             />
           </div>
           <div>

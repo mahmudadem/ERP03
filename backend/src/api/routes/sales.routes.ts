@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { SalesController } from '../controllers/sales/SalesController';
 import { SalesMasterDataController } from '../controllers/sales/SalesMasterDataController';
+import { SalesOperationalController } from '../controllers/sales/SalesOperationalController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -77,5 +78,30 @@ router.get('/commissions/totals/:salespersonId', SalesMasterDataController.getSa
 router.get('/commissions/:id', SalesMasterDataController.getCommissionEntry);
 router.post('/commissions/:id/mark-paid', SalesMasterDataController.markCommissionPaid);
 router.post('/commissions/:id/cancel', SalesMasterDataController.cancelCommission);
+
+// Quotations
+router.post('/quotes', SalesOperationalController.createQuote);
+router.get('/quotes', SalesOperationalController.listQuotes);
+router.get('/quotes/:id', SalesOperationalController.getQuote);
+router.put('/quotes/:id', SalesOperationalController.updateQuote);
+router.delete('/quotes/:id', SalesOperationalController.deleteQuote);
+router.post('/quotes/:id/send', SalesOperationalController.sendQuote);
+router.post('/quotes/:id/accept', SalesOperationalController.acceptQuote);
+router.post('/quotes/:id/reject', SalesOperationalController.rejectQuote);
+router.post('/quotes/:id/revise', SalesOperationalController.reviseQuote);
+router.post('/quotes/:id/convert-to-order', SalesOperationalController.convertQuoteToSalesOrder);
+router.post('/quotes/:id/convert-to-invoice', SalesOperationalController.convertQuoteToSalesInvoice);
+
+// Promotions
+router.post('/promotions', SalesOperationalController.createPromotionRule);
+router.get('/promotions', SalesOperationalController.listPromotionRules);
+router.post('/promotions/evaluate', SalesOperationalController.evaluatePromotions);
+router.get('/promotions/:id', SalesOperationalController.getPromotionRule);
+router.put('/promotions/:id', SalesOperationalController.updatePromotionRule);
+router.delete('/promotions/:id', SalesOperationalController.deletePromotionRule);
+
+// Credit overrides + delivery scheduling
+router.get('/credit-overrides', SalesOperationalController.listCreditOverrides);
+router.get('/aged-backlog', SalesOperationalController.getAgedBacklog);
 
 export default router;

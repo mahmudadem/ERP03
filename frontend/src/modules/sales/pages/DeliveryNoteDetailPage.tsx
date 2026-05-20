@@ -35,6 +35,7 @@ interface EditableForm {
   salesOrderId: string;
   customerId: string;
   deliveryDate: string;
+  promisedDate: string;
   warehouseId: string;
   notes: string;
   lines: EditableLine[];
@@ -53,6 +54,7 @@ const createEmptyForm = (salesOrderId = '', customerId = '', warehouseId = ''): 
   salesOrderId,
   customerId,
   deliveryDate: todayIso(),
+  promisedDate: '',
   warehouseId,
   notes: '',
   lines: [createEmptyLine()],
@@ -366,6 +368,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         salesOrderId: form.salesOrderId || undefined,
         customerId: form.salesOrderId ? undefined : form.customerId || undefined,
         deliveryDate: form.deliveryDate,
+        promisedDate: form.promisedDate || undefined,
         warehouseId: form.warehouseId,
         lines: mappedLines.length ? mappedLines : undefined,
         notes: form.notes || undefined,
@@ -473,9 +476,16 @@ const DeliveryNoteDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Delivery Date</label>
-              <DatePicker 
+              <DatePicker
                 value={form.deliveryDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, deliveryDate: val }))}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Promised Delivery Date</label>
+              <DatePicker
+                value={form.promisedDate}
+                onChange={(val) => setForm((prev) => ({ ...prev, promisedDate: val }))}
               />
             </div>
             <div>

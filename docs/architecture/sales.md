@@ -1,7 +1,7 @@
 # Architecture: Sales Module
 
 **Last updated:** 2026-05-20
-**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. See dedicated docs linked in the "Sales master data" section below.
+**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. See dedicated docs linked below.
 **Module-level docs:** [`docs/modules/sales/`](../modules/sales/)
 
 ---
@@ -302,14 +302,29 @@ Phase A added structured pricing, customer segmentation, and salesperson commiss
 
 ---
 
+## Sales operational features (Phase B)
+
+Phase B added pre-sale quoting, credit-limit enforcement at order confirm, a promotions evaluation engine, delivery scheduling with an aged-backlog report, and commission auto-accrual wiring.
+
+**Quotations** — A `Quote` entity with a six-status lifecycle (`DRAFT → SENT → ACCEPTED → REJECTED / EXPIRED / CONVERTED`), a revisioning model (version + `originQuoteId` chain), and two conversion paths: accepted quote → Sales Order and accepted quote → direct Sales Invoice. API: `/tenant/sales/quotes` + action sub-routes. See [`docs/architecture/quotations.md`](./quotations.md).
+
+**Credit control** — `ConfirmSalesOrderUseCase` now runs a credit check before confirming a DRAFT order. Exposure = Σ outstanding balances on POSTED invoices. Policy `NONE` / `WARN` / `BLOCK` (set per customer on the Party record). BLOCK throws `CreditLimitExceededError`; the caller can re-submit with an override reason which is persisted as an immutable `CreditOverride` audit record. See [`docs/architecture/credit-control.md`](./credit-control.md).
+
+**Promotions** — `PromotionRule` entity supports `BUY_X_GET_Y` (free-goods) and `THRESHOLD_DISCOUNT` rule types with scope `ALL / ITEMS / CATEGORIES`, date-validity windows, and priority ordering. `PromotionApplicationService` is a pure evaluator (no I/O); `POST /tenant/sales/promotions/evaluate` exposes it. **Not yet auto-invoked during SO/SI creation** — see promotions follow-ups. See [`docs/architecture/promotions.md`](./promotions.md).
+
+**Delivery scheduling** — `promisedDate` added to `SalesOrder` and `DeliveryNote`. `GetAgedBacklogUseCase` lists CONFIRMED / PARTIALLY_DELIVERED orders past their `promisedDate`, sorted by `daysOverdue` descending. API: `GET /tenant/sales/aged-backlog`. Frontend: `AgedBacklogPage`.
+
+**Commission auto-accrual** — `SalesController` now calls `AccrueCommissionForInvoiceUseCase` after every successful SI post (postSI / createAndPostSI / updateAndPostSI). Failure is non-fatal: a commission accrual error is logged but does not roll back the post. See [`docs/architecture/commissions.md`](./commissions.md).
+
+---
+
 ## What Is NOT Implemented
 
 | Feature | Status |
 |---|---|
-| **Quotations** | Planned. Pre-sale offers with expiry and conversion to SO. |
-| **Credit limit enforcement** | `creditHoldPolicy` field stored on Party (Phase A); enforcement at SO confirm is Phase B. |
+| **Credit check at direct SI creation** | Credit control fires at SO confirm only. Direct invoices (no SO) are not yet credit-checked. |
+| **Promotions auto-apply** | Evaluator endpoint exists; it is not yet called automatically inside SO/SI creation. |
+| **Quote number sequencing** | Quote numbers use a timestamp-random fallback; SalesSettings has no sequence field yet. |
 | **Customer Master (dedicated)** | Currently uses Party. A dedicated customer entity is planned but the Party-based flow is sufficient for V1. |
 | **Sales Reports (detailed)** | Dashboard exists. Detailed reports (AR Aging, Sales Register, Customer Statement, by-item/by-customer breakdowns) are deferred. |
-| **Promotion engine / free-goods rules** | Manual invoice commercial terms exist, but automatic buy-X-get-Y and campaign rules are deferred. |
-| **Auto-accrual wiring** | Commission accrual use case exists; controller wiring to call it automatically after SI post is a follow-up. |
 | **Commission GL posting** | Marking commission paid is a status change only — no Dr/Cr voucher posted yet. |

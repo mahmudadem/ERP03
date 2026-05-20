@@ -55,6 +55,7 @@ export interface SalesOrderProps {
   status: SOStatus;
   notes?: string;
   internalNotes?: string;
+  promisedDate?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -101,6 +102,7 @@ export class SalesOrder {
   status: SOStatus;
   notes?: string;
   internalNotes?: string;
+  promisedDate?: string;
   readonly createdBy: string;
   readonly createdAt: Date;
   updatedAt: Date;
@@ -146,6 +148,7 @@ export class SalesOrder {
     this.status = props.status || 'DRAFT';
     this.notes = props.notes;
     this.internalNotes = props.internalNotes;
+    this.promisedDate = props.promisedDate;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
@@ -221,6 +224,7 @@ export class SalesOrder {
       status: this.status,
       notes: this.notes,
       internalNotes: this.internalNotes,
+      promisedDate: this.promisedDate,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
@@ -251,6 +255,7 @@ export class SalesOrder {
       status: data.status || 'DRAFT',
       notes: data.notes,
       internalNotes: data.internalNotes,
+      promisedDate: data.promisedDate,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),

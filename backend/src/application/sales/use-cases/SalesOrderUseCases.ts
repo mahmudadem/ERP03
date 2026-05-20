@@ -78,6 +78,7 @@ export interface CreateSalesOrderInput {
   customerId: string;
   orderDate: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency: string;
   exchangeRate: number;
   lines: SalesOrderLineInput[];
@@ -92,6 +93,7 @@ export interface UpdateSalesOrderInput {
   customerId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency?: string;
   exchangeRate?: number;
   lines?: SalesOrderLineInput[];
@@ -159,6 +161,7 @@ export class CreateSalesOrderUseCase {
       customerName: customer!.displayName,
       orderDate: input.orderDate,
       expectedDeliveryDate: input.expectedDeliveryDate,
+      promisedDate: input.promisedDate,
       currency: input.currency,
       exchangeRate: input.exchangeRate,
       lines,
@@ -298,6 +301,7 @@ export class UpdateSalesOrderUseCase {
       customerName: customer.displayName,
       orderDate: input.orderDate ?? current.orderDate,
       expectedDeliveryDate: input.expectedDeliveryDate ?? current.expectedDeliveryDate,
+      promisedDate: input.promisedDate ?? current.promisedDate,
       currency: input.currency ?? current.currency,
       exchangeRate,
       lines,

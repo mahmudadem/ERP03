@@ -104,6 +104,7 @@ export interface SalesOrderDTO {
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
+  promisedDate?: string;
   status: SOStatus;
   notes?: string;
   internalNotes?: string;
@@ -141,6 +142,7 @@ export interface DeliveryNoteDTO {
   customerId: string;
   customerName: string;
   deliveryDate: string;
+  promisedDate?: string;
   warehouseId: string;
   lines: DeliveryNoteLineDTO[];
   status: DNStatus;
@@ -354,6 +356,7 @@ export interface CreateSalesOrderPayload {
   salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency: string;
   exchangeRate: number;
   lines: SalesOrderLineInputDTO[];
@@ -366,6 +369,7 @@ export interface UpdateSalesOrderPayload {
   salespersonId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency?: string;
   exchangeRate?: number;
   lines?: SalesOrderLineInputDTO[];
@@ -397,6 +401,7 @@ export interface CreateDeliveryNotePayload {
   salesOrderId?: string;
   customerId?: string;
   deliveryDate: string;
+  promisedDate?: string;
   warehouseId: string;
   lines?: DeliveryNoteLineInputDTO[];
   notes?: string;
@@ -405,6 +410,7 @@ export interface CreateDeliveryNotePayload {
 export interface UpdateDeliveryNotePayload {
   customerId?: string;
   deliveryDate?: string;
+  promisedDate?: string;
   warehouseId?: string;
   lines?: DeliveryNoteLineInputDTO[];
   notes?: string;
@@ -594,8 +600,8 @@ export const salesApi = {
   listSOs: (opts?: ListSalesOrdersOptions): Promise<SalesOrderDTO[]> =>
     client.get('/tenant/sales/orders', { params: opts }),
 
-  confirmSO: (id: string): Promise<SalesOrderDTO> =>
-    client.post(`/tenant/sales/orders/${id}/confirm`, {}),
+  confirmSO: (id: string, body?: { override?: { reason: string } }): Promise<SalesOrderDTO> =>
+    client.post(`/tenant/sales/orders/${id}/confirm`, body ?? {}),
 
   cancelSO: (id: string): Promise<SalesOrderDTO> =>
     client.post(`/tenant/sales/orders/${id}/cancel`, {}),
