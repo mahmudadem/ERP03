@@ -36,6 +36,7 @@ import { IVoucherSequenceRepository } from '../../../repository/interfaces/accou
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
+import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import {
   ItemQtyToBaseUomResult,
@@ -454,7 +455,16 @@ export class PostPurchaseInvoiceUseCase {
     if (!settings) throw new Error('Purchases module is not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
-    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
+    const shouldPostAccounting = createAccountingEffect;
+    if (shouldPostAccounting && !(await this.isAccountingEngineReady(companyId))) {
+      throw new AccountingEngineUnavailableError({
+        companyId,
+        reason: 'NOT_INITIALIZED',
+        cause:
+          'Purchase Invoice posting requires the Accounting Engine to be initialized. ' +
+          'Initialize Purchases (which auto-initializes the Engine) or call InitializeAccountingUseCase first.',
+      });
+    }
 
     const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
     if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
@@ -750,7 +760,6 @@ export class PostPurchaseInvoiceUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: pi.invoiceNumber,
             baseCurrencyOverride: baseCurrency,
-            skipAccountValidation: true,
           },
           transaction
         );
@@ -1041,7 +1050,7 @@ export class PostPurchaseInvoiceUseCase {
     return r ? r.rate : rate;
   }
 
-  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+  private async isAccountingEngineReady(companyId: string): Promise<boolean> {
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
   }
@@ -1160,7 +1169,7 @@ export class UnpostPurchaseInvoiceUseCase {
       throw new Error('Cannot unpost an invoice that has payments applied. Reverse the payments first.');
     }
 
-    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEngineReady(companyId);
 
     let po: PurchaseOrder | null = null;
     if (pi.purchaseOrderId) {
@@ -1210,7 +1219,7 @@ export class UnpostPurchaseInvoiceUseCase {
     return unposted;
   }
 
-  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+  private async isAccountingEngineReady(companyId: string): Promise<boolean> {
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
   }

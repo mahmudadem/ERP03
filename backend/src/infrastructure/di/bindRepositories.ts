@@ -27,6 +27,8 @@ import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/F
 import { FirestoreCompanySettingsRepository } from '../firestore/repositories/core/FirestoreCompanySettingsRepository';
 import { FirestoreUserPreferencesRepository } from '../firestore/repositories/core/FirestoreUserPreferencesRepository';
 import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
+import { FirestoreIdempotencyKeyRepository } from '../firestore/repositories/system/FirestoreIdempotencyKeyRepository';
+import { FirestorePostingLogRepository } from '../firestore/repositories/accounting/FirestorePostingLogRepository';
 import { FirestoreVoucherRepositoryV2 } from '../firestore/repositories/accounting/FirestoreVoucherRepositoryV2';
 import { FirestoreVoucherSequenceRepository } from '../firestore/repositories/accounting/FirestoreVoucherSequenceRepository';
 import { IVoucherRepository } from '../../domain/accounting/repositories/IVoucherRepository';
@@ -406,6 +408,14 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaAuditLogRepository(getPrismaClient())
       : new FirestoreAuditLogRepository(getDb());
+  },
+  get idempotencyKeyRepository(): SysRepo.IIdempotencyKeyRepository {
+    // Firestore-only for now; idempotency rarely needs cross-DB parity.
+    return new FirestoreIdempotencyKeyRepository(getDb());
+  },
+  get postingLogRepository(): AccRepo.IPostingLogRepository {
+    // Firestore-only — PostingLog is server-side audit data, not user-facing reporting.
+    return new FirestorePostingLogRepository(getDb());
   },
 
   // ACCOUNTING

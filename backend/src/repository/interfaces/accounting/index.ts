@@ -13,4 +13,5 @@ export * from './IReconciliationRepository';
 export * from './IBudgetRepository';
 export * from './ICompanyGroupRepository';
 export * from './IRecurringVoucherTemplateRepository';
+export * from './IPostingLogRepository';
 

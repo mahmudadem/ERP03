@@ -6,6 +6,12 @@
 
 ---
 
+## Prerequisites
+
+The Accounting **Engine** must be initialized before Sales is usable. `InitializeSalesUseCase` calls `EnsureAccountingEngineInitialized` as its first step, which auto-bootstraps the Engine (`standard` COA template, calendar fiscal year, company base currency) if it is not yet initialized. If the Engine cannot be bootstrapped (e.g., the company has no base currency), Sales initialization throws `AccountingEngineUnavailableError`. The Accounting **UI** does not need to be visible — see [accounting.md](./accounting.md#accounting-engine-vs-accounting-appui).
+
+`PostSalesInvoiceUseCase` enforces the same guard at post time: if the Engine is not ready and `createAccountingEffect=true`, it throws rather than marking the invoice POSTED without a voucher.
+
 ## Purpose
 
 The Sales module covers the order-to-cash cycle: take an order from a customer, deliver the goods, invoice them, collect payment, handle returns. It is tightly coupled to **Accounting** (every posted invoice creates a journal entry) and **Inventory** (every delivery decrements stock and recognizes cost).

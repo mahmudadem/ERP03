@@ -320,7 +320,6 @@ export class PostStockAdjustmentUseCase {
         postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
         reference: adjustment.id,
         baseCurrencyOverride,
-        skipAccountValidation: true,
       }, transaction);
 
       return voucher.id;

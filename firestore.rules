@@ -1,18 +1,130 @@
-rules_version='2'
+rules_version='2';
+
+// ERP03 production Firestore security rules.
+//
+// Architecture context:
+// - Backend uses Firebase Admin SDK, which BYPASSES these rules entirely. All
+//   business-critical writes (vouchers, stock movements, AR/AP balances) flow
+//   through the backend API and are authorized by the backend authMiddleware +
+//   tenant context. Rules below only constrain DIRECT client SDK access.
+// - Frontend reads some data directly: system_metadata templates and per-company
+//   Settings collections (voucher forms, voucher types). Frontend may also write
+//   to a small allowlist under companies/{cid}/.../Settings/** for the voucher
+//   wizard and forms designer.
+// - Default posture: DENY. Each allow rule is intentional and narrow.
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 6, 1);
+
+    // ---- Helpers ----
+    function isSignedIn() {
+      return request.auth != null;
     }
+
+    function isSuperAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.globalRole == 'SUPER_ADMIN';
+    }
+
+    function isMemberOf(cid) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/company_users/$(cid + '_' + request.auth.uid));
+    }
+
+    // ---- system_metadata ----
+    // Read by any signed-in user (currency catalogue, COA templates, system voucher types).
+    // Writes only via Admin SDK (seeding); deny client writes.
+    match /system_metadata/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // ---- users ----
+    // Each user can read their own profile. Updates go through the backend.
+    // Super-admins can read any.
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow write: if isSuperAdmin();
+    }
+
+    // ---- company_users (membership records) ----
+    // The user can read their own membership records to discover which companies
+    // they belong to. Writes are backend-only.
+    match /company_users/{docId} {
+      allow read: if isSignedIn() && (
+        docId.matches('.*_' + request.auth.uid) || isSuperAdmin()
+      );
+      allow write: if isSuperAdmin();
+    }
+
+    // ---- companies/{companyId} (root doc) ----
+    match /companies/{companyId} {
+      allow read: if isMemberOf(companyId) || isSuperAdmin();
+      allow write: if isSuperAdmin();
+
+      // ---- Settings paths (frontend may write via voucher wizard / forms designer) ----
+      // Pattern: companies/{cid}/{module}/Settings/{collection}/{docId}
+      match /{module}/Settings/{collection}/{docId} {
+        allow read: if isMemberOf(companyId) || isSuperAdmin();
+        allow write: if isMemberOf(companyId) || isSuperAdmin();
+      }
+
+      // ---- Settings root docs (collection-as-document pattern) ----
+      // E.g. companies/{cid}/accounting/Settings — the "Settings" doc itself
+      match /{module}/Settings {
+        allow read: if isMemberOf(companyId) || isSuperAdmin();
+        allow write: if isMemberOf(companyId) || isSuperAdmin();
+      }
+
+      // ---- documentTypes (frontend may read) ----
+      match /documentTypes/{docId} {
+        allow read: if isMemberOf(companyId) || isSuperAdmin();
+        allow write: if isSuperAdmin();
+      }
+
+      match /voucherTypes/{docId} {
+        allow read: if isMemberOf(companyId) || isSuperAdmin();
+        allow write: if isMemberOf(companyId) || isSuperAdmin();
+      }
+
+      // ---- Data paths (vouchers, stock movements, invoices, etc.) ----
+      // Read allowed for members; writes are backend-only (Admin SDK).
+      // Pattern: companies/{cid}/{module}/Data/**
+      match /{module}/Data/{document=**} {
+        allow read: if isMemberOf(companyId) || isSuperAdmin();
+        allow write: if isSuperAdmin();
+      }
+
+      // ---- modules subcollection (initialization state) ----
+      match /modules/{moduleCode} {
+        allow read: if isMemberOf(companyId) || isSuperAdmin();
+        allow write: if isSuperAdmin();
+      }
+
+      // ---- idempotency_keys (replay cache) ----
+      // Read denied (private to the server); writes via Admin SDK only.
+      match /idempotency_keys/{key} {
+        allow read, write: if isSuperAdmin();
+      }
+
+      // ---- catch-all: any other subcollection under the company ----
+      // Members may read; writes are backend-only.
+      match /{document=**} {
+        allow read: if isMemberOf(companyId) || isSuperAdmin();
+        allow write: if isSuperAdmin();
+      }
+    }
+
+    // ---- companyUsers (legacy collection — read-only for own records) ----
+    match /companyUsers/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isSuperAdmin()
+      );
+      allow write: if isSuperAdmin();
+    }
+
+    // ---- Everything else: default DENY ----
+    // (No match block needed — Firestore denies by default.)
   }
 }

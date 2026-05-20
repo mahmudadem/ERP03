@@ -866,7 +866,6 @@ export class PostSalesReturnUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: salesReturn.returnNumber,
             baseCurrencyOverride: resolvedBaseCurrency,
-            skipAccountValidation: true,
           },
           transaction
         );
@@ -909,7 +908,6 @@ export class PostSalesReturnUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: salesReturn.returnNumber,
             baseCurrencyOverride: resolvedBaseCurrency,
-            skipAccountValidation: true,
           },
           transaction
         );

@@ -11,10 +11,13 @@ import {
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IStockLevelRepository } from '../../../repository/interfaces/inventory/IStockLevelRepository';
 import { IStockMovementRepository } from '../../../repository/interfaces/inventory/IStockMovementRepository';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { InventorySettings } from '../../../domain/inventory/entities/InventorySettings';
+import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
 
 interface MovementRefs {
   type: ReferenceType;
@@ -54,6 +57,7 @@ export interface ProcessOUTInput extends BaseMovementInput {
   forcedUnitCostCCY?: number;
   preFetchedLevel?: StockLevel;
   preFetchedItem?: Item;
+  preFetchedInventorySettings?: InventorySettings;
   skipWarehouseValidation?: boolean;
 }
 
@@ -87,6 +91,7 @@ interface UseCaseDependencies {
   stockMovementRepository: IStockMovementRepository;
   stockLevelRepository: IStockLevelRepository;
   companyRepository: ICompanyRepository;
+  inventorySettingsRepository: IInventorySettingsRepository;
   transactionManager: ITransactionManager;
 }
 
@@ -257,6 +262,23 @@ export class RecordStockMovementUseCase {
       const costSettled = unsettledQty === 0;
 
       const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
+
+      const projectedQty = qtyBefore - input.qty;
+      if (projectedQty < 0) {
+        const settings =
+          input.preFetchedInventorySettings ??
+          (await this.deps.inventorySettingsRepository.getSettings(input.companyId));
+        if (settings && settings.allowNegativeStock === false) {
+          throw new NegativeStockError({
+            companyId: input.companyId,
+            itemId: item.id,
+            warehouseId: input.warehouseId,
+            qtyBefore,
+            requested: input.qty,
+            resultingQty: projectedQty,
+          });
+        }
+      }
 
       level.qtyOnHand -= input.qty;
       level.postingSeq += 1;

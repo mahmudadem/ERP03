@@ -16,6 +16,16 @@ export interface DeliveryNoteLine {
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
   stockMovementId?: string | null;
+  /**
+   * Outcome of COGS recognition at DN posting. POSTED in PERPETUAL mode;
+   * SKIPPED_DEFERRED_POLICY when accountingMode=INVOICE_DRIVEN.
+   * See PostingLog and docs/architecture/posting-log.md.
+   */
+  cogsPostingStatus?:
+    | 'POSTED'
+    | 'SKIPPED_DEFERRED_POLICY'
+    | 'SKIPPED_UNSETTLED_COST'
+    | null;
   description?: string;
 }
 

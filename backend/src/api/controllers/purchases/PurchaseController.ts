@@ -54,6 +54,8 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { PurchaseDTOMapper } from '../../dtos/PurchaseDTOs';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
+import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import {
   validateCreatePurchaseReturnInput,
   validateCreateGoodsReceiptInput,
@@ -143,6 +145,7 @@ export class PurchaseController {
       stockMovementRepository: diContainer.stockMovementRepository,
       stockLevelRepository: diContainer.stockLevelRepository,
       companyRepository: diContainer.companyRepository,
+      inventorySettingsRepository: diContainer.inventorySettingsRepository,
       transactionManager: diContainer.transactionManager,
     });
   }
@@ -175,12 +178,32 @@ export class PurchaseController {
       const companyId = PurchaseController.getCompanyId(req);
       const userId = PurchaseController.getUserId(req);
 
+      const initializeAccountingUseCase = new InitializeAccountingUseCase(
+        diContainer.companyModuleRepository,
+        diContainer.accountRepository,
+        diContainer.systemMetadataRepository,
+        diContainer.companyModuleSettingsRepository,
+        diContainer.companySettingsRepository,
+        diContainer.currencyRepository,
+        diContainer.companyRepository,
+        diContainer.fiscalYearRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
+      );
+
+      const ensureAccountingEngine = new EnsureAccountingEngineInitialized(
+        diContainer.companyModuleRepository,
+        diContainer.companyRepository,
+        initializeAccountingUseCase
+      );
+
       const useCase = new InitializePurchasesUseCase(
         diContainer.purchaseSettingsRepository,
         diContainer.accountRepository,
         diContainer.companyModuleRepository,
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
+        ensureAccountingEngine,
         diContainer.inventorySettingsRepository
       );
 

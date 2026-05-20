@@ -13,6 +13,7 @@ import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchas
 import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchases/IGoodsReceiptRepository';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
+import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -215,10 +216,13 @@ export class InitializePurchasesUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
+    private readonly ensureAccountingEngine: EnsureAccountingEngineInitialized,
     private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
   async execute(input: InitializePurchasesInput): Promise<PurchaseSettings> {
+    await this.ensureAccountingEngine.execute(input.companyId);
+
     if (input.defaultAPAccountId) {
       const apAccount = await this.accountRepo.getById(input.companyId, input.defaultAPAccountId);
       if (!apAccount) {

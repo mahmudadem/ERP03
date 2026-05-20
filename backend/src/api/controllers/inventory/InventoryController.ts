@@ -117,6 +117,7 @@ export class InventoryController {
       stockMovementRepository: diContainer.stockMovementRepository,
       stockLevelRepository: diContainer.stockLevelRepository,
       companyRepository: diContainer.companyRepository,
+      inventorySettingsRepository: diContainer.inventorySettingsRepository,
       transactionManager: diContainer.transactionManager,
     });
   }

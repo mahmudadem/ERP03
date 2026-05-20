@@ -30,6 +30,7 @@ export interface SalesSettingsProps {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  exchangeGainLossAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -58,6 +59,7 @@ export class SalesSettings {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  exchangeGainLossAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -88,6 +90,7 @@ export class SalesSettings {
     this.defaultCOGSAccountId = props.defaultCOGSAccountId;
     this.defaultInventoryAccountId = props.defaultInventoryAccountId;
     this.defaultSalesExpenseAccountId = props.defaultSalesExpenseAccountId;
+    this.exchangeGainLossAccountId = props.exchangeGainLossAccountId?.trim() || undefined;
     this.allowOverDelivery = props.allowOverDelivery;
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
     this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
@@ -154,6 +157,7 @@ export class SalesSettings {
       defaultCOGSAccountId: this.defaultCOGSAccountId,
       defaultInventoryAccountId: this.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: this.defaultSalesExpenseAccountId,
+      exchangeGainLossAccountId: this.exchangeGainLossAccountId,
       allowOverDelivery: this.allowOverDelivery,
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
       overInvoiceTolerancePct: this.overInvoiceTolerancePct,
@@ -184,6 +188,7 @@ export class SalesSettings {
       defaultCOGSAccountId: data.defaultCOGSAccountId,
       defaultInventoryAccountId: data.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: data.defaultSalesExpenseAccountId,
+      exchangeGainLossAccountId: data.exchangeGainLossAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: data.overInvoiceTolerancePct ?? 0,

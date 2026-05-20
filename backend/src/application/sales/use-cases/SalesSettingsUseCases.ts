@@ -20,6 +20,7 @@ import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISal
 import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/IDeliveryNoteRepository';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
+import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -202,10 +203,13 @@ export class InitializeSalesUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
+    private readonly ensureAccountingEngine: EnsureAccountingEngineInitialized,
     private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
   async execute(input: InitializeSalesInput): Promise<SalesSettings> {
+    await this.ensureAccountingEngine.execute(input.companyId);
+
     const [revenueAccount, inventoryAccount, arAccount] = await Promise.all([
       this.accountRepo.getById(input.companyId, input.defaultRevenueAccountId),
       input.defaultInventoryAccountId

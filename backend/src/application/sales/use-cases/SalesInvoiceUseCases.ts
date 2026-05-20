@@ -40,6 +40,13 @@ import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILe
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import { PersonaNotAllowedError } from '../../../domain/accounting/errors/PersonaNotAllowedError';
+import { UnsettledCostError } from '../../../domain/inventory/errors/UnsettledCostError';
+import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
+import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
+import { randomUUID as nodeRandomUUID } from 'crypto';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import {
   ItemQtyToBaseUomResult,
@@ -316,7 +323,12 @@ export class CreateSalesInvoiceUseCase {
       { formType: input.formType }
     );
     if (!isPersonaAllowed) {
-      throw new Error(`Sales invoice persona '${input.persona}' is not allowed by company governance policy`);
+      throw new PersonaNotAllowedError({
+        companyId: input.companyId,
+        module: 'sales',
+        persona: input.persona as string,
+        formType: input.formType,
+      });
     }
 
     let so: SalesOrder | null = null;
@@ -649,7 +661,8 @@ export class PostSalesInvoiceUseCase {
     private readonly paymentHistoryRepo?: IPaymentHistoryRepository,
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
-    private readonly ledgerRepo?: ILedgerRepository
+    private readonly ledgerRepo?: ILedgerRepository,
+    private readonly postingLogRepo?: IPostingLogRepository
   ) {
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
@@ -672,7 +685,16 @@ export class PostSalesInvoiceUseCase {
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
 
-    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
+    const shouldPostAccounting = createAccountingEffect;
+    if (shouldPostAccounting && !(await this.isAccountingEngineReady(companyId))) {
+      throw new AccountingEngineUnavailableError({
+        companyId,
+        reason: 'NOT_INITIALIZED',
+        cause:
+          'Sales Invoice posting requires the Accounting Engine to be initialized. ' +
+          'Initialize Sales (which auto-initializes the Engine) or call InitializeAccountingUseCase first.',
+      });
+    }
 
     const si = typeof idOrSI === 'string' 
       ? await this.salesInvoiceRepo.getById(companyId, idOrSI)
@@ -923,19 +945,49 @@ export class PostSalesInvoiceUseCase {
       const item = itemsMap.get(line.itemId);
       if (!item) throw new Error(`Item not found: ${line.itemId}`);
 
-      const revenueId = await resolveAccountCached(
-        this.resolveRevenueAccountSync(companyId, item, categoriesMap, settings.defaultRevenueAccountId)
-      );
+      const resolvedRevenueId = this.resolveRevenueAccountSync(companyId, item, categoriesMap, settings.defaultRevenueAccountId);
+      if (shouldPostAccounting && line.lineTotalBase > 0 && (!resolvedRevenueId || !resolvedRevenueId.trim())) {
+        throw new AccountMappingError({
+          companyId,
+          itemId: item.id,
+          accountRole: 'revenue',
+          fallbackChain: ['item.revenueAccountId', 'category.defaultRevenueAccountId', 'salesSettings.defaultRevenueAccountId'],
+          lineNo: line.lineNo,
+        });
+      }
+      const revenueId = await resolveAccountCached(resolvedRevenueId);
       let taxId: string | undefined;
       if (line.taxAmountBase > 0 && line.taxCodeId) {
         const sTaxCode = taxCodesMap.get(line.taxCodeId);
         if (sTaxCode?.salesTaxAccountId) {
           taxId = await resolveAccountCached(sTaxCode.salesTaxAccountId);
+        } else if (shouldPostAccounting) {
+          throw new AccountMappingError({
+            companyId,
+            itemId: item.id,
+            accountRole: 'tax',
+            fallbackChain: ['taxCode.salesTaxAccountId'],
+            lineNo: line.lineNo,
+            hint: `Tax code ${line.taxCodeId} has no salesTaxAccountId configured.`,
+          });
         }
       }
       let cogsId: string | undefined;
       let inventoryId: string | undefined;
-      if (line.trackInventory && line.lineCostBase > 0) {
+      let cogsStatus: 'POSTED' | 'SKIPPED_POSTED_AT_DN' | 'SKIPPED_SERVICE_ITEM' | 'SKIPPED_DEFERRED_POLICY' | 'SKIPPED_UNSETTLED_COST' | null = null;
+
+      if (!line.trackInventory) {
+        cogsStatus = 'SKIPPED_SERVICE_ITEM';
+      } else if (line.lineCostBase === 0) {
+        if (shouldPostAccounting && invSettings?.allowDeferredCost !== true) {
+          throw new UnsettledCostError({
+            companyId,
+            itemId: item.id,
+            lineNo: line.lineNo,
+          });
+        }
+        cogsStatus = 'SKIPPED_UNSETTLED_COST';
+      } else {
         const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
         const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
         const hasOperationalDelivery = matchedDeliveryLines.length > 0;
@@ -944,9 +996,27 @@ export class PostSalesInvoiceUseCase {
           if (accounts) {
             cogsId = await resolveAccountCached(accounts.cogsAccountId);
             inventoryId = await resolveAccountCached(accounts.inventoryAccountId);
+            cogsStatus = 'POSTED';
+          } else if (shouldPostAccounting) {
+            // Missing account mapping is NEVER a valid deferred-cost reason.
+            throw new AccountMappingError({
+              companyId,
+              itemId: item.id,
+              accountRole: 'cogs',
+              fallbackChain: [
+                'item.cogsAccountId',
+                'category.defaultCogsAccountId',
+                'inventorySettings.defaultCOGSAccountId',
+              ],
+              lineNo: line.lineNo,
+              hint: 'Also requires an inventory asset account at one of the same levels.',
+            });
           }
+        } else {
+          cogsStatus = 'SKIPPED_POSTED_AT_DN';
         }
       }
+      line.cogsPostingStatus = cogsStatus;
       lineResolvedAccounts.set(line.lineId, { revenueId, taxId, cogsId, inventoryId });
     }
     const chargeResolvedAccounts = new Map<string, ResolvedChargeAccount>();
@@ -1140,6 +1210,50 @@ export class PostSalesInvoiceUseCase {
       si.postedAt = new Date();
       si.updatedAt = new Date();
       await this.salesInvoiceRepo.update(si, transaction);
+
+      if (this.postingLogRepo && shouldPostAccounting) {
+        try {
+          const voucherIds = [si.voucherId, si.cogsVoucherId].filter((v): v is string => !!v);
+          const decisions: LineDecision[] = si.lines.map((ln) => {
+            const resolved = lineResolvedAccounts.get(ln.lineId);
+            const accounts: LineDecision['accounts'] = {};
+            if (resolved?.revenueId) accounts.revenue = { resolvedId: resolved.revenueId, fallbackLevel: 'item' };
+            if (resolved?.taxId) accounts.tax = { resolvedId: resolved.taxId, fallbackLevel: 'taxCode' };
+            if (resolved?.cogsId) accounts.cogs = { resolvedId: resolved.cogsId, fallbackLevel: 'item' };
+            if (resolved?.inventoryId) accounts.inventory = { resolvedId: resolved.inventoryId, fallbackLevel: 'item' };
+            return {
+              lineNo: ln.lineNo,
+              itemId: ln.itemId,
+              accounts,
+              cogsPostingStatus: ln.cogsPostingStatus ?? null,
+            };
+          });
+          const warnings: string[] = [];
+          for (const ln of si.lines) {
+            if (ln.cogsPostingStatus === 'SKIPPED_UNSETTLED_COST') {
+              warnings.push(`Line ${ln.lineNo} (${ln.itemCode}): cost basis unsettled — COGS not posted at invoice time.`);
+            }
+          }
+          const log = new PostingLog({
+            id: nodeRandomUUID(),
+            companyId,
+            sourceModule: 'sales',
+            sourceType: 'SALES_INVOICE',
+            sourceId: si.id,
+            sourceDocNumber: si.invoiceNumber,
+            strategy: 'SalesInvoiceStrategy',
+            voucherIds,
+            decisions,
+            warnings,
+            postedAt: new Date(),
+            postedBy: si.createdBy || 'SYSTEM',
+          });
+          await this.postingLogRepo.create(log);
+        } catch (err) {
+          // PostingLog persistence is best-effort: it must not roll back the posting.
+          console.warn('[PostingLog] write failed for SalesInvoice', si.id, err);
+        }
+      }
     };
 
     if (externalTransaction) {
@@ -1422,7 +1536,7 @@ export class PostSalesInvoiceUseCase {
     }
   }
 
-  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+  private async isAccountingEngineReady(companyId: string): Promise<boolean> {
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
   }

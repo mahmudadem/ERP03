@@ -515,7 +515,6 @@ export class PostDeliveryNoteUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: dn.dnNumber,
             baseCurrencyOverride: resolvedBaseCurrency,
-            skipAccountValidation: true,
           },
           transaction
         );

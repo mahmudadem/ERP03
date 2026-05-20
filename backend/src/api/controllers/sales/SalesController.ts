@@ -51,6 +51,8 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { SalesDTOMapper } from '../../dtos/SalesDTOs';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
+import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import {
   validateCreateDeliveryNoteInput,
   validateCreateSalesReturnInput,
@@ -140,6 +142,7 @@ export class SalesController {
       stockMovementRepository: diContainer.stockMovementRepository,
       stockLevelRepository: diContainer.stockLevelRepository,
       companyRepository: diContainer.companyRepository,
+      inventorySettingsRepository: diContainer.inventorySettingsRepository,
       transactionManager: diContainer.transactionManager,
     });
   }
@@ -191,7 +194,8 @@ export class SalesController {
       diContainer.paymentHistoryRepository,
       diContainer.voucherRepository,
       diContainer.voucherSequenceRepository,
-      diContainer.ledgerRepository
+      diContainer.ledgerRepository,
+      diContainer.postingLogRepository
     );
   }
 
@@ -201,12 +205,32 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const userId = SalesController.getUserId(req);
 
+      const initializeAccountingUseCase = new InitializeAccountingUseCase(
+        diContainer.companyModuleRepository,
+        diContainer.accountRepository,
+        diContainer.systemMetadataRepository,
+        diContainer.companyModuleSettingsRepository,
+        diContainer.companySettingsRepository,
+        diContainer.currencyRepository,
+        diContainer.companyRepository,
+        diContainer.fiscalYearRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
+      );
+
+      const ensureAccountingEngine = new EnsureAccountingEngineInitialized(
+        diContainer.companyModuleRepository,
+        diContainer.companyRepository,
+        initializeAccountingUseCase
+      );
+
       const useCase = new InitializeSalesUseCase(
         diContainer.salesSettingsRepository,
         diContainer.accountRepository,
         diContainer.companyModuleRepository,
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
+        ensureAccountingEngine,
         diContainer.inventorySettingsRepository
       );
 
@@ -765,7 +789,8 @@ export class SalesController {
         diContainer.paymentHistoryRepository,
         diContainer.voucherRepository,
         diContainer.voucherSequenceRepository,
-        diContainer.ledgerRepository
+        diContainer.ledgerRepository,
+        diContainer.postingLogRepository
       );
 
       const settlementInput = (req as any).body?.settlementInput;

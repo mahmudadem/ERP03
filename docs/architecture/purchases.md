@@ -6,6 +6,12 @@
 
 ---
 
+## Prerequisites
+
+The Accounting **Engine** must be initialized before Purchases is usable. `InitializePurchasesUseCase` calls `EnsureAccountingEngineInitialized` as its first step, which auto-bootstraps the Engine (`standard` COA template, calendar fiscal year, company base currency) if it is not yet initialized. If the Engine cannot be bootstrapped (e.g., the company has no base currency), Purchases initialization throws `AccountingEngineUnavailableError`. The Accounting **UI** does not need to be visible — see [accounting.md](./accounting.md#accounting-engine-vs-accounting-appui).
+
+`PostPurchaseInvoiceUseCase` enforces the same guard at post time: if the Engine is not ready and `createAccountingEffect=true`, it throws rather than marking the invoice POSTED without a voucher.
+
 ## Purpose
 
 The Purchases module covers the procure-to-pay cycle: place an order with a supplier, receive the goods, record the bill, pay it, handle returns. It is a mirror image of Sales:

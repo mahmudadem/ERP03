@@ -24,7 +24,6 @@ export interface PostSubledgerVoucherInput {
   postingLockPolicy?: PostingLockPolicy;
   strategyPayload?: Record<string, any>;
   baseCurrencyOverride?: string;
-  skipAccountValidation?: boolean;
 }
 
 export class SubledgerVoucherPostingService {
@@ -114,7 +113,7 @@ export class SubledgerVoucherPostingService {
     );
 
     this.validationService.validateCore(postedVoucher);
-    if (!input.skipAccountValidation && this.accountRepo) {
+    if (this.accountRepo) {
       await this.validationService.validateAccounts(postedVoucher, this.accountRepo);
     }
 

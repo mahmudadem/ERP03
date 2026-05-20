@@ -191,7 +191,8 @@ describe('Sales settings use-cases', () => {
         }),
       } as any,
       typeRepo.repo as any,
-      formRepo.repo as any
+      formRepo.repo as any,
+      { execute: jest.fn(async () => undefined) } as any
     );
 
     await useCase.execute({

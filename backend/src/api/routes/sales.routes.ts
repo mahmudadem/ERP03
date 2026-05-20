@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { SalesController } from '../controllers/sales/SalesController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
+import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
 
 const router = Router();
 router.use(authMiddleware);
@@ -26,23 +27,23 @@ router.post('/delivery-notes', SalesController.createDN);
 router.get('/delivery-notes', SalesController.listDNs);
 router.get('/delivery-notes/:id', SalesController.getDN);
 router.put('/delivery-notes/:id', SalesController.updateDN);
-router.post('/delivery-notes/:id/post', SalesController.postDN);
+router.post('/delivery-notes/:id/post', idempotencyMiddleware, SalesController.postDN);
 
 router.post('/invoices', SalesController.createSI);
-router.post('/invoices/create-and-post', SalesController.createAndPostSI);
+router.post('/invoices/create-and-post', idempotencyMiddleware, SalesController.createAndPostSI);
 router.get('/invoices', SalesController.listSIs);
 router.get('/invoices/:id', SalesController.getSI);
 router.put('/invoices/:id', SalesController.updateSI);
-router.put('/invoices/:id/update-and-post', SalesController.updateAndPostSI);
-router.post('/invoices/:id/post', SalesController.postSI);
+router.put('/invoices/:id/update-and-post', idempotencyMiddleware, SalesController.updateAndPostSI);
+router.post('/invoices/:id/post', idempotencyMiddleware, SalesController.postSI);
 router.post('/invoices/:id/payment-status', SalesController.updatePaymentStatus);
-router.post('/invoices/:id/record-payment', SalesController.recordPayment);
+router.post('/invoices/:id/record-payment', idempotencyMiddleware, SalesController.recordPayment);
 router.get('/invoices/:id/payments', SalesController.getPaymentHistory);
 
 router.post('/returns', SalesController.createReturn);
 router.get('/returns', SalesController.listReturns);
 router.get('/returns/:id', SalesController.getReturn);
 router.put('/returns/:id', SalesController.updateReturn);
-router.post('/returns/:id/post', SalesController.postReturn);
+router.post('/returns/:id/post', idempotencyMiddleware, SalesController.postReturn);
 
 export default router;

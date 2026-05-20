@@ -37,6 +37,18 @@ export interface SalesInvoiceLine {
   unitCostBase?: number;
   lineCostBase?: number;
   stockMovementId?: string | null;
+  /**
+   * Outcome of the COGS recognition decision for this line. Set during posting.
+   * null/undefined means "not yet posted" or "N/A" (e.g. line was rejected before posting).
+   * See PostingLog and docs/architecture/posting-log.md for the taxonomy.
+   */
+  cogsPostingStatus?:
+    | 'POSTED'
+    | 'SKIPPED_POSTED_AT_DN'
+    | 'SKIPPED_SERVICE_ITEM'
+    | 'SKIPPED_DEFERRED_POLICY'
+    | 'SKIPPED_UNSETTLED_COST'
+    | null;
   description?: string;
 }
 

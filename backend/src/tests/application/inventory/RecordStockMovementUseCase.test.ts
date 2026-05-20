@@ -337,6 +337,7 @@ describe('RecordStockMovementUseCase', () => {
       warehouseRepository: warehouseRepo,
       stockMovementRepository: movementRepo,
       stockLevelRepository: levelRepo,
+      inventorySettingsRepository: { getSettings: async () => null, saveSettings: async () => {} } as any,
       transactionManager: new InMemoryTransactionManager(),
     });
   });

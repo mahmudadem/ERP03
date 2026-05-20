@@ -104,10 +104,17 @@ export class VoucherValidationService {
    * Currency consistency check
    */
   private validateCurrencies(voucher: VoucherEntity, correlationId?: string): void {
-    const isMultiCurrencySupported = 
-      voucher.type.toLowerCase() === 'journal_entry' || 
+    const isMultiCurrencySupported =
+      voucher.type.toLowerCase() === 'journal_entry' ||
       voucher.type.toLowerCase() === 'journalentry' ||
-      voucher.type.toLowerCase() === 'reversal';
+      voucher.type.toLowerCase() === 'reversal' ||
+      // Receipt/Payment vouchers may include an FX-adjustment line in base currency
+      // alongside lines in the invoice's foreign currency. The base-currency
+      // consistency check below is still enforced.
+      voucher.type.toLowerCase() === 'receipt' ||
+      voucher.type.toLowerCase() === 'payment' ||
+      voucher.type.toLowerCase() === 'payment_voucher' ||
+      voucher.type.toLowerCase() === 'receipt_voucher';
     
     if (!isMultiCurrencySupported) {
       const invalidLines = voucher.lines.filter(
