@@ -318,6 +318,25 @@ Phase B added pre-sale quoting, credit-limit enforcement at order confirm, a pro
 
 ---
 
+## Sales finance & reporting (Phase C)
+
+Phase C added a suite of read-only finance and analytics reports served from posted Sales Invoice and PaymentHistory data. No new transactional workflows were added — only reporting use cases and API endpoints.
+
+| Report | Route | Purpose |
+|---|---|---|
+| AR Aging | `GET /tenant/sales/reports/ar-aging` | Outstanding balances bucketed by age (Current / 1–30 / 31–60 / 61–90 / 90+) |
+| Customer Ledger | `GET /tenant/sales/reports/customer-ledger` | Chronological invoice + payment events with running balance |
+| Customer Statement | `GET /tenant/sales/reports/customer-statement` | Period statement: opening balance, transactions, closing balance, open invoices |
+| Sales by Customer | `GET /tenant/sales/reports/sales-by-customer` | Revenue, tax, and invoice count aggregated per customer |
+| Sales by Item | `GET /tenant/sales/reports/sales-by-item` | Quantity and revenue aggregated per inventory item |
+| Sales by Salesperson | `GET /tenant/sales/reports/sales-by-salesperson` | Revenue per salesperson (invoices with no salesperson assigned appear under "Unassigned") |
+
+Frontend pages: `ArAgingReportPage`, `CustomerStatementPage` (Statement + Ledger tab toggle), `SalesAnalyticsPage` (three tabs).
+
+For the full technical specification — bucket algorithm, event model, opening/closing balance derivation, N+1 note, and related P&L and Inventory Valuation reports — see [`docs/architecture/sales-reporting.md`](./sales-reporting.md).
+
+---
+
 ## What Is NOT Implemented
 
 | Feature | Status |
@@ -326,5 +345,5 @@ Phase B added pre-sale quoting, credit-limit enforcement at order confirm, a pro
 | **Promotions auto-apply** | Evaluator endpoint exists; it is not yet called automatically inside SO/SI creation. |
 | **Quote number sequencing** | Quote numbers use a timestamp-random fallback; SalesSettings has no sequence field yet. |
 | **Customer Master (dedicated)** | Currently uses Party. A dedicated customer entity is planned but the Party-based flow is sufficient for V1. |
-| **Sales Reports (detailed)** | Dashboard exists. Detailed reports (AR Aging, Sales Register, Customer Statement, by-item/by-customer breakdowns) are deferred. |
+| **Sales Reports (detailed)** | Implemented in Phase C — see the Sales finance & reporting section above and [`docs/architecture/sales-reporting.md`](./sales-reporting.md). |
 | **Commission GL posting** | Marking commission paid is a status change only — no Dr/Cr voucher posted yet. |

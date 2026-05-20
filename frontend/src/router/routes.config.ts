@@ -147,6 +147,9 @@ const QuotationsPage = lazy(() => import('../modules/sales/pages/QuotationsPage'
 const QuotationDetailPage = lazy(() => import('../modules/sales/pages/QuotationDetailPage'));
 const PromotionsPage = lazy(() => import('../modules/sales/pages/PromotionsPage'));
 const AgedBacklogPage = lazy(() => import('../modules/sales/pages/AgedBacklogPage'));
+const ArAgingReportPage = lazy(() => import('../modules/sales/pages/ArAgingReportPage'));
+const CustomerStatementPage = lazy(() => import('../modules/sales/pages/CustomerStatementPage'));
+const SalesAnalyticsPage = lazy(() => import('../modules/sales/pages/SalesAnalyticsPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
 
@@ -329,6 +332,9 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/quotes/:id', label: 'Quotation Detail', component: QuotationDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/promotions', label: 'Promotions', component: PromotionsPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/aged-backlog', label: 'Aged Backlog', component: AgedBacklogPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/ar-aging', label: 'AR Aging', component: ArAgingReportPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/customer-statement', label: 'Customer Statement', component: CustomerStatementPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/sales-analytics', label: 'Sales Analytics', component: SalesAnalyticsPage, section: 'INVENTORY', requiredModule: 'sales' },
 
   // Dynamic Sales Documents (designed in Forms Designer)
   { path: '/sales/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },

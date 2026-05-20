@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { SalesController } from '../controllers/sales/SalesController';
 import { SalesMasterDataController } from '../controllers/sales/SalesMasterDataController';
 import { SalesOperationalController } from '../controllers/sales/SalesOperationalController';
+import { SalesReportingController } from '../controllers/sales/SalesReportingController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -103,5 +104,13 @@ router.delete('/promotions/:id', SalesOperationalController.deletePromotionRule)
 // Credit overrides + delivery scheduling
 router.get('/credit-overrides', SalesOperationalController.listCreditOverrides);
 router.get('/aged-backlog', SalesOperationalController.getAgedBacklog);
+
+// Sales reports
+router.get('/reports/ar-aging', SalesReportingController.getArAgingReport);
+router.get('/reports/customer-ledger', SalesReportingController.getCustomerLedger);
+router.get('/reports/customer-statement', SalesReportingController.getCustomerStatement);
+router.get('/reports/sales-by-customer', SalesReportingController.getSalesByCustomer);
+router.get('/reports/sales-by-item', SalesReportingController.getSalesByItem);
+router.get('/reports/sales-by-salesperson', SalesReportingController.getSalesBySalesperson);
 
 export default router;

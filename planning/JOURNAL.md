@@ -2,6 +2,29 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-20 (Wed) — Phase C (sales finance & reporting)
+**Task:** Task 110 — Phase C of the sales completion roadmap
+**Agent:** Claude Opus 4.7 (CTO Mode) orchestrating; sub-tasks delegated to Sonnet
+**Branch:** `feat/phase-a-sales-master-data`
+
+**What I did:**
+- **C.1** Receivables reporting — `GetArAgingReportUseCase` (5 age buckets), `GetCustomerLedgerUseCase`, `GetCustomerStatementUseCase`. 10 tests.
+- **C.2** Sales analytics — `GetSalesByCustomerUseCase`, `GetSalesByItemUseCase`, `GetSalesBySalespersonUseCase`. 6 tests.
+- **C.3 / C.4 — discovered already built.** The Phase A audit's "P&L is on the frontend" claim was stale: `reporting/GetProfitAndLossUseCase.ts` (period P&L via trial-balance diff, plSubgroup classification) and the inventory valuation use cases (`GetAsOfValuationUseCase` etc.) already exist, fully wired. A delegated agent briefly created a duplicate P&L use case — deleted it. No new code needed for C.3/C.4.
+- **C.5** `SalesReportingController` (6 handlers) + routes; `salesReportingApi` client; pages ArAgingReportPage, CustomerStatementPage (Statement+Ledger tabs), SalesAnalyticsPage (3 tabs).
+- **C.6** Docs — `sales-reporting.md` + three user guides; `sales.md` updated.
+
+**Audit catch:** caught and removed the duplicate `GetProfitAndLossUseCase` before it could cause confusion — verified the pre-existing one is correct (period-bounded, properly classified).
+
+**Verification:**
+- `backend` + `frontend`: `npx tsc --noEmit` → exit 0
+- 16 new backend tests, all green
+- Full backend suite: 1169 pass / 18 skip / 3 fail (the 3 pre-existing `SendChatMessageUseCase` AI-credit failures). Zero Phase C regressions.
+
+**Result:** ✅ Phase C complete. Reporting surface: AR aging, customer statement/ledger, sales analytics (new) + P&L and inventory valuation (pre-existing).
+
+**Next:** Phase D — Sales auditability & control (GL Impact UI, period lock, audit log, recurring invoices, return enhancements, attachments, email).
+
 ## 2026-05-20 (Wed) — Phase B (sales operational features)
 **Task:** Task 109 — Phase B of the sales completion roadmap: quotations, credit control, promotions, delivery scheduling
 **Agent:** Claude Opus 4.7 (CTO Mode) orchestrating; sub-tasks delegated to Sonnet/Haiku
