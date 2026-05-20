@@ -20,6 +20,11 @@ export interface PartyDTO {
   defaultCurrency?: string;
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
+  customerGroupId?: string;
+  creditLimit?: number;
+  creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
+  defaultPriceListId?: string;
+  taxExempt?: boolean;
   active: boolean;
   createdBy: string;
   createdAt: string;

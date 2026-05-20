@@ -12,6 +12,7 @@ import {
   SalesSettingsDTO,
 } from '../../../api/salesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
+import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
@@ -58,6 +59,7 @@ interface EditableForm {
   salesOrderId: string;
   customerId: string;
   customerName?: string;
+  salespersonId?: string;
   customerInvoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
@@ -101,6 +103,7 @@ const createEmptyCharge = (): EditableCharge => ({
 const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
   salesOrderId,
   customerId,
+  salespersonId: undefined,
   customerInvoiceNumber: '',
   invoiceDate: todayIso(),
   dueDate: '',
@@ -125,6 +128,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [invoice, setInvoice] = useState<SalesInvoiceDTO | null>(null);
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
+  const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrderDTO[]>([]);
@@ -289,13 +293,14 @@ const SalesInvoiceDetailPage: React.FC = () => {
   };
 
   const loadReferenceData = async () => {
-    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult] = await Promise.all([
+    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult, salespersonResult] = await Promise.all([
       salesApi.getSettings(),
       sharedApi.listParties({ role: 'CUSTOMER', active: true }),
       inventoryApi.listItems({ active: true, limit: 500 }),
       sharedApi.listTaxCodes({ active: true }),
       inventoryApi.listWarehouses({ active: true }),
       salesApi.listSOs({ limit: 500 }),
+      salesMasterDataApi.listSalespersons({ status: 'ACTIVE' }),
     ]);
 
     const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
@@ -311,6 +316,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
     setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
     setSalesOrders(Array.isArray(salesOrderList) ? salesOrderList : []);
+    setSalespersons(Array.isArray(salespersonResult) ? salespersonResult : []);
   };
 
   const ensureItemUomOptions = async (itemId: string) => {
@@ -437,6 +443,34 @@ const SalesInvoiceDetailPage: React.FC = () => {
       lines[index] = next;
       return { ...prev, lines };
     });
+
+    // Auto-pricing: after item or qty change, look up effective price.
+    // The changed field comes from `patch`; the unchanged one is read from the
+    // pre-patch closure (its value is identical before and after the patch).
+    const shouldFetchPrice = patch.itemId !== undefined || patch.invoicedQty !== undefined;
+    if (shouldFetchPrice) {
+      const closureLine = form.lines[index];
+      const resolvedItemId = patch.itemId !== undefined ? patch.itemId : closureLine?.itemId;
+      const resolvedQty = patch.invoicedQty !== undefined ? patch.invoicedQty : closureLine?.invoicedQty ?? 1;
+      if (form.customerId && resolvedItemId) {
+        salesMasterDataApi
+          .getEffectivePrice({ customerId: form.customerId, itemId: resolvedItemId, qty: resolvedQty })
+          .then((result) => {
+            if (result?.unitPrice != null) {
+              setForm((latest) => {
+                const updatedLines = [...latest.lines];
+                if (updatedLines[index]) {
+                  updatedLines[index] = { ...updatedLines[index], unitPriceDoc: result.unitPrice };
+                }
+                return { ...latest, lines: updatedLines };
+              });
+            }
+          })
+          .catch(() => {
+            // Pricing lookup failure is non-fatal — leave price as-is
+          });
+      }
+    }
   };
 
   const addLine = () => {
@@ -541,6 +575,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
         source: 'native',
         salesOrderId: form.salesOrderId || undefined,
         customerId: form.customerId,
+        salespersonId: form.salespersonId || undefined,
         customerInvoiceNumber: form.customerInvoiceNumber || undefined,
         invoiceDate: form.invoiceDate,
         dueDate: form.dueDate || undefined,
@@ -606,6 +641,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
         source: 'native',
         salesOrderId: form.salesOrderId || undefined,
         customerId: form.customerId,
+        salespersonId: form.salespersonId || undefined,
         customerInvoiceNumber: form.customerInvoiceNumber || undefined,
         invoiceDate: form.invoiceDate,
         dueDate: form.dueDate || undefined,
@@ -747,7 +783,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-              <PartySelector 
+              <PartySelector
                 value={form.customerId}
                 onChange={(party) => {
                   setForm((prev) => ({
@@ -758,6 +794,19 @@ const SalesInvoiceDetailPage: React.FC = () => {
                   }));
                 }}
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Salesperson</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.salespersonId || ''}
+                onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
+              >
+                <option value="">— None —</option>
+                {salespersons.map((sp) => (
+                  <option key={sp.id} value={sp.id}>{sp.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer Invoice #</label>

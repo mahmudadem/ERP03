@@ -92,6 +92,7 @@ export interface SalesOrderDTO {
   orderNumber: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   currency: string;
@@ -220,6 +221,7 @@ export interface SalesInvoiceDTO {
   salesOrderId?: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   invoiceDate: string;
   dueDate?: string;
   currency: string;
@@ -349,6 +351,7 @@ export interface SalesOrderLineInputDTO {
 
 export interface CreateSalesOrderPayload {
   customerId: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   currency: string;
@@ -360,6 +363,7 @@ export interface CreateSalesOrderPayload {
 
 export interface UpdateSalesOrderPayload {
   customerId?: string;
+  salespersonId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
   currency?: string;
@@ -447,6 +451,7 @@ export interface CreateSalesInvoicePayload {
   source?: DocumentSource;
   salesOrderId?: string;
   customerId: string;
+  salespersonId?: string;
   customerAccountId?: string;
   receivablePayableAccountId?: string;
   customerInvoiceNumber?: string;
@@ -466,6 +471,7 @@ export interface UpdateSalesInvoicePayload {
   persona?: 'direct' | 'linked' | 'service';
   source?: DocumentSource;
   customerId?: string;
+  salespersonId?: string;
   customerAccountId?: string;
   receivablePayableAccountId?: string;
   customerInvoiceNumber?: string;

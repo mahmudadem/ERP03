@@ -40,6 +40,7 @@ export interface SalesOrderProps {
   orderNumber: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   currency: string;
@@ -85,6 +86,7 @@ export class SalesOrder {
   orderNumber: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   currency: string;
@@ -127,6 +129,7 @@ export class SalesOrder {
     this.orderNumber = props.orderNumber.trim();
     this.customerId = props.customerId.trim();
     this.customerName = props.customerName || '';
+    this.salespersonId = props.salespersonId;
     this.orderDate = props.orderDate;
     this.expectedDeliveryDate = props.expectedDeliveryDate;
     this.currency = props.currency.toUpperCase().trim();
@@ -203,6 +206,7 @@ export class SalesOrder {
       orderNumber: this.orderNumber,
       customerId: this.customerId,
       customerName: this.customerName,
+      salespersonId: this.salespersonId,
       orderDate: this.orderDate,
       expectedDeliveryDate: this.expectedDeliveryDate,
       currency: this.currency,
@@ -232,6 +236,7 @@ export class SalesOrder {
       orderNumber: data.orderNumber,
       customerId: data.customerId,
       customerName: data.customerName,
+      salespersonId: data.salespersonId,
       orderDate: data.orderDate,
       expectedDeliveryDate: data.expectedDeliveryDate,
       currency: data.currency,

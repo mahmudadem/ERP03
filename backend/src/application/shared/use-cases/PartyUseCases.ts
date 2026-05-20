@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
+import { IPriceListRepository } from '../../../repository/interfaces/sales/IPriceListRepository';
 import { Party, PartyRole } from '../../../domain/shared/entities/Party';
 
 export interface CreatePartyInput {
@@ -18,6 +19,10 @@ export interface CreatePartyInput {
   defaultCurrency?: string;
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
+  creditLimit?: number;
+  creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
+  defaultPriceListId?: string;
+  taxExempt?: boolean;
   createdBy: string;
 }
 
@@ -37,6 +42,10 @@ export interface UpdatePartyInput {
   defaultCurrency?: string;
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
+  creditLimit?: number;
+  creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
+  defaultPriceListId?: string;
+  taxExempt?: boolean;
   active?: boolean;
 }
 
@@ -88,6 +97,10 @@ export class CreatePartyUseCase {
       defaultCurrency: input.defaultCurrency,
       defaultAPAccountId: input.defaultAPAccountId,
       defaultARAccountId: input.defaultARAccountId,
+      creditLimit: input.creditLimit,
+      creditHoldPolicy: input.creditHoldPolicy,
+      defaultPriceListId: input.defaultPriceListId,
+      taxExempt: input.taxExempt,
       active: true,
       createdBy: input.createdBy,
       createdAt: now,
@@ -102,7 +115,8 @@ export class CreatePartyUseCase {
 export class UpdatePartyUseCase {
   constructor(
     private readonly partyRepo: IPartyRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly priceListRepo?: IPriceListRepository
   ) {}
 
   async execute(input: UpdatePartyInput): Promise<Party> {
@@ -130,6 +144,13 @@ export class UpdatePartyUseCase {
       }
     }
 
+    if (input.defaultPriceListId && this.priceListRepo) {
+      const priceList = await this.priceListRepo.getById(input.companyId, input.defaultPriceListId);
+      if (!priceList) {
+        throw new Error(`Price list not found: ${input.defaultPriceListId}`);
+      }
+    }
+
     const updated = new Party({
       id: existing.id,
       companyId: existing.companyId,
@@ -146,6 +167,10 @@ export class UpdatePartyUseCase {
       defaultCurrency: input.defaultCurrency ?? existing.defaultCurrency,
       defaultAPAccountId: input.defaultAPAccountId ?? existing.defaultAPAccountId,
       defaultARAccountId: input.defaultARAccountId ?? existing.defaultARAccountId,
+      creditLimit: input.creditLimit ?? existing.creditLimit,
+      creditHoldPolicy: input.creditHoldPolicy ?? existing.creditHoldPolicy,
+      defaultPriceListId: input.defaultPriceListId ?? existing.defaultPriceListId,
+      taxExempt: input.taxExempt ?? existing.taxExempt,
       active: input.active ?? existing.active,
       createdBy: existing.createdBy,
       createdAt: existing.createdAt,

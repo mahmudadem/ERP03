@@ -64,6 +64,10 @@ import { FirestoreSalesOrderRepository } from '../firestore/repositories/sales/F
 import { FirestoreDeliveryNoteRepository } from '../firestore/repositories/sales/FirestoreDeliveryNoteRepository';
 import { FirestoreSalesInvoiceRepository } from '../firestore/repositories/sales/FirestoreSalesInvoiceRepository';
 import { FirestoreSalesReturnRepository } from '../firestore/repositories/sales/FirestoreSalesReturnRepository';
+import { FirestorePriceListRepository } from '../firestore/repositories/sales/FirestorePriceListRepository';
+import { FirestoreCustomerGroupRepository } from '../firestore/repositories/sales/FirestoreCustomerGroupRepository';
+import { FirestoreSalespersonRepository } from '../firestore/repositories/sales/FirestoreSalespersonRepository';
+import { FirestoreCommissionEntryRepository } from '../firestore/repositories/sales/FirestoreCommissionEntryRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
@@ -604,6 +608,34 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaSalesReturnRepository(getPrismaClient())
       : new FirestoreSalesReturnRepository(getDb());
+  },
+  get priceListRepository(): SalRepo.IPriceListRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.1): Add PrismaPriceListRepository when SQL support is needed
+      throw new Error('PriceListRepository: SQL implementation not yet available');
+    }
+    return new FirestorePriceListRepository(getDb());
+  },
+  get customerGroupRepository(): SalRepo.ICustomerGroupRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.2): Add PrismaCustomerGroupRepository when SQL support is needed
+      throw new Error('CustomerGroupRepository: SQL implementation not yet available');
+    }
+    return new FirestoreCustomerGroupRepository(getDb());
+  },
+  get salespersonRepository(): SalRepo.ISalespersonRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.4): Add PrismaSalespersonRepository when SQL support is needed
+      throw new Error('SalespersonRepository: SQL implementation not yet available');
+    }
+    return new FirestoreSalespersonRepository(getDb());
+  },
+  get commissionEntryRepository(): SalRepo.ICommissionEntryRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.4): Add PrismaCommissionEntryRepository when SQL support is needed
+      throw new Error('CommissionEntryRepository: SQL implementation not yet available');
+    }
+    return new FirestoreCommissionEntryRepository(getDb());
   },
 
   // HR

@@ -1,43 +1,43 @@
 # 🎯 Current Focus
 
-**Task:** Sales & Purchases completion roadmap — **decisions locked, awaiting "go" signal for Phase A**
-**Status:** 📋 PLAN READY
-**Branch:** `fix/project-responsiveness`
+**Task:** Phase A (sales master data & pricing) — **CODE + DOCS COMPLETE; awaiting Phase A manual QA**
+**Status:** ✅ COMPLETE (pending live browser QA)
+**Branch:** `feat/phase-a-sales-master-data`
 **Plan:** [planning/tasks/sales-and-purchases-completion-roadmap.md](./tasks/sales-and-purchases-completion-roadmap.md)
+**Done report:** [planning/done/108-phase-a-master-data-pricing.md](./done/108-phase-a-master-data-pricing.md)
 
 ## Where we are
 
-All six P0 architectural gaps from the alpha-readiness plan are closed (tasks 102-107). The next task is **feature-completing Sales first, then Purchases parity, then ship alpha** — no fixed deadline, manual QA gate after every phase.
+Phase A of the sales completion roadmap is built, type-clean, and unit-tested (94 new tests). Delivered: price lists with tiered pricing, customer groups, customer credit settings, salespersons + commission ledger, tax-inclusive pricing fix, full backend API, and the frontend pages + customer-card extension.
 
-## Decisions locked (2026-05-20)
+Two commits so far on the path:
+- `8012c41a` on `fix/project-responsiveness` — the 6 alpha-readiness P0 PRs + roadmap
+- Phase A work is currently **uncommitted** on `feat/phase-a-sales-master-data` (47 files)
 
-| # | Question | Answer |
-|---|---|---|
-| 1 | Launch market for Purchases | **Defer** — no region-specific features in alpha |
-| 2 | Salesperson + commissions | **In scope** — Phase A |
-| 3 | Recurring invoices | **Both** — templated + scheduled, Phase D |
-| 4 | Customer portal | **Defer to V2** |
-| 5 | E-invoice clearance (Fatoora/IRN/SDI) | **Defer** — re-add per launch market |
+## Before Phase B — manual QA gate
 
-## Sequence
+Run the live browser checks in the done report (§ "Manual QA gate"): price-list auto-pricing, volume tiers, tax-inclusive math, commission accrual, customer-card fields. The roadmap makes this the accountant's acceptance gate for Phase A.
 
-1. **Phase A** — Sales master data + pricing (price lists, customer groups, credit settings, salesperson+commissions, tax refinement) — 4-5 days
-2. **Phase B** — Sales operational (quotations, credit enforcement, promotions, backorder, scheduling) — 5-6 days
-3. **Phase C** — Sales finance & reporting (AR aging, customer statements, ledger, sales reports, backend P&L, inventory valuation) — 7-9 days
-4. **Phase D** — Sales auditability (GL Impact UI, period lock, audit log, recurring invoices, return enhancements, attachments, email) — 8-10 days
-5. **Phase E** — Sales cross-cutting cleanup (closes PR2/PR5/PR6 follow-ups + round-trip tests + reconciliation) — 6-8 days
+## Known follow-ups carried into Phase B
+
+- Wire `AccrueCommissionForInvoiceUseCase` to be called automatically after `postSI` (endpoint exists; controller call missing).
+- Credit-hold enforcement at SO confirm (Phase B proper).
+- `GetEffectivePrice` does not walk customer-group price-list inheritance yet.
+- 3 pre-existing `SendChatMessageUseCase` test failures (AI-assistant credits) — unrelated, flagged for separate fix.
+
+## Sequence (remaining)
+
+1. ✅ **Phase A** — Sales master data + pricing — DONE (this report)
+2. **Phase B** — Sales operational (quotations, credit-limit enforcement, promotions, backorder UX, delivery scheduling) — 5-6 days
+3. **Phase C** — Sales finance & reporting — 7-9 days
+4. **Phase D** — Sales auditability (GL Impact UI, period lock, recurring invoices, etc.) — 8-10 days
+5. **Phase E** — Sales cross-cutting cleanup — 6-8 days
 6. **⏸ Sales QA cycle** — 1-2 weeks
-7. **Phase F** — Purchases parity (mirror Sales work onto PI/GRN/PR) — 4-5 days
-8. **Phase G** — Purchases-specific (three-way match + vendor master polish only; landed cost/WHT deferred) — 3-4 days
+7. **Phase F** — Purchases parity — 4-5 days
+8. **Phase G** — Purchases-specific (three-way match + vendor master) — 3-4 days
 9. **⏸ Purchases QA cycle** — 1 week
-10. **Phase H** — Final hardening (perf, security deploy, reconciliation, backup, docs) — 1 week
-
-**Total: ~2.5 months** (was 3 months — Phase G pruning saved ~2 weeks)
+10. **Phase H** — Final hardening — 1 week
 
 ## Next action
 
-User signals **"start Phase A"** → I begin with price lists + customer groups (the foundation everything else needs).
-
-## Previous task
-
-**Alpha-readiness P0 remediation** — all 6 PRs complete. See completion reports 102-107 in `planning/done/`.
+User runs Phase A browser QA, then signals **"start Phase B"**. First Phase B item: Quotations entity (Quote → SO conversion).

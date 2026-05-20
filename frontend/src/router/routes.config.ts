@@ -140,6 +140,9 @@ const SalesInvoicesListPage = lazy(() => import('../modules/sales/pages/SalesInv
 const SalesInvoiceDetailPage = lazy(() => import('../modules/sales/pages/SalesInvoiceDetailPage'));
 const SalesReturnsListPage = lazy(() => import('../modules/sales/pages/SalesReturnsListPage'));
 const SalesReturnDetailPage = lazy(() => import('../modules/sales/pages/SalesReturnDetailPage'));
+const PriceListsPage = lazy(() => import('../modules/sales/pages/PriceListsPage'));
+const CustomerGroupsPage = lazy(() => import('../modules/sales/pages/CustomerGroupsPage'));
+const SalespersonsPage = lazy(() => import('../modules/sales/pages/SalespersonsPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
 
@@ -314,6 +317,9 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/returns/new', label: 'New Sales Return', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/returns/:id', label: 'Sales Return Detail', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/settings', label: 'Sales Settings', component: SalesSettingsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/price-lists', label: 'Price Lists', component: PriceListsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/customer-groups', label: 'Customer Groups', component: CustomerGroupsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/salespersons', label: 'Salespersons', component: SalespersonsPage, section: 'INVENTORY', requiredModule: 'sales' },
 
   // Dynamic Sales Documents (designed in Forms Designer)
   { path: '/sales/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },

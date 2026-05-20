@@ -3,3 +3,7 @@ export * from './ISalesOrderRepository';
 export * from './IDeliveryNoteRepository';
 export * from './ISalesInvoiceRepository';
 export * from './ISalesReturnRepository';
+export * from './IPriceListRepository';
+export * from './ICustomerGroupRepository';
+export * from './ISalespersonRepository';
+export * from './ICommissionEntryRepository';

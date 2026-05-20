@@ -1,7 +1,7 @@
 # Architecture: Sales Module
 
-**Last updated:** 2026-05-18
-**Status:** Core workflows stable for direct invoicing and operational linked invoicing. Promotions and price lists deferred.
+**Last updated:** 2026-05-20
+**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. See dedicated docs linked in the "Sales master data" section below.
 **Module-level docs:** [`docs/modules/sales/`](../modules/sales/)
 
 ---
@@ -290,14 +290,26 @@ All under `backend/src/application/sales/use-cases/`.
 | Inventory contract | `backend/src/application/inventory/contracts/InventoryIntegrationContracts.ts` |
 | Module deep-dive | `docs/modules/sales/MASTER_PLAN.md`, `ALGORITHMS.md` |
 
+## Sales master data (Phase A)
+
+Phase A added structured pricing, customer segmentation, and salesperson commissions. These complement the core invoice flow without changing it.
+
+**Price lists** (`/tenant/sales/price-lists`) — per-currency price catalogs with optional date-validity windows and tiered (quantity-break) pricing. One list per currency can be flagged as the default fallback. A customer's `Party.defaultPriceListId` overrides the currency default. The sales invoice line editor auto-fetches the effective price when the item or quantity changes. For the full model see [`docs/architecture/pricing.md`](./pricing.md).
+
+**Customer groups** (`/tenant/sales/customer-groups`) — segmentation buckets that carry default commercial terms (price list, payment days, credit limit, tax exemption). Assigning a customer to a group stores the `customerGroupId` on their `Party` record; the group defaults serve as pre-fill values. The `Party` entity also gained `creditLimit`, `creditHoldPolicy`, `defaultPriceListId`, and `taxExempt` fields directly. Credit-hold enforcement is **Phase B** — Phase A only stores the master data. See [`docs/architecture/pricing.md`](./pricing.md) for the full customer-group and Party-field details.
+
+**Salespersons and commissions** (`/tenant/sales/salespersons`, `/tenant/sales/commissions`) — a `Salesperson` master record (code, name, email, `defaultCommissionPct`) can be attached to Sales Orders and Sales Invoices. When a sales invoice posts, a `CommissionEntry` ledger record is accrued: the commission rate is frozen as a snapshot so future rate changes do not affect past entries. Entries transition through `ACCRUED → PAID / CANCELLED`. GL integration for the payment step is a follow-up. See [`docs/architecture/commissions.md`](./commissions.md) for the full model and the controller-invoked accrual architecture decision.
+
+---
+
 ## What Is NOT Implemented
 
 | Feature | Status |
 |---|---|
 | **Quotations** | Planned. Pre-sale offers with expiry and conversion to SO. |
-| **Price Lists** | Planned. Customer-specific pricing and volume tiers. |
+| **Credit limit enforcement** | `creditHoldPolicy` field stored on Party (Phase A); enforcement at SO confirm is Phase B. |
 | **Customer Master (dedicated)** | Currently uses Party. A dedicated customer entity is planned but the Party-based flow is sufficient for V1. |
 | **Sales Reports (detailed)** | Dashboard exists. Detailed reports (AR Aging, Sales Register, Customer Statement, by-item/by-customer breakdowns) are deferred. |
-| **Credit limit enforcement** | Not validated at SI posting. Could be added as a validation rule. |
 | **Promotion engine / free-goods rules** | Manual invoice commercial terms exist, but automatic buy-X-get-Y and campaign rules are deferred. |
-| **Price lists** | Deferred. Manual price entry is still the active workflow. |
+| **Auto-accrual wiring** | Commission accrual use case exists; controller wiring to call it automatically after SI post is a follow-up. |
+| **Commission GL posting** | Marking commission paid is a status change only — no Dr/Cr voucher posted yet. |

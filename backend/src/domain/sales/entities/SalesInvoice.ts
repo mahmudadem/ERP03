@@ -77,6 +77,7 @@ export interface SalesInvoiceProps {
   persona: string;
   source?: DocumentSource | string;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerName: string;
   invoiceDate: string;
@@ -223,6 +224,7 @@ export class SalesInvoice {
   readonly persona: string;
   readonly source: DocumentSource;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerName: string;
   invoiceDate: string;
@@ -288,6 +290,7 @@ export class SalesInvoice {
     this.persona = persona;
     this.source = normalizeDocumentSource(props.source);
     this.salesOrderId = toOptionalStringRef(props.salesOrderId);
+    this.salespersonId = toOptionalStringRef(props.salespersonId);
     this.customerId = customerId;
     this.customerName = toDisplayText(props.customerName);
     this.invoiceDate = invoiceDate;
@@ -463,6 +466,7 @@ export class SalesInvoice {
       persona: this.persona,
       source: this.source,
       salesOrderId: this.salesOrderId,
+      salespersonId: this.salespersonId,
       customerId: this.customerId,
       customerName: this.customerName,
       invoiceDate: this.invoiceDate,
@@ -516,6 +520,7 @@ export class SalesInvoice {
       persona: data.persona || inferredPersona,
       source: data.source || data.documentSource || 'default_form',
       salesOrderId: data.salesOrderId,
+      salespersonId: data.salespersonId,
       customerId: data.customerId,
       customerName: data.customerName,
       invoiceDate: data.invoiceDate,

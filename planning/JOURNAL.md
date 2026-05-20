@@ -2,6 +2,36 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-20 (Wed) — Phase A (sales master data & pricing)
+**Task:** Task 108 — Phase A of the sales completion roadmap: master data & pricing engine
+**Agent:** Claude Opus 4.7 (CTO Mode) orchestrating; mechanical sub-tasks delegated to Sonnet/Haiku
+**Branch:** `feat/phase-a-sales-master-data` (new, off `fix/project-responsiveness` after committing the alpha-readiness work as `8012c41a`)
+**Trigger:** User approved the roadmap and said "start Phase A", authorising delegation + audit.
+
+**What I did (7 sub-phases, each delegated then audited):**
+- **A.1** Price Lists — `PriceList` entity (per-currency, date validity, tiered lines), repo, `PriceListUseCases` incl. `GetEffectivePriceUseCase`. 17 tests.
+- **A.2** Customer Groups — `CustomerGroup` entity + `Party.customerGroupId`, CRUD + assign use cases. 14 tests.
+- **A.3** Customer credit settings — `Party` gained `creditLimit`, `creditHoldPolicy`, `defaultPriceListId` (enforcement deferred to Phase B). 19 tests.
+- **A.4** Salesperson + commission ledger — `Salesperson` + `CommissionEntry` entities, `SalesOrder/SalesInvoice.salespersonId`, accrual use cases. Accrual invoked from the controller after SI post (not inside the god-class). 14 tests.
+- **A.5** Tax — `Party.taxExempt`; **found & fixed a real bug**: `SalesInvoiceCalculationService` had no tax-inclusive pricing — added a `priceIsInclusive` flag with correct back-calculation. ~30 tests.
+- **A.6** Frontend + API — `SalesMasterDataController` (24 handlers) + routes; `salesMasterDataApi` client; new pages PriceLists/CustomerGroups/Salespersons; PartyMasterCard credit/segmentation section; salesperson dropdowns + SI auto-pricing.
+- **A.7** Docs — new `pricing.md`, `commissions.md`, three user guides; `sales.md` updated.
+
+**Bug caught during audit:** `GetEffectivePriceUseCase` checked `party.priceListId` while A.3 named the field `defaultPriceListId` — the customer-override path silently never fired (the test mock shared the typo so it passed). Fixed both the use case and the test.
+
+**Cleanup during audit:** A.6.3's auto-pricing fired an API call inside a `setForm` updater (React anti-pattern, double-fires in StrictMode). Rewrote it to use the closure directly.
+
+**Verification:**
+- `backend` + `frontend`: `npx tsc --noEmit` → exit 0
+- 94 new backend tests across 5 suites, all green
+- Full backend suite: 1097 pass / 18 skip / 3 fail — the 3 are pre-existing `SendChatMessageUseCase` failures (confirmed via `git stash` on the baseline), unrelated to Phase A. Zero regressions.
+
+**Result:** ✅ Phase A code + docs complete. Live browser QA is the Phase A manual QA gate (per the roadmap) and is the user's to run.
+
+**Next:** Phase B — Sales operational features (quotations, credit-limit enforcement, promotions, backorder UX, delivery scheduling).
+
+---
+
 ## 2026-05-20 (Wed) — ~30min
 **Task:** Sales & Purchases completion roadmap — decision intake + plan refinement
 **Agent:** Claude Opus 4.7 (CTO Mode)

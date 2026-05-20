@@ -13,6 +13,7 @@ import {
   UpdateSalesOrderPayload,
 } from '../../../api/salesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
+import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
@@ -48,6 +49,7 @@ interface EditableForm {
   status: SOStatus;
   customerId: string;
   customerName?: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate: string;
   currency: string;
@@ -74,6 +76,7 @@ const createEmptyLine = (): EditableLine => ({
 const createEmptyForm = (): EditableForm => ({
   status: 'DRAFT',
   customerId: '',
+  salespersonId: undefined,
   orderDate: todayIso(),
   expectedDeliveryDate: '',
   currency: 'USD',
@@ -100,6 +103,7 @@ const SalesOrderDetailPage: React.FC = () => {
 
   const [form, setForm] = useState<EditableForm>(createEmptyForm());
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
+  const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [linkedDNs, setLinkedDNs] = useState<DeliveryNoteDTO[]>([]);
@@ -173,6 +177,7 @@ const SalesOrderDetailPage: React.FC = () => {
     status: so.status,
     customerId: so.customerId,
     customerName: so.customerName,
+    salespersonId: so.salespersonId,
     orderDate: so.orderDate,
     expectedDeliveryDate: so.expectedDeliveryDate || '',
     currency: so.currency,
@@ -198,10 +203,11 @@ const SalesOrderDetailPage: React.FC = () => {
   });
 
   const loadReferenceData = async () => {
-    const [customerResult, itemResult, taxResult] = await Promise.all([
+    const [customerResult, itemResult, taxResult, salespersonResult] = await Promise.all([
       sharedApi.listParties({ role: 'CUSTOMER', active: true }),
       inventoryApi.listItems({ active: true, limit: 500 }),
       sharedApi.listTaxCodes({ active: true }),
+      salesMasterDataApi.listSalespersons({ status: 'ACTIVE' }),
     ]);
 
     const customerList = unwrap<PartyDTO[]>(customerResult);
@@ -211,6 +217,7 @@ const SalesOrderDetailPage: React.FC = () => {
     setCustomers(Array.isArray(customerList) ? customerList : []);
     setItems(Array.isArray(itemList) ? itemList : []);
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
+    setSalespersons(Array.isArray(salespersonResult) ? salespersonResult : []);
   };
 
   const ensureItemUomOptions = async (itemId: string) => {
@@ -391,6 +398,7 @@ const SalesOrderDetailPage: React.FC = () => {
 
       const payloadBase = {
         customerId: form.customerId,
+        salespersonId: form.salespersonId || undefined,
         orderDate: form.orderDate,
         expectedDeliveryDate: form.expectedDeliveryDate || undefined,
         currency: form.currency.toUpperCase(),
@@ -503,7 +511,7 @@ const SalesOrderDetailPage: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-            <PartySelector 
+            <PartySelector
               value={form.customerId}
               disabled={isReadOnly}
               onChange={(party) => {
@@ -515,6 +523,20 @@ const SalesOrderDetailPage: React.FC = () => {
                 }));
               }}
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Salesperson</label>
+            <select
+              className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+              value={form.salespersonId || ''}
+              disabled={isReadOnly}
+              onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
+            >
+              <option value="">— None —</option>
+              {salespersons.map((sp) => (
+                <option key={sp.id} value={sp.id}>{sp.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Order Date</label>

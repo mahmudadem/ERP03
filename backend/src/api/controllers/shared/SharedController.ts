@@ -78,7 +78,7 @@ export class SharedController {
   static async updateParty(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SharedController.getCompanyId(req);
-      const useCase = new UpdatePartyUseCase(diContainer.partyRepository, diContainer.companyCurrencyRepository);
+      const useCase = new UpdatePartyUseCase(diContainer.partyRepository, diContainer.companyCurrencyRepository, diContainer.priceListRepository);
       const party = await useCase.execute({
         ...((req as any).body || {}),
         companyId,

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { SalesController } from '../controllers/sales/SalesController';
+import { SalesMasterDataController } from '../controllers/sales/SalesMasterDataController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -45,5 +46,36 @@ router.get('/returns', SalesController.listReturns);
 router.get('/returns/:id', SalesController.getReturn);
 router.put('/returns/:id', SalesController.updateReturn);
 router.post('/returns/:id/post', idempotencyMiddleware, SalesController.postReturn);
+
+// Price Lists
+router.post('/price-lists', SalesMasterDataController.createPriceList);
+router.get('/price-lists', SalesMasterDataController.listPriceLists);
+router.get('/price-lists/effective-price', SalesMasterDataController.getEffectivePrice);
+router.get('/price-lists/:id', SalesMasterDataController.getPriceList);
+router.put('/price-lists/:id', SalesMasterDataController.updatePriceList);
+router.delete('/price-lists/:id', SalesMasterDataController.deletePriceList);
+
+// Customer Groups
+router.post('/customer-groups', SalesMasterDataController.createCustomerGroup);
+router.get('/customer-groups', SalesMasterDataController.listCustomerGroups);
+router.get('/customer-groups/:id', SalesMasterDataController.getCustomerGroup);
+router.put('/customer-groups/:id', SalesMasterDataController.updateCustomerGroup);
+router.delete('/customer-groups/:id', SalesMasterDataController.deleteCustomerGroup);
+router.post('/customer-groups/assign', SalesMasterDataController.assignCustomerToGroup);
+
+// Salespersons
+router.post('/salespersons', SalesMasterDataController.createSalesperson);
+router.get('/salespersons', SalesMasterDataController.listSalespersons);
+router.get('/salespersons/:id', SalesMasterDataController.getSalesperson);
+router.put('/salespersons/:id', SalesMasterDataController.updateSalesperson);
+router.delete('/salespersons/:id', SalesMasterDataController.deleteSalesperson);
+
+// Commissions
+router.post('/commissions/accrue', SalesMasterDataController.accrueCommission);
+router.get('/commissions', SalesMasterDataController.listCommissions);
+router.get('/commissions/totals/:salespersonId', SalesMasterDataController.getSalespersonCommissionTotals);
+router.get('/commissions/:id', SalesMasterDataController.getCommissionEntry);
+router.post('/commissions/:id/mark-paid', SalesMasterDataController.markCommissionPaid);
+router.post('/commissions/:id/cancel', SalesMasterDataController.cancelCommission);
 
 export default router;
