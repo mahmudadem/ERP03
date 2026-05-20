@@ -18,6 +18,7 @@ import {
   UpdateSalesInvoiceUseCase,
   UpdateAndPostSalesInvoiceUseCase,
 } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { AccrueCommissionForInvoiceUseCase } from '../../../application/sales/use-cases/CommissionUseCases';
 import {
   RecordSalesInvoicePaymentUseCase,
   UpdateSalesInvoicePaymentStatusUseCase,
@@ -31,6 +32,7 @@ import {
   ListSalesOrdersUseCase,
   UpdateSalesOrderUseCase,
 } from '../../../application/sales/use-cases/SalesOrderUseCases';
+import { CreditCheckService } from '../../../application/sales/services/CreditCheckService';
 import {
   GetSalesSettingsUseCase,
   InitializeSalesUseCase,
@@ -419,12 +421,27 @@ export class SalesController {
     try {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
-      const useCase = new ConfirmSalesOrderUseCase(diContainer.salesOrderRepository);
-      const so = await useCase.execute(companyId, id);
+      const userId = SalesController.getUserId(req);
+
+      const useCase = new ConfirmSalesOrderUseCase(
+        diContainer.salesOrderRepository,
+        diContainer.partyRepository,
+        new CreditCheckService(diContainer.salesInvoiceRepository),
+        diContainer.creditOverrideRepository
+      );
+
+      // Optional override from request body: { override: { reason: string } }
+      const rawOverride = (req as any).body?.override;
+      const override = rawOverride?.reason
+        ? { reason: String(rawOverride.reason), userId }
+        : undefined;
+
+      const result = await useCase.execute(companyId, id, override ? { override } : undefined);
 
       (res as any).json({
         success: true,
-        data: SalesDTOMapper.toOrderDTO(so),
+        data: SalesDTOMapper.toOrderDTO(result.salesOrder),
+        creditCheck: result.creditCheck,
       });
     } catch (error) {
       next(error);
@@ -652,6 +669,22 @@ export class SalesController {
         createdBy: userId,
       }, settlementInput);
 
+      // Accrue sales commission (non-fatal — must not fail the post response)
+      try {
+        const accrueCommission = new AccrueCommissionForInvoiceUseCase(
+          diContainer.salesInvoiceRepository,
+          diContainer.salespersonRepository,
+          diContainer.commissionEntryRepository,
+        );
+        await accrueCommission.execute({
+          companyId,
+          invoiceId: si.id,
+          createdBy: userId,
+        });
+      } catch (commissionError) {
+        console.error('[SalesController] commission accrual failed (non-fatal):', commissionError);
+      }
+
       (res as any).status(201).json({
         success: true,
         data: SalesDTOMapper.toSalesInvoiceDTO(si),
@@ -686,6 +719,22 @@ export class SalesController {
         id,
         companyId,
       }, settlementInput);
+
+      // Accrue sales commission (non-fatal — must not fail the post response)
+      try {
+        const accrueCommission = new AccrueCommissionForInvoiceUseCase(
+          diContainer.salesInvoiceRepository,
+          diContainer.salespersonRepository,
+          diContainer.commissionEntryRepository,
+        );
+        await accrueCommission.execute({
+          companyId,
+          invoiceId: si.id,
+          createdBy: userId,
+        });
+      } catch (commissionError) {
+        console.error('[SalesController] commission accrual failed (non-fatal):', commissionError);
+      }
 
       (res as any).json({
         success: true,
@@ -765,6 +814,7 @@ export class SalesController {
     try {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
       const inventoryService = SalesController.buildSalesInventoryService();
       const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
@@ -795,6 +845,23 @@ export class SalesController {
 
       const settlementInput = (req as any).body?.settlementInput;
       const si = await useCase.execute(companyId, id, true, undefined, settlementInput);
+
+      // Accrue sales commission (non-fatal — must not fail the post response)
+      try {
+        const accrueCommission = new AccrueCommissionForInvoiceUseCase(
+          diContainer.salesInvoiceRepository,
+          diContainer.salespersonRepository,
+          diContainer.commissionEntryRepository,
+        );
+        await accrueCommission.execute({
+          companyId,
+          invoiceId: id,
+          createdBy: userId,
+        });
+      } catch (commissionError) {
+        console.error('[SalesController] commission accrual failed (non-fatal):', commissionError);
+      }
+
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toSalesInvoiceDTO(si),

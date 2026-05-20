@@ -1,15 +1,19 @@
 ﻿import { randomUUID } from 'crypto';
 import { Item } from '../../../domain/inventory/entities/Item';
+import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { SalesOrder, SalesOrderLine, SOStatus } from '../../../domain/sales/entities/SalesOrder';
 import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
+import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
+import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
+import { CreditCheckResult, CreditCheckService } from '../services/CreditCheckService';
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
@@ -369,21 +373,99 @@ export class UpdateSalesOrderUseCase {
   }
 }
 
-export class ConfirmSalesOrderUseCase {
-  constructor(private readonly salesOrderRepo: ISalesOrderRepository) {}
+export interface ConfirmSalesOrderResult {
+  salesOrder: SalesOrder;
+  creditCheck: CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' };
+}
 
-  async execute(companyId: string, id: string): Promise<SalesOrder> {
+export class ConfirmSalesOrderUseCase {
+  constructor(
+    private readonly salesOrderRepo: ISalesOrderRepository,
+    private readonly partyRepo: IPartyRepository,
+    private readonly creditCheckService: CreditCheckService,
+    private readonly creditOverrideRepo: ICreditOverrideRepository
+  ) {}
+
+  async execute(
+    companyId: string,
+    id: string,
+    options?: { override?: { reason: string; userId: string } }
+  ): Promise<ConfirmSalesOrderResult> {
+    // --- existing guards ---
     const so = await this.salesOrderRepo.getById(companyId, id);
     if (!so) throw new Error(`Sales order not found: ${id}`);
     if (so.status !== 'DRAFT') throw new Error('Only draft sales orders can be confirmed');
     if (!so.lines.length) throw new Error('Sales order must contain at least one line');
 
+    // --- credit check ---
+    let creditCheckWithOutcome: CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' };
+
+    const party = await this.partyRepo.getById(companyId, so.customerId).catch(() => null);
+
+    if (!party) {
+      // Customer not found — proceed without enforcement
+      creditCheckWithOutcome = {
+        enforced: false,
+        creditLimit: 0,
+        currentExposure: 0,
+        orderAmount: so.grandTotalBase,
+        projectedExposure: so.grandTotalBase,
+        withinLimit: true,
+        policy: 'NONE',
+        outcome: 'OK',
+      };
+    } else {
+      const creditCheck = await this.creditCheckService.check(companyId, party, so.grandTotalBase);
+
+      const overLimit = creditCheck.enforced && !creditCheck.withinLimit;
+
+      if (!overLimit || creditCheck.policy === 'NONE') {
+        // Under limit, or limit not enforced, or policy NONE — confirm without fuss
+        creditCheckWithOutcome = { ...creditCheck, outcome: 'OK' };
+      } else if (creditCheck.policy === 'WARN') {
+        // Over limit but only warn — confirm, surface the warning to the caller
+        creditCheckWithOutcome = { ...creditCheck, outcome: 'WARN' };
+      } else {
+        // policy === 'BLOCK'
+        if (!options?.override) {
+          throw new CreditLimitExceededError({
+            customerId: so.customerId,
+            creditLimit: creditCheck.creditLimit,
+            currentExposure: creditCheck.currentExposure,
+            orderAmount: creditCheck.orderAmount,
+            projectedExposure: creditCheck.projectedExposure,
+          });
+        }
+
+        // Override provided — persist an audit record and confirm
+        const overrideRecord = new CreditOverride({
+          companyId,
+          customerId: so.customerId,
+          sourceType: 'SALES_ORDER',
+          sourceId: so.id,
+          sourceNumber: so.orderNumber,
+          creditLimit: creditCheck.creditLimit,
+          currentExposure: creditCheck.currentExposure,
+          orderAmount: creditCheck.orderAmount,
+          projectedExposure: creditCheck.projectedExposure,
+          reason: options.override.reason,
+          overriddenBy: options.override.userId,
+          overriddenAt: new Date(),
+        });
+        await this.creditOverrideRepo.create(overrideRecord);
+
+        creditCheckWithOutcome = { ...creditCheck, outcome: 'OVERRIDDEN' };
+      }
+    }
+
+    // --- confirm ---
     so.status = 'CONFIRMED';
     so.confirmedAt = new Date();
     so.updatedAt = new Date();
 
     await this.salesOrderRepo.update(so);
-    return so;
+
+    return { salesOrder: so, creditCheck: creditCheckWithOutcome };
   }
 }
 

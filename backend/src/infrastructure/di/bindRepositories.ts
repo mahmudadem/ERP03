@@ -68,6 +68,9 @@ import { FirestorePriceListRepository } from '../firestore/repositories/sales/Fi
 import { FirestoreCustomerGroupRepository } from '../firestore/repositories/sales/FirestoreCustomerGroupRepository';
 import { FirestoreSalespersonRepository } from '../firestore/repositories/sales/FirestoreSalespersonRepository';
 import { FirestoreCommissionEntryRepository } from '../firestore/repositories/sales/FirestoreCommissionEntryRepository';
+import { FirestoreQuoteRepository } from '../firestore/repositories/sales/FirestoreQuoteRepository';
+import { FirestoreCreditOverrideRepository } from '../firestore/repositories/sales/FirestoreCreditOverrideRepository';
+import { FirestorePromotionRuleRepository } from '../firestore/repositories/sales/FirestorePromotionRuleRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
@@ -636,6 +639,27 @@ export const diContainer = {
       throw new Error('CommissionEntryRepository: SQL implementation not yet available');
     }
     return new FirestoreCommissionEntryRepository(getDb());
+  },
+  get quoteRepository(): SalRepo.IQuoteRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(B.1): Add PrismaQuoteRepository when SQL support is needed
+      throw new Error('QuoteRepository: SQL implementation not yet available');
+    }
+    return new FirestoreQuoteRepository(getDb());
+  },
+  get creditOverrideRepository(): SalRepo.ICreditOverrideRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(B.2): Add PrismaCreditOverrideRepository when SQL support is needed
+      throw new Error('CreditOverrideRepository: SQL implementation not yet available');
+    }
+    return new FirestoreCreditOverrideRepository(getDb());
+  },
+  get promotionRuleRepository(): SalRepo.IPromotionRuleRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(B.3): Add PrismaPromotionRuleRepository when SQL support is needed
+      throw new Error('PromotionRuleRepository: SQL implementation not yet available');
+    }
+    return new FirestorePromotionRuleRepository(getDb());
   },
 
   // HR

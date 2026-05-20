@@ -7,3 +7,6 @@ export * from './IPriceListRepository';
 export * from './ICustomerGroupRepository';
 export * from './ISalespersonRepository';
 export * from './ICommissionEntryRepository';
+export * from './IQuoteRepository';
+export * from './ICreditOverrideRepository';
+export * from './IPromotionRuleRepository';
