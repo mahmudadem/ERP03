@@ -851,7 +851,7 @@ describe('SendChatMessageUseCase', () => {
 
       // Create a mock credit ledger repo that returns a ledger with credits
       const mockCreditLedgerRepo = {
-        getByCompanyId: jest.fn().mockResolvedValue({ balance: 100, hasCredits: () => true }),
+        getByCompanyId: jest.fn().mockResolvedValue({ balance: 100, hasCredits: () => true, canAfford: (amount: number) => 100 >= amount }),
         save: jest.fn(),
       };
 
@@ -871,7 +871,7 @@ describe('SendChatMessageUseCase', () => {
         fail('Should have thrown');
       } catch (error) {
         expect((error as ApiError).statusCode).toBe(403);
-        expect((error as ApiError).message).toContain('No platform runtime credential');
+        expect((error as ApiError).message).toContain('No platform runtime profile or provider credential');
       }
     });
 
@@ -880,7 +880,7 @@ describe('SendChatMessageUseCase', () => {
       settingsRepo = createMockSettingsRepo(config);
 
       // Create a mock credit ledger repo that returns a ledger with credits
-      const mockLedger = { balance: 100, hasCredits: () => true, debit: jest.fn(), companyId: 'company-1' };
+      const mockLedger = { balance: 100, hasCredits: () => true, canAfford: (amount: number) => 100 >= amount, debit: jest.fn(), companyId: 'company-1' };
       const mockCreditLedgerRepo = {
         getByCompanyId: jest.fn().mockResolvedValue(mockLedger),
         save: jest.fn().mockResolvedValue({}),
@@ -971,7 +971,7 @@ describe('SendChatMessageUseCase', () => {
 
       // Mock credit ledger repo that returns a ledger with zero credits
       const mockCreditLedgerRepo = {
-        getByCompanyId: jest.fn().mockResolvedValue({ balance: 0, hasCredits: () => false, debit: jest.fn(), companyId: 'company-1' }),
+        getByCompanyId: jest.fn().mockResolvedValue({ balance: 0, hasCredits: () => false, canAfford: (_amount: number) => false, debit: jest.fn(), companyId: 'company-1' }),
         save: jest.fn().mockResolvedValue({}),
       };
 
@@ -998,7 +998,7 @@ describe('SendChatMessageUseCase', () => {
       const config = createConfig('CREDITS', undefined);
       settingsRepo = createMockSettingsRepo(config);
 
-      const mockLedger = { balance: 100, hasCredits: () => true, debit: jest.fn(), companyId: 'company-1' };
+      const mockLedger = { balance: 100, hasCredits: () => true, canAfford: (amount: number) => 100 >= amount, debit: jest.fn(), companyId: 'company-1' };
       const mockCreditLedgerRepo = {
         getByCompanyId: jest.fn().mockResolvedValue(mockLedger),
         save: jest.fn().mockResolvedValue({}),
