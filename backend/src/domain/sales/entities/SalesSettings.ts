@@ -66,6 +66,8 @@ export interface SalesSettingsProps {
   siNumberNextSeq: number;
   srNumberPrefix: string;
   srNumberNextSeq: number;
+  quoteNumberPrefix?: string;
+  quoteNumberNextSeq?: number;
 }
 
 export class SalesSettings {
@@ -96,6 +98,8 @@ export class SalesSettings {
   siNumberNextSeq: number;
   srNumberPrefix: string;
   srNumberNextSeq: number;
+  quoteNumberPrefix: string;
+  quoteNumberNextSeq: number;
 
   constructor(props: SalesSettingsProps) {
     if (!props.companyId?.trim()) throw new Error('SalesSettings companyId is required');
@@ -176,6 +180,8 @@ export class SalesSettings {
     this.siNumberNextSeq = props.siNumberNextSeq || 1;
     this.srNumberPrefix = props.srNumberPrefix || 'SR';
     this.srNumberNextSeq = props.srNumberNextSeq || 1;
+    this.quoteNumberPrefix = props.quoteNumberPrefix || 'QT';
+    this.quoteNumberNextSeq = props.quoteNumberNextSeq || 1;
   }
 
   static createDefault(
@@ -206,6 +212,8 @@ export class SalesSettings {
       siNumberNextSeq: 1,
       srNumberPrefix: 'SR',
       srNumberNextSeq: 1,
+      quoteNumberPrefix: 'QT',
+      quoteNumberNextSeq: 1,
     });
   }
 
@@ -238,6 +246,8 @@ export class SalesSettings {
       siNumberNextSeq: this.siNumberNextSeq,
       srNumberPrefix: this.srNumberPrefix,
       srNumberNextSeq: this.srNumberNextSeq,
+      quoteNumberPrefix: this.quoteNumberPrefix,
+      quoteNumberNextSeq: this.quoteNumberNextSeq,
     };
   }
 
@@ -270,6 +280,8 @@ export class SalesSettings {
       siNumberNextSeq: data.siNumberNextSeq ?? 1,
       srNumberPrefix: data.srNumberPrefix || 'SR',
       srNumberNextSeq: data.srNumberNextSeq ?? 1,
+      quoteNumberPrefix: data.quoteNumberPrefix || 'QT',
+      quoteNumberNextSeq: data.quoteNumberNextSeq ?? 1,
     });
   }
 }

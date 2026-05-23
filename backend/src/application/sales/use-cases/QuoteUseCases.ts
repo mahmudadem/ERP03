@@ -1,25 +1,15 @@
 import { randomUUID } from 'crypto';
 import { Quote, QuoteLine } from '../../../domain/sales/entities/Quote';
 import { IQuoteRepository } from '../../../repository/interfaces/sales/IQuoteRepository';
+import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import {
   calculateSalesInvoiceLineAmounts,
   calculateSalesInvoiceTotals,
 } from '../services/SalesInvoiceCalculationService';
-import { CreateSalesOrderUseCase, CreateSalesOrderInput } from './SalesOrderUseCases';
+import { CreateSalesOrderUseCase, CreateSalesOrderInput, generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { CreateSalesInvoiceUseCase, CreateSalesInvoiceInput } from './SalesInvoiceUseCases';
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
-
-// ---------------------------------------------------------------------------
-// Quote number generation
-// TODO: proper sequence — SalesSettings has no quoteNumberPrefix/quoteNumberNextSeq yet.
-// Using Q-<timestamp>-<random4> for uniqueness until a sequence field is added.
-// ---------------------------------------------------------------------------
-function generateQuoteNumber(): string {
-  const ts = Date.now();
-  const rand = Math.floor(Math.random() * 9000) + 1000;
-  return `Q-${ts}-${rand}`;
-}
 
 // ---------------------------------------------------------------------------
 // Input interfaces
@@ -125,12 +115,18 @@ function buildQuoteLine(input: QuoteLineInput, index: number, exchangeRate: numb
 // ---------------------------------------------------------------------------
 
 export class CreateQuoteUseCase {
-  constructor(private readonly quoteRepo: IQuoteRepository) {}
+  constructor(
+    private readonly quoteRepo: IQuoteRepository,
+    private readonly salesSettingsRepo: ISalesSettingsRepository
+  ) {}
 
   async execute(input: CreateQuoteInput): Promise<Quote> {
     if (!Array.isArray(input.lines) || input.lines.length === 0) {
       throw new Error('Quote must contain at least one line');
     }
+
+    const settings = await this.salesSettingsRepo.getSettings(input.companyId);
+    if (!settings) throw new Error('Sales settings not found');
 
     const lines = input.lines.map((l, i) => buildQuoteLine(l, i, input.exchangeRate));
     const totals = calculateSalesInvoiceTotals(
@@ -143,7 +139,10 @@ export class CreateQuoteUseCase {
     );
 
     const now = new Date();
-    const quoteNumber = generateQuoteNumber();
+    const quoteNumber = await generateUniqueDocumentNumber(settings, 'QT', async (candidate: string) => {
+      const existing = await this.quoteRepo.getByNumber(input.companyId, candidate);
+      return !!existing;
+    });
 
     const quote = new Quote({
       id: randomUUID(),
@@ -173,6 +172,7 @@ export class CreateQuoteUseCase {
     });
 
     await this.quoteRepo.create(quote);
+    await this.salesSettingsRepo.saveSettings(settings);
     return quote;
   }
 }
@@ -360,17 +360,28 @@ export class RejectQuoteUseCase {
 // ---------------------------------------------------------------------------
 
 export class ReviseQuoteUseCase {
-  constructor(private readonly quoteRepo: IQuoteRepository) {}
+  constructor(
+    private readonly quoteRepo: IQuoteRepository,
+    private readonly salesSettingsRepo: ISalesSettingsRepository
+  ) {}
 
   async execute(companyId: string, id: string): Promise<Quote> {
     const old = await this.quoteRepo.getById(companyId, id);
     if (!old) throw new Error(`Quote not found: ${id}`);
 
+    const settings = await this.salesSettingsRepo.getSettings(companyId);
+    if (!settings) throw new Error('Sales settings not found');
+
     const now = new Date();
+    const newQuoteNumber = await generateUniqueDocumentNumber(settings, 'QT', async (candidate: string) => {
+      const existing = await this.quoteRepo.getByNumber(companyId, candidate);
+      return !!existing;
+    });
+
     const newQuote = new Quote({
       id: randomUUID(),
       companyId: old.companyId,
-      quoteNumber: generateQuoteNumber(),
+      quoteNumber: newQuoteNumber,
       customerId: old.customerId,
       customerName: old.customerName,
       salespersonId: old.salespersonId,
@@ -399,6 +410,7 @@ export class ReviseQuoteUseCase {
 
     await this.quoteRepo.update(old);
     await this.quoteRepo.create(newQuote);
+    await this.salesSettingsRepo.saveSettings(settings);
 
     return newQuote;
   }

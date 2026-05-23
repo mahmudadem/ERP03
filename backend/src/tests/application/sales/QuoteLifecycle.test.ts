@@ -1,6 +1,8 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { Quote, QuoteLine } from '../../../domain/sales/entities/Quote';
 import { IQuoteRepository } from '../../../repository/interfaces/sales/IQuoteRepository';
+import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
+import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import {
   CreateQuoteUseCase,
   AcceptQuoteUseCase,
@@ -99,6 +101,18 @@ function makeMockRepo(overrides: Partial<IQuoteRepository> = {}): IQuoteReposito
     list: jest.fn<IQuoteRepository['list']>().mockResolvedValue([]),
     delete: jest.fn<IQuoteRepository['delete']>().mockResolvedValue(undefined),
     ...overrides,
+  };
+}
+
+function makeDefaultSalesSettings(companyId: string = COMPANY_ID): SalesSettings {
+  return SalesSettings.createDefault(companyId, undefined, 'acc-revenue');
+}
+
+function makeMockSettingsRepo(settings?: SalesSettings): ISalesSettingsRepository {
+  const s = settings ?? makeDefaultSalesSettings();
+  return {
+    getSettings: jest.fn<ISalesSettingsRepository['getSettings']>().mockResolvedValue(s),
+    saveSettings: jest.fn<ISalesSettingsRepository['saveSettings']>().mockResolvedValue(undefined),
   };
 }
 
@@ -300,7 +314,8 @@ describe('Quote.isExpired()', () => {
 describe('CreateQuoteUseCase', () => {
   it('produces version 1, status DRAFT, and correct totals', async () => {
     const repo = makeMockRepo();
-    const useCase = new CreateQuoteUseCase(repo);
+    const settingsRepo = makeMockSettingsRepo();
+    const useCase = new CreateQuoteUseCase(repo, settingsRepo);
 
     const quote = await useCase.execute(baseCreateInput);
 
@@ -311,6 +326,7 @@ describe('CreateQuoteUseCase', () => {
     expect(quote.taxTotalDoc).toBe(100);
     expect(quote.grandTotalDoc).toBe(1100);
     expect(repo.create).toHaveBeenCalledWith(quote);
+    expect(settingsRepo.saveSettings).toHaveBeenCalled();
   });
 });
 
@@ -323,7 +339,7 @@ describe('ReviseQuoteUseCase', () => {
     const oldQuote = new Quote({
       id: 'q-old',
       companyId: COMPANY_ID,
-      quoteNumber: 'Q-100',
+      quoteNumber: 'QT-00001',
       customerId: CUSTOMER_ID,
       customerName: 'Acme Corp',
       status: 'SENT',
@@ -347,7 +363,8 @@ describe('ReviseQuoteUseCase', () => {
       getById: jest.fn<IQuoteRepository['getById']>().mockResolvedValue(oldQuote),
     });
 
-    const useCase = new ReviseQuoteUseCase(repo);
+    const settingsRepo = makeMockSettingsRepo();
+    const useCase = new ReviseQuoteUseCase(repo, settingsRepo);
     const newQuote = await useCase.execute(COMPANY_ID, 'q-old');
 
     // New quote assertions
@@ -362,6 +379,7 @@ describe('ReviseQuoteUseCase', () => {
 
     // New quote was created
     expect(repo.create).toHaveBeenCalledWith(newQuote);
+    expect(settingsRepo.saveSettings).toHaveBeenCalled();
   });
 });
 

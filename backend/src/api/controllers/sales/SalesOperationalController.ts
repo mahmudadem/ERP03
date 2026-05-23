@@ -46,7 +46,7 @@ export class SalesOperationalController {
     try {
       const companyId = SalesOperationalController.getCompanyId(req);
       const userId = SalesOperationalController.getUserId(req);
-      const useCase = new CreateQuoteUseCase(diContainer.quoteRepository);
+      const useCase = new CreateQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository);
       const result = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
@@ -146,7 +146,7 @@ export class SalesOperationalController {
   static async reviseQuote(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SalesOperationalController.getCompanyId(req);
-      const useCase = new ReviseQuoteUseCase(diContainer.quoteRepository);
+      const useCase = new ReviseQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository);
       const result = await useCase.execute(companyId, (req as any).params.id);
       (res as any).json({ success: true, data: result.toJSON() });
     } catch (error) {

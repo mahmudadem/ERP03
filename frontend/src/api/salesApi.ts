@@ -79,6 +79,8 @@ export interface SalesSettingsDTO {
   siNumberNextSeq: number;
   srNumberPrefix: string;
   srNumberNextSeq: number;
+  quoteNumberPrefix: string;
+  quoteNumberNextSeq: number;
 }
 
 export interface SalesOrderLineDTO {
@@ -381,6 +383,8 @@ export interface InitializeSalesPayload {
   siNumberNextSeq?: number;
   srNumberPrefix?: string;
   srNumberNextSeq?: number;
+  quoteNumberPrefix?: string;
+  quoteNumberNextSeq?: number;
 }
 
 export interface SalesOrderLineInputDTO {

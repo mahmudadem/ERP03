@@ -20,7 +20,7 @@ const roundMoney = (value: number): number => Math.round((value + Number.EPSILON
 
 export const generateDocumentNumber = (
   settings: SalesSettings,
-  docType: 'SO' | 'DN' | 'SI' | 'SR'
+  docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT'
 ): string => {
   let prefix = '';
   let seq = 1;
@@ -37,6 +37,10 @@ export const generateDocumentNumber = (
     prefix = settings.siNumberPrefix;
     seq = settings.siNumberNextSeq;
     settings.siNumberNextSeq += 1;
+  } else if (docType === 'QT') {
+    prefix = settings.quoteNumberPrefix;
+    seq = settings.quoteNumberNextSeq;
+    settings.quoteNumberNextSeq += 1;
   } else {
     prefix = settings.srNumberPrefix;
     seq = settings.srNumberNextSeq;
@@ -48,7 +52,7 @@ export const generateDocumentNumber = (
 
 export const generateUniqueDocumentNumber = async (
   settings: SalesSettings,
-  docType: 'SO' | 'DN' | 'SI' | 'SR',
+  docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT',
   exists: (candidate: string) => Promise<boolean>
 ): Promise<string> => {
   for (let attempt = 0; attempt < 100; attempt += 1) {

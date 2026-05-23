@@ -205,6 +205,8 @@ const SalesSettingsPage: React.FC = () => {
         siNumberNextSeq: settings.siNumberNextSeq,
         srNumberPrefix: settings.srNumberPrefix,
         srNumberNextSeq: settings.srNumberNextSeq,
+        quoteNumberPrefix: settings.quoteNumberPrefix,
+        quoteNumberNextSeq: settings.quoteNumberNextSeq,
       };
 
       const result = await salesApi.updateSettings(payload);
@@ -466,8 +468,9 @@ const SalesSettingsPage: React.FC = () => {
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               Workflow mode: <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {[
+                { id: 'qt', label: 'Quotes (QT)', prefix: 'quoteNumberPrefix', seq: 'quoteNumberNextSeq' },
                 { id: 'so', label: 'Sales Orders', prefix: 'soNumberPrefix', seq: 'soNumberNextSeq' },
                 { id: 'dn', label: 'Deliveries (DN)', prefix: 'dnNumberPrefix', seq: 'dnNumberNextSeq' },
                 { id: 'si', label: 'Invoices (SI)', prefix: 'siNumberPrefix', seq: 'siNumberNextSeq' },
