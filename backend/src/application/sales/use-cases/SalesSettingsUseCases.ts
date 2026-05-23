@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import {
   GovernanceRule,
+  SalesMessagingAccount,
   SalesPaymentMethodConfig,
   SalesSettings,
 } from '../../../domain/sales/entities/SalesSettings';
@@ -21,6 +22,7 @@ import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/ID
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
+import { ICredentialCipher } from '../services/ICredentialCipher';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -155,6 +157,7 @@ export interface InitializeSalesInput {
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
   paymentMethodConfigs?: SalesPaymentMethodConfig[];
+  messagingAccounts?: SalesMessagingAccountInput[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -183,6 +186,7 @@ export interface UpdateSalesSettingsInput {
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
   paymentMethodConfigs?: SalesPaymentMethodConfig[];
+  messagingAccounts?: SalesMessagingAccountInput[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -196,6 +200,65 @@ export interface UpdateSalesSettingsInput {
   srNumberNextSeq?: number;
 }
 
+export interface SalesMessagingAccountInput {
+  id: string;
+  channel: 'WHATSAPP' | 'EMAIL' | 'TELEGRAM';
+  provider: 'META_WHATSAPP_CLOUD' | 'SMTP' | 'TELEGRAM_BOT';
+  label: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+  phoneNumberE164?: string;
+  phoneNumberId?: string;
+  fromAddress?: string;
+  fromDisplayName?: string;
+  botUsername?: string;
+  apiVersion?: string;
+  credential?: string;
+  encryptedCredential?: string;
+}
+
+const normalizeMessagingAccounts = (
+  inputAccounts: SalesMessagingAccountInput[] | undefined,
+  existingAccounts: SalesMessagingAccount[] | undefined,
+  credentialCipher?: ICredentialCipher
+): SalesMessagingAccount[] => {
+  if (!inputAccounts) return existingAccounts ?? [];
+  const existingById = new Map((existingAccounts ?? []).map((account) => [account.id, account]));
+
+  return inputAccounts.map((account) => {
+    const existing = existingById.get(account.id);
+    const rawCredential = typeof account.credential === 'string' ? account.credential.trim() : '';
+    const rawEncrypted = typeof account.encryptedCredential === 'string' ? account.encryptedCredential.trim() : '';
+    let encryptedCredential = rawEncrypted || existing?.encryptedCredential;
+
+    if (rawCredential) {
+      if (!credentialCipher) {
+        throw new Error('Credential cipher is required to encrypt messaging credentials.');
+      }
+      encryptedCredential = credentialCipher.encrypt(rawCredential);
+    }
+    if (account.isActive !== false && !encryptedCredential) {
+      throw new Error(`Messaging account ${account.id} is active but has no credential.`);
+    }
+
+    return {
+      id: account.id,
+      channel: account.channel,
+      provider: account.provider,
+      label: account.label,
+      isDefault: account.isDefault,
+      isActive: account.isActive,
+      phoneNumberE164: account.phoneNumberE164,
+      phoneNumberId: account.phoneNumberId,
+      fromAddress: account.fromAddress,
+      fromDisplayName: account.fromDisplayName,
+      botUsername: account.botUsername,
+      apiVersion: account.apiVersion,
+      encryptedCredential,
+    };
+  });
+};
+
 export class InitializeSalesUseCase {
   constructor(
     private readonly settingsRepo: ISalesSettingsRepository,
@@ -204,7 +267,8 @@ export class InitializeSalesUseCase {
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
     private readonly ensureAccountingEngine: EnsureAccountingEngineInitialized,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
+    private readonly credentialCipher?: ICredentialCipher
   ) {}
 
   async execute(input: InitializeSalesInput): Promise<SalesSettings> {
@@ -260,6 +324,7 @@ export class InitializeSalesUseCase {
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? 30,
       paymentMethodConfigs: input.paymentMethodConfigs ?? [],
+      messagingAccounts: normalizeMessagingAccounts(input.messagingAccounts, [], this.credentialCipher),
       governanceRules: input.governanceRules ?? [],
       defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId,
@@ -325,7 +390,8 @@ export class UpdateSalesSettingsUseCase {
     private readonly voucherFormRepo: IVoucherFormRepository,
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
+    private readonly credentialCipher?: ICredentialCipher
   ) {}
 
   async execute(input: UpdateSalesSettingsInput): Promise<SalesSettings> {
@@ -401,6 +467,11 @@ export class UpdateSalesSettingsUseCase {
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? existing.overInvoiceTolerancePct,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? existing.defaultPaymentTermsDays,
       paymentMethodConfigs: input.paymentMethodConfigs ?? existing.paymentMethodConfigs,
+      messagingAccounts: normalizeMessagingAccounts(
+        input.messagingAccounts,
+        existing.messagingAccounts,
+        this.credentialCipher
+      ),
       governanceRules: input.governanceRules ?? existing.governanceRules,
       defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? existing.defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId ?? existing.defaultWarehouseId,

@@ -1,7 +1,7 @@
 # Architecture: Sales Module
 
-**Last updated:** 2026-05-20
-**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. See dedicated docs linked below.
+**Last updated:** 2026-05-22
+**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. Phase C added AR aging, customer ledger/statement, and sales analytics reports. Phase D.2+D.3 added period-lock enforcement and per-record audit logging. Phase D.4 added recurring invoices (templated + scheduled). Phase D.5 added sales-return commercial settlement controls (credit note vs refund, reason taxonomy, restocking fee/net settlement). Phase D.7 added controlled invoice template selection with customer defaults. Phase D.8 now ships WhatsApp-first invoice outbound messaging (Meta Cloud API) with a provider abstraction to add email later. See dedicated docs linked below.
 **Module-level docs:** [`docs/modules/sales/`](../modules/sales/)
 
 ---
@@ -337,6 +337,274 @@ For the full technical specification — bucket algorithm, event model, opening/
 
 ---
 
+## Sales auditability & control (Phase D.2 + D.3)
+
+Phase D.2 added period-lock enforcement for sales document posting. Phase D.3 added per-record immutable audit logging for all document updates. Both share the same enforcement and audit infrastructure.
+
+### Period Lock (D.2)
+
+**Enforcement chokepoint:** `SubledgerVoucherPostingService.postInTransaction()` — the single entry point for all subledger posting. This means the same fix automatically covers Purchases (PI/GRN/PR) in Phase F with zero additional work.
+
+**Two-tier model:**
+- **SOFT tier** — `lockedThroughDate` in accounting policy config. Documents dated on/before this date are blocked. **Overridable** by supplying a reason; the override is recorded as an immutable `PeriodLockOverride` audit row.
+- **HARD tier** — A fiscal period whose status is `CLOSED` or `LOCKED` (via the `FiscalYear` entity). **Not overridable.**
+
+**Flow:**
+1. `PeriodLockService.assertPostingAllowed()` is called at the start of `postInTransaction()`.
+2. Checks fiscal period status (HARD) → throws `PeriodLockedError` with `tier: 'HARD'` if closed/locked.
+3. Checks `lockedThroughDate` (SOFT) → if override reason provided, allows; otherwise throws `PeriodLockedError` with `tier: 'SOFT'`.
+4. `PeriodLockedError` is mapped to HTTP 422 by the global error handler.
+5. Frontend catches the 422, shows `PeriodLockOverrideModal` for SOFT tier, blocks for HARD tier.
+6. On override confirm, the post is retried with `periodLockOverrideReason` in the request body.
+7. After successful post, a `PeriodLockOverride` row is written (non-fatal).
+
+**Key files:**
+| Layer | File |
+|-------|------|
+| Domain error | `backend/src/domain/accounting/errors/PeriodLockedError.ts` |
+| Application service | `backend/src/application/accounting/services/PeriodLockService.ts` |
+| Audit entity | `backend/src/domain/accounting/entities/PeriodLockOverride.ts` |
+| Repository | `backend/src/infrastructure/firestore/repositories/accounting/FirestorePeriodLockOverrideRepository.ts` |
+| DI wiring | `diContainer.periodLockService` getter in `bindRepositories.ts` |
+| Frontend modal | `frontend/src/modules/sales/components/PeriodLockOverrideModal.tsx` |
+
+**Settings:** Period lock is configured in Accounting Settings → Accounting Periods tab (`periodLockEnabled` toggle + `lockedThroughDate` date picker). This UI pre-existed; D.2 wired the enforcement.
+
+### Per-record Audit Log (D.3)
+
+**Design:** Every update to a Sales Invoice, Sales Order, Delivery Note, or Sales Return creates an immutable `RecordChangeLog` row capturing which fields changed (before → after), who made the change, and when.
+
+**Implementation:**
+1. `RecordChangeService` computes a shallow field-level diff between `before` and `after` snapshots.
+2. Primitives are compared directly. Arrays/objects (e.g., `lines`) are compared via `JSON.stringify`; if different, recorded as one `FieldChange` with stringified values truncated to 500 chars.
+3. Zero changes → no row written.
+4. The service is injected into all 4 update use cases and called after successful save (awaited, non-fatal).
+5. `RecordAuditController` exposes `GET /tenant/sales/audit-log?entityType=...&entityId=...`.
+6. Frontend `RecordAuditModal` renders the changes in a before/after table.
+
+**Key files:**
+| Layer | File |
+|-------|------|
+| Entity | `backend/src/domain/system/entities/RecordChangeLog.ts` |
+| Application service | `backend/src/application/system/services/RecordChangeService.ts` |
+| Repository | `backend/src/infrastructure/firestore/repositories/system/FirestoreRecordChangeLogRepository.ts` |
+| API endpoint | `backend/src/api/controllers/RecordAuditController.ts` |
+| Frontend modal | `frontend/src/modules/sales/components/RecordAuditModal.tsx` |
+
+**Firestore index:** The `record_change_logs` collection requires a composite index (`entityType ASC, entityId ASC, timestamp DESC`). Defined in `firestore.indexes.json` — must be deployed before production use.
+
+---
+
+## Sales recurring invoices (Phase D.4)
+
+Phase D.4 added recurring invoice support with two modes: **templated** (one-click clone from existing invoice) and **scheduled** (automatic generation on a cadence).
+
+### Architecture
+
+**Entity:** `RecurringInvoiceTemplate` stores the invoice template (customer, lines, prices, currency) plus scheduling parameters (frequency, day of month/week, start/end dates, max occurrences).
+
+**Scheduling model:**
+- **Frequencies:** WEEKLY, MONTHLY, QUARTERLY, ANNUALLY
+- **Day targeting:** `dayOfMonth` (1-28) for monthly/quarterly/annually, `dayOfWeek` (0-6) for weekly
+- **Completion:** Template auto-completes when `maxOccurrences` is reached or `nextGenerationDate` exceeds `endDate`
+- **Status lifecycle:** ACTIVE → PAUSED (resume) → ACTIVE, or ACTIVE → CANCELLED, or ACTIVE → COMPLETED
+
+**Generation flow:**
+1. `POST /tenant/sales/recurring-invoices/generate` finds all ACTIVE templates where `nextGenerationDate <= asOfDate`
+2. For each template, creates a DRAFT Sales Invoice using `generateDocumentNumber()` from SalesSettings (increments sequence)
+3. Advances the template: increments `occurrencesGenerated`, computes `nextGenerationDate`, marks COMPLETED if done
+4. Saves updated SalesSettings to persist the sequence increment
+
+**Clone flow:**
+1. `POST /tenant/sales/invoices/:invoiceId/clone-to-template` reads an existing SI
+2. Extracts customer, lines, prices, payment terms into a new template
+3. User provides name, frequency, and scheduling parameters
+
+### Key files:
+| Layer | File |
+|-------|------|
+| Entity | `backend/src/domain/sales/entities/RecurringInvoiceTemplate.ts` |
+| Repo interface | `backend/src/repository/interfaces/sales/IRecurringInvoiceTemplateRepository.ts` |
+| Firestore repo | `backend/src/infrastructure/firestore/repositories/sales/FirestoreRecurringInvoiceTemplateRepository.ts` |
+| Use cases | `backend/src/application/sales/use-cases/RecurringInvoiceUseCases.ts` |
+| Controller | `backend/src/api/controllers/sales/RecurringInvoiceController.ts` |
+| Routes | `backend/src/api/routes/sales.routes.ts` (8 new endpoints) |
+| DI binding | `backend/src/infrastructure/di/bindRepositories.ts` |
+| Frontend page | `frontend/src/modules/sales/pages/RecurringInvoicesPage.tsx` |
+| Frontend API | `frontend/src/api/salesApi.ts` (`recurringInvoiceApi` object) |
+| Frontend route | `frontend/src/router/routes.config.ts` (`/sales/recurring-invoices`) |
+
+### API Endpoints:
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/tenant/sales/recurring-invoices` | List templates (filter by status, customerId) |
+| GET | `/tenant/sales/recurring-invoices/:id` | Get template by ID |
+| POST | `/tenant/sales/recurring-invoices` | Create new template |
+| PUT | `/tenant/sales/recurring-invoices/:id` | Update template |
+| POST | `/tenant/sales/recurring-invoices/:id/pause` | Pause active template |
+| POST | `/tenant/sales/recurring-invoices/:id/resume` | Resume paused template |
+| POST | `/tenant/sales/recurring-invoices/:id/cancel` | Cancel template |
+| POST | `/tenant/sales/recurring-invoices/generate` | Generate all due invoices |
+| POST | `/tenant/sales/invoices/:invoiceId/clone-to-template` | Clone SI to template |
+
+### Tests:
+19 unit tests covering entity validation, state transitions, use case execution, and generation logic.
+
+### Post-implementation hardening (2026-05-22)
+
+- `RecurringInvoiceController` now enforces authenticated tenant context and user identity using `req.user.companyId` + `req.user.uid` (no nullable fallbacks).
+- Create and clone endpoints now validate required payload fields before entering use cases, returning 400-level errors for malformed requests.
+- `RecurringInvoiceTemplate` now validates date fields (`startDate`, `nextGenerationDate`, optional `endDate`) as `YYYY-MM-DD`, enforces non-empty template names, and enforces line quantity > 0.
+- `UpdateRecurringInvoiceTemplateUseCase` explicitly rejects empty-line updates.
+- Frontend now exposes clone-to-recurring from Sales Invoice detail (`Clone to Recurring`) and supports weekly weekday selection in both create and clone flows.
+- Recurring invoices UI strings are now wired to i18n (`en`, `ar`, `tr`) under `sales.recurring.*`.
+
+---
+
+## Sales-return enhancements (Phase D.5)
+
+Phase D.5 extends returns from a pure operational reversal into a configurable commercial settlement event.
+
+### New return commercial fields
+
+- `settlementMode`: `CREDIT_NOTE | REFUND`
+- `reasonCode`: `DEFECTIVE | WRONG_ITEM | CHANGED_MIND | OTHER`
+- `reason`: free-text explanation (retained)
+- Restocking fee model:
+  - `restockingFeeType`: `PERCENT | AMOUNT`
+  - `restockingFeeValue`
+  - computed `restockingFeeAmountDoc`, `restockingFeeAmountBase`
+- Computed net settlement values:
+  - `netSettlementAmountDoc`
+  - `netSettlementAmountBase`
+
+`SalesReturn` now recomputes totals + restocking + net settlement in one place (`recalculateMonetaryTotals`) to keep posting math and API output consistent.
+
+### Posting behavior
+
+For `AFTER_INVOICE` and `DIRECT` returns:
+
+- Revenue reversal voucher (`SR-REV-*`) now credits AR by **net settlement** (gross return minus restocking fee).
+- If restocking fee is non-zero, an extra credit line is posted to revenue (same account fallback chain as return lines / default sales revenue account).
+
+Settlement-mode branching:
+
+- `CREDIT_NOTE`:
+  - keeps current customer-credit behavior
+  - reduces linked SI outstanding by `netSettlementAmountBase`
+- `REFUND`:
+  - posts an additional refund voucher (`SR-REF-*`): `Dr AR / Cr settlement account`
+  - settlement account resolves from enabled payment-method mapping in Sales settings (`paymentMethodConfigs`)
+  - linked SI outstanding is not reduced by this branch automatically
+
+`BEFORE_INVOICE` remains inventory/COGS-only and does not run revenue/refund settlement posting.
+
+### API + validation updates
+
+- Create/Update return payloads now accept settlement/reason/restocking fields.
+- Validators enforce enum values and restocking constraints (non-negative, percent <= 100).
+- Direct-return create validation now explicitly supports `DIRECT` + `customerId` flow (previous validation only allowed SI/DN source IDs).
+
+### Frontend updates
+
+`SalesReturnDetailPage` create flow now includes:
+- Settlement mode selector
+- Reason code selector
+- Restocking fee type/value controls
+
+Detail view now displays:
+- settlement mode
+- reason code
+- restocking fee amount
+- net settlement amount
+
+---
+
+## Invoice templates (Phase D.7)
+
+Phase D.7 adds controlled invoice-template selection for Sales Invoices and customer-level default template assignment.
+
+### Scope implemented
+
+- Sales Invoice create page now loads company voucher forms and filters invoice templates by runtime persona (`sales_invoice_direct` vs `sales_invoice_linked`).
+- User can select an invoice template explicitly on create.
+- Customer master (`Party`) now stores:
+  - `defaultSalesInvoiceTemplateId`
+  - `defaultSalesInvoiceFormType`
+- New invoice create flow auto-selects a template in this precedence:
+  1. customer `defaultSalesInvoiceTemplateId` (if valid for current persona)
+  2. persona-matching default template
+  3. first persona-matching template
+- Invoice persistence now stores template identity separately from policy form token:
+  - `voucherFormId` (selected template ID)
+  - `formType` (governance persona token)
+
+### Why this design
+
+Governance and persona checks already rely on `formType` tokens (`sales_invoice_direct`, `sales_invoice_linked`, etc.). Storing the selected layout in `voucherFormId` keeps governance stable while still preserving which concrete template was chosen for print layout (logo/footer/terms).
+
+### Backend/Frontend contract changes
+
+- `SalesInvoice` entity and DTO now include optional `voucherFormId`.
+- Create SI validator accepts optional `voucherFormId` and optional `formType` on native-source create.
+- `Party` entity/use-cases/API include default invoice-template fields for customer-level prefill.
+
+### Deferred by design
+
+- Full free-canvas/sketch-board layout editing is intentionally deferred (future D7.3-style enhancement).
+- Current implementation is controlled-template selection on top of the existing Forms Designer model.
+
+---
+
+## Outbound invoice messaging (Phase D.8 — WhatsApp first)
+
+Phase D.8 introduces outbound invoice sharing from the Sales Invoice detail page using WhatsApp. The initial single-environment sender shortcut was replaced with tenant-scoped sender accounts in Sales settings so each company controls its own communication identity.
+
+### Flow
+
+1. User opens a **POSTED** Sales Invoice and clicks **Send via WhatsApp**.
+2. UI collects sender account, recipient phone (E.164), optional document URL, and message text.
+3. Backend endpoint `POST /tenant/sales/invoices/:id/send-whatsapp` validates payload and loads the invoice + customer.
+4. `SendSalesInvoiceWhatsappUseCase` enforces:
+   - invoice must exist and be `POSTED`
+   - recipient phone must be valid E.164
+   - message length <= 4096 chars
+5. Use case resolves the company sender account from `SalesSettings.messagingAccounts` (active + default per channel, optional explicit account selection).
+6. Sender credentials are decrypted at runtime and passed to `IInvoiceMessagingProvider.sendWhatsAppMessage(...)`.
+7. Current provider is `MetaWhatsAppCloudProvider` (Graph API `/{phone-number-id}/messages`).
+
+### Architecture points
+
+- Sales application layer depends on provider + resolver contracts (`IInvoiceMessagingProvider`, `ICompanyMessagingResolver`), not on Meta API types.
+- Per-company sender accounts live in `SalesSettings.messagingAccounts`.
+- Credentials are stored encrypted (`encryptedCredential`) and never returned to the frontend.
+- Sender account resolution is tenant-scoped and supports multiple sender accounts per company, with one default active sender per channel.
+- Provider wiring is done via DI (`diContainer.invoiceMessagingProvider`, `diContainer.companyMessagingResolver`).
+- Environment-level provider config remains as legacy fallback only:
+  - `WHATSAPP_CLOUD_ACCESS_TOKEN`
+  - `WHATSAPP_CLOUD_PHONE_NUMBER_ID`
+  - optional `WHATSAPP_CLOUD_API_VERSION` (default `v22.0`)
+- Optional `ERP_APP_BASE_URL` is used to build default invoice deep links in message text when no explicit document URL is supplied.
+
+### Key files
+
+| Layer | File |
+|---|---|
+| Use case | `backend/src/application/sales/use-cases/InvoiceMessagingUseCases.ts` |
+| Provider contract | `backend/src/application/sales/services/IInvoiceMessagingProvider.ts` |
+| Account resolver contract | `backend/src/application/sales/services/ICompanyMessagingResolver.ts` |
+| Credential cipher contract | `backend/src/application/sales/services/ICredentialCipher.ts` |
+| Meta provider | `backend/src/infrastructure/messaging/MetaWhatsAppCloudProvider.ts` |
+| Settings-backed resolver | `backend/src/infrastructure/messaging/SalesSettingsMessagingResolver.ts` |
+| Controller route | `backend/src/api/controllers/sales/SalesController.ts` |
+| Validator | `backend/src/api/validators/sales.validators.ts` |
+| Sales settings domain | `backend/src/domain/sales/entities/SalesSettings.ts` |
+| Frontend action | `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` |
+| Frontend settings page | `frontend/src/modules/sales/pages/SalesSettingsPage.tsx` |
+| Frontend API client | `frontend/src/api/salesApi.ts` |
+
+---
+
 ## What Is NOT Implemented
 
 | Feature | Status |
@@ -347,3 +615,8 @@ For the full technical specification — bucket algorithm, event model, opening/
 | **Customer Master (dedicated)** | Currently uses Party. A dedicated customer entity is planned but the Party-based flow is sufficient for V1. |
 | **Sales Reports (detailed)** | Implemented in Phase C — see the Sales finance & reporting section above and [`docs/architecture/sales-reporting.md`](./sales-reporting.md). |
 | **Commission GL posting** | Marking commission paid is a status change only — no Dr/Cr voucher posted yet. |
+| **Recurring invoices (D.4)** | Implemented — templated (clone) + scheduled (WEEKLY/MONTHLY/QUARTERLY/ANNUALLY) with pause/resume/cancel. |
+| **Sales-return enhancements (D.5)** | Implemented: settlement mode, reason code taxonomy, restocking fee + net settlement accounting. |
+| **Document attachments (D.6)** | File attachments on sales documents — NOT STARTED. |
+| **Multiple invoice templates (D.7)** | Implemented (controlled model): selectable invoice templates + customer defaults + persisted template ID. |
+| **Email integration (D.8 follow-up)** | Deferred. D.8 delivered WhatsApp-first outbound messaging via provider abstraction; email channel can be added as a new provider/use-case path. |

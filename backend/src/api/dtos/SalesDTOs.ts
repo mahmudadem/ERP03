@@ -20,6 +20,22 @@ export interface SalesPaymentMethodConfigDTO {
   isEnabled?: boolean;
 }
 
+export interface SalesMessagingAccountDTO {
+  id: string;
+  channel: 'WHATSAPP' | 'EMAIL' | 'TELEGRAM';
+  provider: 'META_WHATSAPP_CLOUD' | 'SMTP' | 'TELEGRAM_BOT';
+  label: string;
+  isDefault: boolean;
+  isActive: boolean;
+  phoneNumberE164?: string;
+  phoneNumberId?: string;
+  fromAddress?: string;
+  fromDisplayName?: string;
+  botUsername?: string;
+  apiVersion?: string;
+  hasCredential: boolean;
+}
+
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
@@ -35,6 +51,7 @@ export interface SalesSettingsDTO {
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
   paymentMethodConfigs: SalesPaymentMethodConfigDTO[];
+  messagingAccounts: SalesMessagingAccountDTO[];
   governanceRules: GovernanceRuleDTO[];
   defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -196,6 +213,7 @@ export interface SalesInvoiceDTO {
   companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  voucherFormId?: string;
   /** @deprecated Use formType instead */
   voucherTypeId?: string;
   formType: string;
@@ -309,7 +327,15 @@ export interface SalesReturnDTO {
   subtotalBase: number;
   taxTotalBase: number;
   grandTotalBase: number;
+  netSettlementAmountDoc: number;
+  netSettlementAmountBase: number;
+  settlementMode: 'CREDIT_NOTE' | 'REFUND';
+  reasonCode: 'DEFECTIVE' | 'WRONG_ITEM' | 'CHANGED_MIND' | 'OTHER';
   reason: string;
+  restockingFeeType?: 'PERCENT' | 'AMOUNT';
+  restockingFeeValue: number;
+  restockingFeeAmountDoc: number;
+  restockingFeeAmountBase: number;
   notes?: string;
   status: 'DRAFT' | 'POSTED' | 'CANCELLED';
   revenueVoucherId?: string | null;
@@ -353,6 +379,21 @@ export class SalesDTOMapper {
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
       paymentMethodConfigs: settings.paymentMethodConfigs || [],
+      messagingAccounts: (settings.messagingAccounts || []).map((account) => ({
+        id: account.id,
+        channel: account.channel,
+        provider: account.provider,
+        label: account.label,
+        isDefault: account.isDefault !== false,
+        isActive: account.isActive !== false,
+        phoneNumberE164: account.phoneNumberE164,
+        phoneNumberId: account.phoneNumberId,
+        fromAddress: account.fromAddress,
+        fromDisplayName: account.fromDisplayName,
+        botUsername: account.botUsername,
+        apiVersion: account.apiVersion,
+        hasCredential: !!account.encryptedCredential,
+      })),
       governanceRules: settings.governanceRules,
       defaultSalesInvoicePersona: settings.defaultSalesInvoicePersona,
       defaultWarehouseId: settings.defaultWarehouseId,
@@ -511,6 +552,7 @@ export class SalesDTOMapper {
       companyId: si.companyId,
       invoiceNumber: si.invoiceNumber,
       customerInvoiceNumber: si.customerInvoiceNumber,
+      voucherFormId: si.voucherFormId,
       voucherTypeId: si.formType,
       formType: si.formType,
       voucherType: si.voucherType,
@@ -598,7 +640,15 @@ export class SalesDTOMapper {
       subtotalBase: sr.subtotalBase,
       taxTotalBase: sr.taxTotalBase,
       grandTotalBase: sr.grandTotalBase,
+      netSettlementAmountDoc: sr.netSettlementAmountDoc,
+      netSettlementAmountBase: sr.netSettlementAmountBase,
+      settlementMode: sr.settlementMode,
+      reasonCode: sr.reasonCode,
       reason: sr.reason,
+      restockingFeeType: sr.restockingFeeType,
+      restockingFeeValue: sr.restockingFeeValue,
+      restockingFeeAmountDoc: sr.restockingFeeAmountDoc,
+      restockingFeeAmountBase: sr.restockingFeeAmountBase,
       notes: sr.notes,
       status: sr.status,
       revenueVoucherId: sr.revenueVoucherId ?? null,

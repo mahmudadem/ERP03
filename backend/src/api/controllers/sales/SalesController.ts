@@ -18,6 +18,7 @@ import {
   UpdateSalesInvoiceUseCase,
   UpdateAndPostSalesInvoiceUseCase,
 } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { SendSalesInvoiceWhatsappUseCase } from '../../../application/sales/use-cases/InvoiceMessagingUseCases';
 import { AccrueCommissionForInvoiceUseCase } from '../../../application/sales/use-cases/CommissionUseCases';
 import {
   RecordSalesInvoicePaymentUseCase,
@@ -55,6 +56,8 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
 import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
+import { PeriodLockOverride } from '../../../domain/accounting/entities/PeriodLockOverride';
+import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
 import {
   validateCreateDeliveryNoteInput,
   validateCreateSalesReturnInput,
@@ -65,6 +68,7 @@ import {
   validateListSalesInvoicesQuery,
   validateListSalesOrdersQuery,
   validateListSalesReturnsQuery,
+  validateSendSalesInvoiceWhatsAppInput,
   validateUpdateSalesInvoiceInput,
   validateUpdateSalesReturnInput,
   validateUpdateDeliveryNoteInput,
@@ -137,6 +141,10 @@ export class SalesController {
     return (req as any).user?.uid || 'SYSTEM';
   }
 
+  private static getUserEmail(req: Request): string | undefined {
+    return (req as any).user?.email;
+  }
+
   private static buildMovementUseCase(): RecordStockMovementUseCase {
     return new RecordStockMovementUseCase({
       itemRepository: diContainer.itemRepository,
@@ -160,14 +168,18 @@ export class SalesController {
         diContainer.ledgerRepository,
         diContainer.companyCurrencyRepository,
         diContainer.accountRepository,
-        new VoucherValidationService()
+        new VoucherValidationService(),
+        diContainer.periodLockService
       );
     }
 
     return new SubledgerVoucherPostingService(
       diContainer.voucherRepository,
       diContainer.ledgerRepository,
-      diContainer.companyCurrencyRepository
+      diContainer.companyCurrencyRepository,
+      undefined,
+      undefined,
+      diContainer.periodLockService
     );
   }
 
@@ -233,7 +245,8 @@ export class SalesController {
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
         ensureAccountingEngine,
-        diContainer.inventorySettingsRepository
+        diContainer.inventorySettingsRepository,
+        diContainer.encryptionService
       );
 
       const settings = await useCase.execute({
@@ -282,7 +295,8 @@ export class SalesController {
         diContainer.voucherFormRepository,
         diContainer.salesOrderRepository,
         diContainer.deliveryNoteRepository,
-        diContainer.inventorySettingsRepository
+        diContainer.inventorySettingsRepository,
+        diContainer.encryptionService
       );
 
       const settings = await useCase.execute({
@@ -394,19 +408,26 @@ export class SalesController {
       validateUpdateSalesOrderInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
+
+      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
+        diContainer.recordChangeLogRepository
+      );
 
       const useCase = new UpdateSalesOrderUseCase(
         diContainer.salesOrderRepository,
         diContainer.partyRepository,
         diContainer.itemRepository,
-        diContainer.taxCodeRepository
+        diContainer.taxCodeRepository,
+        recordChangeService
       );
 
       const so = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         id,
-      });
+      }, { userId, userEmail });
 
       (res as any).json({
         success: true,
@@ -551,17 +572,24 @@ export class SalesController {
       validateUpdateDeliveryNoteInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
+
+      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
+        diContainer.recordChangeLogRepository
+      );
 
       const useCase = new UpdateDeliveryNoteUseCase(
         diContainer.deliveryNoteRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        recordChangeService
       );
 
       const dn = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         id,
-      });
+      }, { userId, userEmail });
 
       (res as any).json({
         success: true,
@@ -576,8 +604,14 @@ export class SalesController {
     try {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
       const inventoryService = SalesController.buildSalesInventoryService();
       const accountingPostingService = SalesController.buildAccountingPostingService();
+
+      const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
+      const periodLockOverride = periodLockOverrideReason
+        ? { reason: periodLockOverrideReason, overriddenBy: userId }
+        : undefined;
 
       const useCase = new PostDeliveryNoteUseCase(
         diContainer.salesSettingsRepository,
@@ -596,7 +630,28 @@ export class SalesController {
         diContainer.transactionManager
       );
 
-      const dn = await useCase.execute(companyId, id);
+      const dn = await useCase.execute(companyId, id, true, periodLockOverride);
+
+      // Write period-lock override audit row (non-fatal)
+      if (periodLockOverride) {
+        try {
+          // PeriodLockOverride imported at top level
+          await diContainer.periodLockOverrideRepository.create(new PeriodLockOverride({
+            companyId,
+            sourceModule: 'sales',
+            sourceType: 'DELIVERY_NOTE',
+            sourceId: dn.id,
+            sourceNumber: `DN-${dn.dnNumber}`,
+            documentDate: dn.deliveryDate,
+            lockedThroughDate: periodLockOverrideReason ? (await diContainer.accountingPolicyConfigProvider.getConfig(companyId)).lockedThroughDate ?? '' : '',
+            reason: periodLockOverrideReason,
+            overriddenBy: userId,
+          }));
+        } catch (auditErr) {
+          console.error('[SalesController] period-lock override audit write failed (non-fatal):', auditErr);
+        }
+      }
+
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toDeliveryNoteDTO(dn),
@@ -663,11 +718,15 @@ export class SalesController {
       );
 
       const settlementInput = (req as any).body?.settlementInput;
+      const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
+      const periodLockOverride = periodLockOverrideReason
+        ? { reason: periodLockOverrideReason, overriddenBy: SalesController.getUserId(req) }
+        : undefined;
       const si = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
-      }, settlementInput);
+      }, settlementInput, periodLockOverride);
 
       // Accrue sales commission (non-fatal — must not fail the post response)
       try {
@@ -683,6 +742,25 @@ export class SalesController {
         });
       } catch (commissionError) {
         console.error('[SalesController] commission accrual failed (non-fatal):', commissionError);
+      }
+
+      // Write period-lock override audit row (non-fatal)
+      if (periodLockOverride) {
+        try {
+          await diContainer.periodLockOverrideRepository.create(new PeriodLockOverride({
+            companyId,
+            sourceModule: 'sales',
+            sourceType: 'SALES_INVOICE',
+            sourceId: si.id,
+            sourceNumber: si.invoiceNumber ? `SI-${si.invoiceNumber}` : '',
+            documentDate: si.invoiceDate,
+            lockedThroughDate: periodLockOverrideReason ? (await diContainer.accountingPolicyConfigProvider.getConfig(companyId)).lockedThroughDate ?? '' : '',
+            reason: periodLockOverrideReason,
+            overriddenBy: userId,
+          }));
+        } catch (auditErr) {
+          console.error('[SalesController] period-lock override audit write failed (non-fatal):', auditErr);
+        }
       }
 
       (res as any).status(201).json({
@@ -714,11 +792,15 @@ export class SalesController {
       );
 
       const settlementInput = (req as any).body?.settlementInput;
+      const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
+      const periodLockOverride = periodLockOverrideReason
+        ? { reason: periodLockOverrideReason, overriddenBy: SalesController.getUserId(req) }
+        : undefined;
       const si = await useCase.execute({
         ...((req as any).body || {}),
         id,
         companyId,
-      }, settlementInput);
+      }, settlementInput, periodLockOverride);
 
       // Accrue sales commission (non-fatal — must not fail the post response)
       try {
@@ -734,6 +816,25 @@ export class SalesController {
         });
       } catch (commissionError) {
         console.error('[SalesController] commission accrual failed (non-fatal):', commissionError);
+      }
+
+      // Write period-lock override audit row (non-fatal)
+      if (periodLockOverride) {
+        try {
+          await diContainer.periodLockOverrideRepository.create(new PeriodLockOverride({
+            companyId,
+            sourceModule: 'sales',
+            sourceType: 'SALES_INVOICE',
+            sourceId: si.id,
+            sourceNumber: si.invoiceNumber ? `SI-${si.invoiceNumber}` : '',
+            documentDate: si.invoiceDate,
+            lockedThroughDate: periodLockOverrideReason ? (await diContainer.accountingPolicyConfigProvider.getConfig(companyId)).lockedThroughDate ?? '' : '',
+            reason: periodLockOverrideReason,
+            overriddenBy: userId,
+          }));
+        } catch (auditErr) {
+          console.error('[SalesController] period-lock override audit write failed (non-fatal):', auditErr);
+        }
       }
 
       (res as any).json({
@@ -789,17 +890,24 @@ export class SalesController {
       validateUpdateSalesInvoiceInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
+
+      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
+        diContainer.recordChangeLogRepository
+      );
 
       const useCase = new UpdateSalesInvoiceUseCase(
         diContainer.salesInvoiceRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        recordChangeService
       );
 
       const si = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         id,
-      });
+      }, undefined, { userId, userEmail });
 
       (res as any).json({
         success: true,
@@ -844,7 +952,11 @@ export class SalesController {
       );
 
       const settlementInput = (req as any).body?.settlementInput;
-      const si = await useCase.execute(companyId, id, true, undefined, settlementInput);
+      const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
+      const periodLockOverride = periodLockOverrideReason
+        ? { reason: periodLockOverrideReason, overriddenBy: userId }
+        : undefined;
+      const si = await useCase.execute(companyId, id, true, undefined, settlementInput, periodLockOverride);
 
       // Accrue sales commission (non-fatal — must not fail the post response)
       try {
@@ -860,6 +972,26 @@ export class SalesController {
         });
       } catch (commissionError) {
         console.error('[SalesController] commission accrual failed (non-fatal):', commissionError);
+      }
+
+      // Write period-lock override audit row (non-fatal)
+      if (periodLockOverride) {
+        try {
+          // PeriodLockOverride imported at top level
+          await diContainer.periodLockOverrideRepository.create(new PeriodLockOverride({
+            companyId,
+            sourceModule: 'sales',
+            sourceType: 'SALES_INVOICE',
+            sourceId: id,
+            sourceNumber: si.invoiceNumber ? `SI-${si.invoiceNumber}` : '',
+            documentDate: si.invoiceDate,
+            lockedThroughDate: periodLockOverrideReason ? (await diContainer.accountingPolicyConfigProvider.getConfig(companyId)).lockedThroughDate ?? '' : '',
+            reason: periodLockOverrideReason,
+            overriddenBy: userId,
+          }));
+        } catch (auditErr) {
+          console.error('[SalesController] period-lock override audit write failed (non-fatal):', auditErr);
+        }
       }
 
       (res as any).json({
@@ -942,14 +1074,20 @@ export class SalesController {
       validateUpdateSalesReturnInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
 
-      const useCase = new UpdateSalesReturnUseCase(diContainer.salesReturnRepository);
+      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
+        diContainer.recordChangeLogRepository
+      );
+
+      const useCase = new UpdateSalesReturnUseCase(diContainer.salesReturnRepository, recordChangeService);
 
       const salesReturn = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         id,
-      });
+      }, { userId, userEmail });
 
       (res as any).json({
         success: true,
@@ -964,8 +1102,14 @@ export class SalesController {
     try {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
       const inventoryService = SalesController.buildSalesInventoryService();
       const accountingPostingService = SalesController.buildAccountingPostingService();
+
+      const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
+      const periodLockOverride = periodLockOverrideReason
+        ? { reason: periodLockOverrideReason, overriddenBy: userId }
+        : undefined;
 
       const useCase = new PostSalesReturnUseCase(
         diContainer.salesSettingsRepository,
@@ -987,7 +1131,28 @@ export class SalesController {
         diContainer.transactionManager
       );
 
-      const salesReturn = await useCase.execute(companyId, id);
+      const salesReturn = await useCase.execute(companyId, id, true, periodLockOverride);
+
+      // Write period-lock override audit row (non-fatal)
+      if (periodLockOverride) {
+        try {
+          // PeriodLockOverride imported at top level
+          await diContainer.periodLockOverrideRepository.create(new PeriodLockOverride({
+            companyId,
+            sourceModule: 'sales',
+            sourceType: 'SALES_RETURN',
+            sourceId: salesReturn.id,
+            sourceNumber: `SR-${salesReturn.returnNumber}`,
+            documentDate: salesReturn.returnDate,
+            lockedThroughDate: periodLockOverrideReason ? (await diContainer.accountingPolicyConfigProvider.getConfig(companyId)).lockedThroughDate ?? '' : '',
+            reason: periodLockOverrideReason,
+            overriddenBy: userId,
+          }));
+        } catch (auditErr) {
+          console.error('[SalesController] period-lock override audit write failed (non-fatal):', auditErr);
+        }
+      }
+
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toSalesReturnDTO(salesReturn),
@@ -1055,6 +1220,39 @@ export class SalesController {
           payments: result.payments.map(p => p.toJSON()),
           voucherIds: result.voucherIds,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async sendInvoiceViaWhatsApp(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateSendSalesInvoiceWhatsAppInput((req as any).body || {});
+      const companyId = SalesController.getCompanyId(req);
+      const invoiceId = String((req as any).params.id);
+      const body = (req as any).body || {};
+
+      const useCase = new SendSalesInvoiceWhatsappUseCase(
+        diContainer.salesInvoiceRepository,
+        diContainer.partyRepository,
+        diContainer.invoiceMessagingProvider,
+        diContainer.companyMessagingResolver,
+        process.env.ERP_APP_BASE_URL
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        invoiceId,
+        messagingAccountId: body.messagingAccountId,
+        toPhoneNumber: body.toPhoneNumber,
+        messageText: body.messageText,
+        documentUrl: body.documentUrl,
+      });
+
+      (res as any).json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

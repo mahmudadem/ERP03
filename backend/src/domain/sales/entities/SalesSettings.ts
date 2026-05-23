@@ -3,6 +3,8 @@ export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
 export type GovernanceRuleScope = 'company' | 'branch' | 'form';
 export type GovernanceAction = 'allow' | 'block';
 export type SalesPaymentMethodCode = 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
+export type SalesMessagingChannel = 'WHATSAPP' | 'EMAIL' | 'TELEGRAM';
+export type SalesMessagingProvider = 'META_WHATSAPP_CLOUD' | 'SMTP' | 'TELEGRAM_BOT';
 
 export interface GovernanceRule {
   id: string;
@@ -18,6 +20,22 @@ export interface SalesPaymentMethodConfig {
   settlementAccountId: string;
   label?: string;
   isEnabled?: boolean;
+}
+
+export interface SalesMessagingAccount {
+  id: string;
+  channel: SalesMessagingChannel;
+  provider: SalesMessagingProvider;
+  label: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+  phoneNumberE164?: string;
+  phoneNumberId?: string;
+  fromAddress?: string;
+  fromDisplayName?: string;
+  botUsername?: string;
+  apiVersion?: string;
+  encryptedCredential?: string;
 }
 
 export interface SalesSettingsProps {
@@ -36,6 +54,7 @@ export interface SalesSettingsProps {
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
   paymentMethodConfigs?: SalesPaymentMethodConfig[];
+  messagingAccounts?: SalesMessagingAccount[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -65,6 +84,7 @@ export class SalesSettings {
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
   paymentMethodConfigs: SalesPaymentMethodConfig[];
+  messagingAccounts: SalesMessagingAccount[];
   governanceRules: GovernanceRule[];
   defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -103,6 +123,48 @@ export class SalesSettings {
         label: config.label?.trim() || undefined,
         isEnabled: config.isEnabled ?? true,
       }));
+    const rawMessagingAccounts = (props.messagingAccounts ?? [])
+      .filter((account) => !!account?.id && !!account?.channel && !!account?.provider && !!account?.label)
+      .map((account) => ({
+        id: String(account.id).trim(),
+        channel: account.channel,
+        provider: account.provider,
+        label: String(account.label).trim(),
+        isDefault: account.isDefault ?? false,
+        isActive: account.isActive ?? true,
+        phoneNumberE164: account.phoneNumberE164?.trim() || undefined,
+        phoneNumberId: account.phoneNumberId?.trim() || undefined,
+        fromAddress: account.fromAddress?.trim() || undefined,
+        fromDisplayName: account.fromDisplayName?.trim() || undefined,
+        botUsername: account.botUsername?.trim() || undefined,
+        apiVersion: account.apiVersion?.trim() || undefined,
+        encryptedCredential: account.encryptedCredential?.trim() || undefined,
+      }));
+
+    const normalizedMessagingByChannel = new Map<SalesMessagingChannel, SalesMessagingAccount[]>();
+    rawMessagingAccounts.forEach((account) => {
+      const current = normalizedMessagingByChannel.get(account.channel) || [];
+      current.push(account);
+      normalizedMessagingByChannel.set(account.channel, current);
+    });
+
+    this.messagingAccounts = [];
+    normalizedMessagingByChannel.forEach((accounts) => {
+      const active = accounts.filter((entry) => entry.isActive !== false);
+      const explicitDefault = active.find((entry) => entry.isDefault);
+      const effectiveDefaultId = explicitDefault?.id || active[0]?.id;
+
+      accounts.forEach((entry) => {
+        if (entry.channel === 'WHATSAPP' && !entry.phoneNumberId) {
+          throw new Error(`SalesSettings messaging account ${entry.id} is missing phoneNumberId`);
+        }
+        this.messagingAccounts.push({
+          ...entry,
+          isDefault: entry.id === effectiveDefaultId,
+          isActive: entry.isActive !== false,
+        });
+      });
+    });
     this.governanceRules = props.governanceRules ?? [];
     this.defaultSalesInvoicePersona = props.defaultSalesInvoicePersona ?? 'direct';
     this.defaultWarehouseId = props.defaultWarehouseId;
@@ -133,6 +195,7 @@ export class SalesSettings {
       overInvoiceTolerancePct: 0,
       defaultPaymentTermsDays: 30,
       paymentMethodConfigs: [],
+      messagingAccounts: [],
       governanceRules: [],
       defaultSalesInvoicePersona: 'direct',
       soNumberPrefix: 'SO',
@@ -163,6 +226,7 @@ export class SalesSettings {
       overInvoiceTolerancePct: this.overInvoiceTolerancePct,
       defaultPaymentTermsDays:     this.defaultPaymentTermsDays,
       paymentMethodConfigs: this.paymentMethodConfigs,
+      messagingAccounts: this.messagingAccounts,
       governanceRules: this.governanceRules,
       defaultSalesInvoicePersona: this.defaultSalesInvoicePersona,
       defaultWarehouseId: this.defaultWarehouseId,
@@ -194,6 +258,7 @@ export class SalesSettings {
       overInvoiceTolerancePct: data.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: data.defaultPaymentTermsDays ?? 30,
       paymentMethodConfigs: data.paymentMethodConfigs ?? [],
+      messagingAccounts: data.messagingAccounts ?? [],
       governanceRules: data.governanceRules ?? [],
       defaultSalesInvoicePersona: data.defaultSalesInvoicePersona ?? 'direct',
       defaultWarehouseId: data.defaultWarehouseId,

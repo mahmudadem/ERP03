@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { inventoryApi } from '../../../api/inventoryApi';
-import { SalesSettingsDTO, salesApi, GovernanceRuleDTO } from '../../../api/salesApi';
+import { SalesMessagingAccountDTO, SalesSettingsDTO, salesApi, GovernanceRuleDTO } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { WarehouseSelector } from '../../../components/shared/selectors/WarehouseSelector';
@@ -17,8 +17,15 @@ import {
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
 
+const newClientId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
-type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
+type TabId = 'policy' | 'accounts' | 'numbering' | 'governance' | 'communications';
 
 const SalesSettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -36,6 +43,7 @@ const SalesSettingsPage: React.FC = () => {
     persona: 'direct',
   });
   const [showAddRule, setShowAddRule] = useState(false);
+  const [credentialDraftByAccountId, setCredentialDraftByAccountId] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +54,9 @@ const SalesSettingsPage: React.FC = () => {
 
         const currentSettings = unwrap<any>(settingsResult)?.data ?? unwrap<any>(settingsResult);
         const invSettingsData = unwrap<any>(inventorySettings)?.data ?? unwrap<any>(inventorySettings);
+        if (!Array.isArray(currentSettings.messagingAccounts)) {
+          currentSettings.messagingAccounts = [];
+        }
 
         setSettings(currentSettings);
         setOriginalSettings(currentSettings);
@@ -76,7 +87,8 @@ const SalesSettingsPage: React.FC = () => {
     });
   };
 
-  const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  const hasCredentialChanges = Object.values(credentialDraftByAccountId).some((value) => value.trim().length > 0);
+  const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings) || hasCredentialChanges;
   const accountingMode = resolveInventoryAccountingMode(invSettings);
   const isPerpetual = accountingMode === 'PERPETUAL';
 
@@ -103,6 +115,62 @@ const SalesSettingsPage: React.FC = () => {
     updateSetting('governanceRules', currentRules.filter((r) => r.id !== id));
   };
 
+  const updateMessagingAccount = (id: string, patch: Partial<SalesMessagingAccountDTO>) => {
+    const current = settings?.messagingAccounts || [];
+    updateSetting(
+      'messagingAccounts',
+      current.map((account) => (account.id === id ? { ...account, ...patch } : account))
+    );
+  };
+
+  const addMessagingAccount = (channel: SalesMessagingAccountDTO['channel']) => {
+    const current = settings?.messagingAccounts || [];
+    const hasActiveDefault = current.some((account) => account.channel === channel && account.isActive !== false && account.isDefault);
+    const provider: SalesMessagingAccountDTO['provider'] =
+      channel === 'WHATSAPP' ? 'META_WHATSAPP_CLOUD' : channel === 'EMAIL' ? 'SMTP' : 'TELEGRAM_BOT';
+    const account: SalesMessagingAccountDTO = {
+      id: newClientId(),
+      channel,
+      provider,
+      label: '',
+      isDefault: !hasActiveDefault,
+      isActive: true,
+      phoneNumberE164: '',
+      phoneNumberId: '',
+      fromAddress: '',
+      fromDisplayName: '',
+      botUsername: '',
+      apiVersion: channel === 'WHATSAPP' ? 'v22.0' : undefined,
+      hasCredential: false,
+    };
+    updateSetting('messagingAccounts', [...current, account]);
+  };
+
+  const removeMessagingAccount = (id: string) => {
+    const current = settings?.messagingAccounts || [];
+    updateSetting(
+      'messagingAccounts',
+      current.filter((account) => account.id !== id)
+    );
+    setCredentialDraftByAccountId((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const markMessagingAccountAsDefault = (id: string, channel: SalesMessagingAccountDTO['channel']) => {
+    const current = settings?.messagingAccounts || [];
+    updateSetting(
+      'messagingAccounts',
+      current.map((account) =>
+        account.channel === channel
+          ? { ...account, isDefault: account.id === id }
+          : account
+      )
+    );
+  };
+
   const handleSave = async () => {
     if (!settings) return;
     if (!settings.defaultRevenueAccountId) {
@@ -122,6 +190,10 @@ const SalesSettingsPage: React.FC = () => {
         overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
         defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
+        messagingAccounts: (settings.messagingAccounts || []).map((account) => ({
+          ...account,
+          credential: credentialDraftByAccountId[account.id]?.trim() || undefined,
+        })),
         governanceRules: settings.governanceRules || [],
         defaultSalesInvoicePersona: settings.defaultSalesInvoicePersona,
         defaultWarehouseId: settings.defaultWarehouseId || undefined,
@@ -137,8 +209,13 @@ const SalesSettingsPage: React.FC = () => {
 
       const result = await salesApi.updateSettings(payload);
       const saved = unwrap<SalesSettingsDTO>(result);
+      saved.messagingAccounts = (saved.messagingAccounts || []).map((account) => ({
+        ...account,
+        credential: undefined,
+      }));
       setSettings(saved);
       setOriginalSettings(saved);
+      setCredentialDraftByAccountId({});
       errorHandler.showSuccess('Sales settings updated successfully.');
     } catch (err: any) {
       console.error('Failed to save sales settings', err);
@@ -163,6 +240,7 @@ const SalesSettingsPage: React.FC = () => {
     { id: 'accounts', label: 'Account Defaults', icon: DollarSign },
     { id: 'numbering', label: 'No. Series', icon: Hash },
     { id: 'governance', label: 'Governance', icon: Shield },
+    { id: 'communications', label: 'Communications', icon: Settings },
   ];
 
   return (
@@ -422,6 +500,203 @@ const SalesSettingsPage: React.FC = () => {
               ))}
             </div>
           </Card>
+        </SettingsSection>
+      )}
+
+      {activeTab === 'communications' && (
+        <SettingsSection
+          title={t('sales.settings.communications.title', 'Outbound Communications')}
+          description={t(
+            'sales.settings.communications.description',
+            'Configure company-owned sender accounts for WhatsApp, Email, and Telegram. Credentials are stored encrypted.'
+          )}
+          onSave={handleSave}
+          disabled={!hasChanges || saving}
+          saving={saving}
+        >
+          <div className="space-y-6">
+            <Card className="p-6">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-teal-300 px-3 py-2 text-xs font-semibold text-teal-700"
+                  onClick={() => addMessagingAccount('WHATSAPP')}
+                >
+                  {t('sales.settings.communications.addWhatsapp', 'Add WhatsApp Account')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-indigo-300 px-3 py-2 text-xs font-semibold text-indigo-700"
+                  onClick={() => addMessagingAccount('EMAIL')}
+                >
+                  {t('sales.settings.communications.addEmail', 'Add Email Account')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-violet-300 px-3 py-2 text-xs font-semibold text-violet-700"
+                  onClick={() => addMessagingAccount('TELEGRAM')}
+                >
+                  {t('sales.settings.communications.addTelegram', 'Add Telegram Account')}
+                </button>
+              </div>
+
+              {(settings.messagingAccounts || []).length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  {t('sales.settings.communications.empty', 'No sender accounts configured yet.')}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {(settings.messagingAccounts || []).map((account) => (
+                    <div key={account.id} className="rounded-xl border border-slate-200 p-4">
+                      <div className="mb-4 flex items-center justify-between">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {account.channel} / {account.provider}
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600"
+                          onClick={() => removeMessagingAccount(account.id)}
+                        >
+                          {t('common.remove', 'Remove')}
+                        </button>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            {t('sales.settings.communications.label', 'Account Label')}
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            value={account.label || ''}
+                            onChange={(e) => updateMessagingAccount(account.id, { label: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            {t('sales.settings.communications.apiVersion', 'API Version (Optional)')}
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            value={account.apiVersion || ''}
+                            onChange={(e) => updateMessagingAccount(account.id, { apiVersion: e.target.value })}
+                            placeholder="v22.0"
+                          />
+                        </div>
+                        {account.channel === 'WHATSAPP' && (
+                          <>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.phoneDisplay', 'Display Phone (E.164)')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.phoneNumberE164 || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { phoneNumberE164: e.target.value })}
+                                placeholder="+15551234567"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.phoneNumberId', 'Meta Phone Number ID')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.phoneNumberId || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { phoneNumberId: e.target.value })}
+                              />
+                            </div>
+                          </>
+                        )}
+                        {account.channel === 'EMAIL' && (
+                          <>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.fromAddress', 'From Email')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.fromAddress || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { fromAddress: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.fromName', 'From Name')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.fromDisplayName || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { fromDisplayName: e.target.value })}
+                              />
+                            </div>
+                          </>
+                        )}
+                        {account.channel === 'TELEGRAM' && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">
+                              {t('sales.settings.communications.botUsername', 'Bot Username')}
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              value={account.botUsername || ''}
+                              onChange={(e) => updateMessagingAccount(account.id, { botUsername: e.target.value })}
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            {t('sales.settings.communications.credential', 'Credential / Access Token')}
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            value={credentialDraftByAccountId[account.id] || ''}
+                            onChange={(e) =>
+                              setCredentialDraftByAccountId((prev) => ({
+                                ...prev,
+                                [account.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={
+                              account.hasCredential
+                                ? t('sales.settings.communications.credentialStored', 'Leave blank to keep existing credential')
+                                : t('sales.settings.communications.credentialRequired', 'Enter credential')
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-4">
+                        <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={account.isActive !== false}
+                            onChange={(e) => updateMessagingAccount(account.id, { isActive: e.target.checked })}
+                          />
+                          {t('sales.settings.communications.active', 'Active')}
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                          <input
+                            type="radio"
+                            name={`default-account-${account.channel}`}
+                            checked={account.isDefault === true}
+                            onChange={() => markMessagingAccountAsDefault(account.id, account.channel)}
+                          />
+                          {t('sales.settings.communications.default', 'Default for this channel')}
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
         </SettingsSection>
       )}
 

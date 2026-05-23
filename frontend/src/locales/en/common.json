@@ -2042,6 +2042,135 @@
       "directInvoicingStatusLabel": "Direct Invoicing",
       "directAllowed": "Allowed",
       "directBlockedOperational": "Blocked (Operational)"
+    },
+    "settings": {
+      "communications": {
+        "title": "Outbound Communications",
+        "description": "Configure company-owned sender accounts for WhatsApp, Email, and Telegram. Credentials are stored encrypted.",
+        "addWhatsapp": "Add WhatsApp Account",
+        "addEmail": "Add Email Account",
+        "addTelegram": "Add Telegram Account",
+        "empty": "No sender accounts configured yet.",
+        "label": "Account Label",
+        "apiVersion": "API Version (Optional)",
+        "phoneDisplay": "Display Phone (E.164)",
+        "phoneNumberId": "Meta Phone Number ID",
+        "fromAddress": "From Email",
+        "fromName": "From Name",
+        "botUsername": "Bot Username",
+        "credential": "Credential / Access Token",
+        "credentialStored": "Leave blank to keep existing credential",
+        "credentialRequired": "Enter credential",
+        "active": "Active",
+        "default": "Default for this channel"
+      }
+    },
+    "invoiceTemplates": {
+      "fieldLabel": "Invoice Template",
+      "customerDefaultLabel": "Default Invoice Template",
+      "autoSelect": "Auto Select",
+      "none": "(No Template)",
+      "defaultTag": "(Default)",
+      "help": "Controls the print layout (logo/footer/terms) for this invoice.",
+      "noneForType": "No invoice templates are available for this invoice type.",
+      "customerDefaultHelp": "Used to pre-select the invoice print layout when creating new sales invoices for this customer."
+    },
+    "invoices": {
+      "whatsapp": {
+        "action": "Send via WhatsApp",
+        "modalTitle": "Send Invoice via WhatsApp",
+        "senderLabel": "Sender Account",
+        "senderDefaultOption": "Use system default sender",
+        "defaultSender": "default sender",
+        "defaultTag": "Default",
+        "phoneLabel": "Recipient Phone (E.164)",
+        "phonePlaceholder": "+905551112233",
+        "documentUrlLabel": "Document URL (Optional)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "Message",
+        "send": "Send",
+        "sending": "Sending...",
+        "success": "WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).",
+        "sendError": "Failed to send invoice via WhatsApp."
+      }
+    },
+    "recurring": {
+      "title": "Recurring Invoices",
+      "subtitle": "Templates & Scheduled Invoices",
+      "newTemplate": "New Recurring Invoice",
+      "templateDirectory": "Template Directory",
+      "nextDate": "Next",
+      "fields": {
+        "templateName": "Template Name *",
+        "customerId": "Customer ID *",
+        "customerName": "Customer Name",
+        "frequency": "Frequency *",
+        "dayOfMonth": "Day of Month",
+        "dayOfWeek": "Day of Week",
+        "startDate": "Start Date *",
+        "endDate": "End Date",
+        "maxOccurrences": "Max Occurrences",
+        "notes": "Notes",
+        "invoiceLines": "Invoice Lines"
+      },
+      "frequency": {
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "annually": "Annually"
+      },
+      "weekdays": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday"
+      },
+      "filters": {
+        "allStatuses": "All Statuses"
+      },
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "actions": {
+        "addLine": "Add Line",
+        "newTemplate": "New Template",
+        "generateDue": "Generate Due",
+        "createTemplate": "Create Template",
+        "creatingTemplate": "Creating...",
+        "cloneFromInvoice": "Clone to Recurring"
+      },
+      "placeholders": {
+        "templateName": "e.g., Monthly Retainer - Client X",
+        "maxOccurrences": "Leave empty for unlimited",
+        "code": "Code",
+        "itemName": "Item name",
+        "qty": "Qty",
+        "price": "Price"
+      },
+      "empty": {
+        "title": "No Recurring Templates",
+        "description": "Create your first recurring invoice template by clicking the button above."
+      },
+      "validation": {
+        "requiredTop": "Name, Customer ID, and Start Date are required",
+        "cloneNameRequired": "Template name is required"
+      },
+      "errors": {
+        "load": "Failed to load recurring invoices",
+        "create": "Failed to create template",
+        "generate": "Failed to generate invoices",
+        "action": "Failed to update template status",
+        "cloneFromInvoice": "Failed to clone invoice as recurring template."
+      },
+      "cloneModal": {
+        "title": "Clone Invoice to Recurring Template"
+      }
     }
   }
 }
