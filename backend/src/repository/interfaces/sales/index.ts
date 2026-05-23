@@ -10,3 +10,4 @@ export * from './ICommissionEntryRepository';
 export * from './IQuoteRepository';
 export * from './ICreditOverrideRepository';
 export * from './IPromotionRuleRepository';
+export * from './IRecurringInvoiceTemplateRepository';

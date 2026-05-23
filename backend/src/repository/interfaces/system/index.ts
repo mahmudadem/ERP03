@@ -5,3 +5,4 @@ export * from './IPermissionRepository';
 export * from './INotificationRepository';
 export * from './IAuditLogRepository';
 export * from './IIdempotencyKeyRepository';
+export * from './IRecordChangeLogRepository';

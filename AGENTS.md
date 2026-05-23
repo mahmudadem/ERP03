@@ -252,3 +252,72 @@ This project has a graphify knowledge graph at `graphify-out/`.
 **Maintenance:**
 - After modifying code files in a session, run `graphify update .` to keep the graph current (AST-only, no API cost)
 - The graph is committed to git so all agents share the same map
+
+---
+
+## Multi-Agent Coordination Protocol
+
+This project is worked on by multiple agents (Claude Code, Codex, OpenCode, Cowork) and from multiple devices. All coordination is git-based — no real-time communication between agents exists. Follow this protocol to avoid collisions and wasted work.
+
+### Files You Must Read
+
+| File | Purpose |
+|------|---------|
+| `planning/PRIORITIES.md` | What to work on — in order. Read this before picking a task. |
+| `planning/QA-QUEUE.md` | Features ready for Mahmud to test. Add items here when you finish a feature. |
+| `planning/ACTIVE.md` | Current task detail + where we left off. |
+| `planning/JOURNAL.md` | Session history. Always append your session summary here. |
+
+### Before Starting Any Work
+
+1. `git pull` to get the latest state
+2. Read `planning/PRIORITIES.md` — pick the top unlocked item
+3. Check the **Task Lock** table in `planning/PRIORITIES.md` — if someone is already on it, pick the next item
+4. Add yourself to the Task Lock table before starting
+
+### After Finishing Any Work
+
+1. Remove yourself from the Task Lock table (or mark ✅ Done)
+2. If the feature is user-facing and testable, add it to `planning/QA-QUEUE.md`
+3. Append a session summary to `planning/JOURNAL.md`
+4. Update `planning/ACTIVE.md` with the next task
+5. Update `planning/PRIORITIES.md` if the priority order has changed
+6. Commit everything: `git add -A && git commit -m "feat: ..."`
+
+### Writing Briefs for Other Agents
+
+If you finish a task and the natural next step is better suited for a different agent (e.g., you've done backend work and the frontend needs wiring), write a brief in `planning/briefs/`:
+
+```
+planning/briefs/YYYYMMDD-<target-agent>-<topic>.md
+```
+
+Format:
+```markdown
+# Brief: [What needs doing]
+**For:** [Codex / Claude Code / OpenCode / Cowork]
+**From:** [your agent name]
+**Date:** YYYY-MM-DD
+
+## Context
+[What was just built, why this next step is needed]
+
+## Task
+[Specific, actionable instructions — files to edit, behavior expected]
+
+## Definition of Done
+[How to know it's finished]
+```
+
+The receiving agent reads this brief at session start and acts on it.
+
+### What NOT to Do
+
+- Do NOT start work without checking PRIORITIES.md and the Task Lock
+- Do NOT skip updating QA-QUEUE.md when a feature is testable
+- Do NOT skip JOURNAL.md — it is the handoff record for Mahmud and other agents
+- Do NOT leave ACTIVE.md pointing at a completed task
+
+### Upgrade Path (MCP)
+
+The current protocol is intentionally file-based and simple. If coordination becomes painful (collisions, stale locks, wasted work), see `docs/architecture/agent-coordination.md` for the MCP upgrade path.

@@ -48,6 +48,7 @@ import { PostingLog, LineDecision } from '../../../domain/accounting/entities/Po
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { randomUUID as nodeRandomUUID } from 'crypto';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
@@ -121,6 +122,7 @@ export interface SalesInvoiceChargeInput {
 
 export interface CreateSalesInvoiceInput {
   companyId: string;
+  voucherFormId?: string;
   formType?: string;
   voucherType?: string;
   persona?: string;
@@ -508,6 +510,7 @@ export class CreateSalesInvoiceUseCase {
       companyId: input.companyId,
       invoiceNumber,
       customerInvoiceNumber: input.customerInvoiceNumber,
+      voucherFormId: input.voucherFormId,
       formType: input.formType || 'sales_invoice_direct',
       voucherType: input.voucherType || 'sales_invoice',
       persona: input.persona || 'direct',
@@ -673,7 +676,8 @@ export class PostSalesInvoiceUseCase {
     idOrSI: string | SalesInvoice, 
     createAccountingEffect: boolean = true,
     externalTransaction?: any,
-    settlementInput?: SettlementInput
+    settlementInput?: SettlementInput,
+    periodLockOverride?: { reason: string; overriddenBy: string }
   ): Promise<SalesInvoice> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
@@ -1125,6 +1129,7 @@ export class PostSalesInvoiceUseCase {
               sourceType: 'SALES_INVOICE',
               sourceId: si.id,
               voucherPart: 'REVENUE',
+              ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: si.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
@@ -1171,6 +1176,7 @@ export class PostSalesInvoiceUseCase {
                   sourceType: 'SALES_INVOICE',
                   sourceId: si.id,
                   voucherPart: 'COGS',
+                  ...(periodLockOverride ? { periodLockOverride } : {}),
                 },
                 createdBy: si.createdBy,
                 postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
@@ -1605,9 +1611,9 @@ export class CreateAndPostSalesInvoiceUseCase {
     private readonly postUseCase: PostSalesInvoiceUseCase
   ) {}
 
-  async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput): Promise<SalesInvoice> {
+  async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<SalesInvoice> {
     const si = await this.createUseCase.execute(input);
-    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput);
+    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride);
   }
 }
 
@@ -1617,24 +1623,27 @@ export class UpdateAndPostSalesInvoiceUseCase {
     private readonly postUseCase: PostSalesInvoiceUseCase
   ) {}
 
-  async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput): Promise<SalesInvoice> {
+  async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<SalesInvoice> {
     const si = await this.updateUseCase.execute(input);
-    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput);
+    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride);
   }
 }
 
 export class UpdateSalesInvoiceUseCase {
   constructor(
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
-    private readonly partyRepo: IPartyRepository
+    private readonly partyRepo: IPartyRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: UpdateSalesInvoiceInput, transaction?: unknown): Promise<SalesInvoice> {
+  async execute(input: UpdateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<SalesInvoice> {
     const current = await this.salesInvoiceRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Sales invoice not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft sales invoices can be updated');
     }
+
+    const before = current.toJSON();
 
     if (input.customerId) {
       const customer = await this.partyRepo.getById(input.companyId, input.customerId);
@@ -1727,6 +1736,21 @@ export class UpdateSalesInvoiceUseCase {
     current.updatedAt = new Date();
     const updated = new SalesInvoice(current.toJSON() as any);
     await this.salesInvoiceRepo.update(updated, transaction);
+
+    if (this.recordChangeService && actor) {
+      const after = updated.toJSON();
+      await this.recordChangeService.recordUpdate({
+        companyId: input.companyId,
+        entityType: 'SALES_INVOICE',
+        entityId: updated.id,
+        entityNumber: updated.invoiceNumber ? `SI-${updated.invoiceNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        before: before as Record<string, any>,
+        after: after as Record<string, any>,
+      });
+    }
+
     return updated;
   }
 }

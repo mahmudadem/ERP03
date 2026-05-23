@@ -67,11 +67,22 @@ export interface SalesInvoiceCharge {
   description?: string;
 }
 
+export interface SalesInvoiceAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface SalesInvoiceProps {
   id: string;
   companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  voucherFormId?: string;
   formType: string;
   voucherType: string;
   persona: string;
@@ -86,6 +97,7 @@ export interface SalesInvoiceProps {
   exchangeRate: number;
   lines: SalesInvoiceLine[];
   charges?: SalesInvoiceCharge[];
+  attachments?: SalesInvoiceAttachment[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -219,6 +231,7 @@ export class SalesInvoice {
   readonly companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  readonly voucherFormId?: string;
   readonly formType: string;
   readonly voucherType: string;
   readonly persona: string;
@@ -233,6 +246,7 @@ export class SalesInvoice {
   exchangeRate: number;
   lines: SalesInvoiceLine[];
   charges: SalesInvoiceCharge[];
+  attachments: SalesInvoiceAttachment[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -285,6 +299,7 @@ export class SalesInvoice {
     this.companyId = companyId;
     this.invoiceNumber = invoiceNumber;
     this.customerInvoiceNumber = toOptionalStringRef(props.customerInvoiceNumber);
+    this.voucherFormId = toOptionalStringRef(props.voucherFormId);
     this.formType = formType;
     this.voucherType = voucherType;
     this.persona = persona;
@@ -299,6 +314,17 @@ export class SalesInvoice {
     this.exchangeRate = exchangeRate;
     this.lines = props.lines.map((line, index) => this.normalizeLine(line, index));
     this.charges = (props.charges || []).map((charge, index) => this.normalizeCharge(charge, index));
+    this.attachments = Array.isArray(props.attachments)
+      ? props.attachments.map((attachment) => ({
+          id: toStringRef(attachment.id),
+          name: toDisplayText(attachment.name),
+          size: Number(attachment.size || 0),
+          type: toDisplayText(attachment.type),
+          path: toStringRef(attachment.path),
+          uploadedAt: toStringRef(attachment.uploadedAt),
+          uploadedBy: toStringRef(attachment.uploadedBy),
+        }))
+      : [];
 
     this.subtotalDoc = roundMoney(
       this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
@@ -460,6 +486,7 @@ export class SalesInvoice {
       companyId: this.companyId,
       invoiceNumber: this.invoiceNumber,
       customerInvoiceNumber: this.customerInvoiceNumber,
+      voucherFormId: this.voucherFormId,
       voucherTypeId: this.formType,
       formType: this.formType,
       voucherType: this.voucherType,
@@ -475,6 +502,7 @@ export class SalesInvoice {
       exchangeRate: this.exchangeRate,
       lines: this.lines.map((line) => ({ ...line })),
       charges: this.charges.map((charge) => ({ ...charge })),
+      attachments: this.attachments.map((attachment) => ({ ...attachment })),
       subtotalDoc: this.subtotalDoc,
       taxTotalDoc: this.taxTotalDoc,
       grandTotalDoc: this.grandTotalDoc,
@@ -515,6 +543,7 @@ export class SalesInvoice {
       companyId: data.companyId,
       invoiceNumber: data.invoiceNumber,
       customerInvoiceNumber: data.customerInvoiceNumber,
+      voucherFormId: data.voucherFormId,
       formType,
       voucherType,
       persona: data.persona || inferredPersona,
@@ -529,6 +558,7 @@ export class SalesInvoice {
       exchangeRate: data.exchangeRate,
       lines: data.lines || [],
       charges: data.charges || [],
+      attachments: data.attachments || [],
       subtotalDoc: data.subtotalDoc ?? 0,
       taxTotalDoc: data.taxTotalDoc ?? 0,
       grandTotalDoc: data.grandTotalDoc ?? 0,

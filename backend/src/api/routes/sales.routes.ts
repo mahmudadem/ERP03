@@ -3,11 +3,16 @@ import { SalesController } from '../controllers/sales/SalesController';
 import { SalesMasterDataController } from '../controllers/sales/SalesMasterDataController';
 import { SalesOperationalController } from '../controllers/sales/SalesOperationalController';
 import { SalesReportingController } from '../controllers/sales/SalesReportingController';
+import { RecurringInvoiceController } from '../controllers/sales/RecurringInvoiceController';
+import { RecordAuditController } from '../controllers/RecordAuditController';
+import { SalesInvoiceAttachmentController } from '../controllers/sales/SalesInvoiceAttachmentController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
+import multer from 'multer';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 router.use(authMiddleware);
 
 router.post('/initialize', SalesController.initializeSales);
@@ -42,6 +47,12 @@ router.post('/invoices/:id/post', idempotencyMiddleware, SalesController.postSI)
 router.post('/invoices/:id/payment-status', SalesController.updatePaymentStatus);
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, SalesController.recordPayment);
 router.get('/invoices/:id/payments', SalesController.getPaymentHistory);
+router.post('/invoices/:id/send-whatsapp', SalesController.sendInvoiceViaWhatsApp);
+router.post('/invoices/:id/send-telegram', SalesController.sendInvoiceViaTelegram);
+router.get('/invoices/:id/attachments', SalesInvoiceAttachmentController.list);
+router.post('/invoices/:id/attachments', upload.single('file'), SalesInvoiceAttachmentController.upload);
+router.get('/invoices/:id/attachments/:aid/link', SalesInvoiceAttachmentController.getDownloadLink);
+router.delete('/invoices/:id/attachments/:aid', SalesInvoiceAttachmentController.remove);
 
 router.post('/returns', SalesController.createReturn);
 router.get('/returns', SalesController.listReturns);
@@ -112,5 +123,19 @@ router.get('/reports/customer-statement', SalesReportingController.getCustomerSt
 router.get('/reports/sales-by-customer', SalesReportingController.getSalesByCustomer);
 router.get('/reports/sales-by-item', SalesReportingController.getSalesByItem);
 router.get('/reports/sales-by-salesperson', SalesReportingController.getSalesBySalesperson);
+
+// Audit log
+router.get('/audit-log', RecordAuditController.getByEntity);
+
+// Recurring Invoices
+router.get('/recurring-invoices', RecurringInvoiceController.list);
+router.get('/recurring-invoices/:id', RecurringInvoiceController.getById);
+router.post('/recurring-invoices', RecurringInvoiceController.create);
+router.put('/recurring-invoices/:id', RecurringInvoiceController.update);
+router.post('/recurring-invoices/:id/pause', RecurringInvoiceController.pause);
+router.post('/recurring-invoices/:id/resume', RecurringInvoiceController.resume);
+router.post('/recurring-invoices/:id/cancel', RecurringInvoiceController.cancel);
+router.post('/recurring-invoices/generate', RecurringInvoiceController.generate);
+router.post('/invoices/:invoiceId/clone-to-template', RecurringInvoiceController.cloneToTemplate);
 
 export default router;

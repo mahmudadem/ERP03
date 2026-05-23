@@ -1,4 +1,4 @@
-export interface ResolveWhatsAppMessagingConfigInput {
+export interface ResolveMessagingConfigInput {
   companyId: string;
   accountId?: string;
 }
@@ -13,7 +13,16 @@ export interface ResolvedWhatsAppMessagingConfig {
 
 export interface ICompanyMessagingResolver {
   resolveWhatsAppConfig(
-    input: ResolveWhatsAppMessagingConfigInput
+    input: ResolveMessagingConfigInput
   ): Promise<ResolvedWhatsAppMessagingConfig | null>;
+
+  resolveTelegramConfig(
+    input: ResolveMessagingConfigInput
+  ): Promise<ResolvedTelegramMessagingConfig | null>;
 }
 
+export interface ResolvedTelegramMessagingConfig {
+  accountId: string;
+  label: string;
+  botToken: string;
+}

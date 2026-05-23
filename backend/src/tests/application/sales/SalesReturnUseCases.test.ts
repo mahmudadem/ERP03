@@ -996,4 +996,111 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
 
     await expect(useCase.execute(COMPANY_ID, salesReturn.id)).rejects.toThrow('Standalone returns require a source document');
   });
+
+  it('23) CREDIT_NOTE with restocking fee reduces SI outstanding by net settlement only', async () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const item = makeItem();
+    const so = makeSO();
+    const si = makePostedSI();
+    const salesReturn = makeAfterInvoiceReturn();
+    salesReturn.restockingFeeType = 'AMOUNT';
+    salesReturn.restockingFeeValue = 2;
+    salesReturn.recalculateMonetaryTotals();
+
+    const returnStore = new Map([[salesReturn.id, salesReturn]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
+    const salesInvoiceRepo = { getById: jest.fn(async () => si), update: jest.fn(async () => undefined) };
+
+    const useCase = new PostSalesReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
+        list: jest.fn(async () => []),
+        update: jest.fn(async (entity: SalesReturn) => { returnStore.set(entity.id, entity); }),
+      } as any,
+      salesInvoiceRepo as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    await useCase.execute(COMPANY_ID, salesReturn.id);
+    expect(si.outstandingAmountBase).toBe(35);
+    expect(salesInvoiceRepo.update).toHaveBeenCalledTimes(1);
+
+    const savedVouchers = (voucherRepo.save as any).mock.calls.map((args: any[]) => args[0]);
+    const revenueVoucher = savedVouchers.find((v: any) => String(v.voucherNo).startsWith('SR-REV-'));
+    const arCreditLine = revenueVoucher.lines.find((line: any) => line.accountId === 'AR-200' && line.side === 'Credit');
+    expect(arCreditLine.baseAmount).toBe(20);
+  });
+
+  it('24) REFUND mode posts refund voucher and does not reduce SI outstanding', async () => {
+    const settings = makeSettings('SIMPLE', {
+      paymentMethodConfigs: [{ method: 'CASH', settlementAccountId: 'CASH-1', isEnabled: true }],
+    } as any);
+    const customer = makeCustomer();
+    const item = makeItem();
+    const so = makeSO();
+    const si = makePostedSI();
+    const salesReturn = makeAfterInvoiceReturn();
+    salesReturn.settlementMode = 'REFUND';
+    salesReturn.recalculateMonetaryTotals();
+
+    const returnStore = new Map([[salesReturn.id, salesReturn]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
+    const salesInvoiceRepo = { getById: jest.fn(async () => si), update: jest.fn(async () => undefined) };
+
+    const useCase = new PostSalesReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
+        list: jest.fn(async () => []),
+        update: jest.fn(async (entity: SalesReturn) => { returnStore.set(entity.id, entity); }),
+      } as any,
+      salesInvoiceRepo as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    await useCase.execute(COMPANY_ID, salesReturn.id);
+    expect(si.outstandingAmountBase).toBe(55);
+    expect(salesInvoiceRepo.update).not.toHaveBeenCalled();
+
+    const savedVouchers = (voucherRepo.save as any).mock.calls.map((args: any[]) => args[0]);
+    expect(savedVouchers.some((v: any) => String(v.voucherNo).startsWith('SR-REF-'))).toBe(true);
+  });
 });

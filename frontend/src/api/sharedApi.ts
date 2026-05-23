@@ -24,6 +24,8 @@ export interface PartyDTO {
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
+  defaultSalesInvoiceTemplateId?: string;
+  defaultSalesInvoiceFormType?: string;
   taxExempt?: boolean;
   active: boolean;
   createdBy: string;

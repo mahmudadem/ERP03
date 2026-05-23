@@ -3,6 +3,7 @@ import { AppError } from './AppError';
 import { ErrorCode, ErrorSeverity, ApiErrorResponse } from './ErrorCodes';
 import { ProviderError } from './ProviderErrors';
 import { ApiError as HttpApiError } from '../api/errors/ApiError';
+import { PeriodLockedError } from '../domain/accounting/errors/PeriodLockedError';
 
 function isFirestoreTransactionError(err: Error): boolean {
   const msg = err.message || '';
@@ -66,6 +67,23 @@ export function errorHandler(
     
     const statusCode = getStatusCode(err.severity);
     return res.status(statusCode).json(response);
+  }
+
+  // Period-locked posting errors → 422
+  if (err instanceof PeriodLockedError) {
+    const response = {
+      success: false,
+      error: {
+        code: 'PERIOD_LOCKED',
+        message: err.message,
+        severity: ErrorSeverity.ERROR,
+        timestamp: new Date().toISOString(),
+        tier: err.tier,
+        documentDate: err.documentDate,
+        lockedThroughDate: err.lockedThroughDate,
+      },
+    };
+    return res.status(422).json(response);
   }
 
   // Detect Firestore transaction read-after-write violations

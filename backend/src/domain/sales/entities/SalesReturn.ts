@@ -1,5 +1,8 @@
 export type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
+export type ReturnSettlementMode = 'CREDIT_NOTE' | 'REFUND';
+export type ReturnReasonCode = 'DEFECTIVE' | 'WRONG_ITEM' | 'CHANGED_MIND' | 'OTHER';
+export type RestockingFeeType = 'PERCENT' | 'AMOUNT';
 
 export interface SalesReturnLine {
   lineId: string;
@@ -50,7 +53,15 @@ export interface SalesReturnProps {
   subtotalBase: number;
   taxTotalBase: number;
   grandTotalBase: number;
+  netSettlementAmountDoc?: number;
+  netSettlementAmountBase?: number;
+  settlementMode?: ReturnSettlementMode;
+  reasonCode?: ReturnReasonCode;
   reason: string;
+  restockingFeeType?: RestockingFeeType;
+  restockingFeeValue?: number;
+  restockingFeeAmountDoc?: number;
+  restockingFeeAmountBase?: number;
   notes?: string;
   status?: SRStatus;
   revenueVoucherId?: string | null;
@@ -63,6 +74,9 @@ export interface SalesReturnProps {
 
 const SR_STATUSES: SRStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DIRECT'];
+const RETURN_SETTLEMENT_MODES: ReturnSettlementMode[] = ['CREDIT_NOTE', 'REFUND'];
+const RETURN_REASON_CODES: ReturnReasonCode[] = ['DEFECTIVE', 'WRONG_ITEM', 'CHANGED_MIND', 'OTHER'];
+const RESTOCKING_FEE_TYPES: RestockingFeeType[] = ['PERCENT', 'AMOUNT'];
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const toDate = (value: any): Date => {
@@ -93,7 +107,15 @@ export class SalesReturn {
   subtotalBase: number;
   taxTotalBase: number;
   grandTotalBase: number;
+  netSettlementAmountDoc: number;
+  netSettlementAmountBase: number;
+  settlementMode: ReturnSettlementMode;
+  reasonCode: ReturnReasonCode;
   reason: string;
+  restockingFeeType?: RestockingFeeType;
+  restockingFeeValue: number;
+  restockingFeeAmountDoc: number;
+  restockingFeeAmountBase: number;
   notes?: string;
   status: SRStatus;
   revenueVoucherId?: string | null;
@@ -122,6 +144,27 @@ export class SalesReturn {
     if (!RETURN_CONTEXTS.includes(props.returnContext)) {
       throw new Error(`Invalid returnContext: ${props.returnContext}`);
     }
+    const settlementMode = props.settlementMode || 'CREDIT_NOTE';
+    if (!RETURN_SETTLEMENT_MODES.includes(settlementMode)) {
+      throw new Error(`Invalid settlementMode: ${settlementMode}`);
+    }
+    const reasonCode = props.reasonCode || 'OTHER';
+    if (!RETURN_REASON_CODES.includes(reasonCode)) {
+      throw new Error(`Invalid reasonCode: ${reasonCode}`);
+    }
+
+    const restockingFeeType = props.restockingFeeType || ((props.restockingFeeValue || 0) > 0 ? 'AMOUNT' : undefined);
+    if (restockingFeeType && !RESTOCKING_FEE_TYPES.includes(restockingFeeType)) {
+      throw new Error(`Invalid restockingFeeType: ${restockingFeeType}`);
+    }
+
+    const restockingFeeValue = roundMoney(props.restockingFeeValue || 0);
+    if (restockingFeeValue < 0 || Number.isNaN(restockingFeeValue)) {
+      throw new Error('SalesReturn restockingFeeValue must be greater than or equal to 0');
+    }
+    if (restockingFeeType === 'PERCENT' && restockingFeeValue > 100) {
+      throw new Error('SalesReturn restockingFeeValue cannot exceed 100 for PERCENT type');
+    }
 
     this.id = props.id;
     this.companyId = props.companyId;
@@ -148,6 +191,15 @@ export class SalesReturn {
     this.taxTotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
     this.grandTotalDoc = roundMoney(this.subtotalDoc + this.taxTotalDoc);
     this.grandTotalBase = roundMoney(this.subtotalBase + this.taxTotalBase);
+    this.settlementMode = settlementMode;
+    this.reasonCode = reasonCode;
+    this.restockingFeeType = restockingFeeType;
+    this.restockingFeeValue = restockingFeeValue;
+    this.restockingFeeAmountDoc = 0;
+    this.restockingFeeAmountBase = 0;
+    this.netSettlementAmountDoc = this.grandTotalDoc;
+    this.netSettlementAmountBase = this.grandTotalBase;
+    this.recalculateMonetaryTotals();
 
     const status = props.status || 'DRAFT';
     if (!SR_STATUSES.includes(status)) {
@@ -206,6 +258,44 @@ export class SalesReturn {
     };
   }
 
+  recalculateMonetaryTotals(): void {
+    this.subtotalDoc = roundMoney(
+      this.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * (line.unitPriceDoc ?? 0)), 0)
+    );
+    this.subtotalBase = roundMoney(
+      this.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * (line.unitPriceBase ?? 0)), 0)
+    );
+    this.taxTotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
+    this.taxTotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
+    this.grandTotalDoc = roundMoney(this.subtotalDoc + this.taxTotalDoc);
+    this.grandTotalBase = roundMoney(this.subtotalBase + this.taxTotalBase);
+
+    const feeValue = roundMoney(this.restockingFeeValue || 0);
+    if (!this.restockingFeeType || feeValue <= 0) {
+      this.restockingFeeAmountDoc = 0;
+      this.restockingFeeAmountBase = 0;
+      this.netSettlementAmountDoc = this.grandTotalDoc;
+      this.netSettlementAmountBase = this.grandTotalBase;
+      return;
+    }
+
+    const computedFeeDoc = this.restockingFeeType === 'PERCENT'
+      ? roundMoney((this.grandTotalDoc * feeValue) / 100)
+      : roundMoney(feeValue);
+    const computedFeeBase = this.restockingFeeType === 'PERCENT'
+      ? roundMoney((this.grandTotalBase * feeValue) / 100)
+      : roundMoney(feeValue * this.exchangeRate);
+
+    if (computedFeeDoc > this.grandTotalDoc + 0.0001 || computedFeeBase > this.grandTotalBase + 0.0001) {
+      throw new Error('SalesReturn restocking fee cannot exceed return grand total');
+    }
+
+    this.restockingFeeAmountDoc = computedFeeDoc;
+    this.restockingFeeAmountBase = computedFeeBase;
+    this.netSettlementAmountDoc = roundMoney(this.grandTotalDoc - computedFeeDoc);
+    this.netSettlementAmountBase = roundMoney(this.grandTotalBase - computedFeeBase);
+  }
+
   toJSON(): Record<string, any> {
     return {
       id: this.id,
@@ -228,7 +318,15 @@ export class SalesReturn {
       subtotalBase: this.subtotalBase,
       taxTotalBase: this.taxTotalBase,
       grandTotalBase: this.grandTotalBase,
+      netSettlementAmountDoc: this.netSettlementAmountDoc,
+      netSettlementAmountBase: this.netSettlementAmountBase,
+      settlementMode: this.settlementMode,
+      reasonCode: this.reasonCode,
       reason: this.reason,
+      restockingFeeType: this.restockingFeeType,
+      restockingFeeValue: this.restockingFeeValue,
+      restockingFeeAmountDoc: this.restockingFeeAmountDoc,
+      restockingFeeAmountBase: this.restockingFeeAmountBase,
       notes: this.notes,
       status: this.status,
       revenueVoucherId: this.revenueVoucherId ?? null,
@@ -262,7 +360,15 @@ export class SalesReturn {
       subtotalBase: data.subtotalBase ?? 0,
       taxTotalBase: data.taxTotalBase ?? 0,
       grandTotalBase: data.grandTotalBase ?? 0,
+      netSettlementAmountDoc: data.netSettlementAmountDoc ?? 0,
+      netSettlementAmountBase: data.netSettlementAmountBase ?? 0,
+      settlementMode: data.settlementMode,
+      reasonCode: data.reasonCode,
       reason: data.reason,
+      restockingFeeType: data.restockingFeeType,
+      restockingFeeValue: data.restockingFeeValue ?? 0,
+      restockingFeeAmountDoc: data.restockingFeeAmountDoc ?? 0,
+      restockingFeeAmountBase: data.restockingFeeAmountBase ?? 0,
       notes: data.notes,
       status: data.status || 'DRAFT',
       revenueVoucherId: data.revenueVoucherId ?? null,

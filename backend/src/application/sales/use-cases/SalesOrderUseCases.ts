@@ -1,4 +1,4 @@
-﻿import { randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { SalesOrder, SalesOrderLine, SOStatus } from '../../../domain/sales/entities/SalesOrder';
@@ -7,6 +7,7 @@ import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLim
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { RecordChangeService } from '../../system/services/RecordChangeService';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
@@ -255,15 +256,18 @@ export class UpdateSalesOrderUseCase {
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
-    private readonly taxCodeRepo: ITaxCodeRepository
+    private readonly taxCodeRepo: ITaxCodeRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: UpdateSalesOrderInput): Promise<SalesOrder> {
+  async execute(input: UpdateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
     const current = await this.salesOrderRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Sales order not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft sales orders can be updated');
     }
+
+    const before = current.toJSON();
 
     const customer = await this.partyRepo.getById(input.companyId, input.customerId || current.customerId);
     if (!customer) throw new Error(`Customer not found: ${input.customerId || current.customerId}`);
@@ -322,6 +326,21 @@ export class UpdateSalesOrderUseCase {
     });
 
     await this.salesOrderRepo.update(updated);
+
+    if (this.recordChangeService && actor) {
+      const after = updated.toJSON();
+      await this.recordChangeService.recordUpdate({
+        companyId: input.companyId,
+        entityType: 'SALES_ORDER',
+        entityId: updated.id,
+        entityNumber: updated.orderNumber ? `SO-${updated.orderNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        before: before as Record<string, any>,
+        after: after as Record<string, any>,
+      });
+    }
+
     return updated;
   }
 

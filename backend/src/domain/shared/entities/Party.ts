@@ -20,6 +20,8 @@ export interface PartyProps {
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
+  defaultSalesInvoiceTemplateId?: string;
+  defaultSalesInvoiceFormType?: string;
   taxExempt?: boolean;
   active: boolean;
   createdBy: string;
@@ -55,6 +57,8 @@ export class Party {
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
+  defaultSalesInvoiceTemplateId?: string;
+  defaultSalesInvoiceFormType?: string;
   taxExempt?: boolean;
   active: boolean;
   readonly createdBy: string;
@@ -109,6 +113,8 @@ export class Party {
     this.creditLimit = props.creditLimit;
     this.creditHoldPolicy = props.creditHoldPolicy;
     this.defaultPriceListId = props.defaultPriceListId;
+    this.defaultSalesInvoiceTemplateId = props.defaultSalesInvoiceTemplateId;
+    this.defaultSalesInvoiceFormType = props.defaultSalesInvoiceFormType;
     this.taxExempt = props.taxExempt;
     this.active = props.active;
     this.createdBy = props.createdBy;
@@ -137,6 +143,8 @@ export class Party {
       creditLimit: this.creditLimit,
       creditHoldPolicy: this.creditHoldPolicy,
       defaultPriceListId: this.defaultPriceListId,
+      defaultSalesInvoiceTemplateId: this.defaultSalesInvoiceTemplateId,
+      defaultSalesInvoiceFormType: this.defaultSalesInvoiceFormType,
       taxExempt: this.taxExempt,
       active: this.active,
       createdBy: this.createdBy,
@@ -166,6 +174,8 @@ export class Party {
       creditLimit: data.creditLimit,
       creditHoldPolicy: data.creditHoldPolicy,
       defaultPriceListId: data.defaultPriceListId,
+      defaultSalesInvoiceTemplateId: data.defaultSalesInvoiceTemplateId,
+      defaultSalesInvoiceFormType: data.defaultSalesInvoiceFormType,
       taxExempt: data.taxExempt,
       active: data.active ?? true,
       createdBy: data.createdBy || 'SYSTEM',

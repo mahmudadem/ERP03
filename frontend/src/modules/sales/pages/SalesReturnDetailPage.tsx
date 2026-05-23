@@ -5,6 +5,9 @@ import { InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreateSalesReturnPayload,
   DeliveryNoteDTO,
+  ReturnReasonCode,
+  ReturnSettlementMode,
+  RestockingFeeType,
   ReturnContext,
   SalesInvoiceDTO,
   SalesReturnDTO,
@@ -12,9 +15,22 @@ import {
 } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { GlImpactModal } from '../components/GlImpactModal';
+import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
+import { RecordAuditModal } from '../components/RecordAuditModal';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
+const reasonCodeLabels: Record<ReturnReasonCode, string> = {
+  DEFECTIVE: 'Defective',
+  WRONG_ITEM: 'Wrong Item',
+  CHANGED_MIND: 'Changed Mind',
+  OTHER: 'Other',
+};
+const settlementModeLabels: Record<ReturnSettlementMode, string> = {
+  CREDIT_NOTE: 'Credit Note',
+  REFUND: 'Refund',
+};
 
 const SalesReturnDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,7 +53,11 @@ const SalesReturnDetailPage: React.FC = () => {
   const [returnDate, setReturnDate] = useState(todayIso());
   const [customerId, setCustomerId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
+  const [settlementMode, setSettlementMode] = useState<ReturnSettlementMode>('CREDIT_NOTE');
+  const [reasonCode, setReasonCode] = useState<ReturnReasonCode>('OTHER');
   const [reason, setReason] = useState('');
+  const [restockingFeeType, setRestockingFeeType] = useState<RestockingFeeType>('AMOUNT');
+  const [restockingFeeValue, setRestockingFeeValue] = useState<string>('0');
   const [notes, setNotes] = useState('');
   const [salesInvoices, setSalesInvoices] = useState<SalesInvoiceDTO[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNoteDTO[]>([]);
@@ -46,6 +66,10 @@ const SalesReturnDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [glImpactOpen, setGlImpactOpen] = useState(false);
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
 
   const salesInvoiceLabelById = useMemo(
     () =>
@@ -197,6 +221,19 @@ const SalesReturnDetailPage: React.FC = () => {
         setError('Reason is required.');
         return;
       }
+      const parsedRestockingValue = Number(restockingFeeValue || '0');
+      if (Number.isNaN(parsedRestockingValue) || parsedRestockingValue < 0) {
+        setError('Restocking fee value must be a non-negative number.');
+        return;
+      }
+      if (restockingFeeType === 'PERCENT' && parsedRestockingValue > 100) {
+        setError('Restocking fee percent cannot exceed 100.');
+        return;
+      }
+      if (returnContext === 'BEFORE_INVOICE' && parsedRestockingValue > 0) {
+        setError('Restocking fee can only be used for returns that affect invoiced value.');
+        return;
+      }
 
       const payload: CreateSalesReturnPayload = {
         returnContext,
@@ -205,7 +242,11 @@ const SalesReturnDetailPage: React.FC = () => {
         deliveryNoteId: returnContext === 'BEFORE_INVOICE' ? deliveryNoteId || undefined : undefined,
         returnDate,
         warehouseId: warehouseId || undefined,
+        settlementMode,
+        reasonCode,
         reason: reason.trim(),
+        restockingFeeType: parsedRestockingValue > 0 ? restockingFeeType : undefined,
+        restockingFeeValue: parsedRestockingValue > 0 ? parsedRestockingValue : undefined,
         notes: notes || undefined,
       };
 
@@ -225,20 +266,35 @@ const SalesReturnDetailPage: React.FC = () => {
     }
   };
 
-  const postDraft = async () => {
+  const postDraft = async (periodLockOverrideReason?: string) => {
     if (!salesReturn?.id) return;
     try {
       setBusy(true);
       setError(null);
-      const posted = await salesApi.postReturn(salesReturn.id);
+      const posted = await salesApi.postReturn(salesReturn.id, periodLockOverrideReason);
       setSalesReturn(unwrap<SalesReturnDTO>(posted));
     } catch (err: any) {
+      const errorCode = err?.response?.data?.error?.code;
+      if (errorCode === 'PERIOD_LOCKED') {
+        const errorData = err?.response?.data?.error;
+        if (errorData?.tier === 'SOFT') {
+          setOverrideModalData({
+            documentDate: errorData.documentDate || salesReturn.returnDate,
+            lockedThroughDate: errorData.lockedThroughDate || '',
+          });
+          setOverrideModalOpen(true);
+          return;
+        } else {
+          setError('This accounting period is closed and cannot be overridden.');
+          return;
+        }
+      }
       console.error('Failed to post sales return', err);
       setError(
-        err?.response?.data?.error?.message
-          || err?.response?.data?.message
-          || err?.message
-          || 'Failed to post sales return.'
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to post sales return.'
       );
     } finally {
       setBusy(false);
@@ -400,6 +456,58 @@ const SalesReturnDetailPage: React.FC = () => {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Settlement Mode</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={settlementMode}
+                onChange={(e) => setSettlementMode(e.target.value as ReturnSettlementMode)}
+                disabled={busy}
+              >
+                <option value="CREDIT_NOTE">Credit Note</option>
+                <option value="REFUND">Refund</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Return Reason Code</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={reasonCode}
+                onChange={(e) => setReasonCode(e.target.value as ReturnReasonCode)}
+                disabled={busy}
+              >
+                <option value="DEFECTIVE">Defective</option>
+                <option value="WRONG_ITEM">Wrong Item</option>
+                <option value="CHANGED_MIND">Changed Mind</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Restocking Fee Type</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={restockingFeeType}
+                onChange={(e) => setRestockingFeeType(e.target.value as RestockingFeeType)}
+                disabled={busy}
+              >
+                <option value="AMOUNT">Amount</option>
+                <option value="PERCENT">Percent</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Restocking Fee Value ({restockingFeeType === 'PERCENT' ? '%' : 'Amount'})
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={restockingFeeType === 'PERCENT' ? '0.01' : '0.01'}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={restockingFeeValue}
+                onChange={(e) => setRestockingFeeValue(e.target.value)}
+                disabled={busy}
+              />
+            </div>
           </div>
           <div className="mt-4">
             <label className="mb-1 block text-sm font-medium text-slate-700">Reason</label>
@@ -486,6 +594,31 @@ const SalesReturnDetailPage: React.FC = () => {
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{salesReturn.reason}</div>
           </div>
           <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Reason Code</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {reasonCodeLabels[salesReturn.reasonCode] || salesReturn.reasonCode}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Settlement</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {settlementModeLabels[salesReturn.settlementMode] || salesReturn.settlementMode}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Restocking Fee</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {salesReturn.restockingFeeAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
+              {salesReturn.restockingFeeType ? ` (${salesReturn.restockingFeeType} ${salesReturn.restockingFeeValue})` : ''}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Net Settlement</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {salesReturn.netSettlementAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
+            </div>
+          </div>
+          <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Source Document</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{sourceLabel}</div>
           </div>
@@ -532,13 +665,56 @@ const SalesReturnDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={postDraft}
+            onClick={() => postDraft()}
             disabled={busy}
           >
             {busy ? 'Posting...' : 'Post Return'}
           </button>
         )}
+        {salesReturn.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
+            onClick={() => setGlImpactOpen(true)}
+          >
+            GL Impact
+          </button>
+        )}
+        <button
+          type="button"
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+          onClick={() => setAuditModalOpen(true)}
+        >
+          History
+        </button>
       </div>
+
+      <GlImpactModal
+        isOpen={glImpactOpen}
+        onClose={() => setGlImpactOpen(false)}
+        sourceId={salesReturn.id}
+        sourceLabel={salesReturn.returnNumber}
+      />
+
+      {overrideModalData && (
+        <PeriodLockOverrideModal
+          isOpen={overrideModalOpen}
+          onClose={() => setOverrideModalOpen(false)}
+          documentDate={overrideModalData.documentDate}
+          lockedThroughDate={overrideModalData.lockedThroughDate}
+          onConfirm={(reason) => {
+            setOverrideModalOpen(false);
+            postDraft(reason);
+          }}
+        />
+      )}
+
+      <RecordAuditModal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
+        entityType="SALES_RETURN"
+        entityId={salesReturn.id}
+      />
     </div>
   );
 };

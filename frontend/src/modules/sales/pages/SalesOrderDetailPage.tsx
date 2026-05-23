@@ -13,6 +13,7 @@ import {
   UpdateSalesOrderPayload,
 } from '../../../api/salesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
+import { RecordAuditModal } from '../components/RecordAuditModal';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -118,6 +119,7 @@ const SalesOrderDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [creditWarnBanner, setCreditWarnBanner] = useState<string | null>(null);
   const [creditOverrideOpen, setCreditOverrideOpen] = useState(false);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [creditOverrideReason, setCreditOverrideReason] = useState('');
   const [creditOverrideInfo, setCreditOverrideInfo] = useState<Record<string, any> | null>(null);
   const [pendingConfirmOrderId, setPendingConfirmOrderId] = useState<string | null>(null);
@@ -1037,7 +1039,24 @@ const SalesOrderDetailPage: React.FC = () => {
         {(form.status === 'CLOSED' || form.status === 'CANCELLED') && (
           <div className="text-sm text-slate-500">This sales order is read-only in status: {form.status}.</div>
         )}
+
+        <div className="flex justify-end mt-4">
+          <button
+            type="button"
+            className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+            onClick={() => setAuditModalOpen(true)}
+          >
+            History
+          </button>
+        </div>
       </Card>
+
+      <RecordAuditModal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
+        entityType="SALES_ORDER"
+        entityId={form.id || ''}
+      />
     </div>
   );
 };

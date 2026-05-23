@@ -2165,6 +2165,37 @@
         "sending": "جارٍ الإرسال...",
         "success": "تم الإرسال عبر واتساب بنجاح إلى {{phone}} باستخدام {{sender}} (معرّف الرسالة: {{messageId}}).",
         "sendError": "فشل إرسال الفاتورة عبر واتساب."
+      },
+      "telegram": {
+        "action": "إرسال عبر تيليجرام",
+        "modalTitle": "إرسال الفاتورة عبر تيليجرام",
+        "senderLabel": "حساب الإرسال",
+        "senderDefaultOption": "استخدام الحساب الافتراضي",
+        "defaultSender": "الحساب الافتراضي",
+        "defaultTag": "افتراضي",
+        "chatLabel": "معرّف الدردشة أو @اسم_المستخدم",
+        "chatPlaceholder": "@customer_username أو -1001234567890",
+        "documentUrlLabel": "رابط المستند (اختياري)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "الرسالة",
+        "send": "إرسال",
+        "sending": "جارٍ الإرسال...",
+        "success": "تم الإرسال عبر تيليجرام إلى {{chatId}} باستخدام {{sender}} (معرّف الرسالة: {{messageId}}).",
+        "sendError": "فشل إرسال الفاتورة عبر تيليجرام."
+      },
+      "attachments": {
+        "title": "المرفقات",
+        "help": "الأنواع المسموحة: PDF و PNG و JPG و DOCX و XLSX. الحد الأقصى 10 ميغابايت لكل ملف و5 ملفات لكل فاتورة.",
+        "empty": "لا توجد مرفقات بعد.",
+        "upload": "رفع مرفق",
+        "uploading": "جارٍ الرفع...",
+        "uploadSuccess": "تم رفع المرفق بنجاح.",
+        "uploadError": "فشل رفع المرفق.",
+        "open": "فتح",
+        "remove": "حذف",
+        "removing": "جارٍ الحذف...",
+        "removeError": "فشل حذف المرفق.",
+        "downloadError": "فشل إنشاء رابط التحميل."
       }
     },
     "recurring": {

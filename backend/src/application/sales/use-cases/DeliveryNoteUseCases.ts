@@ -20,6 +20,7 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -221,7 +222,7 @@ export class PostDeliveryNoteUseCase {
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<DeliveryNote> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<DeliveryNote> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
     // We pre-fetch ALL data here. The postingLogic callback only writes.
@@ -512,6 +513,7 @@ export class PostDeliveryNoteUseCase {
               sourceId: dn.id,
               referenceType: 'DELIVERY_NOTE',
               referenceId: dn.id,
+              ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: dn.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
@@ -595,14 +597,20 @@ export interface UpdateDeliveryNoteInput {
 }
 
 export class UpdateDeliveryNoteUseCase {
-  constructor(private readonly deliveryNoteRepo: IDeliveryNoteRepository, private readonly partyRepo: IPartyRepository) {}
+  constructor(
+    private readonly deliveryNoteRepo: IDeliveryNoteRepository,
+    private readonly partyRepo: IPartyRepository,
+    private readonly recordChangeService?: RecordChangeService
+  ) {}
 
-  async execute(input: UpdateDeliveryNoteInput): Promise<DeliveryNote> {
+  async execute(input: UpdateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
     const current = await this.deliveryNoteRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Delivery note not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft delivery notes can be updated');
     }
+
+    const before = current.toJSON();
 
     if (input.customerId !== undefined) {
       if (!input.customerId) throw new Error('customerId is required');
@@ -647,6 +655,21 @@ export class UpdateDeliveryNoteUseCase {
     current.updatedAt = new Date();
     const updated = new DeliveryNote(current.toJSON() as any);
     await this.deliveryNoteRepo.update(updated);
+
+    if (this.recordChangeService && actor) {
+      const after = updated.toJSON();
+      await this.recordChangeService.recordUpdate({
+        companyId: input.companyId,
+        entityType: 'DELIVERY_NOTE',
+        entityId: updated.id,
+        entityNumber: updated.dnNumber ? `DN-${updated.dnNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        before: before as Record<string, any>,
+        after: after as Record<string, any>,
+      });
+    }
+
     return updated;
   }
 }

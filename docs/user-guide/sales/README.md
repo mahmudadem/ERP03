@@ -11,6 +11,8 @@ Key guides:
 - [Invoice Templates](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-templates.md)
 - [Communication Sender Accounts](D:/DEV2026/ERP03/docs/user-guide/sales/communication-accounts.md)
 - [Send Invoices via WhatsApp](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-whatsapp-sharing.md)
+- [Send Invoices via Telegram](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-telegram-sharing.md)
+- [Sales Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-attachments.md)
 
 ---
 

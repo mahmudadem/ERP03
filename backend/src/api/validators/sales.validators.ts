@@ -702,6 +702,13 @@ export const validateSendSalesInvoiceWhatsAppInput = (body: any) => {
   if (body.documentUrl !== undefined) ensureOptionalString(body.documentUrl, 'documentUrl');
 };
 
+export const validateSendSalesInvoiceTelegramInput = (body: any) => {
+  if (body.messagingAccountId !== undefined) ensureOptionalString(body.messagingAccountId, 'messagingAccountId');
+  if (body.toChatId !== undefined) ensureOptionalString(body.toChatId, 'toChatId');
+  if (body.messageText !== undefined) ensureOptionalString(body.messageText, 'messageText');
+  if (body.documentUrl !== undefined) ensureOptionalString(body.documentUrl, 'documentUrl');
+};
+
 export const validateUpdateDeliveryNoteInput = (body: any) => {
   if (body.customerId !== undefined) ensureOptionalString(body.customerId, 'customerId');
   if (body.deliveryDate !== undefined) ensureIsoDate(body.deliveryDate, 'deliveryDate');

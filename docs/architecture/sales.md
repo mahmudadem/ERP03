@@ -1,7 +1,7 @@
 # Architecture: Sales Module
 
 **Last updated:** 2026-05-22
-**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. Phase C added AR aging, customer ledger/statement, and sales analytics reports. Phase D.2+D.3 added period-lock enforcement and per-record audit logging. Phase D.4 added recurring invoices (templated + scheduled). Phase D.5 added sales-return commercial settlement controls (credit note vs refund, reason taxonomy, restocking fee/net settlement). Phase D.7 added controlled invoice template selection with customer defaults. Phase D.8 now ships WhatsApp-first invoice outbound messaging (Meta Cloud API) with a provider abstraction to add email later. See dedicated docs linked below.
+**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. Phase C added AR aging, customer ledger/statement, and sales analytics reports. Phase D.2+D.3 added period-lock enforcement and per-record audit logging. Phase D.4 added recurring invoices (templated + scheduled). Phase D.5 added sales-return commercial settlement controls (credit note vs refund, reason taxonomy, restocking fee/net settlement). Phase D.6 added tenant-scoped invoice attachments. Phase D.7 added controlled invoice template selection with customer defaults. Phase D.8 now ships tenant-scoped outbound messaging for WhatsApp and Telegram, with email still deferred. See dedicated docs linked below.
 **Module-level docs:** [`docs/modules/sales/`](../modules/sales/)
 
 ---
@@ -556,14 +556,14 @@ Governance and persona checks already rely on `formType` tokens (`sales_invoice_
 
 ---
 
-## Outbound invoice messaging (Phase D.8 — WhatsApp first)
+## Outbound invoice messaging (Phase D.8 — WhatsApp + Telegram)
 
-Phase D.8 introduces outbound invoice sharing from the Sales Invoice detail page using WhatsApp. The initial single-environment sender shortcut was replaced with tenant-scoped sender accounts in Sales settings so each company controls its own communication identity.
+Phase D.8 introduces outbound invoice sharing from the Sales Invoice detail page using WhatsApp and Telegram. The initial single-environment sender shortcut was replaced with tenant-scoped sender accounts in Sales settings so each company controls its own communication identity.
 
 ### Flow
 
-1. User opens a **POSTED** Sales Invoice and clicks **Send via WhatsApp**.
-2. UI collects sender account, recipient phone (E.164), optional document URL, and message text.
+1. User opens a **POSTED** Sales Invoice and chooses **Send via WhatsApp** or **Send via Telegram**.
+2. UI collects sender account, destination, optional document URL, and message text.
 3. Backend endpoint `POST /tenant/sales/invoices/:id/send-whatsapp` validates payload and loads the invoice + customer.
 4. `SendSalesInvoiceWhatsappUseCase` enforces:
    - invoice must exist and be `POSTED`
@@ -571,7 +571,9 @@ Phase D.8 introduces outbound invoice sharing from the Sales Invoice detail page
    - message length <= 4096 chars
 5. Use case resolves the company sender account from `SalesSettings.messagingAccounts` (active + default per channel, optional explicit account selection).
 6. Sender credentials are decrypted at runtime and passed to `IInvoiceMessagingProvider.sendWhatsAppMessage(...)`.
-7. Current provider is `MetaWhatsAppCloudProvider` (Graph API `/{phone-number-id}/messages`).
+7. Current provider implementation supports:
+   - WhatsApp: Meta Graph API `/{phone-number-id}/messages`
+   - Telegram: Bot API `/bot{token}/sendMessage`
 
 ### Architecture points
 
@@ -590,11 +592,11 @@ Phase D.8 introduces outbound invoice sharing from the Sales Invoice detail page
 
 | Layer | File |
 |---|---|
-| Use case | `backend/src/application/sales/use-cases/InvoiceMessagingUseCases.ts` |
+| Use case | `backend/src/application/sales/use-cases/InvoiceMessagingUseCases.ts` (WhatsApp + Telegram) |
 | Provider contract | `backend/src/application/sales/services/IInvoiceMessagingProvider.ts` |
 | Account resolver contract | `backend/src/application/sales/services/ICompanyMessagingResolver.ts` |
 | Credential cipher contract | `backend/src/application/sales/services/ICredentialCipher.ts` |
-| Meta provider | `backend/src/infrastructure/messaging/MetaWhatsAppCloudProvider.ts` |
+| Provider implementation | `backend/src/infrastructure/messaging/MetaWhatsAppCloudProvider.ts` |
 | Settings-backed resolver | `backend/src/infrastructure/messaging/SalesSettingsMessagingResolver.ts` |
 | Controller route | `backend/src/api/controllers/sales/SalesController.ts` |
 | Validator | `backend/src/api/validators/sales.validators.ts` |
@@ -602,6 +604,43 @@ Phase D.8 introduces outbound invoice sharing from the Sales Invoice detail page
 | Frontend action | `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` |
 | Frontend settings page | `frontend/src/modules/sales/pages/SalesSettingsPage.tsx` |
 | Frontend API client | `frontend/src/api/salesApi.ts` |
+
+---
+
+## Invoice attachments (Phase D.6)
+
+Phase D.6 adds invoice-level document attachments with tenant-scoped storage. Attachments are linked directly to each Sales Invoice record so supporting evidence (signed proof, customer PO, spreadsheets, etc.) stays auditable with the financial document.
+
+### Flow
+
+1. User opens a Sales Invoice and uploads a file from the **Attachments** panel.
+2. Backend validates attachment policy:
+   - max 5 files per invoice
+   - max 10 MB per file
+   - allowed types: PDF, PNG, JPG, DOCX, XLSX
+3. File is stored in tenant path:
+   - `companies/{companyId}/sales/invoices/{invoiceId}/attachments/...`
+4. Attachment metadata is persisted on the invoice:
+   - `id`, `name`, `size`, `type`, `path`, `uploadedAt`, `uploadedBy`
+5. UI can list, open (signed URL), and remove attachments.
+
+### Architecture points
+
+- Tenant isolation is enforced through authenticated `companyId`; no cross-tenant path reuse.
+- Storage access is short-lived via signed links (`15m`) generated server-side.
+- Attachment metadata lives in `SalesInvoice.attachments` and is part of repository persistence.
+- Implementation intentionally starts with Sales Invoices (highest accounting relevance); same pattern can be extended to SO/DN/SR if required.
+
+### Key files
+
+| Layer | File |
+|---|---|
+| Sales invoice domain | `backend/src/domain/sales/entities/SalesInvoice.ts` |
+| DTO mapper | `backend/src/api/dtos/SalesDTOs.ts` |
+| API controller | `backend/src/api/controllers/sales/SalesInvoiceAttachmentController.ts` |
+| API routes | `backend/src/api/routes/sales.routes.ts` |
+| Frontend API client | `frontend/src/api/salesApi.ts` |
+| Frontend UI | `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` |
 
 ---
 
@@ -617,6 +656,6 @@ Phase D.8 introduces outbound invoice sharing from the Sales Invoice detail page
 | **Commission GL posting** | Marking commission paid is a status change only — no Dr/Cr voucher posted yet. |
 | **Recurring invoices (D.4)** | Implemented — templated (clone) + scheduled (WEEKLY/MONTHLY/QUARTERLY/ANNUALLY) with pause/resume/cancel. |
 | **Sales-return enhancements (D.5)** | Implemented: settlement mode, reason code taxonomy, restocking fee + net settlement accounting. |
-| **Document attachments (D.6)** | File attachments on sales documents — NOT STARTED. |
+| **Document attachments (D.6)** | Implemented for Sales Invoices (upload/list/open/remove with tenant-scoped storage + signed links). |
 | **Multiple invoice templates (D.7)** | Implemented (controlled model): selectable invoice templates + customer defaults + persisted template ID. |
-| **Email integration (D.8 follow-up)** | Deferred. D.8 delivered WhatsApp-first outbound messaging via provider abstraction; email channel can be added as a new provider/use-case path. |
+| **Email integration (D.8 follow-up)** | Deferred. D.8 currently delivers WhatsApp + Telegram outbound messaging with tenant-scoped sender accounts; email can be added as another channel/provider path. |

@@ -7,7 +7,9 @@ import {
   InvoiceableLinkedSalesSourceDTO,
   RecurrenceFrequency,
   recurringInvoiceApi,
+  SalesInvoiceAttachmentDTO,
   SalesMessagingAccountDTO,
+  SendSalesInvoiceTelegramResult,
   SendSalesInvoiceWhatsAppResult,
   SalesInvoiceDTO,
   SalesInvoiceLineInputDTO,
@@ -37,7 +39,13 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
 const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
-const buildDefaultWhatsAppMessage = (params: {
+const formatFileSize = (bytes: number): string => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+const buildDefaultOutboundMessage = (params: {
   invoiceNumber: string;
   customerName: string;
   grandTotalDoc: number;
@@ -187,6 +195,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState('');
   const [sendWhatsAppDocumentUrl, setSendWhatsAppDocumentUrl] = useState('');
   const [sendWhatsAppAccountId, setSendWhatsAppAccountId] = useState('');
+  const [sendTelegramOpen, setSendTelegramOpen] = useState(false);
+  const [sendTelegramBusy, setSendTelegramBusy] = useState(false);
+  const [sendTelegramChatId, setSendTelegramChatId] = useState('');
+  const [sendTelegramMessage, setSendTelegramMessage] = useState('');
+  const [sendTelegramDocumentUrl, setSendTelegramDocumentUrl] = useState('');
+  const [sendTelegramAccountId, setSendTelegramAccountId] = useState('');
+  const [attachments, setAttachments] = useState<SalesInvoiceAttachmentDTO[]>([]);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [attachmentDeletingId, setAttachmentDeletingId] = useState<string | null>(null);
   const [templateTouched, setTemplateTouched] = useState(false);
 
   // Settlement state
@@ -228,6 +245,16 @@ const SalesInvoiceDetailPage: React.FC = () => {
     () =>
       (settings?.messagingAccounts || [])
         .filter((account) => account.channel === 'WHATSAPP' && account.isActive !== false)
+        .sort((a, b) => {
+          if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
+          return (a.label || '').localeCompare(b.label || '');
+        }),
+    [settings]
+  );
+  const telegramMessagingAccounts = useMemo<SalesMessagingAccountDTO[]>(
+    () =>
+      (settings?.messagingAccounts || [])
+        .filter((account) => account.channel === 'TELEGRAM' && account.isActive !== false)
         .sort((a, b) => {
           if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
           return (a.label || '').localeCompare(b.label || '');
@@ -474,8 +501,10 @@ const SalesInvoiceDetailPage: React.FC = () => {
         const result = await salesApi.getSI(params.id);
         const loaded = unwrap<SalesInvoiceDTO>(result);
         setInvoice(loaded);
+        setAttachments(Array.isArray(loaded.attachments) ? loaded.attachments : []);
       } else {
         setInvoice(null);
+        setAttachments([]);
         setForm(createEmptyForm(initialSalesOrderId, initialCustomerId));
         if (initialSalesOrderId) {
           await loadSalesOrderLines(initialSalesOrderId);
@@ -933,7 +962,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     const defaultWhatsappAccount =
       whatsappMessagingAccounts.find((account) => account.isDefault) || whatsappMessagingAccounts[0];
     setSendWhatsAppAccountId(defaultWhatsappAccount?.id || '');
-    setSendWhatsAppMessage(buildDefaultWhatsAppMessage({
+    setSendWhatsAppMessage(buildDefaultOutboundMessage({
       invoiceNumber: invoice.invoiceNumber,
       customerName: customerNameById[invoice.customerId] || invoice.customerName,
       grandTotalDoc: invoice.grandTotalDoc,
@@ -941,6 +970,23 @@ const SalesInvoiceDetailPage: React.FC = () => {
       invoiceDate: invoice.invoiceDate,
     }));
     setSendWhatsAppOpen(true);
+  };
+
+  const openSendTelegramModal = () => {
+    if (!invoice) return;
+    const defaultTelegramAccount =
+      telegramMessagingAccounts.find((account) => account.isDefault) || telegramMessagingAccounts[0];
+    setSendTelegramAccountId(defaultTelegramAccount?.id || '');
+    setSendTelegramChatId('');
+    setSendTelegramDocumentUrl('');
+    setSendTelegramMessage(buildDefaultOutboundMessage({
+      invoiceNumber: invoice.invoiceNumber,
+      customerName: customerNameById[invoice.customerId] || invoice.customerName,
+      grandTotalDoc: invoice.grandTotalDoc,
+      currency: invoice.currency,
+      invoiceDate: invoice.invoiceDate,
+    }));
+    setSendTelegramOpen(true);
   };
 
   const sendInvoiceViaWhatsApp = async () => {
@@ -976,6 +1022,112 @@ const SalesInvoiceDetailPage: React.FC = () => {
       );
     } finally {
       setSendWhatsAppBusy(false);
+    }
+  };
+
+  const sendInvoiceViaTelegram = async () => {
+    if (!invoice?.id) return;
+    try {
+      setSendTelegramBusy(true);
+      setError(null);
+      const result = await salesApi.sendInvoiceTelegram(invoice.id, {
+        messagingAccountId: sendTelegramAccountId || undefined,
+        toChatId: sendTelegramChatId.trim() || undefined,
+        messageText: sendTelegramMessage.trim() || undefined,
+        documentUrl: sendTelegramDocumentUrl.trim() || undefined,
+      });
+      const payload = unwrap<SendSalesInvoiceTelegramResult>(result);
+      setSendTelegramOpen(false);
+      errorHandler.showInfo(
+        t(
+          'sales.invoices.telegram.success',
+          'Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).',
+          {
+            chatId: payload.recipientChatId,
+            sender: payload.senderLabel || t('sales.invoices.telegram.defaultSender', 'default sender'),
+            messageId: payload.messageId,
+          }
+        )
+      );
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.telegram.sendError', 'Failed to send invoice via Telegram.')
+      );
+    } finally {
+      setSendTelegramBusy(false);
+    }
+  };
+
+  const refreshAttachments = async () => {
+    if (!invoice?.id) return;
+    const result = await salesApi.listInvoiceAttachments(invoice.id);
+    const list = unwrap<SalesInvoiceAttachmentDTO[]>(result);
+    const normalized = Array.isArray(list) ? list : [];
+    setAttachments(normalized);
+    setInvoice((current) => (current ? { ...current, attachments: normalized } : current));
+  };
+
+  const uploadAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !invoice?.id) return;
+    try {
+      setAttachmentBusy(true);
+      setError(null);
+      await salesApi.uploadInvoiceAttachment(invoice.id, file);
+      await refreshAttachments();
+      errorHandler.showInfo(t('sales.invoices.attachments.uploadSuccess', 'Attachment uploaded successfully.'));
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.attachments.uploadError', 'Failed to upload attachment.')
+      );
+    } finally {
+      setAttachmentBusy(false);
+    }
+  };
+
+  const removeAttachment = async (attachmentId: string) => {
+    if (!invoice?.id) return;
+    try {
+      setAttachmentDeletingId(attachmentId);
+      setError(null);
+      await salesApi.removeInvoiceAttachment(invoice.id, attachmentId);
+      await refreshAttachments();
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.attachments.removeError', 'Failed to remove attachment.')
+      );
+    } finally {
+      setAttachmentDeletingId(null);
+    }
+  };
+
+  const downloadAttachment = async (attachmentId: string) => {
+    if (!invoice?.id) return;
+    try {
+      setError(null);
+      const result = await salesApi.getInvoiceAttachmentDownloadLink(invoice.id, attachmentId);
+      const payload = unwrap<{ url?: string }>(result);
+      if (!payload?.url) {
+        throw new Error(t('sales.invoices.attachments.downloadError', 'Failed to generate download link.'));
+      }
+      window.open(payload.url, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.attachments.downloadError', 'Failed to generate download link.')
+      );
     }
   };
 
@@ -1757,6 +1909,76 @@ const SalesInvoiceDetailPage: React.FC = () => {
         </div>
       </Card>
 
+      <Card className="p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {t('sales.invoices.attachments.title', 'Attachments')}
+          </h2>
+          <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+              onChange={uploadAttachment}
+              disabled={attachmentBusy}
+            />
+            {attachmentBusy
+              ? t('sales.invoices.attachments.uploading', 'Uploading...')
+              : t('sales.invoices.attachments.upload', 'Upload Attachment')}
+          </label>
+        </div>
+
+        <p className="mb-4 text-xs text-slate-500">
+          {t(
+            'sales.invoices.attachments.help',
+            'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.'
+          )}
+        </p>
+
+        {attachments.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+            {t('sales.invoices.attachments.empty', 'No attachments yet.')}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {attachment.name}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {formatFileSize(attachment.size)} • {attachment.type} • {new Date(attachment.uploadedAt).toLocaleString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+                    onClick={() => downloadAttachment(attachment.id)}
+                  >
+                    {t('sales.invoices.attachments.open', 'Open')}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:opacity-50"
+                    onClick={() => removeAttachment(attachment.id)}
+                    disabled={attachmentDeletingId === attachment.id}
+                  >
+                    {attachmentDeletingId === attachment.id
+                      ? t('sales.invoices.attachments.removing', 'Removing...')
+                      : t('sales.invoices.attachments.remove', 'Remove')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {showSettlement && invoice && (
         <Card className="p-5 border-blue-200 bg-blue-50">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Post</h2>
@@ -1975,6 +2197,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
             {t('sales.invoices.whatsapp.action', 'Send via WhatsApp')}
           </button>
         )}
+        {invoice.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-sky-300 px-4 py-2 text-sm font-medium text-sky-700"
+            onClick={openSendTelegramModal}
+          >
+            {t('sales.invoices.telegram.action', 'Send via Telegram')}
+          </button>
+        )}
         {(invoice.status === 'DRAFT' || invoice.status === 'POSTED') && (
           <button
             type="button"
@@ -2106,6 +2337,88 @@ const SalesInvoiceDetailPage: React.FC = () => {
               {sendWhatsAppBusy
                 ? t('sales.invoices.whatsapp.sending', 'Sending...')
                 : t('sales.invoices.whatsapp.send', 'Send')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={sendTelegramOpen}
+        onClose={() => setSendTelegramOpen(false)}
+        title={t('sales.invoices.telegram.modalTitle', 'Send Invoice via Telegram')}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.senderLabel', 'Sender Account')}
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramAccountId}
+              onChange={(e) => setSendTelegramAccountId(e.target.value)}
+            >
+              <option value="">{t('sales.invoices.telegram.senderDefaultOption', 'Use default sender')}</option>
+              {telegramMessagingAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.label}
+                  {account.botUsername ? ` (${account.botUsername})` : ''}
+                  {account.isDefault ? ` - ${t('sales.invoices.telegram.defaultTag', 'Default')}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.chatLabel', 'Recipient Chat ID or @Username')}
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramChatId}
+              onChange={(e) => setSendTelegramChatId(e.target.value)}
+              placeholder={t('sales.invoices.telegram.chatPlaceholder', '@customer_username or -1001234567890')}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.documentUrlLabel', 'Document URL (Optional)')}
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramDocumentUrl}
+              onChange={(e) => setSendTelegramDocumentUrl(e.target.value)}
+              placeholder={t('sales.invoices.telegram.documentUrlPlaceholder', 'https://...')}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.messageLabel', 'Message')}
+            </label>
+            <textarea
+              className="min-h-[120px] w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramMessage}
+              onChange={(e) => setSendTelegramMessage(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+              onClick={() => setSendTelegramOpen(false)}
+              disabled={sendTelegramBusy}
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={sendInvoiceViaTelegram}
+              disabled={sendTelegramBusy}
+            >
+              {sendTelegramBusy
+                ? t('sales.invoices.telegram.sending', 'Sending...')
+                : t('sales.invoices.telegram.send', 'Send')}
             </button>
           </div>
         </div>

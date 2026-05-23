@@ -3,10 +3,12 @@ import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/IS
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import {
   ICompanyMessagingResolver,
+  ResolvedTelegramMessagingConfig,
   ResolvedWhatsAppMessagingConfig,
 } from '../services/ICompanyMessagingResolver';
 import {
   IInvoiceMessagingProvider,
+  SendTelegramMessageResult,
   SendWhatsAppMessageResult,
 } from '../services/IInvoiceMessagingProvider';
 
@@ -53,6 +55,26 @@ const buildDefaultMessage = (params: {
   return lines.join('\n');
 };
 
+const normalizeTelegramRecipient = (raw: string): string => {
+  const value = String(raw || '').trim();
+  if (!value) {
+    throw ApiError.badRequest('Telegram chat id or username is required.');
+  }
+
+  if (value.startsWith('@')) {
+    if (!/^@[a-zA-Z0-9_]{5,32}$/.test(value)) {
+      throw ApiError.badRequest('Telegram username must be in @username format.');
+    }
+    return value;
+  }
+
+  if (!/^-?\d{5,20}$/.test(value)) {
+    throw ApiError.badRequest('Telegram chat id must be numeric, or provide @username.');
+  }
+
+  return value;
+};
+
 export interface SendSalesInvoiceWhatsappInput {
   companyId: string;
   invoiceId: string;
@@ -70,6 +92,25 @@ export interface SendSalesInvoiceWhatsappResult {
   invoiceId: string;
   invoiceNumber: string;
   recipientPhoneNumber: string;
+}
+
+export interface SendSalesInvoiceTelegramInput {
+  companyId: string;
+  invoiceId: string;
+  messagingAccountId?: string;
+  toChatId?: string;
+  messageText?: string;
+  documentUrl?: string;
+}
+
+export interface SendSalesInvoiceTelegramResult {
+  provider: string;
+  messageId: string;
+  senderAccountId?: string;
+  senderLabel?: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  recipientChatId: string;
 }
 
 export class SendSalesInvoiceWhatsappUseCase {
@@ -143,6 +184,75 @@ export class SendSalesInvoiceWhatsappUseCase {
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       recipientPhoneNumber,
+    };
+  }
+}
+
+export class SendSalesInvoiceTelegramUseCase {
+  constructor(
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository,
+    private readonly partyRepo: IPartyRepository,
+    private readonly messagingProvider: IInvoiceMessagingProvider,
+    private readonly messagingResolver: ICompanyMessagingResolver,
+    private readonly appBaseUrl?: string
+  ) {}
+
+  async execute(input: SendSalesInvoiceTelegramInput): Promise<SendSalesInvoiceTelegramResult> {
+    const invoice = await this.salesInvoiceRepo.getById(input.companyId, input.invoiceId);
+    if (!invoice) {
+      throw ApiError.notFound(`Sales invoice not found: ${input.invoiceId}`);
+    }
+
+    if (invoice.status !== 'POSTED') {
+      throw ApiError.conflict('Only posted sales invoices can be sent via Telegram.');
+    }
+
+    const customer = await this.partyRepo.getById(input.companyId, invoice.customerId);
+    if (!customer) {
+      throw ApiError.notFound(`Customer not found for invoice: ${invoice.customerId}`);
+    }
+
+    const recipientChatId = normalizeTelegramRecipient(input.toChatId || '');
+    const defaultDocumentUrl = this.appBaseUrl
+      ? `${this.appBaseUrl.replace(/\/$/, '')}/sales/invoices/${invoice.id}`
+      : undefined;
+
+    const messageText = (input.messageText || '').trim() || buildDefaultMessage({
+      invoiceNumber: invoice.invoiceNumber,
+      customerName: invoice.customerName,
+      grandTotalDoc: invoice.grandTotalDoc,
+      currency: invoice.currency,
+      invoiceDate: invoice.invoiceDate,
+      documentUrl: (input.documentUrl || '').trim() || defaultDocumentUrl,
+    });
+
+    if (messageText.length > 4096) {
+      throw ApiError.badRequest('Telegram message exceeds the 4096 character limit.');
+    }
+
+    const resolvedConfig: ResolvedTelegramMessagingConfig | null = await this.messagingResolver.resolveTelegramConfig({
+      companyId: input.companyId,
+      accountId: input.messagingAccountId,
+    });
+    if (!resolvedConfig) {
+      throw ApiError.badRequest('Telegram sender account is not available or is missing credentials.');
+    }
+    const providerResult: SendTelegramMessageResult = await this.messagingProvider.sendTelegramMessage(
+      {
+        toChatIdOrUsername: recipientChatId,
+        messageBody: messageText,
+      },
+      { botToken: resolvedConfig.botToken }
+    );
+
+    return {
+      provider: providerResult.provider,
+      messageId: providerResult.messageId,
+      senderAccountId: resolvedConfig.accountId,
+      senderLabel: resolvedConfig.label,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      recipientChatId,
     };
   }
 }

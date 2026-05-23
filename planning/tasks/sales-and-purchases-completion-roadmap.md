@@ -119,7 +119,7 @@ Don't treat the order inside a phase as rigid — within a phase the items can b
 | **Sales return enhancements** | Refund vs credit note (customer choice). Restocking fees. Return reasons (defective, wrong item, customer changed mind). |
 | **Document attachments** | PDF/image attached to SI for vendor records, customer PO numbers, signed delivery proofs. |
 | **Multiple invoice templates** | Per-customer or per-form layouts. Logo, footer, terms. |
-| **Email integration** | Send invoice from inside the app via SMTP/SendGrid. |
+| **Outbound messaging integration** | Send invoice from inside the app (WhatsApp first via Meta Cloud API; email as follow-up channel). |
 
 **Manual QA gate:**
 1. Open any posted SI; click "GL Impact" → see the journal lines + accounts + fallback levels

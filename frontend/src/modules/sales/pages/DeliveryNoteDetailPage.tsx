@@ -13,6 +13,9 @@ import { Card } from '../../../components/ui/Card';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { GlImpactModal } from '../components/GlImpactModal';
+import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
+import { RecordAuditModal } from '../components/RecordAuditModal';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -82,6 +85,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [glImpactOpen, setGlImpactOpen] = useState(false);
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
 
   const warehouseLabelById = useMemo(
     () =>
@@ -389,14 +396,29 @@ const DeliveryNoteDetailPage: React.FC = () => {
     }
   };
 
-  const postDraft = async () => {
+  const postDraft = async (periodLockOverrideReason?: string) => {
     if (!deliveryNote?.id) return;
     try {
       setBusy(true);
       setError(null);
-      const posted = await salesApi.postDN(deliveryNote.id);
+      const posted = await salesApi.postDN(deliveryNote.id, periodLockOverrideReason);
       setDeliveryNote(unwrap<DeliveryNoteDTO>(posted));
     } catch (err: any) {
+      const errorCode = err?.response?.data?.error?.code;
+      if (errorCode === 'PERIOD_LOCKED') {
+        const errorData = err?.response?.data?.error;
+        if (errorData?.tier === 'SOFT') {
+          setOverrideModalData({
+            documentDate: errorData.documentDate || deliveryNote.deliveryDate,
+            lockedThroughDate: errorData.lockedThroughDate || '',
+          });
+          setOverrideModalOpen(true);
+          return;
+        } else {
+          setError('This accounting period is closed and cannot be overridden.');
+          return;
+        }
+      }
       console.error('Failed to post delivery note', err);
       setError(
         err?.response?.data?.error?.message ||
@@ -748,7 +770,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={postDraft}
+            onClick={() => postDraft()}
             disabled={busy}
           >
             {busy ? 'Posting...' : 'Post Delivery Note'}
@@ -763,7 +785,50 @@ const DeliveryNoteDetailPage: React.FC = () => {
             Create Return
           </button>
         )}
+        {deliveryNote.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
+            onClick={() => setGlImpactOpen(true)}
+          >
+            GL Impact
+          </button>
+        )}
+        <button
+          type="button"
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+          onClick={() => setAuditModalOpen(true)}
+        >
+          History
+        </button>
       </div>
+
+      <GlImpactModal
+        isOpen={glImpactOpen}
+        onClose={() => setGlImpactOpen(false)}
+        sourceId={deliveryNote.id}
+        sourceLabel={deliveryNote.dnNumber}
+      />
+
+      {overrideModalData && (
+        <PeriodLockOverrideModal
+          isOpen={overrideModalOpen}
+          onClose={() => setOverrideModalOpen(false)}
+          documentDate={overrideModalData.documentDate}
+          lockedThroughDate={overrideModalData.lockedThroughDate}
+          onConfirm={(reason) => {
+            setOverrideModalOpen(false);
+            postDraft(reason);
+          }}
+        />
+      )}
+
+      <RecordAuditModal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
+        entityType="DELIVERY_NOTE"
+        entityId={deliveryNote.id}
+      />
     </div>
   );
 };

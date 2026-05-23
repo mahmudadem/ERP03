@@ -1,4 +1,8 @@
-import { ICompanyMessagingResolver, ResolvedWhatsAppMessagingConfig } from '../../application/sales/services/ICompanyMessagingResolver';
+import {
+  ICompanyMessagingResolver,
+  ResolvedTelegramMessagingConfig,
+  ResolvedWhatsAppMessagingConfig,
+} from '../../application/sales/services/ICompanyMessagingResolver';
 import { ICredentialCipher } from '../../application/sales/services/ICredentialCipher';
 import { ISalesSettingsRepository } from '../../repository/interfaces/sales/ISalesSettingsRepository';
 
@@ -48,5 +52,43 @@ export class SalesSettingsMessagingResolver implements ICompanyMessagingResolver
       apiVersion: selectedAccount.apiVersion,
     };
   }
-}
 
+  async resolveTelegramConfig(input: { companyId: string; accountId?: string }): Promise<ResolvedTelegramMessagingConfig | null> {
+    const settings = await this.salesSettingsRepo.getSettings(input.companyId);
+    if (!settings) return null;
+
+    const telegramAccounts = (settings.messagingAccounts || []).filter(
+      (account) => account.channel === 'TELEGRAM' && account.isActive !== false
+    );
+
+    if (!telegramAccounts.length) {
+      return null;
+    }
+
+    const selectedAccount = input.accountId
+      ? telegramAccounts.find((account) => account.id === input.accountId)
+      : telegramAccounts.find((account) => account.isDefault) || telegramAccounts[0];
+
+    if (!selectedAccount) {
+      return null;
+    }
+
+    const encryptedCredential = selectedAccount.encryptedCredential?.trim();
+    if (!encryptedCredential) {
+      return null;
+    }
+
+    const botToken = encryptedCredential.includes(':')
+      ? this.credentialCipher.decrypt(encryptedCredential)
+      : encryptedCredential;
+    if (!botToken.trim()) {
+      return null;
+    }
+
+    return {
+      accountId: selectedAccount.id,
+      label: selectedAccount.label,
+      botToken,
+    };
+  }
+}

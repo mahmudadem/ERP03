@@ -18,9 +18,9 @@ ERP03 is multi-tenant. Each company should send customer messages from its own c
 
 ## Supported account types
 
-- WhatsApp (`META_WHATSAPP_CLOUD`)
-- Email (`SMTP`) — account model is ready
-- Telegram (`TELEGRAM_BOT`) — account model is ready
+- WhatsApp (`META_WHATSAPP_CLOUD`) — send flow is live
+- Telegram (`TELEGRAM_BOT`) — send flow is live
+- Email (`SMTP`) — account model is ready, send flow deferred
 
 ---
 
@@ -39,9 +39,9 @@ ERP03 is multi-tenant. Each company should send customer messages from its own c
 
 ---
 
-## Multi-number behavior
+## Multi-account behavior
 
-- A company can keep multiple active WhatsApp sender accounts.
+- A company can keep multiple active sender accounts per channel.
 - Users can choose sender account when sending an invoice.
 - If no account is chosen in the invoice modal, ERP03 uses the channel default.
 
@@ -52,4 +52,3 @@ ERP03 is multi-tenant. Each company should send customer messages from its own c
 - Credentials are stored encrypted server-side.
 - Existing credentials are never returned to the browser.
 - To keep current credentials unchanged, leave the credential field blank when editing and save.
-

@@ -208,6 +208,16 @@ export interface SalesInvoiceChargeDTO {
   description?: string;
 }
 
+export interface SalesInvoiceAttachmentDTO {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface SalesInvoiceDTO {
   id: string;
   companyId: string;
@@ -229,6 +239,7 @@ export interface SalesInvoiceDTO {
   exchangeRate: number;
   lines: SalesInvoiceLineDTO[];
   charges?: SalesInvoiceChargeDTO[];
+  attachments?: SalesInvoiceAttachmentDTO[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -567,6 +578,7 @@ export class SalesDTOMapper {
       exchangeRate: si.exchangeRate,
       lines: si.lines.map((line) => SalesDTOMapper.toSalesInvoiceLineDTO(line)),
       charges: (si.charges || []).map((charge) => ({ ...charge })),
+      attachments: (si.attachments || []).map((attachment) => ({ ...attachment })),
       subtotalDoc: si.subtotalDoc,
       taxTotalDoc: si.taxTotalDoc,
       grandTotalDoc: si.grandTotalDoc,

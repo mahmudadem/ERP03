@@ -18,7 +18,10 @@ import {
   UpdateSalesInvoiceUseCase,
   UpdateAndPostSalesInvoiceUseCase,
 } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
-import { SendSalesInvoiceWhatsappUseCase } from '../../../application/sales/use-cases/InvoiceMessagingUseCases';
+import {
+  SendSalesInvoiceTelegramUseCase,
+  SendSalesInvoiceWhatsappUseCase,
+} from '../../../application/sales/use-cases/InvoiceMessagingUseCases';
 import { AccrueCommissionForInvoiceUseCase } from '../../../application/sales/use-cases/CommissionUseCases';
 import {
   RecordSalesInvoicePaymentUseCase,
@@ -68,6 +71,7 @@ import {
   validateListSalesInvoicesQuery,
   validateListSalesOrdersQuery,
   validateListSalesReturnsQuery,
+  validateSendSalesInvoiceTelegramInput,
   validateSendSalesInvoiceWhatsAppInput,
   validateUpdateSalesInvoiceInput,
   validateUpdateSalesReturnInput,
@@ -1246,6 +1250,39 @@ export class SalesController {
         invoiceId,
         messagingAccountId: body.messagingAccountId,
         toPhoneNumber: body.toPhoneNumber,
+        messageText: body.messageText,
+        documentUrl: body.documentUrl,
+      });
+
+      (res as any).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async sendInvoiceViaTelegram(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateSendSalesInvoiceTelegramInput((req as any).body || {});
+      const companyId = SalesController.getCompanyId(req);
+      const invoiceId = String((req as any).params.id);
+      const body = (req as any).body || {};
+
+      const useCase = new SendSalesInvoiceTelegramUseCase(
+        diContainer.salesInvoiceRepository,
+        diContainer.partyRepository,
+        diContainer.invoiceMessagingProvider,
+        diContainer.companyMessagingResolver,
+        process.env.ERP_APP_BASE_URL
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        invoiceId,
+        messagingAccountId: body.messagingAccountId,
+        toChatId: body.toChatId,
         messageText: body.messageText,
         documentUrl: body.documentUrl,
       });

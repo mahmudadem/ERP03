@@ -254,6 +254,7 @@ export interface SalesInvoiceDTO {
   currency: string;
   exchangeRate: number;
   lines: SalesInvoiceLineDTO[];
+  attachments?: SalesInvoiceAttachmentDTO[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -272,6 +273,16 @@ export interface SalesInvoiceDTO {
   createdAt: string;
   updatedAt: string;
   postedAt?: string;
+}
+
+export interface SalesInvoiceAttachmentDTO {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
 }
 
 export interface SalesReturnLineDTO {
@@ -636,6 +647,27 @@ export interface SendSalesInvoiceWhatsAppResult {
   recipientPhoneNumber: string;
 }
 
+export interface SendSalesInvoiceTelegramPayload {
+  messagingAccountId?: string;
+  toChatId?: string;
+  messageText?: string;
+  documentUrl?: string;
+}
+
+export interface SendSalesInvoiceTelegramResult {
+  provider: string;
+  messageId: string;
+  senderAccountId?: string;
+  senderLabel?: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  recipientChatId: string;
+}
+
+export interface SalesInvoiceAttachmentDownloadLinkResult {
+  url: string;
+}
+
 export const salesApi = {
   initializeSales: (payload: InitializeSalesPayload): Promise<SalesSettingsDTO> =>
     client.post('/tenant/sales/initialize', payload),
@@ -717,6 +749,26 @@ export const salesApi = {
 
   sendInvoiceWhatsApp: (id: string, payload: SendSalesInvoiceWhatsAppPayload): Promise<SendSalesInvoiceWhatsAppResult> =>
     client.post(`/tenant/sales/invoices/${id}/send-whatsapp`, payload),
+
+  sendInvoiceTelegram: (id: string, payload: SendSalesInvoiceTelegramPayload): Promise<SendSalesInvoiceTelegramResult> =>
+    client.post(`/tenant/sales/invoices/${id}/send-telegram`, payload),
+
+  listInvoiceAttachments: (id: string): Promise<SalesInvoiceAttachmentDTO[]> =>
+    client.get(`/tenant/sales/invoices/${id}/attachments`).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  uploadInvoiceAttachment: (id: string, file: File): Promise<SalesInvoiceAttachmentDTO> => {
+    const form = new FormData();
+    form.append('file', file);
+    return client.post(`/tenant/sales/invoices/${id}/attachments`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+
+  removeInvoiceAttachment: (id: string, attachmentId: string): Promise<void> =>
+    client.delete(`/tenant/sales/invoices/${id}/attachments/${attachmentId}`).then(() => undefined),
+
+  getInvoiceAttachmentDownloadLink: (id: string, attachmentId: string): Promise<SalesInvoiceAttachmentDownloadLinkResult> =>
+    client.get(`/tenant/sales/invoices/${id}/attachments/${attachmentId}/link`).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createReturn: (payload: CreateSalesReturnPayload): Promise<SalesReturnDTO> =>
     client.post('/tenant/sales/returns', payload),

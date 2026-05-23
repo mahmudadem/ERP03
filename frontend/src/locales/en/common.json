@@ -2092,6 +2092,37 @@
         "sending": "Sending...",
         "success": "WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).",
         "sendError": "Failed to send invoice via WhatsApp."
+      },
+      "telegram": {
+        "action": "Send via Telegram",
+        "modalTitle": "Send Invoice via Telegram",
+        "senderLabel": "Sender Account",
+        "senderDefaultOption": "Use default sender",
+        "defaultSender": "default sender",
+        "defaultTag": "Default",
+        "chatLabel": "Recipient Chat ID or @Username",
+        "chatPlaceholder": "@customer_username or -1001234567890",
+        "documentUrlLabel": "Document URL (Optional)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "Message",
+        "send": "Send",
+        "sending": "Sending...",
+        "success": "Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).",
+        "sendError": "Failed to send invoice via Telegram."
+      },
+      "attachments": {
+        "title": "Attachments",
+        "help": "Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.",
+        "empty": "No attachments yet.",
+        "upload": "Upload Attachment",
+        "uploading": "Uploading...",
+        "uploadSuccess": "Attachment uploaded successfully.",
+        "uploadError": "Failed to upload attachment.",
+        "open": "Open",
+        "remove": "Remove",
+        "removing": "Removing...",
+        "removeError": "Failed to remove attachment.",
+        "downloadError": "Failed to generate download link."
       }
     },
     "recurring": {

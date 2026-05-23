@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   User, 
   Building2, 
@@ -13,6 +14,7 @@ import {
 import { PartyDTO, PartyRole, sharedApi } from '../../../api/sharedApi';
 import { accountingApi } from '../../../api/accountingApi';
 import { salesMasterDataApi, CustomerGroupDTO, PriceListDTO } from '../../../api/salesMasterDataApi';
+import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { MasterCardLayout, FormSection, Field, MasterCardTab } from '../../../components/layout/MasterCardLayout';
@@ -41,6 +43,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   onSaved,
   role = 'CUSTOMER'
 }) => {
+  const { t } = useTranslation();
   const { hasPermission } = useRBAC();
   const [activeTab, setActiveTab] = useState('GENERAL');
   const [loading, setLoading] = useState(false);
@@ -49,6 +52,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [customerGroups, setCustomerGroups] = useState<CustomerGroupDTO[]>([]);
   const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
+  const [invoiceTemplates, setInvoiceTemplates] = useState<VoucherFormResponse[]>([]);
 
   const [form, setForm] = useState<Partial<PartyDTO>>({
     code: '',
@@ -69,8 +73,26 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     if (role === 'CUSTOMER') {
       salesMasterDataApi.listCustomerGroups().then(setCustomerGroups).catch(console.error);
       salesMasterDataApi.listPriceLists().then(setPriceLists).catch(console.error);
+      voucherFormApi.list().then((forms) => {
+        setInvoiceTemplates((forms || []).filter((form) => {
+          if (form.enabled === false) return false;
+          const voucherType = String(form.voucherType || '').toLowerCase();
+          const formType = String(form.formType || '').toLowerCase();
+          return voucherType === 'sales_invoice' || formType.startsWith('sales_invoice');
+        }));
+      }).catch(console.error);
     }
   }, [partyId]);
+
+  const defaultInvoiceTemplateOptions = useMemo(
+    () => invoiceTemplates
+      .slice()
+      .sort((a, b) => {
+        if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
+        return (a.name || '').localeCompare(b.name || '');
+      }),
+    [invoiceTemplates]
+  );
 
   const loadCurrencies = async () => {
     try {
@@ -300,6 +322,36 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                      <span className="form-control border-0 p-0 bg-transparent text-xs text-slate-500">Customer is tax exempt</span>
                    </div>
                  </Field>
+                 <div className="sm:col-span-2">
+                   <Field label={t('sales.invoiceTemplates.customerDefaultLabel', 'Default Invoice Template')}>
+                     <select
+                       className="form-control"
+                       value={form.defaultSalesInvoiceTemplateId || ''}
+                       onChange={e => {
+                         const selectedId = e.target.value;
+                         const selectedTemplate = defaultInvoiceTemplateOptions.find((entry) => entry.id === selectedId);
+                         setForm(p => ({
+                           ...p,
+                           defaultSalesInvoiceTemplateId: selectedId,
+                           defaultSalesInvoiceFormType: selectedTemplate?.formType || '',
+                         }));
+                       }}
+                     >
+                       <option value="">{t('sales.invoiceTemplates.none', '(No Template)')}</option>
+                       {defaultInvoiceTemplateOptions.map((tpl) => (
+                         <option key={tpl.id} value={tpl.id}>
+                           {tpl.name}{tpl.isDefault ? ` ${t('sales.invoiceTemplates.defaultTag', '(Default)')}` : ''}
+                         </option>
+                       ))}
+                     </select>
+                     <p className="mt-1 text-[10px] text-slate-500">
+                       {t(
+                         'sales.invoiceTemplates.customerDefaultHelp',
+                         'Used to pre-select the invoice print layout when creating new sales invoices for this customer.'
+                       )}
+                     </p>
+                   </Field>
+                 </div>
                </div>
              </FormSection>
            )}

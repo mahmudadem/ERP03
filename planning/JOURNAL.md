@@ -2,6 +2,92 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-23 (Sat) — Phase D.6 invoice attachments
+**Task:** Task 119 — Phase D.6 invoice attachments (tenant-scoped)  
+**Agent:** Codex (CTO Mode)  
+**Branch:** `feat/phase-a-sales-master-data`
+
+**What I did:**
+- Implemented D.6 for **Sales Invoices** using tenant-scoped file storage and per-invoice metadata.
+- Backend:
+  - Added `SalesInvoiceAttachmentController` with endpoints:
+    - `GET /tenant/sales/invoices/:id/attachments`
+    - `POST /tenant/sales/invoices/:id/attachments`
+    - `GET /tenant/sales/invoices/:id/attachments/:aid/link`
+    - `DELETE /tenant/sales/invoices/:id/attachments/:aid`
+  - Added file policy guards:
+    - max 5 files per invoice
+    - max 10 MB per file
+    - allowed: PDF, PNG, JPG, DOCX, XLSX
+  - Added tenant-scoped storage path:
+    - `companies/{companyId}/sales/invoices/{invoiceId}/attachments/...`
+  - Extended `SalesInvoice` domain + DTOs with `attachments[]` metadata.
+  - Wired routes in `sales.routes.ts` with in-memory multipart upload (`multer`).
+- Frontend:
+  - Extended `salesApi` with invoice attachment methods (list/upload/remove/get signed link).
+  - Added **Attachments** card in `SalesInvoiceDetailPage`:
+    - upload file
+    - list attachments
+    - open via signed link
+    - remove attachment
+  - Added i18n keys for attachment UX in `en/ar/tr`.
+- Docs:
+  - Updated `docs/architecture/sales.md` with a D.6 section and status updates.
+  - Added user guide: `docs/user-guide/sales/invoice-attachments.md`.
+  - Updated Sales user-guide index links.
+  - Added completion report: `planning/done/119-phase-d6-invoice-attachments.md`.
+
+**Verification:**
+- `npm --prefix backend run build` → ✅
+- `npm --prefix frontend run typecheck` → ✅
+
+**Time spent:** ~1.7h  
+**Result:** ✅ Phase D.6 delivered for Sales Invoices; Phase D is now functionally closed.  
+**Next:** Start Phase E cross-cutting cleanup and broader regression stabilization.
+
+## 2026-05-23 (Sat) — D.8 follow-up: Telegram outbound execution
+**Task:** Task 118 — D.8 Telegram outbound invoice messaging (tenant-scoped model)  
+**Agent:** Codex (CTO Mode)  
+**Branch:** `feat/phase-a-sales-master-data`
+
+**What I did:**
+- Added Telegram outbound execution on top of existing tenant-scoped sender-account architecture.
+- Backend:
+  - Extended messaging provider contract with Telegram send method.
+  - Extended company messaging resolver contract + implementation to resolve Telegram account token per company.
+  - Added Telegram send use case: `SendSalesInvoiceTelegramUseCase`.
+  - Added sales API endpoint:
+    - `POST /tenant/sales/invoices/:id/send-telegram`
+  - Added input validation for Telegram payload.
+  - Reused same commercial guardrails:
+    - invoice must be `POSTED`
+    - sender account must be tenant-valid and credentialed
+    - message length guard (4096)
+    - optional default deep-link text
+- Frontend:
+  - Added **Send via Telegram** action on Sales Invoice detail.
+  - Added Telegram modal with:
+    - sender account selector
+    - recipient `chat_id` or `@username`
+    - optional document URL
+    - editable message
+  - Added API client method `sendInvoiceTelegram`.
+- i18n:
+  - Added Telegram UI keys in `en/ar/tr`.
+- Docs:
+  - Updated architecture section from WhatsApp-first to WhatsApp+Telegram.
+  - Added end-user guide: `docs/user-guide/sales/invoice-telegram-sharing.md`.
+  - Updated Sales user-guide index links.
+
+**Verification:**
+- `npm --prefix backend run build` → ✅
+- `npm --prefix frontend run typecheck` → ✅
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/sales/InvoiceMessagingUseCases.test.ts` → ✅ (includes Telegram tests)
+
+**Time spent:** ~1.4h  
+**Result:** ✅ Telegram outbound invoice execution added with proper tenant isolation and encrypted credential model.  
+**Next:** D.6 document attachments to close Phase D, then Phase E cross-cutting cleanup.
+
 ## 2026-05-23 (Sat) — D.8 hardening: true multi-tenant messaging accounts
 **Task:** Task 117 — D.8 hardening (tenant-scoped sender accounts + credential security)  
 **Agent:** Codex (CTO Mode)  

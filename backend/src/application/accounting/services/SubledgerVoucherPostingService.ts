@@ -8,6 +8,7 @@ import { PostingLockPolicy, VoucherStatus, VoucherType } from '../../../domain/a
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
+import { PeriodLockService } from './PeriodLockService';
 
 export interface PostSubledgerVoucherInput {
   companyId: string;
@@ -34,7 +35,8 @@ export class SubledgerVoucherPostingService {
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly accountRepo?: IAccountRepository,
-    validationService?: VoucherValidationService
+    validationService?: VoucherValidationService,
+    private readonly periodLockService?: PeriodLockService
   ) {
     this.validationService = validationService || new VoucherValidationService();
   }
@@ -43,6 +45,14 @@ export class SubledgerVoucherPostingService {
     input: PostSubledgerVoucherInput,
     transaction?: unknown
   ): Promise<VoucherEntity> {
+    if (this.periodLockService) {
+      await this.periodLockService.assertPostingAllowed(
+        input.companyId,
+        input.date,
+        input.metadata?.periodLockOverride
+      );
+    }
+
     const baseCurrency = (
       input.baseCurrencyOverride
       || (await this.companyCurrencyRepo.getBaseCurrency(input.companyId))
