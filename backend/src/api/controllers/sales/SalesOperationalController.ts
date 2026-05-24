@@ -24,6 +24,7 @@ import {
 import { GetAgedBacklogUseCase } from '../../../application/sales/use-cases/AgedBacklogUseCase';
 import { CreateSalesOrderUseCase } from '../../../application/sales/use-cases/SalesOrderUseCases';
 import { CreateSalesInvoiceUseCase } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { CreditCheckService } from '../../../application/sales/services/CreditCheckService';
 
 export class SalesOperationalController {
   private static getCompanyId(req: Request): string {
@@ -46,7 +47,7 @@ export class SalesOperationalController {
     try {
       const companyId = SalesOperationalController.getCompanyId(req);
       const userId = SalesOperationalController.getUserId(req);
-      const useCase = new CreateQuoteUseCase(diContainer.quoteRepository);
+      const useCase = new CreateQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository);
       const result = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
@@ -146,7 +147,7 @@ export class SalesOperationalController {
   static async reviseQuote(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SalesOperationalController.getCompanyId(req);
-      const useCase = new ReviseQuoteUseCase(diContainer.quoteRepository);
+      const useCase = new ReviseQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository);
       const result = await useCase.execute(companyId, (req as any).params.id);
       (res as any).json({ success: true, data: result.toJSON() });
     } catch (error) {
@@ -163,7 +164,8 @@ export class SalesOperationalController {
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.promotionRuleRepository
       );
       const useCase = new ConvertQuoteToSalesOrderUseCase(
         diContainer.quoteRepository,
@@ -187,7 +189,10 @@ export class SalesOperationalController {
         diContainer.itemRepository,
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.promotionRuleRepository,
+        new CreditCheckService(diContainer.salesInvoiceRepository),
+        diContainer.creditOverrideRepository
       );
       const useCase = new ConvertQuoteToSalesInvoiceUseCase(
         diContainer.quoteRepository,

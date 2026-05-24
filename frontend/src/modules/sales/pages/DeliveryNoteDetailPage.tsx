@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   DeliveryNoteDTO,
@@ -64,6 +65,7 @@ const createEmptyForm = (salesOrderId = '', customerId = '', warehouseId = ''): 
 });
 
 const DeliveryNoteDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -730,33 +732,86 @@ const DeliveryNoteDetailPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Delivered Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Cost (Base)</th>
-                <th className="py-2 text-right">Line Cost (Base)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveryNote.lines.map((line) => (
-                <tr key={line.lineId} className="border-b border-slate-100">
-                  <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                  <td className="py-2 text-right">{line.deliveredQty}</td>
-                  <td className="py-2">{line.uom}</td>
-                  <td className="py-2 text-right">{line.unitCostBase.toFixed(2)}</td>
-                  <td className="py-2 text-right">{line.lineCostBase.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {(() => {
+        const linkedSO = deliveryNote.salesOrderId
+          ? salesOrders.find((so) => so.id === deliveryNote.salesOrderId)
+          : null;
+        const soLineMap: Map<string, { orderedQty: number }> = linkedSO
+          ? new Map(linkedSO.lines.map((l) => [l.lineId, { orderedQty: l.orderedQty }] as [string, { orderedQty: number }]))
+          : new Map<string, { orderedQty: number }>();
+        const hasPartialLine = linkedSO
+          ? deliveryNote.lines.some((dnLine) => {
+              if (!dnLine.soLineId) return false;
+              const soLine = soLineMap.get(dnLine.soLineId);
+              return soLine ? dnLine.deliveredQty < soLine.orderedQty : false;
+            })
+          : false;
+        return (
+          <Card className="p-5">
+            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="py-2 text-left">Item</th>
+                    {linkedSO && <th className="py-2 text-right">{t('fulfillment.ordered')}</th>}
+                    <th className="py-2 text-right">Delivered Qty</th>
+                    <th className="py-2 text-left">UOM</th>
+                    <th className="py-2 text-right">Unit Cost (Base)</th>
+                    <th className="py-2 text-right">Line Cost (Base)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deliveryNote.lines.map((line) => {
+                    const soLine = line.soLineId ? soLineMap.get(line.soLineId) : undefined;
+                    const orderedQty = soLine ? soLine.orderedQty : undefined;
+                    const isPartial = orderedQty !== undefined && line.deliveredQty < orderedQty;
+                    const isFulfilled = orderedQty !== undefined && line.deliveredQty >= orderedQty;
+                    return (
+                      <tr key={line.lineId} className="border-b border-slate-100">
+                        <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
+                        {linkedSO && (
+                          <td className="py-2 text-right">
+                            {orderedQty ?? '—'}
+                          </td>
+                        )}
+                        <td className="py-2 text-right">
+                          {line.deliveredQty}
+                          {linkedSO && (
+                            isPartial ? (
+                              <span className="ml-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800">
+                                {t('fulfillment.partial')}
+                              </span>
+                            ) : isFulfilled ? (
+                              <span className="ml-2 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-semibold text-emerald-800">
+                                {t('fulfillment.fulfilled')}
+                              </span>
+                            ) : null
+                          )}
+                        </td>
+                        <td className="py-2">{line.uom}</td>
+                        <td className="py-2 text-right">{line.unitCostBase.toFixed(2)}</td>
+                        <td className="py-2 text-right">{line.lineCostBase.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {hasPartialLine && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100"
+                  onClick={() => navigate(`/sales/delivery-notes/create?fromOrder=${encodeURIComponent(deliveryNote.salesOrderId!)}&partial=true`)}
+                >
+                  {t('fulfillment.createBackorder')}
+                </button>
+              </div>
+            )}
+          </Card>
+        );
+      })()}
 
       <div className="flex flex-wrap gap-2">
         <button

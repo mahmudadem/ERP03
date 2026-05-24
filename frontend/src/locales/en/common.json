@@ -2203,5 +2203,17 @@
         "title": "Clone Invoice to Recurring Template"
       }
     }
+  },
+  "fulfillment": {
+    "title": "Fulfillment Progress",
+    "ordered": "Ordered",
+    "delivered": "Delivered",
+    "invoiced": "Invoiced",
+    "returned": "Returned",
+    "overall": "Overall",
+    "partial": "Partial",
+    "fulfilled": "Fulfilled",
+    "createBackorder": "Create Backorder Delivery Note",
+    "noLinesOverdue": "All lines fully delivered"
   }
 }

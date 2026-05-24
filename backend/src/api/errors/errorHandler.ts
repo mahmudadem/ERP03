@@ -6,6 +6,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiError } from './ApiError';
 import { InfrastructureError as InfraError } from '../../infrastructure/errors/InfrastructureError';
 import { AppError } from '../../errors/AppError';
+import { CreditLimitExceededError } from '../../domain/sales/errors/CreditLimitExceededError';
 
 export const errorHandler = (
   err: Error,
@@ -21,6 +22,25 @@ export const errorHandler = (
       error: {
         code: err.code,
         message: err.message,
+      },
+    });
+    return;
+  }
+
+  // Handle credit limit exceeded — return 422 with structured details
+  if (err instanceof CreditLimitExceededError) {
+    (res as any).status(422).json({
+      success: false,
+      code: err.code,
+      message: err.message,
+      details: {
+        companyId: err.companyId,
+        customerId: err.customerId,
+        customerName: err.customerName,
+        creditLimit: err.creditLimit,
+        currentExposure: err.currentExposure,
+        orderAmount: err.orderAmount,
+        projectedExposure: err.projectedExposure,
       },
     });
     return;

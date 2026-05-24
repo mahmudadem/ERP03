@@ -103,7 +103,10 @@ Yes — the audit records are stored internally. Ask your system administrator o
 No. The credit check only runs when a sales order is confirmed. Quotations and draft orders do not trigger it.
 
 **Does the limit apply when I create a direct invoice (no sales order)?**
-Not yet in the current version. The credit check fires at sales order confirmation only. Direct invoices bypass the check.
+Yes — since Phase E, the credit check also fires when you create a direct Sales Invoice (no linked Sales Order). The same BLOCK/WARN/OVERRIDE flow applies. Linked invoices (from a Sales Order) already had their credit checked at order confirmation time.
+
+**Can I override the credit check on a direct invoice?**
+Yes. If the policy is BLOCK and the invoice exceeds the limit, a dialog appears with the same override reason field as Sales Order confirmation. Enter a reason to proceed. The override is recorded in the audit trail.
 
 **The customer paid — why is the exposure still showing the old amount?**
 Make sure the payment has been recorded and posted in the system. The exposure calculation reads live outstanding balances from posted invoices, so a payment that has not been posted will not reduce the exposure figure.

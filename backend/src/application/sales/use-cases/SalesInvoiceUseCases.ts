@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
+import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import {
   DocumentSource,
@@ -29,6 +30,8 @@ import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/ID
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
+import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
+import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
@@ -60,6 +63,10 @@ import {
   calculateSalesInvoiceLineAmounts,
   calculateSalesInvoiceTotals,
 } from '../services/SalesInvoiceCalculationService';
+import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
+import { CreditCheckService, CreditCheckResult } from '../services/CreditCheckService';
+import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
+import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -138,6 +145,14 @@ export interface CreateSalesInvoiceInput {
   charges?: SalesInvoiceChargeInput[];
   notes?: string;
   createdBy: string;
+  /** When provided alongside a BLOCK-policy credit limit breach, the invoice creation
+   *  proceeds and an audit override record is persisted. */
+  creditOverrideReason?: string;
+}
+
+export interface CreateSalesInvoiceResult {
+  salesInvoice: SalesInvoice;
+  creditCheck?: CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' };
 }
 
 export interface UpdateSalesInvoiceInput {
@@ -294,10 +309,13 @@ export class CreateSalesInvoiceUseCase {
     private readonly itemCategoryRepo: IItemCategoryRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly promotionRuleRepo?: IPromotionRuleRepository,
+    private readonly creditCheckService?: CreditCheckService,
+    private readonly creditOverrideRepo?: ICreditOverrideRepository,
+    private readonly recordChangeService?: RecordChangeService,
   ) {}
 
-  async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<SalesInvoice> {
+  async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<CreateSalesInvoiceResult> {
     const source = resolveDocumentSource(input.source);
     const persona = resolveSalesInvoicePersona(input);
     input = {
@@ -546,6 +564,205 @@ export class CreateSalesInvoiceUseCase {
 
     si.outstandingAmountBase = si.grandTotalBase;
 
+    // --- Credit check (direct persona only — linked/service invoices already checked at SO confirm time) ---
+    let creditCheckOutcome: (CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' }) | undefined;
+    if (input.persona === 'direct' && this.creditCheckService && this.creditOverrideRepo) {
+      const orderAmountBase = si.grandTotalBase;
+      const party = await this.partyRepo.getById(input.companyId, si.customerId).catch(() => null);
+      if (party && party.creditLimit !== undefined && party.creditLimit !== null) {
+        const creditCheck = await this.creditCheckService.check(input.companyId, party, orderAmountBase);
+        const overLimit = creditCheck.enforced && !creditCheck.withinLimit;
+        if (!overLimit || creditCheck.policy === 'NONE') {
+          creditCheckOutcome = { ...creditCheck, outcome: 'OK' };
+        } else if (creditCheck.policy === 'WARN') {
+          creditCheckOutcome = { ...creditCheck, outcome: 'WARN' };
+        } else {
+          // policy === 'BLOCK'
+          if (!input.creditOverrideReason) {
+            throw new CreditLimitExceededError({
+              companyId: input.companyId,
+              customerId: party.id,
+              customerName: party.displayName,
+              creditLimit: creditCheck.creditLimit,
+              currentExposure: creditCheck.currentExposure,
+              orderAmount: creditCheck.orderAmount,
+              projectedExposure: creditCheck.projectedExposure,
+            });
+          }
+          // Override provided — persist audit record
+          const overrideRecord = new CreditOverride({
+            companyId: input.companyId,
+            customerId: party.id,
+            sourceType: 'SALES_INVOICE',
+            sourceId: si.id,
+            sourceNumber: si.invoiceNumber,
+            creditLimit: creditCheck.creditLimit,
+            currentExposure: creditCheck.currentExposure,
+            orderAmount: creditCheck.orderAmount,
+            projectedExposure: creditCheck.projectedExposure,
+            reason: input.creditOverrideReason,
+            overriddenBy: input.createdBy,
+            overriddenAt: new Date(),
+          });
+          await this.creditOverrideRepo.create(overrideRecord, transaction);
+          creditCheckOutcome = { ...creditCheck, outcome: 'OVERRIDDEN' };
+        }
+      }
+    }
+
+    // --- Promotion evaluation (direct persona only) ---
+    if (this.promotionRuleRepo && input.persona === 'direct') {
+      const rules = await this.promotionRuleRepo.list(input.companyId);
+      if (rules.length > 0) {
+        const promotionService = new PromotionApplicationService();
+
+        // Build category map for promotion evaluation
+        const itemCategoryMap = new Map<string, string | undefined>();
+        for (const line of si.lines) {
+          if (!itemCategoryMap.has(line.itemId)) {
+            const item = await this.itemRepo.getItem(line.itemId);
+            if (item) itemCategoryMap.set(item.id, item.categoryId);
+          }
+        }
+
+        const evalLines: PromotionEvalLine[] = si.lines.map((l) => ({
+          lineId: l.lineId,
+          itemId: l.itemId,
+          categoryId: itemCategoryMap.get(l.itemId),
+          qty: l.invoicedQty,
+          unitPriceDoc: l.unitPriceDoc,
+          lineAmountDoc: l.grossLineTotalDoc ?? l.lineTotalDoc,
+          hasManualDiscount: !!(l.discountType),
+        }));
+
+        const promoResult = promotionService.evaluate(evalLines, rules, input.invoiceDate);
+
+        const appliedPromotions: AppliedPromotionInfo[] = [];
+
+        // Apply line discounts
+        for (const discount of promoResult.lineDiscounts) {
+          const lineIndex = si.lines.findIndex((l) => l.lineId === discount.lineId);
+          if (lineIndex < 0) continue;
+          const line = si.lines[lineIndex];
+
+          // Calculate promotion discount from gross line total
+          const grossTotalDoc = line.grossLineTotalDoc ?? roundMoney(line.invoicedQty * line.unitPriceDoc);
+          const promoDiscountDoc = roundMoney(grossTotalDoc * discount.discountPct / 100);
+          const promoDiscountBase = roundMoney(promoDiscountDoc * si.exchangeRate);
+          const newLineTotalDoc = roundMoney(grossTotalDoc - promoDiscountDoc);
+          const newLineTotalBase = roundMoney(line.grossLineTotalBase ? line.grossLineTotalBase - promoDiscountBase : newLineTotalDoc * si.exchangeRate);
+
+          si.lines[lineIndex] = {
+            ...line,
+            appliedPromotionId: discount.ruleId,
+            appliedPromotionName: discount.ruleName,
+            appliedDiscountPct: discount.discountPct,
+            discountType: 'PERCENT',
+            discountValue: discount.discountPct,
+            discountAmountDoc: promoDiscountDoc,
+            discountAmountBase: promoDiscountBase,
+            lineTotalDoc: newLineTotalDoc,
+            lineTotalBase: newLineTotalBase,
+            taxAmountDoc: roundMoney(newLineTotalDoc * line.taxRate),
+            taxAmountBase: roundMoney(newLineTotalBase * line.taxRate),
+          };
+
+          if (!appliedPromotions.some((p) => p.ruleId === discount.ruleId)) {
+            appliedPromotions.push({
+              ruleId: discount.ruleId,
+              ruleName: discount.ruleName,
+              type: 'THRESHOLD_DISCOUNT',
+              discountPct: discount.discountPct,
+            });
+          }
+        }
+
+        // Add free-goods lines
+        for (const freeGood of promoResult.freeGoods) {
+          const item = await this.itemRepo.getItem(freeGood.itemId);
+          if (!item || item.companyId !== input.companyId) continue;
+          const sourceLine = si.lines.find((l) => l.lineId === freeGood.sourceLineId);
+          const revenueAccountId = await this.resolveRevenueAccount(
+            input.companyId,
+            item.id,
+            settings.defaultRevenueAccountId,
+          );
+
+          si.lines.push({
+            lineId: randomUUID(),
+            lineNo: si.lines.length + 1,
+            soLineId: sourceLine?.soLineId,
+            dnLineId: sourceLine?.dnLineId,
+            itemId: item.id,
+            itemCode: item.code,
+            itemName: item.name,
+            trackInventory: item.trackInventory,
+            invoicedQty: freeGood.qty,
+            uomId: item.salesUomId || item.baseUomId,
+            uom: item.salesUom || item.baseUom,
+            unitPriceDoc: 0,
+            grossLineTotalDoc: 0,
+            discountType: undefined,
+            discountValue: undefined,
+            discountAmountDoc: 0,
+            lineTotalDoc: 0,
+            unitPriceBase: 0,
+            grossLineTotalBase: 0,
+            discountAmountBase: 0,
+            lineTotalBase: 0,
+            taxCodeId: sourceLine?.taxCodeId,
+            taxCode: sourceLine?.taxCode,
+            taxRate: 0,
+            taxAmountDoc: 0,
+            taxAmountBase: 0,
+            warehouseId: sourceLine?.warehouseId ?? settings.defaultWarehouseId,
+            revenueAccountId,
+            cogsAccountId: item.cogsAccountId,
+            inventoryAccountId: item.inventoryAssetAccountId,
+            unitCostBase: undefined,
+            lineCostBase: undefined,
+            stockMovementId: null,
+            description: `Free item (${freeGood.ruleName})`,
+            appliedPromotionId: freeGood.ruleId,
+            appliedPromotionName: freeGood.ruleName,
+          });
+
+          if (!appliedPromotions.some((p) => p.ruleId === freeGood.ruleId)) {
+            appliedPromotions.push({
+              ruleId: freeGood.ruleId,
+              ruleName: freeGood.ruleName,
+              type: 'BUY_X_GET_Y',
+              freeQty: freeGood.qty,
+              sourceLineId: freeGood.sourceLineId,
+              freeItemId: freeGood.itemId,
+            });
+          }
+        }
+
+        // Recompute SI totals from all (potentially modified) lines + charges
+        si.subtotalDoc = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.lineTotalDoc, 0)
+          + si.charges.reduce((sum, c) => sum + c.amountDoc, 0)
+        );
+        si.taxTotalDoc = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.taxAmountDoc, 0)
+          + si.charges.reduce((sum, c) => sum + (c.taxAmountDoc || 0), 0)
+        );
+        si.grandTotalDoc = roundMoney(si.subtotalDoc + si.taxTotalDoc);
+        si.subtotalBase = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.lineTotalBase, 0)
+          + si.charges.reduce((sum, c) => sum + (c.amountBase || 0), 0)
+        );
+        si.taxTotalBase = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.taxAmountBase, 0)
+          + si.charges.reduce((sum, c) => sum + (c.taxAmountBase || 0), 0)
+        );
+        si.grandTotalBase = roundMoney(si.subtotalBase + si.taxTotalBase);
+        si.outstandingAmountBase = roundMoney(si.grandTotalBase - si.paidAmountBase);
+        si.appliedPromotions = appliedPromotions.length > 0 ? appliedPromotions : undefined;
+      }
+    }
+
     await this.salesInvoiceRepo.create(si, transaction);
     await this.settingsRepo.saveSettings(settings, transaction);
 
@@ -561,7 +778,7 @@ export class CreateSalesInvoiceUseCase {
       });
     }
 
-    return si;
+    return { salesInvoice: si, creditCheck: creditCheckOutcome };
   }
 
   private assertCustomer(customer: Party | null, customerId: string): void {
@@ -1654,7 +1871,7 @@ export class CreateAndPostSalesInvoiceUseCase {
   ) {}
 
   async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesInvoice> {
-    const si = await this.createUseCase.execute(input, undefined, actor);
+    const { salesInvoice: si } = await this.createUseCase.execute(input, undefined, actor);
     return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride, actor);
   }
 }

@@ -79,6 +79,8 @@ export interface SalesSettingsDTO {
   siNumberNextSeq: number;
   srNumberPrefix: string;
   srNumberNextSeq: number;
+  quoteNumberPrefix: string;
+  quoteNumberNextSeq: number;
 }
 
 export interface SalesOrderLineDTO {
@@ -381,6 +383,8 @@ export interface InitializeSalesPayload {
   siNumberNextSeq?: number;
   srNumberPrefix?: string;
   srNumberNextSeq?: number;
+  quoteNumberPrefix?: string;
+  quoteNumberNextSeq?: number;
 }
 
 export interface SalesOrderLineInputDTO {
@@ -515,6 +519,9 @@ export interface CreateSalesInvoicePayload {
   charges?: SalesInvoiceChargeInputDTO[];
   notes?: string;
   settlementInput?: SettlementInputPayload;
+  /** When provided alongside a BLOCK-policy credit limit breach, the invoice
+   *  creation proceeds and an audit override record is persisted. */
+  creditOverrideReason?: string;
 }
 
 export interface UpdateSalesInvoicePayload {

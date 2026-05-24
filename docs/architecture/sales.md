@@ -1,7 +1,7 @@
 # Architecture: Sales Module
 
-**Last updated:** 2026-05-22
-**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. Phase C added AR aging, customer ledger/statement, and sales analytics reports. Phase D.2+D.3 added period-lock enforcement and per-record audit logging. Phase D.4 added recurring invoices (templated + scheduled). Phase D.5 added sales-return commercial settlement controls (credit note vs refund, reason taxonomy, restocking fee/net settlement). Phase D.6 added tenant-scoped invoice attachments. Phase D.7 added controlled invoice template selection with customer defaults. Phase D.8 now ships tenant-scoped outbound messaging for WhatsApp and Telegram, with email still deferred. See dedicated docs linked below.
+**Last updated:** 2026-05-24
+**Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. Phase C added AR aging, customer ledger/statement, and sales analytics reports. Phase D.2+D.3 added period-lock enforcement and per-record audit logging. Phase D.4 added recurring invoices (templated + scheduled). Phase D.5 added sales-return commercial settlement controls (credit note vs refund, reason taxonomy, restocking fee/net settlement). Phase D.6 added tenant-scoped invoice attachments. Phase D.7 added controlled invoice template selection with customer defaults. Phase D.8 now ships tenant-scoped outbound messaging for WhatsApp and Telegram, with email still deferred. **Phase E** added quote sequence numbering, promotion auto-invocation, credit check on direct SIs, AI test stabilization, and backorder/partial-fulfillment UX. See dedicated docs linked below.
 **Module-level docs:** [`docs/modules/sales/`](../modules/sales/)
 
 ---
@@ -647,10 +647,10 @@ Phase D.6 adds invoice-level document attachments with tenant-scoped storage. At
 ## What Is NOT Implemented
 
 | Feature | Status |
-|---|---|
-| **Credit check at direct SI creation** | Credit control fires at SO confirm only. Direct invoices (no SO) are not yet credit-checked. |
-| **Promotions auto-apply** | Evaluator endpoint exists; it is not yet called automatically inside SO/SI creation. |
-| **Quote number sequencing** | Quote numbers use a timestamp-random fallback; SalesSettings has no sequence field yet. |
+|---|---|---|
+| **Credit check at direct SI creation** (E.4) | **Implemented.** Credit check fires at both SO confirm AND direct SI creation. BLOCK/WARN/OVERRIDE supported. |
+| **Promotions auto-apply** (E.3) | **Implemented.** Auto-evaluated in SO and direct SI creation. Line discounts + free goods applied; manual discounts take precedence. |
+| **Quote number sequencing** (E.1) | **Implemented.** Quote sequence `QT-NNNNN` replaces timestamp fallback. Configurable prefix + start in Sales Settings. |
 | **Customer Master (dedicated)** | Currently uses Party. A dedicated customer entity is planned but the Party-based flow is sufficient for V1. |
 | **Sales Reports (detailed)** | Implemented in Phase C — see the Sales finance & reporting section above and [`docs/architecture/sales-reporting.md`](./sales-reporting.md). |
 | **Commission GL posting** | Marking commission paid is a status change only — no Dr/Cr voucher posted yet. |

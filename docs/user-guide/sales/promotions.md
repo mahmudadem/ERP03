@@ -55,18 +55,25 @@ The customer receives a percentage discount on a line when they reach a minimum 
 
 ---
 
-## How to use promotions on an order or invoice
+## How promotions auto-apply on orders and invoices
 
-Promotions are not applied automatically during order or invoice entry in the current version. To evaluate which promotions apply:
+Promotions are now **automatically evaluated** when you create a Sales Order or a direct Sales Invoice. When you save, the system:
 
-1. Build the order or invoice lines as normal (with quantities and prices)
-2. Use the **Evaluate Promotions** action (available via the system or your administrator can call the evaluate endpoint)
-3. Review the suggestions:
-   - **Free goods suggestions** — show which lines qualify for free units and how many
-   - **Line discount suggestions** — show which lines qualify for a percentage discount and what the rate is
-4. Apply the suggestions manually: add a free-goods line at zero price, or apply the discount percentage to the relevant line
+1. Loads all active promotion rules for your company
+2. Checks each line against every matching rule
+3. **Applies line discounts automatically** — the discount percentage is applied and the line total recalculated
+4. **Adds free goods lines automatically** — a zero-price line for the free item is included in the document
+5. Records which promotion was applied on each affected line
 
-This gives you full visibility and control before committing to the document.
+You can see which promotions were applied on the document detail page — each affected line shows the promotion name and discount percentage.
+
+**Manual discounts take priority.** If you enter a discount on a line yourself, the system will not override it with an auto-applied threshold discount.
+
+If you need to evaluate promotions without applying them (for review before committing), you can still use the manual **Evaluate Promotions** endpoint (available through your system administrator).
+
+### What about linked invoices?
+
+Promotions only auto-apply on **direct** Sales Invoices (no linked Sales Order). If you create an invoice from a Sales Order, the prices were already set at order time — the promotions were evaluated when the order was created.
 
 ---
 

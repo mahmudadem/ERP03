@@ -342,7 +342,8 @@ export class SalesController {
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
-        recordChangeService
+        diContainer.promotionRuleRepository,
+        recordChangeService,
       );
 
       const so = await useCase.execute({
@@ -681,7 +682,7 @@ export class SalesController {
     }
   }
 
-  static async createSI(req: Request, res: Response, next: NextFunction) {
+static async createSI(req: Request, res: Response, next: NextFunction) {
     try {
       validateCreateSalesInvoiceInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
@@ -698,18 +699,23 @@ export class SalesController {
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
-        recordChangeService
+        diContainer.promotionRuleRepository,
+        new CreditCheckService(diContainer.salesInvoiceRepository),
+        diContainer.creditOverrideRepository,
+        recordChangeService,
       );
 
-      const si = await useCase.execute({
+      const result = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
+        creditOverrideReason: (req as any).body?.creditOverrideReason,
       }, undefined, { userId, userEmail });
 
       (res as any).status(201).json({
         success: true,
-        data: SalesDTOMapper.toSalesInvoiceDTO(si),
+        data: SalesDTOMapper.toSalesInvoiceDTO(result.salesInvoice),
+        creditCheck: result.creditCheck,
       });
     } catch (error) {
       next(error);
@@ -733,7 +739,10 @@ export class SalesController {
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
-        recordChangeService
+        diContainer.promotionRuleRepository,
+        new CreditCheckService(diContainer.salesInvoiceRepository),
+        diContainer.creditOverrideRepository,
+        recordChangeService,
       );
 
       const postUseCase = SalesController.buildPostSalesInvoiceUseCase(recordChangeService);
@@ -753,6 +762,7 @@ export class SalesController {
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
+        creditOverrideReason: (req as any).body?.creditOverrideReason,
       }, settlementInput, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
       // Accrue sales commission (non-fatal — must not fail the post response)

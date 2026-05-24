@@ -8,6 +8,8 @@
 
 export type SOItemType = 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
 
+import { AppliedPromotionInfo } from './AppliedPromotion';
+
 export interface SalesOrderLine {
   lineId: string;
   lineNo: number;
@@ -32,6 +34,9 @@ export interface SalesOrderLine {
   taxAmountBase: number;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesOrderProps {
@@ -61,6 +66,7 @@ export interface SalesOrderProps {
   updatedAt: Date;
   confirmedAt?: Date;
   closedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 }
 
 const SO_STATUSES: SOStatus[] = [
@@ -108,6 +114,7 @@ export class SalesOrder {
   updatedAt: Date;
   confirmedAt?: Date;
   closedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 
   constructor(props: SalesOrderProps) {
     if (!props.id?.trim()) throw new Error('SalesOrder id is required');
@@ -154,6 +161,7 @@ export class SalesOrder {
     this.updatedAt = props.updatedAt;
     this.confirmedAt = props.confirmedAt;
     this.closedAt = props.closedAt;
+    this.appliedPromotions = props.appliedPromotions;
   }
 
   private normalizeLine(line: SalesOrderLine, index: number): SalesOrderLine {
@@ -199,6 +207,9 @@ export class SalesOrder {
       taxAmountBase,
       warehouseId: line.warehouseId,
       description: line.description,
+      appliedPromotionId: line.appliedPromotionId,
+      appliedPromotionName: line.appliedPromotionName,
+      appliedDiscountPct: line.appliedDiscountPct,
     };
   }
 
@@ -230,6 +241,7 @@ export class SalesOrder {
       updatedAt: this.updatedAt,
       confirmedAt: this.confirmedAt,
       closedAt: this.closedAt,
+      appliedPromotions: this.appliedPromotions,
     };
   }
 
@@ -261,6 +273,7 @@ export class SalesOrder {
       updatedAt: toDate(data.updatedAt),
       confirmedAt: data.confirmedAt ? toDate(data.confirmedAt) : undefined,
       closedAt: data.closedAt ? toDate(data.closedAt) : undefined,
+      appliedPromotions: data.appliedPromotions,
     });
   }
 }

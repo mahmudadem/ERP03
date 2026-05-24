@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Item } from '../../../domain/inventory/entities/Item';
+import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
 import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
-import { SalesOrder, SalesOrderLine, SOStatus } from '../../../domain/sales/entities/SalesOrder';
+import { SalesOrder, SalesOrderLine, SOItemType, SOStatus } from '../../../domain/sales/entities/SalesOrder';
 import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
 import { Party } from '../../../domain/shared/entities/Party';
@@ -15,12 +16,14 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { CreditCheckResult, CreditCheckService } from '../services/CreditCheckService';
+import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
+import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const generateDocumentNumber = (
   settings: SalesSettings,
-  docType: 'SO' | 'DN' | 'SI' | 'SR'
+  docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT'
 ): string => {
   let prefix = '';
   let seq = 1;
@@ -37,6 +40,10 @@ export const generateDocumentNumber = (
     prefix = settings.siNumberPrefix;
     seq = settings.siNumberNextSeq;
     settings.siNumberNextSeq += 1;
+  } else if (docType === 'QT') {
+    prefix = settings.quoteNumberPrefix;
+    seq = settings.quoteNumberNextSeq;
+    settings.quoteNumberNextSeq += 1;
   } else {
     prefix = settings.srNumberPrefix;
     seq = settings.srNumberNextSeq;
@@ -48,7 +55,7 @@ export const generateDocumentNumber = (
 
 export const generateUniqueDocumentNumber = async (
   settings: SalesSettings,
-  docType: 'SO' | 'DN' | 'SI' | 'SR',
+  docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT',
   exists: (candidate: string) => Promise<boolean>
 ): Promise<string> => {
   for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -125,7 +132,8 @@ export class CreateSalesOrderUseCase {
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly promotionRuleRepo?: IPromotionRuleRepository,
+    private readonly recordChangeService?: RecordChangeService,
   ) {}
 
   async execute(input: CreateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
@@ -180,6 +188,117 @@ export class CreateSalesOrderUseCase {
       createdAt: now,
       updatedAt: now,
     });
+
+    // --- Promotion evaluation ---
+    if (this.promotionRuleRepo) {
+      const rules = await this.promotionRuleRepo.list(input.companyId);
+      if (rules.length > 0) {
+        const promotionService = new PromotionApplicationService();
+
+        // Build category map for promotion evaluation
+        const itemCategoryMap = new Map<string, string | undefined>();
+        for (const line of so.lines) {
+          if (!itemCategoryMap.has(line.itemId)) {
+            const item = await this.itemRepo.getItem(line.itemId);
+            if (item) itemCategoryMap.set(item.id, item.categoryId);
+          }
+        }
+
+        const evalLines: PromotionEvalLine[] = so.lines.map((l) => ({
+          lineId: l.lineId,
+          itemId: l.itemId,
+          categoryId: itemCategoryMap.get(l.itemId),
+          qty: l.orderedQty,
+          unitPriceDoc: l.unitPriceDoc,
+          lineAmountDoc: l.lineTotalDoc,
+          hasManualDiscount: false, // SO lines have no manual discount concept
+        }));
+
+        const promoResult = promotionService.evaluate(evalLines, rules, input.orderDate);
+
+        const appliedPromotions: AppliedPromotionInfo[] = [];
+
+        // Apply line discounts
+        for (const discount of promoResult.lineDiscounts) {
+          const lineIndex = so.lines.findIndex((l) => l.lineId === discount.lineId);
+          if (lineIndex < 0) continue;
+          const line = so.lines[lineIndex];
+          const discountAmtDoc = roundMoney(line.lineTotalDoc * discount.discountPct / 100);
+          const discountAmtBase = roundMoney(line.lineTotalBase * discount.discountPct / 100);
+          so.lines[lineIndex] = {
+            ...line,
+            appliedPromotionId: discount.ruleId,
+            appliedPromotionName: discount.ruleName,
+            appliedDiscountPct: discount.discountPct,
+            lineTotalDoc: roundMoney(line.lineTotalDoc - discountAmtDoc),
+            lineTotalBase: roundMoney(line.lineTotalBase - discountAmtBase),
+            taxAmountDoc: roundMoney((line.lineTotalDoc - discountAmtDoc) * line.taxRate),
+            taxAmountBase: roundMoney((line.lineTotalBase - discountAmtBase) * line.taxRate),
+          };
+          if (!appliedPromotions.some((p) => p.ruleId === discount.ruleId)) {
+            appliedPromotions.push({
+              ruleId: discount.ruleId,
+              ruleName: discount.ruleName,
+              type: 'THRESHOLD_DISCOUNT',
+              discountPct: discount.discountPct,
+            });
+          }
+        }
+
+        // Add free-goods lines
+        for (const freeGood of promoResult.freeGoods) {
+          const item = await this.itemRepo.getItem(freeGood.itemId);
+          if (!item || item.companyId !== input.companyId) continue;
+          const sourceLine = so.lines.find((l) => l.lineId === freeGood.sourceLineId);
+          so.lines.push({
+            lineId: randomUUID(),
+            lineNo: so.lines.length + 1,
+            itemId: item.id,
+            itemCode: item.code,
+            itemName: item.name,
+            itemType: item.type as SOItemType,
+            trackInventory: item.trackInventory,
+            orderedQty: freeGood.qty,
+            uomId: item.salesUomId || item.baseUomId,
+            uom: item.salesUom || item.baseUom,
+            deliveredQty: 0,
+            invoicedQty: 0,
+            returnedQty: 0,
+            unitPriceDoc: 0,
+            lineTotalDoc: 0,
+            unitPriceBase: 0,
+            lineTotalBase: 0,
+            taxCodeId: sourceLine?.taxCodeId,
+            taxRate: 0,
+            taxAmountDoc: 0,
+            taxAmountBase: 0,
+            warehouseId: sourceLine?.warehouseId,
+            description: `Free item (${freeGood.ruleName})`,
+            appliedPromotionId: freeGood.ruleId,
+            appliedPromotionName: freeGood.ruleName,
+          });
+          if (!appliedPromotions.some((p) => p.ruleId === freeGood.ruleId)) {
+            appliedPromotions.push({
+              ruleId: freeGood.ruleId,
+              ruleName: freeGood.ruleName,
+              type: 'BUY_X_GET_Y',
+              freeQty: freeGood.qty,
+              sourceLineId: freeGood.sourceLineId,
+              freeItemId: freeGood.itemId,
+            });
+          }
+        }
+
+        // Recompute SO totals from all (potentially modified) lines
+        so.subtotalDoc = roundMoney(so.lines.reduce((sum, l) => sum + l.lineTotalDoc, 0));
+        so.taxTotalDoc = roundMoney(so.lines.reduce((sum, l) => sum + l.taxAmountDoc, 0));
+        so.grandTotalDoc = roundMoney(so.subtotalDoc + so.taxTotalDoc);
+        so.subtotalBase = roundMoney(so.lines.reduce((sum, l) => sum + l.lineTotalBase, 0));
+        so.taxTotalBase = roundMoney(so.lines.reduce((sum, l) => sum + l.taxAmountBase, 0));
+        so.grandTotalBase = roundMoney(so.subtotalBase + so.taxTotalBase);
+        so.appliedPromotions = appliedPromotions.length > 0 ? appliedPromotions : undefined;
+      }
+    }
 
     await this.salesOrderRepo.create(so);
     await this.settingsRepo.saveSettings(settings);

@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 // Value types
 // ---------------------------------------------------------------------------
 
-export type CreditOverrideSourceType = 'SALES_ORDER'; // extensible — add SO quote etc.
+export type CreditOverrideSourceType = 'SALES_ORDER' | 'SALES_INVOICE'; // extensible
 
 export interface CreditOverrideProps {
   id?: string;
