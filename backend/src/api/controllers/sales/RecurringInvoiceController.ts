@@ -154,6 +154,29 @@ export class RecurringInvoiceController {
     }
   }
 
+  static async remove(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = RecurringInvoiceController.getCompanyId(req);
+      RecurringInvoiceController.getUserId(req); // auth guard
+      const { id } = req.params;
+
+      // Only cancelled templates can be permanently deleted. Active/paused must
+      // be cancelled first — prevents accidentally wiping a live schedule.
+      const existing = await diContainer.recurringInvoiceTemplateRepository.findById(companyId, id);
+      if (!existing) {
+        return (res as any).status(404).json({ success: false, error: 'Template not found' });
+      }
+      if (existing.status !== 'CANCELLED') {
+        throw ApiError.badRequest('Only cancelled templates can be deleted. Cancel the template first.');
+      }
+
+      await diContainer.recurringInvoiceTemplateRepository.delete(companyId, id);
+      (res as any).status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async generate(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = RecurringInvoiceController.getCompanyId(req);

@@ -135,6 +135,7 @@ router.put('/recurring-invoices/:id', RecurringInvoiceController.update);
 router.post('/recurring-invoices/:id/pause', RecurringInvoiceController.pause);
 router.post('/recurring-invoices/:id/resume', RecurringInvoiceController.resume);
 router.post('/recurring-invoices/:id/cancel', RecurringInvoiceController.cancel);
+router.delete('/recurring-invoices/:id', RecurringInvoiceController.remove);
 router.post('/recurring-invoices/generate', RecurringInvoiceController.generate);
 router.post('/invoices/:invoiceId/clone-to-template', RecurringInvoiceController.cloneToTemplate);
 

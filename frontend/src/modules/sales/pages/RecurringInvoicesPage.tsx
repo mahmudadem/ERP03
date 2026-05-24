@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/ui/Card';
 import {
@@ -7,8 +8,11 @@ import {
   RecurrenceFrequency,
   recurringInvoiceApi,
 } from '../../../api/salesApi';
-import { Plus, Repeat, Search, Pause, Play, X, Calendar } from 'lucide-react';
+import { Plus, Repeat, Search, Pause, Play, X, Calendar, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { PartySelector, ItemSelector } from '../../../components/shared/selectors';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 const STATUS_STYLES: Record<RecurringInvoiceStatus, string> = {
   ACTIVE: 'border-green-200 text-green-600 bg-green-50',
@@ -67,6 +71,10 @@ const CreateRecurringInvoiceModal: React.FC<CreateModalProps> = ({ onClose, onSu
       setError(t('sales.recurring.validation.requiredTop', 'Name, Customer ID, and Start Date are required'));
       return;
     }
+    if (lines.some((l) => !l.itemId)) {
+      setError(t('sales.recurring.validation.lineItemRequired', 'Every invoice line must have an item selected'));
+      return;
+    }
     try {
       setSaving(true);
       await recurringInvoiceApi.create({
@@ -123,29 +131,26 @@ const CreateRecurringInvoiceModal: React.FC<CreateModalProps> = ({ onClose, onSu
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                {t('sales.recurring.fields.customerId', 'Customer ID *')}
-              </label>
-              <input
-                type="text"
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                {t('sales.recurring.fields.customerName', 'Customer Name')}
-              </label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+              {t('sales.recurring.fields.customer', 'Customer *')}
+            </label>
+            <PartySelector
+              role="CUSTOMER"
+              value={customerId}
+              onChange={(party) => {
+                if (party) {
+                  setCustomerId(party.id);
+                  setCustomerName(party.displayName);
+                  if (!currency && party.defaultCurrency) {
+                    setCurrency(party.defaultCurrency);
+                  }
+                } else {
+                  setCustomerId('');
+                  setCustomerName('');
+                }
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -201,12 +206,7 @@ const CreateRecurringInvoiceModal: React.FC<CreateModalProps> = ({ onClose, onSu
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
                 {t('sales.recurring.fields.startDate', 'Start Date *')}
               </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
-              />
+              <DatePicker value={startDate} onChange={setStartDate} />
             </div>
           </div>
 
@@ -215,12 +215,7 @@ const CreateRecurringInvoiceModal: React.FC<CreateModalProps> = ({ onClose, onSu
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
                 {t('sales.recurring.fields.endDate', 'End Date')}
               </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
-              />
+              <DatePicker value={endDate} onChange={setEndDate} />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
@@ -256,20 +251,17 @@ const CreateRecurringInvoiceModal: React.FC<CreateModalProps> = ({ onClose, onSu
             <div className="space-y-2">
               {lines.map((line, i) => (
                 <div key={i} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={line.itemCode}
-                    onChange={(e) => setLines(lines.map((l, j) => j === i ? { ...l, itemCode: e.target.value } : l))}
-                    className="w-24 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
-                    placeholder={t('sales.recurring.placeholders.code', 'Code')}
-                  />
-                  <input
-                    type="text"
-                    value={line.itemName}
-                    onChange={(e) => setLines(lines.map((l, j) => j === i ? { ...l, itemName: e.target.value } : l))}
-                    className="flex-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
-                    placeholder={t('sales.recurring.placeholders.itemName', 'Item name')}
-                  />
+                  <div className="flex-1">
+                    <ItemSelector
+                      value={line.itemId}
+                      onChange={(item) => setLines(lines.map((l, j) => j === i ? {
+                        ...l,
+                        itemId: item?.id || '',
+                        itemCode: item?.code || '',
+                        itemName: item?.name || '',
+                      } : l))}
+                    />
+                  </div>
                   <input
                     type="number"
                     value={line.qty}
@@ -327,6 +319,8 @@ const RecurringInvoicesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [pendingAction, setPendingAction] = useState<{ id: string; action: 'pause' | 'resume' | 'cancel' | 'delete'; templateName?: string } | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
   const getFrequencyLabel = (frequency: RecurrenceFrequency): string => {
     if (frequency === 'WEEKLY') return t('sales.recurring.frequency.weekly', 'Weekly');
     if (frequency === 'MONTHLY') return t('sales.recurring.frequency.monthly', 'Monthly');
@@ -353,23 +347,48 @@ const RecurringInvoicesPage: React.FC = () => {
     load();
   }, [statusFilter]);
 
-  const handleAction = async (id: string, action: 'pause' | 'resume' | 'cancel') => {
+  const requestAction = (id: string, action: 'pause' | 'resume' | 'cancel' | 'delete', templateName?: string) => {
+    setPendingAction({ id, action, templateName });
+  };
+
+  const confirmAction = async () => {
+    if (!pendingAction) return;
+    const { id, action } = pendingAction;
+    setActionBusy(true);
     try {
-      if (action === 'pause') await recurringInvoiceApi.pause(id);
-      else if (action === 'resume') await recurringInvoiceApi.resume(id);
-      else await recurringInvoiceApi.cancel(id);
+      if (action === 'pause') {
+        await recurringInvoiceApi.pause(id);
+        toast.success(t('sales.recurring.toast.paused', 'Template paused'));
+      } else if (action === 'resume') {
+        await recurringInvoiceApi.resume(id);
+        toast.success(t('sales.recurring.toast.resumed', 'Template resumed'));
+      } else if (action === 'cancel') {
+        await recurringInvoiceApi.cancel(id);
+        toast.success(t('sales.recurring.toast.cancelled', 'Template cancelled'));
+      } else {
+        await recurringInvoiceApi.remove(id);
+        toast.success(t('sales.recurring.toast.deleted', 'Template deleted permanently'));
+      }
+      setPendingAction(null);
       load();
     } catch (err: any) {
       setError(err?.response?.data?.message ?? err?.message ?? t('sales.recurring.errors.action', 'Failed to update template status'));
+    } finally {
+      setActionBusy(false);
     }
   };
 
   const handleGenerate = async () => {
     try {
-      await recurringInvoiceApi.generate();
+      const invoices = await recurringInvoiceApi.generate();
       load();
+      if (invoices.length > 0) {
+        toast.success(t('sales.recurring.toast.generated', `${invoices.length} invoice(s) generated successfully`));
+      } else {
+        toast(t('sales.recurring.toast.noDue', 'No invoices due today'), { icon: 'ℹ️' });
+      }
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? t('sales.recurring.errors.generate', 'Failed to generate invoices'));
+      toast.error(err?.response?.data?.message ?? err?.message ?? t('sales.recurring.errors.generate', 'Failed to generate invoices'));
     }
   };
 
@@ -409,6 +428,18 @@ const RecurringInvoicesPage: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
         <div className="mx-auto max-w-5xl">
+          <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-sm px-4 py-3 rounded-lg flex items-start gap-2">
+            <Calendar size={16} className="mt-0.5 flex-shrink-0" />
+            <div>
+              <strong>{t('sales.recurring.notice.title', 'Heads up — manual generation only')}</strong>
+              <div className="mt-0.5 text-xs leading-relaxed">
+                {t(
+                  'sales.recurring.notice.body',
+                  'Recurring templates do not fire automatically yet. Click "Generate Due" to create the invoices that are due today. A system-wide Scheduled Tasks Engine is on the roadmap and will switch this to true auto-run for every module (Sales, HR payroll, Accounting recurring vouchers, etc.).'
+                )}
+              </div>
+            </div>
+          </div>
           {error && (
             <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">
               {error}
@@ -485,14 +516,14 @@ const RecurringInvoicesPage: React.FC = () => {
                         {template.status === 'ACTIVE' && (
                           <>
                             <button
-                              onClick={() => handleAction(template.id, 'pause')}
+                              onClick={() => requestAction(template.id, 'pause', template.name)}
                               className="p-1.5 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded"
                               title="Pause"
                             >
                               <Pause size={14} />
                             </button>
                             <button
-                              onClick={() => handleAction(template.id, 'cancel')}
+                              onClick={() => requestAction(template.id, 'cancel', template.name)}
                               className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                               title="Cancel"
                             >
@@ -502,11 +533,20 @@ const RecurringInvoicesPage: React.FC = () => {
                         )}
                         {template.status === 'PAUSED' && (
                           <button
-                            onClick={() => handleAction(template.id, 'resume')}
+                            onClick={() => requestAction(template.id, 'resume', template.name)}
                             className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
                             title="Resume"
                           >
                             <Play size={14} />
+                          </button>
+                        )}
+                        {template.status === 'CANCELLED' && (
+                          <button
+                            onClick={() => requestAction(template.id, 'delete', template.name)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                            title={t('sales.recurring.actions.delete', 'Delete permanently')}
+                          >
+                            <Trash2 size={14} />
                           </button>
                         )}
                       </div>
@@ -520,6 +560,42 @@ const RecurringInvoicesPage: React.FC = () => {
       </div>
 
       {showCreate && <CreateRecurringInvoiceModal onClose={() => setShowCreate(false)} onSuccess={() => { setShowCreate(false); load(); }} />}
+
+      <ConfirmDialog
+        isOpen={!!pendingAction}
+        title={
+          pendingAction?.action === 'pause'
+            ? t('sales.recurring.confirm.pauseTitle', 'Pause this template?')
+            : pendingAction?.action === 'resume'
+            ? t('sales.recurring.confirm.resumeTitle', 'Resume this template?')
+            : pendingAction?.action === 'delete'
+            ? t('sales.recurring.confirm.deleteTitle', 'Delete this template permanently?')
+            : t('sales.recurring.confirm.cancelTitle', 'Cancel this template?')
+        }
+        message={
+          pendingAction?.action === 'pause'
+            ? t('sales.recurring.confirm.pauseMessage', 'No new invoices will be generated until you resume it.')
+            : pendingAction?.action === 'resume'
+            ? t('sales.recurring.confirm.resumeMessage', 'The schedule will resume from the next due date.')
+            : pendingAction?.action === 'delete'
+            ? t('sales.recurring.confirm.deleteMessage', 'This will permanently remove the template and cannot be undone. Any invoices already generated from it are not affected.')
+            : t('sales.recurring.confirm.cancelMessage', 'This will permanently stop the template. It cannot be reactivated — you would have to create a new one.')
+        }
+        confirmLabel={
+          pendingAction?.action === 'pause'
+            ? t('common.pause', 'Pause')
+            : pendingAction?.action === 'resume'
+            ? t('common.resume', 'Resume')
+            : pendingAction?.action === 'delete'
+            ? t('common.delete', 'Delete')
+            : t('common.cancel', 'Cancel')
+        }
+        cancelLabel={t('common.dismiss', 'Dismiss')}
+        tone={pendingAction?.action === 'cancel' || pendingAction?.action === 'delete' ? 'danger' : 'warning'}
+        isConfirming={actionBusy}
+        onConfirm={confirmAction}
+        onCancel={() => !actionBusy && setPendingAction(null)}
+      />
     </div>
   );
 };

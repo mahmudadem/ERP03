@@ -886,6 +886,9 @@ export const recurringInvoiceApi = {
   cancel: (id: string): Promise<RecurringInvoiceTemplateDTO> =>
     client.post(`/tenant/sales/recurring-invoices/${id}/cancel`, {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
+  remove: (id: string): Promise<void> =>
+    client.delete(`/tenant/sales/recurring-invoices/${id}`).then(() => undefined),
+
   generate: (asOfDate?: string): Promise<SalesInvoiceDTO[]> =>
     client.post('/tenant/sales/recurring-invoices/generate', { asOfDate }).then((r: any) => r?.data?.data ?? r?.data ?? r),
 

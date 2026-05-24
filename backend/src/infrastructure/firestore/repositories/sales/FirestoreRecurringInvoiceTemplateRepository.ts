@@ -115,6 +115,7 @@ export class FirestoreRecurringInvoiceTemplateRepository implements IRecurringIn
       }
       await ref.set(data);
     } catch (error) {
+      console.error('[FirestoreRecurringInvoiceTemplateRepository.create] underlying error:', error);
       throw new InfrastructureError('Failed to create recurring invoice template', error);
     }
   }

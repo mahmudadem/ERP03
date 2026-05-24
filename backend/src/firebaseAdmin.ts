@@ -52,6 +52,16 @@ if (databaseURL) {
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId, storageBucket, databaseURL });
+  // Configure Firestore once, immediately after init, before any other call
+  // touches the singleton. `ignoreUndefinedProperties` prevents the entire
+  // class of "Cannot use undefined as a Firestore value" crashes that
+  // previously surfaced as INFRA_999 in production (e.g. D.4 recurring-template
+  // bug, 2026-05-24).
+  try {
+    admin.firestore().settings({ ignoreUndefinedProperties: true });
+  } catch (err) {
+    console.warn('[firebaseAdmin] Firestore.settings() failed:', err);
+  }
 }
 
 export { admin };

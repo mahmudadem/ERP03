@@ -137,9 +137,19 @@ Phase D.4 adds recurring invoice support with two modes:
 
 | # | Test | Pass/Fail | Notes |
 |---|------|-----------|-------|
-| 1 | Clone invoice as recurring template | | |
-| 2 | Create scheduled template | | |
-| 3 | Pause and resume | | |
-| 4 | Generate due invoices | | |
-| 5 | Cancel template | | |
+| 1 | Clone invoice as recurring template | ✅ | Required global Firestore `ignoreUndefinedProperties` fix — see fix log below |
+| 2 | Create scheduled template | ✅ | Form had to be fixed first — was using raw text inputs for customer/item/date instead of shared selectors. See fix log. |
+| 3 | Pause and resume | ✅ | Added shared `ConfirmDialog` to pause/resume/cancel — were firing on single click without confirmation. AGENTS.md rule updated. |
+| 4 | Generate due invoices | ✅ (manual) | Auto-scheduler NOT built — manual click only. Tracked as 🔥 priority follow-up: see [scheduled-tasks-engine.md](../tasks/scheduled-tasks-engine.md). Amber notice added to page. |
+| 5 | Cancel template | ✅ | Confirm dialog added (danger tone). Permanent delete also added (trash icon on cancelled rows only, with own confirm dialog). Success toasts added to all actions. Global toast rule added to AGENTS.md. |
+
+### Fix log (during QA)
+
+**INFRA_999 on clone-to-template** — Firestore rejected the write because `lines[0].taxCodeId` (and other optional line fields) was `undefined`. The recurring-template mapper, like several other mappers, passes optional fields straight through without stripping undefineds.
+
+Root-cause fix applied globally in `backend/src/firebaseAdmin.ts`: call `admin.firestore().settings({ ignoreUndefinedProperties: true })` immediately after `initializeApp()`. Previously this setting was only present in seeder scripts, never in the runtime — meaning every repo mapper had to manually strip undefineds, and any miss caused INFRA_999 at write time.
+
+Also added an `[underlying error]` console log in `FirestoreRecurringInvoiceTemplateRepository.create` so future failures expose the real cause instead of just the wrapper message. Same logging pattern should be added to other Firestore repos if they re-occur.
+
+**New Recurring Invoice form was a data-integrity hole** — raw text inputs for Customer ID, Customer Name, Item Code, Item Name, plus native `<input type="date">`. Replaced with the project's shared components: `PartySelector` (role=CUSTOMER), `ItemSelector`, `DatePicker`. Save handler now also rejects lines with empty `itemId`. A new mandatory rule was added to `AGENTS.md` ("Shared UI Components — MANDATORY REUSE") to prevent agents from rebuilding these inputs from scratch in any future feature.
 
