@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { InventoryItemDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreateSalesOrderPayload,
@@ -100,6 +101,7 @@ const statusBadgeClass = (status: SOStatus): string => {
 
 const SalesOrderDetailPage: React.FC = () => {
   const { company } = useCompanyAccess();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const isCreateMode = !params.id || params.id === 'new';
@@ -890,6 +892,78 @@ const SalesOrderDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {!isDraft && (
+        <Card className="p-5">
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {t('fulfillment.title')}
+          </h3>
+          {(() => {
+            const totalOrdered = form.lines.reduce((sum, l) => sum + (l.orderedQty || 0), 0);
+            const totalDelivered = form.lines.reduce((sum, l) => sum + (l.deliveredQty || 0), 0);
+            const overallPct = totalOrdered > 0 ? Math.round((totalDelivered / totalOrdered) * 100) : 0;
+            return (
+              <div className="space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="py-2 text-left">Item</th>
+                        <th className="py-2 text-right">{t('fulfillment.ordered')}</th>
+                        <th className="py-2 text-right">{t('fulfillment.delivered')}</th>
+                        <th className="py-2 text-right">{t('fulfillment.invoiced')}</th>
+                        <th className="py-2 text-right">{t('fulfillment.returned')}</th>
+                        <th className="py-2 text-right" style={{ minWidth: '120px' }}>{t('fulfillment.title')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.lines.map((line, index) => {
+                        const pct = line.orderedQty > 0 ? Math.round((line.deliveredQty / line.orderedQty) * 100) : 0;
+                        return (
+                          <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100">
+                            <td className="py-2">
+                              {line.itemCode || line.itemName || `Line ${index + 1}`}
+                              {(line.itemCode && line.itemName) && (
+                                <div className="text-xs text-slate-500">{line.itemName}</div>
+                              )}
+                            </td>
+                            <td className="py-2 text-right">{line.orderedQty}</td>
+                            <td className="py-2 text-right">{line.deliveredQty}</td>
+                            <td className="py-2 text-right">{line.invoicedQty}</td>
+                            <td className="py-2 text-right">{line.returnedQty}</td>
+                            <td className="py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 rounded-full bg-slate-200 h-2 overflow-hidden" style={{ minWidth: '60px' }}>
+                                  <div
+                                    className={`h-2 rounded-full ${pct >= 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                                    style={{ width: `${Math.min(pct, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-slate-600 w-10 text-right">{pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                  <span className="font-medium text-slate-700">
+                    {t('fulfillment.ordered')}: <span className="font-semibold">{totalOrdered}</span>
+                  </span>
+                  <span className="font-medium text-slate-700">
+                    {t('fulfillment.delivered')}: <span className="font-semibold">{totalDelivered}</span>
+                  </span>
+                  <span className="font-medium text-slate-700">
+                    {t('fulfillment.overall')}: <span className="font-semibold">{overallPct}%</span>
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+        </Card>
+      )}
 
       <Card className="p-5">
         <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Linked Documents</h3>

@@ -2276,5 +2276,17 @@
         "title": "Faturayı Tekrarlayan Şablona Kopyala"
       }
     }
+  },
+  "fulfillment": {
+    "title": "Karşılama İlerlemesi",
+    "ordered": "Sipariş",
+    "delivered": "Teslim",
+    "invoiced": "Faturalandı",
+    "returned": "İade",
+    "overall": "Genel",
+    "partial": "Kısmi",
+    "fulfilled": "Tamamlandı",
+    "createBackorder": "Açık Sipariş Teslim Notu Oluştur",
+    "noLinesOverdue": "Tüm satırlar tamamen teslim edildi"
   }
 }

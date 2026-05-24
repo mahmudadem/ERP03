@@ -2276,5 +2276,17 @@
         "title": "نسخ الفاتورة إلى قالب متكرر"
       }
     }
+  },
+  "fulfillment": {
+    "title": "تقدم التنفيذ",
+    "ordered": "مطلوب",
+    "delivered": "تم التسليم",
+    "invoiced": "مفوتر",
+    "returned": "مرتجع",
+    "overall": "الإجمالي",
+    "partial": "جزئي",
+    "fulfilled": "مكتمل",
+    "createBackorder": "إنشاء إذن تسليم متبقي",
+    "noLinesOverdue": "جميع البنود تم تسليمها بالكامل"
   }
 }
