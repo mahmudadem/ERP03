@@ -2,6 +2,18 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-24 (Sun) — Phase E merged into phase-a branch
+
+Audited the parallel Phase E worktree (`feat/phase-e-sales-cleanup`, 7 commits, +2,258 lines / 32 files) implemented by OpenCode. Verdict: SAFE WITH NOTES — code matches claims, tsc clean both ends, 66/66 targeted tests pass, AI test fix verified, no architecture violations, Definition of Done met.
+
+Sequence executed:
+1. Committed D.3 audit fix on `feat/phase-a-sales-master-data` (`981e559c`).
+2. Merged `feat/phase-e-sales-cleanup` with `--no-ff` (`249bb86`). 4 conflicts as predicted: `SalesController.ts`, `SalesInvoiceUseCases.ts`, `SalesOrderUseCases.ts`, and the OpenCode brief.
+3. Conflicts resolved by UNIONing both sides — Phase E's `promotionRuleRepo` / `creditCheckService` / `creditOverrideRepo` constructor params coexist with D.3's `recordChangeService` + actor; `CreateSalesInvoiceUseCase`'s return type stays Phase E's `{salesInvoice, creditCheck}` shape; audit `recordCreate` invoked on `si` before wrapping.
+4. Post-merge: backend + frontend `tsc --noEmit` clean, 73/73 targeted Phase E + RecordChangeService tests pass.
+
+Sales is now functionally complete pending QA. Two Phase E-tier follow-ups remain open: period-lock override governance (role-gate + Settings toggles) and D.3 audit gaps (SO confirm/cancel/close + SI payment record/status). Both deferred to post-QA.
+
 ## 2026-05-24 (Sun) — Phase D.2/D.3 manual QA + audit-log gap fix
 
 Ran user-facing manual QA on Period Lock (D.2) and Audit Log (D.3) per the 4-test script now saved in `planning/done/111-phase-d-period-lock-audit-log.md`.
