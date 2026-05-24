@@ -86,13 +86,55 @@ No frontend dev server, no emulator.
 
 ## Progress log (OpenCode writes here)
 
-<!-- Append entries as you go. Format:
-### YYYY-MM-DD HH:MM — E.N <subtask name>
-- What was done
-- Commit hash
-- Tests: pass/fail summary
-- Next: <what's next or "handoff back">
--->
+### 2026-05-24 — E.1 Quote sequence numbering
+- Replaced `Q-<timestamp>-<random>` fallback with proper sequence numbering mirroring SO/DN/SI/SR pattern
+- Added `quoteNumberPrefix` and `quoteNumberNextSeq` to `SalesSettings` entity + DTOs
+- Updated `generateDocumentNumber()` to support `'QT'` doc type
+- Wired `CreateQuoteUseCase` and `ReviseQuoteUseCase` to use `ISalesSettingsRepository` for sequence allocation
+- Added 5 new sequence tests (format, advancement, collision, custom prefix, revise)
+- Updated frontend: `SalesSettingsDTO` types + numbering tab (5 docs now)
+- Commit: `ea63437f`
+- Tests: 17/17 Quote tests pass, 241/241 Sales tests pass
+
+### 2026-05-24 — E.2 AI-assistant test stabilization
+- Fixed 3 failing `SendChatMessageUseCase` tests (mock ledgers lacked `canAfford()` method)
+- Added `canAfford()` to all 4 mock credit ledger objects
+- Fixed assertion: `'No platform runtime credential'` → `'No platform runtime profile or provider credential'`
+- AiModelCertificationUseCase tests were already passing (8/8)
+- Commit: `fddba058`
+- Tests: 35/35 SendChatMessage tests pass, 8/8 AiModelCertification tests pass
+
+### 2026-05-24 — E.3 Promotion evaluator auto-invocation
+- Wired `PromotionApplicationService` into `CreateSalesOrderUseCase` and `CreateSalesInvoiceUseCase`
+- Direct SI persona only — linked/service invoices skip auto-evaluation
+- Line discounts applied automatically with `appliedPromotionId`, `appliedPromotionName`, `appliedDiscountPct` on each line
+- Free goods lines added with zero price
+- Manual discounts take precedence (skipped by evaluator)
+- New `AppliedPromotionInfo` shared type
+- Added `appliedPromotions` summary on SO and SI entities
+- 7 new unit tests covering all paths
+- Commit: `1e88194b`
+- Tests: 7/7 PromotionAutoApplication tests pass, 248/248 Sales tests total
+
+### 2026-05-24 — E.4 Credit check on direct Sales Invoices
+- Extended `CreditCheckService` to direct SI creation (persona === 'direct')
+- Same enforcement pattern as SO confirm: BLOCK / WARN / OVERRIDDEN
+- Override with `creditOverrideReason` creates audit `CreditOverride` record
+- `CreditLimitExceededError` returns HTTP 422 with structured JSON
+- Frontend: credit override dialog + WARN banner on `SalesInvoiceDetailPage`
+- i18n keys added
+- 7 new unit tests
+- Commit: `815f674d`
+- Tests: 7/7 CreditCheckOnDirectSI tests pass, 290/290 Sales+AI tests total
+
+### 2026-05-24 — E.5 Backorder / partial-fulfillment frontend UX
+- Delivery Note detail: added "Ordered" column when DN is linked to SO, amber "Partial" / green "Fulfilled" badges, "Create Backorder DN" button
+- Sales Order detail: added "Fulfillment Progress" section with per-line progress bars and aggregate stats (view mode only, not DRAFT)
+- i18n keys in en/ar/tr for fulfillment labels
+- 5 files changed (under the 6-file budget)
+- Commit: `64a10ac6`
+- Frontend typecheck: clean
+- Tests: 25/25 test suites, 290/290 tests pass
 
 ---
 

@@ -13,6 +13,7 @@ Key guides:
 - [Send Invoices via WhatsApp](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-whatsapp-sharing.md)
 - [Send Invoices via Telegram](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-telegram-sharing.md)
 - [Sales Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-attachments.md)
+- [Backorder and Fulfillment Progress](D:/DEV2026/ERP03/docs/user-guide/sales/backorder-fulfillment.md)
 
 ---
 
