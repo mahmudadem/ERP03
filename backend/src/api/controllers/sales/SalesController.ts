@@ -329,7 +329,8 @@ export class SalesController {
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.promotionRuleRepository
       );
 
       const so = await useCase.execute({
@@ -671,7 +672,7 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const userId = SalesController.getUserId(req);
 
-      const useCase = new CreateSalesInvoiceUseCase(
+const useCase = new CreateSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesInvoiceRepository,
         diContainer.salesOrderRepository,
@@ -679,7 +680,8 @@ export class SalesController {
         diContainer.itemRepository,
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.promotionRuleRepository
       );
 
       const si = await useCase.execute({
@@ -711,7 +713,8 @@ export class SalesController {
         diContainer.itemRepository,
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.promotionRuleRepository
       );
 
       const postUseCase = SalesController.buildPostSalesInvoiceUseCase();

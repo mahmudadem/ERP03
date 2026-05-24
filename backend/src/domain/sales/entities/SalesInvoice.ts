@@ -1,3 +1,5 @@
+import { AppliedPromotionInfo } from './AppliedPromotion';
+
 export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
@@ -50,6 +52,9 @@ export interface SalesInvoiceLine {
     | 'SKIPPED_UNSETTLED_COST'
     | null;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesInvoiceCharge {
@@ -116,6 +121,7 @@ export interface SalesInvoiceProps {
   createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 }
 
 const SI_STATUSES: SIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
@@ -265,6 +271,7 @@ export class SalesInvoice {
   readonly createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 
   constructor(props: SalesInvoiceProps) {
     const id = toStringRef(props.id);
@@ -373,6 +380,7 @@ export class SalesInvoice {
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this.postedAt = props.postedAt;
+    this.appliedPromotions = props.appliedPromotions;
   }
 
   private normalizeLine(line: SalesInvoiceLine, index: number): SalesInvoiceLine {
@@ -443,6 +451,9 @@ export class SalesInvoice {
       lineCostBase: line.lineCostBase,
       stockMovementId: toOptionalStringRef(line.stockMovementId) ?? null,
       description: toOptionalDisplayText(line.description),
+      appliedPromotionId: line.appliedPromotionId,
+      appliedPromotionName: line.appliedPromotionName,
+      appliedDiscountPct: line.appliedDiscountPct,
     };
   }
 
@@ -521,6 +532,7 @@ export class SalesInvoice {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       postedAt: this.postedAt,
+      appliedPromotions: this.appliedPromotions,
     };
   }
 
@@ -577,6 +589,7 @@ export class SalesInvoice {
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       postedAt: data.postedAt ? toDate(data.postedAt) : undefined,
+      appliedPromotions: data.appliedPromotions,
     });
   }
 }

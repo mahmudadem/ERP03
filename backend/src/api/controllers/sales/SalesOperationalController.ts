@@ -163,7 +163,8 @@ export class SalesOperationalController {
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.promotionRuleRepository
       );
       const useCase = new ConvertQuoteToSalesOrderUseCase(
         diContainer.quoteRepository,
@@ -187,7 +188,8 @@ export class SalesOperationalController {
         diContainer.itemRepository,
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.promotionRuleRepository
       );
       const useCase = new ConvertQuoteToSalesInvoiceUseCase(
         diContainer.quoteRepository,
