@@ -82,3 +82,46 @@ Sales returns now support:
 1. D.6 document attachments (next in roadmap)
 2. D.7 multiple invoice templates
 3. D.8 email integration
+
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. Logged in as admin with at least one posted Sales Invoice you can return against.
+
+### Test 1 — Create a credit-note return with reason code
+1. Open **Sales → Sales Returns**.
+2. Click **New Return**.
+3. Pick **Against Invoice**, choose a posted invoice.
+4. Select **Settlement Mode = Credit Note**.
+5. Select **Reason = Defective** and add a short text reason.
+6. Add at least one line to be returned.
+7. Save, then click **Post**.
+- **Expected:** return is posted; detail page shows Reason "Defective", Settlement Mode "Credit Note", Net Settlement equal to return total (no fee).
+
+### Test 2 — Apply a restocking fee
+1. Repeat Test 1 but before posting, in the Restocking Fee field enter **10%** (or a flat amount).
+2. Post the return.
+- **Expected:** detail page shows the restocking fee amount and a **Net Settlement** that is the return total minus the fee.
+
+### Test 3 — Refund settlement path
+1. Create a new return against a posted invoice.
+2. Set **Settlement Mode = Refund**.
+3. Select **Reason = Wrong Item**.
+4. Add a line, save, post.
+- **Expected:** posting succeeds; detail page shows Settlement Mode "Refund"; the original invoice's outstanding balance behaves correctly (refund path, not credit applied to invoice).
+
+### Test 4 — Direct return (no source invoice)
+1. Create a new return, choose **Direct** (no invoice link).
+2. Pick a customer, choose **Reason = Changed Mind**, add a line, save, post.
+- **Expected:** return saves and posts without requiring an invoice link.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Credit-note return with reason | | |
+| 2 | Restocking fee netting | | |
+| 3 | Refund settlement | | |
+| 4 | Direct return | | |
+

@@ -81,3 +81,54 @@ This helps keep invoice evidence (customer PO, signed proof, supporting sheets) 
 ## Known Follow-ups
 
 - Current D.6 implementation is invoice-first. The same pattern can be extended to Sales Order / Delivery Note / Sales Return if business requires attachment parity across all sales documents.
+
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. Logged in as admin. At least one Sales Invoice exists. Have these test files locally:
+- a small PDF (e.g. 200 KB)
+- a JPG image
+- an oversize file > 10 MB
+- a disallowed type (e.g. `.zip` or `.txt`)
+
+### Test 1 — Upload a PDF attachment
+1. Open **Sales → Invoices** and open any invoice.
+2. Scroll to the **Attachments** section.
+3. Click **Upload** and pick the test PDF.
+- **Expected:** file appears in the list with name, size, and **Open** / **Remove** buttons.
+
+### Test 2 — Open the attachment
+1. In the Attachments list, click **Open** on the PDF just uploaded.
+- **Expected:** the PDF opens in a new browser tab (signed URL works).
+
+### Test 3 — Upload more files up to the limit
+1. Upload 4 more files (PDF or JPG mix) so the invoice has 5 attachments.
+2. Try to upload a 6th file.
+- **Expected:** upload of the 6th file is blocked with a clear message ("Maximum 5 files" or similar).
+
+### Test 4 — File size limit
+1. Try to upload the > 10 MB file.
+- **Expected:** upload rejected with a size-limit message; file does not appear in the list.
+
+### Test 5 — Disallowed file type
+1. Try to upload the `.zip` (or `.txt`) file.
+- **Expected:** upload rejected with a file-type message.
+
+### Test 6 — Remove an attachment
+1. In the Attachments list, click **Remove** on any file.
+2. Confirm.
+3. Reload the page.
+- **Expected:** the file disappears from the list and stays gone after reload.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Upload PDF | | |
+| 2 | Open attachment | | |
+| 3 | Max 5 files enforced | | |
+| 4 | Size limit enforced | | |
+| 5 | Disallowed type rejected | | |
+| 6 | Remove attachment | | |
+

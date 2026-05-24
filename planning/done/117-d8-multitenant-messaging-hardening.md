@@ -120,3 +120,52 @@ Users sending invoices via WhatsApp can choose the sender account (or use the de
 - **Estimated:** 4-6 hours  
 - **Actual:** ~2.8 hours
 
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. Logged in as company admin. Have valid WhatsApp Cloud access token + phone number ID for at least one sender account, and a test WhatsApp number to receive messages.
+
+### Test 1 — Add a sender account
+1. Open **Sales → Settings**.
+2. Switch to the **Communications** tab.
+3. Click **Add Account**.
+4. Choose Channel = **WhatsApp**, give it a name like "Main WhatsApp", enter the access token and phone number ID.
+5. Mark **Active** and **Default**.
+6. Save the settings.
+- **Expected:** account appears in the list with status Active and the default badge. Credential fields are blank/masked on reload (never echoed back).
+
+### Test 2 — Add a second account, set the first as default
+1. On the same Communications tab, **Add Account** again with a second set of credentials.
+2. Save.
+3. Toggle which account is the **Default**.
+- **Expected:** exactly one account at a time is marked Default per channel.
+
+### Test 3 — Send invoice using default sender
+1. Open a posted invoice in **Sales → Invoices**.
+2. Click **Send via WhatsApp**.
+3. Leave **Sender Account** = "Use system default sender".
+4. Enter recipient and click **Send**.
+- **Expected:** message delivered via the account marked Default; success toast mentions the default sender name.
+
+### Test 4 — Send using a specific sender account
+1. From a posted invoice, click **Send via WhatsApp**.
+2. In the **Sender Account** dropdown, pick the non-default account.
+3. Send.
+- **Expected:** message sent through the chosen account; success toast names that account.
+
+### Test 5 — Deactivate an account
+1. In **Sales → Settings → Communications**, toggle one account to Inactive and save.
+2. Open the WhatsApp send modal on a posted invoice.
+- **Expected:** the inactive account is not selectable in the sender dropdown.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Add WhatsApp sender account | | |
+| 2 | Default flag stays unique | | |
+| 3 | Send with default sender | | |
+| 4 | Send with specific sender | | |
+| 5 | Inactive account hidden | | |
+

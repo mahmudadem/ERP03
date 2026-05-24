@@ -103,3 +103,44 @@ This controls printable invoice appearance (logo/footer/terms/layout) while keep
 - **Estimated:** 3-5 hours  
 - **Actual:** ~2.1 hours
 
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. At least two invoice templates exist (or seed them in Forms Designer / Templates settings). Logged in as admin with active customers.
+
+### Test 1 — Assign a default template to a customer
+1. Open **Sales → Customers** (or **Shared → Parties** depending on menu).
+2. Open any customer card.
+3. Find the **Default Invoice Template** dropdown.
+4. Pick a template from the list and save.
+- **Expected:** card reloads showing the chosen template as the default.
+
+### Test 2 — Auto-selection on new invoice
+1. Open **Sales → Invoices** and click **New Invoice**.
+2. Select the customer from Test 1.
+- **Expected:** the **Invoice Template** dropdown auto-populates with that customer's default template.
+
+### Test 3 — Override template during creation
+1. Continue from Test 2 (or start a new draft).
+2. Change the **Invoice Template** dropdown to a different template.
+3. Add at least one line and save the draft.
+4. Reopen the saved invoice.
+- **Expected:** the invoice persists the manually chosen template (not the customer default).
+
+### Test 4 — Persona filtering
+1. Create a Direct invoice (no source SO).
+2. Open the **Invoice Template** dropdown.
+3. Create a Linked invoice from a Sales Order.
+4. Open the **Invoice Template** dropdown.
+- **Expected:** each dropdown only shows templates appropriate for that invoice persona (direct templates for direct invoices, linked templates for linked invoices).
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Customer default template | | |
+| 2 | Auto-selection on new invoice | | |
+| 3 | Manual override persists | | |
+| 4 | Persona filtering | | |
+

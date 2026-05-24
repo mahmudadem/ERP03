@@ -119,3 +119,45 @@ The system validates phone format and sends immediately through your configured 
 - **Estimated:** 1.5-2.5 hours  
 - **Actual:** ~1.9 hours
 
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. WhatsApp Cloud credentials configured (env). At least one posted Sales Invoice exists. A test WhatsApp number you control is available to receive the message.
+
+> Note: this report covers the initial WhatsApp send. Multi-tenant sender selection is covered in report 117.
+
+### Test 1 — Send action only appears on posted invoices
+1. Open **Sales → Invoices**.
+2. Open a **Draft** invoice.
+3. Look at the action bar.
+4. Open a **Posted** invoice.
+- **Expected:** **Send via WhatsApp** button is hidden on the draft and visible on the posted invoice.
+
+### Test 2 — Send a posted invoice successfully
+1. From a posted invoice, click **Send via WhatsApp**.
+2. In the modal, confirm/enter the recipient phone in international format (e.g. `+15551234567`).
+3. Leave the default message or edit it.
+4. Click **Send**.
+- **Expected:** success toast appears; the WhatsApp message arrives on the test number.
+
+### Test 3 — Invalid phone is rejected
+1. Open a posted invoice and click **Send via WhatsApp**.
+2. Enter an invalid phone (e.g. `12345`).
+3. Click **Send**.
+- **Expected:** error message displayed, no message dispatched.
+
+### Test 4 — Default recipient from customer phone
+1. Ensure the customer on a posted invoice has a phone number on their card.
+2. Click **Send via WhatsApp**.
+- **Expected:** the recipient phone field is pre-filled with the customer's phone.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Action hidden on draft, visible on posted | | |
+| 2 | Successful send | | |
+| 3 | Invalid phone rejected | | |
+| 4 | Default recipient pre-fill | | |
+

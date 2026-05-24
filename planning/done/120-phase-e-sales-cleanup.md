@@ -145,3 +145,75 @@ If you create a Sales Invoice directly (without a Sales Order) for a customer wh
 - `record_change_logs` Firestore composite index needs production deployment
 - Free-canvas invoice designer is deferred (controlled template model in use)
 - Frontend dev server not started (brief rule: no servers in parallel worktree)
+
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. Logged in as admin. Have at least one customer with a credit limit configured, one item, and at least one promotion rule (Buy X Get Y or Threshold Discount) active for the test customer or all customers.
+
+> Note: **E.2** (AI assistant test stabilization) has no operator-facing surface — it is covered by automated tests only and is intentionally not included below.
+
+### Test 1 — Quote sequence numbering (E.1)
+1. Open **Sales → Settings → Document Numbering**.
+2. Find the **QT (Quote)** row, set prefix = `QT` and next number = `1`. Save.
+3. Open **Sales → Quotes** and click **New Quote**.
+4. Add a customer + 1 line, save.
+5. Create a second quote the same way.
+- **Expected:** the two quote numbers are `QT-00001` and `QT-00002` (or your chosen prefix + zero-padded sequence), not timestamp-based.
+
+### Test 2 — Promotion auto-applies on Sales Order (E.3)
+1. Open **Sales → Sales Orders** and click **New Order**.
+2. Pick a customer eligible for an active promotion.
+3. Add line items that satisfy the promotion (e.g. matching item or above the threshold).
+4. Save the order.
+- **Expected:** the order shows a discount line and/or a zero-priced free-goods line with the promotion name displayed; totals reflect the discount.
+
+### Test 3 — Promotion auto-applies on direct Sales Invoice (E.3)
+1. Open **Sales → Invoices** and click **New Invoice**.
+2. Choose **Direct** (no source SO), pick the same eligible customer.
+3. Add qualifying lines and save.
+- **Expected:** promotion lines appear in the draft invoice automatically; manual discount (if entered) still takes precedence over the auto promotion.
+
+### Test 4 — Credit check blocks a direct invoice (E.4)
+1. Open the customer card and set the credit limit low enough that the next invoice would exceed it (policy = **BLOCK**).
+2. Open **Sales → Invoices → New Invoice → Direct**.
+3. Pick the customer, add lines whose total exceeds the remaining credit.
+4. Try to save.
+- **Expected:** save is blocked with a credit-limit error message; an **Override** button/dialog appears asking for a reason.
+
+### Test 5 — Credit override on direct invoice (E.4)
+1. Continue from Test 4. Click **Override**.
+2. Enter a reason (e.g. "Manager approved").
+3. Confirm.
+- **Expected:** invoice saves successfully; the audit history on the invoice shows a credit override entry with the reason and user.
+
+### Test 6 — Credit warn policy (E.4)
+1. Change the customer's credit policy to **WARN**.
+2. Create another direct invoice that exceeds the limit.
+- **Expected:** invoice saves but a warning banner is visible on the detail page indicating the credit limit was exceeded.
+
+### Test 7 — Sales Order fulfillment progress (E.5)
+1. Open a confirmed Sales Order with multiple line quantities.
+2. Create a Delivery Note from it that ships only part of the quantity for one line.
+3. Post the DN.
+4. Return to the Sales Order detail page.
+- **Expected:** a **Fulfillment Progress** section shows per-line progress bars, the partial line is labeled accordingly, and aggregate stats (total ordered vs delivered, percent) are correct.
+
+### Test 8 — Backorder Delivery Note (E.5)
+1. Open the partially-delivered DN from Test 7.
+2. Click **Create Backorder Delivery Note**.
+- **Expected:** a new draft DN opens pre-filled with only the remaining undelivered quantities from the source SO.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Quote sequence numbers | | |
+| 2 | Promotion auto-applies on SO | | |
+| 3 | Promotion auto-applies on direct SI | | |
+| 4 | Credit BLOCK stops invoice | | |
+| 5 | Credit override succeeds with reason | | |
+| 6 | Credit WARN shows banner | | |
+| 7 | SO fulfillment progress visible | | |
+| 8 | Backorder DN pre-filled | | |

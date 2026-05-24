@@ -113,3 +113,51 @@ Users can now send a posted Sales Invoice through Telegram directly from the inv
 - **Estimated:** 1-2 hours  
 - **Actual:** ~1.4 hours
 
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. A Telegram bot exists and you have its bot token. You know a chat ID (or `@username`) that has started a conversation with that bot so it can receive messages. Logged in as company admin.
+
+### Test 1 — Configure a Telegram sender account
+1. Open **Sales → Settings → Communications**.
+2. Click **Add Account**.
+3. Channel = **Telegram**, name it (e.g. "Sales Bot"), paste the bot token.
+4. Mark **Active** and **Default**.
+5. Save.
+- **Expected:** account appears under Telegram with Active + Default. Bot token field is masked/empty on reload.
+
+### Test 2 — Send invoice via Telegram (default sender)
+1. Open a posted invoice in **Sales → Invoices**.
+2. Click **Send via Telegram**.
+3. Enter the recipient chat ID or `@username`.
+4. Leave the default message or edit.
+5. Click **Send**.
+- **Expected:** success toast appears; the recipient receives the Telegram message.
+
+### Test 3 — Choose a non-default Telegram sender
+1. Configure a second Telegram account in **Communications**.
+2. From a posted invoice, click **Send via Telegram**.
+3. Pick the second account from the **Sender Account** dropdown and send.
+- **Expected:** message dispatched via the chosen bot.
+
+### Test 4 — Invalid recipient rejected
+1. Click **Send via Telegram** on a posted invoice.
+2. Enter an invalid recipient (e.g. blank or `not-a-chat`).
+3. Click **Send**.
+- **Expected:** clear error message; nothing dispatched.
+
+### Test 5 — Action hidden on drafts
+1. Open a draft invoice.
+- **Expected:** **Send via Telegram** is not shown until the invoice is posted.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Configure Telegram sender | | |
+| 2 | Send via default sender | | |
+| 3 | Send via specific sender | | |
+| 4 | Invalid recipient rejected | | |
+| 5 | Action hidden on drafts | | |
+

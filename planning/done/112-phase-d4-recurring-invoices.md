@@ -93,3 +93,53 @@ Phase D.4 adds recurring invoice support with two modes:
 - Phase D.7: Multiple invoice templates
 - Phase D.8: Email integration
 - Or Phase E: Cross-cutting cleanup (PostingLog on DN+SR, FX on payments, idempotency, integration tests)
+
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running. Logged in as admin with at least one posted Sales Invoice and one active customer with items on file.
+
+### Test 1 — Create a recurring template by cloning an invoice
+1. Open **Sales → Invoices**.
+2. Open any posted invoice from the list.
+3. Click **Clone as Recurring Template** (or the recurring icon in the action bar).
+4. In the dialog: set Frequency = **Monthly**, Day of month = **1**, Start date = today, leave End date empty.
+5. Click **Save**.
+- **Expected:** success toast appears and a new template shows up under **Sales → Recurring Invoices** with status **Active**.
+
+### Test 2 — Create a scheduled template from scratch
+1. Open **Sales → Recurring Invoices**.
+2. Click **New Recurring Invoice**.
+3. Pick a customer, add at least one line item, choose **Weekly** frequency, set max occurrences = **3**.
+4. Save.
+- **Expected:** template appears in list with status **Active**, frequency **Weekly**, and remaining = 3.
+
+### Test 3 — Pause and resume a template
+1. In the Recurring Invoices list, find the template from Test 2.
+2. Click **Pause** in its row.
+3. Confirm status changes to **Paused**.
+4. Click **Resume**.
+- **Expected:** status returns to **Active**. List filter "Status: Paused" hides it after resume.
+
+### Test 4 — Generate due invoices manually
+1. In **Sales → Recurring Invoices**, click **Generate Due** in the page header.
+2. Wait for the success toast.
+3. Open **Sales → Invoices** and sort by date desc.
+- **Expected:** one new **Draft** invoice exists for each template that had a due run, with the correct customer and line items.
+
+### Test 5 — Cancel a template
+1. In **Sales → Recurring Invoices**, click **Cancel** on a template you no longer need.
+2. Confirm in the prompt.
+- **Expected:** status changes to **Cancelled** and Pause/Resume actions disappear for that row.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Clone invoice as recurring template | | |
+| 2 | Create scheduled template | | |
+| 3 | Pause and resume | | |
+| 4 | Generate due invoices | | |
+| 5 | Cancel template | | |
+
