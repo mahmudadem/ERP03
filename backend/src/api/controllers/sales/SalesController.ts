@@ -187,7 +187,7 @@ export class SalesController {
     );
   }
 
-  private static buildPostSalesInvoiceUseCase(): PostSalesInvoiceUseCase {
+  private static buildPostSalesInvoiceUseCase(recordChangeService?: RecordChangeService): PostSalesInvoiceUseCase {
     const inventoryService = SalesController.buildSalesInventoryService();
     const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
@@ -213,8 +213,18 @@ export class SalesController {
       diContainer.voucherRepository,
       diContainer.voucherSequenceRepository,
       diContainer.ledgerRepository,
-      diContainer.postingLogRepository
+      diContainer.postingLogRepository,
+      recordChangeService
     );
+  }
+
+  private static async resolveLockedThroughDate(companyId: string): Promise<string | undefined> {
+    try {
+      const cfg = await diContainer.accountingPolicyConfigProvider.getConfig(companyId);
+      return cfg.lockedThroughDate ?? undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   static async initializeSales(req: Request, res: Response, next: NextFunction) {
@@ -322,21 +332,24 @@ export class SalesController {
       validateCreateSalesOrderInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
 
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new CreateSalesOrderUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesOrderRepository,
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        recordChangeService
       );
 
       const so = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
-      });
+      }, { userId, userEmail });
 
       (res as any).status(201).json({
         success: true,
@@ -415,9 +428,7 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
-        diContainer.recordChangeLogRepository
-      );
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
 
       const useCase = new UpdateSalesOrderUseCase(
         diContainer.salesOrderRepository,
@@ -510,20 +521,23 @@ export class SalesController {
       validateCreateDeliveryNoteInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
 
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new CreateDeliveryNoteUseCase(
         diContainer.salesSettingsRepository,
         diContainer.deliveryNoteRepository,
         diContainer.salesOrderRepository,
         diContainer.partyRepository,
-        diContainer.itemRepository
+        diContainer.itemRepository,
+        recordChangeService
       );
 
       const dn = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
-      });
+      }, { userId, userEmail });
 
       (res as any).status(201).json({
         success: true,
@@ -579,9 +593,7 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
-        diContainer.recordChangeLogRepository
-      );
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
 
       const useCase = new UpdateDeliveryNoteUseCase(
         diContainer.deliveryNoteRepository,
@@ -609,6 +621,7 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
       const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
       const accountingPostingService = SalesController.buildAccountingPostingService();
 
@@ -617,6 +630,7 @@ export class SalesController {
         ? { reason: periodLockOverrideReason, overriddenBy: userId }
         : undefined;
 
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new PostDeliveryNoteUseCase(
         diContainer.salesSettingsRepository,
         diContainer.inventorySettingsRepository,
@@ -631,10 +645,12 @@ export class SalesController {
         diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.accountRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        recordChangeService
       );
 
-      const dn = await useCase.execute(companyId, id, true, periodLockOverride);
+      const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
+      const dn = await useCase.execute(companyId, id, true, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
       // Write period-lock override audit row (non-fatal)
       if (periodLockOverride) {
@@ -670,7 +686,9 @@ export class SalesController {
       validateCreateSalesInvoiceInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
 
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new CreateSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesInvoiceRepository,
@@ -679,14 +697,15 @@ export class SalesController {
         diContainer.itemRepository,
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        recordChangeService
       );
 
       const si = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
-      });
+      }, undefined, { userId, userEmail });
 
       (res as any).status(201).json({
         success: true,
@@ -703,6 +722,8 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const userId = SalesController.getUserId(req);
 
+      const userEmail = SalesController.getUserEmail(req);
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const createUseCase = new CreateSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesInvoiceRepository,
@@ -711,10 +732,11 @@ export class SalesController {
         diContainer.itemRepository,
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        recordChangeService
       );
 
-      const postUseCase = SalesController.buildPostSalesInvoiceUseCase();
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(recordChangeService);
 
       const useCase = new CreateAndPostSalesInvoiceUseCase(
         createUseCase,
@@ -726,11 +748,12 @@ export class SalesController {
       const periodLockOverride = periodLockOverrideReason
         ? { reason: periodLockOverrideReason, overriddenBy: SalesController.getUserId(req) }
         : undefined;
+      const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
       const si = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
-      }, settlementInput, periodLockOverride);
+      }, settlementInput, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
       // Accrue sales commission (non-fatal — must not fail the post response)
       try {
@@ -783,12 +806,15 @@ export class SalesController {
       const id = String((req as any).params.id);
       const userId = SalesController.getUserId(req);
 
+      const userEmail = SalesController.getUserEmail(req);
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const updateUseCase = new UpdateSalesInvoiceUseCase(
         diContainer.salesInvoiceRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        recordChangeService
       );
 
-      const postUseCase = SalesController.buildPostSalesInvoiceUseCase();
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(recordChangeService);
 
       const useCase = new UpdateAndPostSalesInvoiceUseCase(
         updateUseCase,
@@ -800,11 +826,12 @@ export class SalesController {
       const periodLockOverride = periodLockOverrideReason
         ? { reason: periodLockOverrideReason, overriddenBy: SalesController.getUserId(req) }
         : undefined;
+      const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
       const si = await useCase.execute({
         ...((req as any).body || {}),
         id,
         companyId,
-      }, settlementInput, periodLockOverride);
+      }, settlementInput, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
       // Accrue sales commission (non-fatal — must not fail the post response)
       try {
@@ -897,9 +924,7 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
-        diContainer.recordChangeLogRepository
-      );
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
 
       const useCase = new UpdateSalesInvoiceUseCase(
         diContainer.salesInvoiceRepository,
@@ -927,9 +952,11 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
       const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
       const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new PostSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
         diContainer.inventorySettingsRepository,
@@ -952,7 +979,8 @@ export class SalesController {
         diContainer.voucherRepository,
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
-        diContainer.postingLogRepository
+        diContainer.postingLogRepository,
+        recordChangeService
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -960,7 +988,8 @@ export class SalesController {
       const periodLockOverride = periodLockOverrideReason
         ? { reason: periodLockOverrideReason, overriddenBy: userId }
         : undefined;
-      const si = await useCase.execute(companyId, id, true, undefined, settlementInput, periodLockOverride);
+      const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
+      const si = await useCase.execute(companyId, id, true, undefined, settlementInput, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
       // Accrue sales commission (non-fatal — must not fail the post response)
       try {
@@ -1012,19 +1041,22 @@ export class SalesController {
       validateCreateSalesReturnInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
       const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
 
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new CreateSalesReturnUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesReturnRepository,
         diContainer.salesInvoiceRepository,
-        diContainer.deliveryNoteRepository
+        diContainer.deliveryNoteRepository,
+        recordChangeService
       );
 
       const salesReturn = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
-      });
+      }, { userId, userEmail });
 
       (res as any).status(201).json({
         success: true,
@@ -1081,9 +1113,7 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new (require('../../system/services/RecordChangeService').RecordChangeService)(
-        diContainer.recordChangeLogRepository
-      );
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
 
       const useCase = new UpdateSalesReturnUseCase(diContainer.salesReturnRepository, recordChangeService);
 
@@ -1107,6 +1137,7 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
       const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
       const accountingPostingService = SalesController.buildAccountingPostingService();
 
@@ -1115,6 +1146,7 @@ export class SalesController {
         ? { reason: periodLockOverrideReason, overriddenBy: userId }
         : undefined;
 
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new PostSalesReturnUseCase(
         diContainer.salesSettingsRepository,
         diContainer.inventorySettingsRepository,
@@ -1132,10 +1164,12 @@ export class SalesController {
         diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.accountRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        recordChangeService
       );
 
-      const salesReturn = await useCase.execute(companyId, id, true, periodLockOverride);
+      const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
+      const salesReturn = await useCase.execute(companyId, id, true, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
       // Write period-lock override audit row (non-fatal)
       if (periodLockOverride) {

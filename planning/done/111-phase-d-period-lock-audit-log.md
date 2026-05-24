@@ -124,13 +124,65 @@
 
 ---
 
-## Manual QA Gate (deferred — requires human verification)
+## Manual QA Gate — Engineer View (deferred — requires human verification)
 
 1. **Period lock blocking:** In Accounting Settings → Accounting Periods tab, enable period lock and set `lockedThroughDate` to a past date. Try posting an SI/DN/SR with a date within the locked period → should get HTTP 422 with SOFT tier.
 2. **Period lock override:** After the above, click "Override & Post", type a reason, confirm → should succeed and write a `PeriodLockOverride` row.
 3. **Hard lock (fiscal period):** Close a fiscal period in Accounting Settings. Try posting a document dated within that period → should get HARD tier error, no override option.
 4. **Audit log (History):** Edit a draft SI/SO/DN/SR (change a field), save. Open the detail page, click "History" → should see the before/after change.
 5. **Firestore index:** Deploy `firestore.indexes.json` to Firebase before production use of the audit log.
+
+---
+
+## Manual QA Script — Operator View (run sequentially)
+
+**Pre-req:** Backend + frontend dev servers running on main worktree.
+
+### Test 1 — Set up the period lock
+1. App → **Accounting → Settings → Fiscal** (`AccountingSettingsPage`).
+2. Find **Period Locking** toggle → turn ON.
+3. Set **Locked through date** = yesterday.
+4. Save.
+- **Expected:** toggle stays ON after save; lock date persists on reload.
+
+### Test 2 — Posting inside locked period should be BLOCKED
+1. **Sales → Invoices** → create new SI.
+2. Set Invoice Date = a date **before** the lock date (inside locked period).
+3. Add 1 line item, save, try to Post.
+- **Expected:** posting blocked; backend returns `PeriodLockedError` → friendly toast / inline message about locked period.
+
+### Test 3 — Period lock override modal
+1. On the blocked SI, click **Override Period Lock** action on the detail page.
+2. `PeriodLockOverrideModal` opens.
+3. Enter reason (e.g. "QA test"), confirm.
+4. Try posting again.
+- **Expected:** override recorded; posting succeeds.
+
+### Test 4 — Audit log (D.3)
+1. On any posted SI, click **History / Change History** (opens `RecordAuditModal`).
+- **Expected:** entries for create / update / post / override, each with timestamp + user.
+
+### Results
+
+| # | Test | Pass/Fail | Notes |
+|---|------|-----------|-------|
+| 1 | Set up period lock | ✅ | |
+| 2 | Posting blocked in locked period | ✅ | Expected message shown |
+| 3 | Override modal allows posting | ✅ | |
+| 4 | Audit log shows history | ✅ | CREATE / POST / PERIOD_LOCK_OVERRIDE entries all present with timestamp + user — **after fix** (see fix log below) |
+
+### Fix log (during QA)
+
+Initial Test 4 run returned empty `record_change_logs`. Root cause: D.3 had two bugs not caught at implementation time —
+1. Audit hooks only wired on UPDATE, not on CREATE / POST / PERIOD_LOCK_OVERRIDE paths.
+2. Four `require('../../system/services/RecordChangeService')` calls in `SalesController.ts` resolved to a non-existent path, silently failing.
+
+Fixed across 8 files (domain, service, 4 use-case files, controller, tests). Domain `RecordChangeAction` expanded to `CREATE | UPDATE | POST | PERIOD_LOCK_OVERRIDE` with optional `metadata`. New service methods: `recordCreate`, `recordPost`, `recordPeriodLockOverride`. Audit hooks now wired across SI / SO / DN / SR create + post + override paths. 7/7 RecordChangeService tests pass, `tsc --noEmit` clean.
+
+Out of scope for this fix (Phase E candidates): SO confirm/cancel/close transitions and payment record/status are not audited yet.
+
+### Deployment note
+- `record_change_logs` Firestore composite index (`entityType ASC, entityId ASC, timestamp DESC`) is defined in `firestore.indexes.json` — **must be deployed** before production use of the audit log.
 
 ---
 

@@ -167,10 +167,11 @@ export class CreateSalesReturnUseCase {
     private readonly settingsRepo: ISalesSettingsRepository,
     private readonly salesReturnRepo: ISalesReturnRepository,
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
-    private readonly deliveryNoteRepo: IDeliveryNoteRepository
+    private readonly deliveryNoteRepo: IDeliveryNoteRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: CreateSalesReturnInput): Promise<SalesReturn> {
+  async execute(input: CreateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(input.companyId);
     if (!settings) throw new Error('Sales module is not initialized');
 
@@ -288,6 +289,19 @@ export class CreateSalesReturnUseCase {
 
     await this.salesReturnRepo.create(salesReturn);
     await this.settingsRepo.saveSettings(settings);
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: salesReturn.companyId,
+        entityType: 'SALES_RETURN',
+        entityId: salesReturn.id,
+        entityNumber: `SR-${salesReturn.returnNumber}`,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: salesReturn.toJSON(),
+      });
+    }
+
     return salesReturn;
   }
 
@@ -425,10 +439,11 @@ export class PostSalesReturnUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<SalesReturn> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module is not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
@@ -1027,6 +1042,31 @@ export class PostSalesReturnUseCase {
 
     const posted = await this.salesReturnRepo.getById(companyId, id);
     if (!posted) throw new Error(`Sales return not found after posting: ${id}`);
+
+    if (this.recordChangeService && actor) {
+      const entityNumber = `SR-${posted.returnNumber}`;
+      await this.recordChangeService.recordPost({
+        companyId,
+        entityType: 'SALES_RETURN',
+        entityId: posted.id,
+        entityNumber,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+      });
+      if (periodLockOverride) {
+        await this.recordChangeService.recordPeriodLockOverride({
+          companyId,
+          entityType: 'SALES_RETURN',
+          entityId: posted.id,
+          entityNumber,
+          userId: actor.userId,
+          userEmail: actor.userEmail,
+          reason: periodLockOverride.reason,
+          lockedThroughDate: actor.lockedThroughDate,
+        });
+      }
+    }
+
     return posted;
   }
 

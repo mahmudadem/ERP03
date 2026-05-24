@@ -34,6 +34,13 @@ Commits on `feat/phase-a-sales-master-data`:
 - Commission accrual auto-wired (B.0); credit-hold enforcement live (B.2).
 - AI-assistant test failures currently present in full suite: 3 in `SendChatMessageUseCase` (credits/runtime-mode path) + 1 in `AiModelCertificationUseCase` (global recommended query expectation). Unrelated to Sales D8 but now tracked for stabilization.
 - D.2 period-lock override UI wired on SI/DN/SR detail pages; SO detail page has History button but no posting (SO confirm already has credit-override flow).
+- **D.3 follow-up — SO confirm/cancel/close and SI payment record/status are NOT audited** (only Create/Update/Post/Override are). Add in Phase E if needed.
+- **D.2 follow-up — Period-lock override governance (Phase E):**
+  - Role-gate the **Override Period Lock** button so only authorized roles (e.g. Controller / CFO / Accounting Manager) see it. Hide for staff/operators.
+  - Add a clear option in **Accounting → Settings → Fiscal** under Period Locking:
+    - Toggle: **Allow soft-lock overrides** (default ON). When OFF, the override path is fully disabled and the soft lock behaves like a hard lock for all users.
+    - Multi-select: **Roles permitted to override** (default: Controller, CFO).
+  - Backend must enforce both — UI gating is not enough; the override endpoint must re-check role + the allow-override toggle and reject otherwise (clear error, audit-logged attempt).
 - `record_change_logs` Firestore composite index added to `firestore.indexes.json` — must be deployed before production use.
 - `PeriodLockService` is now wired into `buildAccountingPostingService()` — enforcement is live for all Sales posting paths.
 - D.7 full free-canvas/sketch-board invoice designer is deferred; current model is controlled template selection via Forms Designer templates.

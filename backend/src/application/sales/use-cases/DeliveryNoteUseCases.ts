@@ -78,10 +78,11 @@ export class CreateDeliveryNoteUseCase {
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly itemRepo: IItemRepository
+    private readonly itemRepo: IItemRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: CreateDeliveryNoteInput): Promise<DeliveryNote> {
+  async execute(input: CreateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
     const settings = await this.settingsRepo.getSettings(input.companyId);
     if (!settings) {
       throw new Error('Sales module is not initialized');
@@ -179,6 +180,19 @@ export class CreateDeliveryNoteUseCase {
 
     await this.deliveryNoteRepo.create(dn);
     await this.settingsRepo.saveSettings(settings);
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: dn.companyId,
+        entityType: 'DELIVERY_NOTE',
+        entityId: dn.id,
+        entityNumber: `DN-${dn.dnNumber}`,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: dn.toJSON(),
+      });
+    }
+
     return dn;
   }
 
@@ -219,10 +233,11 @@ export class PostDeliveryNoteUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<DeliveryNote> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<DeliveryNote> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
     // We pre-fetch ALL data here. The postingLogic callback only writes.
@@ -541,6 +556,31 @@ export class PostDeliveryNoteUseCase {
 
     const posted = await this.deliveryNoteRepo.getById(companyId, id);
     if (!posted) throw new Error(`Delivery note not found after posting: ${id}`);
+
+    if (this.recordChangeService && actor) {
+      const entityNumber = `DN-${posted.dnNumber}`;
+      await this.recordChangeService.recordPost({
+        companyId,
+        entityType: 'DELIVERY_NOTE',
+        entityId: posted.id,
+        entityNumber,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+      });
+      if (periodLockOverride) {
+        await this.recordChangeService.recordPeriodLockOverride({
+          companyId,
+          entityType: 'DELIVERY_NOTE',
+          entityId: posted.id,
+          entityNumber,
+          userId: actor.userId,
+          userEmail: actor.userEmail,
+          reason: periodLockOverride.reason,
+          lockedThroughDate: actor.lockedThroughDate,
+        });
+      }
+    }
+
     return posted;
   }
 

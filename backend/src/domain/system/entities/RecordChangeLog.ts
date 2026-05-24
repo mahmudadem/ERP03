@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 
 export type RecordChangeEntityType = 'SALES_INVOICE' | 'SALES_ORDER' | 'DELIVERY_NOTE' | 'SALES_RETURN';
-export type RecordChangeAction = 'UPDATE';
+export type RecordChangeAction = 'CREATE' | 'UPDATE' | 'POST' | 'PERIOD_LOCK_OVERRIDE';
 
 export interface FieldChange {
   field: string;
@@ -20,6 +20,7 @@ export interface RecordChangeLogProps {
   userId: string;
   userEmail?: string;
   timestamp?: Date;
+  metadata?: Record<string, unknown>;
 }
 
 export class RecordChangeLog {
@@ -33,10 +34,13 @@ export class RecordChangeLog {
   readonly userId: string;
   readonly userEmail?: string;
   readonly timestamp: Date;
+  readonly metadata?: Record<string, unknown>;
 
   constructor(props: RecordChangeLogProps) {
-    if (!props.changes || props.changes.length === 0) {
-      throw new Error('RecordChangeLog requires at least one change');
+    // UPDATE actions still require at least one field-level change.
+    // CREATE / POST / PERIOD_LOCK_OVERRIDE describe the action itself and may have no diff.
+    if (props.action === 'UPDATE' && (!props.changes || props.changes.length === 0)) {
+      throw new Error('RecordChangeLog (UPDATE) requires at least one change');
     }
 
     this.id = props.id ?? randomUUID();
@@ -45,10 +49,11 @@ export class RecordChangeLog {
     this.entityId = props.entityId;
     this.entityNumber = props.entityNumber;
     this.action = props.action;
-    this.changes = props.changes;
+    this.changes = props.changes ?? [];
     this.userId = props.userId;
     this.userEmail = props.userEmail;
     this.timestamp = props.timestamp ?? new Date();
+    this.metadata = props.metadata;
   }
 
   toJSON(): Record<string, unknown> {
@@ -63,6 +68,7 @@ export class RecordChangeLog {
       userId: this.userId,
       userEmail: this.userEmail,
       timestamp: this.timestamp.toISOString(),
+      metadata: this.metadata,
     };
   }
 
@@ -74,10 +80,11 @@ export class RecordChangeLog {
       entityId: data.entityId as string,
       entityNumber: data.entityNumber as string | undefined,
       action: data.action as RecordChangeAction,
-      changes: data.changes as FieldChange[],
+      changes: (data.changes as FieldChange[]) ?? [],
       userId: data.userId as string,
       userEmail: data.userEmail as string | undefined,
       timestamp: data.timestamp ? new Date(data.timestamp as string) : undefined,
+      metadata: data.metadata as Record<string, unknown> | undefined,
     });
   }
 }

@@ -57,6 +57,52 @@ describe('RecordChangeService', () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  it('records CREATE with empty changes and snapshot metadata', async () => {
+    await service.recordCreate({
+      companyId: 'comp-1',
+      entityType: 'SALES_INVOICE',
+      entityId: 'si-1',
+      entityNumber: 'SI-001',
+      userId: 'user-1',
+      snapshot: { foo: 'bar' },
+    });
+    expect(repo.create).toHaveBeenCalledTimes(1);
+    const entry = (repo.create as jest.Mock).mock.calls[0][0] as RecordChangeLog;
+    expect(entry.action).toBe('CREATE');
+    expect(entry.changes).toHaveLength(0);
+    expect(entry.metadata).toBeDefined();
+    expect((entry.metadata as any).snapshot).toContain('foo');
+  });
+
+  it('records POST action', async () => {
+    await service.recordPost({
+      companyId: 'comp-1',
+      entityType: 'SALES_INVOICE',
+      entityId: 'si-1',
+      userId: 'user-1',
+    });
+    expect(repo.create).toHaveBeenCalledTimes(1);
+    const entry = (repo.create as jest.Mock).mock.calls[0][0] as RecordChangeLog;
+    expect(entry.action).toBe('POST');
+    expect(entry.changes).toHaveLength(0);
+  });
+
+  it('records PERIOD_LOCK_OVERRIDE with reason metadata', async () => {
+    await service.recordPeriodLockOverride({
+      companyId: 'comp-1',
+      entityType: 'SALES_INVOICE',
+      entityId: 'si-1',
+      userId: 'user-1',
+      reason: 'Backdated invoice for audit',
+      lockedThroughDate: '2026-04-30',
+    });
+    expect(repo.create).toHaveBeenCalledTimes(1);
+    const entry = (repo.create as jest.Mock).mock.calls[0][0] as RecordChangeLog;
+    expect(entry.action).toBe('PERIOD_LOCK_OVERRIDE');
+    expect((entry.metadata as any).reason).toBe('Backdated invoice for audit');
+    expect((entry.metadata as any).lockedThroughDate).toBe('2026-04-30');
+  });
+
   it('records non-primitive (lines) change as one stringified entry', async () => {
     const linesBefore = [{ itemId: 'item-1', qty: 5 }];
     const linesAfter = [{ itemId: 'item-1', qty: 10 }];

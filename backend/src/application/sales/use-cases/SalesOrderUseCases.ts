@@ -124,10 +124,11 @@ export class CreateSalesOrderUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: CreateSalesOrderInput): Promise<SalesOrder> {
+  async execute(input: CreateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
     const settings = await this.settingsRepo.getSettings(input.companyId);
     if (!settings) throw new Error('Sales module is not initialized');
 
@@ -182,6 +183,19 @@ export class CreateSalesOrderUseCase {
 
     await this.salesOrderRepo.create(so);
     await this.settingsRepo.saveSettings(settings);
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: so.companyId,
+        entityType: 'SALES_ORDER',
+        entityId: so.id,
+        entityNumber: `SO-${so.orderNumber}`,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: so.toJSON(),
+      });
+    }
+
     return so;
   }
 

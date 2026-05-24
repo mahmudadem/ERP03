@@ -2,10 +2,19 @@ import { IRecordChangeLogRepository } from '../../../repository/interfaces/syste
 import { RecordChangeLog, FieldChange, RecordChangeEntityType, RecordChangeAction } from '../../../domain/system/entities/RecordChangeLog';
 
 const MAX_STRING_LENGTH = 500;
+const MAX_SNAPSHOT_LENGTH = 2048;
 
-function truncate(value: string): string {
-  if (value.length <= MAX_STRING_LENGTH) return value;
-  return value.substring(0, MAX_STRING_LENGTH) + '... (truncated)';
+function truncate(value: string, max: number = MAX_STRING_LENGTH): string {
+  if (value.length <= max) return value;
+  return value.substring(0, max) + '... (truncated)';
+}
+
+function snapshotToString(snapshot: unknown): string {
+  try {
+    return truncate(JSON.stringify(snapshot ?? {}), MAX_SNAPSHOT_LENGTH);
+  } catch {
+    return '';
+  }
 }
 
 function computeDiff(before: Record<string, any>, after: Record<string, any>): FieldChange[] {
@@ -62,6 +71,91 @@ export class RecordChangeService {
       await this.repo.create(entry);
     } catch (err) {
       console.error('[RecordChangeService] Failed to record change:', err);
+    }
+  }
+
+  async recordCreate(params: {
+    companyId: string;
+    entityType: string;
+    entityId: string;
+    entityNumber?: string;
+    userId: string;
+    userEmail?: string;
+    snapshot: unknown;
+  }): Promise<void> {
+    try {
+      const entry = new RecordChangeLog({
+        companyId: params.companyId,
+        entityType: params.entityType as RecordChangeEntityType,
+        entityId: params.entityId,
+        entityNumber: params.entityNumber,
+        action: 'CREATE' as RecordChangeAction,
+        changes: [],
+        userId: params.userId,
+        userEmail: params.userEmail,
+        metadata: { snapshot: snapshotToString(params.snapshot) },
+      });
+      await this.repo.create(entry);
+    } catch (err) {
+      console.error('[RecordChangeService] Failed to record create:', err);
+    }
+  }
+
+  async recordPost(params: {
+    companyId: string;
+    entityType: string;
+    entityId: string;
+    entityNumber?: string;
+    userId: string;
+    userEmail?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      const entry = new RecordChangeLog({
+        companyId: params.companyId,
+        entityType: params.entityType as RecordChangeEntityType,
+        entityId: params.entityId,
+        entityNumber: params.entityNumber,
+        action: 'POST' as RecordChangeAction,
+        changes: [],
+        userId: params.userId,
+        userEmail: params.userEmail,
+        metadata: params.metadata,
+      });
+      await this.repo.create(entry);
+    } catch (err) {
+      console.error('[RecordChangeService] Failed to record post:', err);
+    }
+  }
+
+  async recordPeriodLockOverride(params: {
+    companyId: string;
+    entityType: string;
+    entityId: string;
+    entityNumber?: string;
+    userId: string;
+    userEmail?: string;
+    reason: string;
+    lockedThroughDate?: string;
+  }): Promise<void> {
+    try {
+      const entry = new RecordChangeLog({
+        companyId: params.companyId,
+        entityType: params.entityType as RecordChangeEntityType,
+        entityId: params.entityId,
+        entityNumber: params.entityNumber,
+        action: 'PERIOD_LOCK_OVERRIDE' as RecordChangeAction,
+        changes: [],
+        userId: params.userId,
+        userEmail: params.userEmail,
+        metadata: {
+          reason: params.reason,
+          lockedThroughDate: params.lockedThroughDate ?? null,
+        },
+      });
+      await this.repo.create(entry);
+    } catch (err) {
+      console.error('[RecordChangeService] Failed to record period-lock override:', err);
     }
   }
 }

@@ -2,6 +2,19 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-24 (Sun) — Phase D.2/D.3 manual QA + audit-log gap fix
+
+Ran user-facing manual QA on Period Lock (D.2) and Audit Log (D.3) per the 4-test script now saved in `planning/done/111-phase-d-period-lock-audit-log.md`.
+
+- Tests 1-3 passed on first run (period lock toggle, blocked posting in locked period with friendly message, override modal allows posting).
+- Test 4 failed initially — Change History modal returned empty. Investigation surfaced two real D.3 bugs:
+  1. Audit hooks only wired on UPDATE; CREATE / POST / PERIOD_LOCK_OVERRIDE never wrote.
+  2. Four `require('../../system/services/RecordChangeService')` calls in `SalesController.ts` resolved to a non-existent path, silently failing.
+- Fixed across 8 files (domain expansion to `CREATE|UPDATE|POST|PERIOD_LOCK_OVERRIDE` + metadata, new service methods, hooks across SI/SO/DN/SR create+post+override, controller `require` → ES import). 7/7 RecordChangeService tests pass, tsc clean.
+- Re-ran Test 4: CREATE / POST / PERIOD_LOCK_OVERRIDE all show with timestamp + user. All 4 tests now ✅.
+
+Also recorded a Phase E follow-up: role-gate the Override Period Lock button, add Settings toggles for "Allow soft-lock overrides" and "Roles permitted to override," backend re-checks. New memory rule added: every implemented task must save its manual QA script into its `planning/done/NN-*.md` report.
+
 ## 2026-05-23 (Sat) — Phase D.6 invoice attachments
 **Task:** Task 119 — Phase D.6 invoice attachments (tenant-scoped)  
 **Agent:** Codex (CTO Mode)  

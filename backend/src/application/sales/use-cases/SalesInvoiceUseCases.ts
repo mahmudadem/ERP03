@@ -293,10 +293,11 @@ export class CreateSalesInvoiceUseCase {
     private readonly itemRepo: IItemRepository,
     private readonly itemCategoryRepo: IItemCategoryRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: CreateSalesInvoiceInput, transaction?: unknown): Promise<SalesInvoice> {
+  async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<SalesInvoice> {
     const source = resolveDocumentSource(input.source);
     const persona = resolveSalesInvoicePersona(input);
     input = {
@@ -547,6 +548,19 @@ export class CreateSalesInvoiceUseCase {
 
     await this.salesInvoiceRepo.create(si, transaction);
     await this.settingsRepo.saveSettings(settings, transaction);
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: si.companyId,
+        entityType: 'SALES_INVOICE',
+        entityId: si.id,
+        entityNumber: si.invoiceNumber ? `SI-${si.invoiceNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: si.toJSON(),
+      });
+    }
+
     return si;
   }
 
@@ -665,19 +679,21 @@ export class PostSalesInvoiceUseCase {
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
-    private readonly postingLogRepo?: IPostingLogRepository
+    private readonly postingLogRepo?: IPostingLogRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
   }
 
   async execute(
-    companyId: string, 
-    idOrSI: string | SalesInvoice, 
+    companyId: string,
+    idOrSI: string | SalesInvoice,
     createAccountingEffect: boolean = true,
     externalTransaction?: any,
     settlementInput?: SettlementInput,
-    periodLockOverride?: { reason: string; overriddenBy: string }
+    periodLockOverride?: { reason: string; overriddenBy: string },
+    actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }
   ): Promise<SalesInvoice> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
@@ -1268,7 +1284,33 @@ export class PostSalesInvoiceUseCase {
       await this.transactionManager.runTransaction(postingLogic);
     }
 
-    return (await this.salesInvoiceRepo.getById(companyId, id))!;
+    const posted = (await this.salesInvoiceRepo.getById(companyId, id))!;
+
+    if (this.recordChangeService && actor) {
+      const entityNumber = posted.invoiceNumber ? `SI-${posted.invoiceNumber}` : undefined;
+      await this.recordChangeService.recordPost({
+        companyId,
+        entityType: 'SALES_INVOICE',
+        entityId: posted.id,
+        entityNumber,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+      });
+      if (periodLockOverride) {
+        await this.recordChangeService.recordPeriodLockOverride({
+          companyId,
+          entityType: 'SALES_INVOICE',
+          entityId: posted.id,
+          entityNumber,
+          userId: actor.userId,
+          userEmail: actor.userEmail,
+          reason: periodLockOverride.reason,
+          lockedThroughDate: actor.lockedThroughDate,
+        });
+      }
+    }
+
+    return posted;
   }
 
   private async resolveAccountId(companyId: string, idOrCode: string): Promise<string> {
@@ -1611,9 +1653,9 @@ export class CreateAndPostSalesInvoiceUseCase {
     private readonly postUseCase: PostSalesInvoiceUseCase
   ) {}
 
-  async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<SalesInvoice> {
-    const si = await this.createUseCase.execute(input);
-    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride);
+  async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesInvoice> {
+    const si = await this.createUseCase.execute(input, undefined, actor);
+    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride, actor);
   }
 }
 
@@ -1623,9 +1665,9 @@ export class UpdateAndPostSalesInvoiceUseCase {
     private readonly postUseCase: PostSalesInvoiceUseCase
   ) {}
 
-  async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<SalesInvoice> {
-    const si = await this.updateUseCase.execute(input);
-    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride);
+  async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesInvoice> {
+    const si = await this.updateUseCase.execute(input, undefined, actor);
+    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride, actor);
   }
 }
 
