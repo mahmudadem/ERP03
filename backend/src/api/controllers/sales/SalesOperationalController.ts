@@ -24,6 +24,7 @@ import {
 import { GetAgedBacklogUseCase } from '../../../application/sales/use-cases/AgedBacklogUseCase';
 import { CreateSalesOrderUseCase } from '../../../application/sales/use-cases/SalesOrderUseCases';
 import { CreateSalesInvoiceUseCase } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { CreditCheckService } from '../../../application/sales/services/CreditCheckService';
 
 export class SalesOperationalController {
   private static getCompanyId(req: Request): string {
@@ -189,7 +190,9 @@ export class SalesOperationalController {
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
-        diContainer.promotionRuleRepository
+        diContainer.promotionRuleRepository,
+        new CreditCheckService(diContainer.salesInvoiceRepository),
+        diContainer.creditOverrideRepository
       );
       const useCase = new ConvertQuoteToSalesInvoiceUseCase(
         diContainer.quoteRepository,

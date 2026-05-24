@@ -206,6 +206,13 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [attachmentDeletingId, setAttachmentDeletingId] = useState<string | null>(null);
   const [templateTouched, setTemplateTouched] = useState(false);
 
+  // Credit check override state
+  const [creditOverrideOpen, setCreditOverrideOpen] = useState(false);
+  const [creditOverrideReason, setCreditOverrideReason] = useState('');
+  const [creditOverrideInfo, setCreditOverrideInfo] = useState<Record<string, any> | null>(null);
+  const [creditWarnBanner, setCreditWarnBanner] = useState<string | null>(null);
+  const [pendingCreatePayload, setPendingCreatePayload] = useState<{ payload: CreateSalesInvoicePayload; mode: 'draft' | 'createAndPost' } | null>(null);
+
   // Settlement state
   const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
   const [arAccountId, setArAccountId] = useState('');
@@ -725,7 +732,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     };
   };
 
-  const createDraft = async () => {
+  const createDraft = async (creditOverrideReasonParam?: string) => {
     const validationError = validateBeforeSave();
     if (validationError) {
       setError(validationError);
@@ -759,11 +766,37 @@ const SalesInvoiceDetailPage: React.FC = () => {
           description: charge.description || undefined,
         })),
         notes: form.notes || undefined,
+        creditOverrideReason: creditOverrideReasonParam,
       };
 
-      const created = await salesApi.createSI(payload);
-      const dto = unwrap<SalesInvoiceDTO>(created);
-      navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      try {
+        const created = await salesApi.createSI(payload);
+        const raw = created as any;
+        const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
+        if (creditCheck?.outcome === 'WARN') {
+          setCreditWarnBanner(
+            `Invoice created — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
+          );
+        }
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      } catch (err: any) {
+        const data = err?.response?.data;
+        const code = data?.code ?? data?.error?.code ?? '';
+        const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+        const isCreditBlock =
+          code === 'CREDIT_LIMIT_EXCEEDED' ||
+          msg.toLowerCase().includes('credit limit') ||
+          msg.toLowerCase().includes('credit_limit');
+        if (isCreditBlock) {
+          setPendingCreatePayload({ payload, mode: 'draft' });
+          setCreditOverrideInfo(data?.details ?? data ?? null);
+          setCreditOverrideReason('');
+          setCreditOverrideOpen(true);
+          return;
+        }
+        throw err;
+      }
     } catch (err: any) {
       console.error('Failed to create sales invoice', err);
       setError(
@@ -777,7 +810,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     }
   };
 
-  const createAndPostDraft = async () => {
+  const createAndPostDraft = async (creditOverrideReasonParam?: string) => {
     const validationError = validateBeforeSave();
     if (validationError) {
       setError(validationError);
@@ -828,11 +861,37 @@ const SalesInvoiceDetailPage: React.FC = () => {
         })),
         notes: form.notes || undefined,
         settlementInput,
+        creditOverrideReason: creditOverrideReasonParam,
       };
 
-      const created = await salesApi.createAndPostSI(payload);
-      const dto = unwrap<SalesInvoiceDTO>(created);
-      navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      try {
+        const created = await salesApi.createAndPostSI(payload);
+        const raw = created as any;
+        const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
+        if (creditCheck?.outcome === 'WARN') {
+          setCreditWarnBanner(
+            `Invoice created — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
+          );
+        }
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      } catch (err: any) {
+        const data = err?.response?.data;
+        const code = data?.code ?? data?.error?.code ?? '';
+        const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+        const isCreditBlock =
+          code === 'CREDIT_LIMIT_EXCEEDED' ||
+          msg.toLowerCase().includes('credit limit') ||
+          msg.toLowerCase().includes('credit_limit');
+        if (isCreditBlock) {
+          setPendingCreatePayload({ payload, mode: 'createAndPost' });
+          setCreditOverrideInfo(data?.details ?? data ?? null);
+          setCreditOverrideReason('');
+          setCreditOverrideOpen(true);
+          return;
+        }
+        throw err;
+      }
     } catch (err: any) {
       console.error('Failed to create and post sales invoice', err);
       setError(
@@ -840,6 +899,38 @@ const SalesInvoiceDetailPage: React.FC = () => {
           err?.response?.data?.message ||
           err?.message ||
           'Failed to create and post sales invoice.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitCreditOverride = async () => {
+    if (!pendingCreatePayload || !creditOverrideReason.trim()) return;
+    const { payload, mode } = pendingCreatePayload;
+    const newPayload = { ...payload, creditOverrideReason: creditOverrideReason.trim() };
+    setCreditOverrideOpen(false);
+    setPendingCreatePayload(null);
+    setCreditOverrideInfo(null);
+    try {
+      setBusy(true);
+      setError(null);
+      if (mode === 'draft') {
+        const created = await salesApi.createSI(newPayload);
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      } else {
+        const created = await salesApi.createAndPostSI(newPayload);
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      }
+    } catch (err: any) {
+      console.error('Failed to create invoice with credit override', err);
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to create invoice with credit override.'
       );
     } finally {
       setBusy(false);
@@ -1154,7 +1245,60 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </button>
         </div>
 
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+{error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+        {creditWarnBanner && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start justify-between gap-2">
+            <span>{creditWarnBanner}</span>
+            <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
+          </div>
+        )}
+
+        {creditOverrideOpen && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Credit Limit Exceeded</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {t('sales:creditLimit.exceededMessage', 'This customer is over their credit limit and the policy is set to BLOCK. You can override by providing a reason.')}
+              </p>
+              {creditOverrideInfo && (
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                  {creditOverrideInfo.creditLimit !== undefined && <div>Credit Limit: <strong>{creditOverrideInfo.creditLimit}</strong></div>}
+                  {creditOverrideInfo.currentExposure !== undefined && <div>Current Exposure: <strong>{creditOverrideInfo.currentExposure}</strong></div>}
+                  {creditOverrideInfo.orderAmount !== undefined && <div>This Invoice: <strong>{creditOverrideInfo.orderAmount}</strong></div>}
+                  {creditOverrideInfo.projectedExposure !== undefined && <div>Projected Exposure: <strong>{creditOverrideInfo.projectedExposure}</strong></div>}
+                </div>
+              )}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales:creditLimit.overrideReason', 'Override Reason')} <span className="text-red-500">*</span></label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  placeholder={t('sales:creditLimit.overridePlaceholder', 'Explain why this credit limit override is approved…')}
+                  value={creditOverrideReason}
+                  onChange={(e) => setCreditOverrideReason(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                  onClick={() => { setCreditOverrideOpen(false); setPendingCreatePayload(null); setCreditOverrideInfo(null); setCreditOverrideReason(''); }}
+                >
+                  {t('common:cancel', 'Cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                  disabled={!creditOverrideReason.trim() || busy}
+                  onClick={submitCreditOverride}
+                >
+                  {t('sales:creditLimit.overrideSubmit', 'Override & Create')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -1737,7 +1881,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
                 <button
                   type="button"
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  onClick={createAndPostDraft}
+                  onClick={() => createAndPostDraft()}
                   disabled={busy || orderLineLoading}
                 >
                   {busy ? 'Saving & Posting...' : 'Confirm Save & Post'}
@@ -1759,7 +1903,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={createDraft}
+            onClick={() => createDraft()}
             disabled={busy || orderLineLoading}
           >
             {busy ? 'Creating...' : 'Save Draft'}

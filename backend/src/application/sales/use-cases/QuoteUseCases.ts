@@ -514,7 +514,7 @@ export class ConvertQuoteToSalesInvoiceUseCase {
       createdBy: quote.createdBy,
     };
 
-    const si = await this.createSalesInvoiceUseCase.execute(siInput);
+    const { salesInvoice: si } = await this.createSalesInvoiceUseCase.execute(siInput);
 
     quote.markConverted('SALES_INVOICE', si.id);
     await this.quoteRepo.update(quote);

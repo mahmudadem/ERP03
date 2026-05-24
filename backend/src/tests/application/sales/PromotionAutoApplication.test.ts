@@ -317,7 +317,7 @@ describe('CreateSalesInvoiceUseCase — promotion auto-invocation', () => {
       makePromoRepo([thresholdRule]),
     );
 
-    const si = await useCase.execute({
+    const { salesInvoice: si } = await useCase.execute({
       companyId: COMPANY_ID,
       persona: 'direct',
       invoiceDate: ORDER_DATE,
@@ -364,7 +364,7 @@ describe('CreateSalesInvoiceUseCase — promotion auto-invocation', () => {
       makePromoRepo([thresholdRule]),
     );
 
-    const si = await useCase.execute({
+    const { salesInvoice: si } = await useCase.execute({
       companyId: COMPANY_ID,
       persona: 'linked',
       formType: 'sales_invoice_linked',
@@ -409,7 +409,7 @@ describe('CreateSalesInvoiceUseCase — promotion auto-invocation', () => {
       makePromoRepo([thresholdRule]),
     );
 
-    const si = await useCase.execute({
+    const { salesInvoice: si } = await useCase.execute({
       companyId: COMPANY_ID,
       persona: 'direct',
       invoiceDate: ORDER_DATE,

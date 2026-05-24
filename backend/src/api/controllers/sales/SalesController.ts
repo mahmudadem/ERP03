@@ -666,7 +666,7 @@ export class SalesController {
     }
   }
 
-  static async createSI(req: Request, res: Response, next: NextFunction) {
+static async createSI(req: Request, res: Response, next: NextFunction) {
     try {
       validateCreateSalesInvoiceInput((req as any).body);
       const companyId = SalesController.getCompanyId(req);
@@ -681,18 +681,22 @@ const useCase = new CreateSalesInvoiceUseCase(
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
-        diContainer.promotionRuleRepository
+        diContainer.promotionRuleRepository,
+        new CreditCheckService(diContainer.salesInvoiceRepository),
+        diContainer.creditOverrideRepository,
       );
 
-      const si = await useCase.execute({
+      const result = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
+        creditOverrideReason: (req as any).body?.creditOverrideReason,
       });
 
       (res as any).status(201).json({
         success: true,
-        data: SalesDTOMapper.toSalesInvoiceDTO(si),
+        data: SalesDTOMapper.toSalesInvoiceDTO(result.salesInvoice),
+        creditCheck: result.creditCheck,
       });
     } catch (error) {
       next(error);
@@ -714,7 +718,9 @@ const useCase = new CreateSalesInvoiceUseCase(
         diContainer.itemCategoryRepository,
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
-        diContainer.promotionRuleRepository
+        diContainer.promotionRuleRepository,
+        new CreditCheckService(diContainer.salesInvoiceRepository),
+        diContainer.creditOverrideRepository,
       );
 
       const postUseCase = SalesController.buildPostSalesInvoiceUseCase();
@@ -733,6 +739,7 @@ const useCase = new CreateSalesInvoiceUseCase(
         ...((req as any).body || {}),
         companyId,
         createdBy: userId,
+        creditOverrideReason: (req as any).body?.creditOverrideReason,
       }, settlementInput, periodLockOverride);
 
       // Accrue sales commission (non-fatal — must not fail the post response)

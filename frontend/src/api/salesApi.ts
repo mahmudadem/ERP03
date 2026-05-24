@@ -519,6 +519,9 @@ export interface CreateSalesInvoicePayload {
   charges?: SalesInvoiceChargeInputDTO[];
   notes?: string;
   settlementInput?: SettlementInputPayload;
+  /** When provided alongside a BLOCK-policy credit limit breach, the invoice
+   *  creation proceeds and an audit override record is persisted. */
+  creditOverrideReason?: string;
 }
 
 export interface UpdateSalesInvoicePayload {

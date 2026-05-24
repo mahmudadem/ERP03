@@ -31,6 +31,7 @@ import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/IS
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
+import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
@@ -63,6 +64,9 @@ import {
   calculateSalesInvoiceTotals,
 } from '../services/SalesInvoiceCalculationService';
 import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
+import { CreditCheckService, CreditCheckResult } from '../services/CreditCheckService';
+import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
+import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -141,6 +145,14 @@ export interface CreateSalesInvoiceInput {
   charges?: SalesInvoiceChargeInput[];
   notes?: string;
   createdBy: string;
+  /** When provided alongside a BLOCK-policy credit limit breach, the invoice creation
+   *  proceeds and an audit override record is persisted. */
+  creditOverrideReason?: string;
+}
+
+export interface CreateSalesInvoiceResult {
+  salesInvoice: SalesInvoice;
+  creditCheck?: CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' };
 }
 
 export interface UpdateSalesInvoiceInput {
@@ -298,9 +310,11 @@ export class CreateSalesInvoiceUseCase {
     private readonly taxCodeRepo: ITaxCodeRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly promotionRuleRepo?: IPromotionRuleRepository,
+    private readonly creditCheckService?: CreditCheckService,
+    private readonly creditOverrideRepo?: ICreditOverrideRepository,
   ) {}
 
-  async execute(input: CreateSalesInvoiceInput, transaction?: unknown): Promise<SalesInvoice> {
+  async execute(input: CreateSalesInvoiceInput, transaction?: unknown): Promise<CreateSalesInvoiceResult> {
     const source = resolveDocumentSource(input.source);
     const persona = resolveSalesInvoicePersona(input);
     input = {
@@ -549,6 +563,52 @@ export class CreateSalesInvoiceUseCase {
 
     si.outstandingAmountBase = si.grandTotalBase;
 
+    // --- Credit check (direct persona only — linked/service invoices already checked at SO confirm time) ---
+    let creditCheckOutcome: (CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' }) | undefined;
+    if (input.persona === 'direct' && this.creditCheckService && this.creditOverrideRepo) {
+      const orderAmountBase = si.grandTotalBase;
+      const party = await this.partyRepo.getById(input.companyId, si.customerId).catch(() => null);
+      if (party && party.creditLimit !== undefined && party.creditLimit !== null) {
+        const creditCheck = await this.creditCheckService.check(input.companyId, party, orderAmountBase);
+        const overLimit = creditCheck.enforced && !creditCheck.withinLimit;
+        if (!overLimit || creditCheck.policy === 'NONE') {
+          creditCheckOutcome = { ...creditCheck, outcome: 'OK' };
+        } else if (creditCheck.policy === 'WARN') {
+          creditCheckOutcome = { ...creditCheck, outcome: 'WARN' };
+        } else {
+          // policy === 'BLOCK'
+          if (!input.creditOverrideReason) {
+            throw new CreditLimitExceededError({
+              companyId: input.companyId,
+              customerId: party.id,
+              customerName: party.displayName,
+              creditLimit: creditCheck.creditLimit,
+              currentExposure: creditCheck.currentExposure,
+              orderAmount: creditCheck.orderAmount,
+              projectedExposure: creditCheck.projectedExposure,
+            });
+          }
+          // Override provided — persist audit record
+          const overrideRecord = new CreditOverride({
+            companyId: input.companyId,
+            customerId: party.id,
+            sourceType: 'SALES_INVOICE',
+            sourceId: si.id,
+            sourceNumber: si.invoiceNumber,
+            creditLimit: creditCheck.creditLimit,
+            currentExposure: creditCheck.currentExposure,
+            orderAmount: creditCheck.orderAmount,
+            projectedExposure: creditCheck.projectedExposure,
+            reason: input.creditOverrideReason,
+            overriddenBy: input.createdBy,
+            overriddenAt: new Date(),
+          });
+          await this.creditOverrideRepo.create(overrideRecord, transaction);
+          creditCheckOutcome = { ...creditCheck, outcome: 'OVERRIDDEN' };
+        }
+      }
+    }
+
     // --- Promotion evaluation (direct persona only) ---
     if (this.promotionRuleRepo && input.persona === 'direct') {
       const rules = await this.promotionRuleRepo.list(input.companyId);
@@ -704,7 +764,7 @@ export class CreateSalesInvoiceUseCase {
 
     await this.salesInvoiceRepo.create(si, transaction);
     await this.settingsRepo.saveSettings(settings, transaction);
-    return si;
+    return { salesInvoice: si, creditCheck: creditCheckOutcome };
   }
 
   private assertCustomer(customer: Party | null, customerId: string): void {
@@ -1769,7 +1829,7 @@ export class CreateAndPostSalesInvoiceUseCase {
   ) {}
 
   async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }): Promise<SalesInvoice> {
-    const si = await this.createUseCase.execute(input);
+    const { salesInvoice: si } = await this.createUseCase.execute(input);
     return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride);
   }
 }
