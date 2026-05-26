@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -239,11 +240,9 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Currency</label>
-                <input
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase font-mono"
-                  maxLength={3}
+                <CurrencySelector
                   value={form.currency}
-                  onChange={e => set({ currency: e.target.value.toUpperCase() })}
+                  onChange={code => set({ currency: code })}
                   placeholder="USD"
                 />
               </div>

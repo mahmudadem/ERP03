@@ -135,6 +135,7 @@ export interface CreateSalesInvoiceInput {
   persona?: string;
   source?: DocumentSource | string;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerInvoiceNumber?: string;
   invoiceDate: string;
@@ -159,6 +160,7 @@ export interface UpdateSalesInvoiceInput {
   companyId: string;
   id: string;
   customerId?: string;
+  salespersonId?: string;
   customerInvoiceNumber?: string;
   invoiceDate?: string;
   dueDate?: string;
@@ -535,6 +537,7 @@ export class CreateSalesInvoiceUseCase {
       persona: input.persona || 'direct',
       source: input.source,
       salesOrderId: so?.id,
+      salespersonId: input.salespersonId,
       customerId: customer!.id,
       customerName: customer!.displayName,
       invoiceDate: input.invoiceDate,
@@ -1914,6 +1917,7 @@ export class UpdateSalesInvoiceUseCase {
       current.customerName = customer.displayName;
     }
 
+    if (input.salespersonId !== undefined) current.salespersonId = input.salespersonId || undefined;
     if (input.customerInvoiceNumber !== undefined) current.customerInvoiceNumber = input.customerInvoiceNumber;
     if (input.invoiceDate !== undefined) current.invoiceDate = input.invoiceDate;
     if (input.dueDate !== undefined) current.dueDate = input.dueDate;

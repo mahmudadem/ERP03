@@ -22,6 +22,7 @@ export interface CreatePartyInput {
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
+  customerGroupId?: string;
   defaultSalesInvoiceTemplateId?: string;
   defaultSalesInvoiceFormType?: string;
   taxExempt?: boolean;
@@ -47,6 +48,7 @@ export interface UpdatePartyInput {
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
+  customerGroupId?: string | null;
   defaultSalesInvoiceTemplateId?: string | null;
   defaultSalesInvoiceFormType?: string | null;
   taxExempt?: boolean;
@@ -104,6 +106,7 @@ export class CreatePartyUseCase {
       creditLimit: input.creditLimit,
       creditHoldPolicy: input.creditHoldPolicy,
       defaultPriceListId: input.defaultPriceListId,
+      customerGroupId: input.customerGroupId,
       defaultSalesInvoiceTemplateId: input.defaultSalesInvoiceTemplateId,
       defaultSalesInvoiceFormType: input.defaultSalesInvoiceFormType,
       taxExempt: input.taxExempt,
@@ -176,6 +179,10 @@ export class UpdatePartyUseCase {
       creditLimit: input.creditLimit ?? existing.creditLimit,
       creditHoldPolicy: input.creditHoldPolicy ?? existing.creditHoldPolicy,
       defaultPriceListId: input.defaultPriceListId ?? existing.defaultPriceListId,
+      customerGroupId:
+        input.customerGroupId !== undefined
+          ? (input.customerGroupId || undefined)
+          : existing.customerGroupId,
       defaultSalesInvoiceTemplateId:
         input.defaultSalesInvoiceTemplateId !== undefined
           ? (input.defaultSalesInvoiceTemplateId || undefined)

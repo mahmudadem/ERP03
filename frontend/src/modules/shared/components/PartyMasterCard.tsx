@@ -14,6 +14,7 @@ import {
 import { PartyDTO, PartyRole, sharedApi } from '../../../api/sharedApi';
 import { accountingApi } from '../../../api/accountingApi';
 import { salesMasterDataApi, CustomerGroupDTO, PriceListDTO } from '../../../api/salesMasterDataApi';
+import toast from 'react-hot-toast';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
@@ -122,12 +123,15 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     try {
       setSaving(true);
       setError(null);
-      const res = isNew 
+      const res = isNew
         ? await sharedApi.createParty(form)
         : await sharedApi.updateParty(partyId!, form);
+      toast.success(isNew ? 'Created' : 'Updated');
       onSaved?.(res);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save');
+      const msg = err.response?.data?.message || 'Failed to save';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

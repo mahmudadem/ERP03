@@ -46,6 +46,8 @@ export interface SalesSettingsDTO {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -231,6 +233,7 @@ export interface SalesInvoiceDTO {
   persona: string;
   source?: string;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerName: string;
   invoiceDate: string;
@@ -347,6 +350,7 @@ export interface SalesReturnDTO {
   restockingFeeValue: number;
   restockingFeeAmountDoc: number;
   restockingFeeAmountBase: number;
+  refundSettlementAccountId?: string;
   notes?: string;
   status: 'DRAFT' | 'POSTED' | 'CANCELLED';
   revenueVoucherId?: string | null;
@@ -385,6 +389,8 @@ export class SalesDTOMapper {
       defaultCOGSAccountId: settings.defaultCOGSAccountId,
       defaultInventoryAccountId: settings.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId,
+      defaultRefundAccountId: settings.defaultRefundAccountId,
+      restockingFeeAccountId: settings.restockingFeeAccountId,
       allowOverDelivery: settings.allowOverDelivery,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
@@ -570,6 +576,7 @@ export class SalesDTOMapper {
       persona: si.persona,
       source: si.source,
       salesOrderId: si.salesOrderId,
+      salespersonId: si.salespersonId,
       customerId: si.customerId,
       customerName: si.customerName,
       invoiceDate: si.invoiceDate,
@@ -661,6 +668,7 @@ export class SalesDTOMapper {
       restockingFeeValue: sr.restockingFeeValue,
       restockingFeeAmountDoc: sr.restockingFeeAmountDoc,
       restockingFeeAmountBase: sr.restockingFeeAmountBase,
+      refundSettlementAccountId: sr.refundSettlementAccountId,
       notes: sr.notes,
       status: sr.status,
       revenueVoucherId: sr.revenueVoucherId ?? null,
