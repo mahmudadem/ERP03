@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../../../components/ui/Modal';
 import { salesAuditApi, PostingLog, Voucher } from '../../../api/salesAuditApi';
+import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
 import { useAccounts } from '../../../context/AccountsContext';
 
 interface GlImpactModalProps {
@@ -28,6 +29,7 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postingLogs, setPostingLogs] = useState<PostingLog[]>([]);
+  const [itemMap, setItemMap] = useState<Record<string, InventoryItemDTO>>({});
   const [voucherMap, setVoucherMap] = useState<Record<string, Voucher>>({});
 
   useEffect(() => {
@@ -40,12 +42,32 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
       setError(null);
       setPostingLogs([]);
       setVoucherMap({});
+      setItemMap({});
 
       try {
         const logs = await salesAuditApi.getPostingLogsBySource(sourceId);
         const logsArray = Array.isArray(logs) ? logs : [];
         if (cancelled) return;
         setPostingLogs(logsArray);
+
+        const itemIds = Array.from(
+          new Set(
+            logsArray.flatMap((log) => log.decisions.map((d) => d.itemId).filter((id): id is string => !!id))
+          )
+        );
+        if (itemIds.length > 0) {
+          try {
+            const items = await inventoryApi.listItems({ limit: 1000 });
+            if (cancelled) return;
+            const map: Record<string, InventoryItemDTO> = {};
+            (items || []).forEach((it) => {
+              if (itemIds.includes(it.id)) map[it.id] = it;
+            });
+            setItemMap(map);
+          } catch {
+            // Non-fatal — fall back to showing raw ids.
+          }
+        }
 
         const idsFromLogs = logsArray.flatMap((log) => log.voucherIds);
         const allVoucherIds = Array.from(
@@ -311,7 +333,10 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
                           </span>
                           {decision.itemId && (
                             <span className="text-xs text-slate-500">
-                              {t('sales.glImpact.item', 'Item')}: {decision.itemId}
+                              {t('sales.glImpact.item', 'Item')}:{' '}
+                              {itemMap[decision.itemId]
+                                ? `${itemMap[decision.itemId].code} - ${itemMap[decision.itemId].name}`
+                                : decision.itemId}
                             </span>
                           )}
                           {decision.cogsPostingStatus && (

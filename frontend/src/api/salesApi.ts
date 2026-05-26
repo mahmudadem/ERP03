@@ -62,6 +62,8 @@ export interface SalesSettingsDTO {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -356,6 +358,7 @@ export interface SalesReturnDTO {
   createdAt: string;
   updatedAt: string;
   postedAt?: string;
+  refundSettlementAccountId?: string;
 }
 
 export interface InitializeSalesPayload {
@@ -485,6 +488,7 @@ export interface SalesInvoiceLineInputDTO {
   discountValue?: number;
   discountAmountDoc?: number;
   taxCodeId?: string;
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
 }
@@ -601,6 +605,7 @@ export interface CreateSalesReturnPayload {
   restockingFeeValue?: number;
   notes?: string;
   lines?: SalesReturnLineInputDTO[];
+  refundSettlementAccountId?: string;
 }
 
 export interface UpdateSalesReturnPayload {

@@ -43,6 +43,7 @@ export interface TaxCodeDTO {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  priceIsInclusive?: boolean;
   active: boolean;
   createdBy: string;
   createdAt: string;

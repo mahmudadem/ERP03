@@ -183,6 +183,7 @@ export interface SalesInvoiceLineDTO {
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -550,6 +551,7 @@ export class SalesDTOMapper {
       taxCodeId: line.taxCodeId,
       taxCode: line.taxCode,
       taxRate: line.taxRate,
+      priceIsInclusive: line.priceIsInclusive,
       taxAmountDoc: line.taxAmountDoc,
       taxAmountBase: line.taxAmountBase,
       warehouseId: line.warehouseId,

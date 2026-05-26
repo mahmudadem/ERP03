@@ -11,6 +11,9 @@ export interface TaxCodeProps {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  /** When true, prices entered on documents using this tax code are treated as
+   *  tax-inclusive by default. Individual lines may override this. */
+  priceIsInclusive?: boolean;
   active: boolean;
   createdBy: string;
   createdAt: Date;
@@ -36,6 +39,7 @@ export class TaxCode {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  priceIsInclusive: boolean;
   active: boolean;
   readonly createdBy: string;
   readonly createdAt: Date;
@@ -65,6 +69,7 @@ export class TaxCode {
     this.scope = props.scope;
     this.purchaseTaxAccountId = props.purchaseTaxAccountId;
     this.salesTaxAccountId = props.salesTaxAccountId;
+    this.priceIsInclusive = props.priceIsInclusive === true;
     this.active = props.active;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
@@ -82,6 +87,7 @@ export class TaxCode {
       scope: this.scope,
       purchaseTaxAccountId: this.purchaseTaxAccountId,
       salesTaxAccountId: this.salesTaxAccountId,
+      priceIsInclusive: this.priceIsInclusive,
       active: this.active,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
@@ -100,6 +106,7 @@ export class TaxCode {
       scope: data.scope,
       purchaseTaxAccountId: data.purchaseTaxAccountId,
       salesTaxAccountId: data.salesTaxAccountId,
+      priceIsInclusive: data.priceIsInclusive === true,
       active: data.active ?? true,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt || new Date()),

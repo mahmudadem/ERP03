@@ -62,6 +62,13 @@ export const formatCompanyDate = (
 };
 
 /**
+ * Today as YYYY-MM-DD in the user's LOCAL timezone (not UTC).
+ * Use this for date pickers and any "today" default. Avoids the bug where
+ * `new Date().toISOString().slice(0,10)` returns yesterday for users east of UTC.
+ */
+export const todayLocalIso = (): string => formatForInput(new Date());
+
+/**
  * Formats a date specifically for HTML date inputs (YYYY-MM-DD)
  * This should always be YYYY-MM-DD even if display format is different.
  */

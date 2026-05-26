@@ -30,6 +30,9 @@ export interface SalesInvoiceLine {
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  /** Per-line override for tax-inclusive pricing. When undefined, falls back to the
+   *  tax code's `priceIsInclusive` default; when false explicitly, treats prices as exclusive. */
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;

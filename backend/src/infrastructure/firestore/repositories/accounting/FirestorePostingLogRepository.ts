@@ -1,9 +1,10 @@
 import * as admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 import { PostingLog } from '../../../../domain/accounting/entities/PostingLog';
 import { IPostingLogRepository } from '../../../../repository/interfaces/accounting/IPostingLogRepository';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
-const toTimestamp = (d: Date) => admin.firestore.Timestamp.fromDate(d);
+const toTimestamp = (d: Date) => Timestamp.fromDate(d);
 const fromTimestamp = (v: any): Date => (v?.toDate ? v.toDate() : new Date(v));
 
 export class FirestorePostingLogRepository implements IPostingLogRepository {
@@ -36,7 +37,14 @@ export class FirestorePostingLogRepository implements IPostingLogRepository {
       const data = log.toJSON();
       data.postedAt = toTimestamp(log.postedAt);
       await this.col(log.companyId).doc(log.id).set(data);
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[FirestorePostingLogRepository] underlying error:', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        logId: log.id,
+        sourceId: log.sourceId,
+      });
       throw new InfrastructureError('Failed to write PostingLog', err);
     }
   }

@@ -113,6 +113,8 @@ export interface SalesInvoiceLineInput {
   discountValue?: number;
   discountAmountDoc?: number;
   taxCodeId?: string;
+  /** Optional per-line override. When undefined, falls back to the tax code's default. */
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
 }
@@ -415,13 +417,20 @@ export class CreateSalesInvoiceUseCase {
 
       let taxRate = 0;
       let taxCode: string | undefined;
+      let taxCodeInclusiveDefault = false;
       if (taxCodeId) {
         const selectedTaxCode = await this.taxCodeRepo.getById(input.companyId, taxCodeId);
         if (!selectedTaxCode) throw new Error(`Tax code not found: ${taxCodeId}`);
         assertValidSalesTaxCode(selectedTaxCode, taxCodeId);
         taxRate = selectedTaxCode.rate;
         taxCode = selectedTaxCode.code;
+        taxCodeInclusiveDefault = selectedTaxCode.priceIsInclusive === true;
       }
+
+      const effectiveInclusive =
+        sourceLine.priceIsInclusive !== undefined
+          ? sourceLine.priceIsInclusive === true
+          : taxCodeInclusiveDefault;
 
       const discountType = sourceLine.discountType;
       const discountValue = sourceLine.discountValue;
@@ -430,6 +439,7 @@ export class CreateSalesInvoiceUseCase {
         unitPriceDoc,
         exchangeRate,
         taxRate,
+        priceIsInclusive: effectiveInclusive,
         discountType,
         discountValue,
         discountAmountDoc: sourceLine.discountAmountDoc,
@@ -466,6 +476,8 @@ export class CreateSalesInvoiceUseCase {
         taxCodeId,
         taxCode,
         taxRate,
+        priceIsInclusive:
+          sourceLine.priceIsInclusive !== undefined ? sourceLine.priceIsInclusive === true : undefined,
         taxAmountDoc: lineAmounts.taxAmountDoc,
         taxAmountBase: lineAmounts.taxAmountBase,
         warehouseId: sourceLine.warehouseId || soLine?.warehouseId || settings.defaultWarehouseId,
@@ -1452,56 +1464,62 @@ export class PostSalesInvoiceUseCase {
       si.postedAt = new Date();
       si.updatedAt = new Date();
       await this.salesInvoiceRepo.update(si, transaction);
-
-      if (this.postingLogRepo && shouldPostAccounting) {
-        try {
-          const voucherIds = [si.voucherId, si.cogsVoucherId].filter((v): v is string => !!v);
-          const decisions: LineDecision[] = si.lines.map((ln) => {
-            const resolved = lineResolvedAccounts.get(ln.lineId);
-            const accounts: LineDecision['accounts'] = {};
-            if (resolved?.revenueId) accounts.revenue = { resolvedId: resolved.revenueId, fallbackLevel: 'item' };
-            if (resolved?.taxId) accounts.tax = { resolvedId: resolved.taxId, fallbackLevel: 'taxCode' };
-            if (resolved?.cogsId) accounts.cogs = { resolvedId: resolved.cogsId, fallbackLevel: 'item' };
-            if (resolved?.inventoryId) accounts.inventory = { resolvedId: resolved.inventoryId, fallbackLevel: 'item' };
-            return {
-              lineNo: ln.lineNo,
-              itemId: ln.itemId,
-              accounts,
-              cogsPostingStatus: ln.cogsPostingStatus ?? null,
-            };
-          });
-          const warnings: string[] = [];
-          for (const ln of si.lines) {
-            if (ln.cogsPostingStatus === 'SKIPPED_UNSETTLED_COST') {
-              warnings.push(`Line ${ln.lineNo} (${ln.itemCode}): cost basis unsettled — COGS not posted at invoice time.`);
-            }
-          }
-          const log = new PostingLog({
-            id: nodeRandomUUID(),
-            companyId,
-            sourceModule: 'sales',
-            sourceType: 'SALES_INVOICE',
-            sourceId: si.id,
-            sourceDocNumber: si.invoiceNumber,
-            strategy: 'SalesInvoiceStrategy',
-            voucherIds,
-            decisions,
-            warnings,
-            postedAt: new Date(),
-            postedBy: si.createdBy || 'SYSTEM',
-          });
-          await this.postingLogRepo.create(log);
-        } catch (err) {
-          // PostingLog persistence is best-effort: it must not roll back the posting.
-          console.warn('[PostingLog] write failed for SalesInvoice', si.id, err);
-        }
-      }
     };
 
     if (externalTransaction) {
       await postingLogic(externalTransaction);
     } else {
       await this.transactionManager.runTransaction(postingLogic);
+    }
+
+    // PostingLog write runs AFTER the transaction commits — best-effort, must not
+    // roll back the posting, and must not be subject to transaction retries (which
+    // would emit duplicate logs with fresh UUIDs each attempt).
+    if (this.postingLogRepo && shouldPostAccounting) {
+      try {
+        const voucherIds = [si.voucherId, si.cogsVoucherId].filter((v): v is string => !!v);
+        const decisions: LineDecision[] = si.lines.map((ln) => {
+          const resolved = lineResolvedAccounts.get(ln.lineId);
+          const accounts: LineDecision['accounts'] = {};
+          if (resolved?.revenueId) accounts.revenue = { resolvedId: resolved.revenueId, fallbackLevel: 'item' };
+          if (resolved?.taxId) accounts.tax = { resolvedId: resolved.taxId, fallbackLevel: 'taxCode' };
+          if (resolved?.cogsId) accounts.cogs = { resolvedId: resolved.cogsId, fallbackLevel: 'item' };
+          if (resolved?.inventoryId) accounts.inventory = { resolvedId: resolved.inventoryId, fallbackLevel: 'item' };
+          return {
+            lineNo: ln.lineNo,
+            itemId: ln.itemId,
+            accounts,
+            cogsPostingStatus: ln.cogsPostingStatus ?? null,
+          };
+        });
+        const warnings: string[] = [];
+        for (const ln of si.lines) {
+          if (ln.cogsPostingStatus === 'SKIPPED_UNSETTLED_COST') {
+            warnings.push(`Line ${ln.lineNo} (${ln.itemCode}): cost basis unsettled — COGS not posted at invoice time.`);
+          }
+        }
+        const log = new PostingLog({
+          id: nodeRandomUUID(),
+          companyId,
+          sourceModule: 'sales',
+          sourceType: 'SALES_INVOICE',
+          sourceId: si.id,
+          sourceDocNumber: si.invoiceNumber,
+          strategy: 'SalesInvoiceStrategy',
+          voucherIds,
+          decisions,
+          warnings,
+          postedAt: new Date(),
+          postedBy: si.createdBy || 'SYSTEM',
+        });
+        await this.postingLogRepo.create(log);
+      } catch (err: any) {
+        // Best-effort: log loudly with detail so this isn't invisible in cloud logs.
+        console.error(
+          '[PostingLog] write failed for SalesInvoice',
+          { siId: si.id, invoiceNumber: si.invoiceNumber, companyId, message: err?.message, stack: err?.stack }
+        );
+      }
     }
 
     const posted = (await this.salesInvoiceRepo.getById(companyId, id))!;
@@ -1560,11 +1578,16 @@ export class PostSalesInvoiceUseCase {
   }
 
   private freezeTaxSnapshotSync(line: SalesInvoiceLine, rate: number, tax?: TaxCode): void {
+    const effectiveInclusive =
+      line.priceIsInclusive !== undefined
+        ? line.priceIsInclusive === true
+        : tax?.priceIsInclusive === true;
     const amounts = calculateSalesInvoiceLineAmounts({
       invoicedQty: line.invoicedQty,
       unitPriceDoc: line.unitPriceDoc,
       exchangeRate: rate,
       taxRate: tax?.rate || 0,
+      priceIsInclusive: effectiveInclusive,
       discountType: line.discountType,
       discountValue: line.discountValue,
       discountAmountDoc: line.discountAmountDoc,
@@ -1959,6 +1982,7 @@ export class UpdateSalesInvoiceUseCase {
           taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
           taxCode: existing?.taxCode,
           taxRate: existing?.taxRate ?? 0,
+          priceIsInclusive: line.priceIsInclusive ?? existing?.priceIsInclusive,
           taxAmountDoc: existing?.taxAmountDoc ?? 0,
           taxAmountBase: existing?.taxAmountBase ?? 0,
           warehouseId: line.warehouseId ?? existing?.warehouseId,

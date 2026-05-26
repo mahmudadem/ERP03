@@ -34,10 +34,11 @@ import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../..
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
+import { todayLocalIso } from '../../../utils/dateUtils';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
-const todayIso = (): string => new Date().toISOString().slice(0, 10);
+const todayIso = todayLocalIso;
 const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
 const formatFileSize = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
@@ -72,6 +73,8 @@ interface EditableLine {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  /** undefined → inherit tax code default; true/false → explicit override */
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
 }
@@ -331,7 +334,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
-      const taxRate = line.taxCodeId ? taxById[line.taxCodeId]?.rate ?? 0 : 0;
+      const taxCode = line.taxCodeId ? taxById[line.taxCodeId] : undefined;
+      const taxRate = taxCode?.rate ?? 0;
+      const effectiveInclusive =
+        line.priceIsInclusive !== undefined ? line.priceIsInclusive === true : taxCode?.priceIsInclusive === true;
+      const divisor = effectiveInclusive ? 1 + taxRate : 1;
       const grossLineTotalDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
       const discountValue = Number(line.discountValue || 0);
       const discountAmountDoc = line.discountType === 'PERCENT'
@@ -339,10 +346,13 @@ const SalesInvoiceDetailPage: React.FC = () => {
         : line.discountType === 'AMOUNT'
           ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, discountValue)))
           : 0;
-      const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+      const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+      const lineTotalDoc = effectiveInclusive ? roundMoney(postDiscountDoc / divisor) : postDiscountDoc;
       const lineTotalBase = roundMoney(lineTotalDoc * (form.exchangeRate || 0));
-      const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
-      const taxAmountBase = roundMoney(lineTotalBase * taxRate);
+      const taxAmountDoc = effectiveInclusive
+        ? roundMoney(postDiscountDoc - lineTotalDoc)
+        : roundMoney(lineTotalDoc * taxRate);
+      const taxAmountBase = roundMoney(taxAmountDoc * (form.exchangeRate || 0));
 
       return {
         grossLineTotalDoc,
@@ -727,6 +737,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       discountType: line.discountType,
       discountValue: line.discountType ? line.discountValue || 0 : undefined,
       taxCodeId: line.taxCodeId || undefined,
+      priceIsInclusive: line.priceIsInclusive,
       warehouseId: line.warehouseId || undefined,
       description: line.description || undefined,
     };
@@ -1592,6 +1603,31 @@ const SalesInvoiceDetailPage: React.FC = () => {
                           </option>
                         ))}
                       </select>
+                      {line.taxCodeId && (() => {
+                        const tc = taxById[line.taxCodeId];
+                        const effective =
+                          line.priceIsInclusive !== undefined
+                            ? line.priceIsInclusive
+                            : tc?.priceIsInclusive === true;
+                        return (
+                          <label className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 rounded border-slate-300"
+                              checked={effective}
+                              onChange={(e) =>
+                                setLine(index, { priceIsInclusive: e.target.checked })
+                              }
+                            />
+                            <span>
+                              Tax-inclusive
+                              {line.priceIsInclusive === undefined && tc?.priceIsInclusive && (
+                                <span className="ml-1 text-[10px] text-slate-400">(default)</span>
+                              )}
+                            </span>
+                          </label>
+                        );
+                      })()}
                     </td>
                     <td className="py-2 pr-2">
                       {line.dnLineId ? (

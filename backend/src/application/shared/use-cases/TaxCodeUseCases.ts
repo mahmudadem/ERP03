@@ -12,6 +12,7 @@ export interface CreateTaxCodeInput {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  priceIsInclusive?: boolean;
   createdBy: string;
 }
 
@@ -25,6 +26,7 @@ export interface UpdateTaxCodeInput {
   scope?: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  priceIsInclusive?: boolean;
   active?: boolean;
 }
 
@@ -91,6 +93,7 @@ export class CreateTaxCodeUseCase {
       scope: input.scope,
       purchaseTaxAccountId: input.purchaseTaxAccountId,
       salesTaxAccountId: input.salesTaxAccountId,
+      priceIsInclusive: input.priceIsInclusive === true,
       active: true,
       createdBy: input.createdBy,
       createdAt: now,
@@ -125,6 +128,8 @@ export class UpdateTaxCodeUseCase {
       scope: input.scope ?? existing.scope,
       purchaseTaxAccountId: input.purchaseTaxAccountId ?? existing.purchaseTaxAccountId,
       salesTaxAccountId: input.salesTaxAccountId ?? existing.salesTaxAccountId,
+      priceIsInclusive:
+        input.priceIsInclusive !== undefined ? input.priceIsInclusive === true : existing.priceIsInclusive,
       active: input.active ?? existing.active,
       createdBy: existing.createdBy,
       createdAt: existing.createdAt,
