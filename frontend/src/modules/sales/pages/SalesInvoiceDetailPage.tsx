@@ -1996,6 +1996,16 @@ const SalesInvoiceDetailPage: React.FC = () => {
                 : '-'}
             </div>
           </div>
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Salesperson</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {(() => {
+                if (!invoice.salespersonId) return '-';
+                const sp = salespersons.find((s) => s.id === invoice.salespersonId);
+                return sp ? `${sp.code} - ${sp.name}` : invoice.salespersonId;
+              })()}
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -2382,6 +2392,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
         onClose={() => setGlImpactOpen(false)}
         sourceId={invoice.id}
         sourceLabel={invoice.invoiceNumber}
+        documentStatus={invoice.status}
       />
 
       {overrideModalData && (

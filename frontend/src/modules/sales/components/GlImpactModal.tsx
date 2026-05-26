@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../../../components/ui/Modal';
 import { salesAuditApi, PostingLog, Voucher } from '../../../api/salesAuditApi';
+import { useAccounts } from '../../../context/AccountsContext';
 
 interface GlImpactModalProps {
   isOpen: boolean;
   onClose: () => void;
   sourceId: string;
   sourceLabel?: string;
+  fallbackVoucherIds?: string[];
+  documentStatus?: string;
 }
 
 const fmt = (n: number) => n.toFixed(2);
@@ -17,8 +20,11 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
   onClose,
   sourceId,
   sourceLabel,
+  fallbackVoucherIds,
+  documentStatus,
 }) => {
   const { t } = useTranslation('common');
+  const { getAccountById } = useAccounts();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postingLogs, setPostingLogs] = useState<PostingLog[]>([]);
@@ -41,8 +47,13 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
         if (cancelled) return;
         setPostingLogs(logsArray);
 
+        const idsFromLogs = logsArray.flatMap((log) => log.voucherIds);
         const allVoucherIds = Array.from(
-          new Set(logsArray.flatMap((log) => log.voucherIds))
+          new Set(
+            idsFromLogs.length > 0
+              ? idsFromLogs
+              : (fallbackVoucherIds ?? [])
+          )
         );
 
         if (allVoucherIds.length > 0) {
@@ -75,7 +86,7 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, sourceId, t]);
+  }, [isOpen, sourceId, fallbackVoucherIds?.join(','), t]);
 
   const title = sourceLabel
     ? `${t('sales.glImpact.title', 'GL Impact')} — ${sourceLabel}`
@@ -94,10 +105,73 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
           </div>
         )}
 
-        {!loading && !error && postingLogs.length === 0 && (
-          <p className="text-sm text-slate-500">
-            {t('sales.glImpact.noImpact', 'No GL impact recorded — this document has not been posted yet.')}
-          </p>
+        {!loading && !error && postingLogs.length === 0 && Object.keys(voucherMap).length === 0 && (
+          (() => {
+            const normalized = (documentStatus ?? '').toString().toUpperCase();
+            const isUnposted = !normalized || normalized === 'DRAFT' || normalized === 'CANCELLED' || normalized === 'VOID';
+            if (isUnposted) {
+              return (
+                <p className="text-sm text-slate-500">
+                  {t('sales.glImpact.noImpact', 'No GL impact recorded — this document has not been posted yet.')}
+                </p>
+              );
+            }
+            return (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                {t(
+                  'sales.glImpact.postedButMissing',
+                  'GL impact data unavailable for this posted document — posting log was not written. Contact admin.'
+                )}
+              </div>
+            );
+          })()
+        )}
+
+        {!loading && !error && postingLogs.length === 0 && Object.keys(voucherMap).length > 0 && (
+          <div className="space-y-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              {t('sales.glImpact.journalEntries', 'Journal Entries')}
+            </p>
+            {Object.entries(voucherMap).map(([vid, voucher]) => (
+              <div key={vid} className="mb-3 rounded-lg border border-slate-200 overflow-hidden">
+                <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
+                  <span className="text-xs font-semibold text-slate-700">{voucher.voucherNo}</span>
+                  <span className="text-xs text-slate-500">{voucher.date} &mdash; {voucher.type}</span>
+                </div>
+                <table className="min-w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-white">
+                      <th className="py-1.5 pl-3 text-left font-medium text-slate-600">{t('sales.glImpact.account', 'Account')}</th>
+                      <th className="py-1.5 pr-3 text-right font-medium text-slate-600">{t('sales.glImpact.debit', 'Debit')}</th>
+                      <th className="py-1.5 pr-3 text-right font-medium text-slate-600">{t('sales.glImpact.credit', 'Credit')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {voucher.lines.map((line, idx) => {
+                      const amt = Number((line as any).baseAmount ?? line.debitAmount ?? line.creditAmount ?? 0);
+                      const isDebit = (line as any).side === 'Debit' || (line.debitAmount ?? 0) > 0;
+                      return (
+                        <tr key={(line as any).id || idx} className="border-b border-slate-100">
+                          <td className="py-1.5 pl-3 text-slate-700">
+                            {(() => { const a = getAccountById(line.accountId); return a ? `${a.code} — ${a.name}` : line.accountId; })()}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right text-slate-700">{isDebit && amt > 0 ? fmt(amt) : ''}</td>
+                          <td className="py-1.5 pr-3 text-right text-slate-700">{!isDebit && amt > 0 ? fmt(amt) : ''}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-slate-300 bg-slate-50">
+                      <td className="py-1.5 pl-3 font-semibold text-slate-700">{t('sales.glImpact.total', 'Total')}</td>
+                      <td className="py-1.5 pr-3 text-right font-semibold text-slate-700">{fmt(voucher.totalDebit)}</td>
+                      <td className="py-1.5 pr-3 text-right font-semibold text-slate-700">{fmt(voucher.totalCredit)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ))}
+          </div>
         )}
 
         {!loading && !error && postingLogs.map((log) => (
@@ -174,26 +248,26 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
                           </tr>
                         </thead>
                         <tbody>
-                          {voucher.lines.map((line) => (
-                            <tr
-                              key={line.lineNo}
-                              className="border-b border-slate-100"
-                            >
-                              <td className="py-1.5 pl-3 text-slate-700">
-                                {line.accountId}
-                              </td>
-                              <td className="py-1.5 pr-3 text-right text-slate-700">
-                                {line.debitAmount > 0
-                                  ? fmt(line.debitAmount)
-                                  : ''}
-                              </td>
-                              <td className="py-1.5 pr-3 text-right text-slate-700">
-                                {line.creditAmount > 0
-                                  ? fmt(line.creditAmount)
-                                  : ''}
-                              </td>
-                            </tr>
-                          ))}
+                          {voucher.lines.map((line, idx) => {
+                            const amt = Number((line as any).baseAmount ?? line.debitAmount ?? line.creditAmount ?? 0);
+                            const isDebit = (line as any).side === 'Debit' || (line.debitAmount ?? 0) > 0;
+                            return (
+                              <tr
+                                key={(line as any).id || idx}
+                                className="border-b border-slate-100"
+                              >
+                                <td className="py-1.5 pl-3 text-slate-700">
+                                  {(() => { const a = getAccountById(line.accountId); return a ? `${a.code} — ${a.name}` : line.accountId; })()}
+                                </td>
+                                <td className="py-1.5 pr-3 text-right text-slate-700">
+                                  {isDebit && amt > 0 ? fmt(amt) : ''}
+                                </td>
+                                <td className="py-1.5 pr-3 text-right text-slate-700">
+                                  {!isDebit && amt > 0 ? fmt(amt) : ''}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                         <tfoot>
                           <tr className="border-t border-slate-300 bg-slate-50">
@@ -272,8 +346,8 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
                                   <td className="py-0.5 pr-3 capitalize text-slate-600">
                                     {role}
                                   </td>
-                                  <td className="py-0.5 pr-3 font-mono text-slate-700">
-                                    {ra.resolvedId}
+                                  <td className="py-0.5 pr-3 text-slate-700">
+                                    {(() => { const a = getAccountById(ra.resolvedId); return a ? `${a.code} — ${a.name}` : ra.resolvedId; })()}
                                   </td>
                                   <td className="py-0.5 text-slate-500">
                                     {ra.fallbackLevel}

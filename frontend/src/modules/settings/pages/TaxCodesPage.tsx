@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { TaxCodeDTO, TaxScope, TaxType, sharedApi } from '../../../api/sharedApi';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 
 interface TaxCodeFormState {
   code: string;
@@ -172,19 +173,19 @@ const TaxCodesPage: React.FC = () => {
             </select>
           </label>
           <label className="text-sm">
-            <div className="mb-1 font-medium">Purchase Tax Account ID</div>
-            <input
-              className="w-full rounded border border-slate-300 px-3 py-2"
+            <div className="mb-1 font-medium">Purchase Tax Account</div>
+            <AccountSelector
               value={form.purchaseTaxAccountId}
-              onChange={(e) => setForm((prev) => ({ ...prev, purchaseTaxAccountId: e.target.value }))}
+              onChange={(account) => setForm((prev) => ({ ...prev, purchaseTaxAccountId: account?.id || '' }))}
+              placeholder="Select purchase tax account"
             />
           </label>
           <label className="text-sm">
-            <div className="mb-1 font-medium">Sales Tax Account ID</div>
-            <input
-              className="w-full rounded border border-slate-300 px-3 py-2"
+            <div className="mb-1 font-medium">Sales Tax Account</div>
+            <AccountSelector
               value={form.salesTaxAccountId}
-              onChange={(e) => setForm((prev) => ({ ...prev, salesTaxAccountId: e.target.value }))}
+              onChange={(account) => setForm((prev) => ({ ...prev, salesTaxAccountId: account?.id || '' }))}
+              placeholder="Select sales tax account"
             />
           </label>
           <div className="flex gap-2 md:col-span-2">
