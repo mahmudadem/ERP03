@@ -10,7 +10,12 @@
  * must have applied a COA template.
  *
  * Usage (from backend/):
- *   npx ts-node scripts/seed-test-tenant.ts --companyId <id> [--userId <uid>] [--dry-run]
+ *   npx ts-node scripts/seed-test-tenant.ts --companyId <id> [--userId <uid>] [--dry-run] [--post-ov]
+ *
+ * Flags:
+ *   --post-ov    Also POST the Opening Stock document via the real use case
+ *                (proves DI wiring works in-script — required before adding
+ *                SO/DN/SI/SR/RV/PV/JV in Phase 1b).
  *
  * What it seeds:
  *   - 1 default warehouse "WH-MAIN" if no warehouse exists yet
@@ -46,6 +51,7 @@ type Args = {
   companyId: string;
   userId: string;
   dryRun: boolean;
+  postOv: boolean;
 };
 
 function parseArgs(): Args {
@@ -63,6 +69,7 @@ function parseArgs(): Args {
     companyId,
     userId: get('userId') || 'seed-script',
     dryRun: argv.includes('--dry-run'),
+    postOv: argv.includes('--post-ov'),
   };
 }
 
@@ -412,6 +419,73 @@ async function seedOpeningStockDraft(
   return id;
 }
 
+/**
+ * Post the Opening Stock document via the real PostOpeningStockDocumentUseCase.
+ * Imports DI lazily so the rest of the script (master data seeding) can run
+ * without any backend wiring overhead when --post-ov is not set.
+ */
+async function postOpeningStockViaUseCase(
+  companyId: string,
+  ovDocId: string,
+  userId: string,
+): Promise<void> {
+  console.log('\n— Posting Opening Stock via use case —');
+
+  // Lazy imports so the rest of the script doesn't pull the full backend.
+  const { diContainer } = await import('../src/infrastructure/di/bindRepositories');
+  const { PostOpeningStockDocumentUseCase } = await import(
+    '../src/application/inventory/use-cases/OpeningStockDocumentUseCases'
+  );
+  const { RecordStockMovementUseCase } = await import(
+    '../src/application/inventory/use-cases/RecordStockMovementUseCase'
+  );
+  const { SubledgerVoucherPostingService } = await import(
+    '../src/application/accounting/services/SubledgerVoucherPostingService'
+  );
+  const { VoucherValidationService } = await import(
+    '../src/application/accounting/services/VoucherValidationService'
+  );
+
+  const movementUseCase = new RecordStockMovementUseCase({
+    itemRepository: diContainer.itemRepository,
+    warehouseRepository: diContainer.warehouseRepository,
+    stockMovementRepository: diContainer.stockMovementRepository,
+    stockLevelRepository: diContainer.stockLevelRepository,
+    companyRepository: diContainer.companyRepository,
+    inventorySettingsRepository: diContainer.inventorySettingsRepository,
+    transactionManager: diContainer.transactionManager,
+  });
+
+  const accountingPostingService = new SubledgerVoucherPostingService(
+    diContainer.voucherRepository,
+    diContainer.ledgerRepository,
+    diContainer.companyCurrencyRepository,
+    diContainer.accountRepository,
+    new VoucherValidationService(),
+  );
+
+  const useCase = new PostOpeningStockDocumentUseCase(
+    diContainer.openingStockDocumentRepository,
+    diContainer.itemRepository,
+    diContainer.itemCategoryRepository,
+    diContainer.warehouseRepository,
+    diContainer.inventorySettingsRepository,
+    diContainer.companyRepository,
+    diContainer.companyModuleRepository,
+    diContainer.accountRepository,
+    movementUseCase,
+    accountingPostingService,
+    diContainer.transactionManager,
+  );
+
+  const posted = await useCase.execute(companyId, ovDocId, userId);
+  console.log(`✓ OV ${ovDocId} POSTED (voucherId=${posted.voucherId || 'n/a'})`);
+  console.log(`  Total value posted: ${posted.totalValueBase}`);
+  console.log('  Expected GL impact:');
+  console.log('    DR Inventory      = 1000.00');
+  console.log('    CR Opening Equity = 1000.00');
+}
+
 async function main() {
   const args = parseArgs();
   console.log(`\nseed-test-tenant — companyId=${args.companyId} userId=${args.userId} dryRun=${args.dryRun}\n`);
@@ -449,7 +523,7 @@ async function main() {
   const taxCodeId = await seedTaxCode(db, args.companyId, args.userId, accounts.tax, args.dryRun);
   const items = await seedItems(db, args.companyId, args.userId, accounts, taxCodeId, args.dryRun);
   await seedParties(db, args.companyId, args.userId, accounts, args.dryRun);
-  await seedOpeningStockDraft(
+  const ovId = await seedOpeningStockDraft(
     db,
     args.companyId,
     args.userId,
@@ -459,9 +533,25 @@ async function main() {
     args.dryRun,
   );
 
+  if (args.postOv && !args.dryRun) {
+    try {
+      await postOpeningStockViaUseCase(args.companyId, ovId, args.userId);
+    } catch (err: any) {
+      console.error('\n❌ OV posting failed:', err?.message || err);
+      console.error('   The OV doc was created as DRAFT. You can retry by re-running with --post-ov,');
+      console.error('   or post it through the UI. Master data seeding above is unaffected.');
+      throw err;
+    }
+  }
+
   console.log(`\n${args.dryRun ? '(dry-run complete — nothing was written)' : '✅ Seed complete.'}\n`);
   console.log('Next steps:');
-  console.log('  1. Open the Opening Stock document in the UI and POST it (sets cost basis for WIDGET-A).');
+  if (!args.postOv) {
+    console.log('  1. Open the Opening Stock document in the UI and POST it (sets cost basis for WIDGET-A).');
+    console.log('     OR: re-run with --post-ov to post via the use case in-script.');
+  } else {
+    console.log('  1. ✓ OV posted via use case — cost basis for WIDGET-A is now $10.');
+  }
   console.log('  2. Create a few Sales Invoices through the UI:');
   console.log('     - One with WIDGET-A only → has cost basis, COGS will post normally.');
   console.log('     - One with WIDGET-B only → no cost basis, COGS will post as 0 (the by-design path).');
