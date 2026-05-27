@@ -34,6 +34,8 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
+import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
@@ -72,6 +74,7 @@ export interface CreateSalesReturnInput {
   reason: string;
   restockingFeeType?: RestockingFeeType;
   restockingFeeValue?: number;
+  refundSettlementAccountId?: string;
   notes?: string;
   lines?: SalesReturnLineInput[];
   createdBy: string;
@@ -168,7 +171,8 @@ export class CreateSalesReturnUseCase {
     private readonly salesReturnRepo: ISalesReturnRepository,
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly recordChangeService?: RecordChangeService,
+    private readonly companyCurrencyRepo?: ICompanyCurrencyRepository
   ) {}
 
   async execute(input: CreateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
@@ -260,7 +264,10 @@ export class CreateSalesReturnUseCase {
       returnContext,
       returnDate: input.returnDate,
       warehouseId,
-      currency: salesInvoice?.currency || deliveryNote?.lines[0]?.moveCurrency || 'USD',
+      currency: salesInvoice?.currency
+        || deliveryNote?.lines[0]?.moveCurrency
+        || (this.companyCurrencyRepo ? (await this.companyCurrencyRepo.getBaseCurrency(input.companyId)) : undefined)
+        || 'USD',
       exchangeRate: salesInvoice?.exchangeRate || deliveryNote?.lines[0]?.fxRateMovToBase || 1,
       lines,
       subtotalDoc: 0,
@@ -278,6 +285,7 @@ export class CreateSalesReturnUseCase {
       restockingFeeValue: input.restockingFeeValue ?? 0,
       restockingFeeAmountDoc: 0,
       restockingFeeAmountBase: 0,
+      refundSettlementAccountId: input.refundSettlementAccountId,
       notes: input.notes,
       status: 'DRAFT',
       revenueVoucherId: null,
@@ -440,7 +448,8 @@ export class PostSalesReturnUseCase {
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly recordChangeService?: RecordChangeService,
+    private readonly postingLogRepo?: IPostingLogRepository
   ) {}
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesReturn> {
@@ -912,9 +921,12 @@ export class PostSalesReturnUseCase {
         let restockingFeeAccountId: string | null = null;
         if (restockingFeeBase > 0 || restockingFeeDoc > 0) {
           const firstRevenueAccount = Array.from(revenueDebitBucket.values())[0]?.accountId;
-          restockingFeeAccountId = await resolveAccountCached(firstRevenueAccount || settings.defaultRevenueAccountId);
+          const restockingFeeSourceId = settings.restockingFeeAccountId?.trim()
+            || firstRevenueAccount
+            || settings.defaultRevenueAccountId;
+          restockingFeeAccountId = await resolveAccountCached(restockingFeeSourceId);
           if (!restockingFeeAccountId) {
-            throw new Error('No revenue account configured for restocking fee posting');
+            throw new Error('No account configured for restocking fee posting. Set a Restocking Fee Account in Sales Settings → Account Defaults.');
           }
         }
 
@@ -980,7 +992,7 @@ export class PostSalesReturnUseCase {
         }
 
         if (salesReturn.settlementMode === 'REFUND' && settlementAmountBase > 0.0001) {
-          const refundSettlementAccountRaw = this.resolveRefundSettlementAccount(settings);
+          const refundSettlementAccountRaw = this.resolveRefundSettlementAccount(settings, salesReturn.refundSettlementAccountId);
           const refundSettlementAccountId = await resolveAccountCached(refundSettlementAccountRaw);
 
           await this.accountingPostingService.postInTransaction(
@@ -1067,6 +1079,34 @@ export class PostSalesReturnUseCase {
       }
     }
 
+    if (this.postingLogRepo) {
+      try {
+        const voucherIds = [posted.revenueVoucherId, posted.cogsVoucherId].filter((v): v is string => !!v);
+        const decisions: LineDecision[] = posted.lines.map((ln) => ({
+          lineNo: ln.lineNo,
+          itemId: ln.itemId,
+          accounts: {},
+        }));
+        const log = new PostingLog({
+          id: randomUUID(),
+          companyId,
+          sourceModule: 'sales',
+          sourceType: 'SALES_RETURN',
+          sourceId: posted.id,
+          sourceDocNumber: posted.returnNumber,
+          strategy: 'SalesReturnStrategy',
+          voucherIds,
+          decisions,
+          warnings: [],
+          postedAt: new Date(),
+          postedBy: posted.createdBy || 'SYSTEM',
+        });
+        await this.postingLogRepo.create(log);
+      } catch (err) {
+        console.warn('[PostingLog] write failed for SalesReturn', posted.id, err);
+      }
+    }
+
     return posted;
   }
 
@@ -1089,7 +1129,9 @@ export class PostSalesReturnUseCase {
     return customer.defaultARAccountId;
   }
 
-  private resolveRefundSettlementAccount(settings: any): string {
+  private resolveRefundSettlementAccount(settings: any, perReturnOverride?: string): string {
+    if (perReturnOverride?.trim()) return perReturnOverride.trim();
+    if (settings?.defaultRefundAccountId?.trim()) return settings.defaultRefundAccountId.trim();
     const paymentConfigs = Array.isArray(settings?.paymentMethodConfigs) ? settings.paymentMethodConfigs : [];
     const enabled = paymentConfigs.find(
       (config: any) => config && config.isEnabled !== false && typeof config.settlementAccountId === 'string' && config.settlementAccountId.trim()
@@ -1099,7 +1141,7 @@ export class PostSalesReturnUseCase {
     );
     const accountId = enabled?.settlementAccountId || fallback?.settlementAccountId;
     if (!accountId) {
-      throw new Error('No settlement account configured in Sales settings for refund posting');
+      throw new Error('No settlement account configured. Set a Default Refund Account in Sales Settings → Account Defaults, or override it on this return.');
     }
     return String(accountId).trim();
   }

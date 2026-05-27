@@ -7,6 +7,7 @@ It is wired into **Accounting** (bills become journal entries) and **Inventory**
 Key guides:
 
 - [Vendor AP Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-ap-subaccounts.md)
+- [Vendor Statement and Ledger](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-statement.md)
 
 ---
 
@@ -128,10 +129,14 @@ Only in OPERATIONAL mode. Less common.
 
 ## Reports
 
-Dashboard at `/purchases` shows the headline numbers. Detailed reports (AP Aging, Purchases by Vendor, etc.) are not yet built. In the meantime use Accounting:
-- **AP balance per vendor** → `Accounting → Reports → General Ledger` filtered by AP account
-- **Total purchases by period** → `Accounting → Reports → P&L` (expense section)
-- **VAT/Tax recoverable** → `Accounting → Reports → Account Statement` filtered by Tax Receivable account
+Dashboard at `/purchases` shows the headline numbers. Detailed reports now include:
+
+- **Vendor Statement** — ledger-backed AP statement for one vendor, with purchase-document and accounting-voucher drill-down.
+
+For other analysis still use Accounting:
+- **AP aging across all vendors** -> `Accounting -> Reports -> Aging` with AP mode
+- **Total purchases by period** -> `Accounting -> Reports -> P&L` (expense section)
+- **VAT/Tax recoverable** -> `Accounting -> Reports -> Account Statement` filtered by Tax Receivable account
 
 ---
 

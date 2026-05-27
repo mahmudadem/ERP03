@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Per-customer / per-vendor AR/AP sub-account + ledger-backed Customer Statement. Subtasks **A.1 + A.2 + A.3 + Piece B complete (2026-05-27)**.
-**Status:** Complete on `feat/phase-a-sales-master-data`. Next recommended work is Vendor Statement parity during Purchases Phase F.
-**Latest completion report:** [planning/done/124-piece-b-ledger-backed-customer-statement.md](./done/124-piece-b-ledger-backed-customer-statement.md)
+**Task:** Per-party AR/AP sub-accounts + ledger-backed Customer/Vendor Statements. Subtasks **A.1 + A.2 + A.3 + Piece B + Vendor Statement parity complete (2026-05-27)**.
+**Status:** Complete on `feat/phase-a-sales-master-data`. Next recommended work is AP Aging / Purchases analytics in Phase F, or resume broader Purchases parity.
+**Latest completion report:** [planning/done/125-vendor-statement-ledger-backed.md](./done/125-vendor-statement-ledger-backed.md)
 
 ## 👉 Next agent — start here
 
@@ -14,7 +14,15 @@ Piece A and Piece B are complete:
 4. Statement rows are decorated from voucher metadata for source-document and accounting-voucher drill-down.
 5. Open Sales Orders can be included as non-balance commitments.
 
-Recommended next task: mirror this pattern for **Vendor Statement** in Purchases Phase F.
+Vendor Statement parity is now also complete:
+
+1. Vendor Statement uses `GetAccountStatementUseCase` through `Party.defaultAPAccountId`.
+2. Missing AP account returns `VENDOR_AP_ACCOUNT_MISSING`.
+3. AP balances display as positive amount owed while preserving ledger debit/credit sides.
+4. Rows are decorated from voucher metadata for Purchases source-document and accounting-voucher drill-down.
+5. Open Purchase Orders can be included as non-balance commitments.
+
+Recommended next task: continue Phase F with AP Aging / Purchases analytics reports, or audit Purchases parity gaps before choosing the next build item.
 
 ---
 

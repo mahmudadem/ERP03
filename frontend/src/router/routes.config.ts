@@ -51,6 +51,7 @@ const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningSt
 const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTransfersPage'));
 const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
 const UnsettledCostsPage = lazy(() => import('../modules/inventory/pages/UnsettledCostsPage'));
+const InventoryValuationPage = lazy(() => import('../modules/inventory/pages/InventoryValuationPage'));
 const InventorySettingsPage = lazy(() => import('../modules/inventory/pages/InventorySettingsPage'));
 const UomsPage = lazy(() => import('../modules/inventory/pages/UomsPage'));
 
@@ -128,6 +129,7 @@ const PurchaseInvoicesListPage = lazy(() => import('../modules/purchases/pages/P
 const PurchaseInvoiceDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseInvoiceDetailPage'));
 const PurchaseReturnsListPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnsListPage'));
 const PurchaseReturnDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnDetailPage'));
+const VendorStatementPage = lazy(() => import('../modules/purchases/pages/VendorStatementPage'));
 const SalesHomePage = lazy(() => import('../modules/sales/pages/SalesHomePage'));
 const CustomersListPage = lazy(() => import('../modules/sales/pages/CustomersListPage'));
 const CustomerDetailPage = lazy(() => import('../modules/sales/pages/CustomerDetailPage'));
@@ -223,6 +225,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
+  { path: '/inventory/reports/valuation', label: 'Inventory Valuation', component: InventoryValuationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/opening-stock', label: 'Opening Stock Documents', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
   { path: '/inventory/uoms', label: 'UOM Master', component: UomsPage, section: 'INVENTORY', requiredPermission: 'inventory.uom.view', requiredModule: 'inventory' },
   { path: '/inventory/settings', label: 'Settings', component: InventorySettingsPage, section: 'INVENTORY', requiredPermission: 'inventory.settings.manage', requiredModule: 'inventory' },
@@ -358,6 +361,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases/returns', label: 'Purchase Returns', component: PurchaseReturnsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/returns/new', label: 'New Purchase Return', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/returns/:id', label: 'Purchase Return Detail', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/reports/vendor-statement', label: 'Vendor Statement', component: VendorStatementPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/settings', label: 'Purchase Settings', component: PurchaseSettingsPage, section: 'INVENTORY', requiredModule: 'purchase' },
 
   // Dynamic Purchase Documents (designed in Forms Designer)

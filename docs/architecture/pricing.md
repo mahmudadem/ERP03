@@ -235,8 +235,12 @@ Controller: `backend/src/api/controllers/sales/SalesMasterDataController.ts`
 - **CustomerGroupsPage** — CRUD for customer groups.
 - **PartyMasterCard COMMERCIAL tab** — extended with `customerGroupId`, `creditLimit`, `creditHoldPolicy`, `defaultPriceListId`, `taxExempt`.
 - **SalesInvoice line editor** — auto-fetches effective price when item or qty changes (calls `GET /price-lists/effective-price`).
+- **`salesLinePriceResolver`** (`frontend/src/modules/sales/services/salesLinePriceResolver.ts`) — shared resolver used by both the native sales pages and the Forms Designer renderer (`GenericVoucherRenderer`). Exposes:
+  - `isSalesDocumentDefinition(definition)` — detects sales documents (invoice, order, quote, return, delivery note) from a Forms Designer config.
+  - `resolveSalesLinePrice({ customerId, itemId, qty, asOfDate })` — non-throwing wrapper around `getEffectivePrice` that returns `null` on miss/error.
+  Wiring lives in `GenericVoucherRenderer.handleRowChange` (line-level: refires on itemId / quantity change) and a customer-watcher effect (refires every priced line when the header customer changes). This is the mechanism that makes Forms Designer–rendered sales invoices auto-fill the unit price exactly like `SalesInvoiceDetailPage`.
 
-All under `frontend/src/modules/sales/pages/`.
+All under `frontend/src/modules/sales/pages/` and `frontend/src/modules/sales/services/`.
 
 ---
 

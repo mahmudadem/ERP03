@@ -62,6 +62,7 @@ export interface SalesReturnProps {
   restockingFeeValue?: number;
   restockingFeeAmountDoc?: number;
   restockingFeeAmountBase?: number;
+  refundSettlementAccountId?: string;
   notes?: string;
   status?: SRStatus;
   revenueVoucherId?: string | null;
@@ -116,6 +117,7 @@ export class SalesReturn {
   restockingFeeValue: number;
   restockingFeeAmountDoc: number;
   restockingFeeAmountBase: number;
+  refundSettlementAccountId?: string;
   notes?: string;
   status: SRStatus;
   revenueVoucherId?: string | null;
@@ -209,6 +211,7 @@ export class SalesReturn {
 
     this.reason = props.reason.trim();
     this.notes = props.notes;
+    this.refundSettlementAccountId = props.refundSettlementAccountId?.trim() || undefined;
     this.revenueVoucherId = props.revenueVoucherId ?? null;
     this.cogsVoucherId = props.cogsVoucherId ?? null;
     this.createdBy = props.createdBy;
@@ -327,6 +330,7 @@ export class SalesReturn {
       restockingFeeValue: this.restockingFeeValue,
       restockingFeeAmountDoc: this.restockingFeeAmountDoc,
       restockingFeeAmountBase: this.restockingFeeAmountBase,
+      refundSettlementAccountId: this.refundSettlementAccountId,
       notes: this.notes,
       status: this.status,
       revenueVoucherId: this.revenueVoucherId ?? null,
@@ -369,6 +373,7 @@ export class SalesReturn {
       restockingFeeValue: data.restockingFeeValue ?? 0,
       restockingFeeAmountDoc: data.restockingFeeAmountDoc ?? 0,
       restockingFeeAmountBase: data.restockingFeeAmountBase ?? 0,
+      refundSettlementAccountId: data.refundSettlementAccountId,
       notes: data.notes,
       status: data.status || 'DRAFT',
       revenueVoucherId: data.revenueVoucherId ?? null,

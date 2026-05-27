@@ -863,6 +863,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         onClose={() => setGlImpactOpen(false)}
         sourceId={deliveryNote.id}
         sourceLabel={deliveryNote.dnNumber}
+        documentStatus={deliveryNote.status}
       />
 
       {overrideModalData && (

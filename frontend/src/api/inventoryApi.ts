@@ -199,6 +199,7 @@ export interface InventorySettingsDTO {
   defaultInventoryAssetAccountId?: string;
   defaultCOGSAccountId?: string;
   allowNegativeStock: boolean;
+  allowDeferredCost: boolean;
   defaultWarehouseId?: string;
   autoGenerateItemCode: boolean;
   itemCodePrefix?: string;
@@ -405,6 +406,10 @@ export interface LowStockAlertDTO {
 
 export interface UnsettledCostReportDTO {
   total: number;
+  totals: {
+    unsettledQty: number;
+    costBase: number;
+  };
   rows: Array<{
     id: string;
     date: string;
@@ -649,7 +654,15 @@ export const inventoryApi = {
   getLowStockAlerts: (): Promise<LowStockAlertDTO[]> =>
     client.get('/tenant/inventory/alerts/low-stock'),
 
-  getUnsettledCosts: (filters?: { itemId?: string; limit?: number; offset?: number }): Promise<UnsettledCostReportDTO> =>
+  getUnsettledCosts: (filters?: {
+    itemId?: string;
+    warehouseId?: string;
+    costBasis?: 'AVG' | 'LAST_KNOWN' | 'MISSING';
+    fromDate?: string;
+    toDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<UnsettledCostReportDTO> =>
     client.get('/tenant/inventory/reports/unsettled-costs', { params: filters }),
 
   getValuation: (): Promise<InventoryValuationDTO> =>

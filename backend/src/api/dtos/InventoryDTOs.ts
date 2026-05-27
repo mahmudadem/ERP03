@@ -108,6 +108,7 @@ export interface InventorySettingsDTO {
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
+  allowDeferredCost: boolean;
   defaultWarehouseId?: string;
   autoGenerateItemCode: boolean;
   itemCodePrefix?: string;
@@ -378,6 +379,7 @@ export class InventoryDTOMapper {
       defaultCostCurrency: settings.defaultCostCurrency,
       defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId,
       allowNegativeStock: settings.allowNegativeStock,
+      allowDeferredCost: settings.allowDeferredCost,
       defaultWarehouseId: settings.defaultWarehouseId,
       autoGenerateItemCode: settings.autoGenerateItemCode,
       itemCodePrefix: settings.itemCodePrefix,

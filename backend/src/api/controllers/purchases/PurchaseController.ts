@@ -45,6 +45,11 @@ import {
   RecordPurchaseInvoicePaymentUseCase,
   UpdateInvoicePaymentStatusUseCase,
 } from '../../../application/purchases/use-cases/PaymentSyncUseCases';
+import {
+  GetLedgerBackedVendorStatementUseCase,
+  VendorStatementMissingAccountError,
+} from '../../../application/purchases/use-cases/PurchasesReportingUseCases';
+import { GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
 import { PurchasesInventoryService } from '../../../application/inventory/services/PurchasesInventoryService';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
 import { GRNStatus } from '../../../domain/purchases/entities/GoodsReceipt';
@@ -938,6 +943,61 @@ export class PurchaseController {
         data: payments.map((p) => p.toJSON()),
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getVendorStatement(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+      const q = (req as any).query;
+      const vendorId = (req as any).params?.partyId || q.vendorId;
+
+      if (!vendorId) {
+        throw new Error('vendorId query parameter or partyId route parameter is required');
+      }
+      if (!q.fromDate) {
+        throw new Error('fromDate query parameter is required');
+      }
+      if (!q.toDate) {
+        throw new Error('toDate query parameter is required');
+      }
+
+      const accountStatementUseCase = new GetAccountStatementUseCase(
+        diContainer.ledgerRepository,
+        diContainer.permissionChecker,
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+      );
+      const useCase = new GetLedgerBackedVendorStatementUseCase(
+        diContainer.partyRepository,
+        diContainer.purchaseInvoiceRepository,
+        diContainer.purchaseOrderRepository,
+        accountStatementUseCase,
+        diContainer.voucherRepository,
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        userId,
+        vendorId: String(vendorId),
+        fromDate: String(q.fromDate),
+        toDate: String(q.toDate),
+        includeOpenCommitments: q.includeOpenCommitments === 'true',
+      });
+
+      (res as any).json({ success: true, data: result });
+    } catch (error) {
+      if (error instanceof VendorStatementMissingAccountError) {
+        return (res as any).status(error.statusCode).json({
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message,
+          },
+        });
+      }
       next(error);
     }
   }

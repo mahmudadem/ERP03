@@ -42,6 +42,9 @@ router.post('/invoices/:id/payment-update', PurchaseController.updatePaymentStat
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, PurchaseController.recordPayment);
 router.get('/invoices/:id/payments', PurchaseController.getPaymentHistory);
 
+router.get('/reports/vendor-statement', PurchaseController.getVendorStatement);
+router.get('/vendors/:partyId/statement', PurchaseController.getVendorStatement);
+
 router.post('/returns', PurchaseController.createReturn);
 router.get('/returns', PurchaseController.listReturns);
 router.get('/returns/:id', PurchaseController.getReturn);

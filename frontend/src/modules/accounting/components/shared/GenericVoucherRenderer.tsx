@@ -21,6 +21,10 @@ import { CustomerAccountSelector, VendorAccountSelector } from '../../../../comp
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
 import { salesApi, SalesOrderDTO } from '../../../../api/salesApi';
+import {
+  isSalesDocumentDefinition,
+  resolveSalesLinePrice,
+} from '../../../sales/services/salesLinePriceResolver';
 import { sharedApi, TaxCodeDTO } from '../../../../api/sharedApi';
 import { useCompanyCurrencies } from '../../../../hooks/useCompanyCurrencies';
 import { CurrencyDropdown } from './CurrencyDropdown';
@@ -1485,6 +1489,65 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     onBlurRef.current = onBlur;
   }, [onBlur]);
 
+  // ─── Sales line auto-pricing ────────────────────────────────────────────────
+  // For any sales document (invoice, order, quote, return, delivery note), the
+  // unit price for a line must be sourced from the customer's effective price
+  // list — exactly like the native sales pages. This makes Forms Designer–
+  // rendered sales forms behave the same as `SalesInvoiceDetailPage`.
+  const isSalesDoc = useMemo(() => isSalesDocumentDefinition(definition), [definition]);
+
+  const rowsRef = useRef<JournalRow[]>([]);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+
+  const getRowItemId = (row: any): string =>
+    String(row?.itemId ?? row?.item ?? row?.metadata?.itemId ?? row?.metadata?.item ?? '').trim();
+
+  const applyResolvedLinePrice = (rowId: number, unitPrice: number) => {
+    setRows((prev: JournalRow[]) => {
+      const next = prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const updated: any = { ...r, unitPrice, unitPriceDoc: unitPrice };
+        if ((r as any).rate !== undefined) updated.rate = unitPrice;
+        updated.metadata = { ...(r.metadata || {}), unitPrice, unitPriceDoc: unitPrice };
+        return updated;
+      });
+      onChangeRef.current?.({ ...formData, lines: next });
+      return next;
+    });
+  };
+
+  const triggerSalesPriceLookup = (rowId: number, row: any) => {
+    if (!isSalesDoc) return;
+    const customerId = formData.customerId || formData.partyId || '';
+    const itemId = getRowItemId(row);
+    if (!customerId || !itemId) return;
+    const qty = getLineQuantity(row) || 1;
+    const asOfDate =
+      formData.date ||
+      formData.invoiceDate ||
+      formData.orderDate ||
+      formData.deliveryDate ||
+      formData.returnDate ||
+      undefined;
+    void resolveSalesLinePrice({ customerId, itemId, qty, asOfDate }).then((result) => {
+      if (result?.unitPrice != null) {
+        applyResolvedLinePrice(rowId, result.unitPrice);
+      }
+    });
+  };
+
+  // When the customer changes on a sales document, refresh prices for every
+  // line that already has an item selected.
+  useEffect(() => {
+    if (!isSalesDoc) return;
+    const customerId = formData.customerId || formData.partyId;
+    if (!customerId) return;
+    rowsRef.current.forEach((row) => {
+      if (getRowItemId(row)) triggerSalesPriceLookup(row.id, row);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSalesDoc, formData.customerId, formData.partyId]);
+
   
   // Handle column resize
   useEffect(() => {
@@ -2071,6 +2134,17 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       onChangeRef.current?.({ ...formData, lines: next });
       return next;
     });
+
+    // Sales auto-pricing: when itemId or quantity changes on a sales document,
+    // resolve the effective price from the customer's price list and patch
+    // unitPrice on the row.
+    if (isSalesDoc && targetRow) {
+      const fk = typeof field === 'string' ? field : '';
+      const normalizedField = fk ? normalizeTableColumnId(fk) : '';
+      if (normalizedField === 'itemId' || normalizedField === 'quantity') {
+        triggerSalesPriceLookup(id, targetRow);
+      }
+    }
 
     // 2. PARITY SYNC: (Calculates parity when currencies change)
     // Only trigger if currency actually changes AND it's not the initial load of an existing voucher

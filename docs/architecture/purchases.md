@@ -22,6 +22,35 @@ This keeps AP balances per vendor auditable and statement-ready without changing
 
 ---
 
+## Vendor Statement engine reuse (Phase F parity — 2026-05-27)
+
+Vendor Statement mirrors the Customer Statement architecture from Sales:
+
+- It loads the vendor Party and requires `Party.defaultAPAccountId`.
+- It calls Accounting's `GetAccountStatementUseCase` for that vendor AP sub-account.
+- If the vendor has no default AP account, the API returns HTTP `412` with code `VENDOR_AP_ACCOUNT_MISSING`.
+- Posted ledger entries are the source of truth for opening balance, activity, and closing balance.
+- Draft/unposted purchase documents never affect statement balances.
+- Optional open Purchase Orders are shown as non-balance commitments only.
+
+Primary endpoint:
+- `GET /tenant/purchase/reports/vendor-statement?vendorId=...&fromDate=...&toDate=...&includeOpenCommitments=false`
+
+Alias endpoint:
+- `GET /tenant/purchase/vendors/:partyId/statement?fromDate=...&toDate=...&includeOpenCommitments=false`
+
+AP account sign convention:
+- Accounting's account statement stores normal debit-minus-credit running balances.
+- AP is credit-normal, so the Vendor Statement converts the displayed running/opening/closing balance to amount owed (`credit - debit`) for user-facing readability.
+- Row debit/credit columns still show the actual AP ledger side: bills increase AP by credit; payments and debit notes reduce AP by debit.
+
+Drill-down precedence:
+1. Open the original Purchases document when voucher metadata resolves `sourceModule='purchases'` and `sourceType/sourceId`.
+2. Offer `Open Accounting Voucher` for the posted voucher.
+3. If the source document cannot be resolved, the accounting voucher remains the fallback.
+
+---
+
 ## Prerequisites
 
 The Accounting **Engine** must be initialized before Purchases is usable. `InitializePurchasesUseCase` calls `EnsureAccountingEngineInitialized` as its first step, which auto-bootstraps the Engine (`standard` COA template, calendar fiscal year, company base currency) if it is not yet initialized. If the Engine cannot be bootstrapped (e.g., the company has no base currency), Purchases initialization throws `AccountingEngineUnavailableError`. The Accounting **UI** does not need to be visible — see [accounting.md](./accounting.md#accounting-engine-vs-accounting-appui).

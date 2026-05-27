@@ -42,11 +42,16 @@ export interface PostingLog {
 }
 
 export interface VoucherLine {
-  lineNo: number;
+  id?: string;
+  lineNo?: number;
   accountId: string;
   side: 'Debit' | 'Credit';
-  debitAmount: number;
-  creditAmount: number;
+  baseAmount: number;
+  amount?: number;
+  currency?: string;
+  // Legacy compat — older code paths may still send these
+  debitAmount?: number;
+  creditAmount?: number;
   notes?: string;
 }
 

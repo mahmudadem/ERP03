@@ -204,6 +204,20 @@ This project uses an OpenCode multi-agent workflow defined in `opencode.json`. T
 `frontend/src/components/ui/`:
 - `ConfirmDialog` — MANDATORY for any state-changing or destructive user action (pause / resume / cancel / delete / post / void / etc.). Never trigger a server-side state change directly from a button click. Tone: `danger` for irreversible actions, `warning` for reversible, `info` for benign confirmations. Disable buttons while `isConfirming` is true.
 
+### Report Pages — MANDATORY Pattern
+
+**Rule:** Every report page MUST use `<ReportContainer>` from `frontend/src/components/reports/ReportContainer.tsx`, AND its route MUST appear in `frontend/src/config/moduleMenuMap.ts` under the module's `Reports` parent.
+
+Enforced by `frontend/scripts/check-reports.mjs`, which runs as part of `npm run build`. PRs that violate either rule fail CI.
+
+Why `ReportContainer` is non-negotiable:
+- UI-mode aware (windows-mode routing happens automatically)
+- Standard toolbar (refresh / filters / column visibility / Excel / PDF / print)
+- Two-stage flow (filter → results) — predictable for users across all reports
+- Density toggle, pagination, i18n built in
+
+Pattern, sidebar wiring, and the temporary allowlist are documented in `docs/architecture/reports.md`. Read that before building a new report.
+
 ### Action Feedback — Toast on Every Result (MANDATORY)
 
 **Every user-triggered action must produce a visible result.** Use `react-hot-toast` (already installed, `Toaster` mounted in `main.tsx`):

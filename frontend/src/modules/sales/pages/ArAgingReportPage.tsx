@@ -1,60 +1,138 @@
 import React, { useEffect, useState } from 'react';
-import { Card } from '../../../components/ui/Card';
-import { salesReportingApi, ArAgingReportDTO, ArAgingCustomerRowDTO } from '../../../api/salesReportingApi';
-import { ClipboardList, ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
+import {
+  salesReportingApi,
+  ArAgingReportDTO,
+  ArAgingCustomerRowDTO,
+} from '../../../api/salesReportingApi';
+import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { Button } from '../../../components/ui/Button';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { clsx } from 'clsx';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+interface ArAgingParams {
+  asOfDate: string;
+  customerId?: string;
+  customerLabel?: string;
+}
 
-const today = (): string => new Date().toISOString().slice(0, 10);
+const today = () => new Date().toISOString().slice(0, 10);
 
 const fmt = (n: number): string =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// ─── Expandable customer row ─────────────────────────────────────────────────
+// ─── Initiator ──────────────────────────────────────────────────────────────
 
-const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO }> = ({ row }) => {
+const Initiator: React.FC<{
+  onSubmit: (p: ArAgingParams) => void;
+  initialParams?: ArAgingParams | null;
+}> = ({ onSubmit, initialParams }) => {
+  const [asOfDate, setAsOfDate]         = useState(initialParams?.asOfDate || today());
+  const [customerId, setCustomerId]     = useState(initialParams?.customerId || '');
+  const [customerLabel, setCustomerLabel] = useState(initialParams?.customerLabel || '');
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit({
+          asOfDate,
+          customerId: customerId || undefined,
+          customerLabel: customerLabel || undefined,
+        });
+      }}
+      className="space-y-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
+        <div className="md:col-span-4 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            As Of Date
+          </label>
+          <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-full" />
+        </div>
+
+        <div className="md:col-span-8 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Customer (optional)
+          </label>
+          <PartySelector
+            value={customerId}
+            role="CUSTOMER"
+            onChange={(party) => {
+              if (!party) {
+                setCustomerId('');
+                setCustomerLabel('');
+                return;
+              }
+              setCustomerId(party.id);
+              setCustomerLabel(party.displayName || party.legalName || party.id);
+            }}
+            placeholder="All customers"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-4 border-t border-slate-100">
+        <Button
+          type="submit"
+          className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
+        >
+          <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
+            Generate Report
+            <ChevronRight className="w-4 h-4" />
+          </span>
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+// ─── Expandable customer row ────────────────────────────────────────────────
+
+const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = ({ row, cellPad }) => {
   const [open, setOpen] = useState(false);
-
   return (
     <>
       <tr
-        className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/40 cursor-pointer"
+        className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
         onClick={() => setOpen(o => !o)}
       >
-        <td className="py-2.5 px-4 text-xs">
-          <div className="flex items-center gap-1.5">
-            {open ? <ChevronDown size={13} className="text-slate-400" /> : <ChevronRight size={13} className="text-slate-400" />}
-            <span className="font-medium text-slate-800 dark:text-slate-200">{row.customerName}</span>
+        <td className={cellPad}>
+          <div className="flex items-center gap-2">
+            {open ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+            <span className="font-semibold text-slate-800">{row.customerName}</span>
           </div>
         </td>
-        <td className="py-2.5 px-4 text-xs text-right tabular-nums text-slate-700 dark:text-slate-300">{fmt(row.current)}</td>
-        <td className="py-2.5 px-4 text-xs text-right tabular-nums text-amber-600">{fmt(row.days1_30)}</td>
-        <td className="py-2.5 px-4 text-xs text-right tabular-nums text-orange-600">{fmt(row.days31_60)}</td>
-        <td className="py-2.5 px-4 text-xs text-right tabular-nums text-red-500">{fmt(row.days61_90)}</td>
-        <td className="py-2.5 px-4 text-xs text-right tabular-nums text-red-700 font-semibold">{fmt(row.days90Plus)}</td>
-        <td className="py-2.5 px-4 text-xs text-right tabular-nums font-bold text-slate-900 dark:text-slate-100">{fmt(row.total)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-slate-700`}>{fmt(row.current)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-amber-600`}>{fmt(row.days1_30)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-orange-600`}>{fmt(row.days31_60)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-red-500`}>{fmt(row.days61_90)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-red-700 font-semibold`}>{fmt(row.days90Plus)}</td>
+        <td className={`${cellPad} text-right tabular-nums font-bold text-slate-900`}>{fmt(row.total)}</td>
       </tr>
       {open && row.invoices.length > 0 && (
-        <tr className="bg-slate-50/80 dark:bg-slate-900/60">
+        <tr className="bg-slate-50/80">
           <td colSpan={7} className="px-8 py-3">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
+                <tr className="border-b border-slate-200">
                   {['Invoice #', 'Invoice Date', 'Due Date', 'Days Overdue', 'Bucket', 'Outstanding'].map(h => (
-                    <th key={h} className="pb-1.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3">{h}</th>
+                    <th key={h} className={clsx('pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3', h === 'Outstanding' ? 'text-right' : 'text-left')}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {row.invoices.map(inv => (
-                  <tr key={inv.invoiceId} className="border-b border-slate-100 dark:border-slate-800/50">
-                    <td className="py-1.5 pr-3 text-[11px] font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNumber}</td>
-                    <td className="py-1.5 pr-3 text-[11px] text-slate-600 dark:text-slate-400">{inv.invoiceDate}</td>
-                    <td className="py-1.5 pr-3 text-[11px] text-slate-600 dark:text-slate-400">{inv.dueDate ?? '—'}</td>
-                    <td className="py-1.5 pr-3 text-[11px] tabular-nums text-slate-600 dark:text-slate-400">{inv.daysOverdue}</td>
-                    <td className="py-1.5 pr-3 text-[11px] text-slate-600 dark:text-slate-400">{inv.bucket}</td>
-                    <td className="py-1.5 pr-3 text-[11px] tabular-nums text-right font-medium text-slate-800 dark:text-slate-200">{fmt(inv.outstandingAmountBase)}</td>
+                  <tr key={inv.invoiceId} className="border-b border-slate-100">
+                    <td className="py-1.5 pr-3 text-[11px] font-mono text-slate-700">{inv.invoiceNumber}</td>
+                    <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.invoiceDate}</td>
+                    <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.dueDate ?? '—'}</td>
+                    <td className="py-1.5 pr-3 text-[11px] tabular-nums text-slate-600">{inv.daysOverdue}</td>
+                    <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.bucket}</td>
+                    <td className="py-1.5 pr-3 text-[11px] tabular-nums text-right font-medium text-slate-800">{fmt(inv.outstandingAmountBase)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -66,144 +144,114 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO }> = ({ row }) => {
   );
 };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── ReportContent ──────────────────────────────────────────────────────────
 
-const ArAgingReportPage: React.FC = () => {
-  const [asOfDate, setAsOfDate] = useState<string>(today());
+const ReportContent: React.FC<{
+  params: ArAgingParams;
+  setTotalItems?: (total: number) => void;
+  density?: 'compact' | 'comfortable';
+}> = ({ params, setTotalItems, density }) => {
   const [report, setReport] = useState<ArAgingReportDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const runReport = async () => {
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    try {
-      const data = await salesReportingApi.getArAging({ asOfDate });
-      setReport(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load report');
-    } finally {
-      setLoading(false);
-    }
-  };
+    salesReportingApi.getArAging({ asOfDate: params.asOfDate, customerId: params.customerId })
+      .then((data) => { if (!cancelled) setReport(data); })
+      .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load report'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [params.asOfDate, params.customerId]);
 
   useEffect(() => {
-    runReport();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setTotalItems?.(report?.rows.length ?? 0);
+  }, [report?.rows.length, setTotalItems]);
+
+  const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="flex-none p-6 border-b bg-white dark:bg-slate-900 shadow-sm relative z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-rose-600 rounded-xl text-white shadow-lg shadow-rose-100 dark:shadow-none">
-              <ClipboardList size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">AR Aging</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Accounts Receivable Aging Report</p>
-            </div>
-          </div>
+    <div className="flex flex-col h-full bg-slate-50">
+      <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
+            <CalendarDays className="w-3 h-3 text-blue-600" />
+            As of {report?.asOfDate ?? params.asOfDate}
+          </span>
+          {params.customerLabel && (
+            <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
+              {params.customerLabel}
+            </span>
+          )}
+          <span className="text-xs font-bold text-slate-500 ml-auto">
+            {report?.rows.length ?? 0} customer{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
+            Total AR: <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
+          </span>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex-none px-6 py-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800">
-        <div className="flex items-end gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">As of Date</label>
-            <input
-              type="date"
-              className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-              value={asOfDate}
-              onChange={e => setAsOfDate(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={runReport}
-            disabled={loading}
-            className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md transition-all uppercase tracking-widest"
-          >
-            {loading ? 'Running...' : 'Run Report'}
-          </button>
-          {report && (
-            <span className="text-xs text-slate-400">As of {report.asOfDate}</span>
-          )}
-        </div>
-      </div>
+      <div className="flex-1 min-h-0 overflow-auto p-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">{error}</div>
+        )}
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-7xl">
-          {error && (
-            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">
-              {error}
+        {loading ? (
+          <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading aging...</p>
             </div>
-          )}
-
-          {loading && !report && (
-            <div className="py-20 text-center text-sm text-slate-400 animate-pulse">Loading report...</div>
-          )}
-
-          {report && (
-            <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-              <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  {report.rows.length} {report.rows.length === 1 ? 'Customer' : 'Customers'} with Outstanding Balances
-                </p>
-              </div>
-
-              {report.rows.length === 0 ? (
-                <div className="py-20 text-center space-y-4">
-                  <div className="inline-flex p-6 bg-slate-50 dark:bg-slate-800 rounded-full text-slate-300">
-                    <ClipboardList size={48} />
-                  </div>
-                  <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No outstanding receivables as of {report.asOfDate}</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60">
-                        {['Customer', 'Current', '1–30 Days', '31–60 Days', '61–90 Days', '90+ Days', 'Total'].map((h, i) => (
-                          <th
-                            key={h}
-                            className={clsx(
-                              'py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest',
-                              i === 0 ? 'text-left' : 'text-right'
-                            )}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report.rows.map(row => (
-                        <CustomerRow key={row.customerId} row={row} />
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-slate-100 dark:bg-slate-800/60 border-t-2 border-slate-200 dark:border-slate-700">
-                        <td className="py-3 px-4 text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Totals</td>
-                        <td className="py-3 px-4 text-xs text-right tabular-nums font-bold text-slate-700 dark:text-slate-200">{fmt(report.totals.current)}</td>
-                        <td className="py-3 px-4 text-xs text-right tabular-nums font-bold text-amber-600">{fmt(report.totals.days1_30)}</td>
-                        <td className="py-3 px-4 text-xs text-right tabular-nums font-bold text-orange-600">{fmt(report.totals.days31_60)}</td>
-                        <td className="py-3 px-4 text-xs text-right tabular-nums font-bold text-red-500">{fmt(report.totals.days61_90)}</td>
-                        <td className="py-3 px-4 text-xs text-right tabular-nums font-bold text-red-700">{fmt(report.totals.days90Plus)}</td>
-                        <td className="py-3 px-4 text-xs text-right tabular-nums font-black text-slate-900 dark:text-slate-100">{fmt(report.totals.total)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
-            </Card>
-          )}
-        </div>
+          </div>
+        ) : !report || report.rows.length === 0 ? (
+          <div className="bg-white border rounded-xl p-12 text-center">
+            <p className="text-sm font-bold text-slate-600">No outstanding receivables as of {report?.asOfDate ?? params.asOfDate}</p>
+          </div>
+        ) : (
+          <div className="bg-white border rounded-xl shadow-sm overflow-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
+                <tr>
+                  {['Customer', 'Current', '1–30 Days', '31–60 Days', '61–90 Days', '90+ Days', 'Total'].map((h, i) => (
+                    <th key={h} className={clsx(cellPad, i === 0 ? 'text-left' : 'text-right')}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.rows.map((r) => (
+                  <CustomerRow key={r.customerId} row={r} cellPad={cellPad} />
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-100 font-bold text-slate-900">
+                  <td className={cellPad}>Totals</td>
+                  <td className={`${cellPad} text-right tabular-nums`}>{fmt(report.totals.current)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-amber-700`}>{fmt(report.totals.days1_30)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-orange-700`}>{fmt(report.totals.days31_60)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-red-600`}>{fmt(report.totals.days61_90)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-red-800`}>{fmt(report.totals.days90Plus)}</td>
+                  <td className={`${cellPad} text-right tabular-nums`}>{fmt(report.totals.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
+const ArAgingReportPage: React.FC = () => (
+  <ReportContainer<ArAgingParams>
+    title="AR Aging"
+    subtitle="Accounts receivable by aging bucket"
+    initiator={Initiator}
+    ReportContent={ReportContent}
+    config={{ paginated: false }}
+  />
+);
 
 export default ArAgingReportPage;

@@ -264,6 +264,7 @@ const validateRestockingFeeInput = (body: any) => {
       throw ApiError.badRequest('restockingFeeValue cannot exceed 100 when restockingFeeType=PERCENT');
     }
   }
+  if (body.refundSettlementAccountId !== undefined) ensureOptionalString(body.refundSettlementAccountId, 'refundSettlementAccountId');
 };
 
 export const validateInitializeSalesInput = (body: any) => {
@@ -290,6 +291,9 @@ export const validateInitializeSalesInput = (body: any) => {
   }
 
   ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  ensureOptionalString(body.defaultARAccountId, 'defaultARAccountId');
+  ensureOptionalString(body.arParentAccountId, 'arParentAccountId');
+  ensureOptionalString(body.partyAccountCodeFormat, 'partyAccountCodeFormat');
   ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
   if (body.governanceRules !== undefined) {
@@ -331,10 +335,14 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.defaultARAccountId !== undefined) ensureOptionalString(body.defaultARAccountId, 'defaultARAccountId');
+  if (body.arParentAccountId !== undefined) ensureOptionalString(body.arParentAccountId, 'arParentAccountId');
+  if (body.partyAccountCodeFormat !== undefined) ensureOptionalString(body.partyAccountCodeFormat, 'partyAccountCodeFormat');
   if (body.defaultRevenueAccountId !== undefined) ensureRequiredString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
   if (body.defaultCOGSAccountId !== undefined) ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
   if (body.defaultInventoryAccountId !== undefined) ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   if (body.defaultSalesExpenseAccountId !== undefined) ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
+  if (body.defaultRefundAccountId !== undefined) ensureOptionalString(body.defaultRefundAccountId, 'defaultRefundAccountId');
+  if (body.restockingFeeAccountId !== undefined) ensureOptionalString(body.restockingFeeAccountId, 'restockingFeeAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');

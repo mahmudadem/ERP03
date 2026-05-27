@@ -39,6 +39,7 @@ export const moduleMenuMap: Record<
           { label: 'Bank Reconciliation', path: '/accounting/reports/bank-reconciliation', permission: 'accounting.reports.generalLedger.view', icon: 'Landmark' },
           { label: 'Cost Center Summary', path: '/accounting/reports/cost-center-summary', permission: 'accounting.reports.generalLedger.view', icon: 'Target' },
           { label: 'Budget vs Actual', path: '/accounting/reports/budget-vs-actual', permission: 'accounting.reports.trialBalance.view', icon: 'Scale' },
+          { label: 'Consolidated TB', path: '/accounting/reports/consolidated-trial-balance', permission: 'accounting.reports.trialBalance.view', icon: 'BarChart3' },
         ]
       },
       { label: 'Settings', path: '/accounting/settings', permission: 'accounting.settings.view', icon: 'Settings' }
@@ -69,6 +70,7 @@ export const moduleMenuMap: Record<
         children: [
           { label: 'Low Stock Alerts', path: '/inventory/alerts/low-stock', permission: 'inventory.stock.view', icon: 'AlertTriangle' },
           { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'inventory.movements.view', icon: 'CircleDollarSign' },
+          { label: 'Inventory Valuation', path: '/inventory/reports/valuation', permission: 'inventory.valuation.view', icon: 'Coins' },
         ]
       },
       { label: 'UOM Master', path: '/inventory/uoms', permission: 'inventory.uom.view', icon: 'Ruler' },
@@ -92,6 +94,15 @@ export const moduleMenuMap: Record<
       { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
       { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
       { label: 'Aged Backlog', path: '/sales/aged-backlog', icon: 'Clock3' },
+      {
+        label: 'Reports',
+        icon: 'BarChart3',
+        children: [
+          { label: 'AR Aging', path: '/sales/reports/ar-aging', icon: 'Clock3' },
+          { label: 'Customer Statement', path: '/sales/reports/customer-statement', icon: 'ScrollText' },
+          { label: 'Sales Analytics', path: '/sales/reports/sales-analytics', icon: 'PieChart' },
+        ]
+      },
       { label: 'Settings', path: '/sales/settings', icon: 'Settings' }
     ]
   },
@@ -106,6 +117,13 @@ export const moduleMenuMap: Record<
       { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
       { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
       { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
+      {
+        label: 'Reports',
+        icon: 'BarChart3',
+        children: [
+          { label: 'Vendor Statement', path: '/purchases/reports/vendor-statement', icon: 'ScrollText' },
+        ]
+      },
       { label: 'Settings', path: '/purchases/settings', icon: 'Settings' }
     ]
   },

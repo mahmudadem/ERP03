@@ -2,6 +2,32 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-27 (Wed) — Vendor Statement parity: ledger-backed AP statement
+
+**Task:** Mirror Customer Statement's ledger-backed model for Purchases Vendor Statement.  
+**Agent:** Codex (GPT-5)  
+**Branch:** `feat/phase-a-sales-master-data`  
+**Completion report:** [planning/done/125-vendor-statement-ledger-backed.md](./done/125-vendor-statement-ledger-backed.md)
+
+**What landed:**
+- Added `GetLedgerBackedVendorStatementUseCase`.
+- Vendor Statement now requires `Party.defaultAPAccountId` and delegates balances/lines to `GetAccountStatementUseCase`.
+- Missing vendor AP account returns a 412-compatible `VENDOR_AP_ACCOUNT_MISSING` error.
+- AP credit-normal balances are displayed as positive amount owed.
+- Statement rows are decorated from voucher metadata for Purchases source-document drill-down and Accounting voucher drill-down.
+- Optional open Purchase Orders are shown as commitments only; they do not affect balances.
+- Added Purchases report page and menu entry: `/purchases/reports/vendor-statement`.
+- Updated Purchases architecture and user-guide docs.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/purchases/LedgerBackedVendorStatement.test.ts` -> passed
+- `npm --prefix backend run build` -> passed
+- `npm --prefix frontend run typecheck` -> passed
+
+**Time spent:** ~1.4h  
+**Result:** Vendor Statement parity complete.  
+**Next:** Continue Phase F with AP Aging / Purchases analytics, or audit Purchases parity gaps before choosing the next build item.
+
 ## 2026-05-27 (Wed) — Piece B: ledger-backed Customer Statement
 
 **Task:** Replace Sales-only Customer Statement math with Accounting ledger statement reuse through customer-specific AR sub-accounts.  
