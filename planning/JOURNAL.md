@@ -2,6 +2,31 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-27 (Wed) — Piece B: ledger-backed Customer Statement
+
+**Task:** Replace Sales-only Customer Statement math with Accounting ledger statement reuse through customer-specific AR sub-accounts.  
+**Agent:** Codex (GPT-5)  
+**Branch:** `feat/phase-a-sales-master-data`  
+**Completion report:** [planning/done/124-piece-b-ledger-backed-customer-statement.md](./done/124-piece-b-ledger-backed-customer-statement.md)
+
+**What landed:**
+- Added `GetLedgerBackedCustomerStatementUseCase`.
+- Customer Statement now requires `Party.defaultARAccountId` and delegates balances/lines to `GetAccountStatementUseCase`.
+- Missing customer AR account returns a 412-compatible `CUSTOMER_AR_ACCOUNT_MISSING` error.
+- Statement lines are decorated from voucher metadata for Sales source-document drill-down and Accounting voucher drill-down.
+- Optional open Sales Orders are shown as commitments only; they do not affect statement balances.
+- Frontend Customer Statement page now consumes the ledger-backed endpoint and exposes source/voucher actions.
+- Updated Sales architecture and user-guide docs.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/sales/LedgerBackedCustomerStatement.test.ts` -> passed
+- `npm --prefix backend run build` -> passed
+- `npm --prefix frontend run typecheck` -> passed
+
+**Time spent:** ~1.5h  
+**Result:** Piece B complete.  
+**Next:** Mirror the same ledger-backed statement model for Vendor Statement during Purchases Phase F.
+
 ## 2026-05-27 (Wed) — Piece A.2 + A.3: frontend forms + backfill endpoints/buttons
 
 **Task:** Complete Piece A after backend A.1 by shipping A.2 (forms/contracts) and A.3 (backfill) for per-party AR/AP account strategy.

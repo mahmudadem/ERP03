@@ -44,12 +44,23 @@ export interface ArAgingReportDTO {
 // Customer Ledger
 
 export interface LedgerEventDTO {
+  ledgerEntryId?: string;
   date: string;
-  type: 'INVOICE' | 'PAYMENT';
+  type: 'INVOICE' | 'PAYMENT' | 'CREDIT_NOTE' | 'REFUND' | 'ADJUSTMENT';
   reference: string;
   debit: number;
   credit: number;
   runningBalance: number;
+  voucherId?: string;
+  voucherNo?: string;
+  voucherType?: string;
+  voucherFormId?: string;
+  voucherPart?: string;
+  description?: string;
+  sourceModule?: string;
+  sourceType?: string;
+  sourceId?: string;
+  sourceLabel?: string;
 }
 
 export interface CustomerLedgerDTO {
@@ -73,9 +84,24 @@ export interface OpenInvoiceSummaryDTO {
   outstandingAmountBase: number;
 }
 
+export interface CustomerStatementCommitmentDTO {
+  sourceType: 'SALES_ORDER';
+  sourceId: string;
+  documentNumber: string;
+  date: string;
+  expectedDate?: string;
+  status: string;
+  amountBase: number;
+  openAmountBase: number;
+  description?: string;
+}
+
 export interface CustomerStatementDTO {
   customerId: string;
   customerName: string;
+  accountId?: string;
+  accountCode?: string;
+  accountName?: string;
   fromDate: string;
   toDate: string;
   openingBalance: number;
@@ -83,7 +109,10 @@ export interface CustomerStatementDTO {
   lines: LedgerEventDTO[];
   totalInvoiced: number;
   totalPaid: number;
+  totalCredited?: number;
+  totalAdjusted?: number;
   openInvoices: OpenInvoiceSummaryDTO[];
+  openCommitments?: CustomerStatementCommitmentDTO[];
 }
 
 // Sales by Customer
@@ -171,7 +200,7 @@ export const salesReportingApi = {
   getCustomerLedger: (params: { customerId: string; fromDate?: string; toDate?: string }): Promise<CustomerLedgerDTO> =>
     client.get('/tenant/sales/reports/customer-ledger', { params }).then(unwrap<CustomerLedgerDTO>),
 
-  getCustomerStatement: (params: { customerId: string; fromDate: string; toDate: string }): Promise<CustomerStatementDTO> =>
+  getCustomerStatement: (params: { customerId: string; fromDate: string; toDate: string; includeOpenCommitments?: boolean }): Promise<CustomerStatementDTO> =>
     client.get('/tenant/sales/reports/customer-statement', { params }).then(unwrap<CustomerStatementDTO>),
 
   getSalesByCustomer: (params?: { fromDate?: string; toDate?: string }): Promise<SalesByCustomerReportDTO> =>

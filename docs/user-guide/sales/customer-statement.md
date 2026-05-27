@@ -1,6 +1,6 @@
 # Customer Statement and Ledger
 
-The Customer Statement and Customer Ledger give you a complete picture of a customer's account — every invoice raised, every payment received, and how the balance has moved over time.
+The Customer Statement and Customer Ledger give you a complete picture of a customer's account. The statement balance comes from the posted accounting ledger for that customer's AR account, so it includes invoices, payments, returns, refunds, and manual adjustments that affected the customer balance.
 
 ---
 
@@ -8,8 +8,8 @@ The Customer Statement and Customer Ledger give you a complete picture of a cust
 
 The page has two tabs:
 
-- **Statement** — a formal account statement for a chosen date range, showing an opening balance, all activity in the period, and a closing balance. This is what you would send to a customer to confirm their account position.
-- **Ledger** — the full transaction history in date order, with a running balance. Use the ledger when you need to trace every entry on the account rather than summarize a period.
+- **Statement** — a formal account statement for a chosen date range, showing an opening balance, all posted activity in the period, and a closing balance. This is what you would send to a customer to confirm their account position.
+- **Ledger** — the same ledger-backed transaction list presented for trace work, with a running balance.
 
 ---
 
@@ -18,7 +18,8 @@ The page has two tabs:
 1. Go to **Sales → Reports → Customer Statement**
 2. Select the **Customer**
 3. Set a **From date** and **To date** for the period you want
-4. The statement loads automatically
+4. Optional: tick **Include open commitments** if you want to see open Sales Orders below the financial statement
+5. Click **Generate Report**
 
 ---
 
@@ -30,19 +31,26 @@ The opening balance is how much the customer owed (or had in credit) at the star
 
 ### Activity lines
 
-The body of the statement lists every invoice and payment that falls within your chosen date range:
+The body of the statement lists every posted ledger movement that falls within your chosen date range:
 
 - **Invoices** appear as debits — they increase what the customer owes.
 - **Payments** appear as credits — they reduce what the customer owes.
+- **Credit notes / refunds** appear as credits — they reduce what the customer owes or record money returned.
+- **Adjustments** appear when a journal or accounting voucher affects the customer's AR account.
 
-On any day where both an invoice and a payment are posted, the invoice appears first.
+Draft documents and unposted documents are not included because they have not affected Accounting yet.
+
+Each row lets you open:
+
+- The original Sales document, when the statement can identify it
+- The Accounting voucher behind the ledger entry
 
 ### Closing balance
 
 The closing balance is the opening balance adjusted for all activity in the period:
 
 ```
-Closing balance = Opening balance + Total invoiced − Total paid
+Closing balance = Opening balance + posted debits − posted credits
 ```
 
 This is the amount the customer owes at the end of the period.
@@ -51,26 +59,28 @@ This is the amount the customer owes at the end of the period.
 
 Below the activity lines you will see:
 
-- **Total invoiced** — the sum of all invoice debits in the period
-- **Total paid** — the sum of all payments received in the period
+- **Total invoiced** — the sum of invoice debits in the period
+- **Total paid** — the sum of payment credits in the period
+- **Credits** — the sum of credit-note/refund credits in the period
 
 ### Open invoices
 
 At the bottom of the statement you will see a list of all invoices that currently have an outstanding balance, regardless of when they were issued. This tells you what is actually unpaid at the time you ran the statement.
 
+### Open commitments
+
+If you tick **Include open commitments**, the report also shows open Sales Orders that have not been fully invoiced. These are commercial commitments only. They do not change the opening balance, activity lines, or closing balance because they are not posted to the ledger.
+
 ---
 
 ## The Ledger view
 
-Switch to the **Ledger tab** to see the customer's full transaction history without a fixed date range. The ledger shows:
+Switch to the **Ledger** view to trace the customer's posted transaction history. The ledger shows:
 
-- Every invoice ever posted for the customer (oldest first)
-- Every payment received against those invoices
+- Posted invoices, payments, credit notes, refunds, and adjustments
 - A running balance column that updates after every entry
 
-The running balance starts at zero and increases with each invoice, decreasing with each payment. At any point in the list you can read off what the customer owed at that moment.
-
-You can optionally set a date range on the ledger too, in which case it will show only the activity within that range while still calculating the correct opening balance for the period.
+You can set a date range; the report still calculates the correct opening balance from earlier posted ledger activity.
 
 ---
 
@@ -80,7 +90,10 @@ You can optionally set a date range on the ledger too, in which case it will sho
 This means all invoices issued before the "From date" have been fully paid. A zero opening balance is correct — it means the customer had a clean slate at the start of the period.
 
 **The closing balance does not match what I expected.**
-Check whether there are payments recorded in the system that you were not expecting. The Ledger view shows every entry in detail and is the easiest way to trace unexpected movements.
+Open the rows from the statement. Start with the original Sales document, then open the Accounting voucher to confirm how the ledger was affected.
+
+**Why does a Sales Order not affect the balance?**
+Sales Orders are commitments, not posted accounting events. Use **Include open commitments** to show them below the statement without mixing them into the financial balance.
 
 **Can I use this statement to send to the customer?**
 Yes. The statement view is designed to be printed or exported and sent to a customer for confirmation of their account balance and activity.

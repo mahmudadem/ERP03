@@ -6,8 +6,14 @@
  */
 
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
+import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
+import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
+import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
+import { GetAccountStatementUseCase } from '../../accounting/use-cases/LedgerUseCases';
+import { AccountStatementEntry } from '../../../repository/interfaces/accounting/ILedgerRepository';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -50,11 +56,22 @@ export interface ArAgingReport {
 
 export interface LedgerEvent {
   date: string;
-  type: 'INVOICE' | 'PAYMENT';
+  type: 'INVOICE' | 'PAYMENT' | 'CREDIT_NOTE' | 'REFUND' | 'ADJUSTMENT';
   reference: string;
   debit: number;
   credit: number;
   runningBalance: number;
+  ledgerEntryId?: string;
+  voucherId?: string;
+  voucherNo?: string;
+  voucherType?: string;
+  voucherFormId?: string;
+  voucherPart?: string;
+  description?: string;
+  sourceModule?: string;
+  sourceType?: string;
+  sourceId?: string;
+  sourceLabel?: string;
 }
 
 export interface CustomerLedger {
@@ -70,6 +87,9 @@ export interface CustomerLedger {
 export interface CustomerStatement {
   customerId: string;
   customerName: string;
+  accountId?: string;
+  accountCode?: string;
+  accountName?: string;
   fromDate: string;
   toDate: string;
   openingBalance: number;
@@ -77,6 +97,8 @@ export interface CustomerStatement {
   lines: LedgerEvent[];
   totalInvoiced: number;
   totalPaid: number;
+  totalCredited?: number;
+  totalAdjusted?: number;
   openInvoices: {
     invoiceId: string;
     invoiceNumber: string;
@@ -85,6 +107,19 @@ export interface CustomerStatement {
     grandTotalBase: number;
     outstandingAmountBase: number;
   }[];
+  openCommitments?: CustomerStatementCommitment[];
+}
+
+export interface CustomerStatementCommitment {
+  sourceType: 'SALES_ORDER';
+  sourceId: string;
+  documentNumber: string;
+  date: string;
+  expectedDate?: string;
+  status: string;
+  amountBase: number;
+  openAmountBase: number;
+  description?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -354,9 +389,11 @@ export class GetCustomerLedgerUseCase {
 
 export interface CustomerStatementInput {
   companyId: string;
+  userId?: string;
   customerId: string;
   fromDate: string;
   toDate: string;
+  includeOpenCommitments?: boolean;
 }
 
 export class GetCustomerStatementUseCase {
@@ -417,5 +454,210 @@ export class GetCustomerStatementUseCase {
       totalPaid,
       openInvoices,
     };
+  }
+}
+
+export class CustomerStatementMissingAccountError extends Error {
+  readonly code = 'CUSTOMER_AR_ACCOUNT_MISSING';
+  readonly statusCode = 412;
+
+  constructor(customerId: string) {
+    super(
+      `Customer ${customerId} has no default AR account. Run the customer account backfill or assign an AR account before generating the statement.`,
+    );
+    this.name = 'CustomerStatementMissingAccountError';
+  }
+}
+
+export class GetLedgerBackedCustomerStatementUseCase {
+  constructor(
+    private readonly partyRepo: IPartyRepository,
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository,
+    private readonly salesOrderRepo: ISalesOrderRepository,
+    private readonly accountStatementUseCase: GetAccountStatementUseCase,
+    private readonly voucherRepo: IVoucherRepository,
+  ) {}
+
+  async execute(input: CustomerStatementInput): Promise<CustomerStatement> {
+    const { companyId, customerId, fromDate, toDate } = input;
+    const userId = input.userId || 'system';
+
+    const party = await this.partyRepo.getById(companyId, customerId);
+    if (!party) {
+      throw new Error(`Customer not found: ${customerId}`);
+    }
+    if (!party.defaultARAccountId) {
+      throw new CustomerStatementMissingAccountError(customerId);
+    }
+
+    const statement = await this.accountStatementUseCase.execute(
+      companyId,
+      userId,
+      party.defaultARAccountId,
+      fromDate,
+      toDate,
+      { includeUnposted: false },
+    );
+
+    const vouchers = await this.loadVouchers(companyId, statement.entries || []);
+    const lines = (statement.entries || []).map((entry) =>
+      this.decorateEntry(entry, vouchers.get(entry.voucherId)),
+    );
+
+    const openInvoices = await this.loadOpenInvoices(companyId, customerId);
+    const openCommitments = input.includeOpenCommitments
+      ? await this.loadOpenCommitments(companyId, customerId)
+      : undefined;
+
+    return {
+      customerId,
+      customerName: party.displayName || party.legalName,
+      accountId: statement.accountId,
+      accountCode: statement.accountCode,
+      accountName: statement.accountName,
+      fromDate,
+      toDate,
+      openingBalance: round2(statement.openingBalanceBase ?? statement.openingBalance ?? 0),
+      closingBalance: round2(statement.closingBalanceBase ?? statement.closingBalance ?? 0),
+      lines,
+      totalInvoiced: round2(lines.filter((line) => line.type === 'INVOICE').reduce((sum, line) => sum + line.debit, 0)),
+      totalPaid: round2(lines.filter((line) => line.type === 'PAYMENT').reduce((sum, line) => sum + line.credit, 0)),
+      totalCredited: round2(lines.filter((line) => line.type === 'CREDIT_NOTE' || line.type === 'REFUND').reduce((sum, line) => sum + line.credit, 0)),
+      totalAdjusted: round2(lines.filter((line) => line.type === 'ADJUSTMENT').reduce((sum, line) => sum + line.debit - line.credit, 0)),
+      openInvoices,
+      openCommitments,
+    };
+  }
+
+  private async loadVouchers(
+    companyId: string,
+    entries: AccountStatementEntry[],
+  ): Promise<Map<string, VoucherEntity>> {
+    const voucherIds = [...new Set(entries.map((entry) => entry.voucherId).filter(Boolean))];
+    const pairs = await Promise.all(
+      voucherIds.map(async (voucherId) => {
+        const voucher = await this.voucherRepo.findById(companyId, voucherId);
+        return [voucherId, voucher] as const;
+      }),
+    );
+
+    const byId = new Map<string, VoucherEntity>();
+    for (const [voucherId, voucher] of pairs) {
+      if (voucher) byId.set(voucherId, voucher);
+    }
+    return byId;
+  }
+
+  private decorateEntry(entry: AccountStatementEntry, voucher?: VoucherEntity): LedgerEvent {
+    const metadata = voucher?.metadata || {};
+    const sourceType =
+      metadata.sourceType ||
+      metadata.referenceType ||
+      (metadata.sourceInvoiceId ? 'SALES_INVOICE' : undefined);
+    const sourceId = metadata.sourceId || metadata.referenceId || metadata.sourceInvoiceId;
+    const type = this.classifyLine(entry, voucher, sourceType, metadata);
+
+    return {
+      ledgerEntryId: entry.id,
+      date: entry.date,
+      type,
+      reference: voucher?.reference || voucher?.voucherNo || entry.voucherNo || entry.voucherId,
+      debit: round2(Number(entry.baseDebit ?? entry.debit ?? 0)),
+      credit: round2(Number(entry.baseCredit ?? entry.credit ?? 0)),
+      runningBalance: round2(Number(entry.baseBalance ?? entry.balance ?? 0)),
+      voucherId: entry.voucherId,
+      voucherNo: voucher?.voucherNo || entry.voucherNo,
+      voucherType: voucher?.type,
+      voucherFormId: voucher?.formId,
+      voucherPart: metadata.voucherPart,
+      description: entry.description || voucher?.description,
+      sourceModule: metadata.sourceModule,
+      sourceType,
+      sourceId,
+      sourceLabel: this.sourceLabel(sourceType, sourceId),
+    };
+  }
+
+  private classifyLine(
+    entry: AccountStatementEntry,
+    voucher: VoucherEntity | undefined,
+    sourceType: string | undefined,
+    metadata: Record<string, any>,
+  ): LedgerEvent['type'] {
+    const debit = Number(entry.baseDebit ?? entry.debit ?? 0);
+    const credit = Number(entry.baseCredit ?? entry.credit ?? 0);
+    const voucherType = voucher?.type;
+
+    if (sourceType === 'SALES_RETURN') {
+      return metadata.voucherPart === 'REFUND' ? 'REFUND' : 'CREDIT_NOTE';
+    }
+    if (voucherType === VoucherType.RECEIPT || metadata.settlementMode || metadata.sourceInvoiceId) {
+      return 'PAYMENT';
+    }
+    if (sourceType === 'SALES_INVOICE' || voucherType === VoucherType.SALES_INVOICE) {
+      return debit >= credit ? 'INVOICE' : 'PAYMENT';
+    }
+    return 'ADJUSTMENT';
+  }
+
+  private sourceLabel(sourceType?: string, sourceId?: string): string | undefined {
+    if (!sourceType || !sourceId) return undefined;
+    switch (sourceType) {
+      case 'SALES_INVOICE':
+        return 'Sales Invoice';
+      case 'SALES_RETURN':
+        return 'Sales Return';
+      case 'SALES_ORDER':
+        return 'Sales Order';
+      default:
+        return sourceType.replace(/_/g, ' ').toLowerCase();
+    }
+  }
+
+  private async loadOpenInvoices(companyId: string, customerId: string): Promise<CustomerStatement['openInvoices']> {
+    const invoices = await this.salesInvoiceRepo.list(companyId, {
+      status: 'POSTED',
+      customerId,
+    });
+
+    return invoices
+      .filter((inv) => inv.outstandingAmountBase > 0.005)
+      .map((inv) => ({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        invoiceDate: inv.invoiceDate,
+        dueDate: inv.dueDate,
+        grandTotalBase: round2(inv.grandTotalBase),
+        outstandingAmountBase: round2(inv.outstandingAmountBase),
+      }));
+  }
+
+  private async loadOpenCommitments(companyId: string, customerId: string): Promise<CustomerStatementCommitment[]> {
+    const orders = await this.salesOrderRepo.list(companyId, { customerId });
+    return orders
+      .filter((order) => !['CLOSED', 'CANCELLED'].includes(order.status))
+      .map((order) => {
+        const openAmountBase = round2(
+          order.lines.reduce((sum, line) => {
+            const remainingQty = Math.max((line.orderedQty || 0) - (line.invoicedQty || 0), 0);
+            if (remainingQty <= 0 || !line.orderedQty) return sum;
+            const lineTotalWithTax = (line.lineTotalBase || 0) + (line.taxAmountBase || 0);
+            return sum + (lineTotalWithTax / line.orderedQty) * remainingQty;
+          }, 0),
+        );
+
+        return {
+          sourceType: 'SALES_ORDER' as const,
+          sourceId: order.id,
+          documentNumber: order.orderNumber,
+          date: order.orderDate,
+          expectedDate: order.expectedDeliveryDate,
+          status: order.status,
+          amountBase: round2(order.grandTotalBase),
+          openAmountBase,
+          description: order.notes,
+        };
+      })
+      .filter((order) => order.openAmountBase > 0.005 || order.status === 'DRAFT' || order.status === 'CONFIRMED');
   }
 }

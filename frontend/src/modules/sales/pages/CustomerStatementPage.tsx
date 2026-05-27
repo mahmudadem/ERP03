@@ -1,353 +1,440 @@
-import React, { useState } from 'react';
-import { Card } from '../../../components/ui/Card';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronRight, CalendarDays, FileText, ExternalLink, ReceiptText } from 'lucide-react';
 import {
   salesReportingApi,
   CustomerStatementDTO,
-  CustomerLedgerDTO,
   LedgerEventDTO,
 } from '../../../api/salesReportingApi';
+import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { Button } from '../../../components/ui/Button';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
-import { PartyDTO } from '../../../api/sharedApi';
-import { FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+type Mode = 'STATEMENT' | 'LEDGER';
 
-const firstOfYear = (): string => `${new Date().getFullYear()}-01-01`;
-const today = (): string => new Date().toISOString().slice(0, 10);
+interface StatementParams {
+  mode: Mode;
+  customerId: string;
+  customerLabel: string;
+  fromDate: string;
+  toDate: string;
+  includeOpenCommitments: boolean;
+}
 
-const fmt = (n: number): string =>
+const firstOfYear = () => `${new Date().getFullYear()}-01-01`;
+const today = () => new Date().toISOString().slice(0, 10);
+
+const fmt = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// ─── Shared transactions table ────────────────────────────────────────────────
+const statementSourcePath = (line: LedgerEventDTO): string | null => {
+  if (!line.sourceId || line.sourceModule !== 'sales') return null;
+  switch (line.sourceType) {
+    case 'SALES_INVOICE':
+      return `/sales/invoices/${line.sourceId}`;
+    case 'SALES_RETURN':
+      return `/sales/returns/${line.sourceId}`;
+    case 'SALES_ORDER':
+      return `/sales/orders/${line.sourceId}`;
+    case 'DELIVERY_NOTE':
+      return `/sales/delivery-notes/${line.sourceId}`;
+    default:
+      return null;
+  }
+};
 
-const LedgerTable: React.FC<{ lines: LedgerEventDTO[] }> = ({ lines }) => (
-  <div className="overflow-x-auto">
-    <table className="w-full">
-      <thead>
-        <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60">
-          {['Date', 'Type', 'Reference', 'Debit', 'Credit', 'Balance'].map((h, i) => (
-            <th
-              key={h}
-              className={clsx(
-                'py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest',
-                i < 3 ? 'text-left' : 'text-right'
-              )}
-            >
-              {h}
-            </th>
+const voucherPath = (line: LedgerEventDTO): string | null =>
+  line.voucherId ? `/accounting/vouchers/${line.voucherId}/view` : null;
+
+const lineTone = (type: LedgerEventDTO['type']) => {
+  if (type === 'INVOICE') return 'bg-blue-50 text-blue-600';
+  if (type === 'PAYMENT') return 'bg-emerald-50 text-emerald-600';
+  if (type === 'CREDIT_NOTE' || type === 'REFUND') return 'bg-amber-50 text-amber-700';
+  return 'bg-slate-100 text-slate-600';
+};
+
+// ─── Unified ledger table (opening/closing folded into thead/tfoot) ─────────
+
+const LedgerTable: React.FC<{
+  title: string;
+  openingBalance: number;
+  closingBalance: number;
+  lines: LedgerEventDTO[];
+  cellPad: string;
+  onOpenSource: (line: LedgerEventDTO) => void;
+  onOpenVoucher: (line: LedgerEventDTO) => void;
+}> = ({ title, openingBalance, closingBalance, lines, cellPad, onOpenSource, onOpenVoucher }) => (
+  <div className="bg-white border rounded-xl shadow-sm overflow-auto">
+    <div className="bg-slate-50/50 px-6 py-3 border-b">
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{title}</p>
+    </div>
+    <table className="min-w-full text-sm">
+      <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
+        <tr>
+          {['Date', 'Type', 'Reference', 'Debit', 'Credit', 'Balance', 'Actions'].map((h, i) => (
+            <th key={h} className={clsx(cellPad, i < 3 || i === 6 ? 'text-left' : 'text-right')}>{h}</th>
           ))}
+        </tr>
+        <tr className="bg-slate-50/40 border-b border-slate-100">
+          <td className={`${cellPad} text-[11px] font-bold text-slate-700 uppercase tracking-widest`} colSpan={6}>Opening Balance</td>
+          <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{fmt(openingBalance)}</td>
         </tr>
       </thead>
       <tbody>
-        {lines.map((line, idx) => (
-          <tr
-            key={idx}
-            className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/30"
-          >
-            <td className="py-2.5 px-4 text-xs text-slate-600 dark:text-slate-400">{line.date}</td>
-            <td className="py-2.5 px-4 text-xs">
-              <span
-                className={clsx(
-                  'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest',
-                  line.type === 'INVOICE'
-                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                    : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
-                )}
-              >
-                {line.type}
-              </span>
-            </td>
-            <td className="py-2.5 px-4 text-xs font-mono text-slate-700 dark:text-slate-300">{line.reference}</td>
-            <td className="py-2.5 px-4 text-xs tabular-nums text-right text-slate-700 dark:text-slate-300">
-              {line.debit > 0 ? fmt(line.debit) : '—'}
-            </td>
-            <td className="py-2.5 px-4 text-xs tabular-nums text-right text-emerald-600">
-              {line.credit > 0 ? fmt(line.credit) : '—'}
-            </td>
-            <td className="py-2.5 px-4 text-xs tabular-nums text-right font-semibold text-slate-800 dark:text-slate-200">
-              {fmt(line.runningBalance)}
-            </td>
+        {lines.length === 0 ? (
+          <tr>
+            <td colSpan={7} className="py-10 text-center text-sm text-slate-400">No transactions in this period.</td>
           </tr>
-        ))}
+        ) : (
+          lines.map((line, idx) => {
+            const canOpenSource = !!statementSourcePath(line);
+            const canOpenVoucher = !!voucherPath(line);
+            return (
+            <tr key={line.ledgerEntryId || idx} className="border-t border-slate-100 hover:bg-blue-50/40">
+              <td className={`${cellPad} text-xs text-slate-600`}>{line.date}</td>
+              <td className={`${cellPad} text-xs`}>
+                <span className={clsx('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest', lineTone(line.type))}>
+                  {line.type}
+                </span>
+              </td>
+              <td className={`${cellPad} text-xs`}>
+                <button
+                  type="button"
+                  onClick={() => (canOpenSource ? onOpenSource(line) : onOpenVoucher(line))}
+                  disabled={!canOpenSource && !canOpenVoucher}
+                  className="font-mono text-slate-700 hover:text-indigo-700 disabled:hover:text-slate-700 disabled:cursor-default"
+                  title={canOpenSource ? 'Open source document' : canOpenVoucher ? 'Open accounting voucher' : undefined}
+                >
+                  {line.reference}
+                </button>
+                {line.description && <div className="mt-1 max-w-sm truncate text-[11px] text-slate-400">{line.description}</div>}
+              </td>
+              <td className={`${cellPad} text-xs tabular-nums text-right text-slate-700`}>{line.debit > 0 ? fmt(line.debit) : '—'}</td>
+              <td className={`${cellPad} text-xs tabular-nums text-right text-emerald-600`}>{line.credit > 0 ? fmt(line.credit) : '—'}</td>
+              <td className={`${cellPad} text-xs tabular-nums text-right font-semibold text-slate-800`}>{fmt(line.runningBalance)}</td>
+              <td className={`${cellPad} text-xs`}>
+                <div className="flex flex-wrap gap-2">
+                  {canOpenSource && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenSource(line)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 hover:bg-indigo-100"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Source
+                    </button>
+                  )}
+                  {canOpenVoucher && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenVoucher(line)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+                    >
+                      <ReceiptText className="h-3 w-3" />
+                      Voucher
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          );})
+        )}
       </tbody>
+      <tfoot>
+        <tr className="bg-slate-100 border-t-2 border-slate-200">
+          <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`} colSpan={6}>Closing Balance</td>
+          <td className={`${cellPad} text-xs tabular-nums text-right font-black text-slate-900`}>{fmt(closingBalance)}</td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 );
 
-// ─── Balance summary row ──────────────────────────────────────────────────────
+// ─── Initiator ──────────────────────────────────────────────────────────────
 
-const BalanceRow: React.FC<{ label: string; amount: number; bold?: boolean }> = ({ label, amount, bold }) => (
-  <div className={clsx('flex justify-between items-center py-1.5 px-4', bold && 'bg-slate-50 dark:bg-slate-900/40 rounded')}>
-    <span className={clsx('text-xs text-slate-600 dark:text-slate-400', bold && 'font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest')}>{label}</span>
-    <span className={clsx('text-xs tabular-nums', bold ? 'font-black text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300')}>{fmt(amount)}</span>
-  </div>
-);
+const Initiator: React.FC<{
+  onSubmit: (p: StatementParams) => void;
+  initialParams?: StatementParams | null;
+}> = ({ onSubmit, initialParams }) => {
+  const [mode, setMode]                   = useState<Mode>(initialParams?.mode || 'STATEMENT');
+  const [customerId, setCustomerId]       = useState(initialParams?.customerId || '');
+  const [customerLabel, setCustomerLabel] = useState(initialParams?.customerLabel || '');
+  const [fromDate, setFromDate]           = useState(initialParams?.fromDate || firstOfYear());
+  const [toDate, setToDate]               = useState(initialParams?.toDate || today());
+  const [includeOpenCommitments, setIncludeOpenCommitments] = useState(initialParams?.includeOpenCommitments || false);
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+  const canSubmit = !!customerId && !!fromDate && !!toDate;
 
-type TabId = 'statement' | 'ledger';
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!canSubmit) return;
+        onSubmit({ mode, customerId, customerLabel, fromDate, toDate, includeOpenCommitments });
+      }}
+      className="space-y-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
+        <div className="md:col-span-4 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            View
+          </label>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as Mode)}
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-indigo-300 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
+          >
+            <option value="STATEMENT">Statement (period summary)</option>
+            <option value="LEDGER">Full Ledger (all events)</option>
+          </select>
+        </div>
 
-const CustomerStatementPage: React.FC = () => {
-  const [selectedParty, setSelectedParty] = useState<PartyDTO | null>(null);
-  const [fromDate, setFromDate] = useState<string>(firstOfYear());
-  const [toDate, setToDate] = useState<string>(today());
-  const [activeTab, setActiveTab] = useState<TabId>('statement');
+        <div className="md:col-span-8 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Customer <span className="text-rose-500">*</span>
+          </label>
+          <PartySelector
+            value={customerId}
+            role="CUSTOMER"
+            onChange={(party) => {
+              if (!party) { setCustomerId(''); setCustomerLabel(''); return; }
+              setCustomerId(party.id);
+              setCustomerLabel(party.displayName || party.legalName || party.id);
+            }}
+            placeholder="Select a customer..."
+          />
+        </div>
 
+        <div className="md:col-span-6 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            From Date
+          </label>
+          <DatePicker value={fromDate} onChange={setFromDate} className="w-full" />
+        </div>
+
+        <div className="md:col-span-6 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            To Date
+          </label>
+          <DatePicker value={toDate} onChange={setToDate} className="w-full" />
+        </div>
+
+        <label className="md:col-span-12 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={includeOpenCommitments}
+            onChange={(e) => setIncludeOpenCommitments(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span>
+            <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Include open commitments
+            </span>
+            <span className="text-xs text-slate-500">
+              Shows open sales orders separately for commercial follow-up. These amounts do not affect the statement balance.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div className="flex justify-end pt-4 border-t border-slate-100">
+        <Button
+          type="submit"
+          disabled={!canSubmit}
+          className="bg-slate-900 hover:bg-black disabled:opacity-50 text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
+        >
+          <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
+            Generate Report
+            <ChevronRight className="w-4 h-4" />
+          </span>
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+// ─── ReportContent ──────────────────────────────────────────────────────────
+
+const ReportContent: React.FC<{
+  params: StatementParams;
+  setTotalItems?: (total: number) => void;
+  density?: 'compact' | 'comfortable';
+}> = ({ params, setTotalItems, density }) => {
+  const navigate = useNavigate();
   const [statement, setStatement] = useState<CustomerStatementDTO | null>(null);
-  const [ledger, setLedger] = useState<CustomerLedgerDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canRun = !!selectedParty && !!fromDate && !!toDate;
+  const openSource = (line: LedgerEventDTO) => {
+    const path = statementSourcePath(line);
+    if (path) navigate(path);
+  };
 
-  const runReport = async () => {
-    if (!canRun) return;
+  const openVoucher = (line: LedgerEventDTO) => {
+    const path = voucherPath(line);
+    if (path) navigate(path);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     setStatement(null);
-    setLedger(null);
-    try {
-      if (activeTab === 'statement') {
-        const data = await salesReportingApi.getCustomerStatement({
-          customerId: selectedParty!.id,
-          fromDate,
-          toDate,
-        });
-        setStatement(data);
-      } else {
-        const data = await salesReportingApi.getCustomerLedger({
-          customerId: selectedParty!.id,
-          fromDate,
-          toDate,
-        });
-        setLedger(data);
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load report');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const switchTab = (tab: TabId) => {
-    setActiveTab(tab);
-    setStatement(null);
-    setLedger(null);
-    setError(null);
-  };
+    salesReportingApi.getCustomerStatement({
+      customerId: params.customerId,
+      fromDate: params.fromDate,
+      toDate: params.toDate,
+      includeOpenCommitments: params.includeOpenCommitments,
+    })
+      .then((data) => { if (!cancelled) setStatement(data); })
+      .catch((err) => {
+        if (!cancelled) setError(err?.response?.data?.error?.message || err?.message || 'Failed to load report');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
 
-  const customerName = statement?.customerName ?? ledger?.customerName ?? selectedParty?.displayName ?? '';
+    return () => { cancelled = true; };
+  }, [params.customerId, params.fromDate, params.toDate, params.includeOpenCommitments]);
+
+  useEffect(() => {
+    setTotalItems?.(statement?.lines.length ?? 0);
+  }, [statement?.lines.length, setTotalItems]);
+
+  const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
+  const customerName = statement?.customerName ?? params.customerLabel;
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="flex-none p-6 border-b bg-white dark:bg-slate-900 shadow-sm relative z-10">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100 dark:shadow-none">
-            <FileText size={24} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Customer Statement</h1>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Statement & Ledger</p>
-          </div>
+    <div className="flex flex-col h-full bg-slate-50">
+      <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-xs font-semibold text-slate-800">
+            {params.mode === 'STATEMENT' ? 'Statement' : 'Full Ledger'}
+          </span>
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-amber-200 bg-amber-50 text-xs font-semibold text-slate-800">
+            {customerName}
+          </span>
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
+            <CalendarDays className="w-3 h-3 text-blue-600" />
+            {params.fromDate} → {params.toDate}
+          </span>
+          {statement && (
+            <>
+              <span className="text-xs font-bold text-slate-500 ml-auto">
+                Invoiced: <span className="font-black text-blue-700">{fmt(statement.totalInvoiced)}</span> ·
+                Paid: <span className="font-black text-emerald-700">{fmt(statement.totalPaid)}</span> ·
+                Credits: <span className="font-black text-amber-700">{fmt(statement.totalCredited ?? 0)}</span> ·
+                Closing: <span className="font-black text-slate-900">{fmt(statement.closingBalance)}</span>
+              </span>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex-none bg-white dark:bg-slate-900 border-b dark:border-slate-800 px-6">
-        <div className="flex gap-0">
-          {(['statement', 'ledger'] as TabId[]).map(tab => (
-            <button
-              key={tab}
-              onClick={() => switchTab(tab)}
-              className={clsx(
-                'px-5 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors',
-                activeTab === tab
-                  ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-              )}
-            >
-              {tab === 'statement' ? 'Statement' : 'Full Ledger'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Filter bar */}
-      <div className="flex-none px-6 py-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800">
-        <div className="flex items-end gap-4 flex-wrap">
-          <div className="min-w-64">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Customer</label>
-            <PartySelector
-              value={selectedParty?.id}
-              onChange={party => { setSelectedParty(party); setStatement(null); setLedger(null); }}
-              role="CUSTOMER"
-              placeholder="Select customer..."
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">From Date</label>
-            <input
-              type="date"
-              className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-              value={fromDate}
-              onChange={e => setFromDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">To Date</label>
-            <input
-              type="date"
-              className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-              value={toDate}
-              onChange={e => setToDate(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={runReport}
-            disabled={!canRun || loading}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md transition-all uppercase tracking-widest"
-          >
-            {loading ? 'Running...' : 'Run Report'}
-          </button>
-        </div>
-        {!selectedParty && (
-          <p className="mt-2 text-xs text-slate-400">Select a customer to run the report.</p>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex-1 min-h-0 overflow-auto p-6">
+        <div className="mx-auto max-w-6xl space-y-6">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">
-              {error}
-            </div>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>
           )}
 
           {loading && (
             <div className="py-20 text-center text-sm text-slate-400 animate-pulse">Loading report...</div>
           )}
 
-          {/* ── Statement tab ── */}
-          {activeTab === 'statement' && statement && (
+          {!loading && statement && (
             <>
-              {/* Header info */}
-              <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Statement Header</p>
-                </div>
-                <div className="p-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Customer</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{customerName}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Period</p>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{statement.fromDate} – {statement.toDate}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Invoiced</p>
-                    <p className="text-sm font-bold text-blue-600">{fmt(statement.totalInvoiced)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Paid</p>
-                    <p className="text-sm font-bold text-emerald-600">{fmt(statement.totalPaid)}</p>
-                  </div>
-                </div>
-              </Card>
+              <LedgerTable
+                title={params.mode === 'STATEMENT' ? 'Transactions' : `Full Ledger — ${customerName}`}
+                openingBalance={statement.openingBalance}
+                closingBalance={statement.closingBalance}
+                lines={statement.lines}
+                cellPad={cellPad}
+                onOpenSource={openSource}
+                onOpenVoucher={openVoucher}
+              />
 
-              {/* Transactions */}
-              <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Transactions</p>
-                </div>
-                <div className="px-4 py-3 border-b dark:border-slate-800">
-                  <BalanceRow label="Opening Balance" amount={statement.openingBalance} />
-                </div>
-                {statement.lines.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-slate-400">No transactions in this period.</div>
-                ) : (
-                  <LedgerTable lines={statement.lines} />
-                )}
-                <div className="px-4 py-3 border-t dark:border-slate-800">
-                  <BalanceRow label="Closing Balance" amount={statement.closingBalance} bold />
-                </div>
-              </Card>
-
-              {/* Open invoices */}
               {statement.openInvoices.length > 0 && (
-                <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                  <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Open Invoices ({statement.openInvoices.length})</p>
+                <div className="bg-white border rounded-xl shadow-sm overflow-auto">
+                  <div className="bg-slate-50/50 px-6 py-3 border-b">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      Open Invoices ({statement.openInvoices.length})
+                    </p>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60">
-                          {['Invoice #', 'Invoice Date', 'Due Date', 'Invoice Total', 'Outstanding'].map((h, i) => (
-                            <th key={h} className={clsx('py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest', i < 3 ? 'text-left' : 'text-right')}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {statement.openInvoices.map(inv => (
-                          <tr key={inv.invoiceId} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                            <td className="py-2.5 px-4 text-xs font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNumber}</td>
-                            <td className="py-2.5 px-4 text-xs text-slate-600 dark:text-slate-400">{inv.invoiceDate}</td>
-                            <td className="py-2.5 px-4 text-xs text-slate-600 dark:text-slate-400">{inv.dueDate ?? '—'}</td>
-                            <td className="py-2.5 px-4 text-xs tabular-nums text-right text-slate-700 dark:text-slate-300">{fmt(inv.grandTotalBase)}</td>
-                            <td className="py-2.5 px-4 text-xs tabular-nums text-right font-bold text-rose-600">{fmt(inv.outstandingAmountBase)}</td>
-                          </tr>
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
+                      <tr>
+                        {['Invoice #', 'Invoice Date', 'Due Date', 'Invoice Total', 'Outstanding'].map((h, i) => (
+                          <th key={h} className={clsx(cellPad, i < 3 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
-                      </tbody>
-                    </table>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statement.openInvoices.map(inv => (
+                        <tr key={inv.invoiceId} className="border-t border-slate-100 hover:bg-blue-50/40">
+                          <td className={`${cellPad} text-xs font-mono text-slate-700`}>{inv.invoiceNumber}</td>
+                          <td className={`${cellPad} text-xs text-slate-600`}>{inv.invoiceDate}</td>
+                          <td className={`${cellPad} text-xs text-slate-600`}>{inv.dueDate ?? '—'}</td>
+                          <td className={`${cellPad} text-xs tabular-nums text-right text-slate-700`}>{fmt(inv.grandTotalBase)}</td>
+                          <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-rose-600`}>{fmt(inv.outstandingAmountBase)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {statement.openCommitments && statement.openCommitments.length > 0 && (
+                <div className="bg-white border rounded-xl shadow-sm overflow-auto">
+                  <div className="bg-slate-50/50 px-6 py-3 border-b">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      Open Commitments ({statement.openCommitments.length}) · Not included in balance
+                    </p>
                   </div>
-                </Card>
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
+                      <tr>
+                        {['Sales Order', 'Date', 'Expected', 'Status', 'Total', 'Open'].map((h, i) => (
+                          <th key={h} className={clsx(cellPad, i < 4 ? 'text-left' : 'text-right')}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statement.openCommitments.map((commitment) => (
+                        <tr key={commitment.sourceId} className="border-t border-slate-100 hover:bg-blue-50/40">
+                          <td className={`${cellPad} text-xs font-mono text-slate-700`}>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/sales/orders/${commitment.sourceId}`)}
+                              className="hover:text-indigo-700"
+                            >
+                              {commitment.documentNumber}
+                            </button>
+                          </td>
+                          <td className={`${cellPad} text-xs text-slate-600`}>{commitment.date}</td>
+                          <td className={`${cellPad} text-xs text-slate-600`}>{commitment.expectedDate ?? '—'}</td>
+                          <td className={`${cellPad} text-xs text-slate-600`}>{commitment.status}</td>
+                          <td className={`${cellPad} text-xs tabular-nums text-right text-slate-700`}>{fmt(commitment.amountBase)}</td>
+                          <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-amber-700`}>{fmt(commitment.openAmountBase)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </>
           )}
 
-          {/* ── Ledger tab ── */}
-          {activeTab === 'ledger' && ledger && (
-            <>
-              <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                      Full Ledger — {customerName}
-                    </p>
-                    <span className="text-xs text-slate-400">
-                      {ledger.fromDate && ledger.toDate ? `${ledger.fromDate} – ${ledger.toDate}` : 'All time'}
-                    </span>
-                  </div>
-                </div>
-                <div className="px-4 py-3 border-b dark:border-slate-800">
-                  <BalanceRow label="Opening Balance" amount={ledger.openingBalance} />
-                </div>
-                {ledger.events.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-slate-400">No ledger events found.</div>
-                ) : (
-                  <LedgerTable lines={ledger.events} />
-                )}
-                <div className="px-4 py-3 border-t dark:border-slate-800">
-                  <BalanceRow label="Closing Balance" amount={ledger.closingBalance} bold />
-                </div>
-              </Card>
-            </>
-          )}
-
-          {/* Empty prompt */}
-          {!loading && !statement && !ledger && !error && (
-            <div className="py-20 text-center space-y-4">
-              <div className="inline-flex p-6 bg-slate-50 dark:bg-slate-800 rounded-full text-slate-300">
+          {!loading && !statement && !error && (
+            <div className="py-20 text-center space-y-3">
+              <div className="inline-flex p-6 bg-slate-50 rounded-full text-slate-300">
                 <FileText size={48} />
               </div>
-              <div>
-                <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
-                  {selectedParty ? 'Click Run Report to load data.' : 'Select a customer and date range, then click Run Report.'}
-                </p>
-              </div>
+              <p className="text-sm font-bold text-slate-600">No data.</p>
             </div>
           )}
         </div>
@@ -355,5 +442,17 @@ const CustomerStatementPage: React.FC = () => {
     </div>
   );
 };
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
+const CustomerStatementPage: React.FC = () => (
+  <ReportContainer<StatementParams>
+    title="Customer Statement"
+    subtitle="Period statement or full ledger for a customer"
+    initiator={Initiator}
+    ReportContent={ReportContent}
+    config={{ paginated: false }}
+  />
+);
 
 export default CustomerStatementPage;

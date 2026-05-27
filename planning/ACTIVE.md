@@ -1,23 +1,20 @@
 # 🎯 Current Focus
 
-**Task:** Per-customer / per-vendor AR/AP sub-account (Piece A) → Customer Statement engine reuse (Piece B). Subtasks **A.1 + A.2 + A.3 complete (2026-05-27)**.
-**Status:** Piece A is complete on `feat/phase-a-sales-master-data`. Next active work is Piece B (Customer Statement engine reuse).
-**Latest completion report:** [planning/done/123-piece-a2-a3-party-account-forms-backfill.md](./done/123-piece-a2-a3-party-account-forms-backfill.md)
+**Task:** Per-customer / per-vendor AR/AP sub-account + ledger-backed Customer Statement. Subtasks **A.1 + A.2 + A.3 + Piece B complete (2026-05-27)**.
+**Status:** Complete on `feat/phase-a-sales-master-data`. Next recommended work is Vendor Statement parity during Purchases Phase F.
+**Latest completion report:** [planning/done/124-piece-b-ledger-backed-customer-statement.md](./done/124-piece-b-ledger-backed-customer-statement.md)
 
 ## 👉 Next agent — start here
 
-Continue with **Piece B — Customer Statement uses GetAccountStatementUseCase** (Piece A is now complete):
+Piece A and Piece B are complete:
 
-1. Add backend endpoint `GET /tenant/sales/customers/:partyId/statement?from=...&to=...` that:
-   - loads the party and resolves `defaultARAccountId`,
-   - returns 412 with a clear "run backfill" message when missing,
-   - delegates statement lines to `GetAccountStatementUseCase`.
-2. Decorate returned entries with sales document context (SI/SR/payment references) from voucher metadata.
-3. Refactor `CustomerStatementPage.tsx` to consume this endpoint instead of local SI-only math.
-4. Keep current filters/export UI behavior unchanged.
-5. Add focused tests around missing-account (412) and statement correctness.
+1. Customer/vendor per-party AR/AP account generation is implemented.
+2. Backfill is available for existing parties.
+3. Customer Statement now uses `GetAccountStatementUseCase` through `Party.defaultARAccountId`.
+4. Statement rows are decorated from voucher metadata for source-document and accounting-voucher drill-down.
+5. Open Sales Orders can be included as non-balance commitments.
 
-Reference scope/acceptance: report 122 (Piece B section) + report 123 (what Piece A delivered).
+Recommended next task: mirror this pattern for **Vendor Statement** in Purchases Phase F.
 
 ---
 

@@ -22,7 +22,33 @@ Backfill endpoints:
 - `POST /tenant/purchase/settings/backfill-party-accounts`
 - `POST /super-admin/companies/:companyId/backfill-party-accounts`
 
-Customer Statement currently still does its own SI math; Piece B will switch it to call `GetAccountStatementUseCase` against `Party.defaultARAccountId`.
+## Customer Statement engine reuse (Piece B — 2026-05-27, complete)
+
+Customer Statement is now ledger-backed. The report loads the customer Party, requires `Party.defaultARAccountId`, and calls Accounting's `GetAccountStatementUseCase` for that exact AR sub-account. If the customer does not have a default AR account, the API returns HTTP `412` with code `CUSTOMER_AR_ACCOUNT_MISSING`; the operator must run the party-account backfill or assign the account before the statement can be trusted.
+
+Primary endpoint:
+- `GET /tenant/sales/reports/customer-statement?customerId=...&fromDate=...&toDate=...&includeOpenCommitments=false`
+
+Alias endpoint:
+- `GET /tenant/sales/customers/:partyId/statement?fromDate=...&toDate=...&includeOpenCommitments=false`
+
+Accounting rule:
+- Posted ledger entries are the source of truth for statement opening balance, transaction lines, and closing balance.
+- Draft invoices, draft sales orders, unposted returns, and other non-posted documents do not affect balances.
+- Optional open commitments are disclosed in a separate section only; they never change opening/closing balance.
+
+The use case decorates ledger rows by loading the accounting voucher behind each ledger entry and reading fixed metadata:
+- `sourceModule`
+- `sourceType`
+- `sourceId`
+- `voucherPart`
+- `formId`
+
+Drill-down precedence:
+1. Open the original Sales business document when `sourceModule='sales'` and `sourceType/sourceId` resolve.
+2. Offer `Open Accounting Voucher` for the accounting impact.
+3. If the business document cannot be resolved, the voucher remains the fallback.
+4. The voucher viewer can fall back by fixed voucher type, with Journal Voucher as the generic final view.
 
 **Last updated (legacy stamp, kept for diff context):** 2026-05-24
 **Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. Phase C added AR aging, customer ledger/statement, and sales analytics reports. Phase D.2+D.3 added period-lock enforcement and per-record audit logging. Phase D.4 added recurring invoices (templated + scheduled). Phase D.5 added sales-return commercial settlement controls (credit note vs refund, reason taxonomy, restocking fee/net settlement). Phase D.6 added tenant-scoped invoice attachments. Phase D.7 added controlled invoice template selection with customer defaults. Phase D.8 now ships tenant-scoped outbound messaging for WhatsApp and Telegram, with email still deferred. **Phase E** added quote sequence numbering, promotion auto-invocation, credit check on direct SIs, AI test stabilization, and backorder/partial-fulfillment UX. See dedicated docs linked below.
@@ -344,13 +370,13 @@ Phase B added pre-sale quoting, credit-limit enforcement at order confirm, a pro
 
 ## Sales finance & reporting (Phase C)
 
-Phase C added a suite of read-only finance and analytics reports served from posted Sales Invoice and PaymentHistory data. No new transactional workflows were added — only reporting use cases and API endpoints.
+Phase C added a suite of read-only finance and analytics reports. Customer Statement was later hardened in Piece B to use Accounting's ledger statement engine for balances; legacy Customer Ledger remains an invoice/payment event view until it is removed or redirected.
 
 | Report | Route | Purpose |
 |---|---|---|
 | AR Aging | `GET /tenant/sales/reports/ar-aging` | Outstanding balances bucketed by age (Current / 1–30 / 31–60 / 61–90 / 90+) |
 | Customer Ledger | `GET /tenant/sales/reports/customer-ledger` | Chronological invoice + payment events with running balance |
-| Customer Statement | `GET /tenant/sales/reports/customer-statement` | Period statement: opening balance, transactions, closing balance, open invoices |
+| Customer Statement | `GET /tenant/sales/reports/customer-statement` | Ledger-backed period statement against `Party.defaultARAccountId`; open commitments are optional disclosure only |
 | Sales by Customer | `GET /tenant/sales/reports/sales-by-customer` | Revenue, tax, and invoice count aggregated per customer |
 | Sales by Item | `GET /tenant/sales/reports/sales-by-item` | Quantity and revenue aggregated per inventory item |
 | Sales by Salesperson | `GET /tenant/sales/reports/sales-by-salesperson` | Revenue per salesperson (invoices with no salesperson assigned appear under "Unassigned") |

@@ -121,6 +121,7 @@ router.get('/aged-backlog', SalesOperationalController.getAgedBacklog);
 router.get('/reports/ar-aging', SalesReportingController.getArAgingReport);
 router.get('/reports/customer-ledger', SalesReportingController.getCustomerLedger);
 router.get('/reports/customer-statement', SalesReportingController.getCustomerStatement);
+router.get('/customers/:partyId/statement', SalesReportingController.getCustomerStatement);
 router.get('/reports/sales-by-customer', SalesReportingController.getSalesByCustomer);
 router.get('/reports/sales-by-item', SalesReportingController.getSalesByItem);
 router.get('/reports/sales-by-salesperson', SalesReportingController.getSalesBySalesperson);
