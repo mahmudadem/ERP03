@@ -2,6 +2,29 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-27 (Wed) — Phase F: Purchases parity batch (AR/AP Aging, Analytics, Audit Log)
+
+**Task:** Close Purchases reporting gaps — ledger-backed aging, analytics, and audit log.  
+**Agent:** Claude Code (Opus 4.7)  
+**Branch:** `feat/phase-a-sales-master-data`
+
+**What landed:**
+- Migrated AR Aging to ledger-backed: reads customer AR sub-account balances, shows unallocated diffs from credit notes/JV adjustments.
+- New AP Aging report: mirrors AR Aging for vendors via `defaultAPAccountId`, with credit-normal sign convention.
+- New Purchases Analytics: purchases-by-vendor and purchases-by-item use cases, routes, and frontend page.
+- Purchase Audit Log: wired `RecordAuditController` to `/tenant/purchase/audit-log`.
+- Dead code cleanup: removed old `GetCustomerStatementUseCase` and its test suite (replaced by ledger-backed version).
+- Frontend: AP Aging page, Purchases Analytics page, menu entries for all new reports.
+
+**Verification:**
+- `npm --prefix backend run build` -> passed
+- `npm --prefix frontend run typecheck` -> passed
+- `ReceivablesReporting.test.ts` -> 8/8 passed
+
+**Time spent:** ~1.5h  
+**Result:** Phase F items 1-4 complete (AP Aging, Purchases Analytics, PI Audit Log, dead code cleanup).  
+**Next:** Remaining parity gaps: PI Attachments, Vendor Groups, Purchase Price Lists, RFQ.
+
 ## 2026-05-27 (Wed) — Vendor Statement parity: ledger-backed AP statement
 
 **Task:** Mirror Customer Statement's ledger-backed model for Purchases Vendor Statement.  

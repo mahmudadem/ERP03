@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Per-party AR/AP sub-accounts + ledger-backed Customer/Vendor Statements. Subtasks **A.1 + A.2 + A.3 + Piece B + Vendor Statement parity complete (2026-05-27)**.
-**Status:** Complete on `feat/phase-a-sales-master-data`. Next recommended work is AP Aging / Purchases analytics in Phase F, or resume broader Purchases parity.
-**Latest completion report:** [planning/done/125-vendor-statement-ledger-backed.md](./done/125-vendor-statement-ledger-backed.md)
+**Task:** Phase F — Purchases parity. Ledger-backed AR/AP Aging + Purchases Analytics + Audit Log done (2026-05-27).
+**Status:** In progress on `feat/phase-a-sales-master-data`. Remaining parity gaps: PI Attachments, Vendor Groups, Purchase Price Lists, RFQ.
+**Latest completion report:** See JOURNAL.md 2026-05-27 entries.
 
 ## 👉 Next agent — start here
 
@@ -22,7 +22,18 @@ Vendor Statement parity is now also complete:
 4. Rows are decorated from voucher metadata for Purchases source-document and accounting-voucher drill-down.
 5. Open Purchase Orders can be included as non-balance commitments.
 
-Recommended next task: continue Phase F with AP Aging / Purchases analytics reports, or audit Purchases parity gaps before choosing the next build item.
+Phase F progress (2026-05-27):
+1. Ledger-backed AR Aging — migrated from Sales-only _buildRawEvents to Accounting ledger with unallocated diff display.
+2. AP Aging report — new, mirrors AR Aging for vendors via defaultAPAccountId.
+3. Purchases Analytics — purchases-by-vendor + purchases-by-item reports, frontend page with mode toggle.
+4. Purchase Audit Log — reused RecordAuditController, wired to /tenant/purchase/audit-log.
+5. Dead code cleanup — removed old GetCustomerStatementUseCase and its tests.
+
+Remaining parity gaps (prioritized):
+- PI Attachments (vendor bill scans) — reuse Sales attachment infra
+- Vendor Groups — optional master data
+- Purchase Price Lists — optional
+- RFQ (Request for Quotation) — bigger feature, 2-3 hours
 
 ---
 
