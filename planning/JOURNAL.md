@@ -2,6 +2,30 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-28 (Thu) — Delete dead GetCustomerLedgerUseCase (QA Finding #3 closed)
+
+**Task:** Close Phase C QA Finding #3 — Customer Statement / Full Ledger missing sales-return credit notes.
+**Agent:** Claude Code (Opus 4.7)
+**Branch:** `feat/phase-a-sales-master-data`
+
+**Investigation:** Started by patching `_buildRawEvents` to query the sales-return repo. User pointed out that the Customer Statement was already migrated to `GetLedgerBackedCustomerStatementUseCase` (report 124), and sales returns already post AR through the accounting engine, so the ledger-backed statement picks up credit notes automatically. The legacy `GetCustomerLedgerUseCase` and its `/customer-ledger` endpoint had no frontend consumer.
+
+**Decision:** Reverted the patch and deleted the dead path — same playbook as the Phase F cleanup that removed legacy `GetCustomerStatementUseCase`.
+
+**What landed:**
+- Removed `GetCustomerLedgerUseCase`, `CustomerLedger`, `CustomerLedgerInput`, internal `RawEvent` from `ReceivablesReportingUseCases.ts`.
+- Removed `SalesReportingController.getCustomerLedger` handler and the `/reports/customer-ledger` route.
+- Removed `salesReportingApi.getCustomerLedger` and `CustomerLedgerDTO` from frontend.
+- Removed the `GetCustomerLedgerUseCase` describe block from `ReceivablesReporting.test.ts` (kept the 6 AR Aging tests).
+
+**Verification:**
+- `cd backend && npx jest src/tests/application/sales/ReceivablesReporting.test.ts` → 6/6 passed
+- Backend + frontend `tsc --noEmit` — clean on touched files
+
+**Result:** QA Finding #3 (report 121) closed. Single source of truth for customer AR history is now the ledger-backed Customer Statement. See [126 — Delete dead GetCustomerLedgerUseCase](./done/126-customer-ledger-credit-note-fix.md).
+
+---
+
 ## 2026-05-27 (Wed) — Phase F: Purchases parity batch (AR/AP Aging, Analytics, Audit Log)
 
 **Task:** Close Purchases reporting gaps — ledger-backed aging, analytics, and audit log.  

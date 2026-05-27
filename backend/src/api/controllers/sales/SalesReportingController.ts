@@ -3,7 +3,6 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import {
   GetArAgingReportUseCase,
   GetLedgerBackedArAgingUseCase,
-  GetCustomerLedgerUseCase,
   GetLedgerBackedCustomerStatementUseCase,
   CustomerStatementMissingAccountError,
 } from '../../../application/sales/use-cases/ReceivablesReportingUseCases';
@@ -56,34 +55,6 @@ export class SalesReportingController {
         userId,
         asOfDate: q.asOfDate as string | undefined,
         customerId: q.customerId as string | undefined,
-      });
-      (res as any).json({ success: true, data: result });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Customer Ledger
-  // ---------------------------------------------------------------------------
-
-  static async getCustomerLedger(req: Request, res: Response, next: NextFunction) {
-    try {
-      const companyId = SalesReportingController.getCompanyId(req);
-      const q = (req as any).query;
-      if (!q.customerId) {
-        throw new Error('customerId query parameter is required');
-      }
-      const useCase = new GetCustomerLedgerUseCase(
-        diContainer.salesInvoiceRepository,
-        diContainer.paymentHistoryRepository,
-        diContainer.partyRepository,
-      );
-      const result = await useCase.execute({
-        companyId,
-        customerId: q.customerId as string,
-        fromDate: q.fromDate as string | undefined,
-        toDate: q.toDate as string | undefined,
       });
       (res as any).json({ success: true, data: result });
     } catch (error) {

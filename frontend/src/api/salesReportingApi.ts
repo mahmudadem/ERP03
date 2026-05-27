@@ -65,16 +65,6 @@ export interface LedgerEventDTO {
   sourceLabel?: string;
 }
 
-export interface CustomerLedgerDTO {
-  customerId: string;
-  customerName: string;
-  fromDate?: string;
-  toDate?: string;
-  openingBalance: number;
-  events: LedgerEventDTO[];
-  closingBalance: number;
-}
-
 // Customer Statement
 
 export interface OpenInvoiceSummaryDTO {
@@ -198,9 +188,6 @@ const unwrap = <T>(payload: any): T => (payload?.data ?? payload) as T;
 export const salesReportingApi = {
   getArAging: (params?: { asOfDate?: string; customerId?: string }): Promise<ArAgingReportDTO> =>
     client.get('/tenant/sales/reports/ar-aging', { params }).then(unwrap<ArAgingReportDTO>),
-
-  getCustomerLedger: (params: { customerId: string; fromDate?: string; toDate?: string }): Promise<CustomerLedgerDTO> =>
-    client.get('/tenant/sales/reports/customer-ledger', { params }).then(unwrap<CustomerLedgerDTO>),
 
   getCustomerStatement: (params: { customerId: string; fromDate: string; toDate: string; includeOpenCommitments?: boolean }): Promise<CustomerStatementDTO> =>
     client.get('/tenant/sales/reports/customer-statement', { params }).then(unwrap<CustomerStatementDTO>),

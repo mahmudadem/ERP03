@@ -110,7 +110,7 @@ Commits on `feat/phase-a-sales-master-data`:
 ## Next action
 
 Phase C QA done (report 121). Triage these before Sales is declared production-ready:
-- **Finding #3** (report bug) — add sales-return query to `_buildRawEvents` in `ReceivablesReportingUseCases.ts` so Customer Statement + Full Ledger show credit-side events.
+- ✅ **Finding #3** (report bug) — CLOSED 2026-05-28 (report 126). Legacy `GetCustomerLedgerUseCase` + `/customer-ledger` endpoint deleted (no frontend consumer); ledger-backed Customer Statement already shows credit notes through the accounting engine.
 - **Findings #2 + #4 + #5** — single investigation: invoices reach POSTED in Sales without complete GL journals (7,800 AR gap, 17,033 revenue gap), and items have no cost basis so COGS = 0. May be SYCO-specific data state; reproduce on a fresh tenant before assuming system bug.
 - **SYCO chart of accounts** — remap AR to `104`; reclassify `5571 tax sales` as LIABILITY.
 
