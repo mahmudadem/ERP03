@@ -50,6 +50,10 @@ import {
   GetLedgerBackedApAgingUseCase,
   VendorStatementMissingAccountError,
 } from '../../../application/purchases/use-cases/PurchasesReportingUseCases';
+import {
+  GetPurchasesByVendorUseCase,
+  GetPurchasesByItemUseCase,
+} from '../../../application/purchases/use-cases/PurchasesAnalyticsUseCases';
 import { GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
 import { PurchasesInventoryService } from '../../../application/inventory/services/PurchasesInventoryService';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
@@ -1024,6 +1028,38 @@ export class PurchaseController {
         userId,
         asOfDate: q.asOfDate as string | undefined,
         vendorId: q.vendorId as string | undefined,
+      });
+      (res as any).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPurchasesByVendor(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const q = (req as any).query;
+      const useCase = new GetPurchasesByVendorUseCase(diContainer.purchaseInvoiceRepository);
+      const result = await useCase.execute({
+        companyId,
+        fromDate: q.fromDate as string | undefined,
+        toDate: q.toDate as string | undefined,
+      });
+      (res as any).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPurchasesByItem(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const q = (req as any).query;
+      const useCase = new GetPurchasesByItemUseCase(diContainer.purchaseInvoiceRepository);
+      const result = await useCase.execute({
+        companyId,
+        fromDate: q.fromDate as string | undefined,
+        toDate: q.toDate as string | undefined,
       });
       (res as any).json({ success: true, data: result });
     } catch (error) {

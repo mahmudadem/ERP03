@@ -131,6 +131,7 @@ const PurchaseReturnsListPage = lazy(() => import('../modules/purchases/pages/Pu
 const PurchaseReturnDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnDetailPage'));
 const VendorStatementPage = lazy(() => import('../modules/purchases/pages/VendorStatementPage'));
 const ApAgingReportPage = lazy(() => import('../modules/purchases/pages/ApAgingReportPage'));
+const PurchasesAnalyticsPage = lazy(() => import('../modules/purchases/pages/PurchasesAnalyticsPage'));
 const SalesHomePage = lazy(() => import('../modules/sales/pages/SalesHomePage'));
 const CustomersListPage = lazy(() => import('../modules/sales/pages/CustomersListPage'));
 const CustomerDetailPage = lazy(() => import('../modules/sales/pages/CustomerDetailPage'));
@@ -364,6 +365,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases/returns/:id', label: 'Purchase Return Detail', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/reports/vendor-statement', label: 'Vendor Statement', component: VendorStatementPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/reports/ap-aging', label: 'AP Aging', component: ApAgingReportPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/reports/purchases-analytics', label: 'Purchases Analytics', component: PurchasesAnalyticsPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/settings', label: 'Purchase Settings', component: PurchaseSettingsPage, section: 'INVENTORY', requiredModule: 'purchase' },
 
   // Dynamic Purchase Documents (designed in Forms Designer)

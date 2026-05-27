@@ -598,6 +598,42 @@ export interface ApAgingReportDTO {
   totals: ApAgingTotalsDTO;
 }
 
+// ---------------------------------------------------------------------------
+// Purchases Analytics DTOs
+// ---------------------------------------------------------------------------
+
+export interface PurchasesByVendorRowDTO {
+  vendorId: string;
+  vendorName: string;
+  invoiceCount: number;
+  totalCostBase: number;
+  totalTaxBase: number;
+  totalGrossBase: number;
+}
+
+export interface PurchasesByVendorReportDTO {
+  fromDate?: string;
+  toDate?: string;
+  rows: PurchasesByVendorRowDTO[];
+  totals: { invoiceCount: number; totalCostBase: number; totalTaxBase: number; totalGrossBase: number };
+}
+
+export interface PurchasesByItemRowDTO {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  totalQty: number;
+  totalCostBase: number;
+  lineCount: number;
+}
+
+export interface PurchasesByItemReportDTO {
+  fromDate?: string;
+  toDate?: string;
+  rows: PurchasesByItemRowDTO[];
+  totals: { totalQty: number; totalCostBase: number; lineCount: number };
+}
+
 export const purchasesApi = {
   initializePurchases: (payload: InitializePurchasesPayload): Promise<PurchaseSettingsDTO> =>
     client.post('/tenant/purchase/initialize', payload),
@@ -688,6 +724,12 @@ export const purchasesApi = {
 
   getApAging: (params?: { asOfDate?: string; vendorId?: string }): Promise<ApAgingReportDTO> =>
     client.get('/tenant/purchase/reports/ap-aging', { params }).then((r: any) => r?.data ?? r),
+
+  getPurchasesByVendor: (params?: { fromDate?: string; toDate?: string }): Promise<PurchasesByVendorReportDTO> =>
+    client.get('/tenant/purchase/reports/purchases-by-vendor', { params }).then((r: any) => r?.data ?? r),
+
+  getPurchasesByItem: (params?: { fromDate?: string; toDate?: string }): Promise<PurchasesByItemReportDTO> =>
+    client.get('/tenant/purchase/reports/purchases-by-item', { params }).then((r: any) => r?.data ?? r),
 
   createReturn: (payload: CreatePurchaseReturnPayload): Promise<PurchaseReturnDTO> =>
     client.post('/tenant/purchase/returns', payload),

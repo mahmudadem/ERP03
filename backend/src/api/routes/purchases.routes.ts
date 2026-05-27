@@ -44,6 +44,8 @@ router.get('/invoices/:id/payments', PurchaseController.getPaymentHistory);
 
 router.get('/reports/vendor-statement', PurchaseController.getVendorStatement);
 router.get('/reports/ap-aging', PurchaseController.getApAgingReport);
+router.get('/reports/purchases-by-vendor', PurchaseController.getPurchasesByVendor);
+router.get('/reports/purchases-by-item', PurchaseController.getPurchasesByItem);
 router.get('/vendors/:partyId/statement', PurchaseController.getVendorStatement);
 
 router.post('/returns', PurchaseController.createReturn);
