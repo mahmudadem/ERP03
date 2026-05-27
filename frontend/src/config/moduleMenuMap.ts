@@ -121,6 +121,7 @@ export const moduleMenuMap: Record<
         label: 'Reports',
         icon: 'BarChart3',
         children: [
+          { label: 'AP Aging', path: '/purchases/reports/ap-aging', icon: 'Clock3' },
           { label: 'Vendor Statement', path: '/purchases/reports/vendor-statement', icon: 'ScrollText' },
         ]
       },

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import {
   GetArAgingReportUseCase,
+  GetLedgerBackedArAgingUseCase,
   GetCustomerLedgerUseCase,
   GetLedgerBackedCustomerStatementUseCase,
   CustomerStatementMissingAccountError,
@@ -37,10 +38,22 @@ export class SalesReportingController {
   static async getArAgingReport(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SalesReportingController.getCompanyId(req);
+      const userId = SalesReportingController.getUserId(req);
       const q = (req as any).query;
-      const useCase = new GetArAgingReportUseCase(diContainer.salesInvoiceRepository);
+      const accountStatementUseCase = new GetAccountStatementUseCase(
+        diContainer.ledgerRepository,
+        diContainer.permissionChecker,
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+      );
+      const useCase = new GetLedgerBackedArAgingUseCase(
+        diContainer.partyRepository,
+        diContainer.salesInvoiceRepository,
+        accountStatementUseCase,
+      );
       const result = await useCase.execute({
         companyId,
+        userId,
         asOfDate: q.asOfDate as string | undefined,
         customerId: q.customerId as string | undefined,
       });

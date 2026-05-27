@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
 import {
-  salesReportingApi,
-  ArAgingReportDTO,
-  ArAgingCustomerRowDTO,
-} from '../../../api/salesReportingApi';
+  purchasesApi,
+  ApAgingReportDTO,
+  ApAgingVendorRowDTO,
+} from '../../../api/purchasesApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { clsx } from 'clsx';
 
-interface ArAgingParams {
+interface ApAgingParams {
   asOfDate: string;
-  customerId?: string;
-  customerLabel?: string;
+  vendorId?: string;
+  vendorLabel?: string;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -25,12 +25,12 @@ const fmt = (n: number): string =>
 // ─── Initiator ──────────────────────────────────────────────────────────────
 
 const Initiator: React.FC<{
-  onSubmit: (p: ArAgingParams) => void;
-  initialParams?: ArAgingParams | null;
+  onSubmit: (p: ApAgingParams) => void;
+  initialParams?: ApAgingParams | null;
 }> = ({ onSubmit, initialParams }) => {
-  const [asOfDate, setAsOfDate]         = useState(initialParams?.asOfDate || today());
-  const [customerId, setCustomerId]     = useState(initialParams?.customerId || '');
-  const [customerLabel, setCustomerLabel] = useState(initialParams?.customerLabel || '');
+  const [asOfDate, setAsOfDate]     = useState(initialParams?.asOfDate || today());
+  const [vendorId, setVendorId]     = useState(initialParams?.vendorId || '');
+  const [vendorLabel, setVendorLabel] = useState(initialParams?.vendorLabel || '');
 
   return (
     <form
@@ -38,8 +38,8 @@ const Initiator: React.FC<{
         e.preventDefault();
         onSubmit({
           asOfDate,
-          customerId: customerId || undefined,
-          customerLabel: customerLabel || undefined,
+          vendorId: vendorId || undefined,
+          vendorLabel: vendorLabel || undefined,
         });
       }}
       className="space-y-6"
@@ -56,21 +56,21 @@ const Initiator: React.FC<{
         <div className="md:col-span-8 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Customer (optional)
+            Vendor (optional)
           </label>
           <PartySelector
-            value={customerId}
-            role="CUSTOMER"
+            value={vendorId}
+            role="VENDOR"
             onChange={(party) => {
               if (!party) {
-                setCustomerId('');
-                setCustomerLabel('');
+                setVendorId('');
+                setVendorLabel('');
                 return;
               }
-              setCustomerId(party.id);
-              setCustomerLabel(party.displayName || party.legalName || party.id);
+              setVendorId(party.id);
+              setVendorLabel(party.displayName || party.legalName || party.id);
             }}
-            placeholder="All customers"
+            placeholder="All vendors"
           />
         </div>
       </div>
@@ -90,9 +90,9 @@ const Initiator: React.FC<{
   );
 };
 
-// ─── Expandable customer row ────────────────────────────────────────────────
+// ─── Expandable vendor row ─────────────────────────────────────────────────
 
-const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = ({ row, cellPad }) => {
+const VendorRow: React.FC<{ row: ApAgingVendorRowDTO; cellPad: string }> = ({ row, cellPad }) => {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -103,7 +103,7 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = (
         <td className={cellPad}>
           <div className="flex items-center gap-2">
             {open ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
-            <span className="font-semibold text-slate-800">{row.customerName}</span>
+            <span className="font-semibold text-slate-800">{row.vendorName}</span>
           </div>
         </td>
         <td className={`${cellPad} text-right tabular-nums text-slate-700`}>{fmt(row.current)}</td>
@@ -119,7 +119,7 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200">
-                  {['Invoice #', 'Invoice Date', 'Due Date', 'Days Overdue', 'Bucket', 'Outstanding'].map(h => (
+                  {['Invoice #', 'Vendor Inv #', 'Invoice Date', 'Due Date', 'Days Overdue', 'Bucket', 'Outstanding'].map(h => (
                     <th key={h} className={clsx('pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3', h === 'Outstanding' ? 'text-right' : 'text-left')}>{h}</th>
                   ))}
                 </tr>
@@ -128,6 +128,7 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = (
                 {row.invoices.map(inv => (
                   <tr key={inv.invoiceId} className="border-b border-slate-100">
                     <td className="py-1.5 pr-3 text-[11px] font-mono text-slate-700">{inv.invoiceNumber}</td>
+                    <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.vendorInvoiceNumber ?? '—'}</td>
                     <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.invoiceDate}</td>
                     <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.dueDate ?? '—'}</td>
                     <td className="py-1.5 pr-3 text-[11px] tabular-nums text-slate-600">{inv.daysOverdue}</td>
@@ -137,8 +138,8 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = (
                 ))}
                 {row.unallocated != null && Math.abs(row.unallocated) > 0.005 && (
                   <tr className="border-t border-dashed border-slate-300">
-                    <td colSpan={5} className="py-1.5 pr-3 text-[11px] italic text-slate-500">
-                      {row.unallocated < 0 ? 'Credit notes / JV adjustments' : 'Unallocated balance'}
+                    <td colSpan={6} className="py-1.5 pr-3 text-[11px] italic text-slate-500">
+                      {row.unallocated < 0 ? 'Debit notes / JV adjustments' : 'Unallocated balance'}
                     </td>
                     <td className={clsx('py-1.5 pr-3 text-[11px] tabular-nums text-right font-medium italic', row.unallocated < 0 ? 'text-green-600' : 'text-amber-600')}>
                       {fmt(row.unallocated)}
@@ -157,11 +158,11 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = (
 // ─── ReportContent ──────────────────────────────────────────────────────────
 
 const ReportContent: React.FC<{
-  params: ArAgingParams;
+  params: ApAgingParams;
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
-  const [report, setReport] = useState<ArAgingReportDTO | null>(null);
+  const [report, setReport] = useState<ApAgingReportDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -169,12 +170,12 @@ const ReportContent: React.FC<{
     let cancelled = false;
     setLoading(true);
     setError(null);
-    salesReportingApi.getArAging({ asOfDate: params.asOfDate, customerId: params.customerId })
+    purchasesApi.getApAging({ asOfDate: params.asOfDate, vendorId: params.vendorId })
       .then((data) => { if (!cancelled) setReport(data); })
       .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load report'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [params.asOfDate, params.customerId]);
+  }, [params.asOfDate, params.vendorId]);
 
   useEffect(() => {
     setTotalItems?.(report?.rows.length ?? 0);
@@ -190,14 +191,14 @@ const ReportContent: React.FC<{
             <CalendarDays className="w-3 h-3 text-blue-600" />
             As of {report?.asOfDate ?? params.asOfDate}
           </span>
-          {params.customerLabel && (
+          {params.vendorLabel && (
             <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
-              {params.customerLabel}
+              {params.vendorLabel}
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            {report?.rows.length ?? 0} customer{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
-            Total AR: <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
+            {report?.rows.length ?? 0} vendor{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
+            Total AP: <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
           </span>
         </div>
       </div>
@@ -216,21 +217,21 @@ const ReportContent: React.FC<{
           </div>
         ) : !report || report.rows.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 text-center">
-            <p className="text-sm font-bold text-slate-600">No outstanding receivables as of {report?.asOfDate ?? params.asOfDate}</p>
+            <p className="text-sm font-bold text-slate-600">No outstanding payables as of {report?.asOfDate ?? params.asOfDate}</p>
           </div>
         ) : (
           <div className="bg-white border rounded-xl shadow-sm overflow-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                 <tr>
-                  {['Customer', 'Current', '1–30 Days', '31–60 Days', '61–90 Days', '90+ Days', 'Total'].map((h, i) => (
+                  {['Vendor', 'Current', '1–30 Days', '31–60 Days', '61–90 Days', '90+ Days', 'Total'].map((h, i) => (
                     <th key={h} className={clsx(cellPad, i === 0 ? 'text-left' : 'text-right')}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {report.rows.map((r) => (
-                  <CustomerRow key={r.customerId} row={r} cellPad={cellPad} />
+                  <VendorRow key={r.vendorId} row={r} cellPad={cellPad} />
                 ))}
               </tbody>
               <tfoot>
@@ -254,14 +255,14 @@ const ReportContent: React.FC<{
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-const ArAgingReportPage: React.FC = () => (
-  <ReportContainer<ArAgingParams>
-    title="AR Aging"
-    subtitle="Accounts receivable by aging bucket"
+const ApAgingReportPage: React.FC = () => (
+  <ReportContainer<ApAgingParams>
+    title="AP Aging"
+    subtitle="Accounts payable by aging bucket"
     initiator={Initiator}
     ReportContent={ReportContent}
     config={{ paginated: false }}
   />
 );
 
-export default ArAgingReportPage;
+export default ApAgingReportPage;

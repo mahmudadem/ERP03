@@ -1,8 +1,8 @@
 /**
  * ReceivablesReporting.test.ts
  *
- * Tests for GetArAgingReportUseCase, GetCustomerLedgerUseCase,
- * and GetCustomerStatementUseCase.
+ * Tests for GetArAgingReportUseCase and GetCustomerLedgerUseCase.
+ * Customer Statement tests live in LedgerBackedCustomerStatement.test.ts.
  */
 
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
@@ -13,7 +13,6 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import {
   GetArAgingReportUseCase,
   GetCustomerLedgerUseCase,
-  GetCustomerStatementUseCase,
 } from '../../../application/sales/use-cases/ReceivablesReportingUseCases';
 
 // ---------------------------------------------------------------------------
@@ -280,50 +279,3 @@ describe('GetCustomerLedgerUseCase', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Customer Statement tests
-// ---------------------------------------------------------------------------
-
-describe('GetCustomerStatementUseCase', () => {
-  it('9. totalInvoiced and totalPaid computed correctly from period lines', async () => {
-    const inv1 = makeInvoice({ id: 'inv-a', invoiceNumber: 'INV-A', invoiceDate: '2026-04-01', grandTotalBase: 800, outstandingAmountBase: 300 });
-    const inv2 = makeInvoice({ id: 'inv-b', invoiceNumber: 'INV-B', invoiceDate: '2026-04-10', grandTotalBase: 400, outstandingAmountBase: 400 });
-    const pmt1 = makePayment({ id: 'pmt-a', invoiceId: 'inv-a', paymentDate: '2026-04-15', amountBase: 500 });
-
-    const siRepo = makeSalesInvoiceRepo([inv1, inv2]);
-    const pmtRepo = makePaymentHistoryRepo({ 'inv-a': [pmt1], 'inv-b': [] });
-    const partyRepo = makePartyRepo(makeParty());
-    const uc = new GetCustomerStatementUseCase(siRepo, pmtRepo, partyRepo);
-
-    const stmt = await uc.execute({
-      companyId: COMPANY_ID,
-      customerId: 'cust-1',
-      fromDate: '2026-04-01',
-      toDate: '2026-04-30',
-    });
-
-    expect(stmt.totalInvoiced).toBeCloseTo(800 + 400); // both invoices in period
-    expect(stmt.totalPaid).toBeCloseTo(500);            // one payment in period
-  });
-
-  it('10. openInvoices lists only invoices with outstanding > 0', async () => {
-    const invPaid    = makeInvoice({ id: 'inv-paid',    invoiceNumber: 'INV-PAID',    invoiceDate: '2026-04-01', grandTotalBase: 600, outstandingAmountBase: 0   });
-    const invPartial = makeInvoice({ id: 'inv-partial', invoiceNumber: 'INV-PARTIAL', invoiceDate: '2026-04-05', grandTotalBase: 400, outstandingAmountBase: 200 });
-
-    const siRepo = makeSalesInvoiceRepo([invPaid, invPartial]);
-    const pmtRepo = makePaymentHistoryRepo({ 'inv-paid': [], 'inv-partial': [] });
-    const partyRepo = makePartyRepo(makeParty());
-    const uc = new GetCustomerStatementUseCase(siRepo, pmtRepo, partyRepo);
-
-    const stmt = await uc.execute({
-      companyId: COMPANY_ID,
-      customerId: 'cust-1',
-      fromDate: '2026-04-01',
-      toDate: '2026-04-30',
-    });
-
-    expect(stmt.openInvoices).toHaveLength(1);
-    expect(stmt.openInvoices[0].invoiceId).toBe('inv-partial');
-    expect(stmt.openInvoices[0].outstandingAmountBase).toBeCloseTo(200);
-  });
-});

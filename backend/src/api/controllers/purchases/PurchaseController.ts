@@ -47,6 +47,7 @@ import {
 } from '../../../application/purchases/use-cases/PaymentSyncUseCases';
 import {
   GetLedgerBackedVendorStatementUseCase,
+  GetLedgerBackedApAgingUseCase,
   VendorStatementMissingAccountError,
 } from '../../../application/purchases/use-cases/PurchasesReportingUseCases';
 import { GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
@@ -998,6 +999,34 @@ export class PurchaseController {
           },
         });
       }
+      next(error);
+    }
+  }
+
+  static async getApAgingReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+      const q = (req as any).query;
+      const accountStatementUseCase = new GetAccountStatementUseCase(
+        diContainer.ledgerRepository,
+        diContainer.permissionChecker,
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+      );
+      const useCase = new GetLedgerBackedApAgingUseCase(
+        diContainer.partyRepository,
+        diContainer.purchaseInvoiceRepository,
+        accountStatementUseCase,
+      );
+      const result = await useCase.execute({
+        companyId,
+        userId,
+        asOfDate: q.asOfDate as string | undefined,
+        vendorId: q.vendorId as string | undefined,
+      });
+      (res as any).json({ success: true, data: result });
+    } catch (error) {
       next(error);
     }
   }

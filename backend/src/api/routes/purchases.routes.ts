@@ -43,6 +43,7 @@ router.post('/invoices/:id/record-payment', idempotencyMiddleware, PurchaseContr
 router.get('/invoices/:id/payments', PurchaseController.getPaymentHistory);
 
 router.get('/reports/vendor-statement', PurchaseController.getVendorStatement);
+router.get('/reports/ap-aging', PurchaseController.getApAgingReport);
 router.get('/vendors/:partyId/statement', PurchaseController.getVendorStatement);
 
 router.post('/returns', PurchaseController.createReturn);

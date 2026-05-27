@@ -23,6 +23,8 @@ export interface ArAgingCustomerRowDTO {
   days61_90: number;
   days90Plus: number;
   total: number;
+  ledgerBalance?: number;
+  unallocated?: number;
   invoices: ArAgingInvoiceDetailDTO[];
 }
 

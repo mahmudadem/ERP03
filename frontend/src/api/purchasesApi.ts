@@ -554,6 +554,50 @@ export interface VendorStatementDTO {
   openCommitments?: VendorStatementCommitmentDTO[];
 }
 
+// ---------------------------------------------------------------------------
+// AP Aging DTOs
+// ---------------------------------------------------------------------------
+
+export interface ApAgingInvoiceDetailDTO {
+  invoiceId: string;
+  invoiceNumber: string;
+  vendorInvoiceNumber?: string;
+  invoiceDate: string;
+  dueDate: string | undefined;
+  daysOverdue: number;
+  outstandingAmountBase: number;
+  bucket: string;
+}
+
+export interface ApAgingVendorRowDTO {
+  vendorId: string;
+  vendorName: string;
+  current: number;
+  days1_30: number;
+  days31_60: number;
+  days61_90: number;
+  days90Plus: number;
+  total: number;
+  ledgerBalance?: number;
+  unallocated?: number;
+  invoices: ApAgingInvoiceDetailDTO[];
+}
+
+export interface ApAgingTotalsDTO {
+  current: number;
+  days1_30: number;
+  days31_60: number;
+  days61_90: number;
+  days90Plus: number;
+  total: number;
+}
+
+export interface ApAgingReportDTO {
+  asOfDate: string;
+  rows: ApAgingVendorRowDTO[];
+  totals: ApAgingTotalsDTO;
+}
+
 export const purchasesApi = {
   initializePurchases: (payload: InitializePurchasesPayload): Promise<PurchaseSettingsDTO> =>
     client.post('/tenant/purchase/initialize', payload),
@@ -641,6 +685,9 @@ export const purchasesApi = {
 
   getVendorStatement: (params: { vendorId: string; fromDate: string; toDate: string; includeOpenCommitments?: boolean }): Promise<VendorStatementDTO> =>
     client.get('/tenant/purchase/reports/vendor-statement', { params }),
+
+  getApAging: (params?: { asOfDate?: string; vendorId?: string }): Promise<ApAgingReportDTO> =>
+    client.get('/tenant/purchase/reports/ap-aging', { params }).then((r: any) => r?.data ?? r),
 
   createReturn: (payload: CreatePurchaseReturnPayload): Promise<PurchaseReturnDTO> =>
     client.post('/tenant/purchase/returns', payload),
