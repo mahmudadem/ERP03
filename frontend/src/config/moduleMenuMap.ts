@@ -91,6 +91,7 @@ export const moduleMenuMap: Record<
       { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },
       { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
       { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
+      { label: 'Aged Backlog', path: '/sales/aged-backlog', icon: 'Clock3' },
       { label: 'Settings', path: '/sales/settings', icon: 'Settings' }
     ]
   },
