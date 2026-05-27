@@ -2,6 +2,37 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-27 (Wed) — Piece A.2 + A.3: frontend forms + backfill endpoints/buttons
+
+**Task:** Complete Piece A after backend A.1 by shipping A.2 (forms/contracts) and A.3 (backfill) for per-party AR/AP account strategy.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/phase-a-sales-master-data`
+**Completion report:** [planning/done/123-piece-a2-a3-party-account-forms-backfill.md](./done/123-piece-a2-a3-party-account-forms-backfill.md)
+
+**What landed:**
+- Frontend contracts updated for party-account strategy and backfill response handling in `salesApi` and `purchasesApi`.
+- Sales/Purchase settings pages now expose backfill actions with `ConfirmDialog` and success/info/error toasts.
+- Backend A.3 delivered:
+  - new `BackfillPartyAccountsUseCase` (idempotent, scoped AR/AP/BOTH, error collection per party),
+  - tenant routes:
+    - `POST /tenant/sales/settings/backfill-party-accounts`
+    - `POST /tenant/purchase/settings/backfill-party-accounts`
+  - super-admin route:
+    - `POST /super-admin/companies/:companyId/backfill-party-accounts`
+- Backend DTOs now surface `arParentAccountId` / `apParentAccountId` and `partyAccountCodeFormat` so UI values round-trip correctly.
+- Added dedicated A.3 tests in `BackfillPartyAccountsUseCase.test.ts`.
+- Updated architecture/user docs for Sales + Purchases account-generation/backfill behavior.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/shared/BackfillPartyAccountsUseCase.test.ts` → ✅
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/shared/PartyAccountStrategy.test.ts` → ✅
+- `npm --prefix backend run build` → ✅
+- `npm --prefix frontend run typecheck` → ✅
+
+**Time spent:** ~2.0h
+**Result:** ✅ Piece A complete (A.1 + A.2 + A.3). Ready to start Piece B (Customer Statement engine reuse).
+**Next:** Implement Piece B by routing customer statements through `GetAccountStatementUseCase` using the customer-specific AR account.
+
 ## 2026-05-27 (Wed) — Piece A.1: per-customer/per-vendor sub-account (backend)
 
 **Task:** Piece A.1 of "Per-customer AR sub-account" feature (precursor to Customer Statement engine reuse — Piece B).

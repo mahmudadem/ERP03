@@ -13,6 +13,7 @@ router.get('/settings', PurchaseController.getSettings);
 router.use(moduleInitializedGuard('purchase'));
 
 router.put('/settings', PurchaseController.updateSettings);
+router.post('/settings/backfill-party-accounts', PurchaseController.backfillPartyAccounts);
 
 router.post('/orders', PurchaseController.createPO);
 router.get('/orders', PurchaseController.listPOs);

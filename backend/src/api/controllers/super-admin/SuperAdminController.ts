@@ -6,6 +6,7 @@ import { DemoteSuperAdminUseCase } from '../../../application/super-admin/use-ca
 import { ListAllUsersUseCase } from '../../../application/super-admin/use-cases/ListAllUsersUseCase';
 import { ListAllCompaniesUseCase } from '../../../application/super-admin/use-cases/ListAllCompaniesUseCase';
 import { GetSystemOverviewUseCase } from '../../../application/super-admin/use-cases/GetSystemOverviewUseCase';
+import { BackfillPartyAccountsUseCase } from '../../../application/shared/use-cases/BackfillPartyAccountsUseCase';
 
 export class SuperAdminController {
   
@@ -110,6 +111,33 @@ export class SuperAdminController {
       const totalPurchased = ledger?.totalPurchased || 0;
       const totalConsumed = ledger?.totalConsumed || 0;
       res.json({ success: true, data: { balance, totalPurchased, totalConsumed } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async backfillPartyAccountsForCompany(req: Request, res: Response, next: NextFunction) {
+    try {
+      const actorId = (req as any).user?.uid || 'SYSTEM';
+      const { companyId } = req.params;
+
+      const useCase = new BackfillPartyAccountsUseCase(
+        diContainer.partyRepository,
+        diContainer.accountRepository,
+        diContainer.salesSettingsRepository,
+        diContainer.purchaseSettingsRepository,
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const result = await useCase.execute({
+        companyId: String(companyId),
+        actorId,
+        scope: 'BOTH',
+        activeOnly: true,
+      });
+
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

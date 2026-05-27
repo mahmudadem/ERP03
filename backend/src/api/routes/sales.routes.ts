@@ -21,6 +21,7 @@ router.get('/settings', SalesController.getSettings);
 router.use(moduleInitializedGuard('sales'));
 
 router.put('/settings', SalesController.updateSettings);
+router.post('/settings/backfill-party-accounts', SalesController.backfillPartyAccounts);
 
 router.post('/orders', SalesController.createSO);
 router.get('/orders', SalesController.listSOs);

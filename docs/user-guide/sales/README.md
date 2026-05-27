@@ -8,6 +8,7 @@ Key guides:
 
 - [Direct Invoice and Operational Linked Invoice](D:/DEV2026/ERP03/docs/user-guide/sales/direct-invoice-and-operational-linked-invoice.md)
 - [Sales Returns (Credit Note vs Refund)](D:/DEV2026/ERP03/docs/user-guide/sales/sales-returns.md)
+- [Customer AR Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/sales/customer-ar-subaccounts.md)
 - [Invoice Templates](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-templates.md)
 - [Communication Sender Accounts](D:/DEV2026/ERP03/docs/user-guide/sales/communication-accounts.md)
 - [Send Invoices via WhatsApp](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-whatsapp-sharing.md)

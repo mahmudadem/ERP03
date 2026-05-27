@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { PurchaseSettingsDTO, PurchaseGovernanceRuleDTO, purchasesApi } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { useAccounts } from '../../../context/AccountsContext';
-import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
+import toast from 'react-hot-toast';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,
@@ -37,6 +39,8 @@ const PurchaseSettingsPage: React.FC = () => {
     persona: 'direct',
   });
   const [showAddRule, setShowAddRule] = useState(false);
+  const [showBackfillConfirm, setShowBackfillConfirm] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -103,6 +107,26 @@ const PurchaseSettingsPage: React.FC = () => {
   const removeRule = (id: string) => {
     const currentRules = settings?.governanceRules || [];
     updateSetting('governanceRules', currentRules.filter((r) => r.id !== id));
+  };
+
+  const handleBackfillApAccounts = async () => {
+    try {
+      setBackfilling(true);
+      const result = await purchasesApi.backfillPartyAccounts();
+      if (result.errors.length > 0) {
+        toast(
+          `Backfill completed with issues. Created: ${result.created}, skipped: ${result.skipped}, errors: ${result.errors.length}`,
+          { icon: 'ℹ️' }
+        );
+      } else {
+        toast.success(`Backfill completed. Created: ${result.created}, skipped: ${result.skipped}.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to backfill vendor AP sub-accounts.');
+    } finally {
+      setBackfilling(false);
+      setShowBackfillConfirm(false);
+    }
   };
 
   const liabilityAccounts = useMemo(
@@ -195,13 +219,14 @@ const PurchaseSettingsPage: React.FC = () => {
   ];
 
   return (
-    <ModuleSettingsLayout
-      title="Purchase Settings"
-      subtitle="Control purchasing workflow, posting defaults, tolerances, and numbering."
-      tabs={tabs as any}
-      activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as TabId)}
-    >
+    <>
+      <ModuleSettingsLayout
+        title="Purchase Settings"
+        subtitle="Control purchasing workflow, posting defaults, tolerances, and numbering."
+        tabs={tabs as any}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as TabId)}
+      >
       <AccountingIntegrationStatus
         moduleCode="purchases"
         hasMappings={!!settings?.defaultAPAccountId}
@@ -362,6 +387,16 @@ const PurchaseSettingsPage: React.FC = () => {
                     <p className="mt-1 text-[11px] text-indigo-700">
                       {t('purchases.settings.apGeneration.description', 'Configure how vendor-specific AP sub-accounts are generated during vendor creation.')}
                     </p>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => setShowBackfillConfirm(true)}
+                        disabled={backfilling}
+                      >
+                        {t('purchases.settings.apGeneration.backfillButton', 'Backfill vendor AP sub-accounts')}
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -714,7 +749,23 @@ const PurchaseSettingsPage: React.FC = () => {
           </div>
         </SettingsSection>
       )}
-    </ModuleSettingsLayout>
+      </ModuleSettingsLayout>
+      <ConfirmDialog
+        isOpen={showBackfillConfirm}
+        title={t('purchases.settings.apGeneration.confirmTitle', 'Backfill Vendor AP Sub-accounts')}
+        message={t(
+          'purchases.settings.apGeneration.confirmMessage',
+          'This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.'
+        )}
+        confirmLabel={t('purchases.settings.apGeneration.confirmAction', 'Run Backfill')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        onConfirm={handleBackfillApAccounts}
+        onCancel={() => setShowBackfillConfirm(false)}
+        tone="warning"
+        isConfirming={backfilling}
+        icon={<AlertTriangle size={20} />}
+      />
+    </>
   );
 };
 

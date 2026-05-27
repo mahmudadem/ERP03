@@ -1,6 +1,30 @@
 # Architecture: Sales Module
 
-**Last updated:** 2026-05-24
+**Last updated:** 2026-05-27
+
+## Per-party AR sub-accounts (Piece A — 2026-05-27, complete)
+
+Tenants configure a single **AR parent account** in Sales Settings (`SalesSettings.arParentAccountId`). When a customer is created with `accountStrategy='AUTO_CREATE'`, `CreatePartyUseCase` calls `CreateAccountUseCase` to make a posting sub-account under that parent and stores its id in `Party.defaultARAccountId`. Mirror logic on the Purchases side (`PurchaseSettings.apParentAccountId` → vendors → `defaultAPAccountId`, classification `LIABILITY`).
+
+The generated account `userCode` is rendered from `SalesSettings.partyAccountCodeFormat` / `PurchaseSettings.partyAccountCodeFormat` via the pure helper [`PartyAccountCodeRenderer`](../../backend/src/application/shared/services/PartyAccountCodeRenderer.ts). Tokens: `{parent}`, `{partyCode}`, `{seq3}`. Default template `{parent}-{partyCode}`. Templates missing both `{partyCode}` and `{seq3}` are rejected at settings-save time (would always collide).
+
+`accountStrategy` is a **required** input on `CreatePartyUseCase`. Two values:
+- `AUTO_CREATE` — create the sub-account(s) as above. Throws if the relevant parent isn't configured on settings.
+- `PICK_EXISTING` — validate that the caller-supplied `defaultARAccountId` / `defaultAPAccountId` is the correct classification, then store as-is. No account created.
+
+Frontend wiring is live:
+- Sales/Purchase Settings expose parent + code-format fields.
+- Customer/Vendor form enforces strategy selection (`AUTO_CREATE` vs `PICK_EXISTING`) before create.
+- Sales/Purchase Settings expose one-click backfill with confirmation + result summary.
+
+Backfill endpoints:
+- `POST /tenant/sales/settings/backfill-party-accounts`
+- `POST /tenant/purchase/settings/backfill-party-accounts`
+- `POST /super-admin/companies/:companyId/backfill-party-accounts`
+
+Customer Statement currently still does its own SI math; Piece B will switch it to call `GetAccountStatementUseCase` against `Party.defaultARAccountId`.
+
+**Last updated (legacy stamp, kept for diff context):** 2026-05-24
 **Status:** Core workflows stable. Phase A added price lists, customer groups, salespersons, and commission ledger. Phase B added quotations, credit control, promotions engine, delivery scheduling, and commission auto-accrual wiring. Phase C added AR aging, customer ledger/statement, and sales analytics reports. Phase D.2+D.3 added period-lock enforcement and per-record audit logging. Phase D.4 added recurring invoices (templated + scheduled). Phase D.5 added sales-return commercial settlement controls (credit note vs refund, reason taxonomy, restocking fee/net settlement). Phase D.6 added tenant-scoped invoice attachments. Phase D.7 added controlled invoice template selection with customer defaults. Phase D.8 now ships tenant-scoped outbound messaging for WhatsApp and Telegram, with email still deferred. **Phase E** added quote sequence numbering, promotion auto-invocation, credit check on direct SIs, AI test stabilization, and backorder/partial-fulfillment UX. See dedicated docs linked below.
 **Module-level docs:** [`docs/modules/sales/`](../modules/sales/)
 

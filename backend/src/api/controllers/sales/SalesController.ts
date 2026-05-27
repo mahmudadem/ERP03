@@ -61,6 +61,7 @@ import { InitializeAccountingUseCase } from '../../../application/accounting/use
 import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import { PeriodLockOverride } from '../../../domain/accounting/entities/PeriodLockOverride';
 import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
+import { BackfillPartyAccountsUseCase } from '../../../application/shared/use-cases/BackfillPartyAccountsUseCase';
 import {
   validateCreateDeliveryNoteInput,
   validateCreateSalesReturnInput,
@@ -369,6 +370,35 @@ export class SalesController {
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toSettingsDTO(settings),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async backfillPartyAccounts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const actorId = SalesController.getUserId(req);
+      const useCase = new BackfillPartyAccountsUseCase(
+        diContainer.partyRepository,
+        diContainer.accountRepository,
+        diContainer.salesSettingsRepository,
+        diContainer.purchaseSettingsRepository,
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        actorId,
+        scope: 'AR',
+        activeOnly: true,
+      });
+
+      (res as any).json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

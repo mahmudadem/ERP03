@@ -1,5 +1,5 @@
 import client from './client';
-import { WorkflowMode } from './salesApi';
+import { PartyAccountsBackfillResult, WorkflowMode } from './salesApi';
 
 export type POStatus =
   | 'DRAFT'
@@ -500,6 +500,9 @@ export const purchasesApi = {
 
   updateSettings: (payload: Partial<PurchaseSettingsDTO>): Promise<PurchaseSettingsDTO> =>
     client.put('/tenant/purchase/settings', payload),
+
+  backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>
+    client.post('/tenant/purchase/settings/backfill-party-accounts', {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createPO: (payload: CreatePurchaseOrderPayload): Promise<PurchaseOrderDTO> =>
     client.post('/tenant/purchase/orders', payload),

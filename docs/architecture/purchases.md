@@ -1,8 +1,24 @@
 # Architecture: Purchases Module
 
-**Last updated:** 2026-05-17
+**Last updated:** 2026-05-27
 **Status:** Feature-complete for V1 (4 document types). Requisitions and Debit Notes deferred.
 **Module-level docs:** [`docs/modules/purchases/`](../modules/purchases/)
+
+---
+
+## Per-vendor AP sub-accounts (Piece A — 2026-05-27)
+
+Purchases mirrors the Sales per-party model for vendor payables:
+
+- Tenant sets `PurchaseSettings.apParentAccountId` (must be `LIABILITY`) and `partyAccountCodeFormat`.
+- On party creation with `accountStrategy='AUTO_CREATE'`, vendors get dedicated AP child accounts under that parent and the result is stored in `Party.defaultAPAccountId`.
+- `PICK_EXISTING` validates the selected AP account classification and stores it without creating a new account.
+
+Backfill is available for existing vendors:
+- `POST /tenant/purchase/settings/backfill-party-accounts` (tenant-scoped)
+- `POST /super-admin/companies/:companyId/backfill-party-accounts` (cross-module per company, runs both AR and AP scopes)
+
+This keeps AP balances per vendor auditable and statement-ready without changing posting boundaries.
 
 ---
 

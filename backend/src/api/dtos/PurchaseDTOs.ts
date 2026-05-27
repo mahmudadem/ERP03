@@ -19,6 +19,8 @@ export interface PurchaseSettingsDTO {
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
@@ -274,6 +276,8 @@ export class PurchaseDTOMapper {
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requirePOForStockItems: settings.requirePOForStockItems,
       defaultAPAccountId: settings.defaultAPAccountId,
+      apParentAccountId: settings.apParentAccountId,
+      partyAccountCodeFormat: settings.partyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId,
       defaultGRNIAccountId: settings.defaultGRNIAccountId,
       allowOverDelivery: settings.allowOverDelivery,

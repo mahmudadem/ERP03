@@ -40,6 +40,7 @@ import {
   InitializePurchasesUseCase,
   UpdatePurchaseSettingsUseCase,
 } from '../../../application/purchases/use-cases/PurchaseSettingsUseCases';
+import { BackfillPartyAccountsUseCase } from '../../../application/shared/use-cases/BackfillPartyAccountsUseCase';
 import {
   RecordPurchaseInvoicePaymentUseCase,
   UpdateInvoicePaymentStatusUseCase,
@@ -264,6 +265,35 @@ export class PurchaseController {
       (res as any).json({
         success: true,
         data: PurchaseDTOMapper.toSettingsDTO(settings),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async backfillPartyAccounts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const actorId = PurchaseController.getUserId(req);
+      const useCase = new BackfillPartyAccountsUseCase(
+        diContainer.partyRepository,
+        diContainer.accountRepository,
+        diContainer.salesSettingsRepository,
+        diContainer.purchaseSettingsRepository,
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        actorId,
+        scope: 'AP',
+        activeOnly: true,
+      });
+
+      (res as any).json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

@@ -693,6 +693,16 @@ export interface SalesInvoiceAttachmentDownloadLinkResult {
   url: string;
 }
 
+export interface PartyAccountsBackfillResult {
+  created: number;
+  skipped: number;
+  errors: Array<{
+    partyId: string;
+    side: 'AR' | 'AP';
+    message: string;
+  }>;
+}
+
 export const salesApi = {
   initializeSales: (payload: InitializeSalesPayload): Promise<SalesSettingsDTO> =>
     client.post('/tenant/sales/initialize', payload),
@@ -702,6 +712,9 @@ export const salesApi = {
 
   updateSettings: (payload: Partial<SalesSettingsDTO>): Promise<SalesSettingsDTO> =>
     client.put('/tenant/sales/settings', payload),
+
+  backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>
+    client.post('/tenant/sales/settings/backfill-party-accounts', {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createSO: (payload: CreateSalesOrderPayload): Promise<SalesOrderDTO> =>
     client.post('/tenant/sales/orders', payload),

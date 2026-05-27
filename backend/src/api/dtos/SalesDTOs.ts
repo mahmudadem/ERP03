@@ -42,6 +42,8 @@ export interface SalesSettingsDTO {
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
@@ -389,6 +391,8 @@ export class SalesDTOMapper {
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
       defaultARAccountId: settings.defaultARAccountId,
+      arParentAccountId: settings.arParentAccountId,
+      partyAccountCodeFormat: settings.partyAccountCodeFormat,
       defaultRevenueAccountId: settings.defaultRevenueAccountId,
       defaultCOGSAccountId: settings.defaultCOGSAccountId,
       defaultInventoryAccountId: settings.defaultInventoryAccountId,

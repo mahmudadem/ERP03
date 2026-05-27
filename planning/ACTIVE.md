@@ -1,22 +1,23 @@
 # 🎯 Current Focus
 
-**Task:** Per-customer / per-vendor AR/AP sub-account (Piece A) → Customer Statement engine reuse (Piece B). Subtask **A.1 complete (backend, 2026-05-27)**; **A.2 (frontend forms) is the next handoff**.
-**Status:** A.1 backend merged on `feat/phase-a-sales-master-data`. A.2 + A.3 + B still to do.
-**Latest completion report:** [planning/done/122-piece-a1-per-party-account-strategy.md](./done/122-piece-a1-per-party-account-strategy.md)
+**Task:** Per-customer / per-vendor AR/AP sub-account (Piece A) → Customer Statement engine reuse (Piece B). Subtasks **A.1 + A.2 + A.3 complete (2026-05-27)**.
+**Status:** Piece A is complete on `feat/phase-a-sales-master-data`. Next active work is Piece B (Customer Statement engine reuse).
+**Latest completion report:** [planning/done/123-piece-a2-a3-party-account-forms-backfill.md](./done/123-piece-a2-a3-party-account-forms-backfill.md)
 
 ## 👉 Next agent — start here
 
-Continue **Subtask A.2 (frontend forms)** as scoped in report 122 §"What is NOT yet built":
+Continue with **Piece B — Customer Statement uses GetAccountStatementUseCase** (Piece A is now complete):
 
-1. Extend `frontend/src/api/{salesApi,purchasesApi,sharedApi}.ts` types with the new settings fields and `accountStrategy`.
-2. Add an "AR Sub-account Generation" section to Sales Settings page (AR parent via `AccountSelector` filtered to ASSET, plus a text input for `partyAccountCodeFormat` with token help).
-3. Mirror on Purchase Settings page (LIABILITY).
-4. Add an "Accounting" section to the Customer/Vendor detail form: radio (no default), preview for AUTO_CREATE, `PartyAccountSelector` for PICK_EXISTING.
-5. i18n keys.
+1. Add backend endpoint `GET /tenant/sales/customers/:partyId/statement?from=...&to=...` that:
+   - loads the party and resolves `defaultARAccountId`,
+   - returns 412 with a clear "run backfill" message when missing,
+   - delegates statement lines to `GetAccountStatementUseCase`.
+2. Decorate returned entries with sales document context (SI/SR/payment references) from voucher metadata.
+3. Refactor `CustomerStatementPage.tsx` to consume this endpoint instead of local SI-only math.
+4. Keep current filters/export UI behavior unchanged.
+5. Add focused tests around missing-account (412) and statement correctness.
 
-Backend already enforces all the rules — frontend only needs to surface them. Re-implement `renderPartyAccountCode` as a tiny local helper in the frontend (don't hit the backend for live previews).
-
-After A.2 → **A.3 (backfill endpoint + buttons)** then **Piece B (CustomerStatement uses GetAccountStatementUseCase)**. Time estimates and file lists are in report 122.
+Reference scope/acceptance: report 122 (Piece B section) + report 123 (what Piece A delivered).
 
 ---
 

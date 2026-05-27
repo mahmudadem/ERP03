@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { SalesMessagingAccountDTO, SalesSettingsDTO, salesApi, GovernanceRuleDTO } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { WarehouseSelector } from '../../../components/shared/selectors/WarehouseSelector';
 import { useAccounts } from '../../../context/AccountsContext';
-import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
+import toast from 'react-hot-toast';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,
@@ -45,6 +47,8 @@ const SalesSettingsPage: React.FC = () => {
   });
   const [showAddRule, setShowAddRule] = useState(false);
   const [credentialDraftByAccountId, setCredentialDraftByAccountId] = useState<Record<string, string>>({});
+  const [showBackfillConfirm, setShowBackfillConfirm] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -172,6 +176,26 @@ const SalesSettingsPage: React.FC = () => {
     );
   };
 
+  const handleBackfillArAccounts = async () => {
+    try {
+      setBackfilling(true);
+      const result = await salesApi.backfillPartyAccounts();
+      if (result.errors.length > 0) {
+        toast(
+          `Backfill completed with issues. Created: ${result.created}, skipped: ${result.skipped}, errors: ${result.errors.length}`,
+          { icon: 'ℹ️' }
+        );
+      } else {
+        toast.success(`Backfill completed. Created: ${result.created}, skipped: ${result.skipped}.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to backfill customer AR sub-accounts.');
+    } finally {
+      setBackfilling(false);
+      setShowBackfillConfirm(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!settings) return;
     if (!settings.defaultRevenueAccountId) {
@@ -251,13 +275,14 @@ const SalesSettingsPage: React.FC = () => {
   ];
 
   return (
-    <ModuleSettingsLayout
-      title="Sales Settings"
-      subtitle="Control sales workflow, account defaults, tolerances, and numbering."
-      tabs={tabs as any}
-      activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as TabId)}
-    >
+    <>
+      <ModuleSettingsLayout
+        title="Sales Settings"
+        subtitle="Control sales workflow, account defaults, tolerances, and numbering."
+        tabs={tabs as any}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as TabId)}
+      >
       <AccountingIntegrationStatus
         moduleCode="sales"
         hasMappings={!!settings?.defaultRevenueAccountId}
@@ -487,6 +512,16 @@ const SalesSettingsPage: React.FC = () => {
                     <p className="mt-1 text-[11px] text-indigo-700">
                       {t('sales.settings.arGeneration.description', 'Configure how customer-specific AR sub-accounts are generated during customer creation.')}
                     </p>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => setShowBackfillConfirm(true)}
+                        disabled={backfilling}
+                      >
+                        {t('sales.settings.arGeneration.backfillButton', 'Backfill customer AR sub-accounts')}
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -1011,7 +1046,23 @@ const SalesSettingsPage: React.FC = () => {
           </div>
         </SettingsSection>
       )}
-    </ModuleSettingsLayout>
+      </ModuleSettingsLayout>
+    <ConfirmDialog
+      isOpen={showBackfillConfirm}
+      title={t('sales.settings.arGeneration.confirmTitle', 'Backfill Customer AR Sub-accounts')}
+      message={t(
+        'sales.settings.arGeneration.confirmMessage',
+        'This will scan active customers and create dedicated AR sub-accounts for parties that do not already have one under the configured AR parent.'
+      )}
+      confirmLabel={t('sales.settings.arGeneration.confirmAction', 'Run Backfill')}
+      cancelLabel={t('common.cancel', 'Cancel')}
+      onConfirm={handleBackfillArAccounts}
+      onCancel={() => setShowBackfillConfirm(false)}
+      tone="warning"
+      isConfirming={backfilling}
+      icon={<AlertTriangle size={20} />}
+    />
+  </>
   );
 };
 

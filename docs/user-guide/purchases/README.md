@@ -4,6 +4,10 @@ The Purchases module is the mirror image of Sales: it handles everything from "w
 
 It is wired into **Accounting** (bills become journal entries) and **Inventory** (receipts increment stock). The wiring is automatic — just use Purchases and the rest follows.
 
+Key guides:
+
+- [Vendor AP Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-ap-subaccounts.md)
+
 ---
 
 ## What you can do here

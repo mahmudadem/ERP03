@@ -2046,7 +2046,11 @@
     "settings": {
       "arGeneration": {
         "title": "AR Sub-account Generation",
-        "description": "Configure how customer-specific AR sub-accounts are generated during customer creation."
+        "description": "Configure how customer-specific AR sub-accounts are generated during customer creation.",
+        "backfillButton": "Backfill customer AR sub-accounts",
+        "confirmTitle": "Backfill Customer AR Sub-accounts",
+        "confirmMessage": "This will scan active customers and create dedicated AR sub-accounts for parties that do not already have one under the configured AR parent.",
+        "confirmAction": "Run Backfill"
       },
       "arParent": {
         "label": "AR Parent Account",
@@ -2222,7 +2226,11 @@
     "settings": {
       "apGeneration": {
         "title": "AP Sub-account Generation",
-        "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation."
+        "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation.",
+        "backfillButton": "Backfill vendor AP sub-accounts",
+        "confirmTitle": "Backfill Vendor AP Sub-accounts",
+        "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
+        "confirmAction": "Run Backfill"
       },
       "apParent": {
         "label": "AP Parent Account",
