@@ -16,6 +16,7 @@ export interface AccountingSettings {
   allowEditDeletePosted: boolean;
   periodLockEnabled: boolean;
   lockedThroughDate?: string;
+  allowPeriodLockOverride?: boolean;
   paymentMethods?: PaymentMethodDefinition[];
 }
 

@@ -85,6 +85,7 @@ export const moduleMenuMap: Record<
       { label: 'Customer Groups', path: '/sales/customer-groups', icon: 'Users2' },
       { label: 'Price Lists', path: '/sales/price-lists', icon: 'Tag' },
       { label: 'Salespersons', path: '/sales/salespersons', icon: 'UserCheck' },
+      { label: 'Promotions', path: '/sales/promotions', icon: 'Percent' },
       { label: 'Quotations', path: '/sales/quotes', icon: 'FileText' },
       { label: 'Sales Orders', path: '/sales/orders', icon: 'ShoppingCart' },
       { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },

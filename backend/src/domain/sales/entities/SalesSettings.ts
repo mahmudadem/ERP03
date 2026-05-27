@@ -41,6 +41,12 @@ export interface SalesMessagingAccount {
 export interface SalesSettingsProps {
   companyId: string;
   workflowMode?: WorkflowMode;
+  /** When workflowMode is SIMPLE, set this true to still expose Sales Orders
+   *  and Delivery Notes in the UI (useful for occasional operational use). */
+  showOperationalDocsInSimple?: boolean;
+  /** Governance: when false, credit-limit BLOCK is absolute and override is disabled
+   *  even for users with the `sales.creditOverride` permission. Default true. */
+  allowCreditOverride?: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -48,6 +54,8 @@ export interface SalesSettingsProps {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   exchangeGainLossAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -73,6 +81,8 @@ export interface SalesSettingsProps {
 export class SalesSettings {
   readonly companyId: string;
   workflowMode: WorkflowMode;
+  showOperationalDocsInSimple: boolean;
+  allowCreditOverride: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -80,6 +90,8 @@ export class SalesSettings {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   exchangeGainLossAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -107,6 +119,8 @@ export class SalesSettings {
 
     this.companyId = props.companyId;
     this.workflowMode = props.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL';
+    this.showOperationalDocsInSimple = props.showOperationalDocsInSimple === true;
+    this.allowCreditOverride = props.allowCreditOverride !== false;
     this.allowDirectInvoicing = props.allowDirectInvoicing;
     this.requireSOForStockItems = props.requireSOForStockItems;
     this.defaultARAccountId = props.defaultARAccountId?.trim() || undefined;
@@ -114,6 +128,8 @@ export class SalesSettings {
     this.defaultCOGSAccountId = props.defaultCOGSAccountId;
     this.defaultInventoryAccountId = props.defaultInventoryAccountId;
     this.defaultSalesExpenseAccountId = props.defaultSalesExpenseAccountId;
+    this.defaultRefundAccountId = props.defaultRefundAccountId?.trim() || undefined;
+    this.restockingFeeAccountId = props.restockingFeeAccountId?.trim() || undefined;
     this.exchangeGainLossAccountId = props.exchangeGainLossAccountId?.trim() || undefined;
     this.allowOverDelivery = props.allowOverDelivery;
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
@@ -192,6 +208,8 @@ export class SalesSettings {
     return new SalesSettings({
       companyId,
       workflowMode: 'OPERATIONAL',
+      showOperationalDocsInSimple: false,
+      allowCreditOverride: true,
       allowDirectInvoicing: true,
       requireSOForStockItems: false,
       defaultARAccountId,
@@ -221,6 +239,8 @@ export class SalesSettings {
     return {
       companyId: this.companyId,
       workflowMode: this.workflowMode,
+      showOperationalDocsInSimple: this.showOperationalDocsInSimple,
+      allowCreditOverride: this.allowCreditOverride,
       allowDirectInvoicing: this.allowDirectInvoicing,
       requireSOForStockItems: this.requireSOForStockItems,
       defaultARAccountId: this.defaultARAccountId,
@@ -228,6 +248,8 @@ export class SalesSettings {
       defaultCOGSAccountId: this.defaultCOGSAccountId,
       defaultInventoryAccountId: this.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: this.defaultSalesExpenseAccountId,
+      defaultRefundAccountId: this.defaultRefundAccountId,
+      restockingFeeAccountId: this.restockingFeeAccountId,
       exchangeGainLossAccountId: this.exchangeGainLossAccountId,
       allowOverDelivery: this.allowOverDelivery,
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
@@ -255,6 +277,8 @@ export class SalesSettings {
     return new SalesSettings({
       companyId: data.companyId,
       workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
+      showOperationalDocsInSimple: data.showOperationalDocsInSimple === true,
+      allowCreditOverride: data.allowCreditOverride !== false,
       allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requireSOForStockItems: data.requireSOForStockItems ?? false,
       defaultARAccountId: data.defaultARAccountId,
@@ -262,6 +286,8 @@ export class SalesSettings {
       defaultCOGSAccountId: data.defaultCOGSAccountId,
       defaultInventoryAccountId: data.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: data.defaultSalesExpenseAccountId,
+      defaultRefundAccountId: data.defaultRefundAccountId,
+      restockingFeeAccountId: data.restockingFeeAccountId,
       exchangeGainLossAccountId: data.exchangeGainLossAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,

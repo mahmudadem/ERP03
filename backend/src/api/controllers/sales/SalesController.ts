@@ -81,6 +81,54 @@ import {
   validateUpdateSalesOrderInput,
   validateUpdateSalesSettingsInput,
 } from '../../validators/sales.validators';
+import { ApiError } from '../../errors/ApiError';
+
+/**
+ * Governance gate for credit-limit overrides.
+ * Allow only when (a) the company setting `allowCreditOverride` is on, AND
+ * (b) the user is the company owner OR holds the `sales.creditOverride` permission.
+ */
+async function assertCanOverrideCreditLimit(
+  companyId: string,
+  user: Request['user']
+): Promise<void> {
+  const settings = await diContainer.salesSettingsRepository.getSettings(companyId);
+  if (!settings || settings.allowCreditOverride === false) {
+    throw ApiError.forbidden('Credit-limit overrides are disabled by company policy.');
+  }
+  const isOwner = !!user?.isOwner;
+  const hasPerm = (user?.permissions ?? []).some(
+    (p) => p === '*' || p === 'sales.creditOverride' || 'sales.creditOverride'.startsWith(p + '.')
+  );
+  if (!isOwner && !hasPerm) {
+    throw ApiError.forbidden('You do not have permission to override credit limits.');
+  }
+}
+
+/**
+ * Governance gate for period-lock overrides.
+ * Allow only when (a) accounting policy `allowPeriodLockOverride` is on, AND
+ * (b) the user is the company owner OR holds the `accounting.periodLockOverride` permission.
+ */
+async function assertCanOverridePeriodLock(
+  companyId: string,
+  user: Request['user']
+): Promise<void> {
+  const cfg = await diContainer.accountingPolicyConfigProvider.getConfig(companyId);
+  if (cfg.allowPeriodLockOverride === false) {
+    throw ApiError.forbidden('Period-lock overrides are disabled by company policy.');
+  }
+  const isOwner = !!user?.isOwner;
+  const hasPerm = (user?.permissions ?? []).some(
+    (p) =>
+      p === '*' ||
+      p === 'accounting.periodLockOverride' ||
+      'accounting.periodLockOverride'.startsWith(p + '.')
+  );
+  if (!isOwner && !hasPerm) {
+    throw ApiError.forbidden('You do not have permission to override the period lock.');
+  }
+}
 
 const SO_STATUSES: SOStatus[] = [
   'DRAFT',
@@ -473,6 +521,10 @@ export class SalesController {
         ? { reason: String(rawOverride.reason), userId }
         : undefined;
 
+      if (override) {
+        await assertCanOverrideCreditLimit(companyId, (req as any).user);
+      }
+
       const result = await useCase.execute(companyId, id, override ? { override } : undefined);
 
       (res as any).json({
@@ -650,6 +702,9 @@ export class SalesController {
         recordChangeService
       );
 
+      if (periodLockOverride) {
+        await assertCanOverridePeriodLock(companyId, (req as any).user);
+      }
       const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
       const dn = await useCase.execute(companyId, id, true, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
@@ -705,6 +760,10 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         recordChangeService,
       );
 
+      if ((req as any).body?.creditOverrideReason) {
+        await assertCanOverrideCreditLimit(companyId, (req as any).user);
+      }
+
       const result = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
@@ -758,6 +817,14 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         ? { reason: periodLockOverrideReason, overriddenBy: SalesController.getUserId(req) }
         : undefined;
       const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
+
+      if ((req as any).body?.creditOverrideReason) {
+        await assertCanOverrideCreditLimit(companyId, (req as any).user);
+      }
+      if (periodLockOverride) {
+        await assertCanOverridePeriodLock(companyId, (req as any).user);
+      }
+
       const si = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
@@ -836,6 +903,9 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const periodLockOverride = periodLockOverrideReason
         ? { reason: periodLockOverrideReason, overriddenBy: SalesController.getUserId(req) }
         : undefined;
+      if (periodLockOverride) {
+        await assertCanOverridePeriodLock(companyId, (req as any).user);
+      }
       const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
       const si = await useCase.execute({
         ...((req as any).body || {}),
@@ -998,6 +1068,9 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const periodLockOverride = periodLockOverrideReason
         ? { reason: periodLockOverrideReason, overriddenBy: userId }
         : undefined;
+      if (periodLockOverride) {
+        await assertCanOverridePeriodLock(companyId, (req as any).user);
+      }
       const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
       const si = await useCase.execute(companyId, id, true, undefined, settlementInput, periodLockOverride, { userId, userEmail, lockedThroughDate });
 
@@ -1059,7 +1132,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.salesReturnRepository,
         diContainer.salesInvoiceRepository,
         diContainer.deliveryNoteRepository,
-        recordChangeService
+        recordChangeService,
+        diContainer.companyCurrencyRepository
       );
 
       const salesReturn = await useCase.execute({
@@ -1175,9 +1249,13 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
-        recordChangeService
+        recordChangeService,
+        diContainer.postingLogRepository
       );
 
+      if (periodLockOverride) {
+        await assertCanOverridePeriodLock(companyId, (req as any).user);
+      }
       const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
       const salesReturn = await useCase.execute(companyId, id, true, periodLockOverride, { userId, userEmail, lockedThroughDate });
 

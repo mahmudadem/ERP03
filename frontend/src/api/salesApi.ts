@@ -55,6 +55,8 @@ export interface SalesMessagingAccountDTO {
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: WorkflowMode;
+  showOperationalDocsInSimple?: boolean;
+  allowCreditOverride?: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -109,6 +111,9 @@ export interface SalesOrderLineDTO {
   taxAmountBase: number;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesOrderDTO {
@@ -401,6 +406,9 @@ export interface SalesOrderLineInputDTO {
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface CreateSalesOrderPayload {
@@ -414,6 +422,7 @@ export interface CreateSalesOrderPayload {
   lines: SalesOrderLineInputDTO[];
   notes?: string;
   internalNotes?: string;
+  skipPromotions?: boolean;
 }
 
 export interface UpdateSalesOrderPayload {

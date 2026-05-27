@@ -79,6 +79,13 @@ export interface SalesOrderLineInput {
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
+  /** Optional promotion marker. When set, this line is treated as user-confirmed
+   *  (typically a free-goods line added by the frontend after the user clicked
+   *  Apply on a previewed promotion suggestion). The server preserves it as-is
+   *  and skips re-evaluation. */
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface CreateSalesOrderInput {
@@ -92,6 +99,10 @@ export interface CreateSalesOrderInput {
   lines: SalesOrderLineInput[];
   notes?: string;
   internalNotes?: string;
+  /** Skip server-side auto promotion evaluation. The frontend uses this when
+   *  the user has already previewed and decided per-rule which to apply. Lines
+   *  carrying `appliedPromotionId` are preserved as-is. Defaults to false. */
+  skipPromotions?: boolean;
   createdBy: string;
 }
 
@@ -190,7 +201,14 @@ export class CreateSalesOrderUseCase {
     });
 
     // --- Promotion evaluation ---
-    if (this.promotionRuleRepo) {
+    // Skip if the caller explicitly opted out (user previewed and decided
+    // per-rule on the frontend) or if any incoming line already carries an
+    // applied-promotion marker (treat as user-driven choice).
+    const userAlreadyDecided =
+      input.skipPromotions === true ||
+      so.lines.some((l) => (l as any).appliedPromotionId);
+
+    if (this.promotionRuleRepo && !userAlreadyDecided) {
       const rules = await this.promotionRuleRepo.list(input.companyId);
       if (rules.length > 0) {
         const promotionService = new PromotionApplicationService();
@@ -380,7 +398,10 @@ export class CreateSalesOrderUseCase {
       taxAmountBase,
       warehouseId: lineInput.warehouseId,
       description: lineInput.description,
-    };
+      appliedPromotionId: lineInput.appliedPromotionId,
+      appliedPromotionName: lineInput.appliedPromotionName,
+      appliedDiscountPct: lineInput.appliedDiscountPct,
+    } as SalesOrderLine;
   }
 }
 

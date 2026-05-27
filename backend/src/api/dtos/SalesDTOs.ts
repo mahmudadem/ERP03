@@ -91,6 +91,9 @@ export interface SalesOrderLineDTO {
   taxAmountBase: number;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesOrderDTO {
@@ -451,6 +454,9 @@ export class SalesDTOMapper {
       taxAmountBase: line.taxAmountBase,
       warehouseId: line.warehouseId,
       description: line.description,
+      appliedPromotionId: (line as any).appliedPromotionId,
+      appliedPromotionName: (line as any).appliedPromotionName,
+      appliedDiscountPct: (line as any).appliedDiscountPct,
     };
   }
 

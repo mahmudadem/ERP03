@@ -216,8 +216,39 @@ export const salesOperationalApi = {
   deletePromotion: (id: string): Promise<{ success: boolean }> =>
     client.delete(`/tenant/sales/promotions/${id}`).then(unwrap<{ success: boolean }>),
 
-  evaluatePromotions: (body: Record<string, any>): Promise<{ discountAmount: number; appliedRules: string[] }> =>
+  evaluatePromotions: (body: {
+    lines: Array<{
+      lineId: string;
+      itemId: string;
+      categoryId?: string;
+      qty: number;
+      unitPriceDoc: number;
+      lineAmountDoc: number;
+      hasManualDiscount?: boolean;
+    }>;
+    asOfDate?: string;
+  }): Promise<PromotionEvaluationResult> =>
     client
       .post('/tenant/sales/promotions/evaluate', body)
-      .then(unwrap<{ discountAmount: number; appliedRules: string[] }>),
+      .then(unwrap<PromotionEvaluationResult>),
 };
+
+export interface PromotionFreeGoodsSuggestion {
+  sourceLineId: string;
+  ruleId: string;
+  ruleName: string;
+  itemId: string;
+  qty: number;
+}
+
+export interface PromotionLineDiscountSuggestion {
+  lineId: string;
+  ruleId: string;
+  ruleName: string;
+  discountPct: number;
+}
+
+export interface PromotionEvaluationResult {
+  freeGoods: PromotionFreeGoodsSuggestion[];
+  lineDiscounts: PromotionLineDiscountSuggestion[];
+}

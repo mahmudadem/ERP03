@@ -86,6 +86,7 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
       // Period Lock
       periodLockEnabled: false,
       lockedThroughDate: undefined,
+      allowPeriodLockOverride: true,
       
       accountAccessEnabled: false,
       costCenterPolicy: {

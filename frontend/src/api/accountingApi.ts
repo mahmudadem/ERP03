@@ -267,6 +267,7 @@ export interface AccountingPolicyConfig {
   approvalRequired: boolean;
   periodLockEnabled: boolean;
   lockedThroughDate?: string;
+  allowPeriodLockOverride?: boolean;
   accountAccessEnabled: boolean;
   policyErrorMode: 'FAIL_FAST' | 'AGGREGATE';
   updatedAt?: string;

@@ -174,6 +174,8 @@ export interface InitializeSalesInput {
 export interface UpdateSalesSettingsInput {
   companyId: string;
   workflowMode?: 'SIMPLE' | 'OPERATIONAL';
+  showOperationalDocsInSimple?: boolean;
+  allowCreditOverride?: boolean;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
   defaultARAccountId?: string;
@@ -181,6 +183,8 @@ export interface UpdateSalesSettingsInput {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   allowOverDelivery?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
@@ -455,6 +459,14 @@ export class UpdateSalesSettingsUseCase {
     const updated = new SalesSettings({
       companyId: existing.companyId,
       workflowMode: newWorkflowMode,
+      showOperationalDocsInSimple:
+        input.showOperationalDocsInSimple !== undefined
+          ? input.showOperationalDocsInSimple === true
+          : existing.showOperationalDocsInSimple,
+      allowCreditOverride:
+        input.allowCreditOverride !== undefined
+          ? input.allowCreditOverride !== false
+          : existing.allowCreditOverride,
       allowDirectInvoicing: nextAllowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
       defaultARAccountId: nextARAccountId,
@@ -462,6 +474,8 @@ export class UpdateSalesSettingsUseCase {
       defaultCOGSAccountId: input.defaultCOGSAccountId ?? existing.defaultCOGSAccountId,
       defaultInventoryAccountId: nextDefaultInventoryAccountId,
       defaultSalesExpenseAccountId: input.defaultSalesExpenseAccountId ?? existing.defaultSalesExpenseAccountId,
+      defaultRefundAccountId: input.defaultRefundAccountId ?? existing.defaultRefundAccountId,
+      restockingFeeAccountId: input.restockingFeeAccountId ?? existing.restockingFeeAccountId,
       allowOverDelivery: input.allowOverDelivery ?? existing.allowOverDelivery,
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? existing.overDeliveryTolerancePct,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? existing.overInvoiceTolerancePct,

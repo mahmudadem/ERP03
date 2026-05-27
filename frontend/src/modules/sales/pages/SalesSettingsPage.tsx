@@ -186,6 +186,8 @@ const SalesSettingsPage: React.FC = () => {
         requireSOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requireSOForStockItems,
         defaultRevenueAccountId: settings.defaultRevenueAccountId,
         defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId || undefined,
+        defaultRefundAccountId: settings.defaultRefundAccountId || undefined,
+        restockingFeeAccountId: settings.restockingFeeAccountId || undefined,
         allowOverDelivery: settings.allowOverDelivery,
         overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
@@ -309,6 +311,50 @@ const SalesSettingsPage: React.FC = () => {
                       </div>
                     </div>
                   )}
+                  {settings.workflowMode === 'SIMPLE' && (
+                    <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                        checked={settings.showOperationalDocsInSimple === true}
+                        onChange={(e) =>
+                          setSettings((prev) =>
+                            prev ? { ...prev, showOperationalDocsInSimple: e.target.checked } : prev
+                          )
+                        }
+                      />
+                      <span className="text-xs">
+                        <span className="font-semibold text-gray-900">
+                          Show Sales Orders & Delivery Notes anyway
+                        </span>
+                        <span className="ml-1 text-gray-500">
+                          Use these forms occasionally without leaving Simple mode.
+                        </span>
+                      </span>
+                    </label>
+                  )}
+                  <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      checked={settings.allowCreditOverride !== false}
+                      onChange={(e) =>
+                        setSettings((prev) =>
+                          prev ? { ...prev, allowCreditOverride: e.target.checked } : prev
+                        )
+                      }
+                    />
+                    <span className="text-xs">
+                      <span className="font-semibold text-gray-900">
+                        Allow credit-limit overrides
+                      </span>
+                      <span className="ml-1 text-gray-500">
+                        When off, BLOCK policy is absolute — no one can bypass it. Requires the{' '}
+                        <code className="rounded bg-slate-100 px-1">sales.creditOverride</code> permission
+                        when on (Owner always allowed).
+                      </span>
+                    </span>
+                  </label>
                 </div>
 
                 {settings.workflowMode === 'OPERATIONAL' ? (
@@ -401,8 +447,34 @@ const SalesSettingsPage: React.FC = () => {
                       value={settings.defaultRevenueAccountId}
                       onChange={(account: any) => updateSetting('defaultRevenueAccountId', account?.id || '')}
                       placeholder="Select Revenue account"
+                      allowedClassifications={['REVENUE']}
+                      contextLabel="Income"
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">Global fallback for all Sales Invoices.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Refund Account</label>
+                    <AccountSelector
+                      value={settings.defaultRefundAccountId}
+                      onChange={(account: any) => updateSetting('defaultRefundAccountId', account?.id || undefined)}
+                      placeholder="Select Cash / Bank account"
+                      allowedClassifications={['ASSET']}
+                      contextLabel="Cash/Bank (Asset)"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">Used when a Sales Return is posted with settlement mode = Refund. Can be overridden per return.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Restocking Fee Income Account</label>
+                    <AccountSelector
+                      value={settings.restockingFeeAccountId}
+                      onChange={(account: any) => updateSetting('restockingFeeAccountId', account?.id || undefined)}
+                      placeholder="Select Other Income / Fee Income account"
+                      allowedClassifications={['REVENUE']}
+                      contextLabel="Income"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">Where restocking fees are booked. Keep separate from product revenue (e.g. "Other Operating Income"). Falls back to the line's revenue account if unset.</p>
                   </div>
 
                   <div>

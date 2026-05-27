@@ -18,11 +18,15 @@ import { RecordAuditModal } from '../components/RecordAuditModal';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useRBAC } from '../../../api/rbac/useRBAC';
+import { useDocumentPolicies } from '../../../hooks/useDocumentPolicies';
+import toast from 'react-hot-toast';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { salesOperationalApi, PromotionEvaluationResult } from '../../../api/salesOperationalApi';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -43,6 +47,9 @@ interface EditableLine {
   deliveredQty: number;
   invoicedQty: number;
   returnedQty: number;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 interface EditableForm {
@@ -121,6 +128,17 @@ const SalesOrderDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [creditWarnBanner, setCreditWarnBanner] = useState<string | null>(null);
   const [creditOverrideOpen, setCreditOverrideOpen] = useState(false);
+  const { hasPermission, isOwner } = useRBAC();
+  const { salesSettings } = useDocumentPolicies();
+  const canOverrideCredit =
+    salesSettings?.allowCreditOverride !== false && (isOwner || hasPermission('sales.creditOverride'));
+
+  // Live promotion preview
+  const [promoSuggestions, setPromoSuggestions] = useState<PromotionEvaluationResult>({
+    freeGoods: [],
+    lineDiscounts: [],
+  });
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [creditOverrideReason, setCreditOverrideReason] = useState('');
   const [creditOverrideInfo, setCreditOverrideInfo] = useState<Record<string, any> | null>(null);
@@ -211,6 +229,9 @@ const SalesOrderDetailPage: React.FC = () => {
       deliveredQty: line.deliveredQty,
       invoicedQty: line.invoicedQty,
       returnedQty: line.returnedQty,
+      appliedPromotionId: line.appliedPromotionId,
+      appliedPromotionName: line.appliedPromotionName,
+      appliedDiscountPct: line.appliedDiscountPct,
     })),
   });
 
@@ -313,6 +334,40 @@ const SalesOrderDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Live promotion preview — debounced re-evaluation on line changes.
+  useEffect(() => {
+    if (form.status !== 'DRAFT') {
+      setPromoSuggestions({ freeGoods: [], lineDiscounts: [] });
+      return;
+    }
+    const validLines = form.lines.filter(
+      (l) => l.itemId && l.orderedQty > 0 && !l.appliedPromotionId
+    );
+    if (validLines.length === 0) {
+      setPromoSuggestions({ freeGoods: [], lineDiscounts: [] });
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await salesOperationalApi.evaluatePromotions({
+          lines: validLines.map((l) => ({
+            lineId: l.lineId || `tmp-${l.itemId}`,
+            itemId: l.itemId,
+            qty: l.orderedQty,
+            unitPriceDoc: l.unitPriceDoc || 0,
+            lineAmountDoc: (l.unitPriceDoc || 0) * l.orderedQty,
+            hasManualDiscount: false,
+          })),
+          asOfDate: form.orderDate,
+        });
+        setPromoSuggestions(res ?? { freeGoods: [], lineDiscounts: [] });
+      } catch (err) {
+        console.warn('Promotion preview failed', err);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [form.lines, form.orderDate, form.status]);
+
   const isDraft = form.status === 'DRAFT';
   const isConfirmed = form.status === 'CONFIRMED';
   const isReadOnly = !isDraft;
@@ -364,6 +419,69 @@ const SalesOrderDetailPage: React.FC = () => {
     });
   };
 
+  const applyFreeGoodsSuggestion = (s: PromotionEvaluationResult['freeGoods'][number]) => {
+    const sourceLine = form.lines.find((l) => l.lineId === s.sourceLineId);
+    const item = items.find((i) => i.id === s.itemId);
+    if (!item) return;
+    setForm((prev) => ({
+      ...prev,
+      lines: [
+        ...prev.lines,
+        {
+          itemId: item.id,
+          itemCode: item.code,
+          itemName: item.name,
+          orderedQty: s.qty,
+          uomId: item.salesUomId || item.baseUomId,
+          uom: item.salesUom || item.baseUom || 'EA',
+          unitPriceDoc: 0,
+          taxCodeId: sourceLine?.taxCodeId,
+          warehouseId: sourceLine?.warehouseId,
+          description: `Free item (${s.ruleName})`,
+          deliveredQty: 0,
+          invoicedQty: 0,
+          returnedQty: 0,
+          appliedPromotionId: s.ruleId,
+          appliedPromotionName: s.ruleName,
+        },
+      ],
+    }));
+    setDismissedSuggestions((prev) => new Set(prev).add(`free:${s.ruleId}:${s.sourceLineId}`));
+  };
+
+  const applyLineDiscountSuggestion = (s: PromotionEvaluationResult['lineDiscounts'][number]) => {
+    setForm((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l) =>
+        l.lineId === s.lineId
+          ? {
+              ...l,
+              appliedPromotionId: s.ruleId,
+              appliedPromotionName: s.ruleName,
+              appliedDiscountPct: s.discountPct,
+            }
+          : l
+      ),
+    }));
+    setDismissedSuggestions((prev) => new Set(prev).add(`disc:${s.ruleId}:${s.lineId}`));
+  };
+
+  const dismissFreeGoodsSuggestion = (s: PromotionEvaluationResult['freeGoods'][number]) => {
+    setDismissedSuggestions((prev) => new Set(prev).add(`free:${s.ruleId}:${s.sourceLineId}`));
+  };
+
+  const dismissLineDiscountSuggestion = (s: PromotionEvaluationResult['lineDiscounts'][number]) => {
+    setDismissedSuggestions((prev) => new Set(prev).add(`disc:${s.ruleId}:${s.lineId}`));
+  };
+
+  const visibleFreeGoods = promoSuggestions.freeGoods.filter(
+    (s) => !dismissedSuggestions.has(`free:${s.ruleId}:${s.sourceLineId}`)
+  );
+  const visibleLineDiscounts = promoSuggestions.lineDiscounts.filter(
+    (s) => !dismissedSuggestions.has(`disc:${s.ruleId}:${s.lineId}`)
+  );
+  const hasVisibleSuggestions = visibleFreeGoods.length + visibleLineDiscounts.length > 0;
+
   const validateBeforeSave = (): string | null => {
     if (!form.customerId) return 'Customer is required.';
     if (!form.orderDate) return 'Order date is required.';
@@ -394,6 +512,9 @@ const SalesOrderDetailPage: React.FC = () => {
       taxCodeId: line.taxCodeId || undefined,
       warehouseId: line.warehouseId || undefined,
       description: line.description || undefined,
+      appliedPromotionId: line.appliedPromotionId,
+      appliedPromotionName: line.appliedPromotionName,
+      appliedDiscountPct: line.appliedDiscountPct,
     };
   };
 
@@ -419,6 +540,9 @@ const SalesOrderDetailPage: React.FC = () => {
         lines: form.lines.map((line, index) => buildLinePayload(line, index)),
         notes: form.notes || undefined,
         internalNotes: form.internalNotes || undefined,
+        // The frontend now drives promotion selection via the live-preview
+        // panel (Apply/Skip per rule). Tell the backend not to auto-apply.
+        skipPromotions: true,
       };
 
       let saved: SalesOrderDTO;
@@ -432,6 +556,19 @@ const SalesOrderDetailPage: React.FC = () => {
       }
 
       setForm(toEditableForm(saved));
+
+      // Surface auto-applied promotions so users aren't surprised by mutated data.
+      const promoNames = Array.from(
+        new Set(
+          (saved.lines || [])
+            .map((l) => l.appliedPromotionName)
+            .filter((n): n is string => !!n)
+        )
+      );
+      if (promoNames.length > 0) {
+        toast.success(`Promotion applied: ${promoNames.join(', ')}`, { duration: 5000 });
+      }
+
       return saved;
     } catch (err: any) {
       console.error('Failed to save sales order', err);
@@ -495,7 +632,17 @@ const SalesOrderDetailPage: React.FC = () => {
           msg.toLowerCase().includes('credit limit') ||
           msg.toLowerCase().includes('credit_limit');
         if (isCreditBlock) {
-          // Store info for the dialog
+          // Soft block — surface the override dialog only if the company allows
+          // overrides AND this user is permitted. Otherwise the BLOCK is final.
+          if (!canOverrideCredit) {
+            setError(
+              salesSettings?.allowCreditOverride === false
+                ? 'Customer is over their credit limit. Overrides are disabled by company policy.'
+                : 'Customer is over their credit limit. You do not have permission to override.'
+            );
+            return;
+          }
+          setError(null);
           setPendingConfirmOrderId(currentId);
           setCreditOverrideInfo(data?.details ?? data?.creditCheck ?? null);
           setCreditOverrideReason('');
@@ -696,6 +843,44 @@ const SalesOrderDetailPage: React.FC = () => {
         </div>
       </Card>
 
+      {isDraft && hasVisibleSuggestions && (
+        <Card className="p-4 border-emerald-200 bg-emerald-50/40">
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-800">
+            🎁 Available promotions
+          </div>
+          <div className="space-y-2">
+            {visibleFreeGoods.map((s) => {
+              const item = items.find((i) => i.id === s.itemId);
+              const label = item ? `${item.code} - ${item.name}` : s.itemId;
+              return (
+                <div key={`free-${s.ruleId}-${s.sourceLineId}`} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm border border-emerald-100">
+                  <div>
+                    <span className="font-semibold">{s.ruleName}</span>
+                    <span className="ml-2 text-slate-600">— add free <strong>{s.qty}× {label}</strong></span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700" onClick={() => applyFreeGoodsSuggestion(s)}>Apply</button>
+                    <button type="button" className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50" onClick={() => dismissFreeGoodsSuggestion(s)}>Skip</button>
+                  </div>
+                </div>
+              );
+            })}
+            {visibleLineDiscounts.map((s) => (
+              <div key={`disc-${s.ruleId}-${s.lineId}`} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm border border-emerald-100">
+                <div>
+                  <span className="font-semibold">{s.ruleName}</span>
+                  <span className="ml-2 text-slate-600">— apply <strong>{s.discountPct}%</strong> discount to this line</span>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700" onClick={() => applyLineDiscountSuggestion(s)}>Apply</button>
+                  <button type="button" className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50" onClick={() => dismissLineDiscountSuggestion(s)}>Skip</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
@@ -745,6 +930,11 @@ const SalesOrderDetailPage: React.FC = () => {
                     {(line.itemCode || line.itemName) && (
                       <div className="mt-1 text-xs text-slate-500">
                         {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
+                      </div>
+                    )}
+                    {line.appliedPromotionName && (
+                      <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                        🎁 {line.appliedPromotionName}
                       </div>
                     )}
                   </td>

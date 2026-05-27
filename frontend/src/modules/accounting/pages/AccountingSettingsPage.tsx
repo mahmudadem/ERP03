@@ -51,6 +51,7 @@ interface PolicyConfig {
   
   periodLockEnabled: boolean;
   lockedThroughDate?: string;
+  allowPeriodLockOverride?: boolean;
   accountAccessEnabled: boolean;
   costCenterPolicy: {
     enabled: boolean;
@@ -89,6 +90,7 @@ const AccountingSettingsPageContent: React.FC = () => {
     autoPostEnabled: true,                    // V1 Default: auto-post when approved
     allowEditDeletePosted: false,             // V1 Default: posted vouchers are immutable
     periodLockEnabled: false,
+    allowPeriodLockOverride: true,
     accountAccessEnabled: false,
     costCenterPolicy: {
       enabled: false,
@@ -331,8 +333,9 @@ const AccountingSettingsPageContent: React.FC = () => {
   const hasMethodChanges = JSON.stringify(config.paymentMethods) !== JSON.stringify(originalConfig?.paymentMethods);
   const hasCostCenterChanges = JSON.stringify(config.costCenterPolicy) !== JSON.stringify(originalConfig?.costCenterPolicy);
   const hasErrorModeChanges = config.policyErrorMode !== originalConfig?.policyErrorMode;
-  const hasFiscalChanges = config.periodLockEnabled !== originalConfig?.periodLockEnabled || 
-                          config.lockedThroughDate !== originalConfig?.lockedThroughDate;
+  const hasFiscalChanges = config.periodLockEnabled !== originalConfig?.periodLockEnabled ||
+                          config.lockedThroughDate !== originalConfig?.lockedThroughDate ||
+                          config.allowPeriodLockOverride !== originalConfig?.allowPeriodLockOverride;
 
   // Global change flag (for reference)
   const hasAnyChanges = hasGeneralChanges || hasPolicyChanges || hasMethodChanges || hasCostCenterChanges || hasErrorModeChanges || hasFiscalChanges;
@@ -1676,10 +1679,10 @@ const AccountingSettingsPageContent: React.FC = () => {
                   </div>
 
                   {config.periodLockEnabled && (
-                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-top-1 duration-300">
+                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-top-1 duration-300 space-y-4">
                        <div className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border transition-all ${
-                         !config.lockedThroughDate 
-                           ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' 
+                         !config.lockedThroughDate
+                           ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'
                            : 'bg-indigo-50/20 dark:bg-indigo-900/5 border-indigo-100/50 dark:border-indigo-900/20'
                        }`}>
                           <div className="flex-1">
@@ -1699,13 +1702,35 @@ const AccountingSettingsPageContent: React.FC = () => {
                                value={config.lockedThroughDate || ''}
                                onChange={(date) => setConfig({ ...config, lockedThroughDate: date })}
                                className={`w-full sm:w-auto ${
-                                 !config.lockedThroughDate 
-                                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500 shadow-sm shadow-red-100' 
+                                 !config.lockedThroughDate
+                                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500 shadow-sm shadow-red-100'
                                    : 'border-gray-300 dark:border-[var(--color-border)] focus:ring-indigo-500 focus:border-indigo-500'
                                }`}
                             />
                           </div>
                        </div>
+
+                       <label className="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[var(--color-bg-secondary)] p-4 cursor-pointer">
+                         <input
+                           type="checkbox"
+                           className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                           checked={config.allowPeriodLockOverride !== false}
+                           onChange={(e) =>
+                             setConfig({ ...config, allowPeriodLockOverride: e.target.checked })
+                           }
+                         />
+                         <span className="text-xs">
+                           <span className="block font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">
+                             Allow period-lock overrides
+                           </span>
+                           <span className="text-gray-500 dark:text-[var(--color-text-secondary)]">
+                             When off, the lock is absolute — no one can post into a locked period.
+                             When on, only Owner and users with the{' '}
+                             <code className="rounded bg-slate-100 dark:bg-slate-800 px-1">accounting.periodLockOverride</code>{' '}
+                             permission may override (with a reason, audited).
+                           </span>
+                         </span>
+                       </label>
                     </div>
                   )}
                 </div>
