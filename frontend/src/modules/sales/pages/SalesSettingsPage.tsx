@@ -26,6 +26,7 @@ const newClientId = (): string => {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 type TabId = 'policy' | 'accounts' | 'numbering' | 'governance' | 'communications';
+const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
 
 const SalesSettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -184,6 +185,8 @@ const SalesSettingsPage: React.FC = () => {
         workflowMode: settings.workflowMode,
         allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
         requireSOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requireSOForStockItems,
+        arParentAccountId: settings.arParentAccountId || undefined,
+        partyAccountCodeFormat: (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim(),
         defaultRevenueAccountId: settings.defaultRevenueAccountId,
         defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId || undefined,
         defaultRefundAccountId: settings.defaultRefundAccountId || undefined,
@@ -475,6 +478,48 @@ const SalesSettingsPage: React.FC = () => {
                       contextLabel="Income"
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">Where restocking fees are booked. Keep separate from product revenue (e.g. "Other Operating Income"). Falls back to the line's revenue account if unset.</p>
+                  </div>
+
+                  <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">
+                    <p className="text-xs font-semibold text-indigo-900">
+                      {t('sales.settings.arGeneration.title', 'AR Sub-account Generation')}
+                    </p>
+                    <p className="mt-1 text-[11px] text-indigo-700">
+                      {t('sales.settings.arGeneration.description', 'Configure how customer-specific AR sub-accounts are generated during customer creation.')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('sales.settings.arParent.label', 'AR Parent Account')}
+                    </label>
+                    <AccountSelector
+                      value={settings.arParentAccountId || ''}
+                      onChange={(account: any) => updateSetting('arParentAccountId', account?.id || undefined)}
+                      placeholder={t('sales.settings.arParent.placeholder', 'Select AR parent account')}
+                      allowedClassifications={['ASSET']}
+                      contextLabel={t('sales.settings.arParent.context', 'Asset')}
+                      enforceClassification
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      {t('sales.settings.arParent.help', 'Parent account under which per-customer AR sub-accounts are generated.')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('sales.settings.partyAccountFormat.label', 'AR Sub-account Code Format')}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                      onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
+                      placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      {t('sales.settings.partyAccountFormat.help', 'Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.')}
+                    </p>
                   </div>
 
                   <div>

@@ -2044,6 +2044,20 @@
       "directBlockedOperational": "Blocked (Operational)"
     },
     "settings": {
+      "arGeneration": {
+        "title": "AR Sub-account Generation",
+        "description": "Configure how customer-specific AR sub-accounts are generated during customer creation."
+      },
+      "arParent": {
+        "label": "AR Parent Account",
+        "placeholder": "Select AR parent account",
+        "context": "Asset",
+        "help": "Parent account under which per-customer AR sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AR Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      },
       "communications": {
         "title": "Outbound Communications",
         "description": "Configure company-owned sender accounts for WhatsApp, Email, and Telegram. Credentials are stored encrypted.",
@@ -2201,6 +2215,48 @@
       },
       "cloneModal": {
         "title": "Clone Invoice to Recurring Template"
+      }
+    }
+  },
+  "purchases": {
+    "settings": {
+      "apGeneration": {
+        "title": "AP Sub-account Generation",
+        "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation."
+      },
+      "apParent": {
+        "label": "AP Parent Account",
+        "placeholder": "Select AP parent account",
+        "context": "Liability",
+        "help": "Parent account under which per-vendor AP sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AP Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      }
+    }
+  },
+  "parties": {
+    "form": {
+      "accounting": {
+        "title": "Accounting",
+        "strategyLabel": "Account Strategy *",
+        "autoCreate": "Auto-create sub-account",
+        "autoCreateHelp": "Creates a dedicated account from settings format and parent.",
+        "pickExisting": "Pick existing account",
+        "pickExistingHelp": "Manually bind this party to an existing AR/AP account.",
+        "strategyPrompt": "Choose one strategy before saving this party.",
+        "strategyEditNote": "Auto-create runs during new party creation. Existing parties can be remapped using Pick Existing.",
+        "previewTitle": "Generated account preview",
+        "missingArParent": "Sales Settings is missing AR Parent Account. Configure it first.",
+        "missingApParent": "Purchase Settings is missing AP Parent Account. Configure it first.",
+        "previewNeedsCode": "Enter a party code to preview the generated account code.",
+        "previewFormat": "Format: {{format}}",
+        "previewUnavailable": "Preview unavailable",
+        "accountHelp": "Primary GL posting target for transactions associated with this party.",
+        "strategyRequired": "Select an account strategy before saving.",
+        "arRequired": "Linked AR account is required for customers when using Pick Existing.",
+        "apRequired": "Linked AP account is required for vendors when using Pick Existing."
       }
     }
   },

@@ -21,6 +21,8 @@ export interface PurchaseSettingsDTO {
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
@@ -265,6 +267,8 @@ export interface PurchaseReturnDTO {
 export interface InitializePurchasesPayload {
   workflowMode?: WorkflowMode;
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
   defaultPurchaseExpenseAccountId?: string;

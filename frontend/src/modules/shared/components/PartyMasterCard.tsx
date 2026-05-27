@@ -11,8 +11,10 @@ import {
   Clock,
   Coins
 } from 'lucide-react';
-import { PartyDTO, PartyRole, sharedApi } from '../../../api/sharedApi';
+import { PartyDTO, PartyRole, PartyAccountStrategy, sharedApi } from '../../../api/sharedApi';
 import { accountingApi } from '../../../api/accountingApi';
+import { salesApi } from '../../../api/salesApi';
+import { purchasesApi } from '../../../api/purchasesApi';
 import { salesMasterDataApi, CustomerGroupDTO, PriceListDTO } from '../../../api/salesMasterDataApi';
 import toast from 'react-hot-toast';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
@@ -21,6 +23,28 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { MasterCardLayout, FormSection, Field, MasterCardTab } from '../../../components/layout/MasterCardLayout';
 import { generateNextCode, CODE_PATTERNS } from '../../../utils/codeGenerator';
 import { Sparkles } from 'lucide-react';
+import { useAccounts } from '../../../context/AccountsContext';
+
+const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
+
+interface PartyAccountCodeContext {
+  parent: string;
+  partyCode: string;
+  seq?: number;
+}
+
+const zeroPad = (n: number, width: number) => {
+  const text = String(Math.max(0, Math.floor(n)));
+  return text.length >= width ? text : '0'.repeat(width - text.length) + text;
+};
+
+const renderPartyAccountCode = (template: string | undefined, ctx: PartyAccountCodeContext): string => {
+  const tpl = (template && template.trim()) || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK;
+  return tpl
+    .replace(/\{parent\}/g, ctx.parent)
+    .replace(/\{partyCode\}/g, ctx.partyCode)
+    .replace(/\{seq3\}/g, zeroPad(ctx.seq ?? 1, 3));
+};
 
 interface PartyMasterCardProps {
   partyId?: string;
@@ -46,6 +70,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const { hasPermission } = useRBAC();
+  const { getAccountById } = useAccounts();
   const [activeTab, setActiveTab] = useState('GENERAL');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,6 +79,9 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const [customerGroups, setCustomerGroups] = useState<CustomerGroupDTO[]>([]);
   const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
   const [invoiceTemplates, setInvoiceTemplates] = useState<VoucherFormResponse[]>([]);
+  const [accountStrategy, setAccountStrategy] = useState<PartyAccountStrategy | ''>('');
+  const [subAccountParentId, setSubAccountParentId] = useState('');
+  const [partyAccountCodeFormat, setPartyAccountCodeFormat] = useState(PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
 
   const [form, setForm] = useState<Partial<PartyDTO>>({
     code: '',
@@ -70,6 +98,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
 
   useEffect(() => {
     loadCurrencies();
+    void loadPartyAccountSettings();
     if (!isNew && partyId) loadParty(partyId);
     if (role === 'CUSTOMER') {
       salesMasterDataApi.listCustomerGroups().then(setCustomerGroups).catch(console.error);
@@ -83,7 +112,26 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
         }));
       }).catch(console.error);
     }
-  }, [partyId]);
+  }, [partyId, role]);
+
+  const loadPartyAccountSettings = async () => {
+    try {
+      if (role === 'CUSTOMER') {
+        const salesSettings = await salesApi.getSettings().catch(() => null);
+        const payload = salesSettings as any;
+        setSubAccountParentId(payload?.arParentAccountId || '');
+        setPartyAccountCodeFormat(payload?.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+      } else {
+        const purchaseSettings = await purchasesApi.getSettings().catch(() => null);
+        const payload = purchaseSettings as any;
+        setSubAccountParentId(payload?.apParentAccountId || '');
+        setPartyAccountCodeFormat(payload?.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+      }
+    } catch {
+      setSubAccountParentId('');
+      setPartyAccountCodeFormat(PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+    }
+  };
 
   const defaultInvoiceTemplateOptions = useMemo(
     () => invoiceTemplates
@@ -94,6 +142,18 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       }),
     [invoiceTemplates]
   );
+
+  const defaultLinkedAccountId = role === 'CUSTOMER' ? form.defaultARAccountId : form.defaultAPAccountId;
+  const previewPartyCode = String(form.code || '').trim().toUpperCase();
+  const parentAccount = subAccountParentId ? getAccountById(subAccountParentId) : undefined;
+  const previewParentCode = (parentAccount as any)?.code || (parentAccount as any)?.userCode || '';
+  const previewAccountCode = previewParentCode && previewPartyCode
+    ? renderPartyAccountCode(partyAccountCodeFormat, {
+      parent: previewParentCode,
+      partyCode: previewPartyCode,
+      seq: 1,
+    })
+    : '';
 
   const loadCurrencies = async () => {
     try {
@@ -107,24 +167,53 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       setLoading(true);
       const data = await sharedApi.getParty(id);
       setForm(data);
+      const existingAccountId = role === 'CUSTOMER' ? data.defaultARAccountId : data.defaultAPAccountId;
+      setAccountStrategy(existingAccountId ? 'PICK_EXISTING' : '');
     } catch (err) { setError('Failed to load party details'); }
     finally { setLoading(false); }
   };
 
   const handleSave = async () => {
-    if (!form.defaultARAccountId && role === 'CUSTOMER') {
-        setError('Linked AR Account is required for Customers');
-        return;
+    const requiresExistingAccount = (!isNew || accountStrategy === 'PICK_EXISTING');
+
+    if (isNew && !accountStrategy) {
+      setError(t('parties.form.accounting.strategyRequired', 'Select an account strategy before saving.'));
+      return;
     }
-    if (!form.defaultAPAccountId && role === 'VENDOR') {
-        setError('Linked AP Account is required for Suppliers');
-        return;
+    if (requiresExistingAccount && !form.defaultARAccountId && role === 'CUSTOMER') {
+      setError(t('parties.form.accounting.arRequired', 'Linked AR account is required for customers when using Pick Existing.'));
+      return;
+    }
+    if (requiresExistingAccount && !form.defaultAPAccountId && role === 'VENDOR') {
+      setError(t('parties.form.accounting.apRequired', 'Linked AP account is required for vendors when using Pick Existing.'));
+      return;
+    }
+    if (isNew && accountStrategy === 'AUTO_CREATE' && !subAccountParentId) {
+      setError(
+        t(
+          role === 'CUSTOMER'
+            ? 'parties.form.accounting.missingArParent'
+            : 'parties.form.accounting.missingApParent',
+          role === 'CUSTOMER'
+            ? 'Sales Settings is missing AR Parent Account. Configure it first.'
+            : 'Purchase Settings is missing AP Parent Account. Configure it first.'
+        )
+      );
+      return;
     }
     try {
       setSaving(true);
       setError(null);
+      const createPayload = {
+        ...form,
+        accountStrategy,
+      } as any;
+      if (accountStrategy === 'AUTO_CREATE') {
+        delete createPayload.defaultARAccountId;
+        delete createPayload.defaultAPAccountId;
+      }
       const res = isNew
-        ? await sharedApi.createParty(form)
+        ? await sharedApi.createParty(createPayload)
         : await sharedApi.updateParty(partyId!, form);
       toast.success(isNew ? 'Created' : 'Updated');
       onSaved?.(res);
@@ -364,21 +453,112 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
 
       {activeTab === 'ACCOUNTING' && (
         <div className="space-y-6 animate-in fade-in duration-300">
-           <FormSection title="Financial Ledger Integration">
-              <div className="space-y-5 pt-2">
-                  <Field label={role === 'CUSTOMER' ? "Accounts Receivable (A/R) *" : "Accounts Payable (A/P) *"}>
-                    <AccountSelector 
-                        value={role === 'CUSTOMER' ? form.defaultARAccountId : form.defaultAPAccountId} 
-                        onChange={(a: any) => {
-                            setForm(p => ({ ...p, [role === 'CUSTOMER' ? 'defaultARAccountId' : 'defaultAPAccountId']: a?.id }));
-                            syncCurrencyFromAccount(a);
-                        }} 
+          <FormSection title={t('parties.form.accounting.title', 'Accounting')}>
+            <div className="space-y-5 pt-2">
+              <Field label={t('parties.form.accounting.strategyLabel', 'Account Strategy *')}>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 rounded border border-slate-200 px-3 py-2 text-xs">
+                    <input
+                      type="radio"
+                      name="party-account-strategy"
+                      checked={accountStrategy === 'AUTO_CREATE'}
+                      onChange={() => setAccountStrategy('AUTO_CREATE')}
+                      disabled={!isNew}
                     />
-                    <p className="text-[9px] text-slate-400 mt-1 italic uppercase tracking-tighter">Primary GL Posting Target for all transactions associated with this {role.toLowerCase()}.</p>
-                 </Field>
-                 
-              </div>
-           </FormSection>
+                    <span>
+                      <span className="font-semibold text-slate-800">
+                        {t('parties.form.accounting.autoCreate', 'Auto-create sub-account')}
+                      </span>
+                      <span className="ml-1 text-slate-500">
+                        {t('parties.form.accounting.autoCreateHelp', 'Creates a dedicated account from settings format and parent.')}
+                      </span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-2 rounded border border-slate-200 px-3 py-2 text-xs">
+                    <input
+                      type="radio"
+                      name="party-account-strategy"
+                      checked={accountStrategy === 'PICK_EXISTING'}
+                      onChange={() => setAccountStrategy('PICK_EXISTING')}
+                    />
+                    <span>
+                      <span className="font-semibold text-slate-800">
+                        {t('parties.form.accounting.pickExisting', 'Pick existing account')}
+                      </span>
+                      <span className="ml-1 text-slate-500">
+                        {t('parties.form.accounting.pickExistingHelp', 'Manually bind this party to an existing AR/AP account.')}
+                      </span>
+                    </span>
+                  </label>
+
+                  {isNew && !accountStrategy && (
+                    <p className="text-[11px] text-amber-700">
+                      {t('parties.form.accounting.strategyPrompt', 'Choose one strategy before saving this party.')}
+                    </p>
+                  )}
+                  {!isNew && (
+                    <p className="text-[11px] text-slate-500">
+                      {t('parties.form.accounting.strategyEditNote', 'Auto-create runs during new party creation. Existing parties can be remapped using Pick Existing.')}
+                    </p>
+                  )}
+                </div>
+              </Field>
+
+              {accountStrategy === 'AUTO_CREATE' && (
+                <div className="rounded-lg border border-indigo-100 bg-indigo-50/30 px-3 py-3 text-xs">
+                  <p className="font-semibold text-indigo-900">
+                    {t('parties.form.accounting.previewTitle', 'Generated account preview')}
+                  </p>
+                  {!subAccountParentId && (
+                    <p className="mt-1 text-amber-700">
+                      {t(
+                        role === 'CUSTOMER'
+                          ? 'parties.form.accounting.missingArParent'
+                          : 'parties.form.accounting.missingApParent',
+                        role === 'CUSTOMER'
+                          ? 'Sales Settings is missing AR Parent Account. Configure it first.'
+                          : 'Purchase Settings is missing AP Parent Account. Configure it first.'
+                      )}
+                    </p>
+                  )}
+                  {subAccountParentId && !previewPartyCode && (
+                    <p className="mt-1 text-slate-600">
+                      {t('parties.form.accounting.previewNeedsCode', 'Enter a party code to preview the generated account code.')}
+                    </p>
+                  )}
+                  {subAccountParentId && previewPartyCode && (
+                    <>
+                      <p className="mt-1 text-slate-700">
+                        {t('parties.form.accounting.previewFormat', 'Format: {{format}}', { format: partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK })}
+                      </p>
+                      <p className="mt-1 font-mono font-semibold text-indigo-900">
+                        {previewAccountCode || t('parties.form.accounting.previewUnavailable', 'Preview unavailable')}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {(accountStrategy === 'PICK_EXISTING' || !isNew) && (
+                <Field label={role === 'CUSTOMER' ? 'Accounts Receivable (A/R) *' : 'Accounts Payable (A/P) *'}>
+                  <AccountSelector
+                    value={defaultLinkedAccountId}
+                    onChange={(a: any) => {
+                      setForm((p) => ({ ...p, [role === 'CUSTOMER' ? 'defaultARAccountId' : 'defaultAPAccountId']: a?.id }));
+                      syncCurrencyFromAccount(a);
+                    }}
+                    allowedClassifications={role === 'CUSTOMER' ? ['ASSET'] : ['LIABILITY']}
+                    contextLabel={role === 'CUSTOMER' ? 'Asset' : 'Liability'}
+                    enforceClassification
+                  />
+                  <p className="text-[9px] text-slate-400 mt-1 italic uppercase tracking-tighter">
+                    {t('parties.form.accounting.accountHelp', 'Primary GL posting target for transactions associated with this party.')}
+                  </p>
+                </Field>
+              )}
+            </div>
+          </FormSection>
         </div>
       )}
 

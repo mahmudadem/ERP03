@@ -292,6 +292,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
         displayName: createForm.displayName.trim(),
         legalName: createForm.displayName.trim(),
         roles,
+        accountStrategy: 'AUTO_CREATE',
         defaultCurrency: createForm.defaultCurrency.trim().toUpperCase(),
         email: createForm.email.trim() || undefined,
         phone: createForm.phone.trim() || undefined,
