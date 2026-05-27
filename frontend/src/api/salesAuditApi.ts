@@ -104,4 +104,9 @@ export const salesAuditApi = {
     client
       .get('/tenant/sales/audit-log', { params: { entityType, entityId } })
       .then(unwrap<RecordChangeLog[]>),
+
+  getPurchaseRecordAuditLog: (entityType: string, entityId: string): Promise<RecordChangeLog[]> =>
+    client
+      .get('/tenant/purchase/audit-log', { params: { entityType, entityId } })
+      .then(unwrap<RecordChangeLog[]>),
 };

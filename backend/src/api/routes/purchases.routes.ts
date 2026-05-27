@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PurchaseController } from '../controllers/purchases/PurchaseController';
+import { RecordAuditController } from '../controllers/RecordAuditController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -54,5 +55,7 @@ router.get('/returns/:id', PurchaseController.getReturn);
 router.put('/returns/:id', PurchaseController.updateReturn);
 router.post('/returns/:id/post', idempotencyMiddleware, PurchaseController.postReturn);
 router.post('/returns/:id/unpost', PurchaseController.unpostReturn);
+
+router.get('/audit-log', RecordAuditController.getByEntity);
 
 export default router;
