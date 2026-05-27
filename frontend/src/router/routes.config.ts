@@ -51,6 +51,7 @@ const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningSt
 const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTransfersPage'));
 const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
 const UnsettledCostsPage = lazy(() => import('../modules/inventory/pages/UnsettledCostsPage'));
+const InventoryValuationPage = lazy(() => import('../modules/inventory/pages/InventoryValuationPage'));
 const InventorySettingsPage = lazy(() => import('../modules/inventory/pages/InventorySettingsPage'));
 const UomsPage = lazy(() => import('../modules/inventory/pages/UomsPage'));
 
@@ -128,6 +129,7 @@ const PurchaseInvoicesListPage = lazy(() => import('../modules/purchases/pages/P
 const PurchaseInvoiceDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseInvoiceDetailPage'));
 const PurchaseReturnsListPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnsListPage'));
 const PurchaseReturnDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnDetailPage'));
+const VendorStatementPage = lazy(() => import('../modules/purchases/pages/VendorStatementPage'));
 const SalesHomePage = lazy(() => import('../modules/sales/pages/SalesHomePage'));
 const CustomersListPage = lazy(() => import('../modules/sales/pages/CustomersListPage'));
 const CustomerDetailPage = lazy(() => import('../modules/sales/pages/CustomerDetailPage'));
@@ -140,6 +142,17 @@ const SalesInvoicesListPage = lazy(() => import('../modules/sales/pages/SalesInv
 const SalesInvoiceDetailPage = lazy(() => import('../modules/sales/pages/SalesInvoiceDetailPage'));
 const SalesReturnsListPage = lazy(() => import('../modules/sales/pages/SalesReturnsListPage'));
 const SalesReturnDetailPage = lazy(() => import('../modules/sales/pages/SalesReturnDetailPage'));
+const PriceListsPage = lazy(() => import('../modules/sales/pages/PriceListsPage'));
+const CustomerGroupsPage = lazy(() => import('../modules/sales/pages/CustomerGroupsPage'));
+const SalespersonsPage = lazy(() => import('../modules/sales/pages/SalespersonsPage'));
+const QuotationsPage = lazy(() => import('../modules/sales/pages/QuotationsPage'));
+const QuotationDetailPage = lazy(() => import('../modules/sales/pages/QuotationDetailPage'));
+const PromotionsPage = lazy(() => import('../modules/sales/pages/PromotionsPage'));
+const AgedBacklogPage = lazy(() => import('../modules/sales/pages/AgedBacklogPage'));
+const ArAgingReportPage = lazy(() => import('../modules/sales/pages/ArAgingReportPage'));
+const CustomerStatementPage = lazy(() => import('../modules/sales/pages/CustomerStatementPage'));
+const SalesAnalyticsPage = lazy(() => import('../modules/sales/pages/SalesAnalyticsPage'));
+const RecurringInvoicesPage = lazy(() => import('../modules/sales/pages/RecurringInvoicesPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
 
@@ -212,6 +225,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
+  { path: '/inventory/reports/valuation', label: 'Inventory Valuation', component: InventoryValuationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/opening-stock', label: 'Opening Stock Documents', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
   { path: '/inventory/uoms', label: 'UOM Master', component: UomsPage, section: 'INVENTORY', requiredPermission: 'inventory.uom.view', requiredModule: 'inventory' },
   { path: '/inventory/settings', label: 'Settings', component: InventorySettingsPage, section: 'INVENTORY', requiredPermission: 'inventory.settings.manage', requiredModule: 'inventory' },
@@ -314,6 +328,18 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/returns/new', label: 'New Sales Return', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/returns/:id', label: 'Sales Return Detail', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/settings', label: 'Sales Settings', component: SalesSettingsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/price-lists', label: 'Price Lists', component: PriceListsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/customer-groups', label: 'Customer Groups', component: CustomerGroupsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/salespersons', label: 'Salespersons', component: SalespersonsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/quotes', label: 'Quotations', component: QuotationsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/quotes/new', label: 'New Quotation', component: QuotationDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/quotes/:id', label: 'Quotation Detail', component: QuotationDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/promotions', label: 'Promotions', component: PromotionsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/aged-backlog', label: 'Aged Backlog', component: AgedBacklogPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/ar-aging', label: 'AR Aging', component: ArAgingReportPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/customer-statement', label: 'Customer Statement', component: CustomerStatementPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/sales-analytics', label: 'Sales Analytics', component: SalesAnalyticsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/recurring-invoices', label: 'Recurring Invoices', component: RecurringInvoicesPage, section: 'INVENTORY', requiredModule: 'sales' },
 
   // Dynamic Sales Documents (designed in Forms Designer)
   { path: '/sales/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
@@ -335,6 +361,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases/returns', label: 'Purchase Returns', component: PurchaseReturnsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/returns/new', label: 'New Purchase Return', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/returns/:id', label: 'Purchase Return Detail', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/reports/vendor-statement', label: 'Vendor Statement', component: VendorStatementPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/settings', label: 'Purchase Settings', component: PurchaseSettingsPage, section: 'INVENTORY', requiredModule: 'purchase' },
 
   // Dynamic Purchase Documents (designed in Forms Designer)
@@ -347,6 +374,9 @@ export const routesConfig: AppRoute[] = [
   // TOOLS
   { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },
   { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/data-table', label: 'DataTable Demo', component: lazy(() => import('../pages/dev/DataTableDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/voucher-list', label: 'Voucher List Demo', component: lazy(() => import('../pages/dev/VoucherListDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
 
   // AI ASSISTANT
   { path: '/ai-assistant/setup', label: 'AI Setup', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSetupPage').then(m => ({ default: m.AiAssistantSetupPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view', hideInMenu: true },

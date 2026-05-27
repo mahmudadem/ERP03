@@ -11,6 +11,9 @@
  */
 import admin from '../../../firebaseAdmin';
 
+// Note: Firestore.settings({ ignoreUndefinedProperties: true }) is applied
+// in firebaseAdmin.ts immediately after initializeApp() — must happen there,
+// before any other Firestore call touches the singleton.
 export const db = admin.firestore();
 export const fcm = admin.messaging();
 

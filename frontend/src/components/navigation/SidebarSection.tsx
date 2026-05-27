@@ -9,6 +9,7 @@ interface SidebarItemData {
   path?: string;
   label: string;
   icon?: string;
+  badge?: string;
   children?: SidebarItemData[];
 }
 
@@ -98,6 +99,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
               onClick={onNavigate}
               children={item.children}
               iconName={item.icon}
+              badge={item.badge}
             />
           ))}
         </div>

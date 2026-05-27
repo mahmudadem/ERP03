@@ -26,6 +26,18 @@ export interface PurchaseInvoiceLine {
   warehouseId?: string;
   accountId: string;
   stockMovementId?: string | null;
+  /**
+   * Outcome of inventory/expense posting decision for this line. Set at PI posting.
+   * For purchases: POSTED on both stock and service lines; SKIPPED variants for
+   * deferred / unsettled cases mirroring sales. See PostingLog.
+   */
+  cogsPostingStatus?:
+    | 'POSTED'
+    | 'SKIPPED_POSTED_AT_GRN'
+    | 'SKIPPED_SERVICE_ITEM'
+    | 'SKIPPED_DEFERRED_POLICY'
+    | 'SKIPPED_UNSETTLED_COST'
+    | null;
   description?: string;
 }
 

@@ -1,0 +1,4 @@
+{
+  "_comment": "Temporary exemptions from RULE 2 (ReportContainer usage). Each entry must be migrated to <ReportContainer> and removed. When empty, delete this file and the allowlist logic in check-reports.mjs.",
+  "reportContainerExceptions": []
+}

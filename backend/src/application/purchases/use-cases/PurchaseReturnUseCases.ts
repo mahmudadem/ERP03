@@ -934,7 +934,6 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
               postingLockPolicy: PostingLockPolicy.STRICT_LOCKED,
               reference: purchaseReturn.returnNumber,
               baseCurrencyOverride: resolvedBaseCurrency,
-              skipAccountValidation: true,
             },
             transaction
           );
@@ -988,7 +987,6 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
               postingLockPolicy: PostingLockPolicy.STRICT_LOCKED,
               reference: purchaseReturn.returnNumber,
               baseCurrencyOverride: resolvedBaseCurrency,
-              skipAccountValidation: true,
             },
             transaction
           );

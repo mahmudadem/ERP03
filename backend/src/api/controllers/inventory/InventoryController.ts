@@ -117,6 +117,7 @@ export class InventoryController {
       stockMovementRepository: diContainer.stockMovementRepository,
       stockLevelRepository: diContainer.stockLevelRepository,
       companyRepository: diContainer.companyRepository,
+      inventorySettingsRepository: diContainer.inventorySettingsRepository,
       transactionManager: diContainer.transactionManager,
     });
   }
@@ -238,6 +239,7 @@ export class InventoryController {
         defaultCostCurrency: (req as any).body.defaultCostCurrency || current?.defaultCostCurrency || company.baseCurrency,
         defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId ?? current?.defaultInventoryAssetAccountId,
         allowNegativeStock: (req as any).body.allowNegativeStock ?? current?.allowNegativeStock ?? true,
+        allowDeferredCost: (req as any).body.allowDeferredCost ?? current?.allowDeferredCost ?? false,
         defaultWarehouseId: (req as any).body.defaultWarehouseId ?? current?.defaultWarehouseId,
         autoGenerateItemCode: (req as any).body.autoGenerateItemCode ?? current?.autoGenerateItemCode ?? false,
         itemCodePrefix: (req as any).body.itemCodePrefix ?? current?.itemCodePrefix,
@@ -1539,6 +1541,10 @@ export class InventoryController {
 
       const report = await useCase.execute(companyId, {
         itemId: (req as any).query.itemId,
+        warehouseId: (req as any).query.warehouseId,
+        costBasis: (req as any).query.costBasis,
+        fromDate: (req as any).query.fromDate,
+        toDate: (req as any).query.toDate,
         limit: (req as any).query.limit ? Number((req as any).query.limit) : undefined,
         offset: (req as any).query.offset ? Number((req as any).query.offset) : undefined,
       });
@@ -1547,6 +1553,7 @@ export class InventoryController {
         success: true,
         data: {
           total: report.total,
+          totals: report.totals,
           rows: report.rows.map((row) => ({
             ...row,
             createdAt: row.createdAt.toISOString(),

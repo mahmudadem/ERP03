@@ -2,23 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { inventoryApi } from '../../../api/inventoryApi';
-import { SalesSettingsDTO, salesApi, GovernanceRuleDTO } from '../../../api/salesApi';
+import { SalesMessagingAccountDTO, SalesSettingsDTO, salesApi, GovernanceRuleDTO } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { WarehouseSelector } from '../../../components/shared/selectors/WarehouseSelector';
 import { useAccounts } from '../../../context/AccountsContext';
-import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
+import toast from 'react-hot-toast';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
 
+const newClientId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
-type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
+type TabId = 'policy' | 'accounts' | 'numbering' | 'governance' | 'communications';
+const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
 
 const SalesSettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -36,6 +46,9 @@ const SalesSettingsPage: React.FC = () => {
     persona: 'direct',
   });
   const [showAddRule, setShowAddRule] = useState(false);
+  const [credentialDraftByAccountId, setCredentialDraftByAccountId] = useState<Record<string, string>>({});
+  const [showBackfillConfirm, setShowBackfillConfirm] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +59,9 @@ const SalesSettingsPage: React.FC = () => {
 
         const currentSettings = unwrap<any>(settingsResult)?.data ?? unwrap<any>(settingsResult);
         const invSettingsData = unwrap<any>(inventorySettings)?.data ?? unwrap<any>(inventorySettings);
+        if (!Array.isArray(currentSettings.messagingAccounts)) {
+          currentSettings.messagingAccounts = [];
+        }
 
         setSettings(currentSettings);
         setOriginalSettings(currentSettings);
@@ -76,7 +92,8 @@ const SalesSettingsPage: React.FC = () => {
     });
   };
 
-  const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  const hasCredentialChanges = Object.values(credentialDraftByAccountId).some((value) => value.trim().length > 0);
+  const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings) || hasCredentialChanges;
   const accountingMode = resolveInventoryAccountingMode(invSettings);
   const isPerpetual = accountingMode === 'PERPETUAL';
 
@@ -103,6 +120,82 @@ const SalesSettingsPage: React.FC = () => {
     updateSetting('governanceRules', currentRules.filter((r) => r.id !== id));
   };
 
+  const updateMessagingAccount = (id: string, patch: Partial<SalesMessagingAccountDTO>) => {
+    const current = settings?.messagingAccounts || [];
+    updateSetting(
+      'messagingAccounts',
+      current.map((account) => (account.id === id ? { ...account, ...patch } : account))
+    );
+  };
+
+  const addMessagingAccount = (channel: SalesMessagingAccountDTO['channel']) => {
+    const current = settings?.messagingAccounts || [];
+    const hasActiveDefault = current.some((account) => account.channel === channel && account.isActive !== false && account.isDefault);
+    const provider: SalesMessagingAccountDTO['provider'] =
+      channel === 'WHATSAPP' ? 'META_WHATSAPP_CLOUD' : channel === 'EMAIL' ? 'SMTP' : 'TELEGRAM_BOT';
+    const account: SalesMessagingAccountDTO = {
+      id: newClientId(),
+      channel,
+      provider,
+      label: '',
+      isDefault: !hasActiveDefault,
+      isActive: true,
+      phoneNumberE164: '',
+      phoneNumberId: '',
+      fromAddress: '',
+      fromDisplayName: '',
+      botUsername: '',
+      apiVersion: channel === 'WHATSAPP' ? 'v22.0' : undefined,
+      hasCredential: false,
+    };
+    updateSetting('messagingAccounts', [...current, account]);
+  };
+
+  const removeMessagingAccount = (id: string) => {
+    const current = settings?.messagingAccounts || [];
+    updateSetting(
+      'messagingAccounts',
+      current.filter((account) => account.id !== id)
+    );
+    setCredentialDraftByAccountId((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const markMessagingAccountAsDefault = (id: string, channel: SalesMessagingAccountDTO['channel']) => {
+    const current = settings?.messagingAccounts || [];
+    updateSetting(
+      'messagingAccounts',
+      current.map((account) =>
+        account.channel === channel
+          ? { ...account, isDefault: account.id === id }
+          : account
+      )
+    );
+  };
+
+  const handleBackfillArAccounts = async () => {
+    try {
+      setBackfilling(true);
+      const result = await salesApi.backfillPartyAccounts();
+      if (result.errors.length > 0) {
+        toast(
+          `Backfill completed with issues. Created: ${result.created}, skipped: ${result.skipped}, errors: ${result.errors.length}`,
+          { icon: 'ℹ️' }
+        );
+      } else {
+        toast.success(`Backfill completed. Created: ${result.created}, skipped: ${result.skipped}.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to backfill customer AR sub-accounts.');
+    } finally {
+      setBackfilling(false);
+      setShowBackfillConfirm(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!settings) return;
     if (!settings.defaultRevenueAccountId) {
@@ -116,12 +209,20 @@ const SalesSettingsPage: React.FC = () => {
         workflowMode: settings.workflowMode,
         allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
         requireSOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requireSOForStockItems,
+        arParentAccountId: settings.arParentAccountId || undefined,
+        partyAccountCodeFormat: (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim(),
         defaultRevenueAccountId: settings.defaultRevenueAccountId,
         defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId || undefined,
+        defaultRefundAccountId: settings.defaultRefundAccountId || undefined,
+        restockingFeeAccountId: settings.restockingFeeAccountId || undefined,
         allowOverDelivery: settings.allowOverDelivery,
         overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
         defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
+        messagingAccounts: (settings.messagingAccounts || []).map((account) => ({
+          ...account,
+          credential: credentialDraftByAccountId[account.id]?.trim() || undefined,
+        })),
         governanceRules: settings.governanceRules || [],
         defaultSalesInvoicePersona: settings.defaultSalesInvoicePersona,
         defaultWarehouseId: settings.defaultWarehouseId || undefined,
@@ -133,12 +234,19 @@ const SalesSettingsPage: React.FC = () => {
         siNumberNextSeq: settings.siNumberNextSeq,
         srNumberPrefix: settings.srNumberPrefix,
         srNumberNextSeq: settings.srNumberNextSeq,
+        quoteNumberPrefix: settings.quoteNumberPrefix,
+        quoteNumberNextSeq: settings.quoteNumberNextSeq,
       };
 
       const result = await salesApi.updateSettings(payload);
       const saved = unwrap<SalesSettingsDTO>(result);
+      saved.messagingAccounts = (saved.messagingAccounts || []).map((account) => ({
+        ...account,
+        credential: undefined,
+      }));
       setSettings(saved);
       setOriginalSettings(saved);
+      setCredentialDraftByAccountId({});
       errorHandler.showSuccess('Sales settings updated successfully.');
     } catch (err: any) {
       console.error('Failed to save sales settings', err);
@@ -163,16 +271,18 @@ const SalesSettingsPage: React.FC = () => {
     { id: 'accounts', label: 'Account Defaults', icon: DollarSign },
     { id: 'numbering', label: 'No. Series', icon: Hash },
     { id: 'governance', label: 'Governance', icon: Shield },
+    { id: 'communications', label: 'Communications', icon: Settings },
   ];
 
   return (
-    <ModuleSettingsLayout
-      title="Sales Settings"
-      subtitle="Control sales workflow, account defaults, tolerances, and numbering."
-      tabs={tabs as any}
-      activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as TabId)}
-    >
+    <>
+      <ModuleSettingsLayout
+        title="Sales Settings"
+        subtitle="Control sales workflow, account defaults, tolerances, and numbering."
+        tabs={tabs as any}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as TabId)}
+      >
       <AccountingIntegrationStatus
         moduleCode="sales"
         hasMappings={!!settings?.defaultRevenueAccountId}
@@ -229,6 +339,50 @@ const SalesSettingsPage: React.FC = () => {
                       </div>
                     </div>
                   )}
+                  {settings.workflowMode === 'SIMPLE' && (
+                    <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                        checked={settings.showOperationalDocsInSimple === true}
+                        onChange={(e) =>
+                          setSettings((prev) =>
+                            prev ? { ...prev, showOperationalDocsInSimple: e.target.checked } : prev
+                          )
+                        }
+                      />
+                      <span className="text-xs">
+                        <span className="font-semibold text-gray-900">
+                          Show Sales Orders & Delivery Notes anyway
+                        </span>
+                        <span className="ml-1 text-gray-500">
+                          Use these forms occasionally without leaving Simple mode.
+                        </span>
+                      </span>
+                    </label>
+                  )}
+                  <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      checked={settings.allowCreditOverride !== false}
+                      onChange={(e) =>
+                        setSettings((prev) =>
+                          prev ? { ...prev, allowCreditOverride: e.target.checked } : prev
+                        )
+                      }
+                    />
+                    <span className="text-xs">
+                      <span className="font-semibold text-gray-900">
+                        Allow credit-limit overrides
+                      </span>
+                      <span className="ml-1 text-gray-500">
+                        When off, BLOCK policy is absolute — no one can bypass it. Requires the{' '}
+                        <code className="rounded bg-slate-100 px-1">sales.creditOverride</code> permission
+                        when on (Owner always allowed).
+                      </span>
+                    </span>
+                  </label>
                 </div>
 
                 {settings.workflowMode === 'OPERATIONAL' ? (
@@ -321,8 +475,86 @@ const SalesSettingsPage: React.FC = () => {
                       value={settings.defaultRevenueAccountId}
                       onChange={(account: any) => updateSetting('defaultRevenueAccountId', account?.id || '')}
                       placeholder="Select Revenue account"
+                      allowedClassifications={['REVENUE']}
+                      contextLabel="Income"
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">Global fallback for all Sales Invoices.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Refund Account</label>
+                    <AccountSelector
+                      value={settings.defaultRefundAccountId}
+                      onChange={(account: any) => updateSetting('defaultRefundAccountId', account?.id || undefined)}
+                      placeholder="Select Cash / Bank account"
+                      allowedClassifications={['ASSET']}
+                      contextLabel="Cash/Bank (Asset)"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">Used when a Sales Return is posted with settlement mode = Refund. Can be overridden per return.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Restocking Fee Income Account</label>
+                    <AccountSelector
+                      value={settings.restockingFeeAccountId}
+                      onChange={(account: any) => updateSetting('restockingFeeAccountId', account?.id || undefined)}
+                      placeholder="Select Other Income / Fee Income account"
+                      allowedClassifications={['REVENUE']}
+                      contextLabel="Income"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">Where restocking fees are booked. Keep separate from product revenue (e.g. "Other Operating Income"). Falls back to the line's revenue account if unset.</p>
+                  </div>
+
+                  <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">
+                    <p className="text-xs font-semibold text-indigo-900">
+                      {t('sales.settings.arGeneration.title', 'AR Sub-account Generation')}
+                    </p>
+                    <p className="mt-1 text-[11px] text-indigo-700">
+                      {t('sales.settings.arGeneration.description', 'Configure how customer-specific AR sub-accounts are generated during customer creation.')}
+                    </p>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => setShowBackfillConfirm(true)}
+                        disabled={backfilling}
+                      >
+                        {t('sales.settings.arGeneration.backfillButton', 'Backfill customer AR sub-accounts')}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('sales.settings.arParent.label', 'AR Parent Account')}
+                    </label>
+                    <AccountSelector
+                      value={settings.arParentAccountId || ''}
+                      onChange={(account: any) => updateSetting('arParentAccountId', account?.id || undefined)}
+                      placeholder={t('sales.settings.arParent.placeholder', 'Select AR parent account')}
+                      allowedClassifications={['ASSET']}
+                      contextLabel={t('sales.settings.arParent.context', 'Asset')}
+                      enforceClassification
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      {t('sales.settings.arParent.help', 'Parent account under which per-customer AR sub-accounts are generated.')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('sales.settings.partyAccountFormat.label', 'AR Sub-account Code Format')}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                      onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
+                      placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      {t('sales.settings.partyAccountFormat.help', 'Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.')}
+                    </p>
                   </div>
 
                   <div>
@@ -388,8 +620,9 @@ const SalesSettingsPage: React.FC = () => {
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               Workflow mode: <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {[
+                { id: 'qt', label: 'Quotes (QT)', prefix: 'quoteNumberPrefix', seq: 'quoteNumberNextSeq' },
                 { id: 'so', label: 'Sales Orders', prefix: 'soNumberPrefix', seq: 'soNumberNextSeq' },
                 { id: 'dn', label: 'Deliveries (DN)', prefix: 'dnNumberPrefix', seq: 'dnNumberNextSeq' },
                 { id: 'si', label: 'Invoices (SI)', prefix: 'siNumberPrefix', seq: 'siNumberNextSeq' },
@@ -422,6 +655,203 @@ const SalesSettingsPage: React.FC = () => {
               ))}
             </div>
           </Card>
+        </SettingsSection>
+      )}
+
+      {activeTab === 'communications' && (
+        <SettingsSection
+          title={t('sales.settings.communications.title', 'Outbound Communications')}
+          description={t(
+            'sales.settings.communications.description',
+            'Configure company-owned sender accounts for WhatsApp, Email, and Telegram. Credentials are stored encrypted.'
+          )}
+          onSave={handleSave}
+          disabled={!hasChanges || saving}
+          saving={saving}
+        >
+          <div className="space-y-6">
+            <Card className="p-6">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-teal-300 px-3 py-2 text-xs font-semibold text-teal-700"
+                  onClick={() => addMessagingAccount('WHATSAPP')}
+                >
+                  {t('sales.settings.communications.addWhatsapp', 'Add WhatsApp Account')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-indigo-300 px-3 py-2 text-xs font-semibold text-indigo-700"
+                  onClick={() => addMessagingAccount('EMAIL')}
+                >
+                  {t('sales.settings.communications.addEmail', 'Add Email Account')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-violet-300 px-3 py-2 text-xs font-semibold text-violet-700"
+                  onClick={() => addMessagingAccount('TELEGRAM')}
+                >
+                  {t('sales.settings.communications.addTelegram', 'Add Telegram Account')}
+                </button>
+              </div>
+
+              {(settings.messagingAccounts || []).length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  {t('sales.settings.communications.empty', 'No sender accounts configured yet.')}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {(settings.messagingAccounts || []).map((account) => (
+                    <div key={account.id} className="rounded-xl border border-slate-200 p-4">
+                      <div className="mb-4 flex items-center justify-between">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {account.channel} / {account.provider}
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600"
+                          onClick={() => removeMessagingAccount(account.id)}
+                        >
+                          {t('common.remove', 'Remove')}
+                        </button>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            {t('sales.settings.communications.label', 'Account Label')}
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            value={account.label || ''}
+                            onChange={(e) => updateMessagingAccount(account.id, { label: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            {t('sales.settings.communications.apiVersion', 'API Version (Optional)')}
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            value={account.apiVersion || ''}
+                            onChange={(e) => updateMessagingAccount(account.id, { apiVersion: e.target.value })}
+                            placeholder="v22.0"
+                          />
+                        </div>
+                        {account.channel === 'WHATSAPP' && (
+                          <>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.phoneDisplay', 'Display Phone (E.164)')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.phoneNumberE164 || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { phoneNumberE164: e.target.value })}
+                                placeholder="+15551234567"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.phoneNumberId', 'Meta Phone Number ID')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.phoneNumberId || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { phoneNumberId: e.target.value })}
+                              />
+                            </div>
+                          </>
+                        )}
+                        {account.channel === 'EMAIL' && (
+                          <>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.fromAddress', 'From Email')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.fromAddress || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { fromAddress: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">
+                                {t('sales.settings.communications.fromName', 'From Name')}
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                value={account.fromDisplayName || ''}
+                                onChange={(e) => updateMessagingAccount(account.id, { fromDisplayName: e.target.value })}
+                              />
+                            </div>
+                          </>
+                        )}
+                        {account.channel === 'TELEGRAM' && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">
+                              {t('sales.settings.communications.botUsername', 'Bot Username')}
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              value={account.botUsername || ''}
+                              onChange={(e) => updateMessagingAccount(account.id, { botUsername: e.target.value })}
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            {t('sales.settings.communications.credential', 'Credential / Access Token')}
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            value={credentialDraftByAccountId[account.id] || ''}
+                            onChange={(e) =>
+                              setCredentialDraftByAccountId((prev) => ({
+                                ...prev,
+                                [account.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={
+                              account.hasCredential
+                                ? t('sales.settings.communications.credentialStored', 'Leave blank to keep existing credential')
+                                : t('sales.settings.communications.credentialRequired', 'Enter credential')
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-4">
+                        <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={account.isActive !== false}
+                            onChange={(e) => updateMessagingAccount(account.id, { isActive: e.target.checked })}
+                          />
+                          {t('sales.settings.communications.active', 'Active')}
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                          <input
+                            type="radio"
+                            name={`default-account-${account.channel}`}
+                            checked={account.isDefault === true}
+                            onChange={() => markMessagingAccountAsDefault(account.id, account.channel)}
+                          />
+                          {t('sales.settings.communications.default', 'Default for this channel')}
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
         </SettingsSection>
       )}
 
@@ -616,7 +1046,23 @@ const SalesSettingsPage: React.FC = () => {
           </div>
         </SettingsSection>
       )}
-    </ModuleSettingsLayout>
+      </ModuleSettingsLayout>
+    <ConfirmDialog
+      isOpen={showBackfillConfirm}
+      title={t('sales.settings.arGeneration.confirmTitle', 'Backfill Customer AR Sub-accounts')}
+      message={t(
+        'sales.settings.arGeneration.confirmMessage',
+        'This will scan active customers and create dedicated AR sub-accounts for parties that do not already have one under the configured AR parent.'
+      )}
+      confirmLabel={t('sales.settings.arGeneration.confirmAction', 'Run Backfill')}
+      cancelLabel={t('common.cancel', 'Cancel')}
+      onConfirm={handleBackfillArAccounts}
+      onCancel={() => setShowBackfillConfirm(false)}
+      tone="warning"
+      isConfirming={backfilling}
+      icon={<AlertTriangle size={20} />}
+    />
+  </>
   );
 };
 

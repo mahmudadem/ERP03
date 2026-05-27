@@ -16,6 +16,16 @@ export interface DeliveryNoteLine {
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
   stockMovementId?: string | null;
+  /**
+   * Outcome of COGS recognition at DN posting. POSTED in PERPETUAL mode;
+   * SKIPPED_DEFERRED_POLICY when accountingMode=INVOICE_DRIVEN.
+   * See PostingLog and docs/architecture/posting-log.md.
+   */
+  cogsPostingStatus?:
+    | 'POSTED'
+    | 'SKIPPED_DEFERRED_POLICY'
+    | 'SKIPPED_UNSETTLED_COST'
+    | null;
   description?: string;
 }
 
@@ -31,6 +41,7 @@ export interface DeliveryNoteProps {
   lines: DeliveryNoteLine[];
   status?: DNStatus;
   notes?: string;
+  promisedDate?: string;
   cogsVoucherId?: string | null;
   createdBy: string;
   createdAt: Date;
@@ -60,6 +71,7 @@ export class DeliveryNote {
   lines: DeliveryNoteLine[];
   status: DNStatus;
   notes?: string;
+  promisedDate?: string;
   cogsVoucherId?: string | null;
   readonly createdBy: string;
   readonly createdAt: Date;
@@ -95,6 +107,7 @@ export class DeliveryNote {
     this.status = status;
 
     this.notes = props.notes;
+    this.promisedDate = props.promisedDate;
     this.cogsVoucherId = props.cogsVoucherId ?? null;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
@@ -146,6 +159,7 @@ export class DeliveryNote {
       lines: this.lines.map((line) => ({ ...line })),
       status: this.status,
       notes: this.notes,
+      promisedDate: this.promisedDate,
       cogsVoucherId: this.cogsVoucherId ?? null,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
@@ -167,6 +181,7 @@ export class DeliveryNote {
       lines: data.lines || [],
       status: data.status || 'DRAFT',
       notes: data.notes,
+      promisedDate: data.promisedDate,
       cogsVoucherId: data.cogsVoucherId ?? null,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt),

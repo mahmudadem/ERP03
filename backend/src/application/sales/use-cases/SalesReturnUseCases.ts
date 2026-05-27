@@ -7,6 +7,9 @@ import { PaymentStatus, SalesInvoice, SalesInvoiceLine } from '../../../domain/s
 import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 import {
   ReturnContext,
+  ReturnReasonCode,
+  ReturnSettlementMode,
+  RestockingFeeType,
   SalesReturn,
   SalesReturnLine,
   SRStatus,
@@ -31,7 +34,10 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
+import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -63,7 +69,12 @@ export interface CreateSalesReturnInput {
   customerName?: string;    // Required for DIRECT returns
   returnDate: string;
   warehouseId?: string;
+  settlementMode?: ReturnSettlementMode;
+  reasonCode?: ReturnReasonCode;
   reason: string;
+  restockingFeeType?: RestockingFeeType;
+  restockingFeeValue?: number;
+  refundSettlementAccountId?: string;
   notes?: string;
   lines?: SalesReturnLineInput[];
   createdBy: string;
@@ -130,16 +141,7 @@ const recalcPaymentStatus = (si: SalesInvoice): PaymentStatus => {
 };
 
 const recalcReturnTotals = (salesReturn: SalesReturn): void => {
-  salesReturn.subtotalDoc = roundMoney(
-    salesReturn.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * (line.unitPriceDoc || 0)), 0)
-  );
-  salesReturn.subtotalBase = roundMoney(
-    salesReturn.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * (line.unitPriceBase || 0)), 0)
-  );
-  salesReturn.taxTotalDoc = roundMoney(salesReturn.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
-  salesReturn.taxTotalBase = roundMoney(salesReturn.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
-  salesReturn.grandTotalDoc = roundMoney(salesReturn.subtotalDoc + salesReturn.taxTotalDoc);
-  salesReturn.grandTotalBase = roundMoney(salesReturn.subtotalBase + salesReturn.taxTotalBase);
+  salesReturn.recalculateMonetaryTotals();
 };
 
 const addToBucket = (
@@ -168,10 +170,12 @@ export class CreateSalesReturnUseCase {
     private readonly settingsRepo: ISalesSettingsRepository,
     private readonly salesReturnRepo: ISalesReturnRepository,
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
-    private readonly deliveryNoteRepo: IDeliveryNoteRepository
+    private readonly deliveryNoteRepo: IDeliveryNoteRepository,
+    private readonly recordChangeService?: RecordChangeService,
+    private readonly companyCurrencyRepo?: ICompanyCurrencyRepository
   ) {}
 
-  async execute(input: CreateSalesReturnInput): Promise<SalesReturn> {
+  async execute(input: CreateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(input.companyId);
     if (!settings) throw new Error('Sales module is not initialized');
 
@@ -202,6 +206,9 @@ export class CreateSalesReturnUseCase {
       // DIRECT: standalone return
       if (!input.lines?.length) {
         throw new Error('Standalone returns require at least one line with item details');
+      }
+      if (!input.customerId?.trim()) {
+        throw new Error('customerId is required for standalone returns');
       }
       if (!input.warehouseId && !settings.defaultWarehouseId) {
         throw new Error('warehouseId is required for standalone returns');
@@ -257,7 +264,10 @@ export class CreateSalesReturnUseCase {
       returnContext,
       returnDate: input.returnDate,
       warehouseId,
-      currency: salesInvoice?.currency || deliveryNote?.lines[0]?.moveCurrency || 'USD',
+      currency: salesInvoice?.currency
+        || deliveryNote?.lines[0]?.moveCurrency
+        || (this.companyCurrencyRepo ? (await this.companyCurrencyRepo.getBaseCurrency(input.companyId)) : undefined)
+        || 'USD',
       exchangeRate: salesInvoice?.exchangeRate || deliveryNote?.lines[0]?.fxRateMovToBase || 1,
       lines,
       subtotalDoc: 0,
@@ -266,7 +276,16 @@ export class CreateSalesReturnUseCase {
       subtotalBase: 0,
       taxTotalBase: 0,
       grandTotalBase: 0,
+      netSettlementAmountDoc: 0,
+      netSettlementAmountBase: 0,
+      settlementMode: input.settlementMode || 'CREDIT_NOTE',
+      reasonCode: input.reasonCode || 'OTHER',
       reason: input.reason,
+      restockingFeeType: input.restockingFeeType,
+      restockingFeeValue: input.restockingFeeValue ?? 0,
+      restockingFeeAmountDoc: 0,
+      restockingFeeAmountBase: 0,
+      refundSettlementAccountId: input.refundSettlementAccountId,
       notes: input.notes,
       status: 'DRAFT',
       revenueVoucherId: null,
@@ -278,6 +297,19 @@ export class CreateSalesReturnUseCase {
 
     await this.salesReturnRepo.create(salesReturn);
     await this.settingsRepo.saveSettings(settings);
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: salesReturn.companyId,
+        entityType: 'SALES_RETURN',
+        entityId: salesReturn.id,
+        entityNumber: `SR-${salesReturn.returnNumber}`,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: salesReturn.toJSON(),
+      });
+    }
+
     return salesReturn;
   }
 
@@ -415,10 +447,12 @@ export class PostSalesReturnUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly recordChangeService?: RecordChangeService,
+    private readonly postingLogRepo?: IPostingLogRepository
   ) {}
 
-  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<SalesReturn> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module is not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
@@ -861,12 +895,12 @@ export class PostSalesReturnUseCase {
               referenceType: 'SALES_RETURN',
               referenceId: salesReturn.id,
               voucherPart: 'COGS',
+              ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: salesReturn.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: salesReturn.returnNumber,
             baseCurrencyOverride: resolvedBaseCurrency,
-            skipAccountValidation: true,
           },
           transaction
         );
@@ -876,16 +910,44 @@ export class PostSalesReturnUseCase {
       }
 
       if (shouldPostAccounting && (isAfterInvoice || isDirect)) {
+        const settlementAmountBase = roundMoney(
+          salesReturn.netSettlementAmountBase ?? salesReturn.grandTotalBase
+        );
+        const settlementAmountDoc = roundMoney(
+          salesReturn.netSettlementAmountDoc ?? salesReturn.grandTotalDoc
+        );
+        const restockingFeeBase = roundMoney(salesReturn.restockingFeeAmountBase || 0);
+        const restockingFeeDoc = roundMoney(salesReturn.restockingFeeAmountDoc || 0);
+        let restockingFeeAccountId: string | null = null;
+        if (restockingFeeBase > 0 || restockingFeeDoc > 0) {
+          const firstRevenueAccount = Array.from(revenueDebitBucket.values())[0]?.accountId;
+          const restockingFeeSourceId = settings.restockingFeeAccountId?.trim()
+            || firstRevenueAccount
+            || settings.defaultRevenueAccountId;
+          restockingFeeAccountId = await resolveAccountCached(restockingFeeSourceId);
+          if (!restockingFeeAccountId) {
+            throw new Error('No account configured for restocking fee posting. Set a Restocking Fee Account in Sales Settings → Account Defaults.');
+          }
+        }
+
         const revenueVoucherLines = [
           ...Array.from(revenueDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
           ...Array.from(taxDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
           {
             accountId: resolvedARId,
             side: 'Credit' as const,
-            baseAmount: roundMoney(salesReturn.grandTotalBase),
-            docAmount: roundMoney(salesReturn.grandTotalDoc),
+            baseAmount: settlementAmountBase,
+            docAmount: settlementAmountDoc,
           },
         ];
+        if (restockingFeeAccountId && (restockingFeeBase > 0 || restockingFeeDoc > 0)) {
+          revenueVoucherLines.push({
+            accountId: restockingFeeAccountId,
+            side: 'Credit' as const,
+            baseAmount: restockingFeeBase,
+            docAmount: restockingFeeDoc,
+          });
+        }
 
         const revenueVoucher = await this.accountingPostingService.postInTransaction(
           {
@@ -904,23 +966,75 @@ export class PostSalesReturnUseCase {
               referenceType: 'SALES_RETURN',
               referenceId: salesReturn.id,
               voucherPart: 'REVENUE',
+              settlementMode: salesReturn.settlementMode,
+              reasonCode: salesReturn.reasonCode,
+              restockingFeeAmountBase: salesReturn.restockingFeeAmountBase,
+              restockingFeeAmountDoc: salesReturn.restockingFeeAmountDoc,
+              ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: salesReturn.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: salesReturn.returnNumber,
             baseCurrencyOverride: resolvedBaseCurrency,
-            skipAccountValidation: true,
           },
           transaction
         );
         salesReturn.revenueVoucherId = revenueVoucher.id;
 
         if (isAfterInvoice && salesInvoice) {
-          const invoice = salesInvoice as SalesInvoice;
-          invoice.outstandingAmountBase = roundMoney(invoice.outstandingAmountBase - salesReturn.grandTotalBase);
-          invoice.paymentStatus = recalcPaymentStatus(invoice);
-          invoice.updatedAt = new Date();
-          await this.salesInvoiceRepo.update(invoice, transaction);
+          if (salesReturn.settlementMode === 'CREDIT_NOTE') {
+            const invoice = salesInvoice as SalesInvoice;
+            invoice.outstandingAmountBase = roundMoney(invoice.outstandingAmountBase - settlementAmountBase);
+            invoice.paymentStatus = recalcPaymentStatus(invoice);
+            invoice.updatedAt = new Date();
+            await this.salesInvoiceRepo.update(invoice, transaction);
+          }
+        }
+
+        if (salesReturn.settlementMode === 'REFUND' && settlementAmountBase > 0.0001) {
+          const refundSettlementAccountRaw = this.resolveRefundSettlementAccount(settings, salesReturn.refundSettlementAccountId);
+          const refundSettlementAccountId = await resolveAccountCached(refundSettlementAccountRaw);
+
+          await this.accountingPostingService.postInTransaction(
+            {
+              companyId,
+              voucherType: VoucherType.SALES_RETURN,
+              voucherNo: `SR-REF-${salesReturn.returnNumber}`,
+              date: salesReturn.returnDate,
+              description: `Sales Return ${salesReturn.returnNumber} Refund`,
+              currency: salesReturn.currency,
+              exchangeRate: salesReturn.exchangeRate,
+              lines: [
+                {
+                  accountId: resolvedARId,
+                  side: 'Debit',
+                  baseAmount: settlementAmountBase,
+                  docAmount: settlementAmountDoc,
+                },
+                {
+                  accountId: refundSettlementAccountId,
+                  side: 'Credit',
+                  baseAmount: settlementAmountBase,
+                  docAmount: settlementAmountDoc,
+                },
+              ],
+              metadata: {
+                sourceModule: 'sales',
+                sourceType: 'SALES_RETURN',
+                sourceId: salesReturn.id,
+                referenceType: 'SALES_RETURN',
+                referenceId: salesReturn.id,
+                voucherPart: 'REFUND',
+                settlementMode: salesReturn.settlementMode,
+                ...(periodLockOverride ? { periodLockOverride } : {}),
+              },
+              createdBy: salesReturn.createdBy,
+              postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+              reference: salesReturn.returnNumber,
+              baseCurrencyOverride: resolvedBaseCurrency,
+            },
+            transaction
+          );
         }
       } else {
         salesReturn.revenueVoucherId = null;
@@ -940,6 +1054,59 @@ export class PostSalesReturnUseCase {
 
     const posted = await this.salesReturnRepo.getById(companyId, id);
     if (!posted) throw new Error(`Sales return not found after posting: ${id}`);
+
+    if (this.recordChangeService && actor) {
+      const entityNumber = `SR-${posted.returnNumber}`;
+      await this.recordChangeService.recordPost({
+        companyId,
+        entityType: 'SALES_RETURN',
+        entityId: posted.id,
+        entityNumber,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+      });
+      if (periodLockOverride) {
+        await this.recordChangeService.recordPeriodLockOverride({
+          companyId,
+          entityType: 'SALES_RETURN',
+          entityId: posted.id,
+          entityNumber,
+          userId: actor.userId,
+          userEmail: actor.userEmail,
+          reason: periodLockOverride.reason,
+          lockedThroughDate: actor.lockedThroughDate,
+        });
+      }
+    }
+
+    if (this.postingLogRepo) {
+      try {
+        const voucherIds = [posted.revenueVoucherId, posted.cogsVoucherId].filter((v): v is string => !!v);
+        const decisions: LineDecision[] = posted.lines.map((ln) => ({
+          lineNo: ln.lineNo,
+          itemId: ln.itemId,
+          accounts: {},
+        }));
+        const log = new PostingLog({
+          id: randomUUID(),
+          companyId,
+          sourceModule: 'sales',
+          sourceType: 'SALES_RETURN',
+          sourceId: posted.id,
+          sourceDocNumber: posted.returnNumber,
+          strategy: 'SalesReturnStrategy',
+          voucherIds,
+          decisions,
+          warnings: [],
+          postedAt: new Date(),
+          postedBy: posted.createdBy || 'SYSTEM',
+        });
+        await this.postingLogRepo.create(log);
+      } catch (err) {
+        console.warn('[PostingLog] write failed for SalesReturn', posted.id, err);
+      }
+    }
+
     return posted;
   }
 
@@ -960,6 +1127,23 @@ export class PostSalesReturnUseCase {
       throw new Error(`Customer ${customer.displayName} has no linked AR account configured.`);
     }
     return customer.defaultARAccountId;
+  }
+
+  private resolveRefundSettlementAccount(settings: any, perReturnOverride?: string): string {
+    if (perReturnOverride?.trim()) return perReturnOverride.trim();
+    if (settings?.defaultRefundAccountId?.trim()) return settings.defaultRefundAccountId.trim();
+    const paymentConfigs = Array.isArray(settings?.paymentMethodConfigs) ? settings.paymentMethodConfigs : [];
+    const enabled = paymentConfigs.find(
+      (config: any) => config && config.isEnabled !== false && typeof config.settlementAccountId === 'string' && config.settlementAccountId.trim()
+    );
+    const fallback = paymentConfigs.find(
+      (config: any) => config && typeof config.settlementAccountId === 'string' && config.settlementAccountId.trim()
+    );
+    const accountId = enabled?.settlementAccountId || fallback?.settlementAccountId;
+    if (!accountId) {
+      throw new Error('No settlement account configured. Set a Default Refund Account in Sales Settings → Account Defaults, or override it on this return.');
+    }
+    return String(accountId).trim();
   }
 
   private async getPreviouslyReturnedQtyForSILine(
@@ -1058,24 +1242,37 @@ export interface UpdateSalesReturnInput {
   id: string;
   returnDate?: string;
   warehouseId?: string;
+  settlementMode?: ReturnSettlementMode;
+  reasonCode?: ReturnReasonCode;
   reason?: string;
+  restockingFeeType?: RestockingFeeType;
+  restockingFeeValue?: number;
   notes?: string;
   lines?: SalesReturnLineInput[];
 }
 
 export class UpdateSalesReturnUseCase {
-  constructor(private readonly salesReturnRepo: ISalesReturnRepository) {}
+  constructor(
+    private readonly salesReturnRepo: ISalesReturnRepository,
+    private readonly recordChangeService?: RecordChangeService
+  ) {}
 
-  async execute(input: UpdateSalesReturnInput): Promise<SalesReturn> {
+  async execute(input: UpdateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
     const current = await this.salesReturnRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Sales return not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft sales returns can be updated');
     }
 
+    const before = current.toJSON();
+
     if (input.returnDate !== undefined) current.returnDate = input.returnDate;
     if (input.warehouseId !== undefined) current.warehouseId = input.warehouseId;
+    if (input.settlementMode !== undefined) current.settlementMode = input.settlementMode;
+    if (input.reasonCode !== undefined) current.reasonCode = input.reasonCode;
     if (input.reason !== undefined) current.reason = input.reason;
+    if (input.restockingFeeType !== undefined) current.restockingFeeType = input.restockingFeeType;
+    if (input.restockingFeeValue !== undefined) current.restockingFeeValue = roundMoney(input.restockingFeeValue);
     if (input.notes !== undefined) current.notes = input.notes;
 
     if (input.lines) {
@@ -1116,6 +1313,21 @@ export class UpdateSalesReturnUseCase {
     current.updatedAt = new Date();
     const updated = new SalesReturn(current.toJSON() as any);
     await this.salesReturnRepo.update(updated);
+
+    if (this.recordChangeService && actor) {
+      const after = updated.toJSON();
+      await this.recordChangeService.recordUpdate({
+        companyId: input.companyId,
+        entityType: 'SALES_RETURN',
+        entityId: updated.id,
+        entityNumber: updated.returnNumber ? `SR-${updated.returnNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        before: before as Record<string, any>,
+        after: after as Record<string, any>,
+      });
+    }
+
     return updated;
   }
 }

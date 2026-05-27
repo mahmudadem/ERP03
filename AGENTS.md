@@ -186,6 +186,72 @@ This project uses an OpenCode multi-agent workflow defined in `opencode.json`. T
 - Dynamic Engine: postponed unless explicitly requested
 - Only ONE builder edits a file area at a time
 
+### Shared UI Components — MANDATORY REUSE
+
+**Rule:** Whenever a form needs to capture a reference to existing master data (customer, item, warehouse, account, party, etc.), you MUST use the project's shared selector components. Free-text inputs for IDs are a data-integrity bug — they let users save garbage that breaks downstream posting.
+
+**Where they live:**
+
+`frontend/src/components/shared/selectors/`:
+- `PartySelector` — for customer / vendor / party pickers (filter by `role` prop)
+- `ItemSelector` — for inventory item pickers (auto-fills code, name, UoM, etc.)
+- `WarehouseSelector` — for warehouse pickers
+- `PartyAccountSelector` — for AR/AP sub-account pickers
+
+`frontend/src/modules/accounting/components/shared/`:
+- `DatePicker` — the project's only date picker. Honors company date format and fiscal calendar. Use everywhere instead of `<input type="date">`.
+
+`frontend/src/components/ui/`:
+- `ConfirmDialog` — MANDATORY for any state-changing or destructive user action (pause / resume / cancel / delete / post / void / etc.). Never trigger a server-side state change directly from a button click. Tone: `danger` for irreversible actions, `warning` for reversible, `info` for benign confirmations. Disable buttons while `isConfirming` is true.
+
+### Report Pages — MANDATORY Pattern
+
+**Rule:** Every report page MUST use `<ReportContainer>` from `frontend/src/components/reports/ReportContainer.tsx`, AND its route MUST appear in `frontend/src/config/moduleMenuMap.ts` under the module's `Reports` parent.
+
+Enforced by `frontend/scripts/check-reports.mjs`, which runs as part of `npm run build`. PRs that violate either rule fail CI.
+
+Why `ReportContainer` is non-negotiable:
+- UI-mode aware (windows-mode routing happens automatically)
+- Standard toolbar (refresh / filters / column visibility / Excel / PDF / print)
+- Two-stage flow (filter → results) — predictable for users across all reports
+- Density toggle, pagination, i18n built in
+
+Pattern, sidebar wiring, and the temporary allowlist are documented in `docs/architecture/reports.md`. Read that before building a new report.
+
+### Action Feedback — Toast on Every Result (MANDATORY)
+
+**Every user-triggered action must produce a visible result.** Use `react-hot-toast` (already installed, `Toaster` mounted in `main.tsx`):
+
+```ts
+import toast from 'react-hot-toast';
+
+// Success
+toast.success('Invoice posted');
+
+// Info (no-op, neutral result)
+toast('No invoices due today', { icon: 'ℹ️' });
+
+// Error — prefer this over setError state for transient feedback
+toast.error('Failed to post invoice');
+```
+
+Rules:
+- **Success** → `toast.success(...)` — always, even for deletes and status changes.
+- **Info / no-op** → `toast(msg, { icon: 'ℹ️' })` — when the action succeeded but nothing changed (e.g. generate ran but nothing was due).
+- **Error** → `toast.error(...)` — for transient API errors. Reserve `setError` state for persistent page-level errors that need a banner.
+- **No silent actions.** A button that does something and then nothing appears to have is broken. Every click that triggers a server call must visually confirm it happened.
+- This applies to ALL modules — Sales, Purchase, Accounting, Inventory, HR, AI, everything.
+
+The selectors index is at `frontend/src/components/shared/selectors/index.ts`. Check both locations before building anything. (The `DatePicker` location is a historical accident — it's app-wide despite living under `accounting/`. Don't duplicate it.)
+
+**Process:**
+1. Before adding any picker, autocomplete, dropdown, or "ID + Name" input pair to a form, check `frontend/src/components/shared/selectors/` and grep for existing usage of the relevant selector in other modules.
+2. If a shared selector exists → use it. Do not reinvent. Do not use raw text inputs for IDs.
+3. If a shared selector does NOT exist for the entity you need → ASK THE USER before creating one. New shared components must be designed once to serve every module; ad-hoc per-page versions cause divergent UX and data quality bugs.
+4. Same rule applies to date pickers, currency selectors, tax-code pickers, and any other "looks like a primitive but actually references master data" control. If there's a shared component, use it.
+
+**Why this exists:** The Phase D.4 recurring-invoice form was built with raw text inputs for customer ID, item code, and item name. The backend accepted any string and saved templates that, when run by the scheduler, would produce SIs referencing non-existent master data — corrupting the GL silently. This rule prevents recurrence across all future features.
+
 ### Operational Safety Rules
 
 1. **No Commit on Failure** — If any builder, reviewer, or test-runner step fails, do NOT commit. Revert or stash changes, report the failure, and wait for user instructions.
@@ -252,3 +318,72 @@ This project has a graphify knowledge graph at `graphify-out/`.
 **Maintenance:**
 - After modifying code files in a session, run `graphify update .` to keep the graph current (AST-only, no API cost)
 - The graph is committed to git so all agents share the same map
+
+---
+
+## Multi-Agent Coordination Protocol
+
+This project is worked on by multiple agents (Claude Code, Codex, OpenCode, Cowork) and from multiple devices. All coordination is git-based — no real-time communication between agents exists. Follow this protocol to avoid collisions and wasted work.
+
+### Files You Must Read
+
+| File | Purpose |
+|------|---------|
+| `planning/PRIORITIES.md` | What to work on — in order. Read this before picking a task. |
+| `planning/QA-QUEUE.md` | Features ready for Mahmud to test. Add items here when you finish a feature. |
+| `planning/ACTIVE.md` | Current task detail + where we left off. |
+| `planning/JOURNAL.md` | Session history. Always append your session summary here. |
+
+### Before Starting Any Work
+
+1. `git pull` to get the latest state
+2. Read `planning/PRIORITIES.md` — pick the top unlocked item
+3. Check the **Task Lock** table in `planning/PRIORITIES.md` — if someone is already on it, pick the next item
+4. Add yourself to the Task Lock table before starting
+
+### After Finishing Any Work
+
+1. Remove yourself from the Task Lock table (or mark ✅ Done)
+2. If the feature is user-facing and testable, add it to `planning/QA-QUEUE.md`
+3. Append a session summary to `planning/JOURNAL.md`
+4. Update `planning/ACTIVE.md` with the next task
+5. Update `planning/PRIORITIES.md` if the priority order has changed
+6. Commit everything: `git add -A && git commit -m "feat: ..."`
+
+### Writing Briefs for Other Agents
+
+If you finish a task and the natural next step is better suited for a different agent (e.g., you've done backend work and the frontend needs wiring), write a brief in `planning/briefs/`:
+
+```
+planning/briefs/YYYYMMDD-<target-agent>-<topic>.md
+```
+
+Format:
+```markdown
+# Brief: [What needs doing]
+**For:** [Codex / Claude Code / OpenCode / Cowork]
+**From:** [your agent name]
+**Date:** YYYY-MM-DD
+
+## Context
+[What was just built, why this next step is needed]
+
+## Task
+[Specific, actionable instructions — files to edit, behavior expected]
+
+## Definition of Done
+[How to know it's finished]
+```
+
+The receiving agent reads this brief at session start and acts on it.
+
+### What NOT to Do
+
+- Do NOT start work without checking PRIORITIES.md and the Task Lock
+- Do NOT skip updating QA-QUEUE.md when a feature is testable
+- Do NOT skip JOURNAL.md — it is the handoff record for Mahmud and other agents
+- Do NOT leave ACTIVE.md pointing at a completed task
+
+### Upgrade Path (MCP)
+
+The current protocol is intentionally file-based and simple. If coordination becomes painful (collisions, stale locks, wasted work), see `docs/architecture/agent-coordination.md` for the MCP upgrade path.

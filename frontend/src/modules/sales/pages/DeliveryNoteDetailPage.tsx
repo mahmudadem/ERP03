@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   DeliveryNoteDTO,
@@ -13,6 +14,9 @@ import { Card } from '../../../components/ui/Card';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { GlImpactModal } from '../components/GlImpactModal';
+import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
+import { RecordAuditModal } from '../components/RecordAuditModal';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -35,6 +39,7 @@ interface EditableForm {
   salesOrderId: string;
   customerId: string;
   deliveryDate: string;
+  promisedDate: string;
   warehouseId: string;
   notes: string;
   lines: EditableLine[];
@@ -53,12 +58,14 @@ const createEmptyForm = (salesOrderId = '', customerId = '', warehouseId = ''): 
   salesOrderId,
   customerId,
   deliveryDate: todayIso(),
+  promisedDate: '',
   warehouseId,
   notes: '',
   lines: [createEmptyLine()],
 });
 
 const DeliveryNoteDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -80,6 +87,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [glImpactOpen, setGlImpactOpen] = useState(false);
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
 
   const warehouseLabelById = useMemo(
     () =>
@@ -366,6 +377,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         salesOrderId: form.salesOrderId || undefined,
         customerId: form.salesOrderId ? undefined : form.customerId || undefined,
         deliveryDate: form.deliveryDate,
+        promisedDate: form.promisedDate || undefined,
         warehouseId: form.warehouseId,
         lines: mappedLines.length ? mappedLines : undefined,
         notes: form.notes || undefined,
@@ -386,14 +398,29 @@ const DeliveryNoteDetailPage: React.FC = () => {
     }
   };
 
-  const postDraft = async () => {
+  const postDraft = async (periodLockOverrideReason?: string) => {
     if (!deliveryNote?.id) return;
     try {
       setBusy(true);
       setError(null);
-      const posted = await salesApi.postDN(deliveryNote.id);
+      const posted = await salesApi.postDN(deliveryNote.id, periodLockOverrideReason);
       setDeliveryNote(unwrap<DeliveryNoteDTO>(posted));
     } catch (err: any) {
+      const errorCode = err?.response?.data?.error?.code;
+      if (errorCode === 'PERIOD_LOCKED') {
+        const errorData = err?.response?.data?.error;
+        if (errorData?.tier === 'SOFT') {
+          setOverrideModalData({
+            documentDate: errorData.documentDate || deliveryNote.deliveryDate,
+            lockedThroughDate: errorData.lockedThroughDate || '',
+          });
+          setOverrideModalOpen(true);
+          return;
+        } else {
+          setError('This accounting period is closed and cannot be overridden.');
+          return;
+        }
+      }
       console.error('Failed to post delivery note', err);
       setError(
         err?.response?.data?.error?.message ||
@@ -473,9 +500,16 @@ const DeliveryNoteDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Delivery Date</label>
-              <DatePicker 
+              <DatePicker
                 value={form.deliveryDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, deliveryDate: val }))}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Promised Delivery Date</label>
+              <DatePicker
+                value={form.promisedDate}
+                onChange={(val) => setForm((prev) => ({ ...prev, promisedDate: val }))}
               />
             </div>
             <div>
@@ -698,33 +732,86 @@ const DeliveryNoteDetailPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Delivered Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Cost (Base)</th>
-                <th className="py-2 text-right">Line Cost (Base)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveryNote.lines.map((line) => (
-                <tr key={line.lineId} className="border-b border-slate-100">
-                  <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                  <td className="py-2 text-right">{line.deliveredQty}</td>
-                  <td className="py-2">{line.uom}</td>
-                  <td className="py-2 text-right">{line.unitCostBase.toFixed(2)}</td>
-                  <td className="py-2 text-right">{line.lineCostBase.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {(() => {
+        const linkedSO = deliveryNote.salesOrderId
+          ? salesOrders.find((so) => so.id === deliveryNote.salesOrderId)
+          : null;
+        const soLineMap: Map<string, { orderedQty: number }> = linkedSO
+          ? new Map(linkedSO.lines.map((l) => [l.lineId, { orderedQty: l.orderedQty }] as [string, { orderedQty: number }]))
+          : new Map<string, { orderedQty: number }>();
+        const hasPartialLine = linkedSO
+          ? deliveryNote.lines.some((dnLine) => {
+              if (!dnLine.soLineId) return false;
+              const soLine = soLineMap.get(dnLine.soLineId);
+              return soLine ? dnLine.deliveredQty < soLine.orderedQty : false;
+            })
+          : false;
+        return (
+          <Card className="p-5">
+            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="py-2 text-left">Item</th>
+                    {linkedSO && <th className="py-2 text-right">{t('fulfillment.ordered')}</th>}
+                    <th className="py-2 text-right">Delivered Qty</th>
+                    <th className="py-2 text-left">UOM</th>
+                    <th className="py-2 text-right">Unit Cost (Base)</th>
+                    <th className="py-2 text-right">Line Cost (Base)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deliveryNote.lines.map((line) => {
+                    const soLine = line.soLineId ? soLineMap.get(line.soLineId) : undefined;
+                    const orderedQty = soLine ? soLine.orderedQty : undefined;
+                    const isPartial = orderedQty !== undefined && line.deliveredQty < orderedQty;
+                    const isFulfilled = orderedQty !== undefined && line.deliveredQty >= orderedQty;
+                    return (
+                      <tr key={line.lineId} className="border-b border-slate-100">
+                        <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
+                        {linkedSO && (
+                          <td className="py-2 text-right">
+                            {orderedQty ?? '—'}
+                          </td>
+                        )}
+                        <td className="py-2 text-right">
+                          {line.deliveredQty}
+                          {linkedSO && (
+                            isPartial ? (
+                              <span className="ml-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800">
+                                {t('fulfillment.partial')}
+                              </span>
+                            ) : isFulfilled ? (
+                              <span className="ml-2 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-semibold text-emerald-800">
+                                {t('fulfillment.fulfilled')}
+                              </span>
+                            ) : null
+                          )}
+                        </td>
+                        <td className="py-2">{line.uom}</td>
+                        <td className="py-2 text-right">{line.unitCostBase.toFixed(2)}</td>
+                        <td className="py-2 text-right">{line.lineCostBase.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {hasPartialLine && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100"
+                  onClick={() => navigate(`/sales/delivery-notes/create?fromOrder=${encodeURIComponent(deliveryNote.salesOrderId!)}&partial=true`)}
+                >
+                  {t('fulfillment.createBackorder')}
+                </button>
+              </div>
+            )}
+          </Card>
+        );
+      })()}
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -738,7 +825,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={postDraft}
+            onClick={() => postDraft()}
             disabled={busy}
           >
             {busy ? 'Posting...' : 'Post Delivery Note'}
@@ -753,7 +840,51 @@ const DeliveryNoteDetailPage: React.FC = () => {
             Create Return
           </button>
         )}
+        {deliveryNote.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
+            onClick={() => setGlImpactOpen(true)}
+          >
+            GL Impact
+          </button>
+        )}
+        <button
+          type="button"
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+          onClick={() => setAuditModalOpen(true)}
+        >
+          History
+        </button>
       </div>
+
+      <GlImpactModal
+        isOpen={glImpactOpen}
+        onClose={() => setGlImpactOpen(false)}
+        sourceId={deliveryNote.id}
+        sourceLabel={deliveryNote.dnNumber}
+        documentStatus={deliveryNote.status}
+      />
+
+      {overrideModalData && (
+        <PeriodLockOverrideModal
+          isOpen={overrideModalOpen}
+          onClose={() => setOverrideModalOpen(false)}
+          documentDate={overrideModalData.documentDate}
+          lockedThroughDate={overrideModalData.lockedThroughDate}
+          onConfirm={(reason) => {
+            setOverrideModalOpen(false);
+            postDraft(reason);
+          }}
+        />
+      )}
+
+      <RecordAuditModal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
+        entityType="DELIVERY_NOTE"
+        entityId={deliveryNote.id}
+      />
     </div>
   );
 };

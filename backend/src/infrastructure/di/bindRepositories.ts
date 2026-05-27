@@ -27,6 +27,10 @@ import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/F
 import { FirestoreCompanySettingsRepository } from '../firestore/repositories/core/FirestoreCompanySettingsRepository';
 import { FirestoreUserPreferencesRepository } from '../firestore/repositories/core/FirestoreUserPreferencesRepository';
 import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
+import { FirestoreIdempotencyKeyRepository } from '../firestore/repositories/system/FirestoreIdempotencyKeyRepository';
+import { FirestoreRecordChangeLogRepository } from '../firestore/repositories/system/FirestoreRecordChangeLogRepository';
+import { FirestorePostingLogRepository } from '../firestore/repositories/accounting/FirestorePostingLogRepository';
+import { FirestorePeriodLockOverrideRepository } from '../firestore/repositories/accounting/FirestorePeriodLockOverrideRepository';
 import { FirestoreVoucherRepositoryV2 } from '../firestore/repositories/accounting/FirestoreVoucherRepositoryV2';
 import { FirestoreVoucherSequenceRepository } from '../firestore/repositories/accounting/FirestoreVoucherSequenceRepository';
 import { IVoucherRepository } from '../../domain/accounting/repositories/IVoucherRepository';
@@ -62,6 +66,14 @@ import { FirestoreSalesOrderRepository } from '../firestore/repositories/sales/F
 import { FirestoreDeliveryNoteRepository } from '../firestore/repositories/sales/FirestoreDeliveryNoteRepository';
 import { FirestoreSalesInvoiceRepository } from '../firestore/repositories/sales/FirestoreSalesInvoiceRepository';
 import { FirestoreSalesReturnRepository } from '../firestore/repositories/sales/FirestoreSalesReturnRepository';
+import { FirestorePriceListRepository } from '../firestore/repositories/sales/FirestorePriceListRepository';
+import { FirestoreCustomerGroupRepository } from '../firestore/repositories/sales/FirestoreCustomerGroupRepository';
+import { FirestoreSalespersonRepository } from '../firestore/repositories/sales/FirestoreSalespersonRepository';
+import { FirestoreCommissionEntryRepository } from '../firestore/repositories/sales/FirestoreCommissionEntryRepository';
+import { FirestoreQuoteRepository } from '../firestore/repositories/sales/FirestoreQuoteRepository';
+import { FirestoreCreditOverrideRepository } from '../firestore/repositories/sales/FirestoreCreditOverrideRepository';
+import { FirestorePromotionRuleRepository } from '../firestore/repositories/sales/FirestorePromotionRuleRepository';
+import { FirestoreRecurringInvoiceTemplateRepository } from '../firestore/repositories/sales/FirestoreRecurringInvoiceTemplateRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
@@ -101,6 +113,10 @@ import { IEncryptionService } from '../crypto/IEncryptionService';
 import { AesEncryptionService } from '../crypto/AesEncryptionService';
 import { IHttpClient } from '../http/IHttpClient';
 import { AxiosHttpClient } from '../http/AxiosHttpClient';
+import { IInvoiceMessagingProvider } from '../../application/sales/services/IInvoiceMessagingProvider';
+import { ICompanyMessagingResolver } from '../../application/sales/services/ICompanyMessagingResolver';
+import { MetaWhatsAppCloudProvider } from '../messaging/MetaWhatsAppCloudProvider';
+import { SalesSettingsMessagingResolver } from '../messaging/SalesSettingsMessagingResolver';
 import { FirestoreAiChatRepository } from '../firestore/repositories/ai-assistant/FirestoreAiChatRepository';
 import { FirestoreAiSettingsRepository } from '../firestore/repositories/ai-assistant/FirestoreAiSettingsRepository';
 import { FirestoreAiUsageLogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiUsageLogRepository';
@@ -407,6 +423,22 @@ export const diContainer = {
       ? new PrismaAuditLogRepository(getPrismaClient())
       : new FirestoreAuditLogRepository(getDb());
   },
+  get idempotencyKeyRepository(): SysRepo.IIdempotencyKeyRepository {
+    // Firestore-only for now; idempotency rarely needs cross-DB parity.
+    return new FirestoreIdempotencyKeyRepository(getDb());
+  },
+  get postingLogRepository(): AccRepo.IPostingLogRepository {
+    // Firestore-only — PostingLog is server-side audit data, not user-facing reporting.
+    return new FirestorePostingLogRepository(getDb());
+  },
+  get periodLockOverrideRepository(): AccRepo.IPeriodLockOverrideRepository {
+    // Firestore-only — period-lock overrides are audit data.
+    return new FirestorePeriodLockOverrideRepository(getDb());
+  },
+  get recordChangeLogRepository(): SysRepo.IRecordChangeLogRepository {
+    // Firestore-only — record change logs are tenant-scoped audit data.
+    return new FirestoreRecordChangeLogRepository(getDb());
+  },
 
   // ACCOUNTING
   get accountRepository(): AccRepo.IAccountRepository {
@@ -594,6 +626,61 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaSalesReturnRepository(getPrismaClient())
       : new FirestoreSalesReturnRepository(getDb());
+  },
+  get priceListRepository(): SalRepo.IPriceListRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.1): Add PrismaPriceListRepository when SQL support is needed
+      throw new Error('PriceListRepository: SQL implementation not yet available');
+    }
+    return new FirestorePriceListRepository(getDb());
+  },
+  get customerGroupRepository(): SalRepo.ICustomerGroupRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.2): Add PrismaCustomerGroupRepository when SQL support is needed
+      throw new Error('CustomerGroupRepository: SQL implementation not yet available');
+    }
+    return new FirestoreCustomerGroupRepository(getDb());
+  },
+  get salespersonRepository(): SalRepo.ISalespersonRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.4): Add PrismaSalespersonRepository when SQL support is needed
+      throw new Error('SalespersonRepository: SQL implementation not yet available');
+    }
+    return new FirestoreSalespersonRepository(getDb());
+  },
+  get commissionEntryRepository(): SalRepo.ICommissionEntryRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(A.4): Add PrismaCommissionEntryRepository when SQL support is needed
+      throw new Error('CommissionEntryRepository: SQL implementation not yet available');
+    }
+    return new FirestoreCommissionEntryRepository(getDb());
+  },
+  get quoteRepository(): SalRepo.IQuoteRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(B.1): Add PrismaQuoteRepository when SQL support is needed
+      throw new Error('QuoteRepository: SQL implementation not yet available');
+    }
+    return new FirestoreQuoteRepository(getDb());
+  },
+  get creditOverrideRepository(): SalRepo.ICreditOverrideRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(B.2): Add PrismaCreditOverrideRepository when SQL support is needed
+      throw new Error('CreditOverrideRepository: SQL implementation not yet available');
+    }
+    return new FirestoreCreditOverrideRepository(getDb());
+  },
+  get promotionRuleRepository(): SalRepo.IPromotionRuleRepository {
+    if (DB_TYPE === 'SQL') {
+      // TODO(B.3): Add PrismaPromotionRuleRepository when SQL support is needed
+      throw new Error('PromotionRuleRepository: SQL implementation not yet available');
+    }
+    return new FirestorePromotionRuleRepository(getDb());
+  },
+  get recurringInvoiceTemplateRepository(): SalRepo.IRecurringInvoiceTemplateRepository {
+    if (DB_TYPE === 'SQL') {
+      throw new Error('RecurringInvoiceTemplateRepository: SQL implementation not yet available');
+    }
+    return new FirestoreRecurringInvoiceTemplateRepository(getDb());
   },
 
   // HR
@@ -1160,6 +1247,27 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
       const { FirestoreAccountingPolicyConfigProvider } = require('../accounting/config/FirestoreAccountingPolicyConfigProvider');
       return new FirestoreAccountingPolicyConfigProvider(settingsResolver);
     }
+  },
+
+  get periodLockService() {
+    const { PeriodLockService } = require('../../application/accounting/services/PeriodLockService');
+    return new PeriodLockService(
+      this.accountingPolicyConfigProvider,
+      this.fiscalYearRepository
+    );
+  },
+
+  get invoiceMessagingProvider(): IInvoiceMessagingProvider {
+    return new MetaWhatsAppCloudProvider({
+      accessToken: process.env.WHATSAPP_CLOUD_ACCESS_TOKEN || '',
+      phoneNumberId: process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID || '',
+      apiVersion: process.env.WHATSAPP_CLOUD_API_VERSION || 'v22.0',
+      timeoutMs: 15000,
+    });
+  },
+
+  get companyMessagingResolver(): ICompanyMessagingResolver {
+    return new SalesSettingsMessagingResolver(this.salesSettingsRepository, this.encryptionService);
   },
 
   // AUTH

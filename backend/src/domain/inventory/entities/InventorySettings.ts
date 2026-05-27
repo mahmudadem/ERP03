@@ -9,6 +9,15 @@ export interface InventorySettingsProps {
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
+  /**
+   * When true, posting may proceed for lines whose cost basis is missing/unknown.
+   * The movement is recorded with `unsettledCostBasis = 'MISSING'` and the
+   * invoice/DN line gets `cogsPostingStatus = 'SKIPPED_UNSETTLED_COST'`. The
+   * cost must later be resolved via a settlement/adjustment use case.
+   * When false (default), missing cost blocks posting with AccountMappingError.
+   * Missing **account mapping** is never deferrable — that always throws.
+   */
+  allowDeferredCost?: boolean;
   defaultWarehouseId?: string;
   autoGenerateItemCode: boolean;
   itemCodePrefix?: string;
@@ -24,6 +33,7 @@ export class InventorySettings {
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
+  allowDeferredCost: boolean;
   defaultWarehouseId?: string;
   autoGenerateItemCode: boolean;
   itemCodePrefix?: string;
@@ -57,6 +67,7 @@ export class InventorySettings {
     this.defaultCostCurrency = props.defaultCostCurrency.toUpperCase().trim();
     this.defaultInventoryAssetAccountId = props.defaultInventoryAssetAccountId?.trim() || undefined;
     this.allowNegativeStock = props.allowNegativeStock;
+    this.allowDeferredCost = props.allowDeferredCost ?? false;
     this.defaultWarehouseId = props.defaultWarehouseId;
     this.autoGenerateItemCode = props.autoGenerateItemCode;
     this.itemCodePrefix = props.itemCodePrefix;
@@ -92,6 +103,7 @@ export class InventorySettings {
       defaultCostCurrency: this.defaultCostCurrency,
       defaultInventoryAssetAccountId: this.defaultInventoryAssetAccountId,
       allowNegativeStock: this.allowNegativeStock,
+      allowDeferredCost: this.allowDeferredCost,
       defaultWarehouseId: this.defaultWarehouseId,
       autoGenerateItemCode: this.autoGenerateItemCode,
       itemCodePrefix: this.itemCodePrefix,
@@ -112,6 +124,7 @@ export class InventorySettings {
       defaultCostCurrency: data.defaultCostCurrency,
       defaultInventoryAssetAccountId: data.defaultInventoryAssetAccountId,
       allowNegativeStock: data.allowNegativeStock ?? true,
+      allowDeferredCost: data.allowDeferredCost ?? false,
       defaultWarehouseId: data.defaultWarehouseId,
       autoGenerateItemCode: data.autoGenerateItemCode ?? false,
       itemCodePrefix: data.itemCodePrefix,

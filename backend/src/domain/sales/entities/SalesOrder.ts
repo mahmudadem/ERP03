@@ -8,6 +8,8 @@
 
 export type SOItemType = 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
 
+import { AppliedPromotionInfo } from './AppliedPromotion';
+
 export interface SalesOrderLine {
   lineId: string;
   lineNo: number;
@@ -32,6 +34,9 @@ export interface SalesOrderLine {
   taxAmountBase: number;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesOrderProps {
@@ -40,6 +45,7 @@ export interface SalesOrderProps {
   orderNumber: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   currency: string;
@@ -54,11 +60,13 @@ export interface SalesOrderProps {
   status: SOStatus;
   notes?: string;
   internalNotes?: string;
+  promisedDate?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
   confirmedAt?: Date;
   closedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 }
 
 const SO_STATUSES: SOStatus[] = [
@@ -85,6 +93,7 @@ export class SalesOrder {
   orderNumber: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   currency: string;
@@ -99,11 +108,13 @@ export class SalesOrder {
   status: SOStatus;
   notes?: string;
   internalNotes?: string;
+  promisedDate?: string;
   readonly createdBy: string;
   readonly createdAt: Date;
   updatedAt: Date;
   confirmedAt?: Date;
   closedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 
   constructor(props: SalesOrderProps) {
     if (!props.id?.trim()) throw new Error('SalesOrder id is required');
@@ -127,6 +138,7 @@ export class SalesOrder {
     this.orderNumber = props.orderNumber.trim();
     this.customerId = props.customerId.trim();
     this.customerName = props.customerName || '';
+    this.salespersonId = props.salespersonId;
     this.orderDate = props.orderDate;
     this.expectedDeliveryDate = props.expectedDeliveryDate;
     this.currency = props.currency.toUpperCase().trim();
@@ -143,11 +155,13 @@ export class SalesOrder {
     this.status = props.status || 'DRAFT';
     this.notes = props.notes;
     this.internalNotes = props.internalNotes;
+    this.promisedDate = props.promisedDate;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this.confirmedAt = props.confirmedAt;
     this.closedAt = props.closedAt;
+    this.appliedPromotions = props.appliedPromotions;
   }
 
   private normalizeLine(line: SalesOrderLine, index: number): SalesOrderLine {
@@ -193,6 +207,9 @@ export class SalesOrder {
       taxAmountBase,
       warehouseId: line.warehouseId,
       description: line.description,
+      appliedPromotionId: line.appliedPromotionId,
+      appliedPromotionName: line.appliedPromotionName,
+      appliedDiscountPct: line.appliedDiscountPct,
     };
   }
 
@@ -203,6 +220,7 @@ export class SalesOrder {
       orderNumber: this.orderNumber,
       customerId: this.customerId,
       customerName: this.customerName,
+      salespersonId: this.salespersonId,
       orderDate: this.orderDate,
       expectedDeliveryDate: this.expectedDeliveryDate,
       currency: this.currency,
@@ -217,11 +235,13 @@ export class SalesOrder {
       status: this.status,
       notes: this.notes,
       internalNotes: this.internalNotes,
+      promisedDate: this.promisedDate,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       confirmedAt: this.confirmedAt,
       closedAt: this.closedAt,
+      appliedPromotions: this.appliedPromotions,
     };
   }
 
@@ -232,6 +252,7 @@ export class SalesOrder {
       orderNumber: data.orderNumber,
       customerId: data.customerId,
       customerName: data.customerName,
+      salespersonId: data.salespersonId,
       orderDate: data.orderDate,
       expectedDeliveryDate: data.expectedDeliveryDate,
       currency: data.currency,
@@ -246,11 +267,13 @@ export class SalesOrder {
       status: data.status || 'DRAFT',
       notes: data.notes,
       internalNotes: data.internalNotes,
+      promisedDate: data.promisedDate,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       confirmedAt: data.confirmedAt ? toDate(data.confirmedAt) : undefined,
       closedAt: data.closedAt ? toDate(data.closedAt) : undefined,
+      appliedPromotions: data.appliedPromotions,
     });
   }
 }

@@ -20,6 +20,7 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -45,6 +46,7 @@ export interface CreateDeliveryNoteInput {
   warehouseId: string;
   lines?: DeliveryNoteLineInput[];
   notes?: string;
+  promisedDate?: string;
   createdBy: string;
 }
 
@@ -76,10 +78,11 @@ export class CreateDeliveryNoteUseCase {
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly itemRepo: IItemRepository
+    private readonly itemRepo: IItemRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: CreateDeliveryNoteInput): Promise<DeliveryNote> {
+  async execute(input: CreateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
     const settings = await this.settingsRepo.getSettings(input.companyId);
     if (!settings) {
       throw new Error('Sales module is not initialized');
@@ -168,6 +171,7 @@ export class CreateDeliveryNoteUseCase {
       lines,
       status: 'DRAFT',
       notes: input.notes,
+      promisedDate: input.promisedDate,
       cogsVoucherId: null,
       createdBy: input.createdBy,
       createdAt: now,
@@ -176,6 +180,19 @@ export class CreateDeliveryNoteUseCase {
 
     await this.deliveryNoteRepo.create(dn);
     await this.settingsRepo.saveSettings(settings);
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: dn.companyId,
+        entityType: 'DELIVERY_NOTE',
+        entityId: dn.id,
+        entityNumber: `DN-${dn.dnNumber}`,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: dn.toJSON(),
+      });
+    }
+
     return dn;
   }
 
@@ -216,10 +233,11 @@ export class PostDeliveryNoteUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<DeliveryNote> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<DeliveryNote> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
     // We pre-fetch ALL data here. The postingLogic callback only writes.
@@ -510,12 +528,12 @@ export class PostDeliveryNoteUseCase {
               sourceId: dn.id,
               referenceType: 'DELIVERY_NOTE',
               referenceId: dn.id,
+              ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: dn.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: dn.dnNumber,
             baseCurrencyOverride: resolvedBaseCurrency,
-            skipAccountValidation: true,
           },
           transaction
         );
@@ -538,6 +556,31 @@ export class PostDeliveryNoteUseCase {
 
     const posted = await this.deliveryNoteRepo.getById(companyId, id);
     if (!posted) throw new Error(`Delivery note not found after posting: ${id}`);
+
+    if (this.recordChangeService && actor) {
+      const entityNumber = `DN-${posted.dnNumber}`;
+      await this.recordChangeService.recordPost({
+        companyId,
+        entityType: 'DELIVERY_NOTE',
+        entityId: posted.id,
+        entityNumber,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+      });
+      if (periodLockOverride) {
+        await this.recordChangeService.recordPeriodLockOverride({
+          companyId,
+          entityType: 'DELIVERY_NOTE',
+          entityId: posted.id,
+          entityNumber,
+          userId: actor.userId,
+          userEmail: actor.userEmail,
+          reason: periodLockOverride.reason,
+          lockedThroughDate: actor.lockedThroughDate,
+        });
+      }
+    }
+
     return posted;
   }
 
@@ -590,17 +633,24 @@ export interface UpdateDeliveryNoteInput {
   warehouseId?: string;
   lines?: DeliveryNoteLineInput[];
   notes?: string;
+  promisedDate?: string;
 }
 
 export class UpdateDeliveryNoteUseCase {
-  constructor(private readonly deliveryNoteRepo: IDeliveryNoteRepository, private readonly partyRepo: IPartyRepository) {}
+  constructor(
+    private readonly deliveryNoteRepo: IDeliveryNoteRepository,
+    private readonly partyRepo: IPartyRepository,
+    private readonly recordChangeService?: RecordChangeService
+  ) {}
 
-  async execute(input: UpdateDeliveryNoteInput): Promise<DeliveryNote> {
+  async execute(input: UpdateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
     const current = await this.deliveryNoteRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Delivery note not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft delivery notes can be updated');
     }
+
+    const before = current.toJSON();
 
     if (input.customerId !== undefined) {
       if (!input.customerId) throw new Error('customerId is required');
@@ -614,6 +664,7 @@ export class UpdateDeliveryNoteUseCase {
     if (input.deliveryDate !== undefined) current.deliveryDate = input.deliveryDate;
     if (input.warehouseId !== undefined) current.warehouseId = input.warehouseId;
     if (input.notes !== undefined) current.notes = input.notes;
+    if (input.promisedDate !== undefined) current.promisedDate = input.promisedDate;
 
     if (input.lines) {
       const existingById = new Map(current.lines.map((line) => [line.lineId, line]));
@@ -644,6 +695,21 @@ export class UpdateDeliveryNoteUseCase {
     current.updatedAt = new Date();
     const updated = new DeliveryNote(current.toJSON() as any);
     await this.deliveryNoteRepo.update(updated);
+
+    if (this.recordChangeService && actor) {
+      const after = updated.toJSON();
+      await this.recordChangeService.recordUpdate({
+        companyId: input.companyId,
+        entityType: 'DELIVERY_NOTE',
+        entityId: updated.id,
+        entityNumber: updated.dnNumber ? `DN-${updated.dnNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        before: before as Record<string, any>,
+        after: after as Record<string, any>,
+      });
+    }
+
     return updated;
   }
 }

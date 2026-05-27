@@ -16,6 +16,7 @@ import { VoucherLineEntity, roundMoney } from '../../../domain/accounting/entiti
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney as roundSalesMoney } from './SalesPostingHelpers';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
 
@@ -26,6 +27,18 @@ export interface SettlementRow {
   reference?: string;
   notes?: string;
   paymentDate?: string;
+  /**
+   * Exchange rate at the time of payment (doc → base). When provided and
+   * different from `invoice.exchangeRate`, a realized FX gain/loss line is
+   * appended to the receipt voucher. When absent, behaviour is the legacy path
+   * that assumes payment rate == invoice rate.
+   */
+  exchangeRate?: number;
+  /**
+   * Settlement amount in invoice currency (doc currency). Required when
+   * `exchangeRate` is supplied so we can detect the rate divergence.
+   */
+  amountDoc?: number;
 }
 
 export interface PostSalesInvoiceWithSettlementInput {
@@ -132,12 +145,21 @@ export class PostSalesInvoiceWithSettlementUseCase {
     }
     const resolvedReceivablePayableAccountId = await this.resolveAccountId(companyId, effectiveReceivablePayableAccountId);
 
+    // For settlement-vs-outstanding comparison, use the AR-reducing portion (amountDoc × invoiceRate)
+    // when the caller supplies amountDoc — this is the book-value being settled, independent of FX.
+    // Falls back to amountBase for legacy single-currency callers that don't pass amountDoc.
+    const arReducingTotal = settlements.reduce((sum, s) => {
+      if (s.amountDoc !== undefined && s.amountDoc > 0) {
+        return sum + roundMoney(s.amountDoc * invoice.exchangeRate);
+      }
+      return sum + roundMoney(s.amountBase);
+    }, 0);
     const settlementTotal = settlements.reduce((sum, s) => sum + roundMoney(s.amountBase), 0);
 
     if (settlementMode === 'CASH_FULL') {
       const outstanding = roundSalesMoney(invoice.grandTotalBase - (invoice.paidAmountBase || 0));
-      if (Math.abs(settlementTotal - outstanding) > 0.01) {
-        throw new Error(`CASH_FULL settlement total (${settlementTotal}) must equal outstanding amount (${outstanding})`);
+      if (Math.abs(arReducingTotal - outstanding) > 0.01) {
+        throw new Error(`CASH_FULL settlement total (${arReducingTotal}) must equal outstanding amount (${outstanding})`);
       }
       if (settlements.length !== 1) {
         throw new Error('CASH_FULL mode requires exactly one settlement row');
@@ -146,8 +168,8 @@ export class PostSalesInvoiceWithSettlementUseCase {
 
     if (settlementMode === 'MULTI') {
       const outstanding = roundSalesMoney(invoice.grandTotalBase - (invoice.paidAmountBase || 0));
-      if (settlementTotal > outstanding + 0.01) {
-        throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding})`);
+      if (arReducingTotal > outstanding + 0.01) {
+        throw new Error(`MULTI settlement total (${arReducingTotal}) exceeds outstanding amount (${outstanding})`);
       }
       if (settlements.length === 0) {
         throw new Error('MULTI mode requires at least one settlement row');
@@ -190,8 +212,16 @@ export class PostSalesInvoiceWithSettlementUseCase {
         const voucherNo = await this.voucherSequenceRepo.getNextNumber(companyId, 'RV');
         const voucherId = `vch_${randomUUID()}`;
 
-        const docAmount = roundMoney(settlementAmountBase / invoice.exchangeRate);
         const baseCurrencyUpper = baseCurrency.toUpperCase();
+        const settlementRate =
+          settlement.exchangeRate !== undefined && settlement.exchangeRate > 0
+            ? settlement.exchangeRate
+            : invoice.exchangeRate;
+        const docAmount = settlement.amountDoc !== undefined && settlement.amountDoc > 0
+          ? roundMoney(settlement.amountDoc)
+          : roundMoney(settlementAmountBase / invoice.exchangeRate);
+        const arAmountBase = roundMoney(docAmount * invoice.exchangeRate);
+        const fxDiffBase = roundMoney(settlementAmountBase - arAmountBase);
 
         const drLine = new VoucherLineEntity(
           1,
@@ -201,14 +231,14 @@ export class PostSalesInvoiceWithSettlementUseCase {
           baseCurrencyUpper,
           docAmount,
           invoice.currency,
-          invoice.exchangeRate,
+          settlementRate,
           `Receipt for ${invoice.invoiceNumber}${settlement.reference ? ` (${settlement.reference})` : ''}`
         );
         const crLine = new VoucherLineEntity(
           2,
           resolvedReceivablePayableAccountId,
           'Credit',
-          settlementAmountBase,
+          arAmountBase,
           baseCurrencyUpper,
           docAmount,
           invoice.currency,
@@ -216,8 +246,52 @@ export class PostSalesInvoiceWithSettlementUseCase {
           `Receipt for ${invoice.invoiceNumber}${settlement.reference ? ` (${settlement.reference})` : ''}`
         );
 
-        const totalDebit = roundMoney(drLine.debitAmount);
-        const totalCredit = roundMoney(crLine.creditAmount);
+        const voucherLines: VoucherLineEntity[] = [drLine, crLine];
+        let totalDebit = roundMoney(drLine.debitAmount);
+        let totalCredit = roundMoney(crLine.creditAmount);
+
+        if (Math.abs(fxDiffBase) > 0.005) {
+          const fxAccountId = settings?.exchangeGainLossAccountId;
+          if (!fxAccountId) {
+            throw new AccountMappingError({
+              companyId,
+              accountRole: fxDiffBase > 0 ? 'fxGain' : 'fxLoss',
+              fallbackChain: ['salesSettings.exchangeGainLossAccountId'],
+              hint:
+                'Realized FX gain/loss on a multi-currency receipt requires SalesSettings.exchangeGainLossAccountId to be configured.',
+            });
+          }
+          const resolvedFxAccountId = await this.resolveAccountId(companyId, fxAccountId);
+          if (fxDiffBase > 0) {
+            const fxGainLine = new VoucherLineEntity(
+              3,
+              resolvedFxAccountId,
+              'Credit',
+              fxDiffBase,
+              baseCurrencyUpper,
+              fxDiffBase,
+              baseCurrencyUpper,
+              1,
+              `Realized FX gain on ${invoice.invoiceNumber}`
+            );
+            voucherLines.push(fxGainLine);
+            totalCredit = roundMoney(totalCredit + fxDiffBase);
+          } else {
+            const fxLossLine = new VoucherLineEntity(
+              3,
+              resolvedFxAccountId,
+              'Debit',
+              -fxDiffBase,
+              baseCurrencyUpper,
+              -fxDiffBase,
+              baseCurrencyUpper,
+              1,
+              `Realized FX loss on ${invoice.invoiceNumber}`
+            );
+            voucherLines.push(fxLossLine);
+            totalDebit = roundMoney(totalDebit + -fxDiffBase);
+          }
+        }
 
         const approvedVoucher = new VoucherEntity(
           voucherId,
@@ -228,8 +302,8 @@ export class PostSalesInvoiceWithSettlementUseCase {
           `Receipt for Sales Invoice ${invoice.invoiceNumber}`,
           invoice.currency.toUpperCase(),
           baseCurrencyUpper,
-          invoice.exchangeRate,
-          [drLine, crLine],
+          settlementRate,
+          voucherLines,
           totalDebit,
           totalCredit,
           VoucherStatus.APPROVED,

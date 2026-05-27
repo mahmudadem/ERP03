@@ -122,7 +122,13 @@
     "aiAssistant": "مساعد الذكاء الاصطناعي",
     "chat": "محادثة",
     "aiProposals": "اقتراحات الذكاء الاصطناعي",
-    "aiUsage": "استخدام الذكاء الاصطناعي"
+    "aiUsage": "استخدام الذكاء الاصطناعي",
+    "dev": "تطوير",
+    "dataTableDemo": "عرض جدول البيانات",
+    "voucherListDemo": "عرض قائمة القيود",
+    "smartVoucherList": "قائمة القيود الذكية",
+    "demo": "عرض تجريبي",
+    "new": "جديد"
   },
   "reportContainer": {
     "refresh": "تحديث",
@@ -2109,6 +2115,242 @@
       "directInvoicingStatusLabel": "الفوترة المباشرة",
       "directAllowed": "مسموح",
       "directBlockedOperational": "محظور (تشغيلي)"
+    },
+    "settings": {
+      "arGeneration": {
+        "title": "AR Sub-account Generation",
+        "description": "Configure how customer-specific AR sub-accounts are generated during customer creation.",
+        "backfillButton": "Backfill customer AR sub-accounts",
+        "confirmTitle": "Backfill Customer AR Sub-accounts",
+        "confirmMessage": "This will scan active customers and create dedicated AR sub-accounts for parties that do not already have one under the configured AR parent.",
+        "confirmAction": "Run Backfill"
+      },
+      "arParent": {
+        "label": "AR Parent Account",
+        "placeholder": "Select AR parent account",
+        "context": "Asset",
+        "help": "Parent account under which per-customer AR sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AR Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      },
+      "communications": {
+        "title": "قنوات الإرسال",
+        "description": "قم بإعداد حسابات الإرسال الخاصة بالشركة لواتساب والبريد الإلكتروني وتليجرام. يتم حفظ بيانات الاعتماد بشكل مشفر.",
+        "addWhatsapp": "إضافة حساب واتساب",
+        "addEmail": "إضافة حساب بريد إلكتروني",
+        "addTelegram": "إضافة حساب تليجرام",
+        "empty": "لا توجد حسابات إرسال مضافة بعد.",
+        "label": "اسم الحساب",
+        "apiVersion": "إصدار API (اختياري)",
+        "phoneDisplay": "رقم العرض (E.164)",
+        "phoneNumberId": "معرّف رقم واتساب (Meta)",
+        "fromAddress": "بريد المرسل",
+        "fromName": "اسم المرسل",
+        "botUsername": "اسم مستخدم البوت",
+        "credential": "بيانات الاعتماد / رمز الوصول",
+        "credentialStored": "اتركه فارغاً للاحتفاظ ببيانات الاعتماد الحالية",
+        "credentialRequired": "أدخل بيانات الاعتماد",
+        "active": "نشط",
+        "default": "الافتراضي لهذه القناة"
+      }
+    },
+    "invoiceTemplates": {
+      "fieldLabel": "قالب الفاتورة",
+      "customerDefaultLabel": "قالب الفاتورة الافتراضي",
+      "autoSelect": "اختيار تلقائي",
+      "none": "(بدون قالب)",
+      "defaultTag": "(افتراضي)",
+      "help": "يتحكم في تخطيط الطباعة (الشعار/التذييل/الشروط) لهذه الفاتورة.",
+      "noneForType": "لا توجد قوالب فواتير متاحة لهذا النوع من الفواتير.",
+      "customerDefaultHelp": "يُستخدم لاختيار تخطيط طباعة الفاتورة تلقائياً عند إنشاء فواتير مبيعات جديدة لهذا العميل."
+    },
+    "invoices": {
+      "whatsapp": {
+        "action": "إرسال عبر واتساب",
+        "modalTitle": "إرسال الفاتورة عبر واتساب",
+        "senderLabel": "حساب الإرسال",
+        "senderDefaultOption": "استخدام المرسل الافتراضي للنظام",
+        "defaultSender": "المرسل الافتراضي",
+        "defaultTag": "افتراضي",
+        "phoneLabel": "رقم المستلم (E.164)",
+        "phonePlaceholder": "+905551112233",
+        "documentUrlLabel": "رابط المستند (اختياري)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "الرسالة",
+        "send": "إرسال",
+        "sending": "جارٍ الإرسال...",
+        "success": "تم الإرسال عبر واتساب بنجاح إلى {{phone}} باستخدام {{sender}} (معرّف الرسالة: {{messageId}}).",
+        "sendError": "فشل إرسال الفاتورة عبر واتساب."
+      },
+      "telegram": {
+        "action": "إرسال عبر تيليجرام",
+        "modalTitle": "إرسال الفاتورة عبر تيليجرام",
+        "senderLabel": "حساب الإرسال",
+        "senderDefaultOption": "استخدام الحساب الافتراضي",
+        "defaultSender": "الحساب الافتراضي",
+        "defaultTag": "افتراضي",
+        "chatLabel": "معرّف الدردشة أو @اسم_المستخدم",
+        "chatPlaceholder": "@customer_username أو -1001234567890",
+        "documentUrlLabel": "رابط المستند (اختياري)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "الرسالة",
+        "send": "إرسال",
+        "sending": "جارٍ الإرسال...",
+        "success": "تم الإرسال عبر تيليجرام إلى {{chatId}} باستخدام {{sender}} (معرّف الرسالة: {{messageId}}).",
+        "sendError": "فشل إرسال الفاتورة عبر تيليجرام."
+      },
+      "attachments": {
+        "title": "المرفقات",
+        "help": "الأنواع المسموحة: PDF و PNG و JPG و DOCX و XLSX. الحد الأقصى 10 ميغابايت لكل ملف و5 ملفات لكل فاتورة.",
+        "empty": "لا توجد مرفقات بعد.",
+        "upload": "رفع مرفق",
+        "uploading": "جارٍ الرفع...",
+        "uploadSuccess": "تم رفع المرفق بنجاح.",
+        "uploadError": "فشل رفع المرفق.",
+        "open": "فتح",
+        "remove": "حذف",
+        "removing": "جارٍ الحذف...",
+        "removeError": "فشل حذف المرفق.",
+        "downloadError": "فشل إنشاء رابط التحميل."
+      }
+    },
+    "recurring": {
+      "title": "الفواتير المتكررة",
+      "subtitle": "قوالب وفواتير مجدولة",
+      "newTemplate": "فاتورة متكررة جديدة",
+      "templateDirectory": "دليل القوالب",
+      "nextDate": "التالي",
+      "fields": {
+        "templateName": "اسم القالب *",
+        "customerId": "معرّف العميل *",
+        "customerName": "اسم العميل",
+        "frequency": "التكرار *",
+        "dayOfMonth": "يوم الشهر",
+        "dayOfWeek": "يوم الأسبوع",
+        "startDate": "تاريخ البدء *",
+        "endDate": "تاريخ الانتهاء",
+        "maxOccurrences": "الحد الأقصى للتكرار",
+        "notes": "ملاحظات",
+        "invoiceLines": "سطور الفاتورة"
+      },
+      "frequency": {
+        "weekly": "أسبوعي",
+        "monthly": "شهري",
+        "quarterly": "ربع سنوي",
+        "annually": "سنوي"
+      },
+      "weekdays": {
+        "sunday": "الأحد",
+        "monday": "الاثنين",
+        "tuesday": "الثلاثاء",
+        "wednesday": "الأربعاء",
+        "thursday": "الخميس",
+        "friday": "الجمعة",
+        "saturday": "السبت"
+      },
+      "filters": {
+        "allStatuses": "كل الحالات"
+      },
+      "status": {
+        "active": "نشط",
+        "paused": "متوقف مؤقتاً",
+        "completed": "مكتمل",
+        "cancelled": "ملغي"
+      },
+      "actions": {
+        "addLine": "إضافة سطر",
+        "newTemplate": "قالب جديد",
+        "generateDue": "توليد المستحق",
+        "createTemplate": "إنشاء قالب",
+        "creatingTemplate": "جارٍ الإنشاء...",
+        "cloneFromInvoice": "نسخ إلى متكرر"
+      },
+      "placeholders": {
+        "templateName": "مثال: عقد شهري - العميل X",
+        "maxOccurrences": "اتركه فارغاً لغير المحدود",
+        "code": "الرمز",
+        "itemName": "اسم الصنف",
+        "qty": "الكمية",
+        "price": "السعر"
+      },
+      "empty": {
+        "title": "لا توجد قوالب متكررة",
+        "description": "أنشئ أول قالب فاتورة متكررة باستخدام الزر أعلاه."
+      },
+      "validation": {
+        "requiredTop": "اسم القالب ومعرّف العميل وتاريخ البدء مطلوبة",
+        "cloneNameRequired": "اسم القالب مطلوب"
+      },
+      "errors": {
+        "load": "فشل تحميل الفواتير المتكررة",
+        "create": "فشل إنشاء القالب",
+        "generate": "فشل توليد الفواتير",
+        "action": "فشل تحديث حالة القالب",
+        "cloneFromInvoice": "فشل نسخ الفاتورة كقالب متكرر."
+      },
+      "cloneModal": {
+        "title": "نسخ الفاتورة إلى قالب متكرر"
+      }
     }
+  },
+  "purchases": {
+    "settings": {
+      "apGeneration": {
+        "title": "AP Sub-account Generation",
+        "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation.",
+        "backfillButton": "Backfill vendor AP sub-accounts",
+        "confirmTitle": "Backfill Vendor AP Sub-accounts",
+        "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
+        "confirmAction": "Run Backfill"
+      },
+      "apParent": {
+        "label": "AP Parent Account",
+        "placeholder": "Select AP parent account",
+        "context": "Liability",
+        "help": "Parent account under which per-vendor AP sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AP Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      }
+    }
+  },
+  "parties": {
+    "form": {
+      "accounting": {
+        "title": "Accounting",
+        "strategyLabel": "Account Strategy *",
+        "autoCreate": "Auto-create sub-account",
+        "autoCreateHelp": "Creates a dedicated account from settings format and parent.",
+        "pickExisting": "Pick existing account",
+        "pickExistingHelp": "Manually bind this party to an existing AR/AP account.",
+        "strategyPrompt": "Choose one strategy before saving this party.",
+        "strategyEditNote": "Auto-create runs during new party creation. Existing parties can be remapped using Pick Existing.",
+        "previewTitle": "Generated account preview",
+        "missingArParent": "Sales Settings is missing AR Parent Account. Configure it first.",
+        "missingApParent": "Purchase Settings is missing AP Parent Account. Configure it first.",
+        "previewNeedsCode": "Enter a party code to preview the generated account code.",
+        "previewFormat": "Format: {{format}}",
+        "previewUnavailable": "Preview unavailable",
+        "accountHelp": "Primary GL posting target for transactions associated with this party.",
+        "strategyRequired": "Select an account strategy before saving.",
+        "arRequired": "Linked AR account is required for customers when using Pick Existing.",
+        "apRequired": "Linked AP account is required for vendors when using Pick Existing."
+      }
+    }
+  },
+  "fulfillment": {
+    "title": "تقدم التنفيذ",
+    "ordered": "مطلوب",
+    "delivered": "تم التسليم",
+    "invoiced": "مفوتر",
+    "returned": "مرتجع",
+    "overall": "الإجمالي",
+    "partial": "جزئي",
+    "fulfilled": "مكتمل",
+    "createBackorder": "إنشاء إذن تسليم متبقي",
+    "noLinesOverdue": "جميع البنود تم تسليمها بالكامل"
   }
 }

@@ -55,8 +55,14 @@ FX rates are frozen on the movement:
 
 ### Negative stock
 
-Allowed by default (`allowNegativeStock = true` in InventorySettings).
+Controlled by `InventorySettings.allowNegativeStock` (default `true`).
 
+- **`allowNegativeStock = true`** — OUT movements that would drive `qtyOnHand` below zero succeed; the movement records `negativeQtyAtPosting = true` and `unsettledCostBasis` reflects how the cost was sourced (see below).
+- **`allowNegativeStock = false`** — `RecordStockMovementUseCase.processOUT` throws `NegativeStockError` **before** mutating the StockLevel. No movement is created, no ledger entry posted. Callers (Sales/Purchases posting flows) propagate the error to the API response.
+
+The settings lookup happens only when the projected post-movement qty would be negative; positive-result OUTs are not penalized. Callers may pre-fetch the settings record once per posting transaction and pass it via `preFetchedInventorySettings` to avoid a second read.
+
+When the deficit IS allowed:
 On OUT movements when stock is insufficient:
 - `settledQty` = quantity covered by real stock (uses `avgCostBase`)
 - `unsettledQty` = quantity issued from deficit. Cost rules:

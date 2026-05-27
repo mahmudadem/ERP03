@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import {
   GovernanceRule,
+  SalesMessagingAccount,
   SalesPaymentMethodConfig,
   SalesSettings,
 } from '../../../domain/sales/entities/SalesSettings';
@@ -20,6 +21,9 @@ import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISal
 import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/IDeliveryNoteRepository';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
+import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
+import { ICredentialCipher } from '../services/ICredentialCipher';
+import { validatePartyAccountCodeFormat } from '../../shared/services/PartyAccountCodeRenderer';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -143,6 +147,8 @@ export interface InitializeSalesInput {
   userId: string;
   workflowMode?: 'SIMPLE' | 'OPERATIONAL';
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId: string;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
@@ -154,6 +160,7 @@ export interface InitializeSalesInput {
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
   paymentMethodConfigs?: SalesPaymentMethodConfig[];
+  messagingAccounts?: SalesMessagingAccountInput[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -170,18 +177,25 @@ export interface InitializeSalesInput {
 export interface UpdateSalesSettingsInput {
   companyId: string;
   workflowMode?: 'SIMPLE' | 'OPERATIONAL';
+  showOperationalDocsInSimple?: boolean;
+  allowCreditOverride?: boolean;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId?: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   allowOverDelivery?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
   paymentMethodConfigs?: SalesPaymentMethodConfig[];
+  messagingAccounts?: SalesMessagingAccountInput[];
   governanceRules?: GovernanceRule[];
   defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -195,6 +209,65 @@ export interface UpdateSalesSettingsInput {
   srNumberNextSeq?: number;
 }
 
+export interface SalesMessagingAccountInput {
+  id: string;
+  channel: 'WHATSAPP' | 'EMAIL' | 'TELEGRAM';
+  provider: 'META_WHATSAPP_CLOUD' | 'SMTP' | 'TELEGRAM_BOT';
+  label: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+  phoneNumberE164?: string;
+  phoneNumberId?: string;
+  fromAddress?: string;
+  fromDisplayName?: string;
+  botUsername?: string;
+  apiVersion?: string;
+  credential?: string;
+  encryptedCredential?: string;
+}
+
+const normalizeMessagingAccounts = (
+  inputAccounts: SalesMessagingAccountInput[] | undefined,
+  existingAccounts: SalesMessagingAccount[] | undefined,
+  credentialCipher?: ICredentialCipher
+): SalesMessagingAccount[] => {
+  if (!inputAccounts) return existingAccounts ?? [];
+  const existingById = new Map((existingAccounts ?? []).map((account) => [account.id, account]));
+
+  return inputAccounts.map((account) => {
+    const existing = existingById.get(account.id);
+    const rawCredential = typeof account.credential === 'string' ? account.credential.trim() : '';
+    const rawEncrypted = typeof account.encryptedCredential === 'string' ? account.encryptedCredential.trim() : '';
+    let encryptedCredential = rawEncrypted || existing?.encryptedCredential;
+
+    if (rawCredential) {
+      if (!credentialCipher) {
+        throw new Error('Credential cipher is required to encrypt messaging credentials.');
+      }
+      encryptedCredential = credentialCipher.encrypt(rawCredential);
+    }
+    if (account.isActive !== false && !encryptedCredential) {
+      throw new Error(`Messaging account ${account.id} is active but has no credential.`);
+    }
+
+    return {
+      id: account.id,
+      channel: account.channel,
+      provider: account.provider,
+      label: account.label,
+      isDefault: account.isDefault,
+      isActive: account.isActive,
+      phoneNumberE164: account.phoneNumberE164,
+      phoneNumberId: account.phoneNumberId,
+      fromAddress: account.fromAddress,
+      fromDisplayName: account.fromDisplayName,
+      botUsername: account.botUsername,
+      apiVersion: account.apiVersion,
+      encryptedCredential,
+    };
+  });
+};
+
 export class InitializeSalesUseCase {
   constructor(
     private readonly settingsRepo: ISalesSettingsRepository,
@@ -202,10 +275,14 @@ export class InitializeSalesUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository
+    private readonly ensureAccountingEngine: EnsureAccountingEngineInitialized,
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
+    private readonly credentialCipher?: ICredentialCipher
   ) {}
 
   async execute(input: InitializeSalesInput): Promise<SalesSettings> {
+    await this.ensureAccountingEngine.execute(input.companyId);
+
     const [revenueAccount, inventoryAccount, arAccount] = await Promise.all([
       this.accountRepo.getById(input.companyId, input.defaultRevenueAccountId),
       input.defaultInventoryAccountId
@@ -241,12 +318,28 @@ export class InitializeSalesUseCase {
 
     const defaultSalesInvoicePersona = workflowMode === 'SIMPLE' ? 'direct' as const : 'linked' as const;
 
+    if (input.arParentAccountId) {
+      const parent = await this.accountRepo.getById(input.companyId, input.arParentAccountId);
+      if (!parent) {
+        throw new Error(`AR parent account not found: ${input.arParentAccountId}`);
+      }
+      if (parent.classification !== 'ASSET') {
+        throw new Error(`AR parent account must be classified as ASSET (got ${parent.classification})`);
+      }
+    }
+    const partyAccountCodeFormatError = validatePartyAccountCodeFormat(input.partyAccountCodeFormat);
+    if (partyAccountCodeFormatError) {
+      throw new Error(partyAccountCodeFormatError);
+    }
+
     const settings = new SalesSettings({
       companyId: input.companyId,
       workflowMode,
       allowDirectInvoicing: workflowDefaults.allowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
       defaultARAccountId: input.defaultARAccountId,
+      arParentAccountId: input.arParentAccountId,
+      partyAccountCodeFormat: input.partyAccountCodeFormat,
       defaultRevenueAccountId: input.defaultRevenueAccountId,
       defaultCOGSAccountId: input.defaultCOGSAccountId,
       defaultInventoryAccountId: input.defaultInventoryAccountId,
@@ -256,6 +349,7 @@ export class InitializeSalesUseCase {
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? 30,
       paymentMethodConfigs: input.paymentMethodConfigs ?? [],
+      messagingAccounts: normalizeMessagingAccounts(input.messagingAccounts, [], this.credentialCipher),
       governanceRules: input.governanceRules ?? [],
       defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId,
@@ -321,7 +415,8 @@ export class UpdateSalesSettingsUseCase {
     private readonly voucherFormRepo: IVoucherFormRepository,
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
+    private readonly credentialCipher?: ICredentialCipher
   ) {}
 
   async execute(input: UpdateSalesSettingsInput): Promise<SalesSettings> {
@@ -359,6 +454,8 @@ export class UpdateSalesSettingsUseCase {
 
     const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
     const nextARAccountId = input.defaultARAccountId ?? existing.defaultARAccountId;
+    const nextARParentAccountId = input.arParentAccountId ?? existing.arParentAccountId;
+    const nextPartyAccountCodeFormat = input.partyAccountCodeFormat ?? existing.partyAccountCodeFormat;
     const nextRevenueAccountId = input.defaultRevenueAccountId ?? existing.defaultRevenueAccountId;
     const nextDefaultInventoryAccountId = input.defaultInventoryAccountId ?? existing.defaultInventoryAccountId;
 
@@ -382,21 +479,52 @@ export class UpdateSalesSettingsUseCase {
       throw new Error(`Default AR account not found: ${nextARAccountId}`);
     }
 
+    if (nextARParentAccountId) {
+      const parent = await this.accountRepo.getById(input.companyId, nextARParentAccountId);
+      if (!parent) {
+        throw new Error(`AR parent account not found: ${nextARParentAccountId}`);
+      }
+      if (parent.classification !== 'ASSET') {
+        throw new Error(`AR parent account must be classified as ASSET (got ${parent.classification})`);
+      }
+    }
+    const partyAccountCodeFormatError = validatePartyAccountCodeFormat(nextPartyAccountCodeFormat);
+    if (partyAccountCodeFormatError) {
+      throw new Error(partyAccountCodeFormatError);
+    }
+
     const updated = new SalesSettings({
       companyId: existing.companyId,
       workflowMode: newWorkflowMode,
+      showOperationalDocsInSimple:
+        input.showOperationalDocsInSimple !== undefined
+          ? input.showOperationalDocsInSimple === true
+          : existing.showOperationalDocsInSimple,
+      allowCreditOverride:
+        input.allowCreditOverride !== undefined
+          ? input.allowCreditOverride !== false
+          : existing.allowCreditOverride,
       allowDirectInvoicing: nextAllowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
       defaultARAccountId: nextARAccountId,
+      arParentAccountId: nextARParentAccountId,
+      partyAccountCodeFormat: nextPartyAccountCodeFormat,
       defaultRevenueAccountId: nextRevenueAccountId,
       defaultCOGSAccountId: input.defaultCOGSAccountId ?? existing.defaultCOGSAccountId,
       defaultInventoryAccountId: nextDefaultInventoryAccountId,
       defaultSalesExpenseAccountId: input.defaultSalesExpenseAccountId ?? existing.defaultSalesExpenseAccountId,
+      defaultRefundAccountId: input.defaultRefundAccountId ?? existing.defaultRefundAccountId,
+      restockingFeeAccountId: input.restockingFeeAccountId ?? existing.restockingFeeAccountId,
       allowOverDelivery: input.allowOverDelivery ?? existing.allowOverDelivery,
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? existing.overDeliveryTolerancePct,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? existing.overInvoiceTolerancePct,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? existing.defaultPaymentTermsDays,
       paymentMethodConfigs: input.paymentMethodConfigs ?? existing.paymentMethodConfigs,
+      messagingAccounts: normalizeMessagingAccounts(
+        input.messagingAccounts,
+        existing.messagingAccounts,
+        this.credentialCipher
+      ),
       governanceRules: input.governanceRules ?? existing.governanceRules,
       defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? existing.defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId ?? existing.defaultWarehouseId,

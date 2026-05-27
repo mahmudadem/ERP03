@@ -16,6 +16,10 @@ const SO_STATUSES: SOStatus[] = [
 const DN_STATUSES: DNStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const SI_STATUSES: SIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const SR_STATUSES: SRStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
+const RETURN_CONTEXTS = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DIRECT'];
+const RETURN_SETTLEMENT_MODES = ['CREDIT_NOTE', 'REFUND'];
+const RETURN_REASON_CODES = ['DEFECTIVE', 'WRONG_ITEM', 'CHANGED_MIND', 'OTHER'];
+const RESTOCKING_FEE_TYPES = ['PERCENT', 'AMOUNT'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const VALID_DOCUMENT_SOURCES = ['native', 'default_form', 'custom_form'];
 
@@ -201,6 +205,68 @@ const validateSRLine = (line: any, index: number) => {
   }
 };
 
+const SALES_MESSAGING_CHANNELS = ['WHATSAPP', 'EMAIL', 'TELEGRAM'];
+const SALES_MESSAGING_PROVIDERS = ['META_WHATSAPP_CLOUD', 'SMTP', 'TELEGRAM_BOT'];
+
+const validateSalesMessagingAccount = (account: any, index: number) => {
+  if (!account || typeof account !== 'object') {
+    throw ApiError.badRequest(`messagingAccounts[${index}] must be an object`);
+  }
+  ensureRequiredString(account.id, `messagingAccounts[${index}].id`);
+  ensureRequiredString(account.channel, `messagingAccounts[${index}].channel`);
+  ensureRequiredString(account.provider, `messagingAccounts[${index}].provider`);
+  ensureRequiredString(account.label, `messagingAccounts[${index}].label`);
+  if (!SALES_MESSAGING_CHANNELS.includes(String(account.channel))) {
+    throw ApiError.badRequest(
+      `messagingAccounts[${index}].channel must be one of: ${SALES_MESSAGING_CHANNELS.join(', ')}`
+    );
+  }
+  if (!SALES_MESSAGING_PROVIDERS.includes(String(account.provider))) {
+    throw ApiError.badRequest(
+      `messagingAccounts[${index}].provider must be one of: ${SALES_MESSAGING_PROVIDERS.join(', ')}`
+    );
+  }
+
+  if (account.isDefault !== undefined) ensureBoolean(account.isDefault, `messagingAccounts[${index}].isDefault`);
+  if (account.isActive !== undefined) ensureBoolean(account.isActive, `messagingAccounts[${index}].isActive`);
+  if (account.phoneNumberE164 !== undefined) ensureOptionalString(account.phoneNumberE164, `messagingAccounts[${index}].phoneNumberE164`);
+  if (account.phoneNumberId !== undefined) ensureOptionalString(account.phoneNumberId, `messagingAccounts[${index}].phoneNumberId`);
+  if (account.fromAddress !== undefined) ensureOptionalString(account.fromAddress, `messagingAccounts[${index}].fromAddress`);
+  if (account.fromDisplayName !== undefined) ensureOptionalString(account.fromDisplayName, `messagingAccounts[${index}].fromDisplayName`);
+  if (account.botUsername !== undefined) ensureOptionalString(account.botUsername, `messagingAccounts[${index}].botUsername`);
+  if (account.apiVersion !== undefined) ensureOptionalString(account.apiVersion, `messagingAccounts[${index}].apiVersion`);
+  if (account.credential !== undefined) ensureOptionalString(account.credential, `messagingAccounts[${index}].credential`);
+
+  const hasExistingCredential = account.hasCredential === true;
+  const hasNewCredential = typeof account.credential === 'string' && account.credential.trim().length > 0;
+
+  if (String(account.channel) === 'WHATSAPP' && !String(account.phoneNumberId || '').trim()) {
+    throw ApiError.badRequest(`messagingAccounts[${index}].phoneNumberId is required for WHATSAPP accounts`);
+  }
+  if (account.isActive !== false && !hasExistingCredential && !hasNewCredential) {
+    throw ApiError.badRequest(
+      `messagingAccounts[${index}] must include credential for active sender accounts`
+    );
+  }
+};
+
+const validateRestockingFeeInput = (body: any) => {
+  if (body.restockingFeeType !== undefined) {
+    ensureOptionalString(body.restockingFeeType, 'restockingFeeType');
+    if (!RESTOCKING_FEE_TYPES.includes(String(body.restockingFeeType))) {
+      throw ApiError.badRequest(`restockingFeeType must be one of: ${RESTOCKING_FEE_TYPES.join(', ')}`);
+    }
+  }
+  if (body.restockingFeeValue !== undefined) {
+    ensureNonNegativeNumber(body.restockingFeeValue, 'restockingFeeValue');
+    const type = String(body.restockingFeeType || '');
+    if (type === 'PERCENT' && Number(body.restockingFeeValue) > 100) {
+      throw ApiError.badRequest('restockingFeeValue cannot exceed 100 when restockingFeeType=PERCENT');
+    }
+  }
+  if (body.refundSettlementAccountId !== undefined) ensureOptionalString(body.refundSettlementAccountId, 'refundSettlementAccountId');
+};
+
 export const validateInitializeSalesInput = (body: any) => {
   ensureRequiredString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
 
@@ -217,8 +283,17 @@ export const validateInitializeSalesInput = (body: any) => {
     }
     body.paymentMethodConfigs.forEach((config: any, index: number) => validateSalesPaymentMethodConfig(config, index));
   }
+  if (body.messagingAccounts !== undefined) {
+    if (!Array.isArray(body.messagingAccounts)) {
+      throw ApiError.badRequest('messagingAccounts must be an array');
+    }
+    body.messagingAccounts.forEach((account: any, index: number) => validateSalesMessagingAccount(account, index));
+  }
 
   ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  ensureOptionalString(body.defaultARAccountId, 'defaultARAccountId');
+  ensureOptionalString(body.arParentAccountId, 'arParentAccountId');
+  ensureOptionalString(body.partyAccountCodeFormat, 'partyAccountCodeFormat');
   ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
   if (body.governanceRules !== undefined) {
@@ -260,10 +335,14 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.defaultARAccountId !== undefined) ensureOptionalString(body.defaultARAccountId, 'defaultARAccountId');
+  if (body.arParentAccountId !== undefined) ensureOptionalString(body.arParentAccountId, 'arParentAccountId');
+  if (body.partyAccountCodeFormat !== undefined) ensureOptionalString(body.partyAccountCodeFormat, 'partyAccountCodeFormat');
   if (body.defaultRevenueAccountId !== undefined) ensureRequiredString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
   if (body.defaultCOGSAccountId !== undefined) ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
   if (body.defaultInventoryAccountId !== undefined) ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   if (body.defaultSalesExpenseAccountId !== undefined) ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
+  if (body.defaultRefundAccountId !== undefined) ensureOptionalString(body.defaultRefundAccountId, 'defaultRefundAccountId');
+  if (body.restockingFeeAccountId !== undefined) ensureOptionalString(body.restockingFeeAccountId, 'restockingFeeAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
@@ -273,6 +352,12 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
       throw ApiError.badRequest('paymentMethodConfigs must be an array');
     }
     body.paymentMethodConfigs.forEach((config: any, index: number) => validateSalesPaymentMethodConfig(config, index));
+  }
+  if (body.messagingAccounts !== undefined) {
+    if (!Array.isArray(body.messagingAccounts)) {
+      throw ApiError.badRequest('messagingAccounts must be an array');
+    }
+    body.messagingAccounts.forEach((account: any, index: number) => validateSalesMessagingAccount(account, index));
   }
   if (body.governanceRules !== undefined) {
     if (!Array.isArray(body.governanceRules)) {
@@ -401,6 +486,8 @@ export const validateListDeliveryNotesQuery = (query: any) => {
 
 export const validateCreateSalesInvoiceInput = (body: any) => {
   validateDocumentSource(body.source);
+  if (body.voucherFormId !== undefined) ensureOptionalString(body.voucherFormId, 'voucherFormId');
+  if (body.formType !== undefined) ensureOptionalString(body.formType, 'formType');
   const isNativeSource = normalizeDocumentSource(body.source) === 'native';
   if (!isNativeSource) {
     ensureRequiredString(body.formType || body.voucherTypeId, 'formType');
@@ -438,6 +525,8 @@ export const validateCreateSalesInvoiceInput = (body: any) => {
 };
 
 export const validateUpdateSalesInvoiceInput = (body: any) => {
+  if (body.voucherFormId !== undefined) ensureOptionalString(body.voucherFormId, 'voucherFormId');
+  if (body.formType !== undefined) ensureOptionalString(body.formType, 'formType');
   if (body.customerId !== undefined) ensureOptionalString(body.customerId, 'customerId');
   if (body.customerInvoiceNumber !== undefined) ensureOptionalString(body.customerInvoiceNumber, 'customerInvoiceNumber');
   if (body.invoiceDate !== undefined) ensureIsoDate(body.invoiceDate, 'invoiceDate');
@@ -526,15 +615,49 @@ export const validateListSalesInvoicesQuery = (query: any) => {
 };
 
 export const validateCreateSalesReturnInput = (body: any) => {
-  if (!body.salesInvoiceId && !body.deliveryNoteId) {
-    throw ApiError.badRequest('salesInvoiceId or deliveryNoteId is required');
+  if (body.returnContext !== undefined) {
+    ensureOptionalString(body.returnContext, 'returnContext');
+    if (!RETURN_CONTEXTS.includes(String(body.returnContext))) {
+      throw ApiError.badRequest(`returnContext must be one of: ${RETURN_CONTEXTS.join(', ')}`);
+    }
   }
+  const returnContext = String(body.returnContext || '').trim();
+
   if (body.salesInvoiceId !== undefined) ensureOptionalString(body.salesInvoiceId, 'salesInvoiceId');
   if (body.deliveryNoteId !== undefined) ensureOptionalString(body.deliveryNoteId, 'deliveryNoteId');
   if (body.salesOrderId !== undefined) ensureOptionalString(body.salesOrderId, 'salesOrderId');
+  if (body.customerId !== undefined) ensureOptionalString(body.customerId, 'customerId');
+
+  if (returnContext === 'AFTER_INVOICE') {
+    ensureRequiredString(body.salesInvoiceId, 'salesInvoiceId');
+  } else if (returnContext === 'BEFORE_INVOICE') {
+    ensureRequiredString(body.deliveryNoteId, 'deliveryNoteId');
+  } else if (returnContext === 'DIRECT') {
+    ensureRequiredString(body.customerId, 'customerId');
+  } else if (!body.salesInvoiceId && !body.deliveryNoteId) {
+    if (body.customerId) {
+      // Backward-compatible DIRECT inference when returnContext is omitted.
+    } else {
+      throw ApiError.badRequest('salesInvoiceId or deliveryNoteId is required when returnContext is not DIRECT');
+    }
+  }
+
   ensureIsoDate(body.returnDate, 'returnDate');
   if (body.warehouseId !== undefined) ensureOptionalString(body.warehouseId, 'warehouseId');
+  if (body.settlementMode !== undefined) {
+    ensureOptionalString(body.settlementMode, 'settlementMode');
+    if (!RETURN_SETTLEMENT_MODES.includes(String(body.settlementMode))) {
+      throw ApiError.badRequest(`settlementMode must be one of: ${RETURN_SETTLEMENT_MODES.join(', ')}`);
+    }
+  }
+  if (body.reasonCode !== undefined) {
+    ensureOptionalString(body.reasonCode, 'reasonCode');
+    if (!RETURN_REASON_CODES.includes(String(body.reasonCode))) {
+      throw ApiError.badRequest(`reasonCode must be one of: ${RETURN_REASON_CODES.join(', ')}`);
+    }
+  }
   ensureRequiredString(body.reason, 'reason');
+  validateRestockingFeeInput(body);
   if (body.notes !== undefined && typeof body.notes !== 'string') {
     throw ApiError.badRequest('notes must be a string');
   }
@@ -580,6 +703,20 @@ export const validateRecordSalesInvoicePaymentInput = (body: any) => {
   }
 };
 
+export const validateSendSalesInvoiceWhatsAppInput = (body: any) => {
+  if (body.messagingAccountId !== undefined) ensureOptionalString(body.messagingAccountId, 'messagingAccountId');
+  if (body.toPhoneNumber !== undefined) ensureOptionalString(body.toPhoneNumber, 'toPhoneNumber');
+  if (body.messageText !== undefined) ensureOptionalString(body.messageText, 'messageText');
+  if (body.documentUrl !== undefined) ensureOptionalString(body.documentUrl, 'documentUrl');
+};
+
+export const validateSendSalesInvoiceTelegramInput = (body: any) => {
+  if (body.messagingAccountId !== undefined) ensureOptionalString(body.messagingAccountId, 'messagingAccountId');
+  if (body.toChatId !== undefined) ensureOptionalString(body.toChatId, 'toChatId');
+  if (body.messageText !== undefined) ensureOptionalString(body.messageText, 'messageText');
+  if (body.documentUrl !== undefined) ensureOptionalString(body.documentUrl, 'documentUrl');
+};
+
 export const validateUpdateDeliveryNoteInput = (body: any) => {
   if (body.customerId !== undefined) ensureOptionalString(body.customerId, 'customerId');
   if (body.deliveryDate !== undefined) ensureIsoDate(body.deliveryDate, 'deliveryDate');
@@ -599,7 +736,20 @@ export const validateUpdateDeliveryNoteInput = (body: any) => {
 export const validateUpdateSalesReturnInput = (body: any) => {
   if (body.returnDate !== undefined) ensureIsoDate(body.returnDate, 'returnDate');
   if (body.warehouseId !== undefined) ensureOptionalString(body.warehouseId, 'warehouseId');
+  if (body.settlementMode !== undefined) {
+    ensureOptionalString(body.settlementMode, 'settlementMode');
+    if (!RETURN_SETTLEMENT_MODES.includes(String(body.settlementMode))) {
+      throw ApiError.badRequest(`settlementMode must be one of: ${RETURN_SETTLEMENT_MODES.join(', ')}`);
+    }
+  }
+  if (body.reasonCode !== undefined) {
+    ensureOptionalString(body.reasonCode, 'reasonCode');
+    if (!RETURN_REASON_CODES.includes(String(body.reasonCode))) {
+      throw ApiError.badRequest(`reasonCode must be one of: ${RETURN_REASON_CODES.join(', ')}`);
+    }
+  }
   if (body.reason !== undefined) ensureOptionalString(body.reason, 'reason');
+  validateRestockingFeeInput(body);
   if (body.notes !== undefined && typeof body.notes !== 'string') {
     throw ApiError.badRequest('notes must be a string');
   }

@@ -1,21 +1,29 @@
-﻿import { randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { Item } from '../../../domain/inventory/entities/Item';
-import { SalesOrder, SalesOrderLine, SOStatus } from '../../../domain/sales/entities/SalesOrder';
+import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
+import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
+import { SalesOrder, SalesOrderLine, SOItemType, SOStatus } from '../../../domain/sales/entities/SalesOrder';
 import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
+import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { RecordChangeService } from '../../system/services/RecordChangeService';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
+import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
+import { CreditCheckResult, CreditCheckService } from '../services/CreditCheckService';
+import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
+import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const generateDocumentNumber = (
   settings: SalesSettings,
-  docType: 'SO' | 'DN' | 'SI' | 'SR'
+  docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT'
 ): string => {
   let prefix = '';
   let seq = 1;
@@ -32,6 +40,10 @@ export const generateDocumentNumber = (
     prefix = settings.siNumberPrefix;
     seq = settings.siNumberNextSeq;
     settings.siNumberNextSeq += 1;
+  } else if (docType === 'QT') {
+    prefix = settings.quoteNumberPrefix;
+    seq = settings.quoteNumberNextSeq;
+    settings.quoteNumberNextSeq += 1;
   } else {
     prefix = settings.srNumberPrefix;
     seq = settings.srNumberNextSeq;
@@ -43,7 +55,7 @@ export const generateDocumentNumber = (
 
 export const generateUniqueDocumentNumber = async (
   settings: SalesSettings,
-  docType: 'SO' | 'DN' | 'SI' | 'SR',
+  docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT',
   exists: (candidate: string) => Promise<boolean>
 ): Promise<string> => {
   for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -67,6 +79,13 @@ export interface SalesOrderLineInput {
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
+  /** Optional promotion marker. When set, this line is treated as user-confirmed
+   *  (typically a free-goods line added by the frontend after the user clicked
+   *  Apply on a previewed promotion suggestion). The server preserves it as-is
+   *  and skips re-evaluation. */
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface CreateSalesOrderInput {
@@ -74,11 +93,16 @@ export interface CreateSalesOrderInput {
   customerId: string;
   orderDate: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency: string;
   exchangeRate: number;
   lines: SalesOrderLineInput[];
   notes?: string;
   internalNotes?: string;
+  /** Skip server-side auto promotion evaluation. The frontend uses this when
+   *  the user has already previewed and decided per-rule which to apply. Lines
+   *  carrying `appliedPromotionId` are preserved as-is. Defaults to false. */
+  skipPromotions?: boolean;
   createdBy: string;
 }
 
@@ -88,6 +112,7 @@ export interface UpdateSalesOrderInput {
   customerId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency?: string;
   exchangeRate?: number;
   lines?: SalesOrderLineInput[];
@@ -117,10 +142,12 @@ export class CreateSalesOrderUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly promotionRuleRepo?: IPromotionRuleRepository,
+    private readonly recordChangeService?: RecordChangeService,
   ) {}
 
-  async execute(input: CreateSalesOrderInput): Promise<SalesOrder> {
+  async execute(input: CreateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
     const settings = await this.settingsRepo.getSettings(input.companyId);
     if (!settings) throw new Error('Sales module is not initialized');
 
@@ -155,6 +182,7 @@ export class CreateSalesOrderUseCase {
       customerName: customer!.displayName,
       orderDate: input.orderDate,
       expectedDeliveryDate: input.expectedDeliveryDate,
+      promisedDate: input.promisedDate,
       currency: input.currency,
       exchangeRate: input.exchangeRate,
       lines,
@@ -172,8 +200,139 @@ export class CreateSalesOrderUseCase {
       updatedAt: now,
     });
 
+    // --- Promotion evaluation ---
+    // Skip if the caller explicitly opted out (user previewed and decided
+    // per-rule on the frontend) or if any incoming line already carries an
+    // applied-promotion marker (treat as user-driven choice).
+    const userAlreadyDecided =
+      input.skipPromotions === true ||
+      so.lines.some((l) => (l as any).appliedPromotionId);
+
+    if (this.promotionRuleRepo && !userAlreadyDecided) {
+      const rules = await this.promotionRuleRepo.list(input.companyId);
+      if (rules.length > 0) {
+        const promotionService = new PromotionApplicationService();
+
+        // Build category map for promotion evaluation
+        const itemCategoryMap = new Map<string, string | undefined>();
+        for (const line of so.lines) {
+          if (!itemCategoryMap.has(line.itemId)) {
+            const item = await this.itemRepo.getItem(line.itemId);
+            if (item) itemCategoryMap.set(item.id, item.categoryId);
+          }
+        }
+
+        const evalLines: PromotionEvalLine[] = so.lines.map((l) => ({
+          lineId: l.lineId,
+          itemId: l.itemId,
+          categoryId: itemCategoryMap.get(l.itemId),
+          qty: l.orderedQty,
+          unitPriceDoc: l.unitPriceDoc,
+          lineAmountDoc: l.lineTotalDoc,
+          hasManualDiscount: false, // SO lines have no manual discount concept
+        }));
+
+        const promoResult = promotionService.evaluate(evalLines, rules, input.orderDate);
+
+        const appliedPromotions: AppliedPromotionInfo[] = [];
+
+        // Apply line discounts
+        for (const discount of promoResult.lineDiscounts) {
+          const lineIndex = so.lines.findIndex((l) => l.lineId === discount.lineId);
+          if (lineIndex < 0) continue;
+          const line = so.lines[lineIndex];
+          const discountAmtDoc = roundMoney(line.lineTotalDoc * discount.discountPct / 100);
+          const discountAmtBase = roundMoney(line.lineTotalBase * discount.discountPct / 100);
+          so.lines[lineIndex] = {
+            ...line,
+            appliedPromotionId: discount.ruleId,
+            appliedPromotionName: discount.ruleName,
+            appliedDiscountPct: discount.discountPct,
+            lineTotalDoc: roundMoney(line.lineTotalDoc - discountAmtDoc),
+            lineTotalBase: roundMoney(line.lineTotalBase - discountAmtBase),
+            taxAmountDoc: roundMoney((line.lineTotalDoc - discountAmtDoc) * line.taxRate),
+            taxAmountBase: roundMoney((line.lineTotalBase - discountAmtBase) * line.taxRate),
+          };
+          if (!appliedPromotions.some((p) => p.ruleId === discount.ruleId)) {
+            appliedPromotions.push({
+              ruleId: discount.ruleId,
+              ruleName: discount.ruleName,
+              type: 'THRESHOLD_DISCOUNT',
+              discountPct: discount.discountPct,
+            });
+          }
+        }
+
+        // Add free-goods lines
+        for (const freeGood of promoResult.freeGoods) {
+          const item = await this.itemRepo.getItem(freeGood.itemId);
+          if (!item || item.companyId !== input.companyId) continue;
+          const sourceLine = so.lines.find((l) => l.lineId === freeGood.sourceLineId);
+          so.lines.push({
+            lineId: randomUUID(),
+            lineNo: so.lines.length + 1,
+            itemId: item.id,
+            itemCode: item.code,
+            itemName: item.name,
+            itemType: item.type as SOItemType,
+            trackInventory: item.trackInventory,
+            orderedQty: freeGood.qty,
+            uomId: item.salesUomId || item.baseUomId,
+            uom: item.salesUom || item.baseUom,
+            deliveredQty: 0,
+            invoicedQty: 0,
+            returnedQty: 0,
+            unitPriceDoc: 0,
+            lineTotalDoc: 0,
+            unitPriceBase: 0,
+            lineTotalBase: 0,
+            taxCodeId: sourceLine?.taxCodeId,
+            taxRate: 0,
+            taxAmountDoc: 0,
+            taxAmountBase: 0,
+            warehouseId: sourceLine?.warehouseId,
+            description: `Free item (${freeGood.ruleName})`,
+            appliedPromotionId: freeGood.ruleId,
+            appliedPromotionName: freeGood.ruleName,
+          });
+          if (!appliedPromotions.some((p) => p.ruleId === freeGood.ruleId)) {
+            appliedPromotions.push({
+              ruleId: freeGood.ruleId,
+              ruleName: freeGood.ruleName,
+              type: 'BUY_X_GET_Y',
+              freeQty: freeGood.qty,
+              sourceLineId: freeGood.sourceLineId,
+              freeItemId: freeGood.itemId,
+            });
+          }
+        }
+
+        // Recompute SO totals from all (potentially modified) lines
+        so.subtotalDoc = roundMoney(so.lines.reduce((sum, l) => sum + l.lineTotalDoc, 0));
+        so.taxTotalDoc = roundMoney(so.lines.reduce((sum, l) => sum + l.taxAmountDoc, 0));
+        so.grandTotalDoc = roundMoney(so.subtotalDoc + so.taxTotalDoc);
+        so.subtotalBase = roundMoney(so.lines.reduce((sum, l) => sum + l.lineTotalBase, 0));
+        so.taxTotalBase = roundMoney(so.lines.reduce((sum, l) => sum + l.taxAmountBase, 0));
+        so.grandTotalBase = roundMoney(so.subtotalBase + so.taxTotalBase);
+        so.appliedPromotions = appliedPromotions.length > 0 ? appliedPromotions : undefined;
+      }
+    }
+
     await this.salesOrderRepo.create(so);
     await this.settingsRepo.saveSettings(settings);
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: so.companyId,
+        entityType: 'SALES_ORDER',
+        entityId: so.id,
+        entityNumber: `SO-${so.orderNumber}`,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: so.toJSON(),
+      });
+    }
+
     return so;
   }
 
@@ -239,7 +398,10 @@ export class CreateSalesOrderUseCase {
       taxAmountBase,
       warehouseId: lineInput.warehouseId,
       description: lineInput.description,
-    };
+      appliedPromotionId: lineInput.appliedPromotionId,
+      appliedPromotionName: lineInput.appliedPromotionName,
+      appliedDiscountPct: lineInput.appliedDiscountPct,
+    } as SalesOrderLine;
   }
 }
 
@@ -248,15 +410,18 @@ export class UpdateSalesOrderUseCase {
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
-    private readonly taxCodeRepo: ITaxCodeRepository
+    private readonly taxCodeRepo: ITaxCodeRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: UpdateSalesOrderInput): Promise<SalesOrder> {
+  async execute(input: UpdateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
     const current = await this.salesOrderRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Sales order not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft sales orders can be updated');
     }
+
+    const before = current.toJSON();
 
     const customer = await this.partyRepo.getById(input.companyId, input.customerId || current.customerId);
     if (!customer) throw new Error(`Customer not found: ${input.customerId || current.customerId}`);
@@ -294,6 +459,7 @@ export class UpdateSalesOrderUseCase {
       customerName: customer.displayName,
       orderDate: input.orderDate ?? current.orderDate,
       expectedDeliveryDate: input.expectedDeliveryDate ?? current.expectedDeliveryDate,
+      promisedDate: input.promisedDate ?? current.promisedDate,
       currency: input.currency ?? current.currency,
       exchangeRate,
       lines,
@@ -314,6 +480,21 @@ export class UpdateSalesOrderUseCase {
     });
 
     await this.salesOrderRepo.update(updated);
+
+    if (this.recordChangeService && actor) {
+      const after = updated.toJSON();
+      await this.recordChangeService.recordUpdate({
+        companyId: input.companyId,
+        entityType: 'SALES_ORDER',
+        entityId: updated.id,
+        entityNumber: updated.orderNumber ? `SO-${updated.orderNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        before: before as Record<string, any>,
+        after: after as Record<string, any>,
+      });
+    }
+
     return updated;
   }
 
@@ -369,21 +550,99 @@ export class UpdateSalesOrderUseCase {
   }
 }
 
-export class ConfirmSalesOrderUseCase {
-  constructor(private readonly salesOrderRepo: ISalesOrderRepository) {}
+export interface ConfirmSalesOrderResult {
+  salesOrder: SalesOrder;
+  creditCheck: CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' };
+}
 
-  async execute(companyId: string, id: string): Promise<SalesOrder> {
+export class ConfirmSalesOrderUseCase {
+  constructor(
+    private readonly salesOrderRepo: ISalesOrderRepository,
+    private readonly partyRepo: IPartyRepository,
+    private readonly creditCheckService: CreditCheckService,
+    private readonly creditOverrideRepo: ICreditOverrideRepository
+  ) {}
+
+  async execute(
+    companyId: string,
+    id: string,
+    options?: { override?: { reason: string; userId: string } }
+  ): Promise<ConfirmSalesOrderResult> {
+    // --- existing guards ---
     const so = await this.salesOrderRepo.getById(companyId, id);
     if (!so) throw new Error(`Sales order not found: ${id}`);
     if (so.status !== 'DRAFT') throw new Error('Only draft sales orders can be confirmed');
     if (!so.lines.length) throw new Error('Sales order must contain at least one line');
 
+    // --- credit check ---
+    let creditCheckWithOutcome: CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' };
+
+    const party = await this.partyRepo.getById(companyId, so.customerId).catch(() => null);
+
+    if (!party) {
+      // Customer not found — proceed without enforcement
+      creditCheckWithOutcome = {
+        enforced: false,
+        creditLimit: 0,
+        currentExposure: 0,
+        orderAmount: so.grandTotalBase,
+        projectedExposure: so.grandTotalBase,
+        withinLimit: true,
+        policy: 'NONE',
+        outcome: 'OK',
+      };
+    } else {
+      const creditCheck = await this.creditCheckService.check(companyId, party, so.grandTotalBase);
+
+      const overLimit = creditCheck.enforced && !creditCheck.withinLimit;
+
+      if (!overLimit || creditCheck.policy === 'NONE') {
+        // Under limit, or limit not enforced, or policy NONE — confirm without fuss
+        creditCheckWithOutcome = { ...creditCheck, outcome: 'OK' };
+      } else if (creditCheck.policy === 'WARN') {
+        // Over limit but only warn — confirm, surface the warning to the caller
+        creditCheckWithOutcome = { ...creditCheck, outcome: 'WARN' };
+      } else {
+        // policy === 'BLOCK'
+        if (!options?.override) {
+          throw new CreditLimitExceededError({
+            customerId: so.customerId,
+            creditLimit: creditCheck.creditLimit,
+            currentExposure: creditCheck.currentExposure,
+            orderAmount: creditCheck.orderAmount,
+            projectedExposure: creditCheck.projectedExposure,
+          });
+        }
+
+        // Override provided — persist an audit record and confirm
+        const overrideRecord = new CreditOverride({
+          companyId,
+          customerId: so.customerId,
+          sourceType: 'SALES_ORDER',
+          sourceId: so.id,
+          sourceNumber: so.orderNumber,
+          creditLimit: creditCheck.creditLimit,
+          currentExposure: creditCheck.currentExposure,
+          orderAmount: creditCheck.orderAmount,
+          projectedExposure: creditCheck.projectedExposure,
+          reason: options.override.reason,
+          overriddenBy: options.override.userId,
+          overriddenAt: new Date(),
+        });
+        await this.creditOverrideRepo.create(overrideRecord);
+
+        creditCheckWithOutcome = { ...creditCheck, outcome: 'OVERRIDDEN' };
+      }
+    }
+
+    // --- confirm ---
     so.status = 'CONFIRMED';
     so.confirmedAt = new Date();
     so.updatedAt = new Date();
 
     await this.salesOrderRepo.update(so);
-    return so;
+
+    return { salesOrder: so, creditCheck: creditCheckWithOutcome };
   }
 }
 

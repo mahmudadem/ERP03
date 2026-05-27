@@ -1,5 +1,5 @@
 import client from './client';
-import { WorkflowMode } from './salesApi';
+import { PartyAccountsBackfillResult, WorkflowMode } from './salesApi';
 
 export type POStatus =
   | 'DRAFT'
@@ -21,6 +21,8 @@ export interface PurchaseSettingsDTO {
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
@@ -265,6 +267,8 @@ export interface PurchaseReturnDTO {
 export interface InitializePurchasesPayload {
   workflowMode?: WorkflowMode;
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
   defaultPurchaseExpenseAccountId?: string;
@@ -487,6 +491,69 @@ export interface RecordPurchaseInvoicePaymentPayload {
   paymentAmountBase: number;
 }
 
+export type VendorStatementLineType = 'BILL' | 'PAYMENT' | 'DEBIT_NOTE' | 'REFUND' | 'ADJUSTMENT';
+
+export interface VendorStatementLineDTO {
+  ledgerEntryId?: string;
+  date: string;
+  type: VendorStatementLineType;
+  reference: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+  voucherId?: string;
+  voucherNo?: string;
+  voucherType?: string;
+  voucherFormId?: string;
+  voucherPart?: string;
+  description?: string;
+  sourceModule?: string;
+  sourceType?: string;
+  sourceId?: string;
+  sourceLabel?: string;
+}
+
+export interface OpenBillSummaryDTO {
+  invoiceId: string;
+  invoiceNumber: string;
+  vendorInvoiceNumber?: string;
+  invoiceDate: string;
+  dueDate: string | undefined;
+  grandTotalBase: number;
+  outstandingAmountBase: number;
+}
+
+export interface VendorStatementCommitmentDTO {
+  sourceType: 'PURCHASE_ORDER';
+  sourceId: string;
+  documentNumber: string;
+  date: string;
+  expectedDate?: string;
+  status: string;
+  amountBase: number;
+  openAmountBase: number;
+  description?: string;
+}
+
+export interface VendorStatementDTO {
+  vendorId: string;
+  vendorName: string;
+  accountId?: string;
+  accountCode?: string;
+  accountName?: string;
+  fromDate: string;
+  toDate: string;
+  openingBalance: number;
+  closingBalance: number;
+  lines: VendorStatementLineDTO[];
+  totalBilled: number;
+  totalPaid: number;
+  totalDebited: number;
+  totalAdjusted: number;
+  openBills: OpenBillSummaryDTO[];
+  openCommitments?: VendorStatementCommitmentDTO[];
+}
+
 export const purchasesApi = {
   initializePurchases: (payload: InitializePurchasesPayload): Promise<PurchaseSettingsDTO> =>
     client.post('/tenant/purchase/initialize', payload),
@@ -496,6 +563,9 @@ export const purchasesApi = {
 
   updateSettings: (payload: Partial<PurchaseSettingsDTO>): Promise<PurchaseSettingsDTO> =>
     client.put('/tenant/purchase/settings', payload),
+
+  backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>
+    client.post('/tenant/purchase/settings/backfill-party-accounts', {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createPO: (payload: CreatePurchaseOrderPayload): Promise<PurchaseOrderDTO> =>
     client.post('/tenant/purchase/orders', payload),
@@ -568,6 +638,9 @@ export const purchasesApi = {
 
   getPaymentHistory: (invoiceId: string): Promise<Record<string, unknown>[]> =>
     client.get(`/tenant/purchase/invoices/${invoiceId}/payments`),
+
+  getVendorStatement: (params: { vendorId: string; fromDate: string; toDate: string; includeOpenCommitments?: boolean }): Promise<VendorStatementDTO> =>
+    client.get('/tenant/purchase/reports/vendor-statement', { params }),
 
   createReturn: (payload: CreatePurchaseReturnPayload): Promise<PurchaseReturnDTO> =>
     client.post('/tenant/purchase/returns', payload),

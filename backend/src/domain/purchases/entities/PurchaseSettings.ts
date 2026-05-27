@@ -18,6 +18,10 @@ export interface PurchaseSettingsProps {
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
+  /** Parent account under which per-vendor AP sub-accounts are auto-created. */
+  apParentAccountId?: string;
+  /** Template used when auto-creating per-vendor AP sub-accounts. Tokens: {parent}, {partyCode}, {seq3}. */
+  partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
@@ -45,6 +49,8 @@ export class PurchaseSettings {
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
@@ -73,6 +79,8 @@ export class PurchaseSettings {
     this.allowDirectInvoicing = props.allowDirectInvoicing;
     this.requirePOForStockItems = props.requirePOForStockItems;
     this.defaultAPAccountId = props.defaultAPAccountId?.trim() || undefined;
+    this.apParentAccountId = props.apParentAccountId?.trim() || undefined;
+    this.partyAccountCodeFormat = props.partyAccountCodeFormat?.trim() || undefined;
     this.defaultPurchaseExpenseAccountId = props.defaultPurchaseExpenseAccountId;
     this.defaultGRNIAccountId = props.defaultGRNIAccountId?.trim() || undefined;
     this.allowOverDelivery = props.allowOverDelivery;
@@ -123,6 +131,8 @@ export class PurchaseSettings {
       allowDirectInvoicing: this.allowDirectInvoicing,
       requirePOForStockItems: this.requirePOForStockItems,
       defaultAPAccountId: this.defaultAPAccountId,
+      apParentAccountId: this.apParentAccountId,
+      partyAccountCodeFormat: this.partyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: this.defaultPurchaseExpenseAccountId,
       defaultGRNIAccountId: this.defaultGRNIAccountId,
       allowOverDelivery: this.allowOverDelivery,
@@ -152,6 +162,8 @@ export class PurchaseSettings {
       allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requirePOForStockItems: data.requirePOForStockItems ?? false,
       defaultAPAccountId: data.defaultAPAccountId,
+      apParentAccountId: data.apParentAccountId,
+      partyAccountCodeFormat: data.partyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: data.defaultPurchaseExpenseAccountId,
       defaultGRNIAccountId: data.defaultGRNIAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,

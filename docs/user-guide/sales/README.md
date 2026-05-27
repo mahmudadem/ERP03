@@ -7,6 +7,15 @@ It works in close coordination with **Accounting** (invoices become journal entr
 Key guides:
 
 - [Direct Invoice and Operational Linked Invoice](D:/DEV2026/ERP03/docs/user-guide/sales/direct-invoice-and-operational-linked-invoice.md)
+- [Sales Returns (Credit Note vs Refund)](D:/DEV2026/ERP03/docs/user-guide/sales/sales-returns.md)
+- [Customer AR Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/sales/customer-ar-subaccounts.md)
+- [Customer Statement and Ledger](D:/DEV2026/ERP03/docs/user-guide/sales/customer-statement.md)
+- [Invoice Templates](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-templates.md)
+- [Communication Sender Accounts](D:/DEV2026/ERP03/docs/user-guide/sales/communication-accounts.md)
+- [Send Invoices via WhatsApp](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-whatsapp-sharing.md)
+- [Send Invoices via Telegram](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-telegram-sharing.md)
+- [Sales Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/sales/invoice-attachments.md)
+- [Backorder and Fulfillment Progress](D:/DEV2026/ERP03/docs/user-guide/sales/backorder-fulfillment.md)
 
 ---
 
@@ -20,7 +29,7 @@ Key guides:
 | **Sales Returns** | Handle customer returns, with or without an invoice already issued. |
 | **Customers** | List, add, and edit customer records. |
 | **Payments** | Record payments against invoices; track who owes you what. |
-| **Settings** | Pick a workflow mode, set default accounts, configure invoice numbering. |
+| **Settings** | Pick a workflow mode, set default accounts, configure invoice numbering, and manage sender accounts for outbound messages. |
 | **Dashboard** | Quick view: total revenue, outstanding AR, overdue invoices, top customers. |
 
 ---
@@ -124,10 +133,15 @@ When posting an invoice, you can choose:
 
 ## Reports
 
-The Sales dashboard at `/sales` shows your headline numbers. For detailed reports (AR Aging, Sales by Customer, Customer Statement, etc.) — *these are planned but not yet implemented*. The Accounting reports cover most of the financial detail in the meantime:
-- **AR balance per customer** → `Accounting → Reports → General Ledger` filtered by customer's AR account
-- **Sales total by period** → `Accounting → Reports → Profit & Loss`
-- **Tax owed** → `Accounting → Reports → Account Statement` filtered by Tax Payable account
+The Sales dashboard at `/sales` shows headline numbers, and the Sales report pages provide:
+- AR Aging
+- Customer Statement
+- Customer Ledger
+- Sales by Customer
+- Sales by Item
+- Sales by Salesperson
+
+For deeper financial tie-out, Accounting reports remain the source of truth for finalized books.
 
 ---
 

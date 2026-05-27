@@ -25,6 +25,7 @@ router.patch('/users/:userId/demote', SuperAdminController.demoteUser);
 
 // Company management
 router.get('/companies', SuperAdminController.listAllCompanies);
+router.post('/companies/:companyId/backfill-party-accounts', SuperAdminController.backfillPartyAccountsForCompany);
 
 // Company AI Report Mode
 router.get('/companies/:companyId/ai-report-mode', SuperAdminController.getCompanyAiReportMode);

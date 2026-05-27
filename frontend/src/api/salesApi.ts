@@ -13,6 +13,9 @@ export type DNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
+export type ReturnSettlementMode = 'CREDIT_NOTE' | 'REFUND';
+export type ReturnReasonCode = 'DEFECTIVE' | 'WRONG_ITEM' | 'CHANGED_MIND' | 'OTHER';
+export type RestockingFeeType = 'PERCENT' | 'AMOUNT';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
 
@@ -32,21 +35,45 @@ export interface SalesPaymentMethodConfigDTO {
   isEnabled?: boolean;
 }
 
+export interface SalesMessagingAccountDTO {
+  id: string;
+  channel: 'WHATSAPP' | 'EMAIL' | 'TELEGRAM';
+  provider: 'META_WHATSAPP_CLOUD' | 'SMTP' | 'TELEGRAM_BOT';
+  label: string;
+  isDefault: boolean;
+  isActive: boolean;
+  phoneNumberE164?: string;
+  phoneNumberId?: string;
+  fromAddress?: string;
+  fromDisplayName?: string;
+  botUsername?: string;
+  apiVersion?: string;
+  hasCredential?: boolean;
+  credential?: string;
+}
+
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: WorkflowMode;
+  showOperationalDocsInSimple?: boolean;
+  allowCreditOverride?: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId?: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
   paymentMethodConfigs: SalesPaymentMethodConfigDTO[];
+  messagingAccounts: SalesMessagingAccountDTO[];
   governanceRules: GovernanceRuleDTO[];
   defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -58,6 +85,8 @@ export interface SalesSettingsDTO {
   siNumberNextSeq: number;
   srNumberPrefix: string;
   srNumberNextSeq: number;
+  quoteNumberPrefix: string;
+  quoteNumberNextSeq: number;
 }
 
 export interface SalesOrderLineDTO {
@@ -84,6 +113,9 @@ export interface SalesOrderLineDTO {
   taxAmountBase: number;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesOrderDTO {
@@ -92,6 +124,7 @@ export interface SalesOrderDTO {
   orderNumber: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   currency: string;
@@ -103,6 +136,7 @@ export interface SalesOrderDTO {
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
+  promisedDate?: string;
   status: SOStatus;
   notes?: string;
   internalNotes?: string;
@@ -140,6 +174,7 @@ export interface DeliveryNoteDTO {
   customerId: string;
   customerName: string;
   deliveryDate: string;
+  promisedDate?: string;
   warehouseId: string;
   lines: DeliveryNoteLineDTO[];
   status: DNStatus;
@@ -216,15 +251,21 @@ export interface SalesInvoiceDTO {
   companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  voucherFormId?: string;
+  formType?: string;
+  voucherType?: string;
+  persona?: 'direct' | 'linked' | 'service';
   source?: DocumentSource | string;
   salesOrderId?: string;
   customerId: string;
   customerName: string;
+  salespersonId?: string;
   invoiceDate: string;
   dueDate?: string;
   currency: string;
   exchangeRate: number;
   lines: SalesInvoiceLineDTO[];
+  attachments?: SalesInvoiceAttachmentDTO[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -243,6 +284,16 @@ export interface SalesInvoiceDTO {
   createdAt: string;
   updatedAt: string;
   postedAt?: string;
+}
+
+export interface SalesInvoiceAttachmentDTO {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
 }
 
 export interface SalesReturnLineDTO {
@@ -297,7 +348,15 @@ export interface SalesReturnDTO {
   subtotalBase: number;
   taxTotalBase: number;
   grandTotalBase: number;
+  netSettlementAmountDoc: number;
+  netSettlementAmountBase: number;
+  settlementMode: ReturnSettlementMode;
+  reasonCode: ReturnReasonCode;
   reason: string;
+  restockingFeeType?: RestockingFeeType;
+  restockingFeeValue: number;
+  restockingFeeAmountDoc: number;
+  restockingFeeAmountBase: number;
   notes?: string;
   status: SRStatus;
   revenueVoucherId?: string | null;
@@ -306,11 +365,14 @@ export interface SalesReturnDTO {
   createdAt: string;
   updatedAt: string;
   postedAt?: string;
+  refundSettlementAccountId?: string;
 }
 
 export interface InitializeSalesPayload {
   workflowMode?: WorkflowMode;
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId?: string;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
@@ -322,6 +384,7 @@ export interface InitializeSalesPayload {
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
   paymentMethodConfigs?: SalesPaymentMethodConfigDTO[];
+  messagingAccounts?: SalesMessagingAccountDTO[];
   salesVoucherTypeId?: string;
   defaultWarehouseId?: string;
   soNumberPrefix?: string;
@@ -332,6 +395,8 @@ export interface InitializeSalesPayload {
   siNumberNextSeq?: number;
   srNumberPrefix?: string;
   srNumberNextSeq?: number;
+  quoteNumberPrefix?: string;
+  quoteNumberNextSeq?: number;
 }
 
 export interface SalesOrderLineInputDTO {
@@ -345,23 +410,31 @@ export interface SalesOrderLineInputDTO {
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface CreateSalesOrderPayload {
   customerId: string;
+  salespersonId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency: string;
   exchangeRate: number;
   lines: SalesOrderLineInputDTO[];
   notes?: string;
   internalNotes?: string;
+  skipPromotions?: boolean;
 }
 
 export interface UpdateSalesOrderPayload {
   customerId?: string;
+  salespersonId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
+  promisedDate?: string;
   currency?: string;
   exchangeRate?: number;
   lines?: SalesOrderLineInputDTO[];
@@ -393,6 +466,7 @@ export interface CreateDeliveryNotePayload {
   salesOrderId?: string;
   customerId?: string;
   deliveryDate: string;
+  promisedDate?: string;
   warehouseId: string;
   lines?: DeliveryNoteLineInputDTO[];
   notes?: string;
@@ -401,6 +475,7 @@ export interface CreateDeliveryNotePayload {
 export interface UpdateDeliveryNotePayload {
   customerId?: string;
   deliveryDate?: string;
+  promisedDate?: string;
   warehouseId?: string;
   lines?: DeliveryNoteLineInputDTO[];
   notes?: string;
@@ -426,6 +501,7 @@ export interface SalesInvoiceLineInputDTO {
   discountValue?: number;
   discountAmountDoc?: number;
   taxCodeId?: string;
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
 }
@@ -441,12 +517,14 @@ export interface SalesInvoiceChargeInputDTO {
 }
 
 export interface CreateSalesInvoicePayload {
+  voucherFormId?: string;
   formType?: string;
   voucherType?: string;
   persona?: 'direct' | 'linked' | 'service';
   source?: DocumentSource;
   salesOrderId?: string;
   customerId: string;
+  salespersonId?: string;
   customerAccountId?: string;
   receivablePayableAccountId?: string;
   customerInvoiceNumber?: string;
@@ -458,14 +536,19 @@ export interface CreateSalesInvoicePayload {
   charges?: SalesInvoiceChargeInputDTO[];
   notes?: string;
   settlementInput?: SettlementInputPayload;
+  /** When provided alongside a BLOCK-policy credit limit breach, the invoice
+   *  creation proceeds and an audit override record is persisted. */
+  creditOverrideReason?: string;
 }
 
 export interface UpdateSalesInvoicePayload {
+  voucherFormId?: string;
   formType?: string;
   voucherType?: string;
   persona?: 'direct' | 'linked' | 'service';
   source?: DocumentSource;
   customerId?: string;
+  salespersonId?: string;
   customerAccountId?: string;
   receivablePayableAccountId?: string;
   customerInvoiceNumber?: string;
@@ -528,15 +611,24 @@ export interface CreateSalesReturnPayload {
   warehouseId?: string;
   currency?: string;
   exchangeRate?: number;
+  settlementMode?: ReturnSettlementMode;
+  reasonCode?: ReturnReasonCode;
   reason: string;
+  restockingFeeType?: RestockingFeeType;
+  restockingFeeValue?: number;
   notes?: string;
   lines?: SalesReturnLineInputDTO[];
+  refundSettlementAccountId?: string;
 }
 
 export interface UpdateSalesReturnPayload {
   returnDate?: string;
   warehouseId?: string;
+  settlementMode?: ReturnSettlementMode;
+  reasonCode?: ReturnReasonCode;
   reason?: string;
+  restockingFeeType?: RestockingFeeType;
+  restockingFeeValue?: number;
   notes?: string;
   lines?: SalesReturnLineInputDTO[];
 }
@@ -563,6 +655,54 @@ export interface RecordSalesInvoicePaymentPayload {
   paymentDate?: string;
 }
 
+export interface SendSalesInvoiceWhatsAppPayload {
+  messagingAccountId?: string;
+  toPhoneNumber?: string;
+  messageText?: string;
+  documentUrl?: string;
+}
+
+export interface SendSalesInvoiceWhatsAppResult {
+  provider: string;
+  messageId: string;
+  senderAccountId?: string;
+  senderLabel?: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  recipientPhoneNumber: string;
+}
+
+export interface SendSalesInvoiceTelegramPayload {
+  messagingAccountId?: string;
+  toChatId?: string;
+  messageText?: string;
+  documentUrl?: string;
+}
+
+export interface SendSalesInvoiceTelegramResult {
+  provider: string;
+  messageId: string;
+  senderAccountId?: string;
+  senderLabel?: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  recipientChatId: string;
+}
+
+export interface SalesInvoiceAttachmentDownloadLinkResult {
+  url: string;
+}
+
+export interface PartyAccountsBackfillResult {
+  created: number;
+  skipped: number;
+  errors: Array<{
+    partyId: string;
+    side: 'AR' | 'AP';
+    message: string;
+  }>;
+}
+
 export const salesApi = {
   initializeSales: (payload: InitializeSalesPayload): Promise<SalesSettingsDTO> =>
     client.post('/tenant/sales/initialize', payload),
@@ -572,6 +712,9 @@ export const salesApi = {
 
   updateSettings: (payload: Partial<SalesSettingsDTO>): Promise<SalesSettingsDTO> =>
     client.put('/tenant/sales/settings', payload),
+
+  backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>
+    client.post('/tenant/sales/settings/backfill-party-accounts', {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createSO: (payload: CreateSalesOrderPayload): Promise<SalesOrderDTO> =>
     client.post('/tenant/sales/orders', payload),
@@ -588,8 +731,8 @@ export const salesApi = {
   listSOs: (opts?: ListSalesOrdersOptions): Promise<SalesOrderDTO[]> =>
     client.get('/tenant/sales/orders', { params: opts }),
 
-  confirmSO: (id: string): Promise<SalesOrderDTO> =>
-    client.post(`/tenant/sales/orders/${id}/confirm`, {}),
+  confirmSO: (id: string, body?: { override?: { reason: string } }): Promise<SalesOrderDTO> =>
+    client.post(`/tenant/sales/orders/${id}/confirm`, body ?? {}),
 
   cancelSO: (id: string): Promise<SalesOrderDTO> =>
     client.post(`/tenant/sales/orders/${id}/cancel`, {}),
@@ -609,8 +752,8 @@ export const salesApi = {
   updateDN: (id: string, payload: UpdateDeliveryNotePayload): Promise<DeliveryNoteDTO> =>
     client.put(`/tenant/sales/delivery-notes/${id}`, payload),
 
-  postDN: (id: string): Promise<DeliveryNoteDTO> =>
-    client.post(`/tenant/sales/delivery-notes/${id}/post`, {}),
+  postDN: (id: string, periodLockOverrideReason?: string): Promise<DeliveryNoteDTO> =>
+    client.post(`/tenant/sales/delivery-notes/${id}/post`, { periodLockOverrideReason }),
 
   createSI: (payload: CreateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
     client.post('/tenant/sales/invoices', payload),
@@ -630,8 +773,8 @@ export const salesApi = {
   getSI: (id: string): Promise<SalesInvoiceDTO> =>
     client.get(`/tenant/sales/invoices/${id}`),
 
-  postSI: (id: string, settlementInput?: SettlementInputPayload): Promise<SalesInvoiceDTO> =>
-    client.post(`/tenant/sales/invoices/${id}/post`, { settlementInput }),
+  postSI: (id: string, settlementInput?: SettlementInputPayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
+    client.post(`/tenant/sales/invoices/${id}/post`, { settlementInput, periodLockOverrideReason }),
 
   updatePaymentStatus: (id: string, payload: UpdateSalesInvoicePaymentStatusPayload): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/payment-status`, payload),
@@ -641,6 +784,29 @@ export const salesApi = {
 
   getPaymentHistory: (id: string): Promise<Record<string, unknown>[]> =>
     client.get(`/tenant/sales/invoices/${id}/payments`),
+
+  sendInvoiceWhatsApp: (id: string, payload: SendSalesInvoiceWhatsAppPayload): Promise<SendSalesInvoiceWhatsAppResult> =>
+    client.post(`/tenant/sales/invoices/${id}/send-whatsapp`, payload),
+
+  sendInvoiceTelegram: (id: string, payload: SendSalesInvoiceTelegramPayload): Promise<SendSalesInvoiceTelegramResult> =>
+    client.post(`/tenant/sales/invoices/${id}/send-telegram`, payload),
+
+  listInvoiceAttachments: (id: string): Promise<SalesInvoiceAttachmentDTO[]> =>
+    client.get(`/tenant/sales/invoices/${id}/attachments`).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  uploadInvoiceAttachment: (id: string, file: File): Promise<SalesInvoiceAttachmentDTO> => {
+    const form = new FormData();
+    form.append('file', file);
+    return client.post(`/tenant/sales/invoices/${id}/attachments`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+
+  removeInvoiceAttachment: (id: string, attachmentId: string): Promise<void> =>
+    client.delete(`/tenant/sales/invoices/${id}/attachments/${attachmentId}`).then(() => undefined),
+
+  getInvoiceAttachmentDownloadLink: (id: string, attachmentId: string): Promise<SalesInvoiceAttachmentDownloadLinkResult> =>
+    client.get(`/tenant/sales/invoices/${id}/attachments/${attachmentId}/link`).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createReturn: (payload: CreateSalesReturnPayload): Promise<SalesReturnDTO> =>
     client.post('/tenant/sales/returns', payload),
@@ -654,6 +820,109 @@ export const salesApi = {
   updateReturn: (id: string, payload: UpdateSalesReturnPayload): Promise<SalesReturnDTO> =>
     client.put(`/tenant/sales/returns/${id}`, payload),
 
-  postReturn: (id: string): Promise<SalesReturnDTO> =>
-    client.post(`/tenant/sales/returns/${id}/post`, {}),
+  postReturn: (id: string, periodLockOverrideReason?: string): Promise<SalesReturnDTO> =>
+    client.post(`/tenant/sales/returns/${id}/post`, { periodLockOverrideReason }),
+};
+
+// Recurring Invoice types
+export type RecurrenceFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+export type RecurringInvoiceStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+
+export interface RecurringInvoiceLineDTO {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  qty: number;
+  unitPriceDoc: number;
+  taxCodeId?: string;
+  taxCode?: string;
+  taxRate: number;
+  description?: string;
+}
+
+export interface RecurringInvoiceTemplateDTO {
+  id: string;
+  companyId: string;
+  name: string;
+  sourceInvoiceId?: string;
+  customerId: string;
+  customerName: string;
+  currency: string;
+  exchangeRate: number;
+  lines: RecurringInvoiceLineDTO[];
+  notes?: string;
+  paymentTermsDays: number;
+  frequency: RecurrenceFrequency;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  startDate: string;
+  endDate?: string;
+  maxOccurrences?: number;
+  occurrencesGenerated: number;
+  nextGenerationDate: string;
+  status: RecurringInvoiceStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface CreateRecurringInvoicePayload {
+  name: string;
+  sourceInvoiceId?: string;
+  customerId: string;
+  customerName: string;
+  currency: string;
+  exchangeRate?: number;
+  lines: Omit<RecurringInvoiceLineDTO, 'taxCode'>[];
+  notes?: string;
+  paymentTermsDays?: number;
+  frequency: RecurrenceFrequency;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  startDate: string;
+  endDate?: string;
+  maxOccurrences?: number;
+}
+
+export interface CloneInvoiceToTemplatePayload {
+  name: string;
+  frequency: RecurrenceFrequency;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  startDate?: string;
+  endDate?: string;
+  maxOccurrences?: number;
+}
+
+export const recurringInvoiceApi = {
+  list: (opts?: { status?: string; customerId?: string }): Promise<RecurringInvoiceTemplateDTO[]> =>
+    client.get('/tenant/sales/recurring-invoices', { params: opts }).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  getById: (id: string): Promise<RecurringInvoiceTemplateDTO> =>
+    client.get(`/tenant/sales/recurring-invoices/${id}`).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  create: (payload: CreateRecurringInvoicePayload): Promise<RecurringInvoiceTemplateDTO> =>
+    client.post('/tenant/sales/recurring-invoices', payload).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  update: (id: string, payload: Partial<CreateRecurringInvoicePayload>): Promise<RecurringInvoiceTemplateDTO> =>
+    client.put(`/tenant/sales/recurring-invoices/${id}`, payload).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  pause: (id: string): Promise<RecurringInvoiceTemplateDTO> =>
+    client.post(`/tenant/sales/recurring-invoices/${id}/pause`, {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  resume: (id: string): Promise<RecurringInvoiceTemplateDTO> =>
+    client.post(`/tenant/sales/recurring-invoices/${id}/resume`, {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  cancel: (id: string): Promise<RecurringInvoiceTemplateDTO> =>
+    client.post(`/tenant/sales/recurring-invoices/${id}/cancel`, {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  remove: (id: string): Promise<void> =>
+    client.delete(`/tenant/sales/recurring-invoices/${id}`).then(() => undefined),
+
+  generate: (asOfDate?: string): Promise<SalesInvoiceDTO[]> =>
+    client.post('/tenant/sales/recurring-invoices/generate', { asOfDate }).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  cloneToTemplate: (invoiceId: string, payload: CloneInvoiceToTemplatePayload): Promise<RecurringInvoiceTemplateDTO> =>
+    client.post(`/tenant/sales/invoices/${invoiceId}/clone-to-template`, payload).then((r: any) => r?.data?.data ?? r?.data ?? r),
 };

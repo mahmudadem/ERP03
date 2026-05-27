@@ -13,6 +13,8 @@ import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchas
 import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchases/IGoodsReceiptRepository';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
+import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
+import { validatePartyAccountCodeFormat } from '../../shared/services/PartyAccountCodeRenderer';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -162,6 +164,8 @@ export interface InitializePurchasesInput {
   userId: string;
   workflowMode?: 'SIMPLE' | 'OPERATIONAL';
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
   defaultPurchaseExpenseAccountId?: string;
@@ -188,6 +192,8 @@ export interface UpdatePurchasesSettingsInput {
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
   defaultAPAccountId?: string;
+  apParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;
@@ -215,15 +221,32 @@ export class InitializePurchasesUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
+    private readonly ensureAccountingEngine: EnsureAccountingEngineInitialized,
     private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
   async execute(input: InitializePurchasesInput): Promise<PurchaseSettings> {
+    await this.ensureAccountingEngine.execute(input.companyId);
+
     if (input.defaultAPAccountId) {
       const apAccount = await this.accountRepo.getById(input.companyId, input.defaultAPAccountId);
       if (!apAccount) {
         throw new Error(`Default AP account not found: ${input.defaultAPAccountId}`);
       }
+    }
+
+    if (input.apParentAccountId) {
+      const parent = await this.accountRepo.getById(input.companyId, input.apParentAccountId);
+      if (!parent) {
+        throw new Error(`AP parent account not found: ${input.apParentAccountId}`);
+      }
+      if (parent.classification !== 'LIABILITY') {
+        throw new Error(`AP parent account must be classified as LIABILITY (got ${parent.classification})`);
+      }
+    }
+    const partyAccountCodeFormatError = validatePartyAccountCodeFormat(input.partyAccountCodeFormat);
+    if (partyAccountCodeFormatError) {
+      throw new Error(partyAccountCodeFormatError);
     }
 
     if (input.defaultGRNIAccountId) {
@@ -266,6 +289,8 @@ export class InitializePurchasesUseCase {
       allowDirectInvoicing: workflowDefaults.allowDirectInvoicing,
       requirePOForStockItems: workflowDefaults.requirePOForStockItems,
       defaultAPAccountId: input.defaultAPAccountId,
+      apParentAccountId: input.apParentAccountId,
+      partyAccountCodeFormat: input.partyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: input.defaultPurchaseExpenseAccountId,
       defaultGRNIAccountId: input.defaultGRNIAccountId,
       allowOverDelivery: input.allowOverDelivery ?? false,
@@ -386,6 +411,8 @@ export class UpdatePurchaseSettingsUseCase {
     });
     const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
     const nextAPAccountId = input.defaultAPAccountId ?? existing.defaultAPAccountId;
+    const nextAPParentAccountId = input.apParentAccountId ?? existing.apParentAccountId;
+    const nextPartyAccountCodeFormat = input.partyAccountCodeFormat ?? existing.partyAccountCodeFormat;
     const nextGRNIAccountId = input.defaultGRNIAccountId ?? existing.defaultGRNIAccountId;
     if (accountingMode === 'PERPETUAL' && !nextGRNIAccountId) {
       throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
@@ -402,6 +429,19 @@ export class UpdatePurchaseSettingsUseCase {
         throw new Error(`Default GRNI account not found: ${nextGRNIAccountId}`);
       }
     }
+    if (nextAPParentAccountId) {
+      const parent = await this.accountRepo.getById(input.companyId, nextAPParentAccountId);
+      if (!parent) {
+        throw new Error(`AP parent account not found: ${nextAPParentAccountId}`);
+      }
+      if (parent.classification !== 'LIABILITY') {
+        throw new Error(`AP parent account must be classified as LIABILITY (got ${parent.classification})`);
+      }
+    }
+    const partyAccountCodeFormatErrorUpdate = validatePartyAccountCodeFormat(nextPartyAccountCodeFormat);
+    if (partyAccountCodeFormatErrorUpdate) {
+      throw new Error(partyAccountCodeFormatErrorUpdate);
+    }
 
     await ensurePurchaseVoucherDefinitions(input.companyId, 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
 
@@ -411,6 +451,8 @@ export class UpdatePurchaseSettingsUseCase {
       allowDirectInvoicing: nextAllowDirectInvoicing,
       requirePOForStockItems: workflowDefaults.requirePOForStockItems,
       defaultAPAccountId: nextAPAccountId,
+      apParentAccountId: nextAPParentAccountId,
+      partyAccountCodeFormat: nextPartyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: input.defaultPurchaseExpenseAccountId ?? existing.defaultPurchaseExpenseAccountId,
       defaultGRNIAccountId: nextGRNIAccountId,
       allowOverDelivery: input.allowOverDelivery ?? existing.allowOverDelivery,

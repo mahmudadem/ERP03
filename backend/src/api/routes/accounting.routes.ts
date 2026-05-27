@@ -21,6 +21,7 @@ import { ConsolidationController } from '../controllers/accounting/Consolidation
 import { RecurringVoucherController } from '../controllers/accounting/RecurringVoucherController';
 import { FXRevaluationController } from '../controllers/accounting/FXRevaluationController';
 import { AttachmentController } from '../controllers/accounting/AttachmentController';
+import { PostingLogController } from '../controllers/accounting/PostingLogController';
 import multer from 'multer';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
@@ -41,6 +42,10 @@ router.post('/accounts', permissionGuard('accounting.accounts.create'), AccountC
 router.post('/accounts/batch-update-subgroups', permissionGuard('accounting.accounts.edit'), AccountController.batchUpdateSubgroups);
 router.put('/accounts/:id', permissionGuard('accounting.accounts.edit'), AccountController.update);
 router.delete('/accounts/:id', permissionGuard('accounting.accounts.delete'), AccountController.deactivate);
+
+// Posting log (audit trail for cross-module postings)
+router.get('/posting-logs', permissionGuard('accounting.vouchers.view'), PostingLogController.list);
+router.get('/posting-logs/:id', permissionGuard('accounting.vouchers.view'), PostingLogController.get);
 
 // Vouchers
 router.get('/vouchers', permissionGuard('accounting.vouchers.view'), VoucherController.list);

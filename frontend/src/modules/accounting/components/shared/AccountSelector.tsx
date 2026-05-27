@@ -9,11 +9,13 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAccounts, Account } from '../../../../context/AccountsContext';
-import { Search, X, Plus, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, X, Plus, RefreshCw, AlertCircle, Filter, Lock } from 'lucide-react';
 import { useRBAC } from '../../../../api/rbac/useRBAC';
 import { AccountForm } from '../AccountForm';
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
 import { createPortal } from 'react-dom';
+
+export type AccountClassification = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
 
 interface AccountSelectorProps {
   value?: string;  // Account code
@@ -27,7 +29,34 @@ interface AccountSelectorProps {
   scope?: 'valid' | 'all';
   accounts?: Account[];
   allowHeaders?: boolean; // Whether header accounts can be selected
+  /**
+   * Hard contextual filter: only accounts with these classifications are shown.
+   * Cannot be bypassed by the user — use when the field's semantics demand it
+   * (e.g. "Default Revenue Account" must be REVENUE). Pass a human label so the
+   * filter status bar reads naturally ("Income accounts only").
+   */
+  allowedClassifications?: AccountClassification[];
+  contextLabel?: string; // e.g. "Income", "Asset", "Cash/Bank"
+  /** If true, the classification filter tag cannot be toggled off by the user. */
+  enforceClassification?: boolean;
+  /** If true, the scope (POSTING / All) filter tag cannot be toggled off by the user. */
+  enforceScope?: boolean;
 }
+
+const classificationDisplay = (c: AccountClassification): string => {
+  switch (c) {
+    case 'ASSET': return 'Asset';
+    case 'LIABILITY': return 'Liability';
+    case 'EQUITY': return 'Equity';
+    case 'REVENUE': return 'Income';
+    case 'EXPENSE': return 'Expense';
+  }
+};
+
+const matchesClassification = (account: Account, allowed: AccountClassification[]): boolean => {
+  const c = String(account.classification || account.type || '').toUpperCase();
+  return allowed.includes(c as AccountClassification);
+};
 
 export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps>(({
   value,
@@ -40,7 +69,11 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   onBlur: externalBlur,
   scope = 'valid',
   accounts: providedAccounts,
-  allowHeaders = false
+  allowHeaders = false,
+  allowedClassifications,
+  contextLabel,
+  enforceClassification = false,
+  enforceScope = false
 }, ref) => {
   const { t } = useTranslation('accounting');
   const { accounts: contextAccounts, validAccounts, isLoading, refreshAccounts, getAccountByCode, getAccountById, createAccount } = useAccounts();
@@ -54,9 +87,35 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPostingWarning, setShowPostingWarning] = useState(false);
   const [warningParentName, setWarningParentName] = useState('');
+  const [scopeOverride, setScopeOverride] = useState<'valid' | 'all' | null>(null);
+  const [classificationFilterDisabled, setClassificationFilterDisabled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
-  const selectableAccounts = providedAccounts || (scope === 'all' ? contextAccounts : validAccounts);
+  const effectiveScope = scopeOverride ?? scope;
+  const baseAccounts = providedAccounts || (effectiveScope === 'all' ? contextAccounts : validAccounts);
+  const classificationFilterActive = !!(allowedClassifications && allowedClassifications.length > 0) && !classificationFilterDisabled;
+  const selectableAccounts = classificationFilterActive
+    ? baseAccounts.filter((a) => matchesClassification(a, allowedClassifications!))
+    : baseAccounts;
+
+  const classificationFilterLabel = allowedClassifications && allowedClassifications.length > 0
+    ? (contextLabel || allowedClassifications.map(classificationDisplay).join(' / '))
+    : null;
+
+  const filterLabel = providedAccounts
+    ? `Custom list (${providedAccounts.length})`
+    : effectiveScope === 'all'
+      ? `All accounts (${contextAccounts.length})`
+      : `Posting · Active · No children (${validAccounts.length} of ${contextAccounts.length})`;
+
+  // Warn when current value's classification doesn't match the contextual filter
+  const currentAccount = value ? (getAccountByCode(value) || getAccountById(value)) : undefined;
+  const classificationMismatch = !!(
+    allowedClassifications &&
+    allowedClassifications.length > 0 &&
+    currentAccount &&
+    !matchesClassification(currentAccount, allowedClassifications)
+  );
 
   // Forward the ref
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
@@ -304,12 +363,20 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder || t('accountSelector.placeholder', 'Account code...')}
           disabled={disabled}
-          className={`w-full text-xs transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 pr-16 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)]'} 
+          className={`w-full text-xs transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : `p-2 pr-16 border rounded bg-[var(--color-bg-primary)] ${classificationMismatch ? 'border-amber-400 ring-1 ring-amber-200' : 'border-[var(--color-border)]'}`}
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
             ${disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}`}
         />
         {!disabled && (
           <div className="absolute right-1 flex items-center gap-1">
+            {classificationMismatch && (
+              <span
+                title={`This account's classification (${currentAccount?.classification || currentAccount?.type}) doesn't match the expected type for this field (${classificationFilterLabel}). Pick a ${classificationFilterLabel} account to fix your accounting reports.`}
+                className="rounded p-0.5 text-amber-600"
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+              </span>
+            )}
             {inputValue && (
               <button
                 type="button"
@@ -323,6 +390,11 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
           </div>
         )}
       </div>
+      {classificationMismatch && (
+        <p className="mt-1 text-[10px] text-amber-700 italic">
+          ⚠ Wrong account type — expected {classificationFilterLabel}, got {currentAccount?.classification || currentAccount?.type}. This will distort your financial reports.
+        </p>
+      )}
 
       {/* Search Modal */}
       {showModal && (
@@ -386,7 +458,65 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                   )}
                 </div>
               </div>
-              
+
+              {/* Filter status bar — compact, clickable tags */}
+              <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)] flex items-center gap-1.5 text-[10px]">
+                <Filter className="w-3 h-3 text-[var(--color-text-muted)]" />
+                {classificationFilterLabel && (() => {
+                  const isLocked = enforceClassification;
+                  const active = classificationFilterActive;
+                  const why = `Limits the list to ${classificationFilterLabel} accounts — the only category that makes accounting sense for this field. Picking a different type (e.g. an Expense account here) will distort your P&L and balance sheet because debits and credits land on the wrong financial statement line.`;
+                  const tooltip = isLocked
+                    ? `LOCKED BY CONTEXT — this field strictly requires ${classificationFilterLabel} accounts. ${why}`
+                    : active
+                      ? `ACTIVE — click to disable.\n\nWhy this filter exists: ${why}`
+                      : `DISABLED — click to re-enable.\n\nWhy this filter exists: ${why}`;
+                  return (
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => !isLocked && setClassificationFilterDisabled((d) => !d)}
+                      title={tooltip}
+                      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-bold uppercase tracking-wide border transition
+                        ${active
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                          : 'bg-slate-100 text-slate-400 border-slate-200 line-through hover:bg-slate-200'}
+                        ${isLocked ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`}
+                    >
+                      {isLocked && <Lock className="w-2.5 h-2.5" />}
+                      {classificationFilterLabel}
+                    </button>
+                  );
+                })()}
+                {!providedAccounts && (() => {
+                  const isLocked = enforceScope;
+                  const active = effectiveScope === 'valid';
+                  const why = `Hides header (summary) accounts, inactive accounts, and any account that has children. Only leaf POSTING accounts can receive journal entries — picking a header would break double-entry posting and corrupt your trial balance.`;
+                  const tooltip = isLocked
+                    ? `LOCKED BY CONTEXT — only postable accounts are allowed here. ${why}`
+                    : active
+                      ? `ACTIVE — click to show all accounts (headers, inactive, parents).\n\nWhy this filter exists: ${why}`
+                      : `DISABLED — click to limit to postable accounts.\n\nWhy this filter exists: ${why}`;
+                  return (
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => !isLocked && setScopeOverride(effectiveScope === 'all' ? 'valid' : 'all')}
+                      title={tooltip}
+                      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-bold uppercase tracking-wide border transition
+                        ${active
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          : 'bg-slate-100 text-slate-400 border-slate-200 line-through hover:bg-slate-200'}
+                        ${isLocked ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`}
+                    >
+                      {isLocked && <Lock className="w-2.5 h-2.5" />}
+                      POSTING
+                    </button>
+                  );
+                })()}
+                <span className="ml-auto text-[10px] text-[var(--color-text-muted)] font-mono">{selectableAccounts.length}</span>
+              </div>
+
               {/* Results */}
               <div className="flex-1 overflow-y-auto custom-scroll p-1">
                 {isLoading ? (
@@ -404,7 +534,11 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                         {t('accountSelector.noResults', 'No accounts found')}
                       </p>
                       <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                        {t('accountSelector.noResultsDetail', 'We couldn\'t find any account matching your search.')}
+                        {classificationFilterActive
+                          ? `No ${classificationFilterLabel} account matches. Create one with the + button, or click "Disable type filter" above to see all account types.`
+                          : effectiveScope === 'valid' && !providedAccounts
+                            ? 'The active filter hides header accounts, inactive accounts, and accounts with children. Try "Show all accounts" above.'
+                            : t('accountSelector.noResultsDetail', 'We couldn\'t find any account matching your search.')}
                       </p>
                     </div>
                     {canCreate && (

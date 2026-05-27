@@ -112,7 +112,8 @@ describe('Purchase settings use-cases', () => {
         }),
       } as any,
       voucherTypes.repo as any,
-      voucherForms.repo as any
+      voucherForms.repo as any,
+      { execute: jest.fn(async () => undefined) } as any
     );
 
     await useCase.execute({

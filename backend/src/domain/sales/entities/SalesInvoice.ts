@@ -1,3 +1,5 @@
+import { AppliedPromotionInfo } from './AppliedPromotion';
+
 export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
@@ -28,6 +30,9 @@ export interface SalesInvoiceLine {
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  /** Per-line override for tax-inclusive pricing. When undefined, falls back to the
+   *  tax code's `priceIsInclusive` default; when false explicitly, treats prices as exclusive. */
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -37,7 +42,22 @@ export interface SalesInvoiceLine {
   unitCostBase?: number;
   lineCostBase?: number;
   stockMovementId?: string | null;
+  /**
+   * Outcome of the COGS recognition decision for this line. Set during posting.
+   * null/undefined means "not yet posted" or "N/A" (e.g. line was rejected before posting).
+   * See PostingLog and docs/architecture/posting-log.md for the taxonomy.
+   */
+  cogsPostingStatus?:
+    | 'POSTED'
+    | 'SKIPPED_POSTED_AT_DN'
+    | 'SKIPPED_SERVICE_ITEM'
+    | 'SKIPPED_DEFERRED_POLICY'
+    | 'SKIPPED_UNSETTLED_COST'
+    | null;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesInvoiceCharge {
@@ -55,16 +75,28 @@ export interface SalesInvoiceCharge {
   description?: string;
 }
 
+export interface SalesInvoiceAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface SalesInvoiceProps {
   id: string;
   companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  voucherFormId?: string;
   formType: string;
   voucherType: string;
   persona: string;
   source?: DocumentSource | string;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerName: string;
   invoiceDate: string;
@@ -73,6 +105,7 @@ export interface SalesInvoiceProps {
   exchangeRate: number;
   lines: SalesInvoiceLine[];
   charges?: SalesInvoiceCharge[];
+  attachments?: SalesInvoiceAttachment[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -91,6 +124,7 @@ export interface SalesInvoiceProps {
   createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 }
 
 const SI_STATUSES: SIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
@@ -206,11 +240,13 @@ export class SalesInvoice {
   readonly companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  readonly voucherFormId?: string;
   readonly formType: string;
   readonly voucherType: string;
   readonly persona: string;
   readonly source: DocumentSource;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerName: string;
   invoiceDate: string;
@@ -219,6 +255,7 @@ export class SalesInvoice {
   exchangeRate: number;
   lines: SalesInvoiceLine[];
   charges: SalesInvoiceCharge[];
+  attachments: SalesInvoiceAttachment[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -237,6 +274,7 @@ export class SalesInvoice {
   readonly createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  appliedPromotions?: AppliedPromotionInfo[];
 
   constructor(props: SalesInvoiceProps) {
     const id = toStringRef(props.id);
@@ -271,11 +309,13 @@ export class SalesInvoice {
     this.companyId = companyId;
     this.invoiceNumber = invoiceNumber;
     this.customerInvoiceNumber = toOptionalStringRef(props.customerInvoiceNumber);
+    this.voucherFormId = toOptionalStringRef(props.voucherFormId);
     this.formType = formType;
     this.voucherType = voucherType;
     this.persona = persona;
     this.source = normalizeDocumentSource(props.source);
     this.salesOrderId = toOptionalStringRef(props.salesOrderId);
+    this.salespersonId = toOptionalStringRef(props.salespersonId);
     this.customerId = customerId;
     this.customerName = toDisplayText(props.customerName);
     this.invoiceDate = invoiceDate;
@@ -284,6 +324,17 @@ export class SalesInvoice {
     this.exchangeRate = exchangeRate;
     this.lines = props.lines.map((line, index) => this.normalizeLine(line, index));
     this.charges = (props.charges || []).map((charge, index) => this.normalizeCharge(charge, index));
+    this.attachments = Array.isArray(props.attachments)
+      ? props.attachments.map((attachment) => ({
+          id: toStringRef(attachment.id),
+          name: toDisplayText(attachment.name),
+          size: Number(attachment.size || 0),
+          type: toDisplayText(attachment.type),
+          path: toStringRef(attachment.path),
+          uploadedAt: toStringRef(attachment.uploadedAt),
+          uploadedBy: toStringRef(attachment.uploadedBy),
+        }))
+      : [];
 
     this.subtotalDoc = roundMoney(
       this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
@@ -332,6 +383,7 @@ export class SalesInvoice {
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this.postedAt = props.postedAt;
+    this.appliedPromotions = props.appliedPromotions;
   }
 
   private normalizeLine(line: SalesInvoiceLine, index: number): SalesInvoiceLine {
@@ -402,6 +454,9 @@ export class SalesInvoice {
       lineCostBase: line.lineCostBase,
       stockMovementId: toOptionalStringRef(line.stockMovementId) ?? null,
       description: toOptionalDisplayText(line.description),
+      appliedPromotionId: line.appliedPromotionId,
+      appliedPromotionName: line.appliedPromotionName,
+      appliedDiscountPct: line.appliedDiscountPct,
     };
   }
 
@@ -445,12 +500,14 @@ export class SalesInvoice {
       companyId: this.companyId,
       invoiceNumber: this.invoiceNumber,
       customerInvoiceNumber: this.customerInvoiceNumber,
+      voucherFormId: this.voucherFormId,
       voucherTypeId: this.formType,
       formType: this.formType,
       voucherType: this.voucherType,
       persona: this.persona,
       source: this.source,
       salesOrderId: this.salesOrderId,
+      salespersonId: this.salespersonId,
       customerId: this.customerId,
       customerName: this.customerName,
       invoiceDate: this.invoiceDate,
@@ -459,6 +516,7 @@ export class SalesInvoice {
       exchangeRate: this.exchangeRate,
       lines: this.lines.map((line) => ({ ...line })),
       charges: this.charges.map((charge) => ({ ...charge })),
+      attachments: this.attachments.map((attachment) => ({ ...attachment })),
       subtotalDoc: this.subtotalDoc,
       taxTotalDoc: this.taxTotalDoc,
       grandTotalDoc: this.grandTotalDoc,
@@ -477,6 +535,7 @@ export class SalesInvoice {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       postedAt: this.postedAt,
+      appliedPromotions: this.appliedPromotions,
     };
   }
 
@@ -499,11 +558,13 @@ export class SalesInvoice {
       companyId: data.companyId,
       invoiceNumber: data.invoiceNumber,
       customerInvoiceNumber: data.customerInvoiceNumber,
+      voucherFormId: data.voucherFormId,
       formType,
       voucherType,
       persona: data.persona || inferredPersona,
       source: data.source || data.documentSource || 'default_form',
       salesOrderId: data.salesOrderId,
+      salespersonId: data.salespersonId,
       customerId: data.customerId,
       customerName: data.customerName,
       invoiceDate: data.invoiceDate,
@@ -512,6 +573,7 @@ export class SalesInvoice {
       exchangeRate: data.exchangeRate,
       lines: data.lines || [],
       charges: data.charges || [],
+      attachments: data.attachments || [],
       subtotalDoc: data.subtotalDoc ?? 0,
       taxTotalDoc: data.taxTotalDoc ?? 0,
       grandTotalDoc: data.grandTotalDoc ?? 0,
@@ -530,6 +592,7 @@ export class SalesInvoice {
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       postedAt: data.postedAt ? toDate(data.postedAt) : undefined,
+      appliedPromotions: data.appliedPromotions,
     });
   }
 }

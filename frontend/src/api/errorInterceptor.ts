@@ -1,7 +1,19 @@
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosRequestConfig } from 'axios';
 import { client } from './client';
 import { errorHandler } from '../services/errorHandler';
 import { ApiErrorResponse } from '../types/errors';
+
+// Backend cold-start: retry 503 transparently before showing any UI error.
+// The backend returns 503 "Server not ready" while modules initialize
+// (see backend/src/index.ts). Without this, a fresh page load after a
+// backend restart spams the user with one toast per in-flight request.
+const RETRY_DELAYS_MS = [250, 500, 1000, 2000, 4000];
+
+interface RetryableConfig extends AxiosRequestConfig {
+  __retry503Count?: number;
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * Setup error handling interceptor for API client
@@ -24,6 +36,20 @@ export function setupErrorInterceptor() {
       return response.data;
     },
     async (error: AxiosError) => {
+      // Transparent retry for 503 "Server not ready" during backend warm-up.
+      // Each request is retried up to RETRY_DELAYS_MS.length times with the
+      // listed backoff. No toast is shown unless the final retry also fails.
+      if (error.response?.status === 503 && error.config) {
+        const cfg = error.config as RetryableConfig;
+        const attempt = cfg.__retry503Count ?? 0;
+        if (attempt < RETRY_DELAYS_MS.length) {
+          cfg.__retry503Count = attempt + 1;
+          await sleep(RETRY_DELAYS_MS[attempt]);
+          return client.request(cfg);
+        }
+        // Final retry failed — fall through to normal error handling below.
+      }
+
       // Handle authentication errors FIRST before showing any UI
       // Only 401 Unauthorized is an auth failure. 500 is a server error, not auth.
       const isAuthStatus = error.response?.status === 401;

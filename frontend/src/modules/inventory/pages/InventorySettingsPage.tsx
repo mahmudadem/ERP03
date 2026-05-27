@@ -72,6 +72,7 @@ const InventorySettingsPage: React.FC = () => {
         defaultCostCurrency: settings.defaultCostCurrency,
         defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId || undefined,
         allowNegativeStock: settings.allowNegativeStock,
+        allowDeferredCost: settings.allowDeferredCost,
         defaultWarehouseId: settings.defaultWarehouseId || undefined,
         autoGenerateItemCode: settings.autoGenerateItemCode,
         itemCodePrefix: settings.itemCodePrefix || undefined,
@@ -234,6 +235,21 @@ const InventorySettingsPage: React.FC = () => {
                     type="checkbox"
                     checked={settings.allowNegativeStock}
                     onChange={(e) => updateSetting('allowNegativeStock', e.target.checked)}
+                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 cursor-pointer hover:border-gray-300 transition">
+                  <div>
+                    <div className="text-sm font-bold text-gray-900">Allow Deferred Cost Posting</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-tighter">
+                      Post sales invoices before stock cost is known. COGS is recognized later when cost settles.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.allowDeferredCost}
+                    onChange={(e) => updateSetting('allowDeferredCost', e.target.checked)}
                     className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </label>

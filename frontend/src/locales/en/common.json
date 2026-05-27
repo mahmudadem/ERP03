@@ -122,7 +122,13 @@
     "aiAssistant": "AI Assistant",
     "chat": "Chat",
     "aiProposals": "AI Proposals",
-    "aiUsage": "AI Usage"
+    "aiUsage": "AI Usage",
+    "dev": "Dev",
+    "dataTableDemo": "DataTable Demo",
+    "voucherListDemo": "Voucher List Demo",
+    "smartVoucherList": "Smart Voucher List",
+    "demo": "Demo",
+    "new": "New"
   },
   "reportContainer": {
     "refresh": "Refresh",
@@ -2036,6 +2042,242 @@
       "directInvoicingStatusLabel": "Direct Invoicing",
       "directAllowed": "Allowed",
       "directBlockedOperational": "Blocked (Operational)"
+    },
+    "settings": {
+      "arGeneration": {
+        "title": "AR Sub-account Generation",
+        "description": "Configure how customer-specific AR sub-accounts are generated during customer creation.",
+        "backfillButton": "Backfill customer AR sub-accounts",
+        "confirmTitle": "Backfill Customer AR Sub-accounts",
+        "confirmMessage": "This will scan active customers and create dedicated AR sub-accounts for parties that do not already have one under the configured AR parent.",
+        "confirmAction": "Run Backfill"
+      },
+      "arParent": {
+        "label": "AR Parent Account",
+        "placeholder": "Select AR parent account",
+        "context": "Asset",
+        "help": "Parent account under which per-customer AR sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AR Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      },
+      "communications": {
+        "title": "Outbound Communications",
+        "description": "Configure company-owned sender accounts for WhatsApp, Email, and Telegram. Credentials are stored encrypted.",
+        "addWhatsapp": "Add WhatsApp Account",
+        "addEmail": "Add Email Account",
+        "addTelegram": "Add Telegram Account",
+        "empty": "No sender accounts configured yet.",
+        "label": "Account Label",
+        "apiVersion": "API Version (Optional)",
+        "phoneDisplay": "Display Phone (E.164)",
+        "phoneNumberId": "Meta Phone Number ID",
+        "fromAddress": "From Email",
+        "fromName": "From Name",
+        "botUsername": "Bot Username",
+        "credential": "Credential / Access Token",
+        "credentialStored": "Leave blank to keep existing credential",
+        "credentialRequired": "Enter credential",
+        "active": "Active",
+        "default": "Default for this channel"
+      }
+    },
+    "invoiceTemplates": {
+      "fieldLabel": "Invoice Template",
+      "customerDefaultLabel": "Default Invoice Template",
+      "autoSelect": "Auto Select",
+      "none": "(No Template)",
+      "defaultTag": "(Default)",
+      "help": "Controls the print layout (logo/footer/terms) for this invoice.",
+      "noneForType": "No invoice templates are available for this invoice type.",
+      "customerDefaultHelp": "Used to pre-select the invoice print layout when creating new sales invoices for this customer."
+    },
+    "invoices": {
+      "whatsapp": {
+        "action": "Send via WhatsApp",
+        "modalTitle": "Send Invoice via WhatsApp",
+        "senderLabel": "Sender Account",
+        "senderDefaultOption": "Use system default sender",
+        "defaultSender": "default sender",
+        "defaultTag": "Default",
+        "phoneLabel": "Recipient Phone (E.164)",
+        "phonePlaceholder": "+905551112233",
+        "documentUrlLabel": "Document URL (Optional)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "Message",
+        "send": "Send",
+        "sending": "Sending...",
+        "success": "WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).",
+        "sendError": "Failed to send invoice via WhatsApp."
+      },
+      "telegram": {
+        "action": "Send via Telegram",
+        "modalTitle": "Send Invoice via Telegram",
+        "senderLabel": "Sender Account",
+        "senderDefaultOption": "Use default sender",
+        "defaultSender": "default sender",
+        "defaultTag": "Default",
+        "chatLabel": "Recipient Chat ID or @Username",
+        "chatPlaceholder": "@customer_username or -1001234567890",
+        "documentUrlLabel": "Document URL (Optional)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "Message",
+        "send": "Send",
+        "sending": "Sending...",
+        "success": "Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).",
+        "sendError": "Failed to send invoice via Telegram."
+      },
+      "attachments": {
+        "title": "Attachments",
+        "help": "Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.",
+        "empty": "No attachments yet.",
+        "upload": "Upload Attachment",
+        "uploading": "Uploading...",
+        "uploadSuccess": "Attachment uploaded successfully.",
+        "uploadError": "Failed to upload attachment.",
+        "open": "Open",
+        "remove": "Remove",
+        "removing": "Removing...",
+        "removeError": "Failed to remove attachment.",
+        "downloadError": "Failed to generate download link."
+      }
+    },
+    "recurring": {
+      "title": "Recurring Invoices",
+      "subtitle": "Templates & Scheduled Invoices",
+      "newTemplate": "New Recurring Invoice",
+      "templateDirectory": "Template Directory",
+      "nextDate": "Next",
+      "fields": {
+        "templateName": "Template Name *",
+        "customerId": "Customer ID *",
+        "customerName": "Customer Name",
+        "frequency": "Frequency *",
+        "dayOfMonth": "Day of Month",
+        "dayOfWeek": "Day of Week",
+        "startDate": "Start Date *",
+        "endDate": "End Date",
+        "maxOccurrences": "Max Occurrences",
+        "notes": "Notes",
+        "invoiceLines": "Invoice Lines"
+      },
+      "frequency": {
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "annually": "Annually"
+      },
+      "weekdays": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday"
+      },
+      "filters": {
+        "allStatuses": "All Statuses"
+      },
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "actions": {
+        "addLine": "Add Line",
+        "newTemplate": "New Template",
+        "generateDue": "Generate Due",
+        "createTemplate": "Create Template",
+        "creatingTemplate": "Creating...",
+        "cloneFromInvoice": "Clone to Recurring"
+      },
+      "placeholders": {
+        "templateName": "e.g., Monthly Retainer - Client X",
+        "maxOccurrences": "Leave empty for unlimited",
+        "code": "Code",
+        "itemName": "Item name",
+        "qty": "Qty",
+        "price": "Price"
+      },
+      "empty": {
+        "title": "No Recurring Templates",
+        "description": "Create your first recurring invoice template by clicking the button above."
+      },
+      "validation": {
+        "requiredTop": "Name, Customer ID, and Start Date are required",
+        "cloneNameRequired": "Template name is required"
+      },
+      "errors": {
+        "load": "Failed to load recurring invoices",
+        "create": "Failed to create template",
+        "generate": "Failed to generate invoices",
+        "action": "Failed to update template status",
+        "cloneFromInvoice": "Failed to clone invoice as recurring template."
+      },
+      "cloneModal": {
+        "title": "Clone Invoice to Recurring Template"
+      }
     }
+  },
+  "purchases": {
+    "settings": {
+      "apGeneration": {
+        "title": "AP Sub-account Generation",
+        "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation.",
+        "backfillButton": "Backfill vendor AP sub-accounts",
+        "confirmTitle": "Backfill Vendor AP Sub-accounts",
+        "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
+        "confirmAction": "Run Backfill"
+      },
+      "apParent": {
+        "label": "AP Parent Account",
+        "placeholder": "Select AP parent account",
+        "context": "Liability",
+        "help": "Parent account under which per-vendor AP sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AP Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      }
+    }
+  },
+  "parties": {
+    "form": {
+      "accounting": {
+        "title": "Accounting",
+        "strategyLabel": "Account Strategy *",
+        "autoCreate": "Auto-create sub-account",
+        "autoCreateHelp": "Creates a dedicated account from settings format and parent.",
+        "pickExisting": "Pick existing account",
+        "pickExistingHelp": "Manually bind this party to an existing AR/AP account.",
+        "strategyPrompt": "Choose one strategy before saving this party.",
+        "strategyEditNote": "Auto-create runs during new party creation. Existing parties can be remapped using Pick Existing.",
+        "previewTitle": "Generated account preview",
+        "missingArParent": "Sales Settings is missing AR Parent Account. Configure it first.",
+        "missingApParent": "Purchase Settings is missing AP Parent Account. Configure it first.",
+        "previewNeedsCode": "Enter a party code to preview the generated account code.",
+        "previewFormat": "Format: {{format}}",
+        "previewUnavailable": "Preview unavailable",
+        "accountHelp": "Primary GL posting target for transactions associated with this party.",
+        "strategyRequired": "Select an account strategy before saving.",
+        "arRequired": "Linked AR account is required for customers when using Pick Existing.",
+        "apRequired": "Linked AP account is required for vendors when using Pick Existing."
+      }
+    }
+  },
+  "fulfillment": {
+    "title": "Fulfillment Progress",
+    "ordered": "Ordered",
+    "delivered": "Delivered",
+    "invoiced": "Invoiced",
+    "returned": "Returned",
+    "overall": "Overall",
+    "partial": "Partial",
+    "fulfilled": "Fulfilled",
+    "createBackorder": "Create Backorder Delivery Note",
+    "noLinesOverdue": "All lines fully delivered"
   }
 }

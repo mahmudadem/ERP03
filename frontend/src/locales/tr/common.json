@@ -122,7 +122,13 @@
     "aiAssistant": "AI Asistani",
     "chat": "Sohbet",
     "aiProposals": "Yapay Zeka Teklifleri",
-    "aiUsage": "Yapay Zeka Kullanımı"
+    "aiUsage": "Yapay Zeka Kullanımı",
+    "dev": "Geliştirici",
+    "dataTableDemo": "Veri Tablosu Demo",
+    "voucherListDemo": "Fiş Listesi Demo",
+    "smartVoucherList": "Akıllı Fiş Listesi",
+    "demo": "Demo",
+    "new": "Yeni"
   },
   "reportContainer": {
     "refresh": "Yenile",
@@ -2109,6 +2115,242 @@
       "directInvoicingStatusLabel": "Doğrudan Faturalandırma",
       "directAllowed": "İzin verildi",
       "directBlockedOperational": "Engellendi (Operasyonel)"
+    },
+    "settings": {
+      "arGeneration": {
+        "title": "AR Sub-account Generation",
+        "description": "Configure how customer-specific AR sub-accounts are generated during customer creation.",
+        "backfillButton": "Backfill customer AR sub-accounts",
+        "confirmTitle": "Backfill Customer AR Sub-accounts",
+        "confirmMessage": "This will scan active customers and create dedicated AR sub-accounts for parties that do not already have one under the configured AR parent.",
+        "confirmAction": "Run Backfill"
+      },
+      "arParent": {
+        "label": "AR Parent Account",
+        "placeholder": "Select AR parent account",
+        "context": "Asset",
+        "help": "Parent account under which per-customer AR sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AR Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      },
+      "communications": {
+        "title": "Dışa Giden İletişim",
+        "description": "WhatsApp, E-posta ve Telegram için şirkete ait gönderici hesaplarını yapılandırın. Kimlik bilgileri şifrelenmiş olarak saklanır.",
+        "addWhatsapp": "WhatsApp Hesabı Ekle",
+        "addEmail": "E-posta Hesabı Ekle",
+        "addTelegram": "Telegram Hesabı Ekle",
+        "empty": "Henüz gönderici hesabı yapılandırılmadı.",
+        "label": "Hesap Etiketi",
+        "apiVersion": "API Sürümü (Opsiyonel)",
+        "phoneDisplay": "Görünen Telefon (E.164)",
+        "phoneNumberId": "Meta Telefon Numara ID",
+        "fromAddress": "Gönderen E-posta",
+        "fromName": "Gönderen Adı",
+        "botUsername": "Bot Kullanıcı Adı",
+        "credential": "Kimlik Bilgisi / Erişim Anahtarı",
+        "credentialStored": "Mevcut kimlik bilgisini korumak için boş bırakın",
+        "credentialRequired": "Kimlik bilgisi girin",
+        "active": "Aktif",
+        "default": "Bu kanal için varsayılan"
+      }
+    },
+    "invoiceTemplates": {
+      "fieldLabel": "Fatura Şablonu",
+      "customerDefaultLabel": "Varsayılan Fatura Şablonu",
+      "autoSelect": "Otomatik Seç",
+      "none": "(Şablon Yok)",
+      "defaultTag": "(Varsayılan)",
+      "help": "Bu fatura için yazdırma düzenini (logo/alt bilgi/şartlar) kontrol eder.",
+      "noneForType": "Bu fatura tipi için kullanılabilir şablon yok.",
+      "customerDefaultHelp": "Bu müşteri için yeni satış faturası oluştururken fatura yazdırma düzenini önceden seçmek için kullanılır."
+    },
+    "invoices": {
+      "whatsapp": {
+        "action": "WhatsApp ile Gönder",
+        "modalTitle": "Faturayı WhatsApp ile Gönder",
+        "senderLabel": "Gönderici Hesap",
+        "senderDefaultOption": "Sistem varsayılan göndericisini kullan",
+        "defaultSender": "varsayılan gönderici",
+        "defaultTag": "Varsayılan",
+        "phoneLabel": "Alıcı Telefonu (E.164)",
+        "phonePlaceholder": "+905551112233",
+        "documentUrlLabel": "Belge URL'si (İsteğe Bağlı)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "Mesaj",
+        "send": "Gönder",
+        "sending": "Gönderiliyor...",
+        "success": "WhatsApp başarıyla {{phone}} numarasına {{sender}} hesabı ile gönderildi (mesaj kimliği: {{messageId}}).",
+        "sendError": "Fatura WhatsApp ile gönderilemedi."
+      },
+      "telegram": {
+        "action": "Telegram ile Gönder",
+        "modalTitle": "Faturayı Telegram ile Gönder",
+        "senderLabel": "Gönderici Hesap",
+        "senderDefaultOption": "Varsayılan hesabı kullan",
+        "defaultSender": "varsayılan hesap",
+        "defaultTag": "Varsayılan",
+        "chatLabel": "Alıcı Chat ID veya @KullanıcıAdı",
+        "chatPlaceholder": "@customer_username veya -1001234567890",
+        "documentUrlLabel": "Belge URL'si (Opsiyonel)",
+        "documentUrlPlaceholder": "https://...",
+        "messageLabel": "Mesaj",
+        "send": "Gönder",
+        "sending": "Gönderiliyor...",
+        "success": "Telegram {{chatId}} hedefine {{sender}} ile başarıyla gönderildi (mesaj kimliği: {{messageId}}).",
+        "sendError": "Fatura Telegram ile gönderilemedi."
+      },
+      "attachments": {
+        "title": "Ekler",
+        "help": "İzin verilen türler: PDF, PNG, JPG, DOCX, XLSX. Dosya başına en fazla 10 MB, fatura başına 5 dosya.",
+        "empty": "Henüz ek yok.",
+        "upload": "Ek Yükle",
+        "uploading": "Yükleniyor...",
+        "uploadSuccess": "Ek başarıyla yüklendi.",
+        "uploadError": "Ek yüklenemedi.",
+        "open": "Aç",
+        "remove": "Kaldır",
+        "removing": "Kaldırılıyor...",
+        "removeError": "Ek kaldırılamadı.",
+        "downloadError": "İndirme bağlantısı oluşturulamadı."
+      }
+    },
+    "recurring": {
+      "title": "Tekrarlayan Faturalar",
+      "subtitle": "Şablonlar ve Zamanlanmış Faturalar",
+      "newTemplate": "Yeni Tekrarlayan Fatura",
+      "templateDirectory": "Şablon Dizini",
+      "nextDate": "Sonraki",
+      "fields": {
+        "templateName": "Şablon Adı *",
+        "customerId": "Müşteri ID *",
+        "customerName": "Müşteri Adı",
+        "frequency": "Sıklık *",
+        "dayOfMonth": "Ayın Günü",
+        "dayOfWeek": "Haftanın Günü",
+        "startDate": "Başlangıç Tarihi *",
+        "endDate": "Bitiş Tarihi",
+        "maxOccurrences": "Maksimum Tekrar",
+        "notes": "Notlar",
+        "invoiceLines": "Fatura Satırları"
+      },
+      "frequency": {
+        "weekly": "Haftalık",
+        "monthly": "Aylık",
+        "quarterly": "Üç Aylık",
+        "annually": "Yıllık"
+      },
+      "weekdays": {
+        "sunday": "Pazar",
+        "monday": "Pazartesi",
+        "tuesday": "Salı",
+        "wednesday": "Çarşamba",
+        "thursday": "Perşembe",
+        "friday": "Cuma",
+        "saturday": "Cumartesi"
+      },
+      "filters": {
+        "allStatuses": "Tüm Durumlar"
+      },
+      "status": {
+        "active": "Aktif",
+        "paused": "Duraklatıldı",
+        "completed": "Tamamlandı",
+        "cancelled": "İptal Edildi"
+      },
+      "actions": {
+        "addLine": "Satır Ekle",
+        "newTemplate": "Yeni Şablon",
+        "generateDue": "Vadesi Gelenleri Oluştur",
+        "createTemplate": "Şablon Oluştur",
+        "creatingTemplate": "Oluşturuluyor...",
+        "cloneFromInvoice": "Tekrarlayana Kopyala"
+      },
+      "placeholders": {
+        "templateName": "örn. Aylık Danışmanlık - Müşteri X",
+        "maxOccurrences": "Sınırsız için boş bırakın",
+        "code": "Kod",
+        "itemName": "Ürün adı",
+        "qty": "Miktar",
+        "price": "Fiyat"
+      },
+      "empty": {
+        "title": "Tekrarlayan Şablon Yok",
+        "description": "Yukarıdaki butona tıklayarak ilk tekrarlayan fatura şablonunuzu oluşturun."
+      },
+      "validation": {
+        "requiredTop": "Şablon adı, Müşteri ID ve Başlangıç Tarihi zorunludur",
+        "cloneNameRequired": "Şablon adı zorunludur"
+      },
+      "errors": {
+        "load": "Tekrarlayan faturalar yüklenemedi",
+        "create": "Şablon oluşturulamadı",
+        "generate": "Faturalar oluşturulamadı",
+        "action": "Şablon durumu güncellenemedi",
+        "cloneFromInvoice": "Fatura tekrarlayan şablona kopyalanamadı."
+      },
+      "cloneModal": {
+        "title": "Faturayı Tekrarlayan Şablona Kopyala"
+      }
     }
+  },
+  "purchases": {
+    "settings": {
+      "apGeneration": {
+        "title": "AP Sub-account Generation",
+        "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation.",
+        "backfillButton": "Backfill vendor AP sub-accounts",
+        "confirmTitle": "Backfill Vendor AP Sub-accounts",
+        "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
+        "confirmAction": "Run Backfill"
+      },
+      "apParent": {
+        "label": "AP Parent Account",
+        "placeholder": "Select AP parent account",
+        "context": "Liability",
+        "help": "Parent account under which per-vendor AP sub-accounts are generated."
+      },
+      "partyAccountFormat": {
+        "label": "AP Sub-account Code Format",
+        "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
+      }
+    }
+  },
+  "parties": {
+    "form": {
+      "accounting": {
+        "title": "Accounting",
+        "strategyLabel": "Account Strategy *",
+        "autoCreate": "Auto-create sub-account",
+        "autoCreateHelp": "Creates a dedicated account from settings format and parent.",
+        "pickExisting": "Pick existing account",
+        "pickExistingHelp": "Manually bind this party to an existing AR/AP account.",
+        "strategyPrompt": "Choose one strategy before saving this party.",
+        "strategyEditNote": "Auto-create runs during new party creation. Existing parties can be remapped using Pick Existing.",
+        "previewTitle": "Generated account preview",
+        "missingArParent": "Sales Settings is missing AR Parent Account. Configure it first.",
+        "missingApParent": "Purchase Settings is missing AP Parent Account. Configure it first.",
+        "previewNeedsCode": "Enter a party code to preview the generated account code.",
+        "previewFormat": "Format: {{format}}",
+        "previewUnavailable": "Preview unavailable",
+        "accountHelp": "Primary GL posting target for transactions associated with this party.",
+        "strategyRequired": "Select an account strategy before saving.",
+        "arRequired": "Linked AR account is required for customers when using Pick Existing.",
+        "apRequired": "Linked AP account is required for vendors when using Pick Existing."
+      }
+    }
+  },
+  "fulfillment": {
+    "title": "Karşılama İlerlemesi",
+    "ordered": "Sipariş",
+    "delivered": "Teslim",
+    "invoiced": "Faturalandı",
+    "returned": "İade",
+    "overall": "Genel",
+    "partial": "Kısmi",
+    "fulfilled": "Tamamlandı",
+    "createBackorder": "Açık Sipariş Teslim Notu Oluştur",
+    "noLinesOverdue": "Tüm satırlar tamamen teslim edildi"
   }
 }

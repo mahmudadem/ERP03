@@ -20,21 +20,42 @@ export interface SalesPaymentMethodConfigDTO {
   isEnabled?: boolean;
 }
 
+export interface SalesMessagingAccountDTO {
+  id: string;
+  channel: 'WHATSAPP' | 'EMAIL' | 'TELEGRAM';
+  provider: 'META_WHATSAPP_CLOUD' | 'SMTP' | 'TELEGRAM_BOT';
+  label: string;
+  isDefault: boolean;
+  isActive: boolean;
+  phoneNumberE164?: string;
+  phoneNumberId?: string;
+  fromAddress?: string;
+  fromDisplayName?: string;
+  botUsername?: string;
+  apiVersion?: string;
+  hasCredential: boolean;
+}
+
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultRefundAccountId?: string;
+  restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
   paymentMethodConfigs: SalesPaymentMethodConfigDTO[];
+  messagingAccounts: SalesMessagingAccountDTO[];
   governanceRules: GovernanceRuleDTO[];
   defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
@@ -72,6 +93,9 @@ export interface SalesOrderLineDTO {
   taxAmountBase: number;
   warehouseId?: string;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+  appliedDiscountPct?: number;
 }
 
 export interface SalesOrderDTO {
@@ -164,6 +188,7 @@ export interface SalesInvoiceLineDTO {
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -191,11 +216,22 @@ export interface SalesInvoiceChargeDTO {
   description?: string;
 }
 
+export interface SalesInvoiceAttachmentDTO {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface SalesInvoiceDTO {
   id: string;
   companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  voucherFormId?: string;
   /** @deprecated Use formType instead */
   voucherTypeId?: string;
   formType: string;
@@ -203,6 +239,7 @@ export interface SalesInvoiceDTO {
   persona: string;
   source?: string;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerName: string;
   invoiceDate: string;
@@ -211,6 +248,7 @@ export interface SalesInvoiceDTO {
   exchangeRate: number;
   lines: SalesInvoiceLineDTO[];
   charges?: SalesInvoiceChargeDTO[];
+  attachments?: SalesInvoiceAttachmentDTO[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -309,7 +347,16 @@ export interface SalesReturnDTO {
   subtotalBase: number;
   taxTotalBase: number;
   grandTotalBase: number;
+  netSettlementAmountDoc: number;
+  netSettlementAmountBase: number;
+  settlementMode: 'CREDIT_NOTE' | 'REFUND';
+  reasonCode: 'DEFECTIVE' | 'WRONG_ITEM' | 'CHANGED_MIND' | 'OTHER';
   reason: string;
+  restockingFeeType?: 'PERCENT' | 'AMOUNT';
+  restockingFeeValue: number;
+  restockingFeeAmountDoc: number;
+  restockingFeeAmountBase: number;
+  refundSettlementAccountId?: string;
   notes?: string;
   status: 'DRAFT' | 'POSTED' | 'CANCELLED';
   revenueVoucherId?: string | null;
@@ -344,15 +391,34 @@ export class SalesDTOMapper {
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
       defaultARAccountId: settings.defaultARAccountId,
+      arParentAccountId: settings.arParentAccountId,
+      partyAccountCodeFormat: settings.partyAccountCodeFormat,
       defaultRevenueAccountId: settings.defaultRevenueAccountId,
       defaultCOGSAccountId: settings.defaultCOGSAccountId,
       defaultInventoryAccountId: settings.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId,
+      defaultRefundAccountId: settings.defaultRefundAccountId,
+      restockingFeeAccountId: settings.restockingFeeAccountId,
       allowOverDelivery: settings.allowOverDelivery,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
       paymentMethodConfigs: settings.paymentMethodConfigs || [],
+      messagingAccounts: (settings.messagingAccounts || []).map((account) => ({
+        id: account.id,
+        channel: account.channel,
+        provider: account.provider,
+        label: account.label,
+        isDefault: account.isDefault !== false,
+        isActive: account.isActive !== false,
+        phoneNumberE164: account.phoneNumberE164,
+        phoneNumberId: account.phoneNumberId,
+        fromAddress: account.fromAddress,
+        fromDisplayName: account.fromDisplayName,
+        botUsername: account.botUsername,
+        apiVersion: account.apiVersion,
+        hasCredential: !!account.encryptedCredential,
+      })),
       governanceRules: settings.governanceRules,
       defaultSalesInvoicePersona: settings.defaultSalesInvoicePersona,
       defaultWarehouseId: settings.defaultWarehouseId,
@@ -392,6 +458,9 @@ export class SalesDTOMapper {
       taxAmountBase: line.taxAmountBase,
       warehouseId: line.warehouseId,
       description: line.description,
+      appliedPromotionId: (line as any).appliedPromotionId,
+      appliedPromotionName: (line as any).appliedPromotionName,
+      appliedDiscountPct: (line as any).appliedDiscountPct,
     };
   }
 
@@ -492,6 +561,7 @@ export class SalesDTOMapper {
       taxCodeId: line.taxCodeId,
       taxCode: line.taxCode,
       taxRate: line.taxRate,
+      priceIsInclusive: line.priceIsInclusive,
       taxAmountDoc: line.taxAmountDoc,
       taxAmountBase: line.taxAmountBase,
       warehouseId: line.warehouseId,
@@ -511,12 +581,14 @@ export class SalesDTOMapper {
       companyId: si.companyId,
       invoiceNumber: si.invoiceNumber,
       customerInvoiceNumber: si.customerInvoiceNumber,
+      voucherFormId: si.voucherFormId,
       voucherTypeId: si.formType,
       formType: si.formType,
       voucherType: si.voucherType,
       persona: si.persona,
       source: si.source,
       salesOrderId: si.salesOrderId,
+      salespersonId: si.salespersonId,
       customerId: si.customerId,
       customerName: si.customerName,
       invoiceDate: si.invoiceDate,
@@ -525,6 +597,7 @@ export class SalesDTOMapper {
       exchangeRate: si.exchangeRate,
       lines: si.lines.map((line) => SalesDTOMapper.toSalesInvoiceLineDTO(line)),
       charges: (si.charges || []).map((charge) => ({ ...charge })),
+      attachments: (si.attachments || []).map((attachment) => ({ ...attachment })),
       subtotalDoc: si.subtotalDoc,
       taxTotalDoc: si.taxTotalDoc,
       grandTotalDoc: si.grandTotalDoc,
@@ -598,7 +671,16 @@ export class SalesDTOMapper {
       subtotalBase: sr.subtotalBase,
       taxTotalBase: sr.taxTotalBase,
       grandTotalBase: sr.grandTotalBase,
+      netSettlementAmountDoc: sr.netSettlementAmountDoc,
+      netSettlementAmountBase: sr.netSettlementAmountBase,
+      settlementMode: sr.settlementMode,
+      reasonCode: sr.reasonCode,
       reason: sr.reason,
+      restockingFeeType: sr.restockingFeeType,
+      restockingFeeValue: sr.restockingFeeValue,
+      restockingFeeAmountDoc: sr.restockingFeeAmountDoc,
+      restockingFeeAmountBase: sr.restockingFeeAmountBase,
+      refundSettlementAccountId: sr.refundSettlementAccountId,
       notes: sr.notes,
       status: sr.status,
       revenueVoucherId: sr.revenueVoucherId ?? null,

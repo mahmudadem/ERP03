@@ -1,0 +1,257 @@
+import React, { useEffect, useState } from 'react';
+import { ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
+import {
+  salesReportingApi,
+  ArAgingReportDTO,
+  ArAgingCustomerRowDTO,
+} from '../../../api/salesReportingApi';
+import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { Button } from '../../../components/ui/Button';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { PartySelector } from '../../../components/shared/selectors/PartySelector';
+import { clsx } from 'clsx';
+
+interface ArAgingParams {
+  asOfDate: string;
+  customerId?: string;
+  customerLabel?: string;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+const fmt = (n: number): string =>
+  n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ─── Initiator ──────────────────────────────────────────────────────────────
+
+const Initiator: React.FC<{
+  onSubmit: (p: ArAgingParams) => void;
+  initialParams?: ArAgingParams | null;
+}> = ({ onSubmit, initialParams }) => {
+  const [asOfDate, setAsOfDate]         = useState(initialParams?.asOfDate || today());
+  const [customerId, setCustomerId]     = useState(initialParams?.customerId || '');
+  const [customerLabel, setCustomerLabel] = useState(initialParams?.customerLabel || '');
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit({
+          asOfDate,
+          customerId: customerId || undefined,
+          customerLabel: customerLabel || undefined,
+        });
+      }}
+      className="space-y-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
+        <div className="md:col-span-4 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            As Of Date
+          </label>
+          <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-full" />
+        </div>
+
+        <div className="md:col-span-8 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Customer (optional)
+          </label>
+          <PartySelector
+            value={customerId}
+            role="CUSTOMER"
+            onChange={(party) => {
+              if (!party) {
+                setCustomerId('');
+                setCustomerLabel('');
+                return;
+              }
+              setCustomerId(party.id);
+              setCustomerLabel(party.displayName || party.legalName || party.id);
+            }}
+            placeholder="All customers"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-4 border-t border-slate-100">
+        <Button
+          type="submit"
+          className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
+        >
+          <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
+            Generate Report
+            <ChevronRight className="w-4 h-4" />
+          </span>
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+// ─── Expandable customer row ────────────────────────────────────────────────
+
+const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = ({ row, cellPad }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <tr
+        className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
+        onClick={() => setOpen(o => !o)}
+      >
+        <td className={cellPad}>
+          <div className="flex items-center gap-2">
+            {open ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+            <span className="font-semibold text-slate-800">{row.customerName}</span>
+          </div>
+        </td>
+        <td className={`${cellPad} text-right tabular-nums text-slate-700`}>{fmt(row.current)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-amber-600`}>{fmt(row.days1_30)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-orange-600`}>{fmt(row.days31_60)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-red-500`}>{fmt(row.days61_90)}</td>
+        <td className={`${cellPad} text-right tabular-nums text-red-700 font-semibold`}>{fmt(row.days90Plus)}</td>
+        <td className={`${cellPad} text-right tabular-nums font-bold text-slate-900`}>{fmt(row.total)}</td>
+      </tr>
+      {open && row.invoices.length > 0 && (
+        <tr className="bg-slate-50/80">
+          <td colSpan={7} className="px-8 py-3">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {['Invoice #', 'Invoice Date', 'Due Date', 'Days Overdue', 'Bucket', 'Outstanding'].map(h => (
+                    <th key={h} className={clsx('pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3', h === 'Outstanding' ? 'text-right' : 'text-left')}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {row.invoices.map(inv => (
+                  <tr key={inv.invoiceId} className="border-b border-slate-100">
+                    <td className="py-1.5 pr-3 text-[11px] font-mono text-slate-700">{inv.invoiceNumber}</td>
+                    <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.invoiceDate}</td>
+                    <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.dueDate ?? '—'}</td>
+                    <td className="py-1.5 pr-3 text-[11px] tabular-nums text-slate-600">{inv.daysOverdue}</td>
+                    <td className="py-1.5 pr-3 text-[11px] text-slate-600">{inv.bucket}</td>
+                    <td className="py-1.5 pr-3 text-[11px] tabular-nums text-right font-medium text-slate-800">{fmt(inv.outstandingAmountBase)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
+
+// ─── ReportContent ──────────────────────────────────────────────────────────
+
+const ReportContent: React.FC<{
+  params: ArAgingParams;
+  setTotalItems?: (total: number) => void;
+  density?: 'compact' | 'comfortable';
+}> = ({ params, setTotalItems, density }) => {
+  const [report, setReport] = useState<ArAgingReportDTO | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    salesReportingApi.getArAging({ asOfDate: params.asOfDate, customerId: params.customerId })
+      .then((data) => { if (!cancelled) setReport(data); })
+      .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load report'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [params.asOfDate, params.customerId]);
+
+  useEffect(() => {
+    setTotalItems?.(report?.rows.length ?? 0);
+  }, [report?.rows.length, setTotalItems]);
+
+  const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50">
+      <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
+            <CalendarDays className="w-3 h-3 text-blue-600" />
+            As of {report?.asOfDate ?? params.asOfDate}
+          </span>
+          {params.customerLabel && (
+            <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
+              {params.customerLabel}
+            </span>
+          )}
+          <span className="text-xs font-bold text-slate-500 ml-auto">
+            {report?.rows.length ?? 0} customer{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
+            Total AR: <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-auto p-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">{error}</div>
+        )}
+
+        {loading ? (
+          <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading aging...</p>
+            </div>
+          </div>
+        ) : !report || report.rows.length === 0 ? (
+          <div className="bg-white border rounded-xl p-12 text-center">
+            <p className="text-sm font-bold text-slate-600">No outstanding receivables as of {report?.asOfDate ?? params.asOfDate}</p>
+          </div>
+        ) : (
+          <div className="bg-white border rounded-xl shadow-sm overflow-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
+                <tr>
+                  {['Customer', 'Current', '1–30 Days', '31–60 Days', '61–90 Days', '90+ Days', 'Total'].map((h, i) => (
+                    <th key={h} className={clsx(cellPad, i === 0 ? 'text-left' : 'text-right')}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.rows.map((r) => (
+                  <CustomerRow key={r.customerId} row={r} cellPad={cellPad} />
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-100 font-bold text-slate-900">
+                  <td className={cellPad}>Totals</td>
+                  <td className={`${cellPad} text-right tabular-nums`}>{fmt(report.totals.current)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-amber-700`}>{fmt(report.totals.days1_30)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-orange-700`}>{fmt(report.totals.days31_60)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-red-600`}>{fmt(report.totals.days61_90)}</td>
+                  <td className={`${cellPad} text-right tabular-nums text-red-800`}>{fmt(report.totals.days90Plus)}</td>
+                  <td className={`${cellPad} text-right tabular-nums`}>{fmt(report.totals.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
+const ArAgingReportPage: React.FC = () => (
+  <ReportContainer<ArAgingParams>
+    title="AR Aging"
+    subtitle="Accounts receivable by aging bucket"
+    initiator={Initiator}
+    ReportContent={ReportContent}
+    config={{ paginated: false }}
+  />
+);
+
+export default ArAgingReportPage;

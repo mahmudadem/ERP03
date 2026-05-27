@@ -11,6 +11,11 @@ export interface SalesInvoiceLineCalculationInput {
   unitPriceDoc: number;
   exchangeRate: number;
   taxRate: number;
+  /** When true, unitPriceDoc is treated as a tax-inclusive price.
+   *  The service back-calculates the net (ex-tax) amount.
+   *  Discounts are applied to the inclusive amount before back-calculation.
+   *  Defaults to false (tax-exclusive). */
+  priceIsInclusive?: boolean;
   discountType?: SalesDiscountType;
   discountValue?: number;
   discountAmountDoc?: number;
@@ -53,6 +58,11 @@ export interface CalculatedSalesInvoiceChargeAmounts {
 export const calculateSalesInvoiceLineAmounts = (
   input: SalesInvoiceLineCalculationInput
 ): CalculatedSalesInvoiceLineAmounts => {
+  const priceIsInclusive = input.priceIsInclusive === true;
+  const divisor = priceIsInclusive ? 1 + input.taxRate : 1;
+
+  // grossLineTotalDoc is the pre-discount line amount in the price's own
+  // frame: inclusive when priceIsInclusive, exclusive otherwise.
   const grossLineTotalDoc = roundMoney(input.invoicedQty * input.unitPriceDoc);
   const discountValue = Number.isNaN(Number(input.discountValue)) ? 0 : Number(input.discountValue);
   const explicitDiscountAmountDoc = input.discountAmountDoc !== undefined ? Number(input.discountAmountDoc) : undefined;
@@ -66,12 +76,21 @@ export const calculateSalesInvoiceLineAmounts = (
     discountAmountDoc = roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
   }
 
-  const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+  // Post-discount amount still in the price's frame (inc or exc).
+  const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+
+  // lineTotalDoc is always the net (ex-tax) amount — the subtotal basis.
+  const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
+
   const unitPriceBase = roundMoney(input.unitPriceDoc * input.exchangeRate);
   const grossLineTotalBase = roundMoney(grossLineTotalDoc * input.exchangeRate);
   const discountAmountBase = roundMoney(discountAmountDoc * input.exchangeRate);
   const lineTotalBase = roundMoney(lineTotalDoc * input.exchangeRate);
-  const taxAmountDoc = roundMoney(lineTotalDoc * input.taxRate);
+
+  // taxAmountDoc: for exclusive, tax on net; for inclusive, back-calculated.
+  const taxAmountDoc = priceIsInclusive
+    ? roundMoney(postDiscountDoc - lineTotalDoc)
+    : roundMoney(lineTotalDoc * input.taxRate);
   const taxAmountBase = roundMoney(lineTotalBase * input.taxRate);
 
   return {

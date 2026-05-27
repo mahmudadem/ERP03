@@ -17,6 +17,7 @@ interface SidebarItemProps {
   children?: any[]; 
   isFlyout?: boolean;
   isChild?: boolean;
+  badge?: string;
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({ 
@@ -28,7 +29,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   onClick,
   children,
   isFlyout = false,
-  isChild = false
+  isChild = false,
+  badge
 }) => {
   const location = useLocation();
   const { sidebarMode } = useUserPreferences();
@@ -170,6 +172,13 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       )}>
         {label}
       </span>
+
+      {/* Badge */}
+      {badge && (isOpen || isFlyout) && (
+        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-red-500 text-white shrink-0">
+          {badge}
+        </span>
+      )}
 
       {/* Chevron for children (hide in shrunk mode to save space) */}
       {hasChildren && (isOpen || isFlyout) && (

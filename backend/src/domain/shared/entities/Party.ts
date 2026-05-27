@@ -16,6 +16,13 @@ export interface PartyProps {
   defaultCurrency?: string;
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
+  customerGroupId?: string;
+  creditLimit?: number;
+  creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
+  defaultPriceListId?: string;
+  defaultSalesInvoiceTemplateId?: string;
+  defaultSalesInvoiceFormType?: string;
+  taxExempt?: boolean;
   active: boolean;
   createdBy: string;
   createdAt: Date;
@@ -46,6 +53,13 @@ export class Party {
   defaultCurrency?: string;
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
+  customerGroupId?: string;
+  creditLimit?: number;
+  creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
+  defaultPriceListId?: string;
+  defaultSalesInvoiceTemplateId?: string;
+  defaultSalesInvoiceFormType?: string;
+  taxExempt?: boolean;
   active: boolean;
   readonly createdBy: string;
   readonly createdAt: Date;
@@ -69,6 +83,17 @@ export class Party {
       throw new Error(`Invalid party roles: ${invalidRoles.join(', ')}`);
     }
 
+    if (props.creditLimit !== undefined && props.creditLimit < 0) {
+      throw new Error('Party creditLimit must be >= 0');
+    }
+
+    if (props.creditHoldPolicy !== undefined) {
+      const validPolicies = ['NONE', 'WARN', 'BLOCK'];
+      if (!validPolicies.includes(props.creditHoldPolicy)) {
+        throw new Error('Party creditHoldPolicy must be NONE, WARN, or BLOCK');
+      }
+    }
+
     this.id = props.id;
     this.companyId = props.companyId;
     this.code = props.code.trim();
@@ -84,6 +109,13 @@ export class Party {
     this.defaultCurrency = props.defaultCurrency;
     this.defaultAPAccountId = props.defaultAPAccountId;
     this.defaultARAccountId = props.defaultARAccountId;
+    this.customerGroupId = props.customerGroupId;
+    this.creditLimit = props.creditLimit;
+    this.creditHoldPolicy = props.creditHoldPolicy;
+    this.defaultPriceListId = props.defaultPriceListId;
+    this.defaultSalesInvoiceTemplateId = props.defaultSalesInvoiceTemplateId;
+    this.defaultSalesInvoiceFormType = props.defaultSalesInvoiceFormType;
+    this.taxExempt = props.taxExempt;
     this.active = props.active;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
@@ -107,6 +139,13 @@ export class Party {
       defaultCurrency: this.defaultCurrency,
       defaultAPAccountId: this.defaultAPAccountId,
       defaultARAccountId: this.defaultARAccountId,
+      customerGroupId: this.customerGroupId,
+      creditLimit: this.creditLimit,
+      creditHoldPolicy: this.creditHoldPolicy,
+      defaultPriceListId: this.defaultPriceListId,
+      defaultSalesInvoiceTemplateId: this.defaultSalesInvoiceTemplateId,
+      defaultSalesInvoiceFormType: this.defaultSalesInvoiceFormType,
+      taxExempt: this.taxExempt,
       active: this.active,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
@@ -131,6 +170,13 @@ export class Party {
       defaultCurrency: data.defaultCurrency,
       defaultAPAccountId: data.defaultAPAccountId,
       defaultARAccountId: data.defaultARAccountId,
+      customerGroupId: data.customerGroupId,
+      creditLimit: data.creditLimit,
+      creditHoldPolicy: data.creditHoldPolicy,
+      defaultPriceListId: data.defaultPriceListId,
+      defaultSalesInvoiceTemplateId: data.defaultSalesInvoiceTemplateId,
+      defaultSalesInvoiceFormType: data.defaultSalesInvoiceFormType,
+      taxExempt: data.taxExempt,
       active: data.active ?? true,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt || new Date()),

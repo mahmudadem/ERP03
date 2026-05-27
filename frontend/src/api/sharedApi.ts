@@ -1,6 +1,7 @@
 import client from './client';
 
 export type PartyRole = 'VENDOR' | 'CUSTOMER';
+export type PartyAccountStrategy = 'AUTO_CREATE' | 'PICK_EXISTING';
 export type TaxType = 'VAT' | 'GST' | 'EXEMPT' | 'ZERO_RATED';
 export type TaxScope = 'PURCHASE' | 'SALES' | 'BOTH';
 
@@ -20,10 +21,21 @@ export interface PartyDTO {
   defaultCurrency?: string;
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
+  customerGroupId?: string;
+  creditLimit?: number;
+  creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
+  defaultPriceListId?: string;
+  defaultSalesInvoiceTemplateId?: string;
+  defaultSalesInvoiceFormType?: string;
+  taxExempt?: boolean;
   active: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreatePartyPayload extends Partial<PartyDTO> {
+  accountStrategy: PartyAccountStrategy;
 }
 
 export interface TaxCodeDTO {
@@ -36,6 +48,7 @@ export interface TaxCodeDTO {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  priceIsInclusive?: boolean;
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -43,7 +56,7 @@ export interface TaxCodeDTO {
 }
 
 export const sharedApi = {
-  createParty: (payload: Partial<PartyDTO>): Promise<PartyDTO> =>
+  createParty: (payload: CreatePartyPayload): Promise<PartyDTO> =>
     client.post('/tenant/shared/parties', payload),
 
   updateParty: (id: string, payload: Partial<PartyDTO>): Promise<PartyDTO> =>

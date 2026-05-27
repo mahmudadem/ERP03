@@ -8,6 +8,7 @@ import { PostingLockPolicy, VoucherStatus, VoucherType } from '../../../domain/a
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
+import { PeriodLockService } from './PeriodLockService';
 
 export interface PostSubledgerVoucherInput {
   companyId: string;
@@ -24,7 +25,6 @@ export interface PostSubledgerVoucherInput {
   postingLockPolicy?: PostingLockPolicy;
   strategyPayload?: Record<string, any>;
   baseCurrencyOverride?: string;
-  skipAccountValidation?: boolean;
 }
 
 export class SubledgerVoucherPostingService {
@@ -35,7 +35,8 @@ export class SubledgerVoucherPostingService {
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly accountRepo?: IAccountRepository,
-    validationService?: VoucherValidationService
+    validationService?: VoucherValidationService,
+    private readonly periodLockService?: PeriodLockService
   ) {
     this.validationService = validationService || new VoucherValidationService();
   }
@@ -44,6 +45,14 @@ export class SubledgerVoucherPostingService {
     input: PostSubledgerVoucherInput,
     transaction?: unknown
   ): Promise<VoucherEntity> {
+    if (this.periodLockService) {
+      await this.periodLockService.assertPostingAllowed(
+        input.companyId,
+        input.date,
+        input.metadata?.periodLockOverride
+      );
+    }
+
     const baseCurrency = (
       input.baseCurrencyOverride
       || (await this.companyCurrencyRepo.getBaseCurrency(input.companyId))
@@ -114,7 +123,7 @@ export class SubledgerVoucherPostingService {
     );
 
     this.validationService.validateCore(postedVoucher);
-    if (!input.skipAccountValidation && this.accountRepo) {
+    if (this.accountRepo) {
       await this.validationService.validateAccounts(postedVoucher, this.accountRepo);
     }
 

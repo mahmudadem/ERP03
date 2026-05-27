@@ -161,7 +161,7 @@ export interface AccountingPolicyConfig {
   
   // ========== Period Lock Policy ==========
   periodLockEnabled: boolean;
-  
+
   /**
    * Locked Through Date (V1)
    * HARD RULE: if voucher.date <= lockedThroughDate => voucher is immutable
@@ -169,6 +169,13 @@ export interface AccountingPolicyConfig {
    * ISO date format: YYYY-MM-DD
    */
   lockedThroughDate?: string;
+
+  /**
+   * Governance: when false, period-lock overrides are disabled even for users
+   * with the `accounting.periodLockOverride` permission. The soft lock becomes
+   * effectively a hard lock. Default true.
+   */
+  allowPeriodLockOverride?: boolean;
   
   /**
    * Account access control policy configuration

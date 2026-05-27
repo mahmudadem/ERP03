@@ -102,6 +102,8 @@ export const validateInitializeInventoryInput = (body: any) => {
 
   if (body.allowNegativeStock !== undefined) ensureBoolean(body.allowNegativeStock, 'allowNegativeStock');
 
+  if (body.allowDeferredCost !== undefined) ensureBoolean(body.allowDeferredCost, 'allowDeferredCost');
+
   if (body.autoGenerateItemCode !== undefined) ensureBoolean(body.autoGenerateItemCode, 'autoGenerateItemCode');
 
   if (body.itemCodePrefix !== undefined && typeof body.itemCodePrefix !== 'string') {

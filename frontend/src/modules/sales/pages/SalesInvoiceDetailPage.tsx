@@ -5,6 +5,12 @@ import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi
 import {
   CreateSalesInvoicePayload,
   InvoiceableLinkedSalesSourceDTO,
+  RecurrenceFrequency,
+  recurringInvoiceApi,
+  SalesInvoiceAttachmentDTO,
+  SalesMessagingAccountDTO,
+  SendSalesInvoiceTelegramResult,
+  SendSalesInvoiceWhatsAppResult,
   SalesInvoiceDTO,
   SalesInvoiceLineInputDTO,
   SalesOrderDTO,
@@ -12,8 +18,12 @@ import {
   SalesSettingsDTO,
 } from '../../../api/salesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
+import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
+import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
 import { Card } from '../../../components/ui/Card';
+import { Modal } from '../../../components/ui/Modal';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { errorHandler } from '../../../services/errorHandler';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
@@ -21,10 +31,33 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
+import { GlImpactModal } from '../components/GlImpactModal';
+import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
+import { RecordAuditModal } from '../components/RecordAuditModal';
+import { todayLocalIso } from '../../../utils/dateUtils';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
-const todayIso = (): string => new Date().toISOString().slice(0, 10);
+const todayIso = todayLocalIso;
+const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
+const formatFileSize = (bytes: number): string => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+const buildDefaultOutboundMessage = (params: {
+  invoiceNumber: string;
+  customerName: string;
+  grandTotalDoc: number;
+  currency: string;
+  invoiceDate: string;
+}) => [
+  `Invoice ${params.invoiceNumber}`,
+  `Customer: ${params.customerName}`,
+  `Amount: ${params.grandTotalDoc.toFixed(2)} ${params.currency}`,
+  `Date: ${params.invoiceDate}`,
+].join('\n');
 
 interface EditableLine {
   lineId?: string;
@@ -40,6 +73,8 @@ interface EditableLine {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  /** undefined → inherit tax code default; true/false → explicit override */
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
 }
@@ -58,6 +93,9 @@ interface EditableForm {
   salesOrderId: string;
   customerId: string;
   customerName?: string;
+  invoiceTemplateId: string;
+  invoiceTemplateFormType: string;
+  salespersonId?: string;
   customerInvoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
@@ -101,6 +139,9 @@ const createEmptyCharge = (): EditableCharge => ({
 const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
   salesOrderId,
   customerId,
+  invoiceTemplateId: '',
+  invoiceTemplateFormType: '',
+  salespersonId: undefined,
   customerInvoiceNumber: '',
   invoiceDate: todayIso(),
   dueDate: '',
@@ -125,10 +166,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [invoice, setInvoice] = useState<SalesInvoiceDTO | null>(null);
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
+  const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrderDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
+  const [invoiceTemplates, setInvoiceTemplates] = useState<VoucherFormResponse[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialSalesOrderId, initialCustomerId));
   const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
 
@@ -136,6 +179,42 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [glImpactOpen, setGlImpactOpen] = useState(false);
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [cloneRecurringOpen, setCloneRecurringOpen] = useState(false);
+  const [cloneRecurringBusy, setCloneRecurringBusy] = useState(false);
+  const [cloneRecurringName, setCloneRecurringName] = useState('');
+  const [cloneRecurringFrequency, setCloneRecurringFrequency] = useState<RecurrenceFrequency>('MONTHLY');
+  const [cloneRecurringDayOfMonth, setCloneRecurringDayOfMonth] = useState(1);
+  const [cloneRecurringDayOfWeek, setCloneRecurringDayOfWeek] = useState(1);
+  const [cloneRecurringStartDate, setCloneRecurringStartDate] = useState(todayIso());
+  const [cloneRecurringEndDate, setCloneRecurringEndDate] = useState('');
+  const [cloneRecurringMaxOccurrences, setCloneRecurringMaxOccurrences] = useState('');
+  const [sendWhatsAppOpen, setSendWhatsAppOpen] = useState(false);
+  const [sendWhatsAppBusy, setSendWhatsAppBusy] = useState(false);
+  const [sendWhatsAppPhone, setSendWhatsAppPhone] = useState('');
+  const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState('');
+  const [sendWhatsAppDocumentUrl, setSendWhatsAppDocumentUrl] = useState('');
+  const [sendWhatsAppAccountId, setSendWhatsAppAccountId] = useState('');
+  const [sendTelegramOpen, setSendTelegramOpen] = useState(false);
+  const [sendTelegramBusy, setSendTelegramBusy] = useState(false);
+  const [sendTelegramChatId, setSendTelegramChatId] = useState('');
+  const [sendTelegramMessage, setSendTelegramMessage] = useState('');
+  const [sendTelegramDocumentUrl, setSendTelegramDocumentUrl] = useState('');
+  const [sendTelegramAccountId, setSendTelegramAccountId] = useState('');
+  const [attachments, setAttachments] = useState<SalesInvoiceAttachmentDTO[]>([]);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [attachmentDeletingId, setAttachmentDeletingId] = useState<string | null>(null);
+  const [templateTouched, setTemplateTouched] = useState(false);
+
+  // Credit check override state
+  const [creditOverrideOpen, setCreditOverrideOpen] = useState(false);
+  const [creditOverrideReason, setCreditOverrideReason] = useState('');
+  const [creditOverrideInfo, setCreditOverrideInfo] = useState<Record<string, any> | null>(null);
+  const [creditWarnBanner, setCreditWarnBanner] = useState<string | null>(null);
+  const [pendingCreatePayload, setPendingCreatePayload] = useState<{ payload: CreateSalesInvoicePayload; mode: 'draft' | 'createAndPost' } | null>(null);
 
   // Settlement state
   const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
@@ -164,6 +243,53 @@ const SalesInvoiceDetailPage: React.FC = () => {
         { formType: 'sales_invoice_direct' }
       )
     : false;
+  const customerById = useMemo(
+    () =>
+      customers.reduce<Record<string, PartyDTO>>((acc, customer) => {
+        acc[customer.id] = customer;
+        return acc;
+      }, {}),
+    [customers]
+  );
+  const whatsappMessagingAccounts = useMemo<SalesMessagingAccountDTO[]>(
+    () =>
+      (settings?.messagingAccounts || [])
+        .filter((account) => account.channel === 'WHATSAPP' && account.isActive !== false)
+        .sort((a, b) => {
+          if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
+          return (a.label || '').localeCompare(b.label || '');
+        }),
+    [settings]
+  );
+  const telegramMessagingAccounts = useMemo<SalesMessagingAccountDTO[]>(
+    () =>
+      (settings?.messagingAccounts || [])
+        .filter((account) => account.channel === 'TELEGRAM' && account.isActive !== false)
+        .sort((a, b) => {
+          if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
+          return (a.label || '').localeCompare(b.label || '');
+        }),
+    [settings]
+  );
+  const eligibleInvoiceTemplates = useMemo(
+    () =>
+      invoiceTemplates
+        .filter((template) => {
+          if (template.enabled === false) return false;
+          const templateFormType = normalizeToken(template.formType);
+          if (!templateFormType.startsWith('sales_invoice')) return false;
+          return templateFormType === currentInvoiceFormType;
+        })
+        .sort((a, b) => {
+          if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
+          return (a.name || '').localeCompare(b.name || '');
+        }),
+    [invoiceTemplates, currentInvoiceFormType]
+  );
+  const selectedInvoiceTemplate = useMemo(
+    () => eligibleInvoiceTemplates.find((template) => template.id === form.invoiceTemplateId) || null,
+    [eligibleInvoiceTemplates, form.invoiceTemplateId]
+  );
 
   const customerNameById = useMemo(
     () =>
@@ -208,7 +334,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
-      const taxRate = line.taxCodeId ? taxById[line.taxCodeId]?.rate ?? 0 : 0;
+      const taxCode = line.taxCodeId ? taxById[line.taxCodeId] : undefined;
+      const taxRate = taxCode?.rate ?? 0;
+      const effectiveInclusive =
+        line.priceIsInclusive !== undefined ? line.priceIsInclusive === true : taxCode?.priceIsInclusive === true;
+      const divisor = effectiveInclusive ? 1 + taxRate : 1;
       const grossLineTotalDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
       const discountValue = Number(line.discountValue || 0);
       const discountAmountDoc = line.discountType === 'PERCENT'
@@ -216,10 +346,13 @@ const SalesInvoiceDetailPage: React.FC = () => {
         : line.discountType === 'AMOUNT'
           ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, discountValue)))
           : 0;
-      const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+      const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+      const lineTotalDoc = effectiveInclusive ? roundMoney(postDiscountDoc / divisor) : postDiscountDoc;
       const lineTotalBase = roundMoney(lineTotalDoc * (form.exchangeRate || 0));
-      const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
-      const taxAmountBase = roundMoney(lineTotalBase * taxRate);
+      const taxAmountDoc = effectiveInclusive
+        ? roundMoney(postDiscountDoc - lineTotalDoc)
+        : roundMoney(lineTotalDoc * taxRate);
+      const taxAmountBase = roundMoney(taxAmountDoc * (form.exchangeRate || 0));
 
       return {
         grossLineTotalDoc,
@@ -289,13 +422,14 @@ const SalesInvoiceDetailPage: React.FC = () => {
   };
 
   const loadReferenceData = async () => {
-    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult] = await Promise.all([
+    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult, salespersonResult] = await Promise.all([
       salesApi.getSettings(),
       sharedApi.listParties({ role: 'CUSTOMER', active: true }),
       inventoryApi.listItems({ active: true, limit: 500 }),
       sharedApi.listTaxCodes({ active: true }),
       inventoryApi.listWarehouses({ active: true }),
       salesApi.listSOs({ limit: 500 }),
+      salesMasterDataApi.listSalespersons({ status: 'ACTIVE' }),
     ]);
 
     const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
@@ -311,6 +445,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
     setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
     setSalesOrders(Array.isArray(salesOrderList) ? salesOrderList : []);
+    setSalespersons(Array.isArray(salespersonResult) ? salespersonResult : []);
+    try {
+      const templateResult = await voucherFormApi.list();
+      const templates = unwrap<VoucherFormResponse[]>(templateResult);
+      setInvoiceTemplates(Array.isArray(templates) ? templates : []);
+    } catch (templateError) {
+      console.error('Failed to load sales invoice templates', templateError);
+      setInvoiceTemplates([]);
+    }
   };
 
   const ensureItemUomOptions = async (itemId: string) => {
@@ -375,8 +518,10 @@ const SalesInvoiceDetailPage: React.FC = () => {
         const result = await salesApi.getSI(params.id);
         const loaded = unwrap<SalesInvoiceDTO>(result);
         setInvoice(loaded);
+        setAttachments(Array.isArray(loaded.attachments) ? loaded.attachments : []);
       } else {
         setInvoice(null);
+        setAttachments([]);
         setForm(createEmptyForm(initialSalesOrderId, initialCustomerId));
         if (initialSalesOrderId) {
           await loadSalesOrderLines(initialSalesOrderId);
@@ -405,6 +550,49 @@ const SalesInvoiceDetailPage: React.FC = () => {
       void ensureItemUomOptions(itemId);
     });
   }, [form.lines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!isCreateMode) return;
+    if (!form.customerId) return;
+
+    const currentTemplateIsValid = eligibleInvoiceTemplates.some((template) => template.id === form.invoiceTemplateId);
+    if (templateTouched && currentTemplateIsValid) return;
+
+    const customer = customerById[form.customerId];
+    let nextTemplate =
+      eligibleInvoiceTemplates.find((template) => template.id === customer?.defaultSalesInvoiceTemplateId) || null;
+
+    if (!nextTemplate && normalizeToken(customer?.defaultSalesInvoiceFormType) === currentInvoiceFormType) {
+      nextTemplate = eligibleInvoiceTemplates.find((template) => !!template.isDefault) || eligibleInvoiceTemplates[0] || null;
+    }
+
+    if (!nextTemplate && currentTemplateIsValid) {
+      nextTemplate = eligibleInvoiceTemplates.find((template) => template.id === form.invoiceTemplateId) || null;
+    }
+
+    if (!nextTemplate) {
+      nextTemplate = eligibleInvoiceTemplates.find((template) => !!template.isDefault) || eligibleInvoiceTemplates[0] || null;
+    }
+
+    const nextTemplateId = nextTemplate?.id || '';
+    const nextTemplateFormType = nextTemplate?.formType || currentInvoiceFormType;
+    if (nextTemplateId === form.invoiceTemplateId && nextTemplateFormType === form.invoiceTemplateFormType) return;
+
+    setForm((prev) => ({
+      ...prev,
+      invoiceTemplateId: nextTemplateId,
+      invoiceTemplateFormType: nextTemplateFormType,
+    }));
+  }, [
+    currentInvoiceFormType,
+    customerById,
+    eligibleInvoiceTemplates,
+    form.customerId,
+    form.invoiceTemplateFormType,
+    form.invoiceTemplateId,
+    isCreateMode,
+    templateTouched,
+  ]);
 
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
@@ -437,6 +625,34 @@ const SalesInvoiceDetailPage: React.FC = () => {
       lines[index] = next;
       return { ...prev, lines };
     });
+
+    // Auto-pricing: after item or qty change, look up effective price.
+    // The changed field comes from `patch`; the unchanged one is read from the
+    // pre-patch closure (its value is identical before and after the patch).
+    const shouldFetchPrice = patch.itemId !== undefined || patch.invoicedQty !== undefined;
+    if (shouldFetchPrice) {
+      const closureLine = form.lines[index];
+      const resolvedItemId = patch.itemId !== undefined ? patch.itemId : closureLine?.itemId;
+      const resolvedQty = patch.invoicedQty !== undefined ? patch.invoicedQty : closureLine?.invoicedQty ?? 1;
+      if (form.customerId && resolvedItemId) {
+        salesMasterDataApi
+          .getEffectivePrice({ customerId: form.customerId, itemId: resolvedItemId, qty: resolvedQty })
+          .then((result) => {
+            if (result?.unitPrice != null) {
+              setForm((latest) => {
+                const updatedLines = [...latest.lines];
+                if (updatedLines[index]) {
+                  updatedLines[index] = { ...updatedLines[index], unitPriceDoc: result.unitPrice };
+                }
+                return { ...latest, lines: updatedLines };
+              });
+            }
+          })
+          .catch(() => {
+            // Pricing lookup failure is non-fatal — leave price as-is
+          });
+      }
+    }
   };
 
   const addLine = () => {
@@ -521,12 +737,13 @@ const SalesInvoiceDetailPage: React.FC = () => {
       discountType: line.discountType,
       discountValue: line.discountType ? line.discountValue || 0 : undefined,
       taxCodeId: line.taxCodeId || undefined,
+      priceIsInclusive: line.priceIsInclusive,
       warehouseId: line.warehouseId || undefined,
       description: line.description || undefined,
     };
   };
 
-  const createDraft = async () => {
+  const createDraft = async (creditOverrideReasonParam?: string) => {
     const validationError = validateBeforeSave();
     if (validationError) {
       setError(validationError);
@@ -539,8 +756,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
       const payload: CreateSalesInvoicePayload = {
         source: 'native',
+        voucherFormId: selectedInvoiceTemplate?.id || form.invoiceTemplateId || undefined,
+        formType: selectedInvoiceTemplate?.formType || form.invoiceTemplateFormType || currentInvoiceFormType,
         salesOrderId: form.salesOrderId || undefined,
         customerId: form.customerId,
+        salespersonId: form.salespersonId || undefined,
         customerInvoiceNumber: form.customerInvoiceNumber || undefined,
         invoiceDate: form.invoiceDate,
         dueDate: form.dueDate || undefined,
@@ -557,11 +777,37 @@ const SalesInvoiceDetailPage: React.FC = () => {
           description: charge.description || undefined,
         })),
         notes: form.notes || undefined,
+        creditOverrideReason: creditOverrideReasonParam,
       };
 
-      const created = await salesApi.createSI(payload);
-      const dto = unwrap<SalesInvoiceDTO>(created);
-      navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      try {
+        const created = await salesApi.createSI(payload);
+        const raw = created as any;
+        const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
+        if (creditCheck?.outcome === 'WARN') {
+          setCreditWarnBanner(
+            `Invoice created — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
+          );
+        }
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      } catch (err: any) {
+        const data = err?.response?.data;
+        const code = data?.code ?? data?.error?.code ?? '';
+        const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+        const isCreditBlock =
+          code === 'CREDIT_LIMIT_EXCEEDED' ||
+          msg.toLowerCase().includes('credit limit') ||
+          msg.toLowerCase().includes('credit_limit');
+        if (isCreditBlock) {
+          setPendingCreatePayload({ payload, mode: 'draft' });
+          setCreditOverrideInfo(data?.details ?? data ?? null);
+          setCreditOverrideReason('');
+          setCreditOverrideOpen(true);
+          return;
+        }
+        throw err;
+      }
     } catch (err: any) {
       console.error('Failed to create sales invoice', err);
       setError(
@@ -575,7 +821,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     }
   };
 
-  const createAndPostDraft = async () => {
+  const createAndPostDraft = async (creditOverrideReasonParam?: string) => {
     const validationError = validateBeforeSave();
     if (validationError) {
       setError(validationError);
@@ -604,8 +850,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
       const payload: CreateSalesInvoicePayload = {
         source: 'native',
+        voucherFormId: selectedInvoiceTemplate?.id || form.invoiceTemplateId || undefined,
+        formType: selectedInvoiceTemplate?.formType || form.invoiceTemplateFormType || currentInvoiceFormType,
         salesOrderId: form.salesOrderId || undefined,
         customerId: form.customerId,
+        salespersonId: form.salespersonId || undefined,
         customerInvoiceNumber: form.customerInvoiceNumber || undefined,
         invoiceDate: form.invoiceDate,
         dueDate: form.dueDate || undefined,
@@ -623,11 +872,37 @@ const SalesInvoiceDetailPage: React.FC = () => {
         })),
         notes: form.notes || undefined,
         settlementInput,
+        creditOverrideReason: creditOverrideReasonParam,
       };
 
-      const created = await salesApi.createAndPostSI(payload);
-      const dto = unwrap<SalesInvoiceDTO>(created);
-      navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      try {
+        const created = await salesApi.createAndPostSI(payload);
+        const raw = created as any;
+        const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
+        if (creditCheck?.outcome === 'WARN') {
+          setCreditWarnBanner(
+            `Invoice created — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
+          );
+        }
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      } catch (err: any) {
+        const data = err?.response?.data;
+        const code = data?.code ?? data?.error?.code ?? '';
+        const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+        const isCreditBlock =
+          code === 'CREDIT_LIMIT_EXCEEDED' ||
+          msg.toLowerCase().includes('credit limit') ||
+          msg.toLowerCase().includes('credit_limit');
+        if (isCreditBlock) {
+          setPendingCreatePayload({ payload, mode: 'createAndPost' });
+          setCreditOverrideInfo(data?.details ?? data ?? null);
+          setCreditOverrideReason('');
+          setCreditOverrideOpen(true);
+          return;
+        }
+        throw err;
+      }
     } catch (err: any) {
       console.error('Failed to create and post sales invoice', err);
       setError(
@@ -641,7 +916,39 @@ const SalesInvoiceDetailPage: React.FC = () => {
     }
   };
 
-  const postDraft = async () => {
+  const submitCreditOverride = async () => {
+    if (!pendingCreatePayload || !creditOverrideReason.trim()) return;
+    const { payload, mode } = pendingCreatePayload;
+    const newPayload = { ...payload, creditOverrideReason: creditOverrideReason.trim() };
+    setCreditOverrideOpen(false);
+    setPendingCreatePayload(null);
+    setCreditOverrideInfo(null);
+    try {
+      setBusy(true);
+      setError(null);
+      if (mode === 'draft') {
+        const created = await salesApi.createSI(newPayload);
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      } else {
+        const created = await salesApi.createAndPostSI(newPayload);
+        const dto = unwrap<SalesInvoiceDTO>(created);
+        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+      }
+    } catch (err: any) {
+      console.error('Failed to create invoice with credit override', err);
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to create invoice with credit override.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const postDraft = async (periodLockOverrideReason?: string) => {
     if (!invoice?.id) return;
     try {
       setBusy(true);
@@ -660,10 +967,25 @@ const SalesInvoiceDetailPage: React.FC = () => {
         })),
       } : undefined;
 
-      const posted = await salesApi.postSI(invoice.id, settlementInput);
+      const posted = await salesApi.postSI(invoice.id, settlementInput, periodLockOverrideReason);
       setInvoice(unwrap<SalesInvoiceDTO>(posted));
       setShowSettlement(false);
     } catch (err: any) {
+      const errorCode = err?.response?.data?.error?.code;
+      if (errorCode === 'PERIOD_LOCKED') {
+        const errorData = err?.response?.data?.error;
+        if (errorData?.tier === 'SOFT') {
+          setOverrideModalData({
+            documentDate: errorData.documentDate || invoice.invoiceDate,
+            lockedThroughDate: errorData.lockedThroughDate || '',
+          });
+          setOverrideModalOpen(true);
+          return;
+        } else {
+          setError('This accounting period is closed and cannot be overridden.');
+          return;
+        }
+      }
       console.error('Failed to post sales invoice', err);
       setError(
         err?.response?.data?.error?.message ||
@@ -684,6 +1006,230 @@ const SalesInvoiceDetailPage: React.FC = () => {
       setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
     } else {
       postDraft();
+    }
+  };
+
+  const openCloneRecurringModal = () => {
+    if (!invoice) return;
+    setCloneRecurringName(`${invoice.invoiceNumber} Recurring`);
+    setCloneRecurringFrequency('MONTHLY');
+    setCloneRecurringDayOfMonth(1);
+    setCloneRecurringDayOfWeek(1);
+    setCloneRecurringStartDate(todayIso());
+    setCloneRecurringEndDate('');
+    setCloneRecurringMaxOccurrences('');
+    setCloneRecurringOpen(true);
+  };
+
+  const cloneAsRecurringTemplate = async () => {
+    if (!invoice?.id) return;
+    if (!cloneRecurringName.trim()) {
+      setError(t('sales.recurring.validation.cloneNameRequired', 'Template name is required'));
+      return;
+    }
+
+    try {
+      setCloneRecurringBusy(true);
+      setError(null);
+
+      await recurringInvoiceApi.cloneToTemplate(invoice.id, {
+        name: cloneRecurringName.trim(),
+        frequency: cloneRecurringFrequency,
+        dayOfMonth: cloneRecurringFrequency !== 'WEEKLY' ? cloneRecurringDayOfMonth : undefined,
+        dayOfWeek: cloneRecurringFrequency === 'WEEKLY' ? cloneRecurringDayOfWeek : undefined,
+        startDate: cloneRecurringStartDate || undefined,
+        endDate: cloneRecurringEndDate || undefined,
+        maxOccurrences: cloneRecurringMaxOccurrences ? parseInt(cloneRecurringMaxOccurrences, 10) : undefined,
+      });
+
+      setCloneRecurringOpen(false);
+      navigate('/sales/recurring-invoices');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.recurring.errors.cloneFromInvoice', 'Failed to clone invoice as recurring template.')
+      );
+    } finally {
+      setCloneRecurringBusy(false);
+    }
+  };
+
+  const openSendWhatsAppModal = () => {
+    if (!invoice) return;
+    const customer = customerById[invoice.customerId];
+    setSendWhatsAppPhone((customer?.phone || '').trim());
+    setSendWhatsAppDocumentUrl('');
+    const defaultWhatsappAccount =
+      whatsappMessagingAccounts.find((account) => account.isDefault) || whatsappMessagingAccounts[0];
+    setSendWhatsAppAccountId(defaultWhatsappAccount?.id || '');
+    setSendWhatsAppMessage(buildDefaultOutboundMessage({
+      invoiceNumber: invoice.invoiceNumber,
+      customerName: customerNameById[invoice.customerId] || invoice.customerName,
+      grandTotalDoc: invoice.grandTotalDoc,
+      currency: invoice.currency,
+      invoiceDate: invoice.invoiceDate,
+    }));
+    setSendWhatsAppOpen(true);
+  };
+
+  const openSendTelegramModal = () => {
+    if (!invoice) return;
+    const defaultTelegramAccount =
+      telegramMessagingAccounts.find((account) => account.isDefault) || telegramMessagingAccounts[0];
+    setSendTelegramAccountId(defaultTelegramAccount?.id || '');
+    setSendTelegramChatId('');
+    setSendTelegramDocumentUrl('');
+    setSendTelegramMessage(buildDefaultOutboundMessage({
+      invoiceNumber: invoice.invoiceNumber,
+      customerName: customerNameById[invoice.customerId] || invoice.customerName,
+      grandTotalDoc: invoice.grandTotalDoc,
+      currency: invoice.currency,
+      invoiceDate: invoice.invoiceDate,
+    }));
+    setSendTelegramOpen(true);
+  };
+
+  const sendInvoiceViaWhatsApp = async () => {
+    if (!invoice?.id) return;
+    try {
+      setSendWhatsAppBusy(true);
+      setError(null);
+      const result = await salesApi.sendInvoiceWhatsApp(invoice.id, {
+        messagingAccountId: sendWhatsAppAccountId || undefined,
+        toPhoneNumber: sendWhatsAppPhone.trim() || undefined,
+        messageText: sendWhatsAppMessage.trim() || undefined,
+        documentUrl: sendWhatsAppDocumentUrl.trim() || undefined,
+      });
+      const payload = unwrap<SendSalesInvoiceWhatsAppResult>(result);
+      setSendWhatsAppOpen(false);
+      errorHandler.showInfo(
+        t(
+          'sales.invoices.whatsapp.success',
+          'WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).',
+          {
+            phone: payload.recipientPhoneNumber,
+            sender: payload.senderLabel || t('sales.invoices.whatsapp.defaultSender', 'default sender'),
+            messageId: payload.messageId,
+          }
+        )
+      );
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.whatsapp.sendError', 'Failed to send invoice via WhatsApp.')
+      );
+    } finally {
+      setSendWhatsAppBusy(false);
+    }
+  };
+
+  const sendInvoiceViaTelegram = async () => {
+    if (!invoice?.id) return;
+    try {
+      setSendTelegramBusy(true);
+      setError(null);
+      const result = await salesApi.sendInvoiceTelegram(invoice.id, {
+        messagingAccountId: sendTelegramAccountId || undefined,
+        toChatId: sendTelegramChatId.trim() || undefined,
+        messageText: sendTelegramMessage.trim() || undefined,
+        documentUrl: sendTelegramDocumentUrl.trim() || undefined,
+      });
+      const payload = unwrap<SendSalesInvoiceTelegramResult>(result);
+      setSendTelegramOpen(false);
+      errorHandler.showInfo(
+        t(
+          'sales.invoices.telegram.success',
+          'Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).',
+          {
+            chatId: payload.recipientChatId,
+            sender: payload.senderLabel || t('sales.invoices.telegram.defaultSender', 'default sender'),
+            messageId: payload.messageId,
+          }
+        )
+      );
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.telegram.sendError', 'Failed to send invoice via Telegram.')
+      );
+    } finally {
+      setSendTelegramBusy(false);
+    }
+  };
+
+  const refreshAttachments = async () => {
+    if (!invoice?.id) return;
+    const result = await salesApi.listInvoiceAttachments(invoice.id);
+    const list = unwrap<SalesInvoiceAttachmentDTO[]>(result);
+    const normalized = Array.isArray(list) ? list : [];
+    setAttachments(normalized);
+    setInvoice((current) => (current ? { ...current, attachments: normalized } : current));
+  };
+
+  const uploadAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !invoice?.id) return;
+    try {
+      setAttachmentBusy(true);
+      setError(null);
+      await salesApi.uploadInvoiceAttachment(invoice.id, file);
+      await refreshAttachments();
+      errorHandler.showInfo(t('sales.invoices.attachments.uploadSuccess', 'Attachment uploaded successfully.'));
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.attachments.uploadError', 'Failed to upload attachment.')
+      );
+    } finally {
+      setAttachmentBusy(false);
+    }
+  };
+
+  const removeAttachment = async (attachmentId: string) => {
+    if (!invoice?.id) return;
+    try {
+      setAttachmentDeletingId(attachmentId);
+      setError(null);
+      await salesApi.removeInvoiceAttachment(invoice.id, attachmentId);
+      await refreshAttachments();
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.attachments.removeError', 'Failed to remove attachment.')
+      );
+    } finally {
+      setAttachmentDeletingId(null);
+    }
+  };
+
+  const downloadAttachment = async (attachmentId: string) => {
+    if (!invoice?.id) return;
+    try {
+      setError(null);
+      const result = await salesApi.getInvoiceAttachmentDownloadLink(invoice.id, attachmentId);
+      const payload = unwrap<{ url?: string }>(result);
+      if (!payload?.url) {
+        throw new Error(t('sales.invoices.attachments.downloadError', 'Failed to generate download link.'));
+      }
+      window.open(payload.url, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.invoices.attachments.downloadError', 'Failed to generate download link.')
+      );
     }
   };
 
@@ -710,7 +1256,60 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </button>
         </div>
 
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+{error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+        {creditWarnBanner && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start justify-between gap-2">
+            <span>{creditWarnBanner}</span>
+            <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
+          </div>
+        )}
+
+        {creditOverrideOpen && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Credit Limit Exceeded</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {t('sales:creditLimit.exceededMessage', 'This customer is over their credit limit and the policy is set to BLOCK. You can override by providing a reason.')}
+              </p>
+              {creditOverrideInfo && (
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                  {creditOverrideInfo.creditLimit !== undefined && <div>Credit Limit: <strong>{creditOverrideInfo.creditLimit}</strong></div>}
+                  {creditOverrideInfo.currentExposure !== undefined && <div>Current Exposure: <strong>{creditOverrideInfo.currentExposure}</strong></div>}
+                  {creditOverrideInfo.orderAmount !== undefined && <div>This Invoice: <strong>{creditOverrideInfo.orderAmount}</strong></div>}
+                  {creditOverrideInfo.projectedExposure !== undefined && <div>Projected Exposure: <strong>{creditOverrideInfo.projectedExposure}</strong></div>}
+                </div>
+              )}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales:creditLimit.overrideReason', 'Override Reason')} <span className="text-red-500">*</span></label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  placeholder={t('sales:creditLimit.overridePlaceholder', 'Explain why this credit limit override is approved…')}
+                  value={creditOverrideReason}
+                  onChange={(e) => setCreditOverrideReason(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                  onClick={() => { setCreditOverrideOpen(false); setPendingCreatePayload(null); setCreditOverrideInfo(null); setCreditOverrideReason(''); }}
+                >
+                  {t('common:cancel', 'Cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                  disabled={!creditOverrideReason.trim() || busy}
+                  onClick={submitCreditOverride}
+                >
+                  {t('sales:creditLimit.overrideSubmit', 'Override & Create')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -747,17 +1346,65 @@ const SalesInvoiceDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-              <PartySelector 
+              <PartySelector
                 value={form.customerId}
                 onChange={(party) => {
+                  setTemplateTouched(false);
                   setForm((prev) => ({
                     ...prev,
                     customerId: party?.id || '',
                     customerName: party?.displayName || '',
                     currency: party?.defaultCurrency || prev.currency,
+                    invoiceTemplateId: party ? prev.invoiceTemplateId : '',
+                    invoiceTemplateFormType: party ? prev.invoiceTemplateFormType : currentInvoiceFormType,
                   }));
                 }}
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                {t('sales.invoiceTemplates.fieldLabel', 'Invoice Template')}
+              </label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.invoiceTemplateId}
+                onChange={(e) => {
+                  const selected = eligibleInvoiceTemplates.find((template) => template.id === e.target.value);
+                  setTemplateTouched(true);
+                  setForm((prev) => ({
+                    ...prev,
+                    invoiceTemplateId: e.target.value,
+                    invoiceTemplateFormType: selected?.formType || currentInvoiceFormType,
+                  }));
+                }}
+              >
+                <option value="">
+                  {t('sales.invoiceTemplates.autoSelect', 'Auto Select')}
+                </option>
+                {eligibleInvoiceTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}{template.isDefault ? ` ${t('sales.invoiceTemplates.defaultTag', '(Default)')}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                {eligibleInvoiceTemplates.length
+                  ? t('sales.invoiceTemplates.help', 'Controls the print layout (logo/footer/terms) for this invoice.')
+                  : t('sales.invoiceTemplates.noneForType', 'No invoice templates are available for this invoice type.')}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Salesperson</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={form.salespersonId || ''}
+                onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
+              >
+                <option value="">— None —</option>
+                {salespersons.map((sp) => (
+                  <option key={sp.id} value={sp.id}>{sp.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer Invoice #</label>
@@ -956,6 +1603,31 @@ const SalesInvoiceDetailPage: React.FC = () => {
                           </option>
                         ))}
                       </select>
+                      {line.taxCodeId && (() => {
+                        const tc = taxById[line.taxCodeId];
+                        const effective =
+                          line.priceIsInclusive !== undefined
+                            ? line.priceIsInclusive
+                            : tc?.priceIsInclusive === true;
+                        return (
+                          <label className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 rounded border-slate-300"
+                              checked={effective}
+                              onChange={(e) =>
+                                setLine(index, { priceIsInclusive: e.target.checked })
+                              }
+                            />
+                            <span>
+                              Tax-inclusive
+                              {line.priceIsInclusive === undefined && tc?.priceIsInclusive && (
+                                <span className="ml-1 text-[10px] text-slate-400">(default)</span>
+                              )}
+                            </span>
+                          </label>
+                        );
+                      })()}
                     </td>
                     <td className="py-2 pr-2">
                       {line.dnLineId ? (
@@ -1245,7 +1917,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
                 <button
                   type="button"
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  onClick={createAndPostDraft}
+                  onClick={() => createAndPostDraft()}
                   disabled={busy || orderLineLoading}
                 >
                   {busy ? 'Saving & Posting...' : 'Confirm Save & Post'}
@@ -1267,7 +1939,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={createDraft}
+            onClick={() => createDraft()}
             disabled={busy || orderLineLoading}
           >
             {busy ? 'Creating...' : 'Save Draft'}
@@ -1360,6 +2032,16 @@ const SalesInvoiceDetailPage: React.FC = () => {
                 : '-'}
             </div>
           </div>
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Salesperson</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {(() => {
+                if (!invoice.salespersonId) return '-';
+                const sp = salespersons.find((s) => s.id === invoice.salespersonId);
+                return sp ? `${sp.code} - ${sp.name}` : invoice.salespersonId;
+              })()}
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -1415,6 +2097,76 @@ const SalesInvoiceDetailPage: React.FC = () => {
             <span className="font-medium">{invoice.paidAmountBase.toFixed(2)}</span>
           </div>
         </div>
+      </Card>
+
+      <Card className="p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {t('sales.invoices.attachments.title', 'Attachments')}
+          </h2>
+          <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+              onChange={uploadAttachment}
+              disabled={attachmentBusy}
+            />
+            {attachmentBusy
+              ? t('sales.invoices.attachments.uploading', 'Uploading...')
+              : t('sales.invoices.attachments.upload', 'Upload Attachment')}
+          </label>
+        </div>
+
+        <p className="mb-4 text-xs text-slate-500">
+          {t(
+            'sales.invoices.attachments.help',
+            'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.'
+          )}
+        </p>
+
+        {attachments.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+            {t('sales.invoices.attachments.empty', 'No attachments yet.')}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {attachment.name}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {formatFileSize(attachment.size)} • {attachment.type} • {new Date(attachment.uploadedAt).toLocaleString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+                    onClick={() => downloadAttachment(attachment.id)}
+                  >
+                    {t('sales.invoices.attachments.open', 'Open')}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:opacity-50"
+                    onClick={() => removeAttachment(attachment.id)}
+                    disabled={attachmentDeletingId === attachment.id}
+                  >
+                    {attachmentDeletingId === attachment.id
+                      ? t('sales.invoices.attachments.removing', 'Removing...')
+                      : t('sales.invoices.attachments.remove', 'Remove')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {showSettlement && invoice && (
@@ -1571,7 +2323,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
               <button
                 type="button"
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                onClick={postDraft}
+                onClick={() => postDraft()}
                 disabled={busy}
               >
                 {busy ? 'Posting...' : 'Confirm & Post'}
@@ -1626,7 +2378,367 @@ const SalesInvoiceDetailPage: React.FC = () => {
             Create Receipt
           </button>
         )}
+        {invoice.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-teal-300 px-4 py-2 text-sm font-medium text-teal-700"
+            onClick={openSendWhatsAppModal}
+          >
+            {t('sales.invoices.whatsapp.action', 'Send via WhatsApp')}
+          </button>
+        )}
+        {invoice.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-sky-300 px-4 py-2 text-sm font-medium text-sky-700"
+            onClick={openSendTelegramModal}
+          >
+            {t('sales.invoices.telegram.action', 'Send via Telegram')}
+          </button>
+        )}
+        {(invoice.status === 'DRAFT' || invoice.status === 'POSTED') && (
+          <button
+            type="button"
+            className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700"
+            onClick={openCloneRecurringModal}
+          >
+            {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
+          </button>
+        )}
+        {invoice.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
+            onClick={() => setGlImpactOpen(true)}
+          >
+            GL Impact
+          </button>
+        )}
+        <button
+          type="button"
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+          onClick={() => setAuditModalOpen(true)}
+        >
+          History
+        </button>
       </div>
+
+      <GlImpactModal
+        isOpen={glImpactOpen}
+        onClose={() => setGlImpactOpen(false)}
+        sourceId={invoice.id}
+        sourceLabel={invoice.invoiceNumber}
+        documentStatus={invoice.status}
+      />
+
+      {overrideModalData && (
+        <PeriodLockOverrideModal
+          isOpen={overrideModalOpen}
+          onClose={() => setOverrideModalOpen(false)}
+          documentDate={overrideModalData.documentDate}
+          lockedThroughDate={overrideModalData.lockedThroughDate}
+          onConfirm={(reason) => {
+            setOverrideModalOpen(false);
+            postDraft(reason);
+          }}
+        />
+      )}
+
+      <RecordAuditModal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
+        entityType="SALES_INVOICE"
+        entityId={invoice.id}
+      />
+
+      <Modal
+        isOpen={sendWhatsAppOpen}
+        onClose={() => setSendWhatsAppOpen(false)}
+        title={t('sales.invoices.whatsapp.modalTitle', 'Send Invoice via WhatsApp')}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.whatsapp.senderLabel', 'Sender Account')}
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendWhatsAppAccountId}
+              onChange={(e) => setSendWhatsAppAccountId(e.target.value)}
+            >
+              <option value="">{t('sales.invoices.whatsapp.senderDefaultOption', 'Use system default sender')}</option>
+              {whatsappMessagingAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.label}
+                  {account.phoneNumberE164 ? ` (${account.phoneNumberE164})` : ''}
+                  {account.isDefault ? ` - ${t('sales.invoices.whatsapp.defaultTag', 'Default')}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.whatsapp.phoneLabel', 'Recipient Phone (E.164)')}
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendWhatsAppPhone}
+              onChange={(e) => setSendWhatsAppPhone(e.target.value)}
+              placeholder={t('sales.invoices.whatsapp.phonePlaceholder', '+905551112233')}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.whatsapp.documentUrlLabel', 'Document URL (Optional)')}
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendWhatsAppDocumentUrl}
+              onChange={(e) => setSendWhatsAppDocumentUrl(e.target.value)}
+              placeholder={t('sales.invoices.whatsapp.documentUrlPlaceholder', 'https://...')}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.whatsapp.messageLabel', 'Message')}
+            </label>
+            <textarea
+              className="min-h-[120px] w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendWhatsAppMessage}
+              onChange={(e) => setSendWhatsAppMessage(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+              onClick={() => setSendWhatsAppOpen(false)}
+              disabled={sendWhatsAppBusy}
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={sendInvoiceViaWhatsApp}
+              disabled={sendWhatsAppBusy}
+            >
+              {sendWhatsAppBusy
+                ? t('sales.invoices.whatsapp.sending', 'Sending...')
+                : t('sales.invoices.whatsapp.send', 'Send')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={sendTelegramOpen}
+        onClose={() => setSendTelegramOpen(false)}
+        title={t('sales.invoices.telegram.modalTitle', 'Send Invoice via Telegram')}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.senderLabel', 'Sender Account')}
+            </label>
+            <select
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramAccountId}
+              onChange={(e) => setSendTelegramAccountId(e.target.value)}
+            >
+              <option value="">{t('sales.invoices.telegram.senderDefaultOption', 'Use default sender')}</option>
+              {telegramMessagingAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.label}
+                  {account.botUsername ? ` (${account.botUsername})` : ''}
+                  {account.isDefault ? ` - ${t('sales.invoices.telegram.defaultTag', 'Default')}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.chatLabel', 'Recipient Chat ID or @Username')}
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramChatId}
+              onChange={(e) => setSendTelegramChatId(e.target.value)}
+              placeholder={t('sales.invoices.telegram.chatPlaceholder', '@customer_username or -1001234567890')}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.documentUrlLabel', 'Document URL (Optional)')}
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramDocumentUrl}
+              onChange={(e) => setSendTelegramDocumentUrl(e.target.value)}
+              placeholder={t('sales.invoices.telegram.documentUrlPlaceholder', 'https://...')}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.invoices.telegram.messageLabel', 'Message')}
+            </label>
+            <textarea
+              className="min-h-[120px] w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={sendTelegramMessage}
+              onChange={(e) => setSendTelegramMessage(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+              onClick={() => setSendTelegramOpen(false)}
+              disabled={sendTelegramBusy}
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={sendInvoiceViaTelegram}
+              disabled={sendTelegramBusy}
+            >
+              {sendTelegramBusy
+                ? t('sales.invoices.telegram.sending', 'Sending...')
+                : t('sales.invoices.telegram.send', 'Send')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={cloneRecurringOpen}
+        onClose={() => setCloneRecurringOpen(false)}
+        title={t('sales.recurring.cloneModal.title', 'Clone Invoice to Recurring Template')}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              {t('sales.recurring.fields.templateName', 'Template Name *')}
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={cloneRecurringName}
+              onChange={(e) => setCloneRecurringName(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {t('sales.recurring.fields.frequency', 'Frequency *')}
+              </label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringFrequency}
+                onChange={(e) => setCloneRecurringFrequency(e.target.value as RecurrenceFrequency)}
+              >
+                <option value="WEEKLY">{t('sales.recurring.frequency.weekly', 'Weekly')}</option>
+                <option value="MONTHLY">{t('sales.recurring.frequency.monthly', 'Monthly')}</option>
+                <option value="QUARTERLY">{t('sales.recurring.frequency.quarterly', 'Quarterly')}</option>
+                <option value="ANNUALLY">{t('sales.recurring.frequency.annually', 'Annually')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {cloneRecurringFrequency === 'WEEKLY'
+                  ? t('sales.recurring.fields.dayOfWeek', 'Day of Week')
+                  : t('sales.recurring.fields.dayOfMonth', 'Day of Month')}
+              </label>
+              {cloneRecurringFrequency === 'WEEKLY' ? (
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={cloneRecurringDayOfWeek}
+                  onChange={(e) => setCloneRecurringDayOfWeek(parseInt(e.target.value, 10))}
+                >
+                  <option value={0}>{t('sales.recurring.weekdays.sunday', 'Sunday')}</option>
+                  <option value={1}>{t('sales.recurring.weekdays.monday', 'Monday')}</option>
+                  <option value={2}>{t('sales.recurring.weekdays.tuesday', 'Tuesday')}</option>
+                  <option value={3}>{t('sales.recurring.weekdays.wednesday', 'Wednesday')}</option>
+                  <option value={4}>{t('sales.recurring.weekdays.thursday', 'Thursday')}</option>
+                  <option value={5}>{t('sales.recurring.weekdays.friday', 'Friday')}</option>
+                  <option value={6}>{t('sales.recurring.weekdays.saturday', 'Saturday')}</option>
+                </select>
+              ) : (
+                <input
+                  type="number"
+                  min={1}
+                  max={28}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={cloneRecurringDayOfMonth}
+                  onChange={(e) => setCloneRecurringDayOfMonth(parseInt(e.target.value, 10) || 1)}
+                />
+              )}
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {t('sales.recurring.fields.startDate', 'Start Date *')}
+              </label>
+              <input
+                type="date"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringStartDate}
+                onChange={(e) => setCloneRecurringStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {t('sales.recurring.fields.endDate', 'End Date')}
+              </label>
+              <input
+                type="date"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringEndDate}
+                onChange={(e) => setCloneRecurringEndDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {t('sales.recurring.fields.maxOccurrences', 'Max Occurrences')}
+              </label>
+              <input
+                type="number"
+                min={1}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringMaxOccurrences}
+                onChange={(e) => setCloneRecurringMaxOccurrences(e.target.value)}
+                placeholder={t('sales.recurring.placeholders.maxOccurrences', 'Leave empty for unlimited')}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+              onClick={() => setCloneRecurringOpen(false)}
+              disabled={cloneRecurringBusy}
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={cloneAsRecurringTemplate}
+              disabled={cloneRecurringBusy}
+            >
+              {cloneRecurringBusy
+                ? t('sales.recurring.actions.creatingTemplate', 'Creating...')
+                : t('sales.recurring.actions.createTemplate', 'Create Template')}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

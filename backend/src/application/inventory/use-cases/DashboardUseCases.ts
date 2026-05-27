@@ -115,9 +115,21 @@ export class GetUnsettledCostReportUseCase {
 
   async execute(
     companyId: string,
-    input: { itemId?: string; limit?: number; offset?: number } = {}
+    input: {
+      itemId?: string;
+      warehouseId?: string;
+      costBasis?: 'AVG' | 'LAST_KNOWN' | 'MISSING';
+      fromDate?: string;
+      toDate?: string;
+      limit?: number;
+      offset?: number;
+    } = {}
   ): Promise<{
     total: number;
+    totals: {
+      unsettledQty: number;
+      costBase: number;
+    };
     rows: Array<{
       id: string;
       date: string;
@@ -136,13 +148,21 @@ export class GetUnsettledCostReportUseCase {
   }> {
     const unsettled = await this.movementRepo.getUnsettledMovements(companyId);
 
-    const filtered = (input.itemId
-      ? unsettled.filter((movement) => movement.itemId === input.itemId)
-      : unsettled
-    ).sort((a, b) => {
-      if (b.postingSeq !== a.postingSeq) return b.postingSeq - a.postingSeq;
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    });
+    const filtered = unsettled
+      .filter((m) => !input.itemId      || m.itemId === input.itemId)
+      .filter((m) => !input.warehouseId || m.warehouseId === input.warehouseId)
+      .filter((m) => !input.costBasis   || m.unsettledCostBasis === input.costBasis)
+      .filter((m) => !input.fromDate    || m.date >= input.fromDate)
+      .filter((m) => !input.toDate      || m.date <= input.toDate)
+      .sort((a, b) => {
+        if (b.postingSeq !== a.postingSeq) return b.postingSeq - a.postingSeq;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+
+    const totals = {
+      unsettledQty: filtered.reduce((s, m) => s + (m.unsettledQty ?? 0), 0),
+      costBase:     filtered.reduce((s, m) => s + (m.totalCostBase ?? 0), 0),
+    };
 
     const offset = input.offset ?? 0;
     const limit = input.limit ?? 50;
@@ -165,6 +185,7 @@ export class GetUnsettledCostReportUseCase {
 
     return {
       total: filtered.length,
+      totals,
       rows,
     };
   }

@@ -1,14 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { PurchaseSettingsDTO, PurchaseGovernanceRuleDTO, purchasesApi } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { useAccounts } from '../../../context/AccountsContext';
-import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
+import toast from 'react-hot-toast';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,
@@ -16,10 +19,12 @@ import {
 } from '../../../utils/documentPolicy';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
+const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
 
 type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
 
 const PurchaseSettingsPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
@@ -34,6 +39,8 @@ const PurchaseSettingsPage: React.FC = () => {
     persona: 'direct',
   });
   const [showAddRule, setShowAddRule] = useState(false);
+  const [showBackfillConfirm, setShowBackfillConfirm] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -102,6 +109,26 @@ const PurchaseSettingsPage: React.FC = () => {
     updateSetting('governanceRules', currentRules.filter((r) => r.id !== id));
   };
 
+  const handleBackfillApAccounts = async () => {
+    try {
+      setBackfilling(true);
+      const result = await purchasesApi.backfillPartyAccounts();
+      if (result.errors.length > 0) {
+        toast(
+          `Backfill completed with issues. Created: ${result.created}, skipped: ${result.skipped}, errors: ${result.errors.length}`,
+          { icon: 'ℹ️' }
+        );
+      } else {
+        toast.success(`Backfill completed. Created: ${result.created}, skipped: ${result.skipped}.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to backfill vendor AP sub-accounts.');
+    } finally {
+      setBackfilling(false);
+      setShowBackfillConfirm(false);
+    }
+  };
+
   const liabilityAccounts = useMemo(
     () =>
       validAccounts.filter((account) => {
@@ -138,6 +165,8 @@ const PurchaseSettingsPage: React.FC = () => {
         allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
         requirePOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requirePOForStockItems,
         defaultAPAccountId: settings.defaultAPAccountId,
+        apParentAccountId: settings.apParentAccountId || undefined,
+        partyAccountCodeFormat: (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim(),
         defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId || undefined,
         defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? settings.defaultGRNIAccountId || undefined : undefined,
         allowOverDelivery: settings.allowOverDelivery,
@@ -190,13 +219,14 @@ const PurchaseSettingsPage: React.FC = () => {
   ];
 
   return (
-    <ModuleSettingsLayout
-      title="Purchase Settings"
-      subtitle="Control purchasing workflow, posting defaults, tolerances, and numbering."
-      tabs={tabs as any}
-      activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as TabId)}
-    >
+    <>
+      <ModuleSettingsLayout
+        title="Purchase Settings"
+        subtitle="Control purchasing workflow, posting defaults, tolerances, and numbering."
+        tabs={tabs as any}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as TabId)}
+      >
       <AccountingIntegrationStatus
         moduleCode="purchases"
         hasMappings={!!settings?.defaultAPAccountId}
@@ -348,6 +378,58 @@ const PurchaseSettingsPage: React.FC = () => {
                       placeholder="Select AP account"
                     />
                     <p className="mt-1.5 text-xs italic text-gray-500">Primary vendor liability account.</p>
+                  </div>
+
+                  <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">
+                    <p className="text-xs font-semibold text-indigo-900">
+                      {t('purchases.settings.apGeneration.title', 'AP Sub-account Generation')}
+                    </p>
+                    <p className="mt-1 text-[11px] text-indigo-700">
+                      {t('purchases.settings.apGeneration.description', 'Configure how vendor-specific AP sub-accounts are generated during vendor creation.')}
+                    </p>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => setShowBackfillConfirm(true)}
+                        disabled={backfilling}
+                      >
+                        {t('purchases.settings.apGeneration.backfillButton', 'Backfill vendor AP sub-accounts')}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      {t('purchases.settings.apParent.label', 'AP Parent Account')}
+                    </label>
+                    <AccountSelector
+                      value={settings.apParentAccountId || ''}
+                      onChange={(account: any) => updateSetting('apParentAccountId', account?.id || undefined)}
+                      placeholder={t('purchases.settings.apParent.placeholder', 'Select AP parent account')}
+                      allowedClassifications={['LIABILITY']}
+                      contextLabel={t('purchases.settings.apParent.context', 'Liability')}
+                      enforceClassification
+                    />
+                    <p className="mt-1.5 text-xs italic text-gray-500">
+                      {t('purchases.settings.apParent.help', 'Parent account under which per-vendor AP sub-accounts are generated.')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      {t('purchases.settings.partyAccountFormat.label', 'AP Sub-account Code Format')}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                      onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
+                      placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                    />
+                    <p className="mt-1.5 text-xs italic text-gray-500">
+                      {t('purchases.settings.partyAccountFormat.help', 'Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.')}
+                    </p>
                   </div>
 
                   <div>
@@ -667,7 +749,23 @@ const PurchaseSettingsPage: React.FC = () => {
           </div>
         </SettingsSection>
       )}
-    </ModuleSettingsLayout>
+      </ModuleSettingsLayout>
+      <ConfirmDialog
+        isOpen={showBackfillConfirm}
+        title={t('purchases.settings.apGeneration.confirmTitle', 'Backfill Vendor AP Sub-accounts')}
+        message={t(
+          'purchases.settings.apGeneration.confirmMessage',
+          'This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.'
+        )}
+        confirmLabel={t('purchases.settings.apGeneration.confirmAction', 'Run Backfill')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        onConfirm={handleBackfillApAccounts}
+        onCancel={() => setShowBackfillConfirm(false)}
+        tone="warning"
+        isConfirming={backfilling}
+        icon={<AlertTriangle size={20} />}
+      />
+    </>
   );
 };
 

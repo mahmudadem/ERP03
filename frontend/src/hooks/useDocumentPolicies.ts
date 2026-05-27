@@ -84,7 +84,9 @@ export const useDocumentPolicies = () => {
     accountingMode,
     salesWorkflowMode,
     purchaseWorkflowMode,
-    showSalesOperationalDocs: shouldShowOperationalDocuments(salesWorkflowMode),
+    showSalesOperationalDocs:
+      shouldShowOperationalDocuments(salesWorkflowMode) ||
+      salesSettings?.showOperationalDocsInSimple === true,
     showPurchaseOperationalDocs: shouldShowOperationalDocuments(purchaseWorkflowMode),
   };
 };

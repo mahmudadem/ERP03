@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { TaxCodeDTO, TaxScope, TaxType, sharedApi } from '../../../api/sharedApi';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 
 interface TaxCodeFormState {
   code: string;
@@ -10,6 +11,7 @@ interface TaxCodeFormState {
   scope: TaxScope;
   purchaseTaxAccountId: string;
   salesTaxAccountId: string;
+  priceIsInclusive: boolean;
   active: boolean;
 }
 
@@ -21,6 +23,7 @@ const emptyForm: TaxCodeFormState = {
   scope: 'BOTH',
   purchaseTaxAccountId: '',
   salesTaxAccountId: '',
+  priceIsInclusive: false,
   active: true,
 };
 
@@ -63,6 +66,7 @@ const TaxCodesPage: React.FC = () => {
       scope: taxCode.scope,
       purchaseTaxAccountId: taxCode.purchaseTaxAccountId || '',
       salesTaxAccountId: taxCode.salesTaxAccountId || '',
+      priceIsInclusive: taxCode.priceIsInclusive === true,
       active: taxCode.active,
     });
   };
@@ -80,6 +84,7 @@ const TaxCodesPage: React.FC = () => {
         scope: form.scope,
         purchaseTaxAccountId: form.purchaseTaxAccountId || undefined,
         salesTaxAccountId: form.salesTaxAccountId || undefined,
+        priceIsInclusive: form.priceIsInclusive,
         active: form.active,
       };
 
@@ -172,20 +177,34 @@ const TaxCodesPage: React.FC = () => {
             </select>
           </label>
           <label className="text-sm">
-            <div className="mb-1 font-medium">Purchase Tax Account ID</div>
-            <input
-              className="w-full rounded border border-slate-300 px-3 py-2"
+            <div className="mb-1 font-medium">Purchase Tax Account</div>
+            <AccountSelector
               value={form.purchaseTaxAccountId}
-              onChange={(e) => setForm((prev) => ({ ...prev, purchaseTaxAccountId: e.target.value }))}
+              onChange={(account) => setForm((prev) => ({ ...prev, purchaseTaxAccountId: account?.id || '' }))}
+              placeholder="Select purchase tax account"
             />
           </label>
           <label className="text-sm">
-            <div className="mb-1 font-medium">Sales Tax Account ID</div>
-            <input
-              className="w-full rounded border border-slate-300 px-3 py-2"
+            <div className="mb-1 font-medium">Sales Tax Account</div>
+            <AccountSelector
               value={form.salesTaxAccountId}
-              onChange={(e) => setForm((prev) => ({ ...prev, salesTaxAccountId: e.target.value }))}
+              onChange={(account) => setForm((prev) => ({ ...prev, salesTaxAccountId: account?.id || '' }))}
+              placeholder="Select sales tax account"
             />
+          </label>
+          <label className="text-sm md:col-span-2 flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300"
+              checked={form.priceIsInclusive}
+              onChange={(e) => setForm((prev) => ({ ...prev, priceIsInclusive: e.target.checked }))}
+            />
+            <span>
+              <span className="font-medium">Price is tax-inclusive by default</span>
+              <span className="ml-2 text-xs text-slate-500">
+                Lines using this tax code treat the unit price as inclusive unless overridden.
+              </span>
+            </span>
           </label>
           <div className="flex gap-2 md:col-span-2">
             <button className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white" disabled={saving} type="submit">

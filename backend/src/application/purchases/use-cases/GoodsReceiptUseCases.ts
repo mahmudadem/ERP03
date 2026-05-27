@@ -526,7 +526,6 @@ export class PostGoodsReceiptUseCase {
               postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
               reference: grn.grnNumber,
               baseCurrencyOverride: resolvedBaseCurrency,
-              skipAccountValidation: true,
             },
             transaction
           );

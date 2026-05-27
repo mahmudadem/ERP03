@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
+import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import {
   DocumentSource,
@@ -29,6 +30,8 @@ import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/ID
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
+import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
+import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
@@ -40,7 +43,15 @@ import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILe
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import { PersonaNotAllowedError } from '../../../domain/accounting/errors/PersonaNotAllowedError';
+import { UnsettledCostError } from '../../../domain/inventory/errors/UnsettledCostError';
+import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
+import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
+import { randomUUID as nodeRandomUUID } from 'crypto';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
@@ -52,6 +63,10 @@ import {
   calculateSalesInvoiceLineAmounts,
   calculateSalesInvoiceTotals,
 } from '../services/SalesInvoiceCalculationService';
+import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
+import { CreditCheckService, CreditCheckResult } from '../services/CreditCheckService';
+import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
+import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -98,6 +113,8 @@ export interface SalesInvoiceLineInput {
   discountValue?: number;
   discountAmountDoc?: number;
   taxCodeId?: string;
+  /** Optional per-line override. When undefined, falls back to the tax code's default. */
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
 }
@@ -114,11 +131,13 @@ export interface SalesInvoiceChargeInput {
 
 export interface CreateSalesInvoiceInput {
   companyId: string;
+  voucherFormId?: string;
   formType?: string;
   voucherType?: string;
   persona?: string;
   source?: DocumentSource | string;
   salesOrderId?: string;
+  salespersonId?: string;
   customerId: string;
   customerInvoiceNumber?: string;
   invoiceDate: string;
@@ -129,12 +148,21 @@ export interface CreateSalesInvoiceInput {
   charges?: SalesInvoiceChargeInput[];
   notes?: string;
   createdBy: string;
+  /** When provided alongside a BLOCK-policy credit limit breach, the invoice creation
+   *  proceeds and an audit override record is persisted. */
+  creditOverrideReason?: string;
+}
+
+export interface CreateSalesInvoiceResult {
+  salesInvoice: SalesInvoice;
+  creditCheck?: CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' };
 }
 
 export interface UpdateSalesInvoiceInput {
   companyId: string;
   id: string;
   customerId?: string;
+  salespersonId?: string;
   customerInvoiceNumber?: string;
   invoiceDate?: string;
   dueDate?: string;
@@ -284,10 +312,14 @@ export class CreateSalesInvoiceUseCase {
     private readonly itemRepo: IItemRepository,
     private readonly itemCategoryRepo: IItemCategoryRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly promotionRuleRepo?: IPromotionRuleRepository,
+    private readonly creditCheckService?: CreditCheckService,
+    private readonly creditOverrideRepo?: ICreditOverrideRepository,
+    private readonly recordChangeService?: RecordChangeService,
   ) {}
 
-  async execute(input: CreateSalesInvoiceInput, transaction?: unknown): Promise<SalesInvoice> {
+  async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<CreateSalesInvoiceResult> {
     const source = resolveDocumentSource(input.source);
     const persona = resolveSalesInvoicePersona(input);
     input = {
@@ -316,7 +348,12 @@ export class CreateSalesInvoiceUseCase {
       { formType: input.formType }
     );
     if (!isPersonaAllowed) {
-      throw new Error(`Sales invoice persona '${input.persona}' is not allowed by company governance policy`);
+      throw new PersonaNotAllowedError({
+        companyId: input.companyId,
+        module: 'sales',
+        persona: input.persona as string,
+        formType: input.formType,
+      });
     }
 
     let so: SalesOrder | null = null;
@@ -380,13 +417,20 @@ export class CreateSalesInvoiceUseCase {
 
       let taxRate = 0;
       let taxCode: string | undefined;
+      let taxCodeInclusiveDefault = false;
       if (taxCodeId) {
         const selectedTaxCode = await this.taxCodeRepo.getById(input.companyId, taxCodeId);
         if (!selectedTaxCode) throw new Error(`Tax code not found: ${taxCodeId}`);
         assertValidSalesTaxCode(selectedTaxCode, taxCodeId);
         taxRate = selectedTaxCode.rate;
         taxCode = selectedTaxCode.code;
+        taxCodeInclusiveDefault = selectedTaxCode.priceIsInclusive === true;
       }
+
+      const effectiveInclusive =
+        sourceLine.priceIsInclusive !== undefined
+          ? sourceLine.priceIsInclusive === true
+          : taxCodeInclusiveDefault;
 
       const discountType = sourceLine.discountType;
       const discountValue = sourceLine.discountValue;
@@ -395,6 +439,7 @@ export class CreateSalesInvoiceUseCase {
         unitPriceDoc,
         exchangeRate,
         taxRate,
+        priceIsInclusive: effectiveInclusive,
         discountType,
         discountValue,
         discountAmountDoc: sourceLine.discountAmountDoc,
@@ -431,6 +476,8 @@ export class CreateSalesInvoiceUseCase {
         taxCodeId,
         taxCode,
         taxRate,
+        priceIsInclusive:
+          sourceLine.priceIsInclusive !== undefined ? sourceLine.priceIsInclusive === true : undefined,
         taxAmountDoc: lineAmounts.taxAmountDoc,
         taxAmountBase: lineAmounts.taxAmountBase,
         warehouseId: sourceLine.warehouseId || soLine?.warehouseId || settings.defaultWarehouseId,
@@ -496,11 +543,13 @@ export class CreateSalesInvoiceUseCase {
       companyId: input.companyId,
       invoiceNumber,
       customerInvoiceNumber: input.customerInvoiceNumber,
+      voucherFormId: input.voucherFormId,
       formType: input.formType || 'sales_invoice_direct',
       voucherType: input.voucherType || 'sales_invoice',
       persona: input.persona || 'direct',
       source: input.source,
       salesOrderId: so?.id,
+      salespersonId: input.salespersonId,
       customerId: customer!.id,
       customerName: customer!.displayName,
       invoiceDate: input.invoiceDate,
@@ -530,9 +579,221 @@ export class CreateSalesInvoiceUseCase {
 
     si.outstandingAmountBase = si.grandTotalBase;
 
+    // --- Credit check (direct persona only — linked/service invoices already checked at SO confirm time) ---
+    let creditCheckOutcome: (CreditCheckResult & { outcome: 'OK' | 'WARN' | 'OVERRIDDEN' }) | undefined;
+    if (input.persona === 'direct' && this.creditCheckService && this.creditOverrideRepo) {
+      const orderAmountBase = si.grandTotalBase;
+      const party = await this.partyRepo.getById(input.companyId, si.customerId).catch(() => null);
+      if (party && party.creditLimit !== undefined && party.creditLimit !== null) {
+        const creditCheck = await this.creditCheckService.check(input.companyId, party, orderAmountBase);
+        const overLimit = creditCheck.enforced && !creditCheck.withinLimit;
+        if (!overLimit || creditCheck.policy === 'NONE') {
+          creditCheckOutcome = { ...creditCheck, outcome: 'OK' };
+        } else if (creditCheck.policy === 'WARN') {
+          creditCheckOutcome = { ...creditCheck, outcome: 'WARN' };
+        } else {
+          // policy === 'BLOCK'
+          if (!input.creditOverrideReason) {
+            throw new CreditLimitExceededError({
+              companyId: input.companyId,
+              customerId: party.id,
+              customerName: party.displayName,
+              creditLimit: creditCheck.creditLimit,
+              currentExposure: creditCheck.currentExposure,
+              orderAmount: creditCheck.orderAmount,
+              projectedExposure: creditCheck.projectedExposure,
+            });
+          }
+          // Override provided — persist audit record
+          const overrideRecord = new CreditOverride({
+            companyId: input.companyId,
+            customerId: party.id,
+            sourceType: 'SALES_INVOICE',
+            sourceId: si.id,
+            sourceNumber: si.invoiceNumber,
+            creditLimit: creditCheck.creditLimit,
+            currentExposure: creditCheck.currentExposure,
+            orderAmount: creditCheck.orderAmount,
+            projectedExposure: creditCheck.projectedExposure,
+            reason: input.creditOverrideReason,
+            overriddenBy: input.createdBy,
+            overriddenAt: new Date(),
+          });
+          await this.creditOverrideRepo.create(overrideRecord, transaction);
+          creditCheckOutcome = { ...creditCheck, outcome: 'OVERRIDDEN' };
+        }
+      }
+    }
+
+    // --- Promotion evaluation (direct persona only) ---
+    if (this.promotionRuleRepo && input.persona === 'direct') {
+      const rules = await this.promotionRuleRepo.list(input.companyId);
+      if (rules.length > 0) {
+        const promotionService = new PromotionApplicationService();
+
+        // Build category map for promotion evaluation
+        const itemCategoryMap = new Map<string, string | undefined>();
+        for (const line of si.lines) {
+          if (!itemCategoryMap.has(line.itemId)) {
+            const item = await this.itemRepo.getItem(line.itemId);
+            if (item) itemCategoryMap.set(item.id, item.categoryId);
+          }
+        }
+
+        const evalLines: PromotionEvalLine[] = si.lines.map((l) => ({
+          lineId: l.lineId,
+          itemId: l.itemId,
+          categoryId: itemCategoryMap.get(l.itemId),
+          qty: l.invoicedQty,
+          unitPriceDoc: l.unitPriceDoc,
+          lineAmountDoc: l.grossLineTotalDoc ?? l.lineTotalDoc,
+          hasManualDiscount: !!(l.discountType),
+        }));
+
+        const promoResult = promotionService.evaluate(evalLines, rules, input.invoiceDate);
+
+        const appliedPromotions: AppliedPromotionInfo[] = [];
+
+        // Apply line discounts
+        for (const discount of promoResult.lineDiscounts) {
+          const lineIndex = si.lines.findIndex((l) => l.lineId === discount.lineId);
+          if (lineIndex < 0) continue;
+          const line = si.lines[lineIndex];
+
+          // Calculate promotion discount from gross line total
+          const grossTotalDoc = line.grossLineTotalDoc ?? roundMoney(line.invoicedQty * line.unitPriceDoc);
+          const promoDiscountDoc = roundMoney(grossTotalDoc * discount.discountPct / 100);
+          const promoDiscountBase = roundMoney(promoDiscountDoc * si.exchangeRate);
+          const newLineTotalDoc = roundMoney(grossTotalDoc - promoDiscountDoc);
+          const newLineTotalBase = roundMoney(line.grossLineTotalBase ? line.grossLineTotalBase - promoDiscountBase : newLineTotalDoc * si.exchangeRate);
+
+          si.lines[lineIndex] = {
+            ...line,
+            appliedPromotionId: discount.ruleId,
+            appliedPromotionName: discount.ruleName,
+            appliedDiscountPct: discount.discountPct,
+            discountType: 'PERCENT',
+            discountValue: discount.discountPct,
+            discountAmountDoc: promoDiscountDoc,
+            discountAmountBase: promoDiscountBase,
+            lineTotalDoc: newLineTotalDoc,
+            lineTotalBase: newLineTotalBase,
+            taxAmountDoc: roundMoney(newLineTotalDoc * line.taxRate),
+            taxAmountBase: roundMoney(newLineTotalBase * line.taxRate),
+          };
+
+          if (!appliedPromotions.some((p) => p.ruleId === discount.ruleId)) {
+            appliedPromotions.push({
+              ruleId: discount.ruleId,
+              ruleName: discount.ruleName,
+              type: 'THRESHOLD_DISCOUNT',
+              discountPct: discount.discountPct,
+            });
+          }
+        }
+
+        // Add free-goods lines
+        for (const freeGood of promoResult.freeGoods) {
+          const item = await this.itemRepo.getItem(freeGood.itemId);
+          if (!item || item.companyId !== input.companyId) continue;
+          const sourceLine = si.lines.find((l) => l.lineId === freeGood.sourceLineId);
+          const revenueAccountId = await this.resolveRevenueAccount(
+            input.companyId,
+            item.id,
+            settings.defaultRevenueAccountId,
+          );
+
+          si.lines.push({
+            lineId: randomUUID(),
+            lineNo: si.lines.length + 1,
+            soLineId: sourceLine?.soLineId,
+            dnLineId: sourceLine?.dnLineId,
+            itemId: item.id,
+            itemCode: item.code,
+            itemName: item.name,
+            trackInventory: item.trackInventory,
+            invoicedQty: freeGood.qty,
+            uomId: item.salesUomId || item.baseUomId,
+            uom: item.salesUom || item.baseUom,
+            unitPriceDoc: 0,
+            grossLineTotalDoc: 0,
+            discountType: undefined,
+            discountValue: undefined,
+            discountAmountDoc: 0,
+            lineTotalDoc: 0,
+            unitPriceBase: 0,
+            grossLineTotalBase: 0,
+            discountAmountBase: 0,
+            lineTotalBase: 0,
+            taxCodeId: sourceLine?.taxCodeId,
+            taxCode: sourceLine?.taxCode,
+            taxRate: 0,
+            taxAmountDoc: 0,
+            taxAmountBase: 0,
+            warehouseId: sourceLine?.warehouseId ?? settings.defaultWarehouseId,
+            revenueAccountId,
+            cogsAccountId: item.cogsAccountId,
+            inventoryAccountId: item.inventoryAssetAccountId,
+            unitCostBase: undefined,
+            lineCostBase: undefined,
+            stockMovementId: null,
+            description: `Free item (${freeGood.ruleName})`,
+            appliedPromotionId: freeGood.ruleId,
+            appliedPromotionName: freeGood.ruleName,
+          });
+
+          if (!appliedPromotions.some((p) => p.ruleId === freeGood.ruleId)) {
+            appliedPromotions.push({
+              ruleId: freeGood.ruleId,
+              ruleName: freeGood.ruleName,
+              type: 'BUY_X_GET_Y',
+              freeQty: freeGood.qty,
+              sourceLineId: freeGood.sourceLineId,
+              freeItemId: freeGood.itemId,
+            });
+          }
+        }
+
+        // Recompute SI totals from all (potentially modified) lines + charges
+        si.subtotalDoc = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.lineTotalDoc, 0)
+          + si.charges.reduce((sum, c) => sum + c.amountDoc, 0)
+        );
+        si.taxTotalDoc = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.taxAmountDoc, 0)
+          + si.charges.reduce((sum, c) => sum + (c.taxAmountDoc || 0), 0)
+        );
+        si.grandTotalDoc = roundMoney(si.subtotalDoc + si.taxTotalDoc);
+        si.subtotalBase = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.lineTotalBase, 0)
+          + si.charges.reduce((sum, c) => sum + (c.amountBase || 0), 0)
+        );
+        si.taxTotalBase = roundMoney(
+          si.lines.reduce((sum, l) => sum + l.taxAmountBase, 0)
+          + si.charges.reduce((sum, c) => sum + (c.taxAmountBase || 0), 0)
+        );
+        si.grandTotalBase = roundMoney(si.subtotalBase + si.taxTotalBase);
+        si.outstandingAmountBase = roundMoney(si.grandTotalBase - si.paidAmountBase);
+        si.appliedPromotions = appliedPromotions.length > 0 ? appliedPromotions : undefined;
+      }
+    }
+
     await this.salesInvoiceRepo.create(si, transaction);
     await this.settingsRepo.saveSettings(settings, transaction);
-    return si;
+
+    if (this.recordChangeService && actor) {
+      await this.recordChangeService.recordCreate({
+        companyId: si.companyId,
+        entityType: 'SALES_INVOICE',
+        entityId: si.id,
+        entityNumber: si.invoiceNumber ? `SI-${si.invoiceNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        snapshot: si.toJSON(),
+      });
+    }
+
+    return { salesInvoice: si, creditCheck: creditCheckOutcome };
   }
 
   private assertCustomer(customer: Party | null, customerId: string): void {
@@ -649,18 +910,22 @@ export class PostSalesInvoiceUseCase {
     private readonly paymentHistoryRepo?: IPaymentHistoryRepository,
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
-    private readonly ledgerRepo?: ILedgerRepository
+    private readonly ledgerRepo?: ILedgerRepository,
+    private readonly postingLogRepo?: IPostingLogRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
   }
 
   async execute(
-    companyId: string, 
-    idOrSI: string | SalesInvoice, 
+    companyId: string,
+    idOrSI: string | SalesInvoice,
     createAccountingEffect: boolean = true,
     externalTransaction?: any,
-    settlementInput?: SettlementInput
+    settlementInput?: SettlementInput,
+    periodLockOverride?: { reason: string; overriddenBy: string },
+    actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }
   ): Promise<SalesInvoice> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
@@ -672,7 +937,16 @@ export class PostSalesInvoiceUseCase {
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
 
-    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
+    const shouldPostAccounting = createAccountingEffect;
+    if (shouldPostAccounting && !(await this.isAccountingEngineReady(companyId))) {
+      throw new AccountingEngineUnavailableError({
+        companyId,
+        reason: 'NOT_INITIALIZED',
+        cause:
+          'Sales Invoice posting requires the Accounting Engine to be initialized. ' +
+          'Initialize Sales (which auto-initializes the Engine) or call InitializeAccountingUseCase first.',
+      });
+    }
 
     const si = typeof idOrSI === 'string' 
       ? await this.salesInvoiceRepo.getById(companyId, idOrSI)
@@ -923,19 +1197,49 @@ export class PostSalesInvoiceUseCase {
       const item = itemsMap.get(line.itemId);
       if (!item) throw new Error(`Item not found: ${line.itemId}`);
 
-      const revenueId = await resolveAccountCached(
-        this.resolveRevenueAccountSync(companyId, item, categoriesMap, settings.defaultRevenueAccountId)
-      );
+      const resolvedRevenueId = this.resolveRevenueAccountSync(companyId, item, categoriesMap, settings.defaultRevenueAccountId);
+      if (shouldPostAccounting && line.lineTotalBase > 0 && (!resolvedRevenueId || !resolvedRevenueId.trim())) {
+        throw new AccountMappingError({
+          companyId,
+          itemId: item.id,
+          accountRole: 'revenue',
+          fallbackChain: ['item.revenueAccountId', 'category.defaultRevenueAccountId', 'salesSettings.defaultRevenueAccountId'],
+          lineNo: line.lineNo,
+        });
+      }
+      const revenueId = await resolveAccountCached(resolvedRevenueId);
       let taxId: string | undefined;
       if (line.taxAmountBase > 0 && line.taxCodeId) {
         const sTaxCode = taxCodesMap.get(line.taxCodeId);
         if (sTaxCode?.salesTaxAccountId) {
           taxId = await resolveAccountCached(sTaxCode.salesTaxAccountId);
+        } else if (shouldPostAccounting) {
+          throw new AccountMappingError({
+            companyId,
+            itemId: item.id,
+            accountRole: 'tax',
+            fallbackChain: ['taxCode.salesTaxAccountId'],
+            lineNo: line.lineNo,
+            hint: `Tax code ${line.taxCodeId} has no salesTaxAccountId configured.`,
+          });
         }
       }
       let cogsId: string | undefined;
       let inventoryId: string | undefined;
-      if (line.trackInventory && line.lineCostBase > 0) {
+      let cogsStatus: 'POSTED' | 'SKIPPED_POSTED_AT_DN' | 'SKIPPED_SERVICE_ITEM' | 'SKIPPED_DEFERRED_POLICY' | 'SKIPPED_UNSETTLED_COST' | null = null;
+
+      if (!line.trackInventory) {
+        cogsStatus = 'SKIPPED_SERVICE_ITEM';
+      } else if (line.lineCostBase === 0) {
+        if (shouldPostAccounting && invSettings?.allowDeferredCost !== true) {
+          throw new UnsettledCostError({
+            companyId,
+            itemId: item.id,
+            lineNo: line.lineNo,
+          });
+        }
+        cogsStatus = 'SKIPPED_UNSETTLED_COST';
+      } else {
         const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
         const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
         const hasOperationalDelivery = matchedDeliveryLines.length > 0;
@@ -944,9 +1248,27 @@ export class PostSalesInvoiceUseCase {
           if (accounts) {
             cogsId = await resolveAccountCached(accounts.cogsAccountId);
             inventoryId = await resolveAccountCached(accounts.inventoryAccountId);
+            cogsStatus = 'POSTED';
+          } else if (shouldPostAccounting) {
+            // Missing account mapping is NEVER a valid deferred-cost reason.
+            throw new AccountMappingError({
+              companyId,
+              itemId: item.id,
+              accountRole: 'cogs',
+              fallbackChain: [
+                'item.cogsAccountId',
+                'category.defaultCogsAccountId',
+                'inventorySettings.defaultCOGSAccountId',
+              ],
+              lineNo: line.lineNo,
+              hint: 'Also requires an inventory asset account at one of the same levels.',
+            });
           }
+        } else {
+          cogsStatus = 'SKIPPED_POSTED_AT_DN';
         }
       }
+      line.cogsPostingStatus = cogsStatus;
       lineResolvedAccounts.set(line.lineId, { revenueId, taxId, cogsId, inventoryId });
     }
     const chargeResolvedAccounts = new Map<string, ResolvedChargeAccount>();
@@ -1055,6 +1377,7 @@ export class PostSalesInvoiceUseCase {
               sourceType: 'SALES_INVOICE',
               sourceId: si.id,
               voucherPart: 'REVENUE',
+              ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: si.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
@@ -1101,6 +1424,7 @@ export class PostSalesInvoiceUseCase {
                   sourceType: 'SALES_INVOICE',
                   sourceId: si.id,
                   voucherPart: 'COGS',
+                  ...(periodLockOverride ? { periodLockOverride } : {}),
                 },
                 createdBy: si.createdBy,
                 postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
@@ -1148,7 +1472,83 @@ export class PostSalesInvoiceUseCase {
       await this.transactionManager.runTransaction(postingLogic);
     }
 
-    return (await this.salesInvoiceRepo.getById(companyId, id))!;
+    // PostingLog write runs AFTER the transaction commits — best-effort, must not
+    // roll back the posting, and must not be subject to transaction retries (which
+    // would emit duplicate logs with fresh UUIDs each attempt).
+    if (this.postingLogRepo && shouldPostAccounting) {
+      try {
+        const voucherIds = [si.voucherId, si.cogsVoucherId].filter((v): v is string => !!v);
+        const decisions: LineDecision[] = si.lines.map((ln) => {
+          const resolved = lineResolvedAccounts.get(ln.lineId);
+          const accounts: LineDecision['accounts'] = {};
+          if (resolved?.revenueId) accounts.revenue = { resolvedId: resolved.revenueId, fallbackLevel: 'item' };
+          if (resolved?.taxId) accounts.tax = { resolvedId: resolved.taxId, fallbackLevel: 'taxCode' };
+          if (resolved?.cogsId) accounts.cogs = { resolvedId: resolved.cogsId, fallbackLevel: 'item' };
+          if (resolved?.inventoryId) accounts.inventory = { resolvedId: resolved.inventoryId, fallbackLevel: 'item' };
+          return {
+            lineNo: ln.lineNo,
+            itemId: ln.itemId,
+            accounts,
+            cogsPostingStatus: ln.cogsPostingStatus ?? null,
+          };
+        });
+        const warnings: string[] = [];
+        for (const ln of si.lines) {
+          if (ln.cogsPostingStatus === 'SKIPPED_UNSETTLED_COST') {
+            warnings.push(`Line ${ln.lineNo} (${ln.itemCode}): cost basis unsettled — COGS not posted at invoice time.`);
+          }
+        }
+        const log = new PostingLog({
+          id: nodeRandomUUID(),
+          companyId,
+          sourceModule: 'sales',
+          sourceType: 'SALES_INVOICE',
+          sourceId: si.id,
+          sourceDocNumber: si.invoiceNumber,
+          strategy: 'SalesInvoiceStrategy',
+          voucherIds,
+          decisions,
+          warnings,
+          postedAt: new Date(),
+          postedBy: si.createdBy || 'SYSTEM',
+        });
+        await this.postingLogRepo.create(log);
+      } catch (err: any) {
+        // Best-effort: log loudly with detail so this isn't invisible in cloud logs.
+        console.error(
+          '[PostingLog] write failed for SalesInvoice',
+          { siId: si.id, invoiceNumber: si.invoiceNumber, companyId, message: err?.message, stack: err?.stack }
+        );
+      }
+    }
+
+    const posted = (await this.salesInvoiceRepo.getById(companyId, id))!;
+
+    if (this.recordChangeService && actor) {
+      const entityNumber = posted.invoiceNumber ? `SI-${posted.invoiceNumber}` : undefined;
+      await this.recordChangeService.recordPost({
+        companyId,
+        entityType: 'SALES_INVOICE',
+        entityId: posted.id,
+        entityNumber,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+      });
+      if (periodLockOverride) {
+        await this.recordChangeService.recordPeriodLockOverride({
+          companyId,
+          entityType: 'SALES_INVOICE',
+          entityId: posted.id,
+          entityNumber,
+          userId: actor.userId,
+          userEmail: actor.userEmail,
+          reason: periodLockOverride.reason,
+          lockedThroughDate: actor.lockedThroughDate,
+        });
+      }
+    }
+
+    return posted;
   }
 
   private async resolveAccountId(companyId: string, idOrCode: string): Promise<string> {
@@ -1178,11 +1578,16 @@ export class PostSalesInvoiceUseCase {
   }
 
   private freezeTaxSnapshotSync(line: SalesInvoiceLine, rate: number, tax?: TaxCode): void {
+    const effectiveInclusive =
+      line.priceIsInclusive !== undefined
+        ? line.priceIsInclusive === true
+        : tax?.priceIsInclusive === true;
     const amounts = calculateSalesInvoiceLineAmounts({
       invoicedQty: line.invoicedQty,
       unitPriceDoc: line.unitPriceDoc,
       exchangeRate: rate,
       taxRate: tax?.rate || 0,
+      priceIsInclusive: effectiveInclusive,
       discountType: line.discountType,
       discountValue: line.discountValue,
       discountAmountDoc: line.discountAmountDoc,
@@ -1422,7 +1827,7 @@ export class PostSalesInvoiceUseCase {
     }
   }
 
-  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+  private async isAccountingEngineReady(companyId: string): Promise<boolean> {
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
   }
@@ -1491,9 +1896,9 @@ export class CreateAndPostSalesInvoiceUseCase {
     private readonly postUseCase: PostSalesInvoiceUseCase
   ) {}
 
-  async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput): Promise<SalesInvoice> {
-    const si = await this.createUseCase.execute(input);
-    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput);
+  async execute(input: CreateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesInvoice> {
+    const { salesInvoice: si } = await this.createUseCase.execute(input, undefined, actor);
+    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride, actor);
   }
 }
 
@@ -1503,24 +1908,27 @@ export class UpdateAndPostSalesInvoiceUseCase {
     private readonly postUseCase: PostSalesInvoiceUseCase
   ) {}
 
-  async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput): Promise<SalesInvoice> {
-    const si = await this.updateUseCase.execute(input);
-    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput);
+  async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesInvoice> {
+    const si = await this.updateUseCase.execute(input, undefined, actor);
+    return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride, actor);
   }
 }
 
 export class UpdateSalesInvoiceUseCase {
   constructor(
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
-    private readonly partyRepo: IPartyRepository
+    private readonly partyRepo: IPartyRepository,
+    private readonly recordChangeService?: RecordChangeService
   ) {}
 
-  async execute(input: UpdateSalesInvoiceInput, transaction?: unknown): Promise<SalesInvoice> {
+  async execute(input: UpdateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<SalesInvoice> {
     const current = await this.salesInvoiceRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Sales invoice not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft sales invoices can be updated');
     }
+
+    const before = current.toJSON();
 
     if (input.customerId) {
       const customer = await this.partyRepo.getById(input.companyId, input.customerId);
@@ -1532,6 +1940,7 @@ export class UpdateSalesInvoiceUseCase {
       current.customerName = customer.displayName;
     }
 
+    if (input.salespersonId !== undefined) current.salespersonId = input.salespersonId || undefined;
     if (input.customerInvoiceNumber !== undefined) current.customerInvoiceNumber = input.customerInvoiceNumber;
     if (input.invoiceDate !== undefined) current.invoiceDate = input.invoiceDate;
     if (input.dueDate !== undefined) current.dueDate = input.dueDate;
@@ -1573,6 +1982,7 @@ export class UpdateSalesInvoiceUseCase {
           taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
           taxCode: existing?.taxCode,
           taxRate: existing?.taxRate ?? 0,
+          priceIsInclusive: line.priceIsInclusive ?? existing?.priceIsInclusive,
           taxAmountDoc: existing?.taxAmountDoc ?? 0,
           taxAmountBase: existing?.taxAmountBase ?? 0,
           warehouseId: line.warehouseId ?? existing?.warehouseId,
@@ -1613,6 +2023,21 @@ export class UpdateSalesInvoiceUseCase {
     current.updatedAt = new Date();
     const updated = new SalesInvoice(current.toJSON() as any);
     await this.salesInvoiceRepo.update(updated, transaction);
+
+    if (this.recordChangeService && actor) {
+      const after = updated.toJSON();
+      await this.recordChangeService.recordUpdate({
+        companyId: input.companyId,
+        entityType: 'SALES_INVOICE',
+        entityId: updated.id,
+        entityNumber: updated.invoiceNumber ? `SI-${updated.invoiceNumber}` : undefined,
+        userId: actor.userId,
+        userEmail: actor.userEmail,
+        before: before as Record<string, any>,
+        after: after as Record<string, any>,
+      });
+    }
+
     return updated;
   }
 }

@@ -6,7 +6,9 @@ import {
   GetPartyUseCase,
   ListPartiesUseCase,
   UpdatePartyUseCase,
+  PartyAccountStrategy,
 } from '../../../application/shared/use-cases/PartyUseCases';
+import { CreateAccountUseCase } from '../../../application/accounting/use-cases/accounts/CreateAccountUseCase';
 import {
   CreateTaxCodeUseCase,
   GetTaxCodeUseCase,
@@ -59,9 +61,31 @@ export class SharedController {
     try {
       const companyId = SharedController.getCompanyId(req);
       const userId = SharedController.getUserId(req);
-      const useCase = new CreatePartyUseCase(diContainer.partyRepository, diContainer.companyCurrencyRepository);
+      const body = (req as any).body || {};
+
+      const rawStrategy = String(body.accountStrategy || '').toUpperCase();
+      if (rawStrategy !== 'AUTO_CREATE' && rawStrategy !== 'PICK_EXISTING') {
+        throw new Error('accountStrategy is required: AUTO_CREATE or PICK_EXISTING');
+      }
+
+      const createAccountUseCase = new CreateAccountUseCase(
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
+      const useCase = new CreatePartyUseCase(
+        diContainer.partyRepository,
+        diContainer.companyCurrencyRepository,
+        {
+          accountRepo: diContainer.accountRepository,
+          createAccountUseCase,
+          salesSettingsRepo: diContainer.salesSettingsRepository,
+          purchaseSettingsRepo: diContainer.purchaseSettingsRepository,
+        }
+      );
       const party = await useCase.execute({
-        ...((req as any).body || {}),
+        ...body,
+        accountStrategy: rawStrategy as PartyAccountStrategy,
         companyId,
         createdBy: userId,
       });
@@ -78,7 +102,7 @@ export class SharedController {
   static async updateParty(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SharedController.getCompanyId(req);
-      const useCase = new UpdatePartyUseCase(diContainer.partyRepository, diContainer.companyCurrencyRepository);
+      const useCase = new UpdatePartyUseCase(diContainer.partyRepository, diContainer.companyCurrencyRepository, diContainer.priceListRepository);
       const party = await useCase.execute({
         ...((req as any).body || {}),
         companyId,

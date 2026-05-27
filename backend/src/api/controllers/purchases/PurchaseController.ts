@@ -40,10 +40,16 @@ import {
   InitializePurchasesUseCase,
   UpdatePurchaseSettingsUseCase,
 } from '../../../application/purchases/use-cases/PurchaseSettingsUseCases';
+import { BackfillPartyAccountsUseCase } from '../../../application/shared/use-cases/BackfillPartyAccountsUseCase';
 import {
   RecordPurchaseInvoicePaymentUseCase,
   UpdateInvoicePaymentStatusUseCase,
 } from '../../../application/purchases/use-cases/PaymentSyncUseCases';
+import {
+  GetLedgerBackedVendorStatementUseCase,
+  VendorStatementMissingAccountError,
+} from '../../../application/purchases/use-cases/PurchasesReportingUseCases';
+import { GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
 import { PurchasesInventoryService } from '../../../application/inventory/services/PurchasesInventoryService';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
 import { GRNStatus } from '../../../domain/purchases/entities/GoodsReceipt';
@@ -54,6 +60,8 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { PurchaseDTOMapper } from '../../dtos/PurchaseDTOs';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
+import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import {
   validateCreatePurchaseReturnInput,
   validateCreateGoodsReceiptInput,
@@ -143,6 +151,7 @@ export class PurchaseController {
       stockMovementRepository: diContainer.stockMovementRepository,
       stockLevelRepository: diContainer.stockLevelRepository,
       companyRepository: diContainer.companyRepository,
+      inventorySettingsRepository: diContainer.inventorySettingsRepository,
       transactionManager: diContainer.transactionManager,
     });
   }
@@ -175,12 +184,32 @@ export class PurchaseController {
       const companyId = PurchaseController.getCompanyId(req);
       const userId = PurchaseController.getUserId(req);
 
+      const initializeAccountingUseCase = new InitializeAccountingUseCase(
+        diContainer.companyModuleRepository,
+        diContainer.accountRepository,
+        diContainer.systemMetadataRepository,
+        diContainer.companyModuleSettingsRepository,
+        diContainer.companySettingsRepository,
+        diContainer.currencyRepository,
+        diContainer.companyRepository,
+        diContainer.fiscalYearRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
+      );
+
+      const ensureAccountingEngine = new EnsureAccountingEngineInitialized(
+        diContainer.companyModuleRepository,
+        diContainer.companyRepository,
+        initializeAccountingUseCase
+      );
+
       const useCase = new InitializePurchasesUseCase(
         diContainer.purchaseSettingsRepository,
         diContainer.accountRepository,
         diContainer.companyModuleRepository,
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
+        ensureAccountingEngine,
         diContainer.inventorySettingsRepository
       );
 
@@ -241,6 +270,35 @@ export class PurchaseController {
       (res as any).json({
         success: true,
         data: PurchaseDTOMapper.toSettingsDTO(settings),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async backfillPartyAccounts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const actorId = PurchaseController.getUserId(req);
+      const useCase = new BackfillPartyAccountsUseCase(
+        diContainer.partyRepository,
+        diContainer.accountRepository,
+        diContainer.salesSettingsRepository,
+        diContainer.purchaseSettingsRepository,
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        actorId,
+        scope: 'AP',
+        activeOnly: true,
+      });
+
+      (res as any).json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -885,6 +943,61 @@ export class PurchaseController {
         data: payments.map((p) => p.toJSON()),
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getVendorStatement(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+      const q = (req as any).query;
+      const vendorId = (req as any).params?.partyId || q.vendorId;
+
+      if (!vendorId) {
+        throw new Error('vendorId query parameter or partyId route parameter is required');
+      }
+      if (!q.fromDate) {
+        throw new Error('fromDate query parameter is required');
+      }
+      if (!q.toDate) {
+        throw new Error('toDate query parameter is required');
+      }
+
+      const accountStatementUseCase = new GetAccountStatementUseCase(
+        diContainer.ledgerRepository,
+        diContainer.permissionChecker,
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+      );
+      const useCase = new GetLedgerBackedVendorStatementUseCase(
+        diContainer.partyRepository,
+        diContainer.purchaseInvoiceRepository,
+        diContainer.purchaseOrderRepository,
+        accountStatementUseCase,
+        diContainer.voucherRepository,
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        userId,
+        vendorId: String(vendorId),
+        fromDate: String(q.fromDate),
+        toDate: String(q.toDate),
+        includeOpenCommitments: q.includeOpenCommitments === 'true',
+      });
+
+      (res as any).json({ success: true, data: result });
+    } catch (error) {
+      if (error instanceof VendorStatementMissingAccountError) {
+        return (res as any).status(error.statusCode).json({
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message,
+          },
+        });
+      }
       next(error);
     }
   }
