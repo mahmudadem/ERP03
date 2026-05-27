@@ -23,6 +23,7 @@ import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
 import { ICredentialCipher } from '../services/ICredentialCipher';
+import { validatePartyAccountCodeFormat } from '../../shared/services/PartyAccountCodeRenderer';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -146,6 +147,8 @@ export interface InitializeSalesInput {
   userId: string;
   workflowMode?: 'SIMPLE' | 'OPERATIONAL';
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId: string;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
@@ -179,6 +182,8 @@ export interface UpdateSalesSettingsInput {
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId?: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
@@ -313,12 +318,28 @@ export class InitializeSalesUseCase {
 
     const defaultSalesInvoicePersona = workflowMode === 'SIMPLE' ? 'direct' as const : 'linked' as const;
 
+    if (input.arParentAccountId) {
+      const parent = await this.accountRepo.getById(input.companyId, input.arParentAccountId);
+      if (!parent) {
+        throw new Error(`AR parent account not found: ${input.arParentAccountId}`);
+      }
+      if (parent.classification !== 'ASSET') {
+        throw new Error(`AR parent account must be classified as ASSET (got ${parent.classification})`);
+      }
+    }
+    const partyAccountCodeFormatError = validatePartyAccountCodeFormat(input.partyAccountCodeFormat);
+    if (partyAccountCodeFormatError) {
+      throw new Error(partyAccountCodeFormatError);
+    }
+
     const settings = new SalesSettings({
       companyId: input.companyId,
       workflowMode,
       allowDirectInvoicing: workflowDefaults.allowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
       defaultARAccountId: input.defaultARAccountId,
+      arParentAccountId: input.arParentAccountId,
+      partyAccountCodeFormat: input.partyAccountCodeFormat,
       defaultRevenueAccountId: input.defaultRevenueAccountId,
       defaultCOGSAccountId: input.defaultCOGSAccountId,
       defaultInventoryAccountId: input.defaultInventoryAccountId,
@@ -433,6 +454,8 @@ export class UpdateSalesSettingsUseCase {
 
     const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
     const nextARAccountId = input.defaultARAccountId ?? existing.defaultARAccountId;
+    const nextARParentAccountId = input.arParentAccountId ?? existing.arParentAccountId;
+    const nextPartyAccountCodeFormat = input.partyAccountCodeFormat ?? existing.partyAccountCodeFormat;
     const nextRevenueAccountId = input.defaultRevenueAccountId ?? existing.defaultRevenueAccountId;
     const nextDefaultInventoryAccountId = input.defaultInventoryAccountId ?? existing.defaultInventoryAccountId;
 
@@ -456,6 +479,20 @@ export class UpdateSalesSettingsUseCase {
       throw new Error(`Default AR account not found: ${nextARAccountId}`);
     }
 
+    if (nextARParentAccountId) {
+      const parent = await this.accountRepo.getById(input.companyId, nextARParentAccountId);
+      if (!parent) {
+        throw new Error(`AR parent account not found: ${nextARParentAccountId}`);
+      }
+      if (parent.classification !== 'ASSET') {
+        throw new Error(`AR parent account must be classified as ASSET (got ${parent.classification})`);
+      }
+    }
+    const partyAccountCodeFormatError = validatePartyAccountCodeFormat(nextPartyAccountCodeFormat);
+    if (partyAccountCodeFormatError) {
+      throw new Error(partyAccountCodeFormatError);
+    }
+
     const updated = new SalesSettings({
       companyId: existing.companyId,
       workflowMode: newWorkflowMode,
@@ -470,6 +507,8 @@ export class UpdateSalesSettingsUseCase {
       allowDirectInvoicing: nextAllowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
       defaultARAccountId: nextARAccountId,
+      arParentAccountId: nextARParentAccountId,
+      partyAccountCodeFormat: nextPartyAccountCodeFormat,
       defaultRevenueAccountId: nextRevenueAccountId,
       defaultCOGSAccountId: input.defaultCOGSAccountId ?? existing.defaultCOGSAccountId,
       defaultInventoryAccountId: nextDefaultInventoryAccountId,

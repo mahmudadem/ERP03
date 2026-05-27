@@ -50,6 +50,10 @@ export interface SalesSettingsProps {
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
+  /** Parent account under which per-customer AR sub-accounts are auto-created. */
+  arParentAccountId?: string;
+  /** Template used when auto-creating per-customer AR sub-accounts. Tokens: {parent}, {partyCode}, {seq3}. */
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
@@ -86,6 +90,8 @@ export class SalesSettings {
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
+  arParentAccountId?: string;
+  partyAccountCodeFormat?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
@@ -124,6 +130,8 @@ export class SalesSettings {
     this.allowDirectInvoicing = props.allowDirectInvoicing;
     this.requireSOForStockItems = props.requireSOForStockItems;
     this.defaultARAccountId = props.defaultARAccountId?.trim() || undefined;
+    this.arParentAccountId = props.arParentAccountId?.trim() || undefined;
+    this.partyAccountCodeFormat = props.partyAccountCodeFormat?.trim() || undefined;
     this.defaultRevenueAccountId = props.defaultRevenueAccountId.trim();
     this.defaultCOGSAccountId = props.defaultCOGSAccountId;
     this.defaultInventoryAccountId = props.defaultInventoryAccountId;
@@ -244,6 +252,8 @@ export class SalesSettings {
       allowDirectInvoicing: this.allowDirectInvoicing,
       requireSOForStockItems: this.requireSOForStockItems,
       defaultARAccountId: this.defaultARAccountId,
+      arParentAccountId: this.arParentAccountId,
+      partyAccountCodeFormat: this.partyAccountCodeFormat,
       defaultRevenueAccountId: this.defaultRevenueAccountId,
       defaultCOGSAccountId: this.defaultCOGSAccountId,
       defaultInventoryAccountId: this.defaultInventoryAccountId,
@@ -282,6 +292,8 @@ export class SalesSettings {
       allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requireSOForStockItems: data.requireSOForStockItems ?? false,
       defaultARAccountId: data.defaultARAccountId,
+      arParentAccountId: data.arParentAccountId,
+      partyAccountCodeFormat: data.partyAccountCodeFormat,
       defaultRevenueAccountId: data.defaultRevenueAccountId,
       defaultCOGSAccountId: data.defaultCOGSAccountId,
       defaultInventoryAccountId: data.defaultInventoryAccountId,

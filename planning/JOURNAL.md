@@ -2,6 +2,25 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-27 (Wed) — Piece A.1: per-customer/per-vendor sub-account (backend)
+
+**Task:** Piece A.1 of "Per-customer AR sub-account" feature (precursor to Customer Statement engine reuse — Piece B).
+**Agent:** Claude Code (Opus 4.7)
+**Branch:** `feat/phase-a-sales-master-data`
+**Completion report:** [planning/done/122-piece-a1-per-party-account-strategy.md](./done/122-piece-a1-per-party-account-strategy.md)
+
+**What landed (backend only — no UI yet):**
+- New `SalesSettings.arParentAccountId` + `PurchaseSettings.apParentAccountId`. Both validated against classification (ASSET / LIABILITY).
+- New `partyAccountCodeFormat` on both settings entities. Tokens: `{parent}`, `{partyCode}`, `{seq3}`. Default `{parent}-{partyCode}`. Templates missing both `{partyCode}` and `{seq3}` are rejected.
+- New pure renderer at `application/shared/services/PartyAccountCodeRenderer.ts`.
+- `CreatePartyUseCase` now requires `accountStrategy: 'AUTO_CREATE' | 'PICK_EXISTING'` (no default). AUTO_CREATE walks parent + format → calls `CreateAccountUseCase` → stores the new id on the party's `defaultARAccountId` / `defaultAPAccountId`. `{seq3}` resolves via linear probe on `existsByUserCode`. PICK_EXISTING validates that the provided account id is the right classification.
+- Controller wires `CreateAccountUseCase` + settings repos from `diContainer`.
+- 12 new tests in `tests/application/shared/PartyAccountStrategy.test.ts` covering renderer, AR/AP AUTO_CREATE, missing-parent guard, seq3 bump, PICK_EXISTING classification guard.
+
+**Verification:** `tsc --noEmit` clean. 12/12 new tests pass. 27/27 existing sales/purchase/party settings tests still pass.
+
+**Next:** A.2 frontend forms (Sales/Purchase settings + Customer/Vendor form Accounting section + radio with no default), then A.3 backfill (tenant + super-admin), then Piece B (Customer Statement → GetAccountStatementUseCase). See report 122 for the exact file list each subtask should touch.
+
 ## 2026-05-24 (Sun) — Phase E merged into phase-a branch
 
 Audited the parallel Phase E worktree (`feat/phase-e-sales-cleanup`, 7 commits, +2,258 lines / 32 files) implemented by OpenCode. Verdict: SAFE WITH NOTES — code matches claims, tsc clean both ends, 66/66 targeted tests pass, AI test fix verified, no architecture violations, Definition of Done met.

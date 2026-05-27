@@ -1,5 +1,27 @@
 # 🎯 Current Focus
 
+**Task:** Per-customer / per-vendor AR/AP sub-account (Piece A) → Customer Statement engine reuse (Piece B). Subtask **A.1 complete (backend, 2026-05-27)**; **A.2 (frontend forms) is the next handoff**.
+**Status:** A.1 backend merged on `feat/phase-a-sales-master-data`. A.2 + A.3 + B still to do.
+**Latest completion report:** [planning/done/122-piece-a1-per-party-account-strategy.md](./done/122-piece-a1-per-party-account-strategy.md)
+
+## 👉 Next agent — start here
+
+Continue **Subtask A.2 (frontend forms)** as scoped in report 122 §"What is NOT yet built":
+
+1. Extend `frontend/src/api/{salesApi,purchasesApi,sharedApi}.ts` types with the new settings fields and `accountStrategy`.
+2. Add an "AR Sub-account Generation" section to Sales Settings page (AR parent via `AccountSelector` filtered to ASSET, plus a text input for `partyAccountCodeFormat` with token help).
+3. Mirror on Purchase Settings page (LIABILITY).
+4. Add an "Accounting" section to the Customer/Vendor detail form: radio (no default), preview for AUTO_CREATE, `PartyAccountSelector` for PICK_EXISTING.
+5. i18n keys.
+
+Backend already enforces all the rules — frontend only needs to surface them. Re-implement `renderPartyAccountCode` as a tiny local helper in the frontend (don't hit the backend for live previews).
+
+After A.2 → **A.3 (backfill endpoint + buttons)** then **Piece B (CustomerStatement uses GetAccountStatementUseCase)**. Time estimates and file lists are in report 122.
+
+---
+
+## Earlier focus (archived for context)
+
 **Task:** Sales completion roadmap — **Phases A ✅ B ✅ C ✅ D (all) ✅ E ✅**
 **Status:** running phases autonomously (manual QA gates deferred per user instruction)
 **Branch:** `feat/phase-a-sales-master-data`
@@ -63,12 +85,17 @@ Commits on `feat/phase-a-sales-master-data`:
    - ✅ D.8 hardening — multi-tenant sender account isolation + encrypted per-company credentials (report 117)
    - ✅ D.8 follow-up — Telegram outbound execution (report 118)
 5. ✅ **Phase E** — Sales cross-cutting cleanup — DONE (report 120; merged via 249bb86)
-6. **⏸ Sales QA cycle** — for the user when available **← NEXT**
+6. **⚠ Sales QA cycle** — Phase C run 2026-05-27, conditionally passing; see [121 — Phase C QA Results](./done/121-phase-c-qa-results.md). 11 findings; 1 report-code bug (credit notes missing from Customer Statement/Ledger), the rest upstream data/COA issues.
 7. **Phase F** — Purchases parity — 4-5 days
 8. **Phase G** — Purchases-specific (three-way match + vendor master) — 3-4 days
 9. **Phase H** — Final hardening — 1 week
 
 ## Next action
+
+Phase C QA done (report 121). Triage these before Sales is declared production-ready:
+- **Finding #3** (report bug) — add sales-return query to `_buildRawEvents` in `ReceivablesReportingUseCases.ts` so Customer Statement + Full Ledger show credit-side events.
+- **Findings #2 + #4 + #5** — single investigation: invoices reach POSTED in Sales without complete GL journals (7,800 AR gap, 17,033 revenue gap), and items have no cost basis so COGS = 0. May be SYCO-specific data state; reproduce on a fresh tenant before assuming system bug.
+- **SYCO chart of accounts** — remap AR to `104`; reclassify `5571 tax sales` as LIABILITY.
 
 Sales is now ready for QA handoff. Phase E merged cleanly (commit `249bb86`): E.1 quote sequence, E.2 AI test stabilization, E.3 promotion auto-application, E.4 credit check on direct SI with auditable override, E.5 backorder/fulfillment UX. Two Phase E-tier follow-ups still open (period-lock override governance + D.3 audit gaps on SO confirm/cancel/close and SI payment record/status) — defer to post-QA unless QA surfaces them.
 
