@@ -8,18 +8,14 @@
 
 ## 🔴 Current Priority (work this first)
 
-**Phase F — Purchase Price Lists** (~1-2 days)
-- Branch: next branch after `codex/phase-f-vendor-groups`
-- Add optional vendor/item price list master data for Purchases parity
-- Keep pricing behavior explicit and auditable; do not silently alter posted PI amounts
+**Phase F — RFQ** (~2-3 hours)
+- Request for Quotation — procure-to-pay workflow parity
 
 ---
 
 ## 🟡 Up Next (in order)
 
-1. **Phase F — RFQ** (~2-3 hours)
-
-2. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
+1. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
 
 ---
 
@@ -41,6 +37,7 @@ If you are starting work on a priority item, record it here so other agents don'
 |-------|------|---------|--------|
 | Codex | Phase F - PI Attachments | 2026-05-28 | ✅ Done |
 | Codex | Phase F - Vendor Groups | 2026-05-28 | ✅ Done |
+| Antigravity | Phase F - Purchase Price Lists | 2026-05-28 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -61,4 +58,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-28 by Codex (Vendor Groups done; Purchase Price Lists next)_
+_Last updated: 2026-05-28 by Antigravity (Purchase Price Lists done; RFQ next)_
