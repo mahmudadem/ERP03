@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Phase F — Purchases parity. Vendor Groups now built and ready for QA (2026-05-28).
-**Status:** In progress on `codex/phase-f-vendor-groups`. Remaining parity gaps: Purchase Price Lists, RFQ.
-**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md).
+**Task:** Phase F — Purchases parity. Purchase Price Lists now built and ready for QA (2026-05-28).
+**Status:** In progress on `codex/phase-f-vendor-groups`. Remaining parity gaps: RFQ.
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md).
 
 ## 👉 Next agent — start here
 
@@ -30,9 +30,9 @@ Phase F progress:
 5. Dead code cleanup — removed old GetCustomerStatementUseCase and its tests.
 6. PI Attachments — tenant-scoped vendor bill/supporting evidence attachments on Purchase Invoices (report 129).
 7. Vendor Groups — optional supplier segmentation master data with vendor Party assignment (report 130).
+8. Purchase Price Lists — optional currency-specific supplier pricing agreements (report 131).
 
 Remaining parity gaps (prioritized):
-- Purchase Price Lists — optional
 - RFQ (Request for Quotation) — bigger feature, 2-3 hours
 
 ---

@@ -25,6 +25,10 @@ import {
   isSalesDocumentDefinition,
   resolveSalesLinePrice,
 } from '../../../sales/services/salesLinePriceResolver';
+import {
+  isPurchaseDocumentDefinition,
+  resolvePurchaseLinePrice,
+} from '../../../purchases/services/purchaseLinePriceResolver';
 import { sharedApi, TaxCodeDTO } from '../../../../api/sharedApi';
 import { useCompanyCurrencies } from '../../../../hooks/useCompanyCurrencies';
 import { CurrencyDropdown } from './CurrencyDropdown';
@@ -1495,6 +1499,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   // list — exactly like the native sales pages. This makes Forms Designer–
   // rendered sales forms behave the same as `SalesInvoiceDetailPage`.
   const isSalesDoc = useMemo(() => isSalesDocumentDefinition(definition), [definition]);
+  const isPurchaseDoc = useMemo(() => isPurchaseDocumentDefinition(definition), [definition]);
 
   const rowsRef = useRef<JournalRow[]>([]);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
@@ -1536,6 +1541,26 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     });
   };
 
+  const triggerPurchasePriceLookup = (rowId: number, row: any) => {
+    if (!isPurchaseDoc) return;
+    const vendorId = formData.vendorId || formData.partyId || '';
+    const itemId = getRowItemId(row);
+    if (!vendorId || !itemId) return;
+    const qty = getLineQuantity(row) || 1;
+    const asOfDate =
+      formData.date ||
+      formData.invoiceDate ||
+      formData.orderDate ||
+      formData.receiptDate ||
+      formData.returnDate ||
+      undefined;
+    void resolvePurchaseLinePrice({ vendorId, itemId, qty, asOfDate }).then((result) => {
+      if (result?.unitPrice != null) {
+        applyResolvedLinePrice(rowId, result.unitPrice);
+      }
+    });
+  };
+
   // When the customer changes on a sales document, refresh prices for every
   // line that already has an item selected.
   useEffect(() => {
@@ -1547,6 +1572,18 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSalesDoc, formData.customerId, formData.partyId]);
+
+  // When the vendor changes on a purchase document, refresh prices for every
+  // line that already has an item selected.
+  useEffect(() => {
+    if (!isPurchaseDoc) return;
+    const vendorId = formData.vendorId || formData.partyId;
+    if (!vendorId) return;
+    rowsRef.current.forEach((row) => {
+      if (getRowItemId(row)) triggerPurchasePriceLookup(row.id, row);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPurchaseDoc, formData.vendorId, formData.partyId]);
 
   
   // Handle column resize
@@ -2143,6 +2180,17 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       const normalizedField = fk ? normalizeTableColumnId(fk) : '';
       if (normalizedField === 'itemId' || normalizedField === 'quantity') {
         triggerSalesPriceLookup(id, targetRow);
+      }
+    }
+
+    // Purchase auto-pricing: when itemId or quantity changes on a purchase document,
+    // resolve the effective price from the vendor's price list and patch
+    // unitPrice on the row.
+    if (isPurchaseDoc && targetRow) {
+      const fk = typeof field === 'string' ? field : '';
+      const normalizedField = fk ? normalizeTableColumnId(fk) : '';
+      if (normalizedField === 'itemId' || normalizedField === 'quantity') {
+        triggerPurchasePriceLookup(id, targetRow);
       }
     }
 

@@ -182,6 +182,36 @@ export interface VendorGroupDTO {
   updatedAt: string;
 }
 
+export interface PurchasePriceListLineDTO {
+  itemId: string;
+  minQty: number;
+  unitPrice: number;
+  discountPct?: number;
+  comment?: string;
+}
+
+export interface PurchasePriceListDTO {
+  id: string;
+  companyId: string;
+  name: string;
+  currency: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  validFrom: string | null;
+  validTo: string | null;
+  isDefault: boolean;
+  lines: PurchasePriceListLineDTO[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EffectivePurchasePriceDTO {
+  unitPrice: number;
+  sourcePriceListId: string;
+  sourceLineId: string;
+  isDefault: boolean;
+}
+
 export interface PurchaseInvoiceAttachmentDTO {
   id: string;
   name: string;
@@ -687,6 +717,25 @@ export const purchasesApi = {
 
   assignVendorToGroup: (body: { vendorId: string; vendorGroupId: string | null }): Promise<{ success: boolean }> =>
     client.post('/tenant/purchase/vendor-groups/assign', body).then((r: any) => r?.data ?? r),
+
+  // Purchase Price Lists
+  listPurchasePriceLists: (opts?: { status?: string; currency?: string; includeInactive?: boolean; limit?: number; offset?: number }): Promise<PurchasePriceListDTO[]> =>
+    client.get('/tenant/purchase/price-lists', { params: opts }).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  getPurchasePriceList: (id: string): Promise<PurchasePriceListDTO> =>
+    client.get(`/tenant/purchase/price-lists/${id}`).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  createPurchasePriceList: (body: Partial<PurchasePriceListDTO>): Promise<PurchasePriceListDTO> =>
+    client.post('/tenant/purchase/price-lists', body).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  updatePurchasePriceList: (id: string, body: Partial<PurchasePriceListDTO>): Promise<PurchasePriceListDTO> =>
+    client.put(`/tenant/purchase/price-lists/${id}`, body).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  deletePurchasePriceList: (id: string): Promise<{ success: boolean }> =>
+    client.delete(`/tenant/purchase/price-lists/${id}`).then((r: any) => r?.data ?? r),
+
+  getEffectivePurchasePrice: (params: { vendorId: string; itemId: string; qty: number; asOfDate?: string }): Promise<EffectivePurchasePriceDTO> =>
+    client.get('/tenant/purchase/price-lists/effective-price', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>
     client.post('/tenant/purchase/settings/backfill-party-accounts', {}).then((r: any) => r?.data?.data ?? r?.data ?? r),

@@ -14,7 +14,7 @@ import {
 import { PartyDTO, PartyRole, PartyAccountStrategy, sharedApi } from '../../../api/sharedApi';
 import { accountingApi } from '../../../api/accountingApi';
 import { salesApi } from '../../../api/salesApi';
-import { purchasesApi, VendorGroupDTO } from '../../../api/purchasesApi';
+import { purchasesApi, VendorGroupDTO, PurchasePriceListDTO } from '../../../api/purchasesApi';
 import { salesMasterDataApi, CustomerGroupDTO, PriceListDTO } from '../../../api/salesMasterDataApi';
 import toast from 'react-hot-toast';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
@@ -78,7 +78,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [customerGroups, setCustomerGroups] = useState<CustomerGroupDTO[]>([]);
   const [vendorGroups, setVendorGroups] = useState<VendorGroupDTO[]>([]);
-  const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
+  const [priceLists, setPriceLists] = useState<Array<PriceListDTO | PurchasePriceListDTO>>([]);
   const [invoiceTemplates, setInvoiceTemplates] = useState<VoucherFormResponse[]>([]);
   const [accountStrategy, setAccountStrategy] = useState<PartyAccountStrategy | ''>('');
   const [subAccountParentId, setSubAccountParentId] = useState('');
@@ -114,6 +114,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       }).catch(console.error);
     } else {
       purchasesApi.listVendorGroups().then(setVendorGroups).catch(console.error);
+      purchasesApi.listPurchasePriceLists().then(setPriceLists).catch(console.error);
     }
   }, [partyId, role]);
 
@@ -453,7 +454,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
            )}
 
            {role === 'VENDOR' && (
-             <FormSection title={t('purchases.vendorGroups.vendorFormTitle', 'Vendor Segmentation')}>
+             <FormSection title={t('purchases.vendorGroups.vendorFormTitle', 'Vendor Segmentation & Pricing')}>
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <Field label={t('purchases.vendorGroups.vendorFieldLabel', 'Vendor Group')}>
                    <select
@@ -465,11 +466,21 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                      {vendorGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                    </select>
                  </Field>
+                 <Field label={t('purchases.priceLists.vendorFieldLabel', 'Default Price List')}>
+                   <select
+                     className="form-control"
+                     value={form.defaultPriceListId || ''}
+                     onChange={e => setForm(p => ({ ...p, defaultPriceListId: e.target.value || undefined }))}
+                   >
+                     <option value="">{t('purchases.priceLists.noPriceList', '(No Price List)')}</option>
+                     {priceLists.map(pl => <option key={pl.id} value={pl.id}>{pl.name} ({pl.currency})</option>)}
+                   </select>
+                 </Field>
                </div>
                <p className="mt-2 text-[10px] text-slate-500">
                  {t(
                    'purchases.vendorGroups.vendorFormHelp',
-                   'Groups classify vendors for filtering and reporting. They do not change AP posting or payment behavior.'
+                   'Groups and price lists classify vendors and help automate purchase pricing. They do not change GL settings.'
                  )}
                </p>
              </FormSection>

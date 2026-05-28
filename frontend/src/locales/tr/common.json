@@ -2386,6 +2386,34 @@
         "saveFailed": "Kaydetme basarisiz",
         "deleteFailed": "Silme basarisiz"
       }
+    },
+    "priceLists": {
+      "title": "Satın Alma Fiyat Listeleri",
+      "listSubtitle": "Tedarikçi Fiyat Kuralları ve Anlaşmaları",
+      "subtitle": "Satın Alma Fiyat Listesi Yapılandırması",
+      "newTitle": "Yeni Satın Alma Fiyat Listesi",
+      "editTitle": "Satın Alma Fiyat Listesini Düzenle",
+      "directory": "Fiyat Listesi Dizini",
+      "empty": "Fiyat Listesi Bulunamadı",
+      "emptySub": "Tedarikçi fiyatlandırma kurallarını yönetmek için bir satın alma fiyat listesi yapılandırın.",
+      "newBtn": "Yeni Fiyat Listesi",
+      "setAsDefault": "Bu para birimi için varsayılan fiyat listesi olarak ayarla",
+      "lines": "Fiyat Satırları",
+      "addLine": "Satır Ekle",
+      "noLines": "Henüz satır yok. Başlamak için Satır Ekle'ye tıklayın.",
+      "line": "satır",
+      "linesPlural": "satır",
+      "confirmDeleteTitle": "Fiyat Listesini Sil",
+      "confirmDeleteMessage": "Bu fiyat listesini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "noPriceList": "(Fiyat Listesi Yok)",
+      "vendorFieldLabel": "Varsayılan Fiyat Listesi",
+      "messages": {
+        "created": "Satın alma fiyat listesi oluşturuldu",
+        "updated": "Satın alma fiyat listesi güncellendi",
+        "deleted": "Fiyat listesi başarıyla silindi",
+        "saveFailed": "Kaydetme başarısız",
+        "deleteFailed": "Fiyat listesi silinemedi"
+      }
     }
   },
   "parties": {

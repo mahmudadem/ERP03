@@ -102,6 +102,31 @@ Accounting boundary:
 
 ---
 
+## Purchase Price Lists (Phase F parity — 2026-05-28)
+
+Purchase Price Lists mirror Sales Price Lists for Purchases, enabling currency-specific vendor pricing rules.
+
+Backend endpoints:
+- `GET /tenant/purchase/price-lists` — list price lists
+- `POST /tenant/purchase/price-lists` — create a price list
+- `GET /tenant/purchase/price-lists/:id` — get a price list
+- `PUT /tenant/purchase/price-lists/:id` — update a price list
+- `DELETE /tenant/purchase/price-lists/:id` — delete a price list
+- `GET /tenant/purchase/price-lists/effective` — resolves effective unit price for a vendor, item, and quantity
+
+Control model:
+- Price lists are stored under the Purchases collection `purchase_price_lists`.
+- Each price list has a `currency`, an optional `isDefault` flag per currency, and an array of price `lines` with `itemCode`, `minQty`, and `unitPrice`.
+- Only one default price list can exist per currency; setting a price list as default disables the previous default list of the same currency.
+- Vendor price list assignment is referenced via `Party.defaultPriceListId`.
+- Unit prices are auto-resolved dynamically when adding items or updating quantities in Purchase Orders, Purchase Invoices, and Forms Designer purchases documents.
+- Deleting a price list displays a confirmation dialog.
+
+Accounting boundary:
+- Price lists are master data. They do not directly post to the GL or affect AP balances until a Purchase Invoice is created and posted using the resolved prices.
+
+---
+
 ## Prerequisites
 
 The Accounting **Engine** must be initialized before Purchases is usable. `InitializePurchasesUseCase` calls `EnsureAccountingEngineInitialized` as its first step, which auto-bootstraps the Engine (`standard` COA template, calendar fiscal year, company base currency) if it is not yet initialized. If the Engine cannot be bootstrapped (e.g., the company has no base currency), Purchases initialization throws `AccountingEngineUnavailableError`. The Accounting **UI** does not need to be visible — see [accounting.md](./accounting.md#accounting-engine-vs-accounting-appui).
@@ -237,7 +262,7 @@ All under `backend/src/application/purchases/use-cases/`.
 | **Debit Notes (as separate type)** | Planned. Currently rolled into Purchase Return. |
 | **Withholding Tax** | Deferred V2. Market-specific complexity. |
 | **Landed Cost Allocation** | Deferred V2. Freight/duty allocation across received items. |
-| **Vendor Price Lists** | Deferred V2. |
+| **Vendor Price Lists** | Implemented V1 (Purchase Price Lists). |
 | **Approval Workflow** | Deferred V2. Needs a generic approval engine. |
 | **GRNI Accrual** | Deferred V2. No "Goods Received Not Invoiced" interim account. |
 | **Three-Way Matching Reports** | Deferred V2. Compare PO ↔ GRN ↔ PI. |

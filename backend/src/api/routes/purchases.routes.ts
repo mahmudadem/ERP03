@@ -27,6 +27,15 @@ router.put('/vendor-groups/:id', PurchaseMasterDataController.updateVendorGroup)
 router.delete('/vendor-groups/:id', PurchaseMasterDataController.deleteVendorGroup);
 router.post('/vendor-groups/assign', PurchaseMasterDataController.assignVendorToGroup);
 
+// Price Lists
+router.post('/price-lists', PurchaseMasterDataController.createPurchasePriceList);
+router.get('/price-lists', PurchaseMasterDataController.listPurchasePriceLists);
+router.get('/price-lists/effective-price', PurchaseMasterDataController.getEffectivePurchasePrice);
+router.get('/price-lists/:id', PurchaseMasterDataController.getPurchasePriceList);
+router.put('/price-lists/:id', PurchaseMasterDataController.updatePurchasePriceList);
+router.delete('/price-lists/:id', PurchaseMasterDataController.deletePurchasePriceList);
+
+
 router.post('/orders', PurchaseController.createPO);
 router.get('/orders', PurchaseController.listPOs);
 router.get('/orders/:id', PurchaseController.getPO);

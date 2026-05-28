@@ -2313,6 +2313,34 @@
         "saveFailed": "Save failed",
         "deleteFailed": "Delete failed"
       }
+    },
+    "priceLists": {
+      "title": "Purchase Price Lists",
+      "listSubtitle": "Vendor Pricing Rules & Agreements",
+      "subtitle": "Purchase Price List Configuration",
+      "newTitle": "New Purchase Price List",
+      "editTitle": "Edit Purchase Price List",
+      "directory": "Price List Directory",
+      "empty": "No Price Lists Found",
+      "emptySub": "Configure a purchase price list to manage vendor pricing rules.",
+      "newBtn": "New Price List",
+      "setAsDefault": "Set as default price list for this currency",
+      "lines": "Price Lines",
+      "addLine": "Add Line",
+      "noLines": "No lines yet. Click Add Line to begin.",
+      "line": "line",
+      "linesPlural": "lines",
+      "confirmDeleteTitle": "Delete Price List",
+      "confirmDeleteMessage": "Are you sure you want to delete this price list? This action cannot be undone.",
+      "noPriceList": "(No Price List)",
+      "vendorFieldLabel": "Default Price List",
+      "messages": {
+        "created": "Purchase price list created",
+        "updated": "Purchase price list updated",
+        "deleted": "Price list deleted successfully",
+        "saveFailed": "Save failed",
+        "deleteFailed": "Failed to delete price list"
+      }
     }
   },
   "parties": {

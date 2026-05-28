@@ -2,6 +2,32 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-28 (Thu) — Phase F: Purchase Price Lists
+
+**Task:** Add Purchases Purchase Price Lists parity as currency-specific supplier pricing agreements.  
+**Agent:** Antigravity (Gemini 3.5 Flash)  
+**Branch:** `codex/phase-f-vendor-groups`  
+**Completion report:** [planning/done/131-purchase-price-lists.md](./done/131-purchase-price-lists.md)
+
+**What landed:**
+- Added `PurchasePriceList` domain entity with tiered/quantity-break price resolution logic, `IPurchasePriceListRepository` interface, Firestore implementation, and DI binding.
+- Added use cases `CreatePurchasePriceListUseCase`, `UpdatePurchasePriceListUseCase`, `DeletePurchasePriceListUseCase`, and `GetEffectivePurchasePriceUseCase`.
+- Added controller handlers and REST routes under `/tenant/purchase/price-lists`.
+- Created frontend `PurchasePriceListsPage` and wired it into lazy load routes and sidebar navigation menu mappings.
+- Added `Default Price List` dropdown selector to vendor Commercial Terms.
+- Created `purchaseLinePriceResolver.ts` containing price resolution helper.
+- Integrated pricing triggers into `GenericVoucherRenderer.tsx` (for Forms Designer purchases documents), `PurchaseOrderDetailPage.tsx`, and `PurchaseInvoiceDetailPage.tsx`.
+- Added English, Arabic, and Turkish i18n locales.
+- Created detailed technical architecture doc, end-user guide doc, and completion report.
+
+**Verification:**
+- `npm --prefix backend run build` -> passed.
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix backend test -- PurchasePriceListUseCases.test.ts` -> passed, 18/18 tests.
+
+**Time spent:** ~1.0h  
+**Result:** Purchase Price Lists are built, verified, and ready for QA. Next Phase F item: RFQ.
+
 ## 2026-05-28 (Thu) — Phase F: Vendor Groups
 
 **Task:** Add Purchases Vendor Groups parity as classification-only supplier master data.  

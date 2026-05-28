@@ -114,6 +114,7 @@ export const moduleMenuMap: Record<
       { label: 'Products & Services', path: '/purchases/items', icon: 'Package' },
       { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
       { label: 'Vendor Groups', path: '/purchases/vendor-groups', icon: 'Users2' },
+      { label: 'Price Lists', path: '/purchases/price-lists', icon: 'Tag' },
       { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
       { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
       { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },

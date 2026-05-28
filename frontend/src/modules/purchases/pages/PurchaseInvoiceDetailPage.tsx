@@ -335,6 +335,40 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     });
   }, [form.lines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const triggerLinePriceLookup = async (vendorId: string, itemId: string, qty: number, lineIndex: number) => {
+    if (!vendorId || !itemId) return;
+    try {
+      const result = await purchasesApi.getEffectivePurchasePrice({
+        vendorId,
+        itemId,
+        qty,
+        asOfDate: form.invoiceDate || undefined,
+      });
+      if (result && result.unitPrice != null) {
+        setForm(currentForm => {
+          const currentLines = [...currentForm.lines];
+          if (currentLines[lineIndex] && currentLines[lineIndex].itemId === itemId) {
+            currentLines[lineIndex] = { ...currentLines[lineIndex], unitPriceDoc: result.unitPrice };
+          }
+          return { ...currentForm, lines: currentLines };
+        });
+      }
+    } catch (err) {
+      console.error('Failed to resolve effective purchase price', err);
+    }
+  };
+
+  // Trigger pricing refresh when vendor changes
+  useEffect(() => {
+    if (!form.vendorId) return;
+    form.lines.forEach((line, index) => {
+      if (line.itemId) {
+        void triggerLinePriceLookup(form.vendorId, line.itemId, line.invoicedQty, index);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.vendorId]);
+
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
       const lines = [...prev.lines];
@@ -356,11 +390,17 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             const defaultTax = purchaseTaxCodes.find((taxCode) => taxCode.id === item.defaultPurchaseTaxCodeId);
             if (defaultTax) next.taxCodeId = defaultTax.id;
           }
+          // Trigger price lookup
+          if (prev.vendorId) {
+            void triggerLinePriceLookup(prev.vendorId, patch.itemId, next.invoicedQty, index);
+          }
         } else {
           next.itemCode = undefined;
           next.itemName = undefined;
           next.taxCodeId = undefined;
         }
+      } else if (patch.invoicedQty !== undefined && current.itemId && prev.vendorId) {
+        void triggerLinePriceLookup(prev.vendorId, current.itemId, patch.invoicedQty, index);
       }
 
       lines[index] = next;
