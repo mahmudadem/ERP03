@@ -305,7 +305,7 @@ async function seedAllItems(
 
 async function seedAllParties(
   db: FirebaseFirestore.Firestore, companyId: string, userId: string,
-  accounts: Accounts, dryRun: boolean,
+  accounts: Accounts, allocation: PartyAccountAllocation, dryRun: boolean,
 ): Promise<{ customerIds: Map<string, string>; vendorIds: Map<string, string> }> {
   const col = db.collection('companies').doc(companyId)
     .collection('shared').doc('Data').collection('parties');
@@ -323,18 +323,26 @@ async function seedAllParties(
   const vendorIds = new Map<string, string>();
   const writeBatch = db.batch();
   let created = 0;
+  let subAcct = 0;
+  let general = 0;
 
   for (const p of [...CUSTOMERS, ...VENDORS]) {
     const id = existingByCode.get(p.code) || randomUUID();
     const isCustomer = p.role === 'CUSTOMER';
+    // Pick per-party account if allocated, else fall back to General AP/AR (control model).
+    const leafId = allocation.perParty.get(p.code);
+    const acctId = leafId
+      || (isCustomer ? allocation.generalAR.id : allocation.generalAP.id);
+    if (leafId) subAcct++; else general++;
+
     const doc: any = {
       id, companyId, code: p.code, legalName: p.legalName, displayName: p.displayName,
       roles: [p.role], paymentTermsDays: p.terms, defaultCurrency: 'USD',
       creditHoldPolicy: 'NONE', active: true,
       createdBy: userId, createdAt: now, updatedAt: now,
     };
-    if (isCustomer) doc.defaultARAccountId = accounts.ar.id;
-    else doc.defaultAPAccountId = accounts.ap.id;
+    if (isCustomer) doc.defaultARAccountId = acctId;
+    else doc.defaultAPAccountId = acctId;
 
     if (!dryRun) writeBatch.set(col.doc(id), doc, { merge: true });
     if (isCustomer) customerIds.set(p.code, id);
@@ -344,6 +352,7 @@ async function seedAllParties(
 
   if (!dryRun) await writeBatch.commit();
   console.log(`✓ Parties: ${CUSTOMERS.length} customers + ${VENDORS.length} vendors (${created} new)`);
+  console.log(`  Binding: ${subAcct} sub-account model | ${general} control-account (General AP/AR) model`);
   return { customerIds, vendorIds };
 }
 
@@ -491,6 +500,24 @@ async function seedAndPostOpeningStock(
 // ---------------------------------------------------------------------------
 // Transaction seeding — sales, returns, receipts, payments
 // ---------------------------------------------------------------------------
+
+async function ensureDirectPurchasePersonaAllowed(db: FirebaseFirestore.Firestore, companyId: string) {
+  const ref = db.collection('companies').doc(companyId).collection('purchases').doc('settings');
+  const snap = await ref.get();
+  const data = snap.data() || {};
+  const rules: any[] = data.governanceRules || [];
+  const next: any = {};
+  if (!rules.some((r: any) => r.persona === 'direct' && r.scope === 'company' && r.action === 'allow')) {
+    rules.push({ id: 'seed-direct-purchase-allow', persona: 'direct', scope: 'company', action: 'allow' });
+    next.governanceRules = rules;
+  }
+  if (!data.allowDirectInvoicing) {
+    next.allowDirectInvoicing = true;
+  }
+  if (Object.keys(next).length > 0) {
+    await ref.set(next, { merge: true });
+  }
+}
 
 async function ensureDirectPersonaAllowed(db: FirebaseFirestore.Firestore, companyId: string) {
   const ref = db.collection('companies').doc(companyId).collection('sales').doc('settings');
@@ -646,6 +673,59 @@ async function seedTransactions(
     postedSIs.push(si);
     txCount++;
     console.log(`  ${txCount}. Direct SI ${si.invoiceNumber}  ${custCode}  $${si.grandTotalBase}`);
+  }
+
+  // ── 5 Direct Purchase Invoices per vendor (stock replenishment) ────
+  await ensureDirectPurchasePersonaAllowed(db, args.companyId);
+  const { CreatePurchaseInvoiceUseCase, PostPurchaseInvoiceUseCase, CreateAndPostPurchaseInvoiceUseCase } = await import('../src/application/purchases/use-cases/PurchaseInvoiceUseCases');
+  const { PurchasesInventoryService } = await import('../src/application/inventory/services/PurchasesInventoryService');
+
+  const purchasesInvService = new PurchasesInventoryService(movementUC);
+  const createPI = new CreatePurchaseInvoiceUseCase(
+    diContainer.purchaseSettingsRepository, diContainer.purchaseInvoiceRepository, diContainer.purchaseOrderRepository,
+    diContainer.partyRepository, diContainer.itemRepository, diContainer.taxCodeRepository, diContainer.companyCurrencyRepository,
+  );
+  const postPI = new PostPurchaseInvoiceUseCase(
+    diContainer.purchaseSettingsRepository, diContainer.inventorySettingsRepository,
+    diContainer.purchaseInvoiceRepository, diContainer.purchaseOrderRepository, diContainer.partyRepository,
+    diContainer.taxCodeRepository, diContainer.itemRepository, diContainer.itemCategoryRepository,
+    diContainer.warehouseRepository, diContainer.uomConversionRepository, diContainer.companyCurrencyRepository,
+    diContainer.exchangeRateRepository, purchasesInvService, diContainer.companyModuleRepository,
+    postingSvc, diContainer.accountRepository, diContainer.transactionManager,
+    diContainer.paymentHistoryRepository, diContainer.voucherRepository, diContainer.voucherSequenceRepository,
+    diContainer.ledgerRepository,
+  );
+  const createAndPostPI = new CreateAndPostPurchaseInvoiceUseCase(createPI, postPI);
+
+  console.log('\n--- Seeding 10 direct purchase invoices (5 per vendor) ---');
+  const vendorCodes = Array.from(vendorIds.keys());
+  for (let i = 0; i < 10; i++) {
+    const vendCode = vendorCodes[i % vendorCodes.length];
+    const vendId = vendorIds.get(vendCode)!;
+    const lineItems = pickItems(2 + Math.floor(Math.random() * 3)); // 2-4 items per PI
+    const invDate = dateOffset(15 - i);
+
+    const piInput: any = {
+      companyId: args.companyId, vendorId: vendId,
+      invoiceDate: invDate, dueDate: dateOffset(15 - i - 30),
+      vendorInvoiceNumber: `${vendCode}-INV-${1000 + i}`,
+      currency: 'USD', exchangeRate: 1, source: 'native', persona: 'direct',
+      voucherType: 'purchase_invoice',
+      lines: lineItems.map(e => ({
+        itemId: e.id,
+        invoicedQty: 20 + Math.floor(Math.random() * 30),
+        unitPriceDoc: +(e.def.cost * (0.95 + Math.random() * 0.15)).toFixed(2), // ±10% of base cost
+        taxCodeId, uom: e.def.uom, warehouseId,
+      })),
+      createdBy: args.userId,
+    };
+    try {
+      const pi = await createAndPostPI.execute(piInput);
+      txCount++;
+      console.log(`  ${txCount}. Direct PI ${pi.invoiceNumber}  ${vendCode}  $${pi.grandTotalBase}`);
+    } catch (err: any) {
+      console.error(`  ✗ PI #${i + 1} for ${vendCode} failed: ${err?.message || err}`);
+    }
   }
 
   // ── 3 Sales Returns ────────────────────────────────────────────────
@@ -929,7 +1009,7 @@ async function main() {
   const warehouseId = await seedWarehouse(db, args.companyId, args.userId, args.dryRun);
   const taxCodeId = await seedTaxCode(db, args.companyId, args.userId, accounts.tax, args.dryRun);
   const items = await seedAllItems(db, args.companyId, args.userId, accounts, taxCodeId, args.dryRun);
-  const { customerIds, vendorIds } = await seedAllParties(db, args.companyId, args.userId, accounts, args.dryRun);
+  const { customerIds, vendorIds } = await seedAllParties(db, args.companyId, args.userId, accounts, allocation, args.dryRun);
 
   const ovTotal = await seedAndPostOpeningStock(db, args.companyId, args.userId, items, warehouseId, accounts, args.dryRun);
 
