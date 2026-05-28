@@ -90,6 +90,7 @@ type ResolvedAccounts = {
   ap: AccountRow;
   cash: AccountRow;
   tax: AccountRow;
+  openingEquity: AccountRow;
 };
 
 async function loadAccounts(db: FirebaseFirestore.Firestore, companyId: string): Promise<AccountRow[]> {
@@ -136,6 +137,7 @@ function resolveAccounts(rows: AccountRow[]): ResolvedAccounts {
   const ap       = pickAccount(rows, 'LIABILITY', [/accounts?.payable/i, /\bpayable\b/i]);
   const cash     = pickAccount(rows, 'ASSET',     [/cash\s*on\s*hand/i, /\bcash\b/i, /\bbank\b/i]);
   const tax      = pickAccount(rows, 'LIABILITY', [/sales\s*tax\s*payable/i, /\bvat\s*payable\b/i, /\btax\s*payable\b/i, /\bvat\b/i, /\btax\b/i]);
+  const openingEquity = pickAccount(rows, 'EQUITY', [/opening\s*balance\s*equity/i, /opening\s*equity/i, /paid.?in\s*capital/i, /owner.*capital/i, /retained\s*earnings/i, /capital/i]);
 
   const missing: string[] = [];
   if (!ar) missing.push('ar (ASSET, name like "Accounts Receivable")');
@@ -145,6 +147,7 @@ function resolveAccounts(rows: AccountRow[]): ResolvedAccounts {
   if (!ap) missing.push('ap (LIABILITY, name like "Accounts Payable")');
   if (!cash) missing.push('cash (ASSET, name like "Cash")');
   if (!tax) missing.push('tax (LIABILITY, name like "Sales Tax Payable")');
+  if (!openingEquity) missing.push('openingEquity (EQUITY, name like "Paid-in Capital" or "Opening Balance Equity")');
 
   if (missing.length > 0) {
     console.error('\n❌ Could not auto-detect these accounts:\n  - ' + missing.join('\n  - '));
@@ -155,7 +158,7 @@ function resolveAccounts(rows: AccountRow[]): ResolvedAccounts {
     console.error('\nFix the COA (or extend pickAccount patterns) and retry.');
     process.exit(1);
   }
-  return { ar: ar!, revenue: revenue!, inventory: inventory!, cogs: cogs!, ap: ap!, cash: cash!, tax: tax! };
+  return { ar: ar!, revenue: revenue!, inventory: inventory!, cogs: cogs!, ap: ap!, cash: cash!, tax: tax!, openingEquity: openingEquity! };
 }
 
 async function seedWarehouse(
@@ -203,6 +206,15 @@ async function seedTaxCode(
   const col = db.collection('companies').doc(companyId)
     .collection('shared').doc('Data').collection('tax_codes');
 
+  // Idempotency: skip if TAX10 already exists
+  const existing = await col.where('code', '==', 'TAX10').limit(1).get();
+  if (!existing.empty) {
+    const data = existing.docs[0].data();
+    const id = data.id || existing.docs[0].id;
+    console.log(`✓ Tax code TAX10 exists (id=${id.slice(0, 8)}...)`);
+    return id;
+  }
+
   const id = randomUUID();
   const now = new Date();
   const doc = {
@@ -237,9 +249,17 @@ async function seedItems(
     .collection('inventory').doc('Data').collection('items');
   const now = new Date();
 
-  const widgetA = randomUUID();
-  const widgetB = randomUUID();
-  const serviceA = randomUUID();
+  // Idempotency: reuse existing ids when codes already present
+  const existingSnap = await col.where('code', 'in', ['WIDGET-A', 'WIDGET-B', 'SERVICE-A']).get();
+  const existingByCode = new Map<string, string>();
+  existingSnap.docs.forEach((d) => {
+    const data = d.data();
+    existingByCode.set(data.code, data.id || d.id);
+  });
+
+  const widgetA = existingByCode.get('WIDGET-A') || randomUUID();
+  const widgetB = existingByCode.get('WIDGET-B') || randomUUID();
+  const serviceA = existingByCode.get('SERVICE-A') || randomUUID();
 
   const productBase = (id: string, code: string, name: string) => ({
     id,
@@ -285,8 +305,9 @@ async function seedItems(
   ];
 
   for (const item of items) {
-    if (!dryRun) await col.doc(item.id).set(item);
-    console.log(`+ Item ${item.code} (${item.type})${dryRun ? ' (dry-run)' : ''}`);
+    const isExisting = existingByCode.has(item.code);
+    if (!dryRun) await col.doc(item.id).set(item, { merge: true });
+    console.log(`${isExisting ? '✓' : '+'} Item ${item.code} (${item.type})${dryRun ? ' (dry-run)' : isExisting ? ' (reused)' : ''}`);
   }
   return { widgetA, widgetB, serviceA };
 }
@@ -302,9 +323,17 @@ async function seedParties(
     .collection('shared').doc('Data').collection('parties');
   const now = new Date();
 
-  const acme = randomUUID();
-  const globex = randomUUID();
-  const supplierX = randomUUID();
+  // Idempotency: reuse existing ids when codes already present
+  const existingSnap = await col.where('code', 'in', ['ACME', 'GLOBEX', 'SUPPLIER-X']).get();
+  const existingByCode = new Map<string, string>();
+  existingSnap.docs.forEach((d) => {
+    const data = d.data();
+    existingByCode.set(data.code, data.id || d.id);
+  });
+
+  const acme = existingByCode.get('ACME') || randomUUID();
+  const globex = existingByCode.get('GLOBEX') || randomUUID();
+  const supplierX = existingByCode.get('SUPPLIER-X') || randomUUID();
 
   const customers = [
     {
@@ -360,8 +389,9 @@ async function seedParties(
   ];
 
   for (const p of [...customers, ...vendors]) {
-    if (!dryRun) await col.doc(p.id).set(p);
-    console.log(`+ Party ${p.code} (${p.roles.join('/')})${dryRun ? ' (dry-run)' : ''}`);
+    const isExisting = existingByCode.has(p.code);
+    if (!dryRun) await col.doc(p.id).set(p, { merge: true });
+    console.log(`${isExisting ? '✓' : '+'} Party ${p.code} (${p.roles.join('/')})${dryRun ? ' (dry-run)' : isExisting ? ' (reused)' : ''}`);
   }
 
   return {
@@ -381,6 +411,17 @@ async function seedOpeningStockDraft(
 ): Promise<string> {
   const col = db.collection('companies').doc(companyId)
     .collection('inventory').doc('Data').collection('opening_stock_documents');
+
+  // Idempotency: reuse the first DRAFT seed OV if one already exists.
+  // (POSTED ones are immutable — leave alone.)
+    const existing = await col.where('seedTag', '==', 'seed-test-tenant').get();
+  const draft = existing.docs.find((d) => d.data().status === 'DRAFT');
+  if (draft) {
+    const data = draft.data();
+    const id = data.id || draft.id;
+    console.log(`✓ OV draft exists (id=${id.slice(0, 8)}...) — reusing`);
+    return id;
+  }
 
   const id = randomUUID();
   const now = new Date();
@@ -403,12 +444,13 @@ async function seedOpeningStockDraft(
     companyId,
     warehouseId,
     date: today,
-    notes: 'Seeded OV — establishes cost basis for WIDGET-A. Post via UI.',
+    notes: 'Seeded OV - establishes cost basis for WIDGET-A. Post via UI.',
     lines: [line],
     status: 'DRAFT',
     createAccountingEffect: true,
     openingBalanceAccountId,
     totalValueBase: 1000,
+    seedTag: 'seed-test-tenant',
     createdBy: userId,
     createdAt: now,
   };
@@ -443,7 +485,7 @@ async function postOpeningStockViaUseCase(
     '../src/application/accounting/services/SubledgerVoucherPostingService'
   );
   const { VoucherValidationService } = await import(
-    '../src/application/accounting/services/VoucherValidationService'
+    '../src/domain/accounting/services/VoucherValidationService'
   );
 
   const movementUseCase = new RecordStockMovementUseCase({
@@ -529,7 +571,7 @@ async function main() {
     args.userId,
     warehouseId,
     items.widgetA,
-    accounts.inventory.id,
+    accounts.openingEquity.id,  // CR side: equity, not inventory
     args.dryRun,
   );
 
