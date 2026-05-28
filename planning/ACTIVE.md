@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Phase F — Purchases parity. PI Attachments now done (2026-05-28).
-**Status:** In progress on `codex/phase-f-pi-attachments`. Remaining parity gaps: Vendor Groups, Purchase Price Lists, RFQ.
-**Latest completion report:** [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md).
+**Task:** Phase F — Purchases parity. Vendor Groups now built and ready for QA (2026-05-28).
+**Status:** In progress on `codex/phase-f-vendor-groups`. Remaining parity gaps: Purchase Price Lists, RFQ.
+**Latest completion report:** [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md).
 
 ## 👉 Next agent — start here
 
@@ -29,9 +29,9 @@ Phase F progress:
 4. Purchase Audit Log — reused RecordAuditController, wired to /tenant/purchase/audit-log.
 5. Dead code cleanup — removed old GetCustomerStatementUseCase and its tests.
 6. PI Attachments — tenant-scoped vendor bill/supporting evidence attachments on Purchase Invoices (report 129).
+7. Vendor Groups — optional supplier segmentation master data with vendor Party assignment (report 130).
 
 Remaining parity gaps (prioritized):
-- Vendor Groups — optional master data
 - Purchase Price Lists — optional
 - RFQ (Request for Quotation) — bigger feature, 2-3 hours
 
@@ -115,4 +115,4 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-Next step is to continue **Phase F Purchases parity** with **Vendor Groups** first, then Purchase Price Lists and RFQ.
+Next step is to manually QA **Vendor Groups**, then continue **Phase F Purchases parity** with **Purchase Price Lists**, then RFQ.

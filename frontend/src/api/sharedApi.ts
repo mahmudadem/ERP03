@@ -22,6 +22,7 @@ export interface PartyDTO {
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
   customerGroupId?: string;
+  vendorGroupId?: string;
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;

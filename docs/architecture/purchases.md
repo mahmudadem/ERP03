@@ -76,6 +76,32 @@ Accounting boundary:
 
 ---
 
+## Vendor Groups (Phase F parity — 2026-05-28)
+
+Vendor Groups are optional supplier segmentation master data for Purchases.
+
+Backend endpoints:
+- `GET /tenant/purchase/vendor-groups`
+- `POST /tenant/purchase/vendor-groups`
+- `GET /tenant/purchase/vendor-groups/:id`
+- `PUT /tenant/purchase/vendor-groups/:id`
+- `DELETE /tenant/purchase/vendor-groups/:id`
+- `POST /tenant/purchase/vendor-groups/assign`
+
+Control model:
+- Data lives under the Purchases module collection `vendor_groups`.
+- Vendor assignment is stored on shared `Party.vendorGroupId`.
+- Only active groups can be assigned.
+- A group cannot be deleted while vendor Party records still reference it.
+- The UI exposes `Purchases -> Vendor Groups` and a Vendor Group selector on vendor commercial terms.
+
+Accounting boundary:
+- Vendor Groups are classification-only in this phase.
+- They do not change Purchase Invoice posting, AP balances, payment behavior, tax, inventory valuation, or voucher amounts.
+- Future reports can use `Party.vendorGroupId` as a filter without changing ledger source-of-truth rules.
+
+---
+
 ## Prerequisites
 
 The Accounting **Engine** must be initialized before Purchases is usable. `InitializePurchasesUseCase` calls `EnsureAccountingEngineInitialized` as its first step, which auto-bootstraps the Engine (`standard` COA template, calendar fiscal year, company base currency) if it is not yet initialized. If the Engine cannot be bootstrapped (e.g., the company has no base currency), Purchases initialization throws `AccountingEngineUnavailableError`. The Accounting **UI** does not need to be visible — see [accounting.md](./accounting.md#accounting-engine-vs-accounting-appui).

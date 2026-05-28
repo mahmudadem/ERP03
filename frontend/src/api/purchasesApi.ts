@@ -171,6 +171,17 @@ export interface PurchaseInvoiceLineDTO {
   description?: string;
 }
 
+export interface VendorGroupDTO {
+  id: string;
+  companyId: string;
+  name: string;
+  description: string | null;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PurchaseInvoiceAttachmentDTO {
   id: string;
   name: string;
@@ -658,6 +669,24 @@ export const purchasesApi = {
 
   updateSettings: (payload: Partial<PurchaseSettingsDTO>): Promise<PurchaseSettingsDTO> =>
     client.put('/tenant/purchase/settings', payload),
+
+  listVendorGroups: (opts?: { status?: string; includeInactive?: boolean; limit?: number; offset?: number }): Promise<VendorGroupDTO[]> =>
+    client.get('/tenant/purchase/vendor-groups', { params: opts }).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  getVendorGroup: (id: string): Promise<VendorGroupDTO> =>
+    client.get(`/tenant/purchase/vendor-groups/${id}`).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  createVendorGroup: (body: Partial<VendorGroupDTO>): Promise<VendorGroupDTO> =>
+    client.post('/tenant/purchase/vendor-groups', body).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  updateVendorGroup: (id: string, body: Partial<VendorGroupDTO>): Promise<VendorGroupDTO> =>
+    client.put(`/tenant/purchase/vendor-groups/${id}`, body).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  deleteVendorGroup: (id: string): Promise<{ success: boolean }> =>
+    client.delete(`/tenant/purchase/vendor-groups/${id}`).then((r: any) => r?.data ?? r),
+
+  assignVendorToGroup: (body: { vendorId: string; vendorGroupId: string | null }): Promise<{ success: boolean }> =>
+    client.post('/tenant/purchase/vendor-groups/assign', body).then((r: any) => r?.data ?? r),
 
   backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>
     client.post('/tenant/purchase/settings/backfill-party-accounts', {}).then((r: any) => r?.data?.data ?? r?.data ?? r),

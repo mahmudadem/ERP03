@@ -123,6 +123,7 @@ const PurchaseOrderDetailPage = lazy(() => import('../modules/purchases/pages/Pu
 const PurchaseSettingsPage = lazy(() => import('../modules/purchases/pages/PurchaseSettingsPage'));
 const VendorsListPage = lazy(() => import('../modules/purchases/pages/VendorsListPage'));
 const VendorDetailPage = lazy(() => import('../modules/purchases/pages/VendorDetailPage'));
+const VendorGroupsPage = lazy(() => import('../modules/purchases/pages/VendorGroupsPage'));
 const GoodsReceiptsListPage = lazy(() => import('../modules/purchases/pages/GoodsReceiptsListPage'));
 const GoodsReceiptDetailPage = lazy(() => import('../modules/purchases/pages/GoodsReceiptDetailPage'));
 const PurchaseInvoicesListPage = lazy(() => import('../modules/purchases/pages/PurchaseInvoicesListPage'));
@@ -352,6 +353,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases', label: 'Purchase Overview', component: PurchaseHomePage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/items', label: 'Products & Services', component: ItemsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/items/:id', label: 'Item Detail', component: ItemDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/vendor-groups', label: 'Vendor Groups', component: VendorGroupsPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/orders', label: 'Purchase Orders', component: PurchaseOrdersListPage, section: 'INVENTORY', requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },
   { path: '/purchases/orders/:id', label: 'Purchase Order Detail', component: PurchaseOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },
   { path: '/purchases/goods-receipts', label: 'Goods Receipts', component: GoodsReceiptsListPage, section: 'INVENTORY', requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },

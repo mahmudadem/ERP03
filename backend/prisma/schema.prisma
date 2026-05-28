@@ -1492,6 +1492,7 @@ model Party {
   defaultCurrency       String?
   defaultAPAccountId    String?
   defaultARAccountId    String?
+  vendorGroupId         String?
   active                Boolean  @default(true)
   createdBy             String
   createdAt             DateTime @default(now())

@@ -17,6 +17,7 @@ export interface PartyProps {
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
   customerGroupId?: string;
+  vendorGroupId?: string;
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
@@ -54,6 +55,7 @@ export class Party {
   defaultAPAccountId?: string;
   defaultARAccountId?: string;
   customerGroupId?: string;
+  vendorGroupId?: string;
   creditLimit?: number;
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
@@ -110,6 +112,7 @@ export class Party {
     this.defaultAPAccountId = props.defaultAPAccountId;
     this.defaultARAccountId = props.defaultARAccountId;
     this.customerGroupId = props.customerGroupId;
+    this.vendorGroupId = props.vendorGroupId;
     this.creditLimit = props.creditLimit;
     this.creditHoldPolicy = props.creditHoldPolicy;
     this.defaultPriceListId = props.defaultPriceListId;
@@ -140,6 +143,7 @@ export class Party {
       defaultAPAccountId: this.defaultAPAccountId,
       defaultARAccountId: this.defaultARAccountId,
       customerGroupId: this.customerGroupId,
+      vendorGroupId: this.vendorGroupId,
       creditLimit: this.creditLimit,
       creditHoldPolicy: this.creditHoldPolicy,
       defaultPriceListId: this.defaultPriceListId,
@@ -171,6 +175,7 @@ export class Party {
       defaultAPAccountId: data.defaultAPAccountId,
       defaultARAccountId: data.defaultARAccountId,
       customerGroupId: data.customerGroupId,
+      vendorGroupId: data.vendorGroupId,
       creditLimit: data.creditLimit,
       creditHoldPolicy: data.creditHoldPolicy,
       defaultPriceListId: data.defaultPriceListId,

@@ -1,4 +1,4 @@
-﻿{
+{
   "appName": "ERP03",
   "language": {
     "label": "Language",
@@ -2271,6 +2271,47 @@
         "label": "AP Sub-account Code Format",
         "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
       }
+    },
+    "vendorGroups": {
+      "title": "Vendor Groups",
+      "listSubtitle": "Reporting and filtering segments",
+      "subtitle": "Supplier segmentation",
+      "newTitle": "New Vendor Group",
+      "editTitle": "Edit Vendor Group",
+      "details": "Group details",
+      "directory": "Group directory",
+      "emptyTitle": "No Vendor Groups",
+      "emptyHelp": "Create your first vendor group to segment suppliers for filtering and reporting.",
+      "noDescription": "No description",
+      "noGroup": "(No Group)",
+      "vendorFormTitle": "Vendor Segmentation",
+      "vendorFieldLabel": "Vendor Group",
+      "vendorFormHelp": "Groups classify vendors for filtering and reporting. They do not change AP posting or payment behavior.",
+      "confirmDeleteTitle": "Delete vendor group?",
+      "confirmDeleteMessage": "This removes the vendor group only if no vendors still reference it.",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "status": "Status"
+      },
+      "placeholders": {
+        "name": "e.g. Local Suppliers",
+        "description": "Optional notes about this supplier segment"
+      },
+      "actions": {
+        "new": "New Group"
+      },
+      "validation": {
+        "nameRequired": "Group name is required."
+      },
+      "messages": {
+        "created": "Vendor group created",
+        "updated": "Vendor group updated",
+        "deleted": "Vendor group deleted",
+        "loadFailed": "Failed to load vendor groups",
+        "saveFailed": "Save failed",
+        "deleteFailed": "Delete failed"
+      }
     }
   },
   "parties": {
@@ -2308,5 +2349,15 @@
     "fulfilled": "Fulfilled",
     "createBackorder": "Create Backorder Delivery Note",
     "noLinesOverdue": "All lines fully delivered"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "active": "Active",
+    "inactive": "Inactive",
+    "loading": "Loading..."
   }
 }

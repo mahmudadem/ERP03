@@ -8,6 +8,22 @@
 
 ## 🧪 Ready to Test
 
+### Purchases — Phase F: Vendor Groups
+**Added by:** Codex (report 130)
+**What to test:**
+- Open Purchases -> Vendor Groups
+- Create a vendor group, edit it, and confirm it appears in the list
+- Open Purchases -> Vendors and assign a vendor to the group from Commercial Terms
+- Save and reopen the vendor, then confirm the group persists
+- Try deleting a group while a vendor still references it
+- Expected: deletion is blocked
+- Clear the vendor group from the vendor and save
+- Delete the now-unused group
+- Expected: deletion succeeds
+
+**Known limitations:**
+- Vendor Groups are classification-only in this slice; they do not change AP posting, payment behavior, tax, inventory valuation, or vouchers
+
 ### Sales — Phase D.8: Outbound Messaging (WhatsApp + Telegram)
 **Added by:** Claude Code (report 116, 117, 118)
 **What to test:**
@@ -102,4 +118,4 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-05-28 by Codex (PI Attachments passed manual QA)_
+_Last updated: 2026-05-28 by Codex (Vendor Groups ready for QA)_

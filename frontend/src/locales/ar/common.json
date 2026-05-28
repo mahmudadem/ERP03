@@ -1,4 +1,4 @@
-﻿{
+{
   "appName": "تخطيط موارد المؤسسات03",
   "language": {
     "label": "اللغة",
@@ -2344,6 +2344,47 @@
         "label": "AP Sub-account Code Format",
         "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
       }
+    },
+    "vendorGroups": {
+      "title": "مجموعات الموردين",
+      "listSubtitle": "تصنيفات للتقارير والتصفية",
+      "subtitle": "تصنيف الموردين",
+      "newTitle": "مجموعة موردين جديدة",
+      "editTitle": "تعديل مجموعة موردين",
+      "details": "تفاصيل المجموعة",
+      "directory": "دليل المجموعات",
+      "emptyTitle": "لا توجد مجموعات موردين",
+      "emptyHelp": "أنشئ أول مجموعة موردين لتصنيف الموردين للتصفية والتقارير.",
+      "noDescription": "لا يوجد وصف",
+      "noGroup": "(بدون مجموعة)",
+      "vendorFormTitle": "تصنيف المورد",
+      "vendorFieldLabel": "مجموعة المورد",
+      "vendorFormHelp": "تستخدم المجموعات لتصنيف الموردين للتصفية والتقارير ولا تغير قيود الدائنين أو سلوك الدفع.",
+      "confirmDeleteTitle": "حذف مجموعة الموردين؟",
+      "confirmDeleteMessage": "سيتم حذف المجموعة فقط إذا لم يكن هناك موردون مرتبطون بها.",
+      "fields": {
+        "name": "الاسم",
+        "description": "الوصف",
+        "status": "الحالة"
+      },
+      "placeholders": {
+        "name": "مثال: الموردون المحليون",
+        "description": "ملاحظات اختيارية عن هذا التصنيف"
+      },
+      "actions": {
+        "new": "مجموعة جديدة"
+      },
+      "validation": {
+        "nameRequired": "اسم المجموعة مطلوب."
+      },
+      "messages": {
+        "created": "تم إنشاء مجموعة الموردين",
+        "updated": "تم تحديث مجموعة الموردين",
+        "deleted": "تم حذف مجموعة الموردين",
+        "loadFailed": "فشل تحميل مجموعات الموردين",
+        "saveFailed": "فشل الحفظ",
+        "deleteFailed": "فشل الحذف"
+      }
     }
   },
   "parties": {
@@ -2381,5 +2422,15 @@
     "fulfilled": "مكتمل",
     "createBackorder": "إنشاء إذن تسليم متبقي",
     "noLinesOverdue": "جميع البنود تم تسليمها بالكامل"
+  },
+  "common": {
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ...",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "loading": "جارٍ التحميل..."
   }
 }

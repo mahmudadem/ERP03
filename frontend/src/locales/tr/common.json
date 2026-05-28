@@ -1,4 +1,4 @@
-﻿{
+{
   "appName": "ERP03",
   "language": {
     "label": "Dil",
@@ -2344,6 +2344,47 @@
         "label": "AP Sub-account Code Format",
         "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}."
       }
+    },
+    "vendorGroups": {
+      "title": "Tedarikci Gruplari",
+      "listSubtitle": "Raporlama ve filtreleme segmentleri",
+      "subtitle": "Tedarikci segmentasyonu",
+      "newTitle": "Yeni Tedarikci Grubu",
+      "editTitle": "Tedarikci Grubunu Duzenle",
+      "details": "Grup detaylari",
+      "directory": "Grup dizini",
+      "emptyTitle": "Tedarikci Grubu Yok",
+      "emptyHelp": "Filtreleme ve raporlama icin ilk tedarikci grubunuzu olusturun.",
+      "noDescription": "Aciklama yok",
+      "noGroup": "(Grup yok)",
+      "vendorFormTitle": "Tedarikci Segmentasyonu",
+      "vendorFieldLabel": "Tedarikci Grubu",
+      "vendorFormHelp": "Gruplar tedarikcileri filtreleme ve raporlama icin siniflandirir. AP muhasebe kaydini veya odeme davranisini degistirmez.",
+      "confirmDeleteTitle": "Tedarikci grubu silinsin mi?",
+      "confirmDeleteMessage": "Bu islem grubu yalnizca hicbir tedarikci referans vermiyorsa siler.",
+      "fields": {
+        "name": "Ad",
+        "description": "Aciklama",
+        "status": "Durum"
+      },
+      "placeholders": {
+        "name": "orn. Yerel Tedarikciler",
+        "description": "Bu tedarikci segmenti hakkinda istege bagli notlar"
+      },
+      "actions": {
+        "new": "Yeni Grup"
+      },
+      "validation": {
+        "nameRequired": "Grup adi zorunludur."
+      },
+      "messages": {
+        "created": "Tedarikci grubu olusturuldu",
+        "updated": "Tedarikci grubu guncellendi",
+        "deleted": "Tedarikci grubu silindi",
+        "loadFailed": "Tedarikci gruplari yuklenemedi",
+        "saveFailed": "Kaydetme basarisiz",
+        "deleteFailed": "Silme basarisiz"
+      }
     }
   },
   "parties": {
@@ -2381,5 +2422,15 @@
     "fulfilled": "Tamamlandı",
     "createBackorder": "Açık Sipariş Teslim Notu Oluştur",
     "noLinesOverdue": "Tüm satırlar tamamen teslim edildi"
+  },
+  "common": {
+    "save": "Kaydet",
+    "saving": "Kaydediliyor...",
+    "cancel": "Iptal",
+    "delete": "Sil",
+    "edit": "Duzenle",
+    "active": "Aktif",
+    "inactive": "Pasif",
+    "loading": "Yukleniyor..."
   }
 }

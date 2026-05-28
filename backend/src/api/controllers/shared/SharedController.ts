@@ -81,7 +81,8 @@ export class SharedController {
           createAccountUseCase,
           salesSettingsRepo: diContainer.salesSettingsRepository,
           purchaseSettingsRepo: diContainer.purchaseSettingsRepository,
-        }
+        },
+        diContainer.vendorGroupRepository
       );
       const party = await useCase.execute({
         ...body,
@@ -102,7 +103,12 @@ export class SharedController {
   static async updateParty(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SharedController.getCompanyId(req);
-      const useCase = new UpdatePartyUseCase(diContainer.partyRepository, diContainer.companyCurrencyRepository, diContainer.priceListRepository);
+      const useCase = new UpdatePartyUseCase(
+        diContainer.partyRepository,
+        diContainer.companyCurrencyRepository,
+        diContainer.priceListRepository,
+        diContainer.vendorGroupRepository
+      );
       const party = await useCase.execute({
         ...((req as any).body || {}),
         companyId,

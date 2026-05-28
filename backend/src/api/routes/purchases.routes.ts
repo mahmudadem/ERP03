@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PurchaseController } from '../controllers/purchases/PurchaseController';
+import { PurchaseMasterDataController } from '../controllers/purchases/PurchaseMasterDataController';
 import { PurchaseInvoiceAttachmentController } from '../controllers/purchases/PurchaseInvoiceAttachmentController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
 import { authMiddleware } from '../middlewares/authMiddleware';
@@ -18,6 +19,13 @@ router.use(moduleInitializedGuard('purchase'));
 
 router.put('/settings', PurchaseController.updateSettings);
 router.post('/settings/backfill-party-accounts', PurchaseController.backfillPartyAccounts);
+
+router.post('/vendor-groups', PurchaseMasterDataController.createVendorGroup);
+router.get('/vendor-groups', PurchaseMasterDataController.listVendorGroups);
+router.get('/vendor-groups/:id', PurchaseMasterDataController.getVendorGroup);
+router.put('/vendor-groups/:id', PurchaseMasterDataController.updateVendorGroup);
+router.delete('/vendor-groups/:id', PurchaseMasterDataController.deleteVendorGroup);
+router.post('/vendor-groups/assign', PurchaseMasterDataController.assignVendorToGroup);
 
 router.post('/orders', PurchaseController.createPO);
 router.get('/orders', PurchaseController.listPOs);

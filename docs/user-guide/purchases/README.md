@@ -8,6 +8,7 @@ Key guides:
 
 - [Vendor AP Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-ap-subaccounts.md)
 - [Vendor Statement and Ledger](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-statement.md)
+- [Vendor Groups](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-groups.md)
 - [Purchase Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-invoice-attachments.md)
 
 ---
@@ -21,6 +22,7 @@ Key guides:
 | **Purchase Invoices** | Record the bill from the vendor. This creates the payable on your books. |
 | **Purchase Returns** | Send goods back to the vendor, with or without an invoice already received. |
 | **Vendors** | Add and manage vendor records. |
+| **Vendor Groups** | Classify suppliers for filtering and reporting. |
 | **Payments** | Track which bills you've paid and which are outstanding. |
 | **Settings** | Workflow mode, default AP account, tolerances, numbering. |
 | **Dashboard** | Quick view: open POs, pending GRNs, unpaid bills, overdue payments. |
@@ -157,6 +159,7 @@ If you buy in foreign currencies:
 
 `Purchases → Vendors → [Vendor] → Edit`:
 
+- **Vendor Group** — classify suppliers such as local, import, service, or subcontractor vendors.
 - **Default AP Account** — split AP by vendor type (e.g., separate AP for import vendors)
 - **Payment Terms (days)** — drives the bill's due date
 - **Default Currency** — pre-fills new POs/bills

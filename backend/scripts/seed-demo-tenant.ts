@@ -720,6 +720,193 @@ async function seedTransactions(
 }
 
 // ---------------------------------------------------------------------------
+// Phase 1: Per-party AP/AR hierarchy
+// ---------------------------------------------------------------------------
+//
+// Builds the following structure under the existing AP/AR headers:
+//
+//   <AP header>                            (existing — e.g. "201 Accounts Payable")
+//    ├─ <existing General AP>              (existing POSTING — e.g. "20100")
+//    ├─ 20110 International Suppliers      NEW HEADER
+//    │   └─ 20111 FarmDirect               NEW POSTING (vendor sub-account)
+//    └─ 20120 Local Suppliers              NEW HEADER
+//        └─ 20121 Pacific Coast            NEW POSTING (vendor sub-account)
+//
+//   <AR header>                            (existing — e.g. "104 Accounts Receivable")
+//    ├─ <existing General AR>              (existing POSTING — e.g. "10401")
+//    ├─ 10410 Wholesale Customers          NEW HEADER
+//    │   └─ 10411..10415                   NEW POSTING (per-customer)
+//    └─ 10420 Retail Customers             NEW HEADER
+//        └─ 10421..10425                   NEW POSTING (per-customer)
+//
+// Phase 2 will bind each party to the correct leaf (or to the General).
+
+type PartyChannel = 'INTERNATIONAL' | 'LOCAL' | 'WHOLESALE' | 'RETAIL' | 'GENERAL';
+
+// Customer channel allocation (mixes sub-account model with control-account model)
+const CUSTOMER_CHANNEL: Record<string, PartyChannel> = {
+  'CUST-001': 'WHOLESALE',  // Sunrise Grocery
+  'CUST-002': 'RETAIL',     // Green Valley Market
+  'CUST-003': 'RETAIL',     // Downtown Deli
+  'CUST-004': 'WHOLESALE',  // Riverside Restaurant
+  'CUST-005': 'GENERAL',    // Happy Meals — control-account model
+  'CUST-006': 'WHOLESALE',  // Seaside Hotel
+  'CUST-007': 'WHOLESALE',  // Campus Fresh
+  'CUST-008': 'GENERAL',    // QuickMart — control-account model
+  'CUST-009': 'RETAIL',     // Hilltop Bakery
+  'CUST-010': 'WHOLESALE',  // Organic Pantry
+};
+
+const VENDOR_CHANNEL: Record<string, PartyChannel> = {
+  'VEND-001': 'INTERNATIONAL', // FarmDirect
+  'VEND-002': 'LOCAL',         // Pacific Coast
+};
+
+interface PartyAccountAllocation {
+  // Per-party AP/AR leaf account IDs (only populated for sub-account-model parties).
+  perParty: Map<string, string>; // party code → account id
+  // General AP and AR accounts (control-account-model parties point here).
+  generalAP: AccountRow;
+  generalAR: AccountRow;
+  // Newly created group HEADER ids (for reporting/debug).
+  intlSuppliers?: string;
+  localSuppliers?: string;
+  wholesaleCustomers?: string;
+  retailCustomers?: string;
+}
+
+async function restructureAPAndAR(
+  db: FirebaseFirestore.Firestore,
+  companyId: string,
+  userId: string,
+  dryRun: boolean,
+): Promise<PartyAccountAllocation> {
+  const rows = await loadAccounts(db, companyId);
+
+  // Find existing AP/AR headers and existing "general" leaves under them.
+  const apHeader = rows.find((r) => r.classification === 'LIABILITY' && /accounts?\s*payable\b/i.test(r.name) && !r.parentId)
+    || rows.find((r) => r.classification === 'LIABILITY' && /accounts?\s*payable\b/i.test(r.name));
+  const arHeader = rows.find((r) => r.classification === 'ASSET' && /accounts?\s*receivable\b/i.test(r.name) && !r.parentId)
+    || rows.find((r) => r.classification === 'ASSET' && /accounts?\s*receivable\b/i.test(r.name));
+  if (!apHeader || !arHeader) {
+    console.error('Cannot find AP/AR header accounts — run COA template first.');
+    process.exit(1);
+  }
+
+  // "General" leaves = first POSTING child of each header. If header itself is POSTING (older template), use it.
+  const apGeneral = rows.find((r) => r.parentId === apHeader.id && r.active && r.classification === 'LIABILITY') || apHeader;
+  const arGeneral = rows.find((r) => r.parentId === arHeader.id && r.active && r.classification === 'ASSET') || arHeader;
+
+  console.log(`✓ AP header: ${apHeader.code} ${apHeader.name} | General AP: ${apGeneral.code} ${apGeneral.name}`);
+  console.log(`✓ AR header: ${arHeader.code} ${arHeader.name} | General AR: ${arGeneral.code} ${arGeneral.name}`);
+
+  if (dryRun) {
+    console.log('  [dry-run] would create AP/AR group headers + per-party leaves');
+    return {
+      perParty: new Map(),
+      generalAP: apGeneral,
+      generalAR: arGeneral,
+    };
+  }
+
+  const { diContainer } = await import('../src/infrastructure/di/bindRepositories');
+  const accountRepo = diContainer.accountRepository;
+
+  const existingCodes = new Set(rows.map((r) => r.code));
+
+  const createIfMissing = async (input: {
+    code: string;
+    name: string;
+    classification: 'ASSET' | 'LIABILITY';
+    accountRole: 'HEADER' | 'POSTING';
+    parentId: string;
+  }): Promise<string> => {
+    if (existingCodes.has(input.code)) {
+      const found = rows.find((r) => r.code === input.code)!;
+      console.log(`  ✓ ${input.code} ${input.name} — exists`);
+      return found.id;
+    }
+    const acc = await accountRepo.create(companyId, {
+      userCode: input.code,
+      name: input.name,
+      classification: input.classification,
+      accountRole: input.accountRole,
+      parentId: input.parentId,
+      currencyPolicy: 'INHERIT',
+      createdBy: userId,
+    } as any);
+    console.log(`  + ${input.code} ${input.name} [${input.accountRole}]`);
+    existingCodes.add(input.code);
+    return acc.id;
+  };
+
+  // AP groups
+  const intlSuppliersId = await createIfMissing({
+    code: '20110', name: 'International Suppliers', classification: 'LIABILITY', accountRole: 'HEADER', parentId: apHeader.id,
+  });
+  const localSuppliersId = await createIfMissing({
+    code: '20120', name: 'Local Suppliers', classification: 'LIABILITY', accountRole: 'HEADER', parentId: apHeader.id,
+  });
+
+  // AR groups
+  const wholesaleCustId = await createIfMissing({
+    code: '10410', name: 'Wholesale Customers', classification: 'ASSET', accountRole: 'HEADER', parentId: arHeader.id,
+  });
+  const retailCustId = await createIfMissing({
+    code: '10420', name: 'Retail Customers', classification: 'ASSET', accountRole: 'HEADER', parentId: arHeader.id,
+  });
+
+  // Per-vendor leaves
+  const perParty = new Map<string, string>();
+  const vendorLeafBase: Record<PartyChannel, { parentId: string; codeBase: number; cls: 'LIABILITY' | 'ASSET' }> = {
+    INTERNATIONAL: { parentId: intlSuppliersId, codeBase: 20111, cls: 'LIABILITY' },
+    LOCAL:         { parentId: localSuppliersId, codeBase: 20121, cls: 'LIABILITY' },
+    WHOLESALE:     { parentId: wholesaleCustId,  codeBase: 10411, cls: 'ASSET' },
+    RETAIL:        { parentId: retailCustId,     codeBase: 10421, cls: 'ASSET' },
+    GENERAL:       { parentId: '',               codeBase: 0,     cls: 'ASSET' }, // unused
+  };
+
+  const counters: Partial<Record<PartyChannel, number>> = {};
+  const nextCode = (ch: PartyChannel): string => {
+    const base = vendorLeafBase[ch].codeBase;
+    const next = (counters[ch] ?? 0);
+    counters[ch] = next + 1;
+    return String(base + next);
+  };
+
+  for (const v of VENDORS) {
+    const ch = VENDOR_CHANNEL[v.code];
+    if (!ch || ch === 'GENERAL') continue;
+    const code = nextCode(ch);
+    const id = await createIfMissing({
+      code, name: v.legalName, classification: 'LIABILITY', accountRole: 'POSTING', parentId: vendorLeafBase[ch].parentId,
+    });
+    perParty.set(v.code, id);
+  }
+
+  for (const c of CUSTOMERS) {
+    const ch = CUSTOMER_CHANNEL[c.code];
+    if (!ch || ch === 'GENERAL') continue;
+    const code = nextCode(ch);
+    const id = await createIfMissing({
+      code, name: c.legalName, classification: 'ASSET', accountRole: 'POSTING', parentId: vendorLeafBase[ch].parentId,
+    });
+    perParty.set(c.code, id);
+  }
+
+  console.log(`✓ Per-party AP/AR leaves: ${perParty.size} created or reused`);
+  return {
+    perParty,
+    generalAP: apGeneral,
+    generalAR: arGeneral,
+    intlSuppliers: intlSuppliersId,
+    localSuppliers: localSuppliersId,
+    wholesaleCustomers: wholesaleCustId,
+    retailCustomers: retailCustId,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -735,6 +922,9 @@ async function main() {
   const rows = await loadAccounts(db, args.companyId);
   const accounts = resolveAccounts(rows);
   console.log(`✓ Accounts resolved (AR, Revenue, Inventory, COGS, AP, Cash, Tax, Equity)`);
+
+  console.log('\n--- Phase 1: Restructure AP/AR with per-party hierarchy ---');
+  const allocation = await restructureAPAndAR(db, args.companyId, args.userId, args.dryRun);
 
   const warehouseId = await seedWarehouse(db, args.companyId, args.userId, args.dryRun);
   const taxCodeId = await seedTaxCode(db, args.companyId, args.userId, accounts.tax, args.dryRun);

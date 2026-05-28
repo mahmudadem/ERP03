@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { IPriceListRepository } from '../../../repository/interfaces/sales/IPriceListRepository';
+import { IVendorGroupRepository } from '../../../repository/interfaces/purchases/IVendorGroupRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
@@ -39,6 +40,7 @@ export interface CreatePartyInput {
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
   customerGroupId?: string;
+  vendorGroupId?: string;
   defaultSalesInvoiceTemplateId?: string;
   defaultSalesInvoiceFormType?: string;
   taxExempt?: boolean;
@@ -65,6 +67,7 @@ export interface UpdatePartyInput {
   creditHoldPolicy?: 'NONE' | 'WARN' | 'BLOCK';
   defaultPriceListId?: string;
   customerGroupId?: string | null;
+  vendorGroupId?: string | null;
   defaultSalesInvoiceTemplateId?: string | null;
   defaultSalesInvoiceFormType?: string | null;
   taxExempt?: boolean;
@@ -90,7 +93,8 @@ export class CreatePartyUseCase {
   constructor(
     private readonly partyRepo: IPartyRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly autoCreateDeps?: PartyAccountAutoCreateDeps
+    private readonly autoCreateDeps?: PartyAccountAutoCreateDeps,
+    private readonly vendorGroupRepo?: IVendorGroupRepository
   ) {}
 
   async execute(input: CreatePartyInput): Promise<Party> {
@@ -116,6 +120,19 @@ export class CreatePartyUseCase {
 
     const isCustomer = input.roles.includes('CUSTOMER');
     const isVendor = input.roles.includes('VENDOR');
+
+    if (input.vendorGroupId) {
+      if (!isVendor) {
+        throw new Error('vendorGroupId can only be set for vendors');
+      }
+      if (this.vendorGroupRepo) {
+        const group = await this.vendorGroupRepo.getById(input.companyId, input.vendorGroupId);
+        if (!group) throw new Error(`Vendor group not found: ${input.vendorGroupId}`);
+        if (group.status !== 'ACTIVE') {
+          throw new Error(`Cannot assign vendor to inactive VendorGroup "${group.name}"`);
+        }
+      }
+    }
 
     let resolvedARAccountId = input.defaultARAccountId;
     let resolvedAPAccountId = input.defaultAPAccountId;
@@ -183,6 +200,7 @@ export class CreatePartyUseCase {
       creditHoldPolicy: input.creditHoldPolicy,
       defaultPriceListId: input.defaultPriceListId,
       customerGroupId: input.customerGroupId,
+      vendorGroupId: input.vendorGroupId,
       defaultSalesInvoiceTemplateId: input.defaultSalesInvoiceTemplateId,
       defaultSalesInvoiceFormType: input.defaultSalesInvoiceFormType,
       taxExempt: input.taxExempt,
@@ -266,7 +284,8 @@ export class UpdatePartyUseCase {
   constructor(
     private readonly partyRepo: IPartyRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly priceListRepo?: IPriceListRepository
+    private readonly priceListRepo?: IPriceListRepository,
+    private readonly vendorGroupRepo?: IVendorGroupRepository
   ) {}
 
   async execute(input: UpdatePartyInput): Promise<Party> {
@@ -301,13 +320,27 @@ export class UpdatePartyUseCase {
       }
     }
 
+    const nextRoles = input.roles ?? existing.roles;
+    if (input.vendorGroupId) {
+      if (!nextRoles.includes('VENDOR')) {
+        throw new Error('vendorGroupId can only be set for vendors');
+      }
+      if (this.vendorGroupRepo) {
+        const group = await this.vendorGroupRepo.getById(input.companyId, input.vendorGroupId);
+        if (!group) throw new Error(`Vendor group not found: ${input.vendorGroupId}`);
+        if (group.status !== 'ACTIVE') {
+          throw new Error(`Cannot assign vendor to inactive VendorGroup "${group.name}"`);
+        }
+      }
+    }
+
     const updated = new Party({
       id: existing.id,
       companyId: existing.companyId,
       code: input.code ?? existing.code,
       legalName: input.legalName ?? existing.legalName,
       displayName: input.displayName ?? existing.displayName,
-      roles: input.roles ?? existing.roles,
+      roles: nextRoles,
       contactPerson: input.contactPerson ?? existing.contactPerson,
       phone: input.phone ?? existing.phone,
       email: input.email ?? existing.email,
@@ -324,6 +357,10 @@ export class UpdatePartyUseCase {
         input.customerGroupId !== undefined
           ? (input.customerGroupId || undefined)
           : existing.customerGroupId,
+      vendorGroupId:
+        input.vendorGroupId !== undefined
+          ? (input.vendorGroupId || undefined)
+          : existing.vendorGroupId,
       defaultSalesInvoiceTemplateId:
         input.defaultSalesInvoiceTemplateId !== undefined
           ? (input.defaultSalesInvoiceTemplateId || undefined)

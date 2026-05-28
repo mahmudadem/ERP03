@@ -2,6 +2,31 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-28 (Thu) — Phase F: Vendor Groups
+
+**Task:** Add Purchases Vendor Groups parity as classification-only supplier master data.  
+**Agent:** Codex (GPT-5)  
+**Branch:** `codex/phase-f-vendor-groups`  
+**Completion report:** [planning/done/130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md)
+
+**What landed:**
+- Added `VendorGroup` domain entity, repository interface, Firestore repository, use cases, DI binding, and purchase master-data routes.
+- Added `Party.vendorGroupId` with shared Party create/update validation.
+- Added frontend Purchases API, `VendorGroupsPage`, route/menu entry, and Vendor Group selector on vendor commercial terms.
+- Added English/Arabic/Turkish i18n strings.
+- Updated Purchases architecture/user docs, QA queue, ACTIVE, and PRIORITIES.
+
+**Accounting/control decision:**
+- Vendor Groups are classification-only. They do not affect PI posting, AP balances, payment behavior, tax, inventory valuation, or voucher amounts.
+
+**Verification:**
+- `npm --prefix backend run build` -> passed.
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix backend test -- VendorGroupUseCases.test.ts` -> passed, 6/6 tests.
+
+**Time spent:** ~1.2h  
+**Result:** Vendor Groups are ready for manual QA. Next Phase F item: Purchase Price Lists.
+
 ## 2026-05-28 (Thu) — Phase F: Purchase Invoice Attachments
 
 **Task:** Add PI Attachments parity for Purchases, mirroring the Sales Invoice attachment control model.

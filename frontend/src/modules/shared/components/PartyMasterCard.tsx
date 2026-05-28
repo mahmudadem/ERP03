@@ -14,7 +14,7 @@ import {
 import { PartyDTO, PartyRole, PartyAccountStrategy, sharedApi } from '../../../api/sharedApi';
 import { accountingApi } from '../../../api/accountingApi';
 import { salesApi } from '../../../api/salesApi';
-import { purchasesApi } from '../../../api/purchasesApi';
+import { purchasesApi, VendorGroupDTO } from '../../../api/purchasesApi';
 import { salesMasterDataApi, CustomerGroupDTO, PriceListDTO } from '../../../api/salesMasterDataApi';
 import toast from 'react-hot-toast';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
@@ -77,6 +77,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [customerGroups, setCustomerGroups] = useState<CustomerGroupDTO[]>([]);
+  const [vendorGroups, setVendorGroups] = useState<VendorGroupDTO[]>([]);
   const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
   const [invoiceTemplates, setInvoiceTemplates] = useState<VoucherFormResponse[]>([]);
   const [accountStrategy, setAccountStrategy] = useState<PartyAccountStrategy | ''>('');
@@ -111,6 +112,8 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
           return voucherType === 'sales_invoice' || formType.startsWith('sales_invoice');
         }));
       }).catch(console.error);
+    } else {
+      purchasesApi.listVendorGroups().then(setVendorGroups).catch(console.error);
     }
   }, [partyId, role]);
 
@@ -446,6 +449,29 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                    </Field>
                  </div>
                </div>
+             </FormSection>
+           )}
+
+           {role === 'VENDOR' && (
+             <FormSection title={t('purchases.vendorGroups.vendorFormTitle', 'Vendor Segmentation')}>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <Field label={t('purchases.vendorGroups.vendorFieldLabel', 'Vendor Group')}>
+                   <select
+                     className="form-control"
+                     value={form.vendorGroupId || ''}
+                     onChange={e => setForm(p => ({ ...p, vendorGroupId: e.target.value || undefined }))}
+                   >
+                     <option value="">{t('purchases.vendorGroups.noGroup', '(No Group)')}</option>
+                     {vendorGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                   </select>
+                 </Field>
+               </div>
+               <p className="mt-2 text-[10px] text-slate-500">
+                 {t(
+                   'purchases.vendorGroups.vendorFormHelp',
+                   'Groups classify vendors for filtering and reporting. They do not change AP posting or payment behavior.'
+                 )}
+               </p>
              </FormSection>
            )}
         </div>

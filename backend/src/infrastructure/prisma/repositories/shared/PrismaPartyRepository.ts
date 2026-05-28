@@ -23,11 +23,12 @@ export class PrismaPartyRepository implements IPartyRepository {
         defaultCurrency: party.defaultCurrency,
         defaultAPAccountId: party.defaultAPAccountId,
         defaultARAccountId: party.defaultARAccountId,
+        vendorGroupId: party.vendorGroupId,
         active: party.active,
         createdBy: party.createdBy,
         createdAt: party.createdAt,
         updatedAt: party.updatedAt,
-      },
+      } as any,
     });
   }
 
@@ -48,9 +49,10 @@ export class PrismaPartyRepository implements IPartyRepository {
         defaultCurrency: party.defaultCurrency,
         defaultAPAccountId: party.defaultAPAccountId,
         defaultARAccountId: party.defaultARAccountId,
+        vendorGroupId: party.vendorGroupId,
         active: party.active,
         updatedAt: party.updatedAt,
-      },
+      } as any,
     });
   }
 
@@ -112,6 +114,7 @@ export class PrismaPartyRepository implements IPartyRepository {
       defaultCurrency: record.defaultCurrency ?? undefined,
       defaultAPAccountId: record.defaultAPAccountId ?? undefined,
       defaultARAccountId: record.defaultARAccountId ?? undefined,
+      vendorGroupId: record.vendorGroupId ?? undefined,
       active: record.active,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
