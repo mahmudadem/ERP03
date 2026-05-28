@@ -1,0 +1,66 @@
+{
+  "inventory": {
+    "accountId": "40ac6353-56a6-417e-bebc-d0c0eafe6ed5",
+    "code": "10301",
+    "name": "Finished Goods",
+    "debit": 1010,
+    "credit": 80,
+    "net": 930
+  },
+  "openingEquity": {
+    "accountId": "f3491a0c-e0d3-40d9-a828-cfb70774060d",
+    "code": "30101",
+    "name": "Paid-in Capital",
+    "debit": 0,
+    "credit": 1000,
+    "net": -1000
+  },
+  "ar": {
+    "accountId": "7e32124f-782c-4ba9-a00d-dd57068e10a1",
+    "code": "10401",
+    "name": "Customers Receivable",
+    "debit": 148.5,
+    "credit": 72,
+    "net": 76.5
+  },
+  "revenue": {
+    "accountId": "DFkrNW37pNQDydQXO0lk",
+    "code": "400",
+    "name": "\tSales Revenue",
+    "debit": 35,
+    "credit": 135,
+    "net": -100
+  },
+  "tax": {
+    "accountId": "e56f5678-fafb-460f-b8ee-b2f1c3b17679",
+    "code": "20201",
+    "name": "VAT Payable",
+    "debit": 2,
+    "credit": 13.5,
+    "net": -11.5
+  },
+  "cogs": {
+    "accountId": "hF6XHz9ORjTmkTKblj1n",
+    "code": "50103",
+    "name": "Cost of Goods Sold",
+    "debit": 80,
+    "credit": 25,
+    "net": 55
+  },
+  "cash": {
+    "accountId": "5bb1b762-0040-4fbd-8bd3-1f973140da64",
+    "code": "10102",
+    "name": "Cash – Retail Branch",
+    "debit": 50,
+    "credit": 25,
+    "net": 25
+  },
+  "ap": {
+    "accountId": "6g4Cm8TxuUWMBbhF67D6",
+    "code": "20100",
+    "name": "Accounts Payable",
+    "debit": 25,
+    "credit": 0,
+    "net": 25
+  }
+}
