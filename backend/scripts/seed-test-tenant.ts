@@ -80,6 +80,7 @@ type AccountRow = {
   classification: string;
   role?: string;
   active?: boolean;
+  parentId?: string;
 };
 
 type ResolvedAccounts = {
@@ -103,11 +104,12 @@ async function loadAccounts(db: FirebaseFirestore.Firestore, companyId: string):
     const data = d.data();
     return {
       id: data.id || d.id,
-      code: data.code || '',
+      code: String(data.userCode || data.code || ''),
       name: data.name || '',
       classification: (data.classification || data.type || '').toString().toUpperCase(),
-      role: data.role,
-      active: data.active !== false,
+      role: data.accountRole || data.role,
+      active: data.status === 'ACTIVE' || data.active !== false,
+      parentId: data.parentId,
     };
   });
 }
@@ -117,9 +119,15 @@ function pickAccount(
   classification: string,
   patterns: RegExp[],
 ): AccountRow | null {
+  // Build set of accounts that ARE parents — these are HEADERs even if
+  // their stored role field is missing/undefined.
+  const isParent = new Set<string>();
+  rows.forEach((r) => {
+    if ((r as any).parentId) isParent.add(String((r as any).parentId));
+  });
   const candidates = rows.filter((r) =>
     r.active &&
-    (r.role || 'POSTING') === 'POSTING' &&
+    !isParent.has(r.id) &&  // only true leaves can be POSTING
     r.classification === classification,
   );
   for (const re of patterns) {
@@ -223,10 +231,11 @@ async function seedTaxCode(
     code: 'TAX10',
     name: '10% Sales Tax',
     rate: 0.10,
-    type: 'SALES',
-    accountId: taxAccount.id,
-    salesAccountId: taxAccount.id,
-    purchaseAccountId: taxAccount.id,
+    taxType: 'VAT',
+    scope: 'BOTH',
+    salesTaxAccountId: taxAccount.id,
+    purchaseTaxAccountId: taxAccount.id,
+    priceIsInclusive: false,
     active: true,
     createdBy: userId,
     createdAt: now,
