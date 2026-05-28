@@ -1,6 +1,6 @@
 # Architecture: Purchases Module
 
-**Last updated:** 2026-05-27
+**Last updated:** 2026-05-28
 **Status:** Feature-complete for V1 (4 document types). Requisitions and Debit Notes deferred.
 **Module-level docs:** [`docs/modules/purchases/`](../modules/purchases/)
 
@@ -48,6 +48,31 @@ Drill-down precedence:
 1. Open the original Purchases document when voucher metadata resolves `sourceModule='purchases'` and `sourceType/sourceId`.
 2. Offer `Open Accounting Voucher` for the posted voucher.
 3. If the source document cannot be resolved, the accounting voucher remains the fallback.
+
+---
+
+## Purchase Invoice Attachments (Phase F parity — 2026-05-28)
+
+Purchase Invoices support tenant-scoped evidence attachments for vendor bill scans and supporting files.
+
+Backend endpoints:
+- `GET /tenant/purchase/invoices/:id/attachments`
+- `POST /tenant/purchase/invoices/:id/attachments`
+- `GET /tenant/purchase/invoices/:id/attachments/:aid/link`
+- `DELETE /tenant/purchase/invoices/:id/attachments/:aid`
+
+Control model:
+- Storage path: `companies/{companyId}/purchases/invoices/{invoiceId}/attachments/...`
+- Metadata is stored on the `PurchaseInvoice.attachments` array.
+- Unsaved PI files are held only in the browser as a pending queue; storage and metadata writes occur only after the PI is saved and the backend returns an invoice ID.
+- Download/open uses a short-lived server-generated signed URL.
+- Max files: `5`
+- Max file size: `10 MB`
+- Allowed types: PDF, JPG, PNG, DOCX, XLSX
+
+Accounting boundary:
+- Attachments are evidence only. They do not change PI posting, AP balances, inventory valuation, tax, settlement/payment status, or voucher amounts.
+- Tenant isolation comes from authenticated `companyId`, repository lookup by company, and tenant-scoped storage path.
 
 ---
 

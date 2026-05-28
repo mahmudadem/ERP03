@@ -160,6 +160,16 @@ export interface PurchaseInvoiceLineDTO {
   description?: string;
 }
 
+export interface PurchaseInvoiceAttachmentDTO {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface PurchaseInvoiceDTO {
   id: string;
   companyId: string;
@@ -189,6 +199,7 @@ export interface PurchaseInvoiceDTO {
   outstandingAmountBase: number;
   status: 'DRAFT' | 'POSTED' | 'CANCELLED';
   voucherId?: string | null;
+  attachments?: PurchaseInvoiceAttachmentDTO[];
   notes?: string;
   createdBy: string;
   createdAt: string;
@@ -465,6 +476,7 @@ export class PurchaseDTOMapper {
       outstandingAmountBase: pi.outstandingAmountBase,
       status: pi.status,
       voucherId: pi.voucherId ?? null,
+      attachments: (pi.attachments || []).map((attachment) => ({ ...attachment })),
       notes: pi.notes,
       createdBy: pi.createdBy,
       createdAt: pi.createdAt.toISOString(),

@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Phase F — Purchases parity. Ledger-backed AR/AP Aging + Purchases Analytics + Audit Log done (2026-05-27).
-**Status:** In progress on `feat/phase-a-sales-master-data`. Remaining parity gaps: PI Attachments, Vendor Groups, Purchase Price Lists, RFQ.
-**Latest completion report:** See JOURNAL.md 2026-05-28 entries.
+**Task:** Phase F — Purchases parity. PI Attachments now done (2026-05-28).
+**Status:** In progress on `codex/phase-f-pi-attachments`. Remaining parity gaps: Vendor Groups, Purchase Price Lists, RFQ.
+**Latest completion report:** [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md).
 
 ## 👉 Next agent — start here
 
@@ -22,15 +22,15 @@ Vendor Statement parity is now also complete:
 4. Rows are decorated from voucher metadata for Purchases source-document and accounting-voucher drill-down.
 5. Open Purchase Orders can be included as non-balance commitments.
 
-Phase F progress (2026-05-27):
+Phase F progress:
 1. Ledger-backed AR Aging — migrated from Sales-only _buildRawEvents to Accounting ledger with unallocated diff display.
 2. AP Aging report — new, mirrors AR Aging for vendors via defaultAPAccountId.
 3. Purchases Analytics — purchases-by-vendor + purchases-by-item reports, frontend page with mode toggle.
 4. Purchase Audit Log — reused RecordAuditController, wired to /tenant/purchase/audit-log.
 5. Dead code cleanup — removed old GetCustomerStatementUseCase and its tests.
+6. PI Attachments — tenant-scoped vendor bill/supporting evidence attachments on Purchase Invoices (report 129).
 
 Remaining parity gaps (prioritized):
-- PI Attachments (vendor bill scans) — reuse Sales attachment infra
 - Vendor Groups — optional master data
 - Purchase Price Lists — optional
 - RFQ (Request for Quotation) — bigger feature, 2-3 hours
@@ -115,17 +115,4 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-Phase C QA done (report 121). Triage these before Sales is declared production-ready:
-- ✅ **Finding #3** (report bug) — CLOSED 2026-05-28 (report 126). Legacy `GetCustomerLedgerUseCase` + `/customer-ledger` endpoint deleted (no frontend consumer); ledger-backed Customer Statement already shows credit notes through the accounting engine.
-- **Findings #2 + #4 + #5** — single investigation: invoices reach POSTED in Sales without complete GL journals (7,800 AR gap, 17,033 revenue gap), and items have no cost basis so COGS = 0. May be SYCO-specific data state; reproduce on a fresh tenant before assuming system bug.
-- **SYCO chart of accounts** — remap AR to `104`; reclassify `5571 tax sales` as LIABILITY.
-
-**GL Audit & Demo Seed — DONE 2026-05-28:**
-- `seed-audit-tenant.ts` verified all GL numbers match (DR=CR=1350.50 across 8 accounts).
-- `seed-demo-tenant.ts` creates full demo tenant: 108 items, 10 customers, 2 vendors, 33 transactions.
-- COA template fixes still deferred (add missing COGS/Revenue/AP/GRNI to Standard COA).
-- Branch is 7 commits ahead of origin — push + PR when ready.
-
-Sales is now ready for QA handoff. Phase E merged cleanly (commit `249bb86`): E.1 quote sequence, E.2 AI test stabilization, E.3 promotion auto-application, E.4 credit check on direct SI with auditable override, E.5 backorder/fulfillment UX. Two Phase E-tier follow-ups still open (period-lock override governance + D.3 audit gaps on SO confirm/cancel/close and SI payment record/status) — defer to post-QA unless QA surfaces them.
-
-Manual Sales QA cycle is the next gate before Phase F (Purchases parity).
+Next step is to continue **Phase F Purchases parity** with **Vendor Groups** first, then Purchase Price Lists and RFQ.

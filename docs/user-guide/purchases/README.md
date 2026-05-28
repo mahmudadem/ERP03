@@ -8,6 +8,7 @@ Key guides:
 
 - [Vendor AP Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-ap-subaccounts.md)
 - [Vendor Statement and Ledger](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-statement.md)
+- [Purchase Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-invoice-attachments.md)
 
 ---
 
@@ -64,6 +65,8 @@ When the vendor's bill arrives:
 3. Match the line prices to what the vendor billed (sometimes they differ from the PO — adjust here).
 4. Apply tax codes.
 5. **Post** the bill. This creates the payable: you now owe the vendor this amount, and your inventory's cost basis is finalized.
+
+You can also attach the vendor's bill scan or supporting documents while entering a new Purchase Invoice or after it is saved. For a new invoice, files are queued and uploaded automatically when you save. Attachments are stored as evidence only; they do not change posting amounts.
 
 ### 4. Pay the bill
 

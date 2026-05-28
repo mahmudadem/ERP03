@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { PurchaseController } from '../controllers/purchases/PurchaseController';
+import { PurchaseInvoiceAttachmentController } from '../controllers/purchases/PurchaseInvoiceAttachmentController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
+import multer from 'multer';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 router.use(authMiddleware);
 
 router.post('/initialize', PurchaseController.initializePurchases);
@@ -42,6 +45,10 @@ router.post('/invoices/:id/unpost', PurchaseController.unpostPI);
 router.post('/invoices/:id/payment-update', PurchaseController.updatePaymentStatus);
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, PurchaseController.recordPayment);
 router.get('/invoices/:id/payments', PurchaseController.getPaymentHistory);
+router.get('/invoices/:id/attachments', PurchaseInvoiceAttachmentController.list);
+router.post('/invoices/:id/attachments', upload.single('file'), PurchaseInvoiceAttachmentController.upload);
+router.get('/invoices/:id/attachments/:aid/link', PurchaseInvoiceAttachmentController.getDownloadLink);
+router.delete('/invoices/:id/attachments/:aid', PurchaseInvoiceAttachmentController.remove);
 
 router.get('/reports/vendor-statement', PurchaseController.getVendorStatement);
 router.get('/reports/ap-aging', PurchaseController.getApAgingReport);

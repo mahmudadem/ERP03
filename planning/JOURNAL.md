@@ -2,6 +2,33 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-28 (Thu) — Phase F: Purchase Invoice Attachments
+
+**Task:** Add PI Attachments parity for Purchases, mirroring the Sales Invoice attachment control model.
+**Agent:** Codex (GPT-5)
+**Branch:** `codex/phase-f-pi-attachments`
+**Completion report:** [planning/done/129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md)
+
+**What landed:**
+- Added tenant-scoped Purchase Invoice attachment metadata to the domain and DTO contracts.
+- Added attachment routes under `/tenant/purchase/invoices/:id/attachments` for list/upload/signed-link/remove.
+- Added `PurchaseInvoiceAttachmentController` using authenticated company context and tenant-scoped storage paths.
+- Added frontend Purchases API methods and an Attachments panel on `PurchaseInvoiceDetailPage`.
+- Added pre-save attachment queue on new PI entry; queued files upload automatically after Save Draft or Save & Post creates the PI.
+- Added confirmation before removal and visible success/error feedback for user-triggered attachment actions.
+- Updated Purchases architecture/user docs, QA queue, ACTIVE, and PRIORITIES.
+
+**Accounting/control decision:**
+- Attachments are evidence only. They do not affect PI posting, AP balances, tax, payment status, inventory valuation, or voucher amounts.
+
+**Verification:**
+- `npm --prefix backend run build` -> passed.
+- `npm --prefix frontend run typecheck` -> passed.
+
+**Time spent:** ~1.3h
+**Manual QA:** Passed by Mahmud on 2026-05-28, including pre-save attachment queue on new PI entry.
+**Result:** PI Attachments are built, verified, and manually passed. Next Phase F item: Vendor Groups.
+
 ## 2026-05-28 (Thu) — GL audit seed + demo tenant seed
 
 **Task:** Phase 1b GL audit infrastructure + full-scale demo tenant seed.

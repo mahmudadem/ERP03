@@ -34,6 +34,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         taxTotalDoc: invoice.taxTotalDoc,
         grandTotalDoc: invoice.grandTotalDoc,
         notes: invoice.notes || null,
+        attachments: invoice.attachments as any,
         createdBy: invoice.createdBy,
         postedAt: invoice.postedAt || null,
         company: { connect: { id: invoice.companyId } },
@@ -96,6 +97,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         taxTotalDoc: invoice.taxTotalDoc,
         grandTotalDoc: invoice.grandTotalDoc,
         notes: invoice.notes || null,
+        attachments: invoice.attachments as any,
         postedAt: invoice.postedAt || null,
         lines: {
           deleteMany: {},
@@ -220,6 +222,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
       outstandingAmountBase: record.outstandingAmountBase,
       status: record.status as PIStatus,
       voucherId: record.voucherId || null,
+      attachments: record.attachments || [],
       notes: record.notes || undefined,
       createdBy: record.createdBy,
       createdAt: record.createdAt,

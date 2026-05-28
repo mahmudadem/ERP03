@@ -62,7 +62,20 @@
 
 ## ✅ Tested & Passed
 
-_(none yet — this system was just set up on 2026-05-23)_
+### Purchases — Phase F: Purchase Invoice Attachments
+**Added by:** Codex (report 129)  
+**Tested by:** Mahmud  
+**Result:** Pass ✅  
+**Passed on:** 2026-05-28
+
+**What passed:**
+- New PI attachment section is visible.
+- Files can be attached before saving a new PI.
+- Pre-save files queue locally and upload after saving.
+- Saved PI attachments can be viewed and managed.
+
+**Known limitations:**
+- Attachments are evidence only; they do not change posting, payment status, tax, AP, or inventory values.
 
 ---
 
@@ -89,4 +102,4 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-05-23 by Cowork (agent coordination setup)_
+_Last updated: 2026-05-28 by Codex (PI Attachments passed manual QA)_

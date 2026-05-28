@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreatePurchaseInvoicePayload,
+  PurchaseInvoiceAttachmentDTO,
   PurchaseInvoiceDTO,
   PurchaseInvoiceLineInputDTO,
   PurchaseOrderDTO,
@@ -11,7 +13,9 @@ import {
 } from '../../../api/purchasesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { errorHandler } from '../../../services/errorHandler';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
@@ -21,6 +25,21 @@ import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, Manage
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
+const MAX_ATTACHMENT_FILES = 5;
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+const formatFileSize = (bytes: number): string => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 interface EditableLine {
   lineId?: string;
@@ -76,6 +95,7 @@ const createEmptyForm = (purchaseOrderId = '', vendorId = ''): EditableForm => (
 
 const PurchaseInvoiceDetailPage: React.FC = () => {
   const { company } = useCompanyAccess();
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -98,6 +118,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<PurchaseInvoiceAttachmentDTO[]>([]);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [attachmentDeletingId, setAttachmentDeletingId] = useState<string | null>(null);
+  const [attachmentPendingDelete, setAttachmentPendingDelete] = useState<PurchaseInvoiceAttachmentDTO | null>(null);
+  const [pendingAttachmentFiles, setPendingAttachmentFiles] = useState<File[]>([]);
 
   // Settlement state
   const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
@@ -276,8 +301,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         const result = await purchasesApi.getPI(params.id);
         const loaded = unwrap<PurchaseInvoiceDTO>(result);
         setInvoice(loaded);
+        setAttachments(Array.isArray(loaded.attachments) ? loaded.attachments : []);
       } else {
         setInvoice(null);
+        setAttachments([]);
+        setPendingAttachmentFiles([]);
         setForm(createEmptyForm(initialPurchaseOrderId, initialVendorId));
         if (initialPurchaseOrderId) {
           await loadPurchaseOrderLines(initialPurchaseOrderId);
@@ -397,6 +425,44 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     };
   };
 
+  const validateAttachmentFile = (file: File, currentCount: number): string | null => {
+    if (currentCount >= MAX_ATTACHMENT_FILES) {
+      return t('purchases.invoices.attachments.limitError', 'Maximum 5 files per invoice.');
+    }
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      return t('purchases.invoices.attachments.sizeError', 'File must be 10 MB or smaller.');
+    }
+    if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+      return t('purchases.invoices.attachments.typeError', 'Unsupported file type.');
+    }
+    return null;
+  };
+
+  const uploadPendingAttachments = async (invoiceId: string) => {
+    if (pendingAttachmentFiles.length === 0) return;
+
+    const failed: string[] = [];
+    for (const file of pendingAttachmentFiles) {
+      try {
+        await purchasesApi.uploadInvoiceAttachment(invoiceId, file);
+      } catch {
+        failed.push(file.name);
+      }
+    }
+
+    if (failed.length > 0) {
+      errorHandler.showError(
+        t('purchases.invoices.attachments.pendingUploadPartialError', {
+          defaultValue: 'Invoice saved, but some attachments failed to upload: {{files}}',
+          files: failed.join(', '),
+        })
+      );
+    } else {
+      errorHandler.showSuccess(t('purchases.invoices.attachments.pendingUploadSuccess', 'Invoice saved and attachments uploaded.'));
+      setPendingAttachmentFiles([]);
+    }
+  };
+
   const saveInvoice = async () => {
     const validationError = validateBeforeSave();
     if (validationError) {
@@ -424,6 +490,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       if (isCreateMode) {
         const created = await purchasesApi.createPI(payload);
         const dto = unwrap<PurchaseInvoiceDTO>(created);
+        await uploadPendingAttachments(dto.id);
         navigate(`/purchases/invoices/${dto.id}`, { replace: true });
       } else if (params.id) {
         const updated = await purchasesApi.updatePI(params.id, payload);
@@ -486,6 +553,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
       const created = await purchasesApi.createAndPostPI(payload);
       const dto = unwrap<PurchaseInvoiceDTO>(created);
+      await uploadPendingAttachments(dto.id);
       navigate(`/purchases/invoices/${dto.id}`, { replace: true });
     } catch (err: any) {
       console.error('Failed to create and post purchase invoice', err);
@@ -594,6 +662,96 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const refreshAttachments = async () => {
+    if (!invoice?.id) return;
+    const result = await purchasesApi.listInvoiceAttachments(invoice.id);
+    const list = unwrap<PurchaseInvoiceAttachmentDTO[]>(result);
+    const normalized = Array.isArray(list) ? list : [];
+    setAttachments(normalized);
+    setInvoice((current) => (current ? { ...current, attachments: normalized } : current));
+  };
+
+  const uploadAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const currentCount = invoice?.id ? attachments.length : pendingAttachmentFiles.length;
+    const validationError = validateAttachmentFile(file, currentCount);
+    if (validationError) {
+      setError(validationError);
+      errorHandler.showError(validationError);
+      return;
+    }
+
+    if (!invoice?.id) {
+      setPendingAttachmentFiles((current) => [...current, file]);
+      errorHandler.showSuccess(t('purchases.invoices.attachments.queued', 'Attachment queued for upload when the invoice is saved.'));
+      return;
+    }
+
+    try {
+      setAttachmentBusy(true);
+      setError(null);
+      await purchasesApi.uploadInvoiceAttachment(invoice.id, file);
+      await refreshAttachments();
+      errorHandler.showSuccess(t('purchases.invoices.attachments.uploadSuccess', 'Attachment uploaded successfully.'));
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        t('purchases.invoices.attachments.uploadError', 'Failed to upload attachment.');
+      setError(message);
+      errorHandler.showError(message);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  };
+
+  const removeAttachment = async () => {
+    if (!invoice?.id || !attachmentPendingDelete) return;
+    try {
+      setAttachmentDeletingId(attachmentPendingDelete.id);
+      setError(null);
+      await purchasesApi.removeInvoiceAttachment(invoice.id, attachmentPendingDelete.id);
+      await refreshAttachments();
+      errorHandler.showSuccess(t('purchases.invoices.attachments.removeSuccess', 'Attachment removed successfully.'));
+      setAttachmentPendingDelete(null);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        t('purchases.invoices.attachments.removeError', 'Failed to remove attachment.');
+      setError(message);
+      errorHandler.showError(message);
+    } finally {
+      setAttachmentDeletingId(null);
+    }
+  };
+
+  const downloadAttachment = async (attachmentId: string) => {
+    if (!invoice?.id) return;
+    try {
+      setError(null);
+      const result = await purchasesApi.getInvoiceAttachmentDownloadLink(invoice.id, attachmentId);
+      const payload = unwrap<{ url?: string }>(result);
+      if (!payload?.url) {
+        throw new Error(t('purchases.invoices.attachments.downloadError', 'Failed to generate download link.'));
+      }
+      window.open(payload.url, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        t('purchases.invoices.attachments.downloadError', 'Failed to generate download link.');
+      setError(message);
+      errorHandler.showError(message);
     }
   };
 
@@ -902,6 +1060,64 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
           </div>
         </Card>
+
+        {isCreateMode && (
+          <Card className="p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {t('purchases.invoices.attachments.title', 'Attachments')}
+              </h2>
+              <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+                  onChange={uploadAttachment}
+                  disabled={attachmentBusy || pendingAttachmentFiles.length >= MAX_ATTACHMENT_FILES}
+                />
+                {t('purchases.invoices.attachments.upload', 'Upload Attachment')}
+              </label>
+            </div>
+
+            <p className="mb-4 text-xs text-slate-500">
+              {t(
+                'purchases.invoices.attachments.unsavedHelp',
+                'Files selected here are queued locally and uploaded automatically when the invoice is saved.'
+              )}
+            </p>
+
+            {pendingAttachmentFiles.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                {t('purchases.invoices.attachments.emptyQueued', 'No attachments queued yet.')}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pendingAttachmentFiles.map((file, index) => (
+                  <div
+                    key={`${file.name}-${file.lastModified}-${index}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {file.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {formatFileSize(file.size)} - {file.type || t('purchases.invoices.attachments.unknownType', 'Unknown type')}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700"
+                      onClick={() => setPendingAttachmentFiles((current) => current.filter((_, idx) => idx !== index))}
+                    >
+                      {t('purchases.invoices.attachments.remove', 'Remove')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
 
         {showSettlement && (
           <Card className="p-5 border-blue-200 bg-blue-50">
@@ -1220,6 +1436,76 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         </div>
       </Card>
 
+      <Card className="p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {t('purchases.invoices.attachments.title', 'Attachments')}
+          </h2>
+          <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+              onChange={uploadAttachment}
+              disabled={attachmentBusy}
+            />
+            {attachmentBusy
+              ? t('purchases.invoices.attachments.uploading', 'Uploading...')
+              : t('purchases.invoices.attachments.upload', 'Upload Attachment')}
+          </label>
+        </div>
+
+        <p className="mb-4 text-xs text-slate-500">
+          {t(
+            'purchases.invoices.attachments.help',
+            'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.'
+          )}
+        </p>
+
+        {attachments.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+            {t('purchases.invoices.attachments.empty', 'No attachments yet.')}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {attachment.name}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {formatFileSize(attachment.size)} - {attachment.type} - {new Date(attachment.uploadedAt).toLocaleString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+                    onClick={() => downloadAttachment(attachment.id)}
+                  >
+                    {t('purchases.invoices.attachments.open', 'Open')}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:opacity-50"
+                    onClick={() => setAttachmentPendingDelete(attachment)}
+                    disabled={attachmentDeletingId === attachment.id}
+                  >
+                    {attachmentDeletingId === attachment.id
+                      ? t('purchases.invoices.attachments.removing', 'Removing...')
+                      : t('purchases.invoices.attachments.remove', 'Remove')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {showSettlement && invoice && (
         <Card className="p-5 border-blue-200 bg-blue-50">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Post</h2>
@@ -1445,6 +1731,23 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!attachmentPendingDelete}
+        title={t('purchases.invoices.attachments.confirmRemoveTitle', 'Remove Attachment')}
+        message={t('purchases.invoices.attachments.confirmRemoveMessage', {
+          defaultValue: 'Remove {{name}} from this purchase invoice?',
+          name: attachmentPendingDelete?.name || t('purchases.invoices.attachments.thisFile', 'this file'),
+        })}
+        confirmLabel={t('purchases.invoices.attachments.remove', 'Remove')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        tone="danger"
+        isConfirming={!!attachmentDeletingId}
+        onConfirm={removeAttachment}
+        onCancel={() => {
+          if (!attachmentDeletingId) setAttachmentPendingDelete(null);
+        }}
+      />
     </div>
   );
 };

@@ -171,6 +171,16 @@ export interface PurchaseInvoiceLineDTO {
   description?: string;
 }
 
+export interface PurchaseInvoiceAttachmentDTO {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface PurchaseInvoiceDTO {
   id: string;
   companyId: string;
@@ -200,6 +210,7 @@ export interface PurchaseInvoiceDTO {
   outstandingAmountBase: number;
   status: PIStatus;
   voucherId?: string | null;
+  attachments?: PurchaseInvoiceAttachmentDTO[];
   notes?: string;
   createdBy: string;
   createdAt: string;
@@ -491,6 +502,10 @@ export interface RecordPurchaseInvoicePaymentPayload {
   paymentAmountBase: number;
 }
 
+export interface PurchaseInvoiceAttachmentDownloadLinkResult {
+  url: string;
+}
+
 export type VendorStatementLineType = 'BILL' | 'PAYMENT' | 'DEBIT_NOTE' | 'REFUND' | 'ADJUSTMENT';
 
 export interface VendorStatementLineDTO {
@@ -718,6 +733,23 @@ export const purchasesApi = {
 
   getPaymentHistory: (invoiceId: string): Promise<Record<string, unknown>[]> =>
     client.get(`/tenant/purchase/invoices/${invoiceId}/payments`),
+
+  listInvoiceAttachments: (id: string): Promise<PurchaseInvoiceAttachmentDTO[]> =>
+    client.get(`/tenant/purchase/invoices/${id}/attachments`).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  uploadInvoiceAttachment: (id: string, file: File): Promise<PurchaseInvoiceAttachmentDTO> => {
+    const form = new FormData();
+    form.append('file', file);
+    return client.post(`/tenant/purchase/invoices/${id}/attachments`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+
+  removeInvoiceAttachment: (id: string, attachmentId: string): Promise<void> =>
+    client.delete(`/tenant/purchase/invoices/${id}/attachments/${attachmentId}`).then(() => undefined),
+
+  getInvoiceAttachmentDownloadLink: (id: string, attachmentId: string): Promise<PurchaseInvoiceAttachmentDownloadLinkResult> =>
+    client.get(`/tenant/purchase/invoices/${id}/attachments/${attachmentId}/link`).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   getVendorStatement: (params: { vendorId: string; fromDate: string; toDate: string; includeOpenCommitments?: boolean }): Promise<VendorStatementDTO> =>
     client.get('/tenant/purchase/reports/vendor-statement', { params }),

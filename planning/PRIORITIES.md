@@ -8,23 +8,18 @@
 
 ## 🔴 Current Priority (work this first)
 
-**Phase E — Sales cross-cutting cleanup** (~6–8 days)
-- Branch: `feat/phase-a-sales-master-data`
-- Promotion evaluator auto-invoked in SO/SI creation
-- Credit check on direct SIs (not just SO confirm)
-- Backorder / partial-fulfillment frontend UX
-- Quote sequence numbering (replace `Q-<timestamp>` fallback)
-- AI-assistant test suite stabilization (4 failing tests)
-- See `planning/tasks/sales-and-purchases-completion-roadmap.md` for full spec
+**Phase F — Purchases parity: Vendor Groups** (~0.5-1 day)
+- Branch: next branch after `codex/phase-f-pi-attachments`
+- Add optional vendor grouping master data for reporting/filtering parity with Sales customer groups
+- Keep it as master data only unless a later task explicitly wires pricing/approval behavior
 
 ---
 
 ## 🟡 Up Next (in order)
 
-1. **Sales QA Cycle** — user (Mahmud) manually tests all Sales features
-   - See `planning/QA-QUEUE.md` for what's ready to test
+1. **Phase F — Purchase Price Lists** (~1-2 days)
 
-2. **Phase F — Purchases parity** (~4–5 days)
+2. **Phase F — RFQ** (~2-3 hours)
 
 3. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
 
@@ -46,7 +41,7 @@ If you are starting work on a priority item, record it here so other agents don'
 
 | Agent | Task | Started | Status |
 |-------|------|---------|--------|
-| _(none active)_ | — | — | — |
+| Codex | Phase F - PI Attachments | 2026-05-28 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -67,4 +62,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-24 by Claude Code (D-phase commit + Phase E activation)_
+_Last updated: 2026-05-28 by Codex (PI Attachments done; Vendor Groups next)_

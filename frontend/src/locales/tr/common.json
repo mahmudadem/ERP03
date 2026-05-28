@@ -457,6 +457,35 @@
         "manageSubscription": "Aboneligi Yonet",
         "configureModules": "Modulleri Yapilandir"
       }
+    },
+    "invoices": {
+      "attachments": {
+        "title": "Ekler",
+        "help": "İzin verilenler: PDF, PNG, JPG, DOCX, XLSX. Dosya başına en fazla 10 MB, fatura başına 5 dosya.",
+        "empty": "Henüz ek yok.",
+        "upload": "Ek Yükle",
+        "uploading": "Yükleniyor...",
+        "uploadSuccess": "Ek başarıyla yüklendi.",
+        "uploadError": "Ek yüklenemedi.",
+        "queued": "Ek, fatura kaydedildiğinde yüklenmek üzere sıraya alındı.",
+        "unsavedHelp": "Burada seçilen dosyalar yerel olarak sıraya alınır ve fatura kaydedildiğinde otomatik yüklenir.",
+        "emptyQueued": "Henüz sırada ek yok.",
+        "unknownType": "Bilinmeyen tür",
+        "limitError": "Fatura başına en fazla 5 dosya.",
+        "sizeError": "Dosya 10 MB veya daha küçük olmalıdır.",
+        "typeError": "Desteklenmeyen dosya türü.",
+        "pendingUploadSuccess": "Fatura kaydedildi ve ekler yüklendi.",
+        "pendingUploadPartialError": "Fatura kaydedildi, ancak bazı ekler yüklenemedi: {{files}}",
+        "open": "Aç",
+        "remove": "Kaldır",
+        "removing": "Kaldırılıyor...",
+        "removeSuccess": "Ek başarıyla kaldırıldı.",
+        "removeError": "Ek kaldırılamadı.",
+        "downloadError": "İndirme bağlantısı oluşturulamadı.",
+        "confirmRemoveTitle": "Eki Kaldır",
+        "confirmRemoveMessage": "{{name}} bu satınalma faturasından kaldırılsın mı?",
+        "thisFile": "bu dosya"
+      }
     }
   },
   "superAdmin": {

@@ -457,6 +457,35 @@
         "manageSubscription": "Manage Subscription",
         "configureModules": "Configure Modules"
       }
+    },
+    "invoices": {
+      "attachments": {
+        "title": "Attachments",
+        "help": "Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.",
+        "empty": "No attachments yet.",
+        "upload": "Upload Attachment",
+        "uploading": "Uploading...",
+        "uploadSuccess": "Attachment uploaded successfully.",
+        "uploadError": "Failed to upload attachment.",
+        "queued": "Attachment queued for upload when the invoice is saved.",
+        "unsavedHelp": "Files selected here are queued locally and uploaded automatically when the invoice is saved.",
+        "emptyQueued": "No attachments queued yet.",
+        "unknownType": "Unknown type",
+        "limitError": "Maximum 5 files per invoice.",
+        "sizeError": "File must be 10 MB or smaller.",
+        "typeError": "Unsupported file type.",
+        "pendingUploadSuccess": "Invoice saved and attachments uploaded.",
+        "pendingUploadPartialError": "Invoice saved, but some attachments failed to upload: {{files}}",
+        "open": "Open",
+        "remove": "Remove",
+        "removing": "Removing...",
+        "removeSuccess": "Attachment removed successfully.",
+        "removeError": "Failed to remove attachment.",
+        "downloadError": "Failed to generate download link.",
+        "confirmRemoveTitle": "Remove Attachment",
+        "confirmRemoveMessage": "Remove {{name}} from this purchase invoice?",
+        "thisFile": "this file"
+      }
     }
   },
   "superAdmin": {

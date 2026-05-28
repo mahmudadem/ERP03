@@ -1087,6 +1087,7 @@ model PurchaseInvoice {
   taxTotalDoc      Float    @default(0)
   grandTotalDoc    Float    @default(0)
   notes            String?
+  attachments      Json?    @default("[]")
   createdBy        String
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

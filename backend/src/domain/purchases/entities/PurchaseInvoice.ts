@@ -41,6 +41,16 @@ export interface PurchaseInvoiceLine {
   description?: string;
 }
 
+export interface PurchaseInvoiceAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface PurchaseInvoiceProps {
   id: string;
   companyId: string;
@@ -70,6 +80,7 @@ export interface PurchaseInvoiceProps {
   outstandingAmountBase: number;
   status?: PIStatus;
   voucherId?: string | null;
+  attachments?: PurchaseInvoiceAttachment[];
   notes?: string;
   createdBy: string;
   createdAt: Date;
@@ -124,6 +135,7 @@ export class PurchaseInvoice {
   outstandingAmountBase: number;
   status: PIStatus;
   voucherId?: string | null;
+  attachments: PurchaseInvoiceAttachment[];
   notes?: string;
   readonly createdBy: string;
   readonly createdAt: Date;
@@ -191,6 +203,9 @@ export class PurchaseInvoice {
     );
 
     this.voucherId = props.voucherId ?? null;
+    this.attachments = Array.isArray(props.attachments)
+      ? props.attachments.map((attachment) => ({ ...attachment }))
+      : [];
     this.notes = props.notes;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
@@ -274,6 +289,7 @@ export class PurchaseInvoice {
       outstandingAmountBase: this.outstandingAmountBase,
       status: this.status,
       voucherId: this.voucherId ?? null,
+      attachments: this.attachments.map((attachment) => ({ ...attachment })),
       notes: this.notes,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
@@ -312,6 +328,7 @@ export class PurchaseInvoice {
       outstandingAmountBase: data.outstandingAmountBase ?? 0,
       status: data.status || 'DRAFT',
       voucherId: data.voucherId ?? null,
+      attachments: data.attachments || [],
       notes: data.notes,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt),

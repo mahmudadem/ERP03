@@ -457,6 +457,35 @@
         "manageSubscription": "إدارة الاشتراك",
         "configureModules": "تكوين الوحدات"
       }
+    },
+    "invoices": {
+      "attachments": {
+        "title": "المرفقات",
+        "help": "المسموح: PDF وPNG وJPG وDOCX وXLSX. الحد الأقصى 10 ميجابايت لكل ملف، و5 ملفات لكل فاتورة.",
+        "empty": "لا توجد مرفقات بعد.",
+        "upload": "رفع مرفق",
+        "uploading": "جارٍ الرفع...",
+        "uploadSuccess": "تم رفع المرفق بنجاح.",
+        "uploadError": "فشل رفع المرفق.",
+        "queued": "تم وضع المرفق في قائمة الرفع عند حفظ الفاتورة.",
+        "unsavedHelp": "يتم حفظ الملفات المختارة محلياً مؤقتاً ورفعها تلقائياً عند حفظ الفاتورة.",
+        "emptyQueued": "لا توجد مرفقات في الانتظار.",
+        "unknownType": "نوع غير معروف",
+        "limitError": "الحد الأقصى 5 ملفات لكل فاتورة.",
+        "sizeError": "يجب ألا يتجاوز الملف 10 ميجابايت.",
+        "typeError": "نوع الملف غير مدعوم.",
+        "pendingUploadSuccess": "تم حفظ الفاتورة ورفع المرفقات.",
+        "pendingUploadPartialError": "تم حفظ الفاتورة، لكن فشل رفع بعض المرفقات: {{files}}",
+        "open": "فتح",
+        "remove": "إزالة",
+        "removing": "جارٍ الإزالة...",
+        "removeSuccess": "تمت إزالة المرفق بنجاح.",
+        "removeError": "فشل إزالة المرفق.",
+        "downloadError": "فشل إنشاء رابط التنزيل.",
+        "confirmRemoveTitle": "إزالة المرفق",
+        "confirmRemoveMessage": "هل تريد إزالة {{name}} من فاتورة الشراء هذه؟",
+        "thisFile": "هذا الملف"
+      }
     }
   },
   "superAdmin": {
