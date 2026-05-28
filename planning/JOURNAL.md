@@ -2,6 +2,94 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-28 (Thu) — GL audit seed + demo tenant seed
+
+**Task:** Phase 1b GL audit infrastructure + full-scale demo tenant seed.
+**Agent:** Claude Code (Opus 4.6)
+**Branch:** `feat/phase-a-sales-master-data`
+
+**What landed:**
+- `seed-audit-tenant.ts` — 4-stage GL audit seed (OV, linked SI, direct SI, SR, RV/PV/JV) with pre-computed expected balances. All 23 ledger entries verified: DR=CR=1350.50 across 8 accounts (Firestore raw, UI screenshots, xlsx exports).
+- `seed-demo-tenant.ts` — full-scale demo tenant: 108 grocery items (10 categories), 10 customers, 2 vendors, $16,600 opening inventory, 33 transactions (10 linked SO→DN→SI, 10 direct SI, 3 sales returns, 5 RVs, 3 PVs, 2 JVs).
+- `expected-balances.json` — pre-computed expected GL balances for automated verification.
+- Key fixes discovered: SalesReturn uses `revenueVoucherId` not `voucherId`; valid reason codes are DEFECTIVE/WRONG_ITEM/CHANGED_MIND/OTHER; voucher line sides must be PascalCase ('Debit'/'Credit'); PermissionChecker blocks script users (stub needed); Firestore transactions require BATCH_SIZE=1 for OV posting.
+
+**Commits:**
+- `66995f90` — Phase 1b Stages 2-4 complete — full GL audit seed
+- `1bb13b1e` — seed-demo-tenant with 108 items, 12 parties, 33 transactions
+
+**Verification:** All GL numbers match across Firestore, UI, and xlsx export. Demo tenant seed runs idempotently.
+**Time spent:** ~3h
+**Result:** GL audit infrastructure validated; demo tenant ready for product demos and QA.
+
+## 2026-05-28 (Thu) — Tailwind Play theme & styling engine enhancements
+
+**Task:** Add Tailwind Play preset theme, support secondary sidebar backgrounds, and wire dynamic corner rounding / active primary colors mix.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/phase-a-sales-master-data`
+**Completion report:** [planning/done/127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md)
+
+**What landed:**
+- Added `tailwind-play` theme preset with `#2563eb` primary, `radius: 6`, and `sidebarSurface: 'secondary'`.
+- Supported `'secondary'` sidebar surface configuration (sidebar uses page bgSecondary while main uses bgPrimary white).
+- Enhanced `userAppearanceStyleTag` to dynamically color-mix `bg-primary-50`, `bg-primary-100`, and `text-primary-700` based on the selected theme's primary color.
+- Updated `SidebarItem`, `SidebarSection`, and `DraggableWidgetSpace` widgets to dynamically consume dynamic theme radius variables (`var(--radius-md)`, etc.) instead of hardcoded tailwind classes.
+- Created settings architecture and user guide documentation.
+
+**Verification:**
+- `npm run typecheck` inside `frontend/` -> passed
+- `npm run build` inside `frontend/` -> passed
+
+**Time spent:** ~0.6h
+**Result:** Tailwind Play theme and dynamic styling engine enhancements successfully integrated.
+
+## 2026-05-28 (Thu) — Delete dead GetCustomerLedgerUseCase (QA Finding #3 closed)
+
+**Task:** Close Phase C QA Finding #3 — Customer Statement / Full Ledger missing sales-return credit notes.
+**Agent:** Claude Code (Opus 4.7)
+**Branch:** `feat/phase-a-sales-master-data`
+
+**Investigation:** Started by patching `_buildRawEvents` to query the sales-return repo. User pointed out that the Customer Statement was already migrated to `GetLedgerBackedCustomerStatementUseCase` (report 124), and sales returns already post AR through the accounting engine, so the ledger-backed statement picks up credit notes automatically. The legacy `GetCustomerLedgerUseCase` and its `/customer-ledger` endpoint had no frontend consumer.
+
+**Decision:** Reverted the patch and deleted the dead path — same playbook as the Phase F cleanup that removed legacy `GetCustomerStatementUseCase`.
+
+**What landed:**
+- Removed `GetCustomerLedgerUseCase`, `CustomerLedger`, `CustomerLedgerInput`, internal `RawEvent` from `ReceivablesReportingUseCases.ts`.
+- Removed `SalesReportingController.getCustomerLedger` handler and the `/reports/customer-ledger` route.
+- Removed `salesReportingApi.getCustomerLedger` and `CustomerLedgerDTO` from frontend.
+- Removed the `GetCustomerLedgerUseCase` describe block from `ReceivablesReporting.test.ts` (kept the 6 AR Aging tests).
+
+**Verification:**
+- `cd backend && npx jest src/tests/application/sales/ReceivablesReporting.test.ts` → 6/6 passed
+- Backend + frontend `tsc --noEmit` — clean on touched files
+
+**Result:** QA Finding #3 (report 121) closed. Single source of truth for customer AR history is now the ledger-backed Customer Statement. See [126 — Delete dead GetCustomerLedgerUseCase](./done/126-customer-ledger-credit-note-fix.md).
+
+---
+
+## 2026-05-27 (Wed) — Phase F: Purchases parity batch (AR/AP Aging, Analytics, Audit Log)
+
+**Task:** Close Purchases reporting gaps — ledger-backed aging, analytics, and audit log.  
+**Agent:** Claude Code (Opus 4.7)  
+**Branch:** `feat/phase-a-sales-master-data`
+
+**What landed:**
+- Migrated AR Aging to ledger-backed: reads customer AR sub-account balances, shows unallocated diffs from credit notes/JV adjustments.
+- New AP Aging report: mirrors AR Aging for vendors via `defaultAPAccountId`, with credit-normal sign convention.
+- New Purchases Analytics: purchases-by-vendor and purchases-by-item use cases, routes, and frontend page.
+- Purchase Audit Log: wired `RecordAuditController` to `/tenant/purchase/audit-log`.
+- Dead code cleanup: removed old `GetCustomerStatementUseCase` and its test suite (replaced by ledger-backed version).
+- Frontend: AP Aging page, Purchases Analytics page, menu entries for all new reports.
+
+**Verification:**
+- `npm --prefix backend run build` -> passed
+- `npm --prefix frontend run typecheck` -> passed
+- `ReceivablesReporting.test.ts` -> 8/8 passed
+
+**Time spent:** ~1.5h  
+**Result:** Phase F items 1-4 complete (AP Aging, Purchases Analytics, PI Audit Log, dead code cleanup).  
+**Next:** Remaining parity gaps: PI Attachments, Vendor Groups, Purchase Price Lists, RFQ.
+
 ## 2026-05-27 (Wed) — Vendor Statement parity: ledger-backed AP statement
 
 **Task:** Mirror Customer Statement's ledger-backed model for Purchases Vendor Statement.  

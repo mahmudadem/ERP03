@@ -554,6 +554,86 @@ export interface VendorStatementDTO {
   openCommitments?: VendorStatementCommitmentDTO[];
 }
 
+// ---------------------------------------------------------------------------
+// AP Aging DTOs
+// ---------------------------------------------------------------------------
+
+export interface ApAgingInvoiceDetailDTO {
+  invoiceId: string;
+  invoiceNumber: string;
+  vendorInvoiceNumber?: string;
+  invoiceDate: string;
+  dueDate: string | undefined;
+  daysOverdue: number;
+  outstandingAmountBase: number;
+  bucket: string;
+}
+
+export interface ApAgingVendorRowDTO {
+  vendorId: string;
+  vendorName: string;
+  current: number;
+  days1_30: number;
+  days31_60: number;
+  days61_90: number;
+  days90Plus: number;
+  total: number;
+  ledgerBalance?: number;
+  unallocated?: number;
+  invoices: ApAgingInvoiceDetailDTO[];
+}
+
+export interface ApAgingTotalsDTO {
+  current: number;
+  days1_30: number;
+  days31_60: number;
+  days61_90: number;
+  days90Plus: number;
+  total: number;
+}
+
+export interface ApAgingReportDTO {
+  asOfDate: string;
+  rows: ApAgingVendorRowDTO[];
+  totals: ApAgingTotalsDTO;
+}
+
+// ---------------------------------------------------------------------------
+// Purchases Analytics DTOs
+// ---------------------------------------------------------------------------
+
+export interface PurchasesByVendorRowDTO {
+  vendorId: string;
+  vendorName: string;
+  invoiceCount: number;
+  totalCostBase: number;
+  totalTaxBase: number;
+  totalGrossBase: number;
+}
+
+export interface PurchasesByVendorReportDTO {
+  fromDate?: string;
+  toDate?: string;
+  rows: PurchasesByVendorRowDTO[];
+  totals: { invoiceCount: number; totalCostBase: number; totalTaxBase: number; totalGrossBase: number };
+}
+
+export interface PurchasesByItemRowDTO {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  totalQty: number;
+  totalCostBase: number;
+  lineCount: number;
+}
+
+export interface PurchasesByItemReportDTO {
+  fromDate?: string;
+  toDate?: string;
+  rows: PurchasesByItemRowDTO[];
+  totals: { totalQty: number; totalCostBase: number; lineCount: number };
+}
+
 export const purchasesApi = {
   initializePurchases: (payload: InitializePurchasesPayload): Promise<PurchaseSettingsDTO> =>
     client.post('/tenant/purchase/initialize', payload),
@@ -641,6 +721,15 @@ export const purchasesApi = {
 
   getVendorStatement: (params: { vendorId: string; fromDate: string; toDate: string; includeOpenCommitments?: boolean }): Promise<VendorStatementDTO> =>
     client.get('/tenant/purchase/reports/vendor-statement', { params }),
+
+  getApAging: (params?: { asOfDate?: string; vendorId?: string }): Promise<ApAgingReportDTO> =>
+    client.get('/tenant/purchase/reports/ap-aging', { params }).then((r: any) => r?.data ?? r),
+
+  getPurchasesByVendor: (params?: { fromDate?: string; toDate?: string }): Promise<PurchasesByVendorReportDTO> =>
+    client.get('/tenant/purchase/reports/purchases-by-vendor', { params }).then((r: any) => r?.data ?? r),
+
+  getPurchasesByItem: (params?: { fromDate?: string; toDate?: string }): Promise<PurchasesByItemReportDTO> =>
+    client.get('/tenant/purchase/reports/purchases-by-item', { params }).then((r: any) => r?.data ?? r),
 
   createReturn: (payload: CreatePurchaseReturnPayload): Promise<PurchaseReturnDTO> =>
     client.post('/tenant/purchase/returns', payload),

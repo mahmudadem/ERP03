@@ -38,6 +38,8 @@ export interface ArAgingCustomerRow {
   days61_90: number;
   days90Plus: number;
   total: number;
+  ledgerBalance?: number;
+  unallocated?: number;
   invoices: ArAgingInvoiceDetail[];
 }
 
@@ -72,16 +74,6 @@ export interface LedgerEvent {
   sourceType?: string;
   sourceId?: string;
   sourceLabel?: string;
-}
-
-export interface CustomerLedger {
-  customerId: string;
-  customerName: string;
-  fromDate?: string;
-  toDate?: string;
-  openingBalance: number;
-  events: LedgerEvent[];
-  closingBalance: number;
 }
 
 export interface CustomerStatement {
@@ -233,158 +225,116 @@ export class GetArAgingReportUseCase {
 }
 
 // ---------------------------------------------------------------------------
-// 2. GetCustomerLedgerUseCase — shared event-building logic
+// 1b. GetLedgerBackedArAgingUseCase — AR Aging via Accounting ledger
 // ---------------------------------------------------------------------------
 
-export interface CustomerLedgerInput {
-  companyId: string;
-  customerId: string;
-  fromDate?: string;
-  toDate?: string;
-}
-
-/** Internal raw event before running balance is applied. */
-interface RawEvent {
-  date: string;
-  type: 'INVOICE' | 'PAYMENT';
-  reference: string;
-  debit: number;
-  credit: number;
-  /** Secondary sort key: INVOICE sorts before PAYMENT on same date. */
-  sortOrder: 0 | 1;
-}
-
-export class GetCustomerLedgerUseCase {
+export class GetLedgerBackedArAgingUseCase {
   constructor(
-    private readonly salesInvoiceRepo: ISalesInvoiceRepository,
-    private readonly paymentHistoryRepo: IPaymentHistoryRepository,
     private readonly partyRepo: IPartyRepository,
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository,
+    private readonly accountStatementUseCase: GetAccountStatementUseCase,
   ) {}
 
-  /**
-   * Build an unsorted list of raw ledger events for a customer.
-   * Exported as a protected-style helper so GetCustomerStatementUseCase can
-   * call it without duplicating logic.
-   */
-  async _buildRawEvents(companyId: string, customerId: string): Promise<{
-    customerName: string;
-    rawEvents: RawEvent[];
-    invoices: Array<{ id: string; invoiceNumber: string; invoiceDate: string; dueDate?: string; grandTotalBase: number; outstandingAmountBase: number }>;
-  }> {
-    const party = await this.partyRepo.getById(companyId, customerId);
-    if (!party) {
-      throw new Error(`Customer not found: ${customerId}`);
-    }
+  async execute(input: ArAgingInput & { userId: string }): Promise<ArAgingReport> {
+    const { companyId, userId, customerId } = input;
+    const asOfDate = input.asOfDate ?? new Date().toISOString().slice(0, 10);
+    const epochStart = '1900-01-01';
 
-    const invoices = await this.salesInvoiceRepo.list(companyId, {
-      status: 'POSTED',
-      customerId,
-    });
+    const customers = customerId
+      ? [await this.partyRepo.getById(companyId, customerId)].filter(Boolean) as any[]
+      : await this.partyRepo.list(companyId, { role: 'CUSTOMER' as any, active: true });
 
-    const rawEvents: RawEvent[] = [];
+    const withAccounts = customers.filter((c: any) => c.defaultARAccountId);
 
-    for (const inv of invoices) {
-      // Invoice event — debit
-      rawEvents.push({
-        date: inv.invoiceDate,
-        type: 'INVOICE',
-        reference: inv.invoiceNumber,
-        debit: round2(inv.grandTotalBase),
-        credit: 0,
-        sortOrder: 0,
+    const byCustomer = new Map<string, ArAgingCustomerRow>();
+
+    for (const customer of withAccounts) {
+      let ledgerBalance = 0;
+      try {
+        const stmt = await this.accountStatementUseCase.execute(
+          companyId, userId, customer.defaultARAccountId, epochStart, asOfDate,
+          { includeUnposted: false },
+        );
+        ledgerBalance = round2(Number(stmt.closingBalanceBase ?? stmt.closingBalance ?? 0));
+      } catch {
+        continue;
+      }
+
+      if (Math.abs(ledgerBalance) < 0.005) continue;
+
+      const invoices = await this.salesInvoiceRepo.list(companyId, {
+        status: 'POSTED',
+        customerId: customer.id,
       });
 
-      // Payment events — credit
-      const payments = await this.paymentHistoryRepo.getBySource(
-        companyId,
-        'SALES_INVOICE',
-        inv.id,
-      );
+      const outstanding = invoices.filter(inv => inv.outstandingAmountBase > 0.005);
 
-      for (const pmt of payments) {
-        rawEvents.push({
-          date: pmt.paymentDate,
-          type: 'PAYMENT',
-          reference: pmt.reference ?? pmt.id,
-          debit: 0,
-          credit: round2(pmt.amountBase),
-          sortOrder: 1,
+      const row: ArAgingCustomerRow = {
+        customerId: customer.id,
+        customerName: customer.displayName || customer.legalName,
+        current: 0,
+        days1_30: 0,
+        days31_60: 0,
+        days61_90: 0,
+        days90Plus: 0,
+        total: 0,
+        ledgerBalance,
+        invoices: [],
+      };
+
+      let invoiceSum = 0;
+      for (const inv of outstanding) {
+        const agingDate = inv.dueDate ?? inv.invoiceDate;
+        const daysOverdue = daysDiff(asOfDate, agingDate);
+        const bucket = agingBucket(daysOverdue);
+        const amount = round2(inv.outstandingAmountBase);
+        invoiceSum = round2(invoiceSum + amount);
+
+        row.invoices.push({
+          invoiceId: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          invoiceDate: inv.invoiceDate,
+          dueDate: inv.dueDate,
+          daysOverdue,
+          outstandingAmountBase: amount,
+          bucket,
         });
+
+        switch (bucket) {
+          case 'Current':    row.current    = round2(row.current    + amount); break;
+          case 'Days1_30':   row.days1_30   = round2(row.days1_30   + amount); break;
+          case 'Days31_60':  row.days31_60  = round2(row.days31_60  + amount); break;
+          case 'Days61_90':  row.days61_90  = round2(row.days61_90  + amount); break;
+          case 'Days90Plus': row.days90Plus = round2(row.days90Plus + amount); break;
+        }
       }
+
+      const diff = round2(ledgerBalance - invoiceSum);
+      if (Math.abs(diff) > 0.005) {
+        row.unallocated = diff;
+      }
+
+      row.total = ledgerBalance;
+      byCustomer.set(customer.id, row);
     }
 
-    // Sort chronologically; invoices before payments on same date
-    rawEvents.sort((a, b) => {
-      if (a.date < b.date) return -1;
-      if (a.date > b.date) return 1;
-      return a.sortOrder - b.sortOrder;
-    });
+    const rows = Array.from(byCustomer.values());
 
-    const invoiceSummary = invoices.map(inv => ({
-      id: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      invoiceDate: inv.invoiceDate,
-      dueDate: inv.dueDate,
-      grandTotalBase: inv.grandTotalBase,
-      outstandingAmountBase: inv.outstandingAmountBase,
-    }));
-
-    return { customerName: party.displayName || party.legalName, rawEvents, invoices: invoiceSummary };
-  }
-
-  async execute(input: CustomerLedgerInput): Promise<CustomerLedger> {
-    const { companyId, customerId, fromDate, toDate } = input;
-
-    const { customerName, rawEvents } = await this._buildRawEvents(companyId, customerId);
-
-    // Compute running balance over ALL events (needed for openingBalance)
-    let runningBalance = 0;
-    let openingBalance = 0;
-
-    const periodEvents: LedgerEvent[] = [];
-
-    for (const raw of rawEvents) {
-      const isBeforePeriod = fromDate ? raw.date < fromDate : false;
-      const isAfterPeriod  = toDate   ? raw.date > toDate   : false;
-
-      runningBalance = round2(runningBalance + raw.debit - raw.credit);
-
-      if (isBeforePeriod) {
-        openingBalance = runningBalance;
-        continue;
-      }
-      if (isAfterPeriod) {
-        continue;
-      }
-
-      periodEvents.push({
-        date: raw.date,
-        type: raw.type,
-        reference: raw.reference,
-        debit: raw.debit,
-        credit: raw.credit,
-        runningBalance,
-      });
-    }
-
-    const closingBalance = fromDate
-      ? round2(openingBalance + periodEvents.reduce((s, e) => s + e.debit - e.credit, 0))
-      : runningBalance;
-
-    return {
-      customerId,
-      customerName,
-      fromDate,
-      toDate,
-      openingBalance,
-      events: periodEvents,
-      closingBalance,
+    const totals = {
+      current:    round2(rows.reduce((s, r) => s + r.current,    0)),
+      days1_30:   round2(rows.reduce((s, r) => s + r.days1_30,   0)),
+      days31_60:  round2(rows.reduce((s, r) => s + r.days31_60,  0)),
+      days61_90:  round2(rows.reduce((s, r) => s + r.days61_90,  0)),
+      days90Plus: round2(rows.reduce((s, r) => s + r.days90Plus, 0)),
+      total:      round2(rows.reduce((s, r) => s + r.total,      0)),
     };
+
+    return { asOfDate, rows, totals };
   }
 }
 
 // ---------------------------------------------------------------------------
-// 3. GetCustomerStatementUseCase
+// 2. CustomerStatementInput — shared by the ledger-backed use case below
 // ---------------------------------------------------------------------------
 
 export interface CustomerStatementInput {
@@ -394,67 +344,6 @@ export interface CustomerStatementInput {
   fromDate: string;
   toDate: string;
   includeOpenCommitments?: boolean;
-}
-
-export class GetCustomerStatementUseCase {
-  private readonly ledgerUseCase: GetCustomerLedgerUseCase;
-
-  constructor(
-    salesInvoiceRepo: ISalesInvoiceRepository,
-    paymentHistoryRepo: IPaymentHistoryRepository,
-    partyRepo: IPartyRepository,
-  ) {
-    this.ledgerUseCase = new GetCustomerLedgerUseCase(
-      salesInvoiceRepo,
-      paymentHistoryRepo,
-      partyRepo,
-    );
-  }
-
-  async execute(input: CustomerStatementInput): Promise<CustomerStatement> {
-    const { companyId, customerId, fromDate, toDate } = input;
-
-    // Reuse the ledger for period events and balances
-    const ledger = await this.ledgerUseCase.execute({
-      companyId,
-      customerId,
-      fromDate,
-      toDate,
-    });
-
-    const totalInvoiced = round2(
-      ledger.events.filter(e => e.type === 'INVOICE').reduce((s, e) => s + e.debit, 0),
-    );
-    const totalPaid = round2(
-      ledger.events.filter(e => e.type === 'PAYMENT').reduce((s, e) => s + e.credit, 0),
-    );
-
-    // Open invoices as of toDate: use the raw invoice list from the shared helper
-    const { invoices } = await this.ledgerUseCase._buildRawEvents(companyId, customerId);
-    const openInvoices = invoices
-      .filter(inv => inv.outstandingAmountBase > 0.005)
-      .map(inv => ({
-        invoiceId: inv.id,
-        invoiceNumber: inv.invoiceNumber,
-        invoiceDate: inv.invoiceDate,
-        dueDate: inv.dueDate,
-        grandTotalBase: inv.grandTotalBase,
-        outstandingAmountBase: inv.outstandingAmountBase,
-      }));
-
-    return {
-      customerId,
-      customerName: ledger.customerName,
-      fromDate,
-      toDate,
-      openingBalance: ledger.openingBalance,
-      closingBalance: ledger.closingBalance,
-      lines: ledger.events,
-      totalInvoiced,
-      totalPaid,
-      openInvoices,
-    };
-  }
 }
 
 export class CustomerStatementMissingAccountError extends Error {

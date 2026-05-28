@@ -9,6 +9,179 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
+function daysDiff(asOfDate: string, date: string): number {
+  const msPerDay = 86_400_000;
+  return Math.floor((new Date(asOfDate).getTime() - new Date(date).getTime()) / msPerDay);
+}
+
+function agingBucket(daysOverdue: number): string {
+  if (daysOverdue <= 0) return 'Current';
+  if (daysOverdue <= 30) return 'Days1_30';
+  if (daysOverdue <= 60) return 'Days31_60';
+  if (daysOverdue <= 90) return 'Days61_90';
+  return 'Days90Plus';
+}
+
+// ---------------------------------------------------------------------------
+// AP Aging types
+// ---------------------------------------------------------------------------
+
+export interface ApAgingInvoiceDetail {
+  invoiceId: string;
+  invoiceNumber: string;
+  vendorInvoiceNumber?: string;
+  invoiceDate: string;
+  dueDate: string | undefined;
+  daysOverdue: number;
+  outstandingAmountBase: number;
+  bucket: string;
+}
+
+export interface ApAgingVendorRow {
+  vendorId: string;
+  vendorName: string;
+  current: number;
+  days1_30: number;
+  days31_60: number;
+  days61_90: number;
+  days90Plus: number;
+  total: number;
+  ledgerBalance?: number;
+  unallocated?: number;
+  invoices: ApAgingInvoiceDetail[];
+}
+
+export interface ApAgingReport {
+  asOfDate: string;
+  rows: ApAgingVendorRow[];
+  totals: {
+    current: number;
+    days1_30: number;
+    days31_60: number;
+    days61_90: number;
+    days90Plus: number;
+    total: number;
+  };
+}
+
+export interface ApAgingInput {
+  companyId: string;
+  userId: string;
+  asOfDate?: string;
+  vendorId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// AP Aging — ledger-backed
+// ---------------------------------------------------------------------------
+
+export class GetLedgerBackedApAgingUseCase {
+  constructor(
+    private readonly partyRepo: IPartyRepository,
+    private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
+    private readonly accountStatementUseCase: GetAccountStatementUseCase,
+  ) {}
+
+  async execute(input: ApAgingInput): Promise<ApAgingReport> {
+    const { companyId, userId, vendorId } = input;
+    const asOfDate = input.asOfDate ?? new Date().toISOString().slice(0, 10);
+    const epochStart = '1900-01-01';
+
+    const vendors = vendorId
+      ? [await this.partyRepo.getById(companyId, vendorId)].filter(Boolean) as any[]
+      : await this.partyRepo.list(companyId, { role: 'VENDOR' as any, active: true });
+
+    const withAccounts = vendors.filter((v: any) => v.defaultAPAccountId);
+
+    const byVendor = new Map<string, ApAgingVendorRow>();
+
+    for (const vendor of withAccounts) {
+      let ledgerBalance = 0;
+      try {
+        const stmt = await this.accountStatementUseCase.execute(
+          companyId, userId, vendor.defaultAPAccountId, epochStart, asOfDate,
+          { includeUnposted: false },
+        );
+        // AP is credit-normal: negate so positive = amount owed
+        ledgerBalance = round2(-(Number(stmt.closingBalanceBase ?? stmt.closingBalance ?? 0)));
+      } catch {
+        continue;
+      }
+
+      if (Math.abs(ledgerBalance) < 0.005) continue;
+
+      const invoices = await this.purchaseInvoiceRepo.list(companyId, {
+        status: 'POSTED',
+        vendorId: vendor.id,
+      });
+
+      const outstanding = invoices.filter(inv => inv.outstandingAmountBase > 0.005);
+
+      const row: ApAgingVendorRow = {
+        vendorId: vendor.id,
+        vendorName: vendor.displayName || vendor.legalName,
+        current: 0,
+        days1_30: 0,
+        days31_60: 0,
+        days61_90: 0,
+        days90Plus: 0,
+        total: 0,
+        ledgerBalance,
+        invoices: [],
+      };
+
+      let invoiceSum = 0;
+      for (const inv of outstanding) {
+        const agingDate = inv.dueDate ?? inv.invoiceDate;
+        const daysOverdue = daysDiff(asOfDate, agingDate);
+        const bucket = agingBucket(daysOverdue);
+        const amount = round2(inv.outstandingAmountBase);
+        invoiceSum = round2(invoiceSum + amount);
+
+        row.invoices.push({
+          invoiceId: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          vendorInvoiceNumber: inv.vendorInvoiceNumber,
+          invoiceDate: inv.invoiceDate,
+          dueDate: inv.dueDate,
+          daysOverdue,
+          outstandingAmountBase: amount,
+          bucket,
+        });
+
+        switch (bucket) {
+          case 'Current':    row.current    = round2(row.current    + amount); break;
+          case 'Days1_30':   row.days1_30   = round2(row.days1_30   + amount); break;
+          case 'Days31_60':  row.days31_60  = round2(row.days31_60  + amount); break;
+          case 'Days61_90':  row.days61_90  = round2(row.days61_90  + amount); break;
+          case 'Days90Plus': row.days90Plus = round2(row.days90Plus + amount); break;
+        }
+      }
+
+      const diff = round2(ledgerBalance - invoiceSum);
+      if (Math.abs(diff) > 0.005) {
+        row.unallocated = diff;
+      }
+
+      row.total = ledgerBalance;
+      byVendor.set(vendor.id, row);
+    }
+
+    const rows = Array.from(byVendor.values());
+
+    const totals = {
+      current:    round2(rows.reduce((s, r) => s + r.current,    0)),
+      days1_30:   round2(rows.reduce((s, r) => s + r.days1_30,   0)),
+      days31_60:  round2(rows.reduce((s, r) => s + r.days31_60,  0)),
+      days61_90:  round2(rows.reduce((s, r) => s + r.days61_90,  0)),
+      days90Plus: round2(rows.reduce((s, r) => s + r.days90Plus, 0)),
+      total:      round2(rows.reduce((s, r) => s + r.total,      0)),
+    };
+
+    return { asOfDate, rows, totals };
+  }
+}
+
 export type VendorStatementLineType = 'BILL' | 'PAYMENT' | 'DEBIT_NOTE' | 'REFUND' | 'ADJUSTMENT';
 
 export interface VendorStatementLine {

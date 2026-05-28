@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Per-party AR/AP sub-accounts + ledger-backed Customer/Vendor Statements. Subtasks **A.1 + A.2 + A.3 + Piece B + Vendor Statement parity complete (2026-05-27)**.
-**Status:** Complete on `feat/phase-a-sales-master-data`. Next recommended work is AP Aging / Purchases analytics in Phase F, or resume broader Purchases parity.
-**Latest completion report:** [planning/done/125-vendor-statement-ledger-backed.md](./done/125-vendor-statement-ledger-backed.md)
+**Task:** Phase F — Purchases parity. Ledger-backed AR/AP Aging + Purchases Analytics + Audit Log done (2026-05-27).
+**Status:** In progress on `feat/phase-a-sales-master-data`. Remaining parity gaps: PI Attachments, Vendor Groups, Purchase Price Lists, RFQ.
+**Latest completion report:** See JOURNAL.md 2026-05-28 entries.
 
 ## 👉 Next agent — start here
 
@@ -22,7 +22,18 @@ Vendor Statement parity is now also complete:
 4. Rows are decorated from voucher metadata for Purchases source-document and accounting-voucher drill-down.
 5. Open Purchase Orders can be included as non-balance commitments.
 
-Recommended next task: continue Phase F with AP Aging / Purchases analytics reports, or audit Purchases parity gaps before choosing the next build item.
+Phase F progress (2026-05-27):
+1. Ledger-backed AR Aging — migrated from Sales-only _buildRawEvents to Accounting ledger with unallocated diff display.
+2. AP Aging report — new, mirrors AR Aging for vendors via defaultAPAccountId.
+3. Purchases Analytics — purchases-by-vendor + purchases-by-item reports, frontend page with mode toggle.
+4. Purchase Audit Log — reused RecordAuditController, wired to /tenant/purchase/audit-log.
+5. Dead code cleanup — removed old GetCustomerStatementUseCase and its tests.
+
+Remaining parity gaps (prioritized):
+- PI Attachments (vendor bill scans) — reuse Sales attachment infra
+- Vendor Groups — optional master data
+- Purchase Price Lists — optional
+- RFQ (Request for Quotation) — bigger feature, 2-3 hours
 
 ---
 
@@ -71,6 +82,12 @@ Commits on `feat/phase-a-sales-master-data`:
     - Multi-select: **Roles permitted to override** (default: Controller, CFO).
   - Backend must enforce both — UI gating is not enough; the override endpoint must re-check role + the allow-override toggle and reject otherwise (clear error, audit-logged attempt).
 - `record_change_logs` Firestore composite index added to `firestore.indexes.json` — must be deployed before production use.
+- **COA templates missing generic catch-all posting accounts** — Discovered 2026-05-28 while setting up TEST CO LLD for QA Findings #2/#4 reproduction:
+  - **COGS gap:** `IndustryCOATemplates.ts` (Manufacturing) and `COATemplates.ts` (Standard) only ship `Purchases` and `Freight Inward` as POSTING children under the COGS HEADER. That's a periodic-inventory pattern. Perpetual users have no real COGS account to pick. User had to manually create `50103 Cost of Goods Sold`.
+  - **Revenue gap:** Standard COA ships channel-specific revenue posting accounts only (`40101 Domestic Wholesale`, `40102 Export Sales`, `40201 Flagship Store`). No generic `Sales Revenue` fallback for users who don't need channel splits. User had to manually create `400 Sales Revenue`.
+  - **AP gap:** Standard COA has `201 Accounts Payable` HEADER but only channel-specific POSTING children under it (`20101 Local Suppliers`, `20102 International Suppliers`). No generic catch-all. User had to manually create `20100 Accounts Payable` POSTING under the 201 header.
+  - **GRNI gap:** Purchases init wizard requires a Default GRNI Account in Perpetual mode, but Standard COA doesn't ship one. User had to manually create `209 GRNI - Goods Received Not Invoiced` under Liabilities.
+  - Fix: add generic `Accounts Payable`, `Sales Revenue`, `Cost of Goods Sold`, and `GRNI` POSTING accounts to each industry template as the global defaults for Perpetual mode. Channel-specific accounts can remain as optional overrides. Also: each wizard step that requires a Perpetual-specific account should warn (or auto-create) when the default doesn't resolve from the template.
 - `PeriodLockService` is now wired into `buildAccountingPostingService()` — enforcement is live for all Sales posting paths.
 - D.7 full free-canvas/sketch-board invoice designer is deferred; current model is controlled template selection via Forms Designer templates.
 
@@ -99,9 +116,15 @@ Commits on `feat/phase-a-sales-master-data`:
 ## Next action
 
 Phase C QA done (report 121). Triage these before Sales is declared production-ready:
-- **Finding #3** (report bug) — add sales-return query to `_buildRawEvents` in `ReceivablesReportingUseCases.ts` so Customer Statement + Full Ledger show credit-side events.
+- ✅ **Finding #3** (report bug) — CLOSED 2026-05-28 (report 126). Legacy `GetCustomerLedgerUseCase` + `/customer-ledger` endpoint deleted (no frontend consumer); ledger-backed Customer Statement already shows credit notes through the accounting engine.
 - **Findings #2 + #4 + #5** — single investigation: invoices reach POSTED in Sales without complete GL journals (7,800 AR gap, 17,033 revenue gap), and items have no cost basis so COGS = 0. May be SYCO-specific data state; reproduce on a fresh tenant before assuming system bug.
 - **SYCO chart of accounts** — remap AR to `104`; reclassify `5571 tax sales` as LIABILITY.
+
+**GL Audit & Demo Seed — DONE 2026-05-28:**
+- `seed-audit-tenant.ts` verified all GL numbers match (DR=CR=1350.50 across 8 accounts).
+- `seed-demo-tenant.ts` creates full demo tenant: 108 items, 10 customers, 2 vendors, 33 transactions.
+- COA template fixes still deferred (add missing COGS/Revenue/AP/GRNI to Standard COA).
+- Branch is 7 commits ahead of origin — push + PR when ready.
 
 Sales is now ready for QA handoff. Phase E merged cleanly (commit `249bb86`): E.1 quote sequence, E.2 AI test stabilization, E.3 promotion auto-application, E.4 credit check on direct SI with auditable override, E.5 backorder/fulfillment UX. Two Phase E-tier follow-ups still open (period-lock override governance + D.3 audit gaps on SO confirm/cancel/close and SI payment record/status) — defer to post-QA unless QA surfaces them.
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PurchaseController } from '../controllers/purchases/PurchaseController';
+import { RecordAuditController } from '../controllers/RecordAuditController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -43,6 +44,9 @@ router.post('/invoices/:id/record-payment', idempotencyMiddleware, PurchaseContr
 router.get('/invoices/:id/payments', PurchaseController.getPaymentHistory);
 
 router.get('/reports/vendor-statement', PurchaseController.getVendorStatement);
+router.get('/reports/ap-aging', PurchaseController.getApAgingReport);
+router.get('/reports/purchases-by-vendor', PurchaseController.getPurchasesByVendor);
+router.get('/reports/purchases-by-item', PurchaseController.getPurchasesByItem);
 router.get('/vendors/:partyId/statement', PurchaseController.getVendorStatement);
 
 router.post('/returns', PurchaseController.createReturn);
@@ -51,5 +55,7 @@ router.get('/returns/:id', PurchaseController.getReturn);
 router.put('/returns/:id', PurchaseController.updateReturn);
 router.post('/returns/:id/post', idempotencyMiddleware, PurchaseController.postReturn);
 router.post('/returns/:id/unpost', PurchaseController.unpostReturn);
+
+router.get('/audit-log', RecordAuditController.getByEntity);
 
 export default router;

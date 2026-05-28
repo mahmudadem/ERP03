@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import {
   GetArAgingReportUseCase,
-  GetCustomerLedgerUseCase,
+  GetLedgerBackedArAgingUseCase,
   GetLedgerBackedCustomerStatementUseCase,
   CustomerStatementMissingAccountError,
 } from '../../../application/sales/use-cases/ReceivablesReportingUseCases';
@@ -37,40 +37,24 @@ export class SalesReportingController {
   static async getArAgingReport(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SalesReportingController.getCompanyId(req);
+      const userId = SalesReportingController.getUserId(req);
       const q = (req as any).query;
-      const useCase = new GetArAgingReportUseCase(diContainer.salesInvoiceRepository);
-      const result = await useCase.execute({
-        companyId,
-        asOfDate: q.asOfDate as string | undefined,
-        customerId: q.customerId as string | undefined,
-      });
-      (res as any).json({ success: true, data: result });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Customer Ledger
-  // ---------------------------------------------------------------------------
-
-  static async getCustomerLedger(req: Request, res: Response, next: NextFunction) {
-    try {
-      const companyId = SalesReportingController.getCompanyId(req);
-      const q = (req as any).query;
-      if (!q.customerId) {
-        throw new Error('customerId query parameter is required');
-      }
-      const useCase = new GetCustomerLedgerUseCase(
-        diContainer.salesInvoiceRepository,
-        diContainer.paymentHistoryRepository,
+      const accountStatementUseCase = new GetAccountStatementUseCase(
+        diContainer.ledgerRepository,
+        diContainer.permissionChecker,
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+      );
+      const useCase = new GetLedgerBackedArAgingUseCase(
         diContainer.partyRepository,
+        diContainer.salesInvoiceRepository,
+        accountStatementUseCase,
       );
       const result = await useCase.execute({
         companyId,
-        customerId: q.customerId as string,
-        fromDate: q.fromDate as string | undefined,
-        toDate: q.toDate as string | undefined,
+        userId,
+        asOfDate: q.asOfDate as string | undefined,
+        customerId: q.customerId as string | undefined,
       });
       (res as any).json({ success: true, data: result });
     } catch (error) {
