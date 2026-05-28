@@ -29,7 +29,7 @@ export interface UserAppearanceSettings {
 
   radius: number;
   density: UserAppearanceDensity;
-  sidebarSurface: 'default' | 'contrast';
+  sidebarSurface: 'default' | 'contrast' | 'secondary';
   shadowIntensity: UserAppearanceShadow;
   fontFamily: UserAppearanceFont;
 }
@@ -269,6 +269,38 @@ export const USER_APPEARANCE_PRESETS: UserAppearanceSettings[] = [
     shadowIntensity: 'glass',
     fontFamily: 'outfit',
   },
+  {
+    id: 'tailwind-play',
+    name: 'Tailwind Play',
+    primary: '#2563eb',
+    accent: '#3b82f6',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    light: {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f8fafc',
+      bgTertiary: '#f1f5f9',
+      textPrimary: '#0f172a',
+      textSecondary: '#475569',
+      textMuted: '#94a3b8',
+      border: '#e2e8f0',
+    },
+    dark: {
+      bgPrimary: '#0f172a',
+      bgSecondary: '#020617',
+      bgTertiary: '#1e293b',
+      textPrimary: '#f8fafc',
+      textSecondary: '#cbd5e1',
+      textMuted: '#64748b',
+      border: '#334155',
+    },
+    radius: 6,
+    density: 'comfortable',
+    sidebarSurface: 'secondary',
+    shadowIntensity: 'subtle',
+    fontFamily: 'inter',
+  },
 ];
 
 export const DEFAULT_USER_APPEARANCE = USER_APPEARANCE_PRESETS[0];
@@ -391,9 +423,17 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, 
     '--radius-lg': `${settings.radius}px`,
     '--radius-xl': `${settings.radius + 4}px`,
     
-    '--app-sidebar-surface': settings.sidebarSurface === 'contrast' ? settings.primary : palette.bgPrimary,
+    '--app-sidebar-surface': settings.sidebarSurface === 'contrast' 
+      ? settings.primary 
+      : settings.sidebarSurface === 'secondary' 
+        ? palette.bgSecondary 
+        : palette.bgPrimary,
     '--app-sidebar-text': settings.sidebarSurface === 'contrast' ? '#ffffff' : palette.textPrimary,
-    '--app-sidebar-muted': settings.sidebarSurface === 'contrast' ? 'rgba(255,255,255,0.7)' : palette.textMuted,
+    '--app-sidebar-muted': settings.sidebarSurface === 'contrast' 
+      ? 'rgba(255,255,255,0.7)' 
+      : (settings.id === 'tailwind-play' || settings.id === 'erp-default')
+        ? palette.textSecondary
+        : palette.textMuted,
     
     '--app-font-family': fontVars[settings.fontFamily],
     '--font-sans': fontVars[settings.fontFamily],
@@ -447,5 +487,26 @@ export const userAppearanceStyleTag = React.createElement('style', null, `
       }
       .shadow-primary-500\\/20 {
         --tw-shadow-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+      }
+      .bg-primary-50 {
+        background-color: color-mix(in srgb, var(--color-primary) 8%, transparent) !important;
+      }
+      .bg-primary-100 {
+        background-color: color-mix(in srgb, var(--color-primary) 15%, transparent) !important;
+      }
+      .text-primary-700 {
+        color: color-mix(in srgb, var(--color-primary) 85%, black) !important;
+      }
+      .dark .text-primary-400 {
+        color: color-mix(in srgb, var(--color-primary) 30%, white) !important;
+      }
+      .hover\\:bg-primary-50:hover {
+        background-color: color-mix(in srgb, var(--color-primary) 8%, transparent) !important;
+      }
+      .hover\\:bg-primary-100:hover {
+        background-color: color-mix(in srgb, var(--color-primary) 15%, transparent) !important;
+      }
+      .hover\\:text-primary-700:hover {
+        color: color-mix(in srgb, var(--color-primary) 85%, black) !important;
       }
 `);

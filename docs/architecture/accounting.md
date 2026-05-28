@@ -33,6 +33,25 @@ These are two independent concepts. **Never conflate them.**
 - All posting use cases (`PostSalesInvoiceUseCase`, `PostPurchaseInvoiceUseCase`, etc.) check `companyModule.accounting.initialized` via `isAccountingEngineReady`. If false (and `createAccountingEffect=true`), they throw `AccountingEngineUnavailableError` — never silently mark a document POSTED without GL.
 - Hiding the Accounting UI from the navigation **does not bypass** voucher creation. The books are correct regardless of what the user sees.
 
+## COA Template Baseline (Perpetual-Ready Defaults)
+
+Template seeding now includes generic catch-all posting defaults needed by Purchases/Sales integrations, so new companies do not need manual account creation before posting:
+
+- AP default posting child (for company-level fallback)
+- Revenue default posting account (`Sales Revenue` where template structure supports generic sales)
+- COGS default posting child (`Cost of Goods Sold - General` where cost-of-sales grouping exists)
+- GRNI default account for templates that support perpetual inventory flows
+
+Implementation source:
+- `backend/src/application/accounting/templates/COATemplates.ts`
+- `backend/src/application/accounting/templates/IndustryCOATemplates.ts`
+- `backend/src/seeder/seedSystemMetadata.ts`
+
+Notes:
+- Channel- or industry-specific accounts remain available and can still override defaults.
+- Simplified template keeps a lean structure, but now includes a GRNI default (`203`) for setup compatibility.
+- Wizard/account-mapping steps should still validate required defaults at runtime and surface actionable warnings if a required mapping does not resolve.
+
 ## Architectural Principles
 
 1. **Posting strategies, not handlers.** Each voucher type has a posting strategy (`JournalEntryStrategy`, `PaymentVoucherStrategy`, `SalesInvoiceStrategy`, etc.). The single `PostVoucherUseCase` resolves the strategy and applies it. New voucher types add a strategy; the posting pipeline does not change.

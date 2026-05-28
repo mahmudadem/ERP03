@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Phase F — Purchases parity. Ledger-backed AR/AP Aging + Purchases Analytics + Audit Log done (2026-05-27).
+**Task:** Phase F - Purchases parity. Ledger-backed AR/AP Aging + Purchases Analytics + Audit Log done (2026-05-27).
 **Status:** In progress on `feat/phase-a-sales-master-data`. Remaining parity gaps: PI Attachments, Vendor Groups, Purchase Price Lists, RFQ.
-**Latest completion report:** See JOURNAL.md 2026-05-28 entries.
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md).
 
 ## 👉 Next agent — start here
 
@@ -82,12 +82,15 @@ Commits on `feat/phase-a-sales-master-data`:
     - Multi-select: **Roles permitted to override** (default: Controller, CFO).
   - Backend must enforce both — UI gating is not enough; the override endpoint must re-check role + the allow-override toggle and reject otherwise (clear error, audit-logged attempt).
 - `record_change_logs` Firestore composite index added to `firestore.indexes.json` — must be deployed before production use.
-- **COA templates missing generic catch-all posting accounts** — Discovered 2026-05-28 while setting up TEST CO LLD for QA Findings #2/#4 reproduction:
-  - **COGS gap:** `IndustryCOATemplates.ts` (Manufacturing) and `COATemplates.ts` (Standard) only ship `Purchases` and `Freight Inward` as POSTING children under the COGS HEADER. That's a periodic-inventory pattern. Perpetual users have no real COGS account to pick. User had to manually create `50103 Cost of Goods Sold`.
-  - **Revenue gap:** Standard COA ships channel-specific revenue posting accounts only (`40101 Domestic Wholesale`, `40102 Export Sales`, `40201 Flagship Store`). No generic `Sales Revenue` fallback for users who don't need channel splits. User had to manually create `400 Sales Revenue`.
-  - **AP gap:** Standard COA has `201 Accounts Payable` HEADER but only channel-specific POSTING children under it (`20101 Local Suppliers`, `20102 International Suppliers`). No generic catch-all. User had to manually create `20100 Accounts Payable` POSTING under the 201 header.
-  - **GRNI gap:** Purchases init wizard requires a Default GRNI Account in Perpetual mode, but Standard COA doesn't ship one. User had to manually create `209 GRNI - Goods Received Not Invoiced` under Liabilities.
-  - Fix: add generic `Accounts Payable`, `Sales Revenue`, `Cost of Goods Sold`, and `GRNI` POSTING accounts to each industry template as the global defaults for Perpetual mode. Channel-specific accounts can remain as optional overrides. Also: each wizard step that requires a Perpetual-specific account should warn (or auto-create) when the default doesn't resolve from the template.
+- ✅ **COA template defaults fixed (2026-05-28):**
+  - Generic catch-all defaults added across templates for perpetual-mode readiness:
+    - AP (`20100 Accounts Payable - General`)
+    - Revenue (`400 Sales Revenue` in Standard + aligned revenue defaults in industry templates)
+    - COGS (`50100 Cost of Goods Sold - General` where applicable)
+    - GRNI (`209` in Standard/industry templates; `203` GRNI in Simplified)
+  - Comprehensive template upgraded from placeholder to full enterprise chart.
+  - Related commits: `30055d9f`, `4385873d`.
+  - Follow-up: add wizard-side validation/auto-create warning when required perpetual defaults do not resolve.
 - `PeriodLockService` is now wired into `buildAccountingPostingService()` — enforcement is live for all Sales posting paths.
 - D.7 full free-canvas/sketch-board invoice designer is deferred; current model is controlled template selection via Forms Designer templates.
 
@@ -115,17 +118,4 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-Phase C QA done (report 121). Triage these before Sales is declared production-ready:
-- ✅ **Finding #3** (report bug) — CLOSED 2026-05-28 (report 126). Legacy `GetCustomerLedgerUseCase` + `/customer-ledger` endpoint deleted (no frontend consumer); ledger-backed Customer Statement already shows credit notes through the accounting engine.
-- **Findings #2 + #4 + #5** — single investigation: invoices reach POSTED in Sales without complete GL journals (7,800 AR gap, 17,033 revenue gap), and items have no cost basis so COGS = 0. May be SYCO-specific data state; reproduce on a fresh tenant before assuming system bug.
-- **SYCO chart of accounts** — remap AR to `104`; reclassify `5571 tax sales` as LIABILITY.
-
-**GL Audit & Demo Seed — DONE 2026-05-28:**
-- `seed-audit-tenant.ts` verified all GL numbers match (DR=CR=1350.50 across 8 accounts).
-- `seed-demo-tenant.ts` creates full demo tenant: 108 items, 10 customers, 2 vendors, 33 transactions.
-- COA template fixes still deferred (add missing COGS/Revenue/AP/GRNI to Standard COA).
-- Branch is 7 commits ahead of origin — push + PR when ready.
-
-Sales is now ready for QA handoff. Phase E merged cleanly (commit `249bb86`): E.1 quote sequence, E.2 AI test stabilization, E.3 promotion auto-application, E.4 credit check on direct SI with auditable override, E.5 backorder/fulfillment UX. Two Phase E-tier follow-ups still open (period-lock override governance + D.3 audit gaps on SO confirm/cancel/close and SI payment record/status) — defer to post-QA unless QA surfaces them.
-
-Manual Sales QA cycle is the next gate before Phase F (Purchases parity).
+Next step is to continue **Phase F Purchases parity** with **PI Attachments** first (highest accounting-control value), then Vendor Groups, Purchase Price Lists, and RFQ.

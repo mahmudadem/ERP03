@@ -96,6 +96,7 @@ export const useSidebarConfig = () => {
     'DataTable Demo': 'sidebar.dataTableDemo',
     'Voucher List Demo': 'sidebar.voucherListDemo',
     'Smart Voucher List': 'sidebar.smartVoucherList',
+    'Tailwind Play Demo': 'sidebar.tailwindPlayDemo',
     'Demo': 'sidebar.demo',
     'New': 'sidebar.new'
   };
@@ -204,7 +205,7 @@ export const useSidebarConfig = () => {
   };
 
   const sidebarSections = useMemo(() => {
-    const sections: Record<string, { icon: string; items: SidebarItem[] }> = {};
+    const sections: Record<string, { icon: string; items: SidebarItem[]; path?: string }> = {};
 
     if (isSuperAdmin) {
       return {
@@ -257,6 +258,13 @@ export const useSidebarConfig = () => {
         }
       };
     }
+
+    // Add Home section at the very top of tenant navigation
+    sections[translateLabel('Home')] = {
+      icon: 'Home',
+      items: [],
+      path: '/'
+    };
 
     const normalizedBundles = (moduleBundles || [])
       .map((moduleId) => String(moduleId || '').trim().toLowerCase())
@@ -386,6 +394,12 @@ export const useSidebarConfig = () => {
           label: translateLabel('Smart Voucher List'), 
           path: '/dev/smart-vouchers',
           icon: 'Brain',
+          badge: 'New'
+        },
+        { 
+          label: translateLabel('Tailwind Play Demo'), 
+          path: '/dev/tailwind-play-demo',
+          icon: 'Layout',
           badge: 'New'
         }
       ]

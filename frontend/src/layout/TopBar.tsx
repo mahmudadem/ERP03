@@ -28,7 +28,7 @@ interface TopBarProps {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
-  const { uiMode, setUiMode, theme, toggleTheme } = useUserPreferences();
+  const { uiMode, setUiMode, theme, toggleTheme, appearanceSettings } = useUserPreferences();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation("common");
@@ -68,12 +68,16 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
     );
   };
 
+  const isTailwindPlayTheme = appearanceSettings?.id === "tailwind-play";
+
   return (
     // NOTE: NO overflow-hidden here — dropdowns must be able to render outside the bar
     <header
       className={clsx(
         "h-12 flex items-center justify-between pl-0 pr-3 sticky top-0 z-50 shrink-0 print:hidden",
-        "bg-[rgba(var(--color-bg-primary-rgb),0.8)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm",
+        isTailwindPlayTheme
+          ? "bg-[rgba(var(--color-bg-primary-rgb),0.8)] backdrop-blur-md border-b-0"
+          : "bg-[rgba(var(--color-bg-primary-rgb),0.8)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm",
       )}
     >
       {/* Hamburger — mobile only */}

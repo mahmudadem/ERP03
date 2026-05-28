@@ -1,4 +1,4 @@
-﻿{
+{
   "appName": "تخطيط موارد المؤسسات03",
   "language": {
     "label": "اللغة",
@@ -127,6 +127,7 @@
     "dataTableDemo": "عرض جدول البيانات",
     "voucherListDemo": "عرض قائمة القيود",
     "smartVoucherList": "قائمة القيود الذكية",
+    "tailwindPlayDemo": "عرض Tailwind Play",
     "demo": "عرض تجريبي",
     "new": "جديد"
   },
