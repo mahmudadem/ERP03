@@ -29,16 +29,16 @@ const CURRENCIES = [
   { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا', locale: 'ar-JO', decimalPlaces: 3 },
 ];
 
-import { StandardCOA, SimplifiedCOA } from '../application/accounting/templates/COATemplates';
+import { StandardCOA, SimplifiedCOA, ComprehensiveCOA } from '../application/accounting/templates/COATemplates';
 import { ManufacturingCOA, ServicesCOA, RetailCOA } from '../application/accounting/templates/IndustryCOATemplates';
 
 const COA_TEMPLATES = [
-  // Empty template - always first
+  // Empty template — always first
   {
     id: 'empty',
-    name: 'Empty - Start from Scratch',
-    description: 'Build your own chart of accounts from the ground up',
-    recommended: 'For businesses with unique accounting needs',
+    name: 'Empty – Start from Scratch',
+    description: 'Blank canvas — add only the accounts you need',
+    recommended: 'Best for: accountants migrating an existing chart from another system',
     accountCount: 0,
     complexity: 'custom',
     accounts: []
@@ -47,56 +47,56 @@ const COA_TEMPLATES = [
   {
     id: 'simplified',
     name: 'Simplified',
-    description: 'Basic accounts for small businesses (20-30 accounts)',
-    recommended: 'Ideal for startups and freelancers',
-    accountCount: 25,
+    description: 'Flat, minimal accounts — one level deep, no sub-accounts',
+    recommended: 'Best for: freelancers, sole traders, and micro-businesses with simple books',
+    accountCount: SimplifiedCOA.length,
     complexity: 'low',
     accounts: SimplifiedCOA
   },
   {
     id: 'services',
     name: 'Professional Services',
-    description: 'For consulting, agencies & service providers',
-    recommended: 'Optimized for billable hours & projects',
-    accountCount: 42,
+    description: 'Consulting fees, project revenue, contractor costs, client deposits',
+    recommended: 'Best for: agencies, consultants, law firms, IT services, and project-based businesses',
+    accountCount: ServicesCOA.length,
     complexity: 'low',
     accounts: ServicesCOA
   },
   {
+    id: 'standard',
+    name: 'Standard (Recommended)',
+    description: 'Multi-level accounts covering wholesale, retail, inventory, and tax',
+    recommended: 'Best for: trading companies, distributors, and general SMBs — the most popular choice',
+    accountCount: StandardCOA.length,
+    complexity: 'medium',
+    accounts: StandardCOA
+  },
+  {
     id: 'manufacturing',
     name: 'Manufacturing',
-    description: 'For production & manufacturing businesses',
-    recommended: 'Includes WIP, Raw Materials, Factory Overhead',
-    accountCount: 48,
+    description: 'Raw materials, WIP, finished goods, factory overhead, direct labor',
+    recommended: 'Best for: factories, workshops, food production, and assembly businesses',
+    accountCount: ManufacturingCOA.length,
     complexity: 'medium',
     accounts: ManufacturingCOA
   },
   {
     id: 'retail',
     name: 'Retail & E-Commerce',
-    description: 'For retail stores and online businesses',
-    recommended: 'Includes POS, inventory shrinkage tracking',
-    accountCount: 52,
+    description: 'POS registers, online sales, shrinkage tracking, store expenses',
+    recommended: 'Best for: shops, supermarkets, e-commerce stores, and multi-location retail',
+    accountCount: RetailCOA.length,
     complexity: 'medium',
     accounts: RetailCOA
   },
   {
-    id: 'standard',
-    name: 'Standard',
-    description: 'Common business accounts (50-70 accounts)',
-    recommended: 'Most popular for SMBs',
-    accountCount: 60,
-    complexity: 'medium',
-    accounts: StandardCOA
-  },
-  {
     id: 'full',
     name: 'Comprehensive',
-    description: 'Detailed accounts for complex operations (100+ accounts)',
-    recommended: 'For established enterprises',
-    accountCount: 120,
+    description: 'Enterprise-grade — fixed assets, depreciation, reserves, finance costs, and more',
+    recommended: 'Best for: established enterprises, multi-department companies, and businesses preparing for audit',
+    accountCount: ComprehensiveCOA.length,
     complexity: 'high',
-    accounts: StandardCOA // Placeholder: Using Standard for now until Full definition exists
+    accounts: ComprehensiveCOA
   },
 ];
 
