@@ -2,7 +2,7 @@
 
 **Task:** Phase F — Purchases parity. Ledger-backed AR/AP Aging + Purchases Analytics + Audit Log done (2026-05-27).
 **Status:** In progress on `feat/phase-a-sales-master-data`. Remaining parity gaps: PI Attachments, Vendor Groups, Purchase Price Lists, RFQ.
-**Latest completion report:** See JOURNAL.md 2026-05-27 entries.
+**Latest completion report:** See JOURNAL.md 2026-05-28 entries.
 
 ## 👉 Next agent — start here
 
@@ -119,6 +119,12 @@ Phase C QA done (report 121). Triage these before Sales is declared production-r
 - ✅ **Finding #3** (report bug) — CLOSED 2026-05-28 (report 126). Legacy `GetCustomerLedgerUseCase` + `/customer-ledger` endpoint deleted (no frontend consumer); ledger-backed Customer Statement already shows credit notes through the accounting engine.
 - **Findings #2 + #4 + #5** — single investigation: invoices reach POSTED in Sales without complete GL journals (7,800 AR gap, 17,033 revenue gap), and items have no cost basis so COGS = 0. May be SYCO-specific data state; reproduce on a fresh tenant before assuming system bug.
 - **SYCO chart of accounts** — remap AR to `104`; reclassify `5571 tax sales` as LIABILITY.
+
+**GL Audit & Demo Seed — DONE 2026-05-28:**
+- `seed-audit-tenant.ts` verified all GL numbers match (DR=CR=1350.50 across 8 accounts).
+- `seed-demo-tenant.ts` creates full demo tenant: 108 items, 10 customers, 2 vendors, 33 transactions.
+- COA template fixes still deferred (add missing COGS/Revenue/AP/GRNI to Standard COA).
+- Branch is 7 commits ahead of origin — push + PR when ready.
 
 Sales is now ready for QA handoff. Phase E merged cleanly (commit `249bb86`): E.1 quote sequence, E.2 AI test stabilization, E.3 promotion auto-application, E.4 credit check on direct SI with auditable override, E.5 backorder/fulfillment UX. Two Phase E-tier follow-ups still open (period-lock override governance + D.3 audit gaps on SO confirm/cancel/close and SI payment record/status) — defer to post-QA unless QA surfaces them.
 
