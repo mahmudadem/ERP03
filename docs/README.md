@@ -75,6 +75,7 @@ The reviewer agent (`erp-reviewer`) is configured to block merge if a user-facin
 | Topbar Precision Widget Layout | [topbar-precision-widget-layout.md](architecture/topbar-precision-widget-layout.md) |
 | Module Access 403 Trace | [module-access-403-trace.md](architecture/module-access-403-trace.md) |
 | Graphify Usage | [graphify-usage.md](architecture/graphify-usage.md) |
+| Appearance Settings | [appearance-settings.md](architecture/appearance-settings.md) |
 
 ### User guides (`docs/user-guide/`)
 
@@ -88,6 +89,7 @@ The reviewer agent (`erp-reviewer`) is configured to block merge if a user-facin
 | AI Provider Settings | [ai-provider-settings.md](user-guide/ai-provider-settings.md) |
 | Company Admin — Modules | [company-admin-modules.md](user-guide/company-admin-modules.md) |
 | Topbar Widget Layout | [topbar-widget-layout.md](user-guide/topbar-widget-layout.md) |
+| Appearance Settings | [appearance-settings.md](user-guide/appearance-settings.md) |
 
 ### Module deep-dives (`docs/modules/` — coming in Phase 4)
 
@@ -110,7 +112,7 @@ The reviewer agent (`erp-reviewer`) is configured to block merge if a user-facin
 | Purchases | ✅ [purchases.md](architecture/purchases.md) | ✅ [purchases/](user-guide/purchases/) | Core 4 — DONE |
 | Inventory | ✅ [inventory.md](architecture/inventory.md) | ✅ [inventory/](user-guide/inventory/) | Core 4 — DONE |
 | Super Admin | ❌ Missing | ❌ Missing | High — next |
-| Settings | ❌ Missing | ❌ Missing | High — next |
+| Settings & Appearance | ✅ [appearance-settings.md](architecture/appearance-settings.md) | ✅ [appearance-settings.md](user-guide/appearance-settings.md) | DONE |
 | Topbar Widget Designer | ⚠️ [topbar-precision-widget-layout.md](architecture/topbar-precision-widget-layout.md) | ⚠️ [topbar-widget-layout.md](user-guide/topbar-widget-layout.md) | High — partial |
 | Reports (P&L, Balance Sheet, etc.) | ⚠️ Covered in accounting.md | ❌ Per-report user guides missing | Medium |
 | RBAC / Permissions | ❌ Missing | ❌ Missing | Medium |

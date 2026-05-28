@@ -364,7 +364,7 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
       <div
         style={innerStyle}
         className={clsx(
-          "box-border flex h-full max-h-full w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-md text-[11px] text-[var(--color-text-primary)]",
+          "box-border flex h-full max-h-full w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-[var(--radius-md)] text-[11px] text-[var(--color-text-primary)]",
           customBg ? "" : bgColor,
           borderClass,
           style.isBold && "[&_*]:!font-black",

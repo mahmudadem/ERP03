@@ -31,6 +31,17 @@ Before you record any transactions, do these in order:
 4. *(Optional)* **Cost Centers** — `Accounting → Cost Centers`. Add departments/projects if you want to analyze costs that way.
 5. *(Optional)* **Approval Policy** — turn on `Approval Required` in Settings if vouchers must be approved before they post.
 
+### COA templates and default posting accounts
+
+If you initialize Accounting from a built-in template, ERP03 now pre-seeds the main fallback posting accounts used by Sales/Purchases integration. In practice this means you should already have usable defaults for:
+
+- Accounts Payable (AP)
+- Sales Revenue
+- Cost of Goods Sold (COGS)
+- GRNI (Goods Received Not Invoiced) where perpetual inventory flow is enabled
+
+You can still add your own detailed account tree (for example separate domestic/export revenue, or separate vendor AP groups), but these defaults reduce setup friction and prevent early posting failures caused by missing core control accounts.
+
 ---
 
 ## Daily workflow: Recording a transaction
