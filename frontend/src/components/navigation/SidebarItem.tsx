@@ -7,6 +7,26 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { Portal } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
 
+const FLUENT_3D_ICON_MAP: Record<string, string> = {
+  Home: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/House/3D/house_3d.png',
+  Package: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Package/3D/package_3d.png',
+  HandCoins: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Money%20bag/3D/money_bag_3d.png',
+  ShoppingCart: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20cart/3D/shopping_cart_3d.png',
+  ClipboardList: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Clipboard/3D/clipboard_3d.png',
+  Users: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/People/3D/people_3d.png',
+  Monitor: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
+  Factory: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Factory/3D/factory_3d.png',
+  Briefcase: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Briefcase/3D/briefcase_3d.png',
+  Wrench: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png',
+  Bot: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png',
+  Settings: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Gear/3D/gear_3d.png',
+  Code: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
+  Layout: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20chart/3D/bar_chart_3d.png',
+  Table: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Calendar/3D/calendar_3d.png',
+  FileText: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Page%20facing%20up/3D/page_facing_up_3d.png',
+  Brain: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Brain/3D/brain_3d.png',
+};
+
 interface SidebarItemProps {
   path?: string;
   label: string;
@@ -33,11 +53,13 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   badge
 }) => {
   const location = useLocation();
-  const { sidebarMode } = useUserPreferences();
-  const { i18n } = useTranslation();
+  const { sidebarMode, appearanceSettings } = useUserPreferences();
+  const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
   
+  const use3DStyle = appearanceSettings?.id === 'tailwind-play';
+
   // Resolve Icon from name if provided
   const ResolvedIcon = iconName ? (Icons as any)[iconName] : null;
   const finalIcon = icon || (ResolvedIcon ? <ResolvedIcon className="w-4 h-4" /> : null);
@@ -115,18 +137,20 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 
   const itemContent = (
     <div className={clsx(
-      "flex items-center rounded-lg w-full transition-all duration-300 ease-out group relative outline-none",
+      "flex items-center rounded-[var(--radius-md)] w-full transition-all duration-300 ease-out group relative outline-none",
       // Layout switching: Row when open/flyout, Col when shrunk
       (isOpen || isFlyout) ? "flex-row gap-3 px-3 py-2" : "flex-col gap-1.5 px-2 py-3 justify-center items-center",
       
       isChild ? "text-xs font-normal py-1.5" : "text-sm font-medium",
       (active || (isAnyChildActive && !isExpanded && !isSubmenusMode))
-        ? "bg-primary-50 text-primary-700 font-medium dark:bg-primary-900/20 dark:text-primary-400" 
+        ? (use3DStyle && isChild && !isFlyout)
+          ? "bg-transparent text-primary-600 font-bold"
+          : "bg-primary-50 text-primary-700 font-medium dark:bg-primary-900/20 dark:text-primary-400" 
         : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk) */}
-      {!isFlyout && (active || isAnyChildActive) && (isOpen ? (
+      {!isFlyout && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
         <span
           className={clsx(
             "absolute top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]",
@@ -136,34 +160,57 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       ) : (
         <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary-600 rounded-t-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
       ))}
-      
+
       {/* Icon or First Letter */}
-      <div className={clsx(
-        "rounded-md flex items-center justify-center shrink-0 transition-all duration-300",
-        (isOpen || isFlyout) 
-          ? (isChild ? "w-5 h-5 -ml-0.5" : "w-6 h-6") 
-          : "w-10 h-10 mb-1",
-        (active || isAnyChildActive)
-          ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400" 
-          : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"
-      )}>
-        {finalIcon ? (
-          React.cloneElement(finalIcon as React.ReactElement, { 
-            className: clsx(
-              (finalIcon as React.ReactElement).props.className,
-              (isOpen || isFlyout) 
-                ? (isChild ? "w-3 h-3" : "w-4 h-4") 
-                : "w-6 h-6"
-            )
-          })
-        ) : (
-          !isChild && (
-            <span className={clsx("font-bold", (isOpen || isFlyout) ? "text-xs" : "text-lg")}>
-              {label.charAt(0).toUpperCase()}
-            </span>
-          )
-        )}
-      </div>
+      {(!isChild || isFlyout) && (
+        <div className={clsx(
+          "rounded-[var(--radius-md)] flex items-center justify-center shrink-0 transition-all duration-300",
+          (isOpen || isFlyout) 
+            ? "w-6 h-6" 
+            : "w-10 h-10 mb-1",
+          (active || isAnyChildActive)
+            ? use3DStyle && !isOpen && !isFlyout
+              ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
+              : "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400" 
+            : use3DStyle && !isOpen && !isFlyout
+              ? "bg-transparent text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
+              : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"
+        )}>
+          {(() => {
+            const iconUrl = use3DStyle ? FLUENT_3D_ICON_MAP[iconName || ''] : null;
+
+            if (iconUrl) {
+              return (
+                <img 
+                  src={iconUrl} 
+                  alt={iconName || 'Icon'} 
+                  className={clsx(
+                    "select-none pointer-events-none object-contain",
+                    (isOpen || isFlyout) ? "w-4 h-4" : "w-7 h-7"
+                  )} 
+                />
+              );
+            }
+
+            if (finalIcon) {
+              return React.cloneElement(finalIcon as React.ReactElement, { 
+                className: clsx(
+                  (finalIcon as React.ReactElement).props.className,
+                  (isOpen || isFlyout) 
+                    ? "w-4 h-4" 
+                    : "w-6 h-6"
+                )
+              });
+            }
+
+            return (
+              <span className={clsx("font-bold", (isOpen || isFlyout) ? "text-xs" : "text-lg")}>
+                {label.charAt(0).toUpperCase()}
+              </span>
+            );
+          })()}
+        </div>
+      )}
       
       {/* Label */}
       <span className={clsx(
@@ -215,7 +262,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           <Portal>
             <div 
               className={clsx(
-                "fixed z-[100] rounded-xl shadow-lg py-2 min-w-[240px] border transition-colors duration-300",
+                "fixed z-[100] rounded-[var(--radius-lg)] shadow-lg py-2 min-w-[240px] border transition-colors duration-300",
                 "bg-white dark:bg-slate-900 border-[var(--color-border)]",
                 "animate-in fade-in duration-200"
               )}

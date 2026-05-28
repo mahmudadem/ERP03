@@ -158,6 +158,7 @@ const SalesAnalyticsPage = lazy(() => import('../modules/sales/pages/SalesAnalyt
 const RecurringInvoicesPage = lazy(() => import('../modules/sales/pages/RecurringInvoicesPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
+const TailwindPlayDemoPage = lazy(() => import('../pages/dev/TailwindPlayDemoPage').then(m => ({ default: m.TailwindPlayDemoPage })));
 
 export interface AppRoute {
   path: string;
@@ -383,6 +384,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/dev/data-table', label: 'DataTable Demo', component: lazy(() => import('../pages/dev/DataTableDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
   { path: '/dev/voucher-list', label: 'Voucher List Demo', component: lazy(() => import('../pages/dev/VoucherListDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
   { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: false },
 
   // AI ASSISTANT
   { path: '/ai-assistant/setup', label: 'AI Setup', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSetupPage').then(m => ({ default: m.AiAssistantSetupPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view', hideInMenu: true },

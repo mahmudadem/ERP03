@@ -14,7 +14,7 @@ export const moduleMenuMap: Record<
 > = {
   accounting: {
     label: 'Accounting',
-    icon: 'Calculator',
+    icon: 'HandCoins',
     items: [
       { label: 'Overview', path: '/accounting', icon: 'LayoutDashboard' },
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
@@ -47,7 +47,7 @@ export const moduleMenuMap: Record<
   },
   inventory: {
     label: 'Inventory',
-    icon: 'Boxes',
+    icon: 'Package',
     items: [
       { label: 'Overview', path: '/inventory', icon: 'LayoutDashboard' },
       { label: 'Items', path: '/inventory/items', permission: 'inventory.items.manage', icon: 'Package' },

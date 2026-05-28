@@ -54,6 +54,75 @@
 **Manual QA:** Passed by Mahmud on 2026-05-28, including pre-save attachment queue on new PI entry.
 **Result:** PI Attachments are built, verified, and manually passed. Next Phase F item: Vendor Groups.
 
+## 2026-05-28 (Thu) — State audit: Push/PR + COA template fixes documentation sync
+
+**Task:** Verify whether (1) Push + PR and (2) COA template default-account fixes are complete, then close documentation/planning drift.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/phase-a-sales-master-data`
+**Completion report:** [planning/done/128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md)
+
+**What landed:**
+- Verified branch/remote state is synced (`origin` divergence `0 0`) and PR #2 is open against `main` with head `4385873d`.
+- Verified COA template work is already implemented in commits:
+  - `30055d9f` — missing COGS/Revenue/AP/GRNI defaults added across templates.
+  - `4385873d` — comprehensive COA built; template recommendations improved.
+- Updated `planning/ACTIVE.md` to mark the COA gap closed and reset next action to Phase F parity continuation.
+- Updated Accounting architecture and user docs to reflect the new default-account behavior.
+- Added completion report 128 for technical + end-user handoff completeness.
+
+**Verification:**
+- Git/PR state checks:
+  - `git rev-list --left-right --count origin/feat/phase-a-sales-master-data...feat/phase-a-sales-master-data` -> `0 0`
+  - PR metadata (`head_sha`) -> `4385873d39bb5377aa11418b26435abac305e267`
+- No code-path changes in this session (documentation/planning sync only).
+
+**Time spent:** ~0.4h
+**Result:** Push/PR and COA template fixes are confirmed complete; docs/planning now aligned.
+
+## 2026-05-28 (Thu) — High-fidelity 3D Fluent Emojis & Active/Inactive Icon Box Styles
+
+**Task:** Resolve "what about icons? iwanted those" by implementing high-fidelity Microsoft 3D Fluent Emoji PNG renders for the `tailwind-play` theme in both expanded and collapsed modes. Add precise active/inactive styling for icon boxes in collapsed mode.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/phase-a-sales-master-data`
+**Completion report:** [planning/done/127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md)
+
+**What landed:**
+- Standardized `FLUENT_3D_ICON_MAP` dictionary (with Microsoft raw 3D PNG Fluent Emojis).
+- Fixed JSX compilation errors (forgotten closing brace of `renderHeaderContent` and inline variable declarations inside JSX elements in `SidebarItem.tsx` and `SidebarSection.tsx`).
+- Switched default text emojis to use raw GitHub-hosted 3D Fluent PNG images via `<img>` tags inside `SidebarItem.tsx` and `SidebarSection.tsx`, enabling identical high-fidelity 3D rendering on all devices/operating systems.
+- Implemented precise active/inactive styles for collapsed icon boxes under `tailwind-play`. Active boxes render as white card squares with borders and subtle shadows (`bg-white shadow-sm border`), while inactive boxes render as tertiary gray and hover-transition to white cards.
+- Updated documentation files `docs/architecture/appearance-settings.md` and `docs/user-guide/appearance-settings.md`.
+
+**Verification:**
+- `npm run typecheck` inside `frontend/` -> passed cleanly
+- `npm run build` inside `frontend/` -> built successfully
+
+**Time spent:** ~0.3h
+**Result:** Emojis upgraded to high-fidelity 3D PNGs and styled active states matching the mockup exactly.
+
+## 2026-05-28 (Thu) — Tailwind Play visual parity, sidebar search, and sandbox dev page
+
+**Task:** Achieve exact visual parity with the Tailwind Play mockup screenshot, implement dynamic sidebar search filtering, borderless/shadowless topbar, and create `/dev/tailwind-play-demo` sandbox page with demo data seeding.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/phase-a-sales-master-data`
+**Completion report:** [planning/done/127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md)
+
+**What landed:**
+- Added a real-time `searchQuery` filter inside `Sidebar.tsx` to filter sections, items, and child links dynamically.
+- Registered keyboard event listeners to bind the `Ctrl + G` hotkey for focusing the sidebar search box.
+- Updated `SidebarItem.tsx` to render active inline child links as `bg-transparent text-primary-600 font-bold` and hide active vertical strip margin indicators when `tailwind-play` theme is active.
+- Styled `Sidebar.tsx` company header logo area for `tailwind-play` to hide the pin button, hide the "Enterprise" subtext, and render an uppercase `MODULES` navigation list label.
+- Conditionally removed `border-b` and `shadow` classes in `TopBar.tsx` when `tailwind-play` is active.
+- Created `/dev/tailwind-play-demo` sandbox page (`TailwindPlayDemoPage.tsx`) containing custom data table structure, Actions dropdown to seed ITEM-001 (Raw Steel Sheets) with starting stock, and "+ New Item" modal insertion.
+- Updated documentation files `docs/architecture/appearance-settings.md` and `docs/user-guide/appearance-settings.md`.
+
+**Verification:**
+- `npm run typecheck` inside `frontend/` -> passed cleanly
+- `npm run build` inside `frontend/` -> built successfully
+
+**Time spent:** ~0.8h
+**Result:** Exact visual parity with Tailwind Play mockup, sidebar search, borderless top bar, and sandbox test page completed and verified.
+
 ## 2026-05-28 (Thu) — GL audit seed + demo tenant seed
 
 **Task:** Phase 1b GL audit infrastructure + full-scale demo tenant seed.
