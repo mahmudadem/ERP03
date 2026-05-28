@@ -8,6 +8,22 @@
 
 ## 🧪 Ready to Test
 
+### Purchases — Phase F: Purchase Price Lists
+**Added by:** Antigravity (report 131)
+**What to test:**
+- Open `Purchases -> Price Lists` and click `New Price List`.
+- Create a new price list named `USD Wholesale Vendor`, select currency `USD`, set as default: `Yes`.
+- Add a line: Item `Widget A`, Min Qty `10`, Unit Price `85.00`.
+- Click `Save`.
+- Create a new Purchase Order for a vendor using USD. Select `Widget A`, quantity `5`. Verify the price does not resolve to 85.00 (min quantity is 10).
+- Change quantity to `10`. Verify the price auto-resolves to `85.00`.
+- Override manually to `80.00` to verify overrides work.
+- Go to vendor card Commercial Terms, set default price list to `USD Wholesale Vendor`.
+- Verify that deletion of a price list triggers the ConfirmDialog.
+
+**Known limitations:**
+- Purchase Price Lists resolve unit prices at document entry; they do not block manual price overrides.
+
 ### Purchases — Phase F: Vendor Groups
 **Added by:** Codex (report 130)
 **What to test:**
@@ -118,4 +134,4 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-05-28 by Codex (Vendor Groups ready for QA)_
+_Last updated: 2026-05-28 by Antigravity (Purchase Price Lists ready for QA)_
