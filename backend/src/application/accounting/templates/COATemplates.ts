@@ -118,10 +118,32 @@ export const StandardCOA = [
     isProtected: false,
   },
   {
+    code: "20100",
+    name: "Accounts Payable – General",
+    type: "liability",
+    parentCode: "201",
+    isProtected: false,
+  },
+  {
+    code: "20101",
+    name: "Local Suppliers",
+    type: "liability",
+    parentCode: "201",
+    isProtected: false,
+  },
+  {
     code: "20102",
     name: "International Suppliers",
     type: "liability",
     parentCode: "201",
+    isProtected: false,
+  },
+  // GRNI (Goods Received Not Invoiced)
+  {
+    code: "209",
+    name: "GRNI – Goods Received Not Invoiced",
+    type: "liability",
+    parentCode: "2",
     isProtected: false,
   },
   // Taxes & Duties
@@ -205,6 +227,15 @@ export const StandardCOA = [
     parentCode: null,
     isProtected: true,
   },
+  // Generic Sales Revenue (catch-all for users who don't need channel splits)
+  {
+    code: "400",
+    name: "Sales Revenue",
+    type: "revenue",
+    parentCode: "4",
+    isProtected: false,
+    plSubgroup: "SALES",
+  },
   // Wholesale Sales
   {
     code: "401",
@@ -263,6 +294,14 @@ export const StandardCOA = [
     type: "expense",
     parentCode: "5",
     isProtected: true,
+    plSubgroup: "COST_OF_SALES",
+  },
+  {
+    code: "50100",
+    name: "Cost of Goods Sold – General",
+    type: "expense",
+    parentCode: "501",
+    isProtected: false,
     plSubgroup: "COST_OF_SALES",
   },
   {
@@ -371,6 +410,13 @@ export const SimplifiedCOA = [
     type: "liability",
     parentCode: "2",
     isProtected: true,
+  },
+  {
+    code: "203",
+    name: "GRNI – Goods Received Not Invoiced",
+    type: "liability",
+    parentCode: "2",
+    isProtected: false,
   },
 
   // Equity

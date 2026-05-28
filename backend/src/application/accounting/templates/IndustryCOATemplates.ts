@@ -111,6 +111,13 @@ export const ManufacturingCOA = [
     name: "Accounts Payable",
     type: "liability",
     parentCode: "2",
+    isProtected: true, // Has children
+  },
+  {
+    code: "20100",
+    name: "Accounts Payable – General",
+    type: "liability",
+    parentCode: "201",
     isProtected: false,
   },
   {
@@ -132,6 +139,14 @@ export const ManufacturingCOA = [
     name: "VAT Payable",
     type: "liability",
     parentCode: "202",
+    isProtected: false,
+  },
+  // GRNI (Goods Received Not Invoiced)
+  {
+    code: "209",
+    name: "GRNI – Goods Received Not Invoiced",
+    type: "liability",
+    parentCode: "2",
     isProtected: false,
   },
 
@@ -200,6 +215,14 @@ export const ManufacturingCOA = [
     type: "expense",
     parentCode: "5",
     isProtected: true, // Has children
+    plSubgroup: "COST_OF_SALES",
+  },
+  {
+    code: "50100",
+    name: "Cost of Goods Sold – General",
+    type: "expense",
+    parentCode: "501",
+    isProtected: false,
     plSubgroup: "COST_OF_SALES",
   },
   {
@@ -368,6 +391,13 @@ export const ServicesCOA = [
     name: "Accounts Payable",
     type: "liability",
     parentCode: "2",
+    isProtected: true, // Has children
+  },
+  {
+    code: "20100",
+    name: "Accounts Payable – General",
+    type: "liability",
+    parentCode: "201",
     isProtected: false,
   },
   {
@@ -410,6 +440,14 @@ export const ServicesCOA = [
     name: "Income Tax Payable",
     type: "liability",
     parentCode: "203",
+    isProtected: false,
+  },
+  // GRNI (Goods Received Not Invoiced)
+  {
+    code: "209",
+    name: "GRNI – Goods Received Not Invoiced",
+    type: "liability",
+    parentCode: "2",
     isProtected: false,
   },
 
@@ -698,6 +736,13 @@ export const RetailCOA = [
     isProtected: true, // Has children
   },
   {
+    code: "20100",
+    name: "Accounts Payable – General",
+    type: "liability",
+    parentCode: "201",
+    isProtected: false,
+  },
+  {
     code: "20101",
     name: "Trade Payables",
     type: "liability",
@@ -721,6 +766,14 @@ export const RetailCOA = [
   {
     code: "203",
     name: "Customer Deposits",
+    type: "liability",
+    parentCode: "2",
+    isProtected: false,
+  },
+  // GRNI (Goods Received Not Invoiced)
+  {
+    code: "209",
+    name: "GRNI – Goods Received Not Invoiced",
     type: "liability",
     parentCode: "2",
     isProtected: false,
@@ -806,6 +859,14 @@ export const RetailCOA = [
     type: "expense",
     parentCode: "5",
     isProtected: true, // Has children
+    plSubgroup: "COST_OF_SALES",
+  },
+  {
+    code: "50100",
+    name: "Cost of Goods Sold – General",
+    type: "expense",
+    parentCode: "501",
+    isProtected: false,
     plSubgroup: "COST_OF_SALES",
   },
   {
