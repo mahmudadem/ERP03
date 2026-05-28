@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { endOfYear, format, startOfYear } from 'date-fns';
-import { AlertTriangle, ArrowUpRight, Search } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Info, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { accountingApi, AccountStatementData, AccountStatementEntry } from '../../../api/accountingApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
@@ -53,6 +53,21 @@ const toMillis = (value: unknown): number => {
 
 const compareVoucherNo = (a: unknown, b: unknown) =>
   String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+
+type ControlAccountKind = 'AR' | 'AP' | null;
+
+const detectControlAccountKind = (
+  accountName?: string | null,
+  accountCode?: string | null
+): ControlAccountKind => {
+  const name = String(accountName || '').toLowerCase();
+  const code = String(accountCode || '');
+  if (/account.*receivable|\breceivable\b|\btrade\s*debtors?\b/.test(name)) return 'AR';
+  if (/account.*payable|\bpayable\b|\btrade\s*creditors?\b/.test(name)) return 'AP';
+  if (/^120\d*$/.test(code) || /^130\d*$/.test(code)) return 'AR';
+  if (/^201\d*$/.test(code) || /^210\d*$/.test(code)) return 'AP';
+  return null;
+};
 
 const sortAccountStatementEntries = (entries: AccountStatementEntry[]): AccountStatementEntry[] =>
   [...entries].sort((a, b) => {
@@ -443,9 +458,29 @@ const AccountStatementReportContent: React.FC<{
   const accountCurrency = data.accountCurrency || '';
   const showBaseColumns = Boolean(baseCurrency && accountCurrency && baseCurrency !== accountCurrency);
   const columnCount = showBaseColumns ? 11 : 8;
+  const controlKind = detectControlAccountKind(data.accountName, data.accountCode);
+  const partyStatement =
+    controlKind === 'AR'
+      ? { label: 'Customer Statement', path: '/sales/reports/customer-statement', party: 'customer' }
+      : controlKind === 'AP'
+        ? { label: 'Vendor Statement', path: '/purchases/reports/vendor-statement', party: 'vendor' }
+        : null;
 
   return (
     <div className="h-full overflow-auto p-4 space-y-4 bg-slate-50" id="account-statement-report">
+      {partyStatement && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-3">
+          <Info className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
+          <div className="text-xs text-amber-900 leading-relaxed">
+            <span className="font-bold uppercase tracking-wide">Control account</span> — this account is a shared GL bucket for every {partyStatement.party}. The lines below mix all {partyStatement.party}s together.
+            {' '}For a per-{partyStatement.party} statement (opening balance, invoices, payments, running balance) use the{' '}
+            <Link to={partyStatement.path} className="font-semibold underline decoration-amber-400 hover:text-amber-700">
+              {partyStatement.label}
+            </Link>
+            .
+          </div>
+        </div>
+      )}
       <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
           <div className="flex flex-wrap gap-3 justify-between">
