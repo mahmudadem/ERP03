@@ -17,6 +17,18 @@ import {
   UpdatePurchaseOrderUseCase,
 } from '../../../application/purchases/use-cases/PurchaseOrderUseCases';
 import {
+  CreatePurchaseRFQUseCase,
+  UpdatePurchaseRFQUseCase,
+  GetPurchaseRFQUseCase,
+  ListPurchaseRFQsUseCase,
+  DeletePurchaseRFQUseCase,
+  SendPurchaseRFQUseCase,
+  AcceptPurchaseRFQUseCase,
+  RejectPurchaseRFQUseCase,
+  ConvertPurchaseRFQToOrderUseCase,
+  ConvertPurchaseRFQToInvoiceUseCase,
+} from '../../../application/purchases/use-cases/PurchaseRFQUseCases';
+import {
   CreatePurchaseInvoiceUseCase,
   CreateAndPostPurchaseInvoiceUseCase,
   GetPurchaseInvoiceUseCase,
@@ -1234,6 +1246,189 @@ export class PurchaseController {
       (res as any).json({
         success: true,
         data: PurchaseDTOMapper.toPurchaseReturnDTO(pr),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // RFQ handlers
+  // ---------------------------------------------------------------------------
+
+  static async createRFQ(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+      const useCase = new CreatePurchaseRFQUseCase(
+        diContainer.purchaseRFQRepository,
+        diContainer.partyRepository,
+        diContainer.companyCurrencyRepository
+      );
+      const rfq = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        createdBy: userId,
+      });
+      (res as any).status(201).json({ success: true, data: rfq.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateRFQ(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new UpdatePurchaseRFQUseCase(
+        diContainer.purchaseRFQRepository,
+        diContainer.partyRepository
+      );
+      const rfq = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        id,
+      });
+      (res as any).json({ success: true, data: rfq.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getRFQ(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new GetPurchaseRFQUseCase(diContainer.purchaseRFQRepository);
+      const rfq = await useCase.execute(companyId, id);
+      (res as any).json({ success: true, data: rfq.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listRFQs(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const q = (req as any).query;
+      const useCase = new ListPurchaseRFQsUseCase(diContainer.purchaseRFQRepository);
+      const results = await useCase.execute(companyId, {
+        status: q.status as string | undefined,
+        vendorId: q.vendorId as string | undefined,
+      });
+      (res as any).json({ success: true, data: results.map((r) => r.toJSON()) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteRFQ(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new DeletePurchaseRFQUseCase(diContainer.purchaseRFQRepository);
+      await useCase.execute(companyId, id);
+      (res as any).json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async sendRFQ(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new SendPurchaseRFQUseCase(diContainer.purchaseRFQRepository);
+      const rfq = await useCase.execute(companyId, id);
+      (res as any).json({ success: true, data: rfq.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async acceptRFQ(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new AcceptPurchaseRFQUseCase(diContainer.purchaseRFQRepository);
+      const rfq = await useCase.execute(companyId, id);
+      (res as any).json({ success: true, data: rfq.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async rejectRFQ(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new RejectPurchaseRFQUseCase(diContainer.purchaseRFQRepository);
+      const rfq = await useCase.execute(companyId, id);
+      (res as any).json({ success: true, data: rfq.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async convertRFQToPO(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+
+      const createPurchaseOrderUseCase = new CreatePurchaseOrderUseCase(
+        diContainer.purchaseSettingsRepository,
+        diContainer.purchaseOrderRepository,
+        diContainer.partyRepository,
+        diContainer.itemRepository,
+        diContainer.taxCodeRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const useCase = new ConvertPurchaseRFQToOrderUseCase(
+        diContainer.purchaseRFQRepository,
+        createPurchaseOrderUseCase
+      );
+
+      const result = await useCase.execute(companyId, String((req as any).params.id), userId);
+      (res as any).json({
+        success: true,
+        data: {
+          rfq: result.rfq.toJSON(),
+          purchaseOrderId: result.purchaseOrderId,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async convertRFQToPI(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+
+      const createPurchaseInvoiceUseCase = new CreatePurchaseInvoiceUseCase(
+        diContainer.purchaseSettingsRepository,
+        diContainer.purchaseInvoiceRepository,
+        diContainer.purchaseOrderRepository,
+        diContainer.partyRepository,
+        diContainer.itemRepository,
+        diContainer.taxCodeRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const useCase = new ConvertPurchaseRFQToInvoiceUseCase(
+        diContainer.purchaseRFQRepository,
+        createPurchaseInvoiceUseCase
+      );
+
+      const result = await useCase.execute(companyId, String((req as any).params.id), userId);
+      (res as any).json({
+        success: true,
+        data: {
+          rfq: result.rfq.toJSON(),
+          purchaseInvoiceId: result.purchaseInvoiceId,
+        },
       });
     } catch (error) {
       next(error);

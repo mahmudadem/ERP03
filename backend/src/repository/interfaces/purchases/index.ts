@@ -5,3 +5,4 @@ export * from './IPurchaseInvoiceRepository';
 export * from './IPurchaseReturnRepository';
 export * from './IVendorGroupRepository';
 export * from './IPurchasePriceListRepository';
+export * from './IPurchaseRFQRepository';

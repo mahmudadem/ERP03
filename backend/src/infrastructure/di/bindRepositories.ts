@@ -63,6 +63,7 @@ import { FirestorePurchaseInvoiceRepository } from '../firestore/repositories/pu
 import { FirestorePurchaseReturnRepository } from '../firestore/repositories/purchases/FirestorePurchaseReturnRepository';
 import { FirestoreVendorGroupRepository } from '../firestore/repositories/purchases/FirestoreVendorGroupRepository';
 import { FirestorePurchasePriceListRepository } from '../firestore/repositories/purchases/FirestorePurchasePriceListRepository';
+import { FirestorePurchaseRFQRepository } from '../firestore/repositories/purchases/FirestorePurchaseRFQRepository';
 import { FirestoreSalesSettingsRepository } from '../firestore/repositories/sales/FirestoreSalesSettingsRepository';
 import { FirestoreSalesOrderRepository } from '../firestore/repositories/sales/FirestoreSalesOrderRepository';
 import { FirestoreDeliveryNoteRepository } from '../firestore/repositories/sales/FirestoreDeliveryNoteRepository';
@@ -613,6 +614,12 @@ export const diContainer = {
       throw new Error('PurchasePriceListRepository: SQL implementation not yet available');
     }
     return new FirestorePurchasePriceListRepository(getDb());
+  },
+  get purchaseRFQRepository(): PurRepo.IPurchaseRFQRepository {
+    if (DB_TYPE === 'SQL') {
+      throw new Error('PurchaseRFQRepository: SQL implementation not yet available');
+    }
+    return new FirestorePurchaseRFQRepository(getDb());
   },
 
   // SALES
