@@ -26,7 +26,10 @@ import {
 } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
-import { loadSystemVoucherTypes, SystemVoucherType } from '../../accounting/services/voucherTypesService';
+import {
+  loadSystemVoucherTypeGroups,
+  SystemVoucherTypeGroup,
+} from '../../accounting/services/voucherTypesService';
 
 interface PurchaseInitializationWizardProps {
   onComplete: () => void;
@@ -57,8 +60,12 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   const [grnNumberPrefix, setGrnNumberPrefix] = useState('GRN');
   const [piNumberPrefix, setPiNumberPrefix] = useState('PI');
   const [prNumberPrefix, setPrNumberPrefix] = useState('PR');
-  const [systemVoucherTypes, setSystemVoucherTypes] = useState<SystemVoucherType[]>([]);
-  const [selectedVoucherTypes, setSelectedVoucherTypes] = useState<string[]>([]);
+  // Voucher Type groups (each group = one abstract type with N form variants).
+  // The wizard tracks selection by typeKey (e.g. "purchase_invoice"); on submit
+  // we expand to template ids so every form variant of every selected type is
+  // installed as a locked + inactive default.
+  const [voucherTypeGroups, setVoucherTypeGroups] = useState<SystemVoucherTypeGroup[]>([]);
+  const [selectedTypeKeys, setSelectedTypeKeys] = useState<string[]>([]);
   const [inventorySettings, setInventorySettings] = useState<{
     defaultInventoryAssetAccountId?: string;
     accountingMode?: 'INVOICE_DRIVEN' | 'PERPETUAL';
@@ -69,9 +76,9 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     const loadData = async () => {
       try {
         setLoadingSettings(true);
-        const [inventorySettingsResult, voucherTypes] = await Promise.all([
+        const [inventorySettingsResult, typeGroups] = await Promise.all([
           inventoryApi.getSettings().catch(() => null),
-          loadSystemVoucherTypes('PURCHASE'),
+          loadSystemVoucherTypeGroups('PURCHASE'),
         ]);
         const invSettingsData = inventorySettingsResult
           ? unwrap<any>(inventorySettingsResult)?.data ?? unwrap<any>(inventorySettingsResult)
@@ -82,9 +89,10 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
           setWorkflowMode('OPERATIONAL');
         }
 
-        setSystemVoucherTypes(voucherTypes);
-        const recommended = voucherTypes.filter((vt) => vt.isRecommended).map((vt) => vt.id);
-        setSelectedVoucherTypes(recommended.length > 0 ? recommended : voucherTypes.map((vt) => vt.id));
+        setVoucherTypeGroups(typeGroups);
+        // Default-select recommended types, or every type if none flagged.
+        const recommended = typeGroups.filter((g) => g.isRecommended).map((g) => g.typeKey);
+        setSelectedTypeKeys(recommended.length > 0 ? recommended : typeGroups.map((g) => g.typeKey));
       } catch (err) {
         console.error('Failed to load dependencies for purchases initialization', err);
       } finally {
@@ -171,6 +179,13 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       setSubmitting(true);
       setError(null);
 
+      // Expand each selected type key into every template id (form variant) for
+      // that type. The backend sync still takes template ids; the wizard just
+      // bundles "pick one type, install all its forms" at the call site.
+      const selectedTemplateIds = voucherTypeGroups
+        .filter((g) => selectedTypeKeys.includes(g.typeKey))
+        .flatMap((g) => g.forms.map((f) => f.id));
+
       await purchasesApi.initializePurchases({
         workflowMode,
         defaultAPAccountId: accountingEnabled ? defaultAPAccountId : undefined,
@@ -183,7 +198,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
         grnNumberPrefix: grnNumberPrefix || 'GRN',
         piNumberPrefix: piNumberPrefix || 'PI',
         prNumberPrefix: prNumberPrefix || 'PR',
-        selectedVoucherTypes,
+        selectedVoucherTypes: selectedTemplateIds,
       });
       emitCompanyModulesRefresh({ companyId, moduleCode: 'purchase' });
       await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
@@ -471,24 +486,24 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     }
 
     if (currentStep === 4) {
-      const toggleVoucherType = (id: string) => {
-        setSelectedVoucherTypes((prev) =>
-          prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+      const toggleType = (typeKey: string) => {
+        setSelectedTypeKeys((prev) =>
+          prev.includes(typeKey) ? prev.filter((entry) => entry !== typeKey) : [...prev, typeKey]
         );
       };
-      const selectAll = () => setSelectedVoucherTypes(systemVoucherTypes.map((vt) => vt.id));
-      const clearAll = () => setSelectedVoucherTypes([]);
+      const selectAll = () => setSelectedTypeKeys(voucherTypeGroups.map((g) => g.typeKey));
+      const clearAll = () => setSelectedTypeKeys([]);
 
       return (
         <div className="py-8 max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Voucher Types</h2>
           <p className="text-gray-600 mb-6 text-center">
-            Pick which purchase document types to install. Each comes with a default form template &mdash; you'll activate or customize them next.
+            Pick which purchase document types to install. Each type comes with one or more default form variants &mdash; you'll activate or customize them next.
           </p>
 
           <div className="flex justify-between items-center mb-6">
             <p className="text-sm text-gray-600">
-              {selectedVoucherTypes.length} of {systemVoucherTypes.length} selected
+              {selectedTypeKeys.length} of {voucherTypeGroups.length} types selected
             </p>
             <div className="flex gap-2">
               <button
@@ -509,7 +524,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {systemVoucherTypes.length === 0 ? (
+            {voucherTypeGroups.length === 0 ? (
               <div className="col-span-2 text-center py-12">
                 <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600 font-medium">No Purchase voucher types available</p>
@@ -518,32 +533,44 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 </p>
               </div>
             ) : (
-              systemVoucherTypes.map((voucherType) => {
-                const isSelected = selectedVoucherTypes.includes(voucherType.id);
+              voucherTypeGroups.map((group) => {
+                const isSelected = selectedTypeKeys.includes(group.typeKey);
+                const formCount = group.forms.length;
+                // Render the persona label (e.g. "Direct") of each form so the
+                // user can see what variants come bundled with the type.
+                const variantLabels = group.forms
+                  .map((f) => {
+                    if (f.persona) return f.persona.charAt(0).toUpperCase() + f.persona.slice(1);
+                    const match = f.name.match(/\(([^)]+)\)/);
+                    return match ? match[1] : null;
+                  })
+                  .filter(Boolean) as string[];
                 return (
                   <button
                     type="button"
-                    key={voucherType.id}
-                    onClick={() => toggleVoucherType(voucherType.id)}
+                    key={group.typeKey}
+                    onClick={() => toggleType(group.typeKey)}
                     className={`p-5 rounded-lg border-2 transition-all text-left hover:border-primary-500 ${
                       isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-bold text-gray-900">{voucherType.name}</h3>
-                          {voucherType.isRecommended && (
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="text-lg font-bold text-gray-900">{group.name}</h3>
+                          {group.isRecommended && (
                             <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                               Recommended
                             </span>
                           )}
+                          <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
+                            {formCount} default form{formCount !== 1 ? 's' : ''}
+                          </span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Prefix: <span className="font-mono font-semibold">{voucherType.prefix}</span>
-                        </p>
-                        {voucherType.description && (
-                          <p className="text-sm text-gray-500">{voucherType.description}</p>
+                        {variantLabels.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Variants: {variantLabels.join(' · ')}
+                          </p>
                         )}
                       </div>
                       {isSelected && (
@@ -633,21 +660,29 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
             </div>
             <div className="md:col-span-2">
               <div className="text-xs uppercase tracking-wide text-gray-500">Selected Voucher Types</div>
-              {selectedVoucherTypes.length === 0 ? (
+              {selectedTypeKeys.length === 0 ? (
                 <div className="mt-1 text-sm text-gray-500">None selected. You can add them later from Settings.</div>
               ) : (
                 <ul className="mt-1 space-y-1">
-                  {selectedVoucherTypes.map((id) => {
-                    const vt = systemVoucherTypes.find((entry) => entry.id === id);
-                    return vt ? (
-                      <li key={id} className="flex items-center gap-2 text-sm text-gray-900">
+                  {selectedTypeKeys.map((typeKey) => {
+                    const group = voucherTypeGroups.find((g) => g.typeKey === typeKey);
+                    return group ? (
+                      <li key={typeKey} className="flex items-center gap-2 text-sm text-gray-900">
                         <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />
-                        <span className="font-medium">{vt.name}</span>
-                        <span className="text-xs text-gray-500">({vt.prefix})</span>
+                        <span className="font-medium">{group.name}</span>
+                        <span className="text-xs text-gray-500">
+                          ({group.forms.length} default form{group.forms.length !== 1 ? 's' : ''})
+                        </span>
                       </li>
                     ) : null;
                   })}
-                  <li className="text-xs text-gray-600 mt-1">Total: {selectedVoucherTypes.length}</li>
+                  <li className="text-xs text-gray-600 mt-1">
+                    Total: {selectedTypeKeys.length} type{selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
+                    {voucherTypeGroups
+                      .filter((g) => selectedTypeKeys.includes(g.typeKey))
+                      .reduce((sum, g) => sum + g.forms.length, 0)}{' '}
+                    form{' '}variants will install as locked defaults
+                  </li>
                 </ul>
               )}
             </div>
