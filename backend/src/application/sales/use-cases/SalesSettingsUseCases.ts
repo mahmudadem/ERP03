@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import {
   GovernanceRule,
@@ -6,14 +5,9 @@ import {
   SalesPaymentMethodConfig,
   SalesSettings,
 } from '../../../domain/sales/entities/SalesSettings';
-import { PostingRole } from '../../../domain/designer/entities/PostingRole';
-import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
-import {
-  IVoucherFormRepository,
-  VoucherFormDefinition,
-} from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
@@ -24,123 +18,11 @@ import { ErrorCode } from '../../../errors/ErrorCodes';
 import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
 import { ICredentialCipher } from '../services/ICredentialCipher';
 import { validatePartyAccountCodeFormat } from '../../shared/services/PartyAccountCodeRenderer';
+import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 
-// Note: Hardcoded templates are now deprecated and will be removed in a future PR
-// Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
-
-const cloneTemplateValue = (val: any) => (val ? JSON.parse(JSON.stringify(val)) : null);
-const normalizeModule = (value: any) => String(value || '').trim().toUpperCase();
-
-const ensureVoucherTypeScope = async (
-  voucherTypeRepo: IVoucherTypeDefinitionRepository,
-  companyId: string,
-  voucherTypeId: string | undefined,
-  expectedModule: string,
-  fieldName: string
-): Promise<void> => {
-  if (!voucherTypeId) return;
-
-  const voucherType = await voucherTypeRepo.getVoucherType(companyId, voucherTypeId);
-  if (!voucherType) {
-    throw new Error(`${fieldName} not found: ${voucherTypeId}`);
-  }
-
-  if (normalizeModule(voucherType.module) !== expectedModule) {
-    throw new Error(`${fieldName} must belong to ${expectedModule} module`);
-  }
-};
-
-const cloneVoucherTypeForCompany = (
-  companyId: string,
-  template: VoucherTypeDefinition
-): VoucherTypeDefinition => {
-  return new VoucherTypeDefinition(
-    randomUUID(),
-    companyId,
-    template.name,
-    template.code,
-    template.module,
-    cloneTemplateValue(template.headerFields),
-    cloneTemplateValue(template.tableColumns),
-    cloneTemplateValue(template.layout),
-    template.schemaVersion || 2,
-    template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined,
-    cloneTemplateValue(template.workflow),
-    cloneTemplateValue(template.uiModeOverrides),
-    template.isMultiLine ?? true,
-    cloneTemplateValue(template.rules) || [],
-    cloneTemplateValue(template.actions) || [],
-    template.defaultCurrency,
-    template.voucherType,
-    template.persona
-  );
-};
-
-const cloneVoucherFormForCompany = (
-  companyId: string,
-  typeId: string,
-  createdBy: string,
-  template: VoucherFormDefinition | any // Can be from system metadata too
-): VoucherFormDefinition => {
-  const now = new Date();
-
-  return {
-    id: randomUUID(),
-    companyId,
-    module: template.module || 'SALES',
-    typeId,
-    name: template.name,
-    code: template.code,
-    description: template.description || `Default form for ${template.name}`,
-    prefix: template.prefix,
-    numberFormat: template.numberFormat,
-    isDefault: true,
-    isSystemGenerated: true,
-    isLocked: true,
-    enabled: template.enabled ?? true,
-    headerFields: cloneTemplateValue(template.headerFields) || [],
-    tableColumns: cloneTemplateValue(template.tableColumns) || [],
-    layout: cloneTemplateValue(template.layout) || { sections: [] },
-    uiModeOverrides: cloneTemplateValue(template.uiModeOverrides),
-    rules: cloneTemplateValue(template.rules) || [],
-    actions: cloneTemplateValue(template.actions) || [],
-    isMultiLine: template.isMultiLine ?? true,
-    tableStyle: template.tableStyle || 'web',
-    formType: template.formType || template.baseType || template.code,
-    voucherType: template.voucherType || template.code,
-    persona: template.persona || undefined,
-    baseType: template.baseType || template.code,
-    createdAt: now,
-    updatedAt: now,
-    createdBy,
-  };
-};
-
-const ensureSalesVoucherDefinitions = async (
-  companyId: string,
-  createdBy: string,
-  voucherTypeRepo: IVoucherTypeDefinitionRepository,
-  voucherFormRepo: IVoucherFormRepository
-): Promise<void> => {
-  const systemTemplates = await voucherTypeRepo.getSystemTemplates();
-  const salesTemplates = systemTemplates.filter(t => t.module === 'SALES');
-
-  if (salesTemplates.length === 0) {
-    console.warn('[SalesSettingsUseCases] No SALES system templates found. Check seeder!');
-  }
-
-  for (const template of salesTemplates) {
-    const existingType = await voucherTypeRepo.getByCode(companyId, template.code);
-    if (existingType) continue; // Already exists, skip
-
-    const companyVoucherType = cloneVoucherTypeForCompany(companyId, template);
-    companyVoucherType.module = template.module;
-    await voucherTypeRepo.createVoucherType(companyVoucherType);
-
-    const companyForm = cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, template);
-    await voucherFormRepo.create(companyForm);
-  }
-};
+// Voucher type/form copy is delegated to syncCompanyVoucherTemplatesFromSystem,
+// which honors the user's selectedVoucherTypes pick from the init wizard and
+// keeps the same code path used by Accounting and the manual sync endpoint.
 
 export interface InitializeSalesInput {
   companyId: string;
@@ -172,6 +54,12 @@ export interface InitializeSalesInput {
   siNumberNextSeq?: number;
   srNumberPrefix?: string;
   srNumberNextSeq?: number;
+  /**
+   * IDs of system Sales voucher templates the user picked in the wizard.
+   * `undefined` keeps legacy behavior (copy every SALES template).
+   * `[]` copies nothing (user picked none).
+   */
+  selectedVoucherTypes?: string[];
 }
 
 export interface UpdateSalesSettingsInput {
@@ -303,12 +191,14 @@ export class InitializeSalesUseCase {
       throw new Error(`Default AR account not found: ${input.defaultARAccountId}`);
     }
 
-    await ensureSalesVoucherDefinitions(
-      input.companyId,
-      input.userId || 'SYSTEM',
-      this.voucherTypeRepo,
-      this.voucherFormRepo
-    );
+    await syncCompanyVoucherTemplatesFromSystem({
+      companyId: input.companyId,
+      modules: ['SALES'],
+      selectedTemplateIds: input.selectedVoucherTypes,
+      createdBy: input.userId || 'SYSTEM',
+      voucherTypeRepo: this.voucherTypeRepo,
+      voucherFormRepo: this.voucherFormRepo,
+    });
 
     const workflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
     const workflowDefaults = DocumentPolicyResolver.applySalesWorkflowDefaults(workflowMode, {

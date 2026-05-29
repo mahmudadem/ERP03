@@ -151,6 +151,13 @@ const cloneVoucherFormForCompany = (
 export interface SyncCompanyVoucherTemplatesInput {
   companyId: string;
   modules: string[];
+  /**
+   * When provided, only system templates whose `id` is in this set are copied.
+   * Use this to honor a per-module init wizard's "user picked these voucher types" choice.
+   * `undefined` means "copy every template in the requested modules" (legacy behavior).
+   * An empty array short-circuits to a no-op (user picked nothing).
+   */
+  selectedTemplateIds?: string[];
   createdBy: string;
   voucherTypeRepo: IVoucherTypeDefinitionRepository;
   voucherFormRepo: IVoucherFormRepository;
@@ -174,12 +181,24 @@ export const syncCompanyVoucherTemplatesFromSystem = async (
     return { templatesUpserted: 0, formsCreated: 0, formsUpdated: 0 };
   }
 
+  // User picked an explicit empty selection — copy nothing, but still a successful no-op.
+  if (input.selectedTemplateIds && input.selectedTemplateIds.length === 0) {
+    return { templatesUpserted: 0, formsCreated: 0, formsUpdated: 0 };
+  }
+
   const systemTemplates = await input.voucherTypeRepo.getSystemTemplates();
   const scopedTemplates = systemTemplates.filter((template) => moduleSet.has(normalizeModule(template.module)));
 
+  const selectedSet = input.selectedTemplateIds && input.selectedTemplateIds.length > 0
+    ? new Set(input.selectedTemplateIds)
+    : null;
+  const filteredTemplates = selectedSet
+    ? scopedTemplates.filter((template) => selectedSet.has(template.id))
+    : scopedTemplates;
+
   // Keep one template per module+code key to avoid accidental duplicate-code drift.
   const templateMap = new Map<string, VoucherTypeDefinition>();
-  for (const template of scopedTemplates) {
+  for (const template of filteredTemplates) {
     templateMap.set(`${normalizeModule(template.module)}::${normalizeCode(template.code)}`, template);
   }
 

@@ -205,6 +205,13 @@ export const validateInitializePurchasesInput = (body: any) => {
   ensureOptionalNumber(body.grnNumberNextSeq, 'grnNumberNextSeq');
   ensureOptionalNumber(body.piNumberNextSeq, 'piNumberNextSeq');
   ensureOptionalNumber(body.prNumberNextSeq, 'prNumberNextSeq');
+
+  if (body.selectedVoucherTypes !== undefined) {
+    if (!Array.isArray(body.selectedVoucherTypes)
+      || body.selectedVoucherTypes.some((id: unknown) => typeof id !== 'string')) {
+      throw ApiError.badRequest('selectedVoucherTypes must be an array of strings');
+    }
+  }
 };
 
 export const validateUpdatePurchaseSettingsInput = (body: any) => {

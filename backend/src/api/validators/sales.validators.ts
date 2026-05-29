@@ -328,6 +328,13 @@ export const validateInitializeSalesInput = (body: any) => {
   ensureOptionalNumber(body.dnNumberNextSeq, 'dnNumberNextSeq');
   ensureOptionalNumber(body.siNumberNextSeq, 'siNumberNextSeq');
   ensureOptionalNumber(body.srNumberNextSeq, 'srNumberNextSeq');
+
+  if (body.selectedVoucherTypes !== undefined) {
+    if (!Array.isArray(body.selectedVoucherTypes)
+      || body.selectedVoucherTypes.some((id: unknown) => typeof id !== 'string')) {
+      throw ApiError.badRequest('selectedVoucherTypes must be an array of strings');
+    }
+  }
 };
 
 export const validateUpdateSalesSettingsInput = (body: any) => {
