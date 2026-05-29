@@ -39,6 +39,31 @@ export interface VoucherFormResponse {
   createdBy?: string;
 }
 
+export type VoucherFormModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
+
+/**
+ * Map the module enum to the URL prefix for its voucher-form routes.
+ * Write endpoints (create / update / delete / clone) are registered on each
+ * module's route file so the request is scoped to the module the user is
+ * working in and is authorized by that module's middleware chain.
+ *
+ * Read endpoints (list / getById / getByType) currently only exist under
+ * accounting, but they're module-agnostic at the controller level (the
+ * repository searches across modules), so we keep them on the accounting
+ * URL until we need module scoping on reads.
+ */
+const writePrefix = (module: VoucherFormModule): string => {
+  switch (module) {
+    case 'SALES':
+      return '/tenant/sales';
+    case 'PURCHASE':
+      return '/tenant/purchases';
+    case 'ACCOUNTING':
+    default:
+      return '/tenant/accounting';
+  }
+};
+
 export const voucherFormApi = {
   /**
    * List all voucher forms for the current company
@@ -65,36 +90,40 @@ export const voucherFormApi = {
   },
 
   /**
-   * Create a new form
+   * Create a new form. Pass the module so the request is scoped to the
+   * correct per-module route (sales / purchases / accounting).
    */
-  create: async (form: Partial<VoucherFormResponse>): Promise<VoucherFormResponse> => {
-    const response = await client.post('/tenant/accounting/voucher-forms', form);
+  create: async (form: Partial<VoucherFormResponse>, module: VoucherFormModule = 'ACCOUNTING'): Promise<VoucherFormResponse> => {
+    const response = await client.post(`${writePrefix(module)}/voucher-forms`, form);
     return response.data || response;
   },
 
   /**
-   * Update a form
+   * Update a form. Pass the module so the request is scoped to the correct
+   * per-module route. The repository searches across modules to locate the
+   * form by id, so passing the wrong module still works but bypasses the
+   * intended permission scope.
    */
-  update: async (id: string, updates: Partial<VoucherFormResponse>): Promise<VoucherFormResponse> => {
-    const response = await client.put(`/tenant/accounting/voucher-forms/${id}`, updates);
+  update: async (id: string, updates: Partial<VoucherFormResponse>, module: VoucherFormModule = 'ACCOUNTING'): Promise<VoucherFormResponse> => {
+    const response = await client.put(`${writePrefix(module)}/voucher-forms/${id}`, updates);
     return response.data || response;
   },
 
   /**
-   * Delete a form
+   * Delete a form. Module determines which module's route handles it.
    */
-  delete: async (id: string): Promise<void> => {
-    await client.delete(`/tenant/accounting/voucher-forms/${id}`);
+  delete: async (id: string, module: VoucherFormModule = 'ACCOUNTING'): Promise<void> => {
+    await client.delete(`${writePrefix(module)}/voucher-forms/${id}`);
   },
 
   /**
-   * Clone a form
+   * Clone a form. Module determines which module's route handles it.
    */
-  clone: async (id: string, newName?: string, newCode?: string): Promise<VoucherFormResponse> => {
-    const response = await client.post(`/tenant/accounting/voucher-forms/${id}/clone`, {
+  clone: async (id: string, newName?: string, newCode?: string, module: VoucherFormModule = 'ACCOUNTING'): Promise<VoucherFormResponse> => {
+    const response = await client.post(`${writePrefix(module)}/voucher-forms/${id}/clone`, {
       newName,
-      newCode
+      newCode,
     });
     return response.data || response;
-  }
+  },
 };

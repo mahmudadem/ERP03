@@ -39,6 +39,7 @@ import {
   PackageCheck,
   Plus,
   RefreshCw,
+  X,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -380,39 +381,9 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
 
   return (
     <WizardProvider initialForms={forms}>
-      {viewMode === 'designer' ? (
-        <div className="flex flex-col h-screen bg-slate-50">
-          <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
-            <div>
-              <h1 className="text-lg font-bold text-slate-900">
-                {editingForm ? `Edit: ${editingForm.name}` : 'New Form'}
-              </h1>
-              <p className="text-xs text-slate-500">{moduleLabel} Voucher Designer</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleCancelEdit}
-              className="text-sm text-slate-600 hover:text-slate-900"
-            >
-              ← Back to list
-            </button>
-          </header>
-          <div className="flex-1 overflow-hidden">
-            <DocumentDesigner
-              initialConfig={editingForm}
-              availableTemplates={forms}
-              onSave={handleSaveAndExit}
-              onCancel={handleCancelEdit}
-              systemFields={SYSTEM_FIELDS_GENERIC as any}
-              availableFields={[]}
-              availableTableColumns={[]}
-              defaultRules={MODULE_DEFAULTS[module].rules as any}
-              defaultActions={MODULE_DEFAULTS[module].actions as any}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="min-h-screen bg-gray-50 py-8">
+      {/* List view stays mounted; the editor opens as a modal overlay
+          rather than replacing the page, so users keep their context. */}
+      <div className="min-h-screen bg-gray-50 py-8">
           <div className="mx-auto max-w-5xl px-4">
             <div className="mb-6 flex items-start justify-between">
               <div>
@@ -504,6 +475,56 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                 </div>
               </section>
             )}
+          </div>
+        </div>
+
+      {/* Editor modal overlay — opens on Edit / Clone / Add Custom. Stays
+          on top of the list (which keeps its scroll position underneath)
+          so closing the editor lands the user right where they left off. */}
+      {viewMode === 'designer' && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          onClick={(event) => {
+            // Click on the backdrop (not the dialog) cancels the edit.
+            if (event.target === event.currentTarget) handleCancelEdit();
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {editingForm && (editingForm as any).id
+                    ? `Edit: ${editingForm.name}`
+                    : editingForm
+                      ? `New Form (from ${editingForm.name})`
+                      : 'New Form'}
+                </h2>
+                <p className="text-xs text-slate-500">{moduleLabel} Voucher Designer</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+            <div className="flex-1 overflow-auto">
+              <DocumentDesigner
+                initialConfig={editingForm}
+                availableTemplates={forms}
+                onSave={handleSaveAndExit}
+                onCancel={handleCancelEdit}
+                systemFields={SYSTEM_FIELDS_GENERIC as any}
+                availableFields={[]}
+                availableTableColumns={[]}
+                defaultRules={MODULE_DEFAULTS[module].rules as any}
+                defaultActions={MODULE_DEFAULTS[module].actions as any}
+              />
+            </div>
           </div>
         </div>
       )}

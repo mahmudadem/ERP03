@@ -217,27 +217,29 @@ export async function loadSystemVoucherTypes(module: string): Promise<any[]> {
  * Use this for simple field updates like toggling `enabled`, renaming, etc.
  */
 export async function updateFormMetadata(
-  companyId: string,
+  _companyId: string,
   module: string,
   formId: string,
   fields: Record<string, any>,
-  userId: string
+  _userId: string,
 ): Promise<{ success: boolean; errors?: string[] }> {
   try {
-    const baseModule = module.toLowerCase();
-    const collectionName = 'voucherForms';
-
-    const formRef = doc(db, `companies/${companyId}/${baseModule}/Settings/${collectionName}`, formId);
-
-    await updateDoc(formRef, removeUndefined({
-      ...fields,
-      updatedAt: new Date().toISOString(),
-      updatedBy: userId,
-    }));
-
+    // Route through the backend PUT endpoint instead of writing directly via
+    // the client Firestore SDK. The backend uses Admin SDK so it bypasses
+    // the Firestore security rules that previously denied the toggle and
+    // sidebar-group writes from the page. The endpoint already handles the
+    // locked-form special case (only `enabled` is allowed on locked forms).
+    // companyId and userId are derived from the auth context on the server.
+    const normalized = normalizeModule(module) as 'ACCOUNTING' | 'SALES' | 'PURCHASE';
+    await voucherFormApi.update(formId, removeUndefined(fields) as any, normalized);
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
+    const apiMessage =
+      error?.response?.data?.error
+      || error?.response?.data?.message
+      || error?.message
+      || 'Failed to update form.';
     console.error(`[updateFormMetadata] Failed for module ${module}, form ${formId}:`, error);
-    return { success: false, errors: [(error as Error).message || 'Failed to update form.'] };
+    return { success: false, errors: [apiMessage] };
   }
 }

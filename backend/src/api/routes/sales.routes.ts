@@ -7,6 +7,7 @@ import { RecurringInvoiceController } from '../controllers/sales/RecurringInvoic
 import { RecordAuditController } from '../controllers/RecordAuditController';
 import { SalesInvoiceAttachmentController } from '../controllers/sales/SalesInvoiceAttachmentController';
 import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeInstallController';
+import { VoucherFormController } from '../controllers/accounting/VoucherFormController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -36,6 +37,14 @@ router.post(
   (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },
   VoucherTypeInstallController.install,
 );
+
+// Voucher form management for the per-module Voucher Designer. Uses the same
+// controller as Accounting; the repository searches across modules to find
+// the form by id, so the URL prefix is just for permission scoping per module.
+router.put('/voucher-forms/:id', VoucherFormController.update);
+router.delete('/voucher-forms/:id', VoucherFormController.delete);
+router.post('/voucher-forms', VoucherFormController.create);
+router.post('/voucher-forms/:id/clone', VoucherFormController.clone);
 
 router.post('/orders', SalesController.createSO);
 router.get('/orders', SalesController.listSOs);
