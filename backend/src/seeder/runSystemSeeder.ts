@@ -8,6 +8,7 @@ import { diContainer } from '../infrastructure/di/bindRepositories';
 import { seedSystemVoucherTypes } from './seedSystemVoucherTypes';
 import { seedSystemMetadata } from './seedSystemMetadata';
 import { seedOnboardingData } from './seedOnboardingData';
+import { seedFieldLibrary } from './seedFieldLibrary';
 
 async function runSystemSeeder() {
     console.log('Running System Seeder...');
@@ -26,7 +27,15 @@ async function runSystemSeeder() {
         console.log('--- Step 3: Seeding Onboarding Data (Plans, Bundles, Permissions) ---');
         await seedOnboardingData();
         console.log('✅ Onboarding Data Step Finished.\n');
-        
+
+        // Step 4: Field Library (Layer 1 of task 135 — Phase A)
+        console.log('--- Step 4: Seeding Field Library ---');
+        const fieldLibStats = await seedFieldLibrary(diContainer.fieldLibraryRepository);
+        console.log(
+            `✅ Field Library Step Finished. ${fieldLibStats.written} written, `
+            + `${fieldLibStats.unchanged} unchanged (total ${fieldLibStats.total}).\n`
+        );
+
         console.log('🚀 ALL SYSTEM SEEDING COMPLETE.');
     } catch (error: any) {
         console.error('\n❌ CRITICAL SEEDER ERROR:');

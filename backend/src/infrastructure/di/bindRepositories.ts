@@ -80,6 +80,7 @@ import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../f
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
 import { FirestoreVoucherFormRepository } from '../firestore/repositories/designer/FirestoreVoucherFormRepository';
+import { FirestoreFieldLibraryRepository } from '../firestore/repositories/designer/FirestoreFieldLibraryRepository';
 import { FirestorePermissionRepository as FirestoreRbacPermissionRepository } from '../firestore/repositories/rbac/FirestorePermissionRepository';
 import { FirestoreSystemRoleTemplateRepository } from '../firestore/repositories/rbac/FirestoreSystemRoleTemplateRepository';
 import { FirestoreCompanyRoleRepository } from '../firestore/repositories/rbac/FirestoreCompanyRoleRepository';
@@ -737,6 +738,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaVoucherFormRepository(getPrismaClient())
       : new FirestoreVoucherFormRepository(getDb());
+  },
+  // Phase A of task 135 — Firestore-only for now. Prisma binding will
+  // follow when the Phase B super-admin authoring UI lands.
+  get fieldLibraryRepository(): DesRepo.IFieldLibraryRepository {
+    return new FirestoreFieldLibraryRepository(getDb());
   },
 
   // RBAC

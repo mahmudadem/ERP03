@@ -2,6 +2,38 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Field Library Phase A (seed + read API)
+
+**Task:** Phase A of task 135 — land Layer 1 of the three-layer field cascade. Seed the Field Library into Firestore from today's hardcoded constants, expose a silent read API, no UI consumer yet.
+**Agent:** Claude (Sonnet)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md)
+**Planning doc:** [planning/tasks/135-field-component-library.md](./tasks/135-field-component-library.md)
+
+**What was done:**
+- New domain entity `FieldLibraryEntry` with `FieldClass` (`system_core`/`system_optional`/`computed`/`custom_metadata`), `SelectorBinding`, `ResolvedFieldLibrary` resolver shape.
+- New repository interface `IFieldLibraryRepository` (`listSystemEntries`, `listCompanyEntries`, `resolveForCompany`, `upsertSystemEntry`).
+- `FirestoreFieldLibraryRepository` implements content-hash idempotency: SHA-1 of the meaningful fields; identical content -> no version bump, no write. Honors decision 6.3 (monotonic version) and 6.2 (system wins on id collision in the resolver merge).
+- `seedFieldLibrary.ts` duplicates the frontend constants from VoucherDesignerPage.tsx and de-dupes per the flat-namespace rule (6.1) — `currency` in ACCOUNTING + SALES collapse into one entry; `supportedTypes`/`excludedTypes` arrays are unioned so historical scoping is preserved. Inferred `fieldClass` from the legacy `category`/`mandatory`/`autoManaged` tags. SELECTOR_BINDINGS map kicks in for the seven selector kinds.
+- Hooked into `runSystemSeeder.ts` as Step 4 with `{written, unchanged, total}` console output.
+- New `FieldLibraryController` exposes `GET /tenant/designer/field-library` (merged catalog for the auth'd company) and `GET /tenant/designer/field-library/system` (system-tier alone). Mounted under `designer.vouchertypes.view` permission.
+- Storage path is `system_metadata/field_library/items/{fieldId}` mirroring the existing `voucher_types/items` shape so the future super-admin UI's directory stays consistent.
+- DI binding is Firestore-only this phase; Prisma binding follows in Phase B when the super-admin UI needs scaled reads.
+
+**What was intentionally NOT done:**
+- No frontend changes. Forms Management wizard still reads from hardcoded constants. The new endpoint is silent.
+- No super-admin UI. Phase B.
+- No company custom-field write path. Phase D.
+- No `fieldVersionsSeen[]` on forms or drift audit page. Phase B/C.
+
+**Verification:**
+- `npx tsc --noEmit` (backend) -> exit 0.
+- Frontend untouched (not re-run).
+
+**Time spent:** ~2.5h.
+
+**Result:** Layer 1 of the field component library is in place and inspectable. Phase B (super-admin Field Library editor) is unblocked; Phase C (wizard cascade) follows. Forms Management UX continues unchanged.
+
 ## 2026-05-30 (Sat) — Forms Management page polish
 
 **Task:** Polish the per-module Voucher Designer page into a production-grade Forms Management page across Accounting, Sales, and Purchases.
