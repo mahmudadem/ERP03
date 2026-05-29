@@ -2,6 +2,7 @@ import { Router } from 'express';
 import superAdminRoutes from '../routes/super-admin.routes';
 import superAdminTemplatesRoutes from '../routes/super-admin.templates.routes';
 import superAdminVoucherTypesRoutes from '../routes/super-admin.voucher-types.routes';
+import superAdminFieldLibraryRoutes from '../routes/super-admin.field-library.routes';
 import systemPermissionsRoutes from '../routes/system.permissions.routes';
 import systemRolesRoutes from '../routes/system.roles.routes';
 import systemModuleSettingsRoutes from '../routes/system.moduleSettings.routes';
@@ -14,6 +15,7 @@ const router = Router();
 router.use('/super-admin', superAdminRoutes);
 router.use('/super-admin/templates', superAdminTemplatesRoutes);
 router.use('/super-admin/voucher-types', superAdminVoucherTypesRoutes);
+router.use('/super-admin/field-library', superAdminFieldLibraryRoutes);
 router.use('/platform', aiToolCatalogRoutes);
 router.use('/platform', aiProposalPolicyRoutes);
 // Each system sub-router does `router.use(assertSuperAdmin)` internally,

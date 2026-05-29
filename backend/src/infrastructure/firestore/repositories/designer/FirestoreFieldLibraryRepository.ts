@@ -133,6 +133,39 @@ export class FirestoreFieldLibraryRepository implements IFieldLibraryRepository 
     return { entries, lineEligible, headerEligible };
   }
 
+  async getSystemEntry(id: string): Promise<FieldLibraryEntry | null> {
+    try {
+      const snap = await this.systemCollection().doc(id).get();
+      if (!snap.exists) return null;
+      return this.fromDoc({ ...snap.data(), id: snap.id }, 'system');
+    } catch (err) {
+      throw new InfrastructureError(`Error reading field library entry ${id}`, err);
+    }
+  }
+
+  async setSystemEntryDeprecated(
+    id: string,
+    deprecated: boolean,
+    updatedBy: string,
+  ): Promise<FieldLibraryEntry> {
+    const existing = await this.getSystemEntry(id);
+    if (!existing) {
+      throw new InfrastructureError(`Cannot deprecate missing field ${id}`, null);
+    }
+    // Re-route through upsert so the version-bump and contentHash logic
+    // stays in one place. The hash includes `deprecated`, so flipping
+    // it always produces a different hash and bumps version by 1.
+    return this.upsertSystemEntry({ ...existing, deprecated }, updatedBy);
+  }
+
+  async hardDeleteSystemEntry(id: string): Promise<void> {
+    try {
+      await this.systemCollection().doc(id).delete();
+    } catch (err) {
+      throw new InfrastructureError(`Error deleting field library entry ${id}`, err);
+    }
+  }
+
   async upsertSystemEntry(entry: FieldLibraryEntry, updatedBy: string): Promise<FieldLibraryEntry> {
     if (!entry.id) {
       throw new InfrastructureError('Field library entry must have an id', null);

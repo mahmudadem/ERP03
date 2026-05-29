@@ -108,6 +108,7 @@ const SuperAdminEditRolePage = lazy(() => import('../modules/super-admin/permiss
 const SuperAdminTemplatesPage = lazy(() => import('../modules/super-admin/templates/TemplatesPage'));
 const SuperAdminVoucherTemplatesPage = lazy(() => import('../pages/super-admin/pages/SuperAdminVoucherTemplatesPage').then(module => ({ default: module.SuperAdminVoucherTemplatesPage })));
 const VoucherTemplateEditorPage = lazy(() => import('../pages/super-admin/pages/VoucherTemplateEditorPage').then(module => ({ default: module.VoucherTemplateEditorPage })));
+const SuperAdminFieldLibraryPage = lazy(() => import('../pages/super-admin/pages/SuperAdminFieldLibraryPage').then(module => ({ default: module.SuperAdminFieldLibraryPage })));
 
 // Company Admin
 const CompanyAdminOverviewPage = lazy(() => import('../pages/company-admin/pages/OverviewPage'));
@@ -287,6 +288,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/templates', label: 'Templates', component: SuperAdminTemplatesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/voucher-templates', label: 'Voucher Templates', component: SuperAdminVoucherTemplatesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/voucher-templates/:id', label: 'Edit Voucher Template', component: VoucherTemplateEditorPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/field-library', label: 'Field Library', component: SuperAdminFieldLibraryPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/appearance', label: 'Appearance Lab', component: SuperAdminAppearancePage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/system-forms', label: 'System Forms', component: SystemFormDesignerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
 

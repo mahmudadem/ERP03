@@ -54,4 +54,29 @@ export interface IFieldLibraryRepository {
    * to bump.
    */
   upsertSystemEntry(entry: FieldLibraryEntry, updatedBy: string): Promise<FieldLibraryEntry>;
+
+  /**
+   * Read a single system-tier entry by id. Returns `null` if absent.
+   * Phase B uses this to power the editor's "load by id" path.
+   */
+  getSystemEntry(id: string): Promise<FieldLibraryEntry | null>;
+
+  /**
+   * Toggle the soft-delete (`deprecated`) flag on a system entry.
+   * Decision 6.3 forbids destructive deletes; the editor calls this
+   * instead. Bumps the version like any other content change.
+   */
+  setSystemEntryDeprecated(
+    id: string,
+    deprecated: boolean,
+    updatedBy: string,
+  ): Promise<FieldLibraryEntry>;
+
+  /**
+   * Hard delete — ONLY allowed if no voucher type, form, or other
+   * persisted artifact references the entry. The use case enforces
+   * that check; the repository just performs the write. Phase B will
+   * gate this UI-side behind an explicit confirmation flow.
+   */
+  hardDeleteSystemEntry(id: string): Promise<void>;
 }

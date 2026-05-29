@@ -2,6 +2,34 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Field Library Phase B (super-admin editor)
+
+**Task:** Phase B of task 135 — super-admin authoring surface for the Layer 1 catalog seeded in Phase A. Builds the editor page, the six CRUD endpoints, the policy use cases (id uniqueness, id-immutability, reference-safety gate).
+**Agent:** Claude (Sonnet)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md)
+
+**What was done:**
+- Extended `IFieldLibraryRepository` with `getSystemEntry`, `setSystemEntryDeprecated`, `hardDeleteSystemEntry`. The deprecate path re-routes through `upsertSystemEntry` so the content-hash + version-bump logic stays in one place — flipping `deprecated` always produces a different hash and bumps version by 1 as decision 6.3 promises.
+- Three application-layer use cases in `FieldLibraryUseCases.ts`: id-uniqueness probe on create, id-immutable patching on update, reference-safety probe against system voucher templates on hard-delete (returns `{ ok: false, usedBy[] }` instead of raising, so the controller can surface a structured 409).
+- `SuperAdminFieldLibraryController` translates use-case errors into 400 (validation/collision), 404 (missing), 409 (referenced) with structured payloads.
+- New route file mounted at `/super-admin/field-library` under `authMiddleware + assertSuperAdmin`. Six routes: GET list, GET one, POST create, PUT update, PATCH deprecated, DELETE.
+- Typed FE API client `superAdminFieldLibraryApi` with mirrors of `FieldClass`, `FieldSectionHint`, `SelectorBinding`, `FieldLibraryEntry`. Uses the same unwrap pattern as the other super-admin clients.
+- Super-admin page at `/super-admin/field-library`. Reuses `SuperAdminPage`/`SuperAdminTable`/`SuperAdminStatCard`/`SuperAdminModal` and the `useSuperAdminTable` hook so the surface stays visually consistent with `SuperAdminVoucherTemplatesPage`. Features: stat row (Total/Selectors/Custom metadata/Deprecated), sortable + searchable table, show-deprecated toggle, inline edit modal with id-collision hint while typing, selector-binding sub-form that appears when the type is one of the seven selector kinds, soft-deprecate one-click toggle, hard-delete with confirm-dialog + "blocked" modal that surfaces the `usedBy[]` list when a system voucher template references the field.
+- Registered the lazy-loaded page in `routes.config.ts` under `SUPER_ADMIN` section, `requiredGlobalRole: 'SUPER_ADMIN'`.
+
+**Intentional limits:**
+- Reference-safety probe scans system voucher templates only. Company voucher types and forms are deferred to Phase C — today's forms inline field definitions which makes a robust scan fragile. Phase C migrates form storage to `{ fieldId }` references and the gate extends.
+- Wizard consumption is NOT wired this phase. Forms Management still reads from hardcoded constants; super-admin edits are silent until Phase C.
+
+**Verification:**
+- `npx tsc --noEmit` (backend) -> exit 0
+- `npx tsc --noEmit` (frontend) -> exit 0
+
+**Time spent:** ~2.5h
+
+**Result:** Super-admin can now see and author the field catalog from a UI without touching code. The system voucher template reference gate prevents foot-guns. Phase C (wizard consumption + form differential model + drift audit) unblocks task #5.
+
 ## 2026-05-30 (Sat) — Field Library Phase A (seed + read API)
 
 **Task:** Phase A of task 135 — land Layer 1 of the three-layer field cascade. Seed the Field Library into Firestore from today's hardcoded constants, expose a silent read API, no UI consumer yet.
