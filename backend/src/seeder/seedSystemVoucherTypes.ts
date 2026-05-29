@@ -353,6 +353,159 @@ name: "FX Revaluation",
     ]
   },
 
+  {
+    name: "Sales Invoice (Direct)",
+    code: "sales_invoice_direct",
+    voucherType: "sales_invoice",
+    persona: "direct",
+    module: "SALES",
+    sidebarGroup: "Documents",
+    prefix: "SI",
+    workflow: { mode: "SIMPLE" },
+    headerFields: [
+      { id: 'invoiceDate', label: 'Invoice Date', type: 'DATE', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.DATE },
+      { id: 'customerId', label: 'Customer', type: 'party-selector', relationTarget: 'customers', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: false, postingRole: null },
+      { id: 'warehouseId', label: 'Default Warehouse', type: 'warehouse-selector', relationTarget: 'warehouses', category: 'shared', mandatory: false, autoManaged: false, isPosting: false, postingRole: null },
+      { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.CURRENCY },
+      { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.EXCHANGE_RATE },
+      { id: 'totalAmount', label: 'Total Amount', type: 'NUMBER', required: false, readOnly: true, calculated: true, category: 'shared', mandatory: false, autoManaged: true, isPosting: true, postingRole: PostingRole.AMOUNT },
+      { id: 'notes', label: 'Notes', type: 'TEXT', category: 'shared', mandatory: false, autoManaged: false, isPosting: false, postingRole: null },
+    ],
+    tableColumns: [
+      { fieldId: 'itemId', label: 'Item', type: 'item-selector', width: '220px', mandatory: true },
+      { fieldId: 'warehouseId', label: 'Warehouse', type: 'warehouse-selector', width: '180px' },
+      { fieldId: 'invoicedQty', label: 'Quantity', type: 'NUMBER', width: '100px', mandatory: true },
+      { fieldId: 'uom', label: 'UOM', type: 'TEXT', width: '90px' },
+      { fieldId: 'unitPriceDoc', label: 'Unit Price', type: 'NUMBER', width: '120px' },
+      { fieldId: 'taxCodeId', label: 'Tax Code', type: 'SELECT', width: '130px' },
+      { fieldId: 'lineTotal', label: 'Line Total', type: 'NUMBER', width: '120px', readOnly: true },
+      { fieldId: 'description', label: 'Description', type: 'TEXT', width: '220px' },
+    ],
+    layout: {
+      lineFields: fieldsFromColumns([
+        { fieldId: 'itemId', label: 'Item', type: 'item-selector', mandatory: true },
+        { fieldId: 'warehouseId', label: 'Warehouse', type: 'warehouse-selector' },
+        { fieldId: 'invoicedQty', label: 'Quantity', type: 'NUMBER', mandatory: true },
+        { fieldId: 'uom', label: 'UOM', type: 'TEXT' },
+        { fieldId: 'unitPriceDoc', label: 'Unit Price', type: 'NUMBER' },
+        { fieldId: 'taxCodeId', label: 'Tax Code', type: 'SELECT' },
+        { fieldId: 'lineTotal', label: 'Line Total', type: 'NUMBER', readOnly: true },
+        { fieldId: 'description', label: 'Description', type: 'TEXT' },
+      ]),
+      sections: [
+        { id: 'header', title: 'Invoice Details', fieldIds: ['invoiceDate', 'customerId', 'warehouseId', 'currency', 'exchangeRate', 'totalAmount', 'notes'] },
+        { id: 'lines', title: 'Invoice Lines', fieldIds: ['lineItems'] },
+      ],
+    },
+    rules: [{ id: 'require_approval', label: 'Require Approval Workflow', enabled: true }],
+    actions: [
+      { type: 'print', label: 'Print Document', enabled: true },
+      { type: 'download_pdf', label: 'Download PDF', enabled: true }
+    ]
+  },
+  {
+    name: "Sales Invoice (Linked)",
+    code: "sales_invoice_linked",
+    voucherType: "sales_invoice",
+    persona: "linked",
+    module: "SALES",
+    sidebarGroup: "Documents",
+    prefix: "SI",
+    workflow: { mode: "OPERATIONAL" },
+    headerFields: [
+      { id: 'invoiceDate', label: 'Invoice Date', type: 'DATE', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.DATE },
+      { id: 'customerId', label: 'Customer', type: 'party-selector', relationTarget: 'customers', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: false, postingRole: null },
+      { id: 'salesOrderId', label: 'Sales Order', type: 'SELECT', relationTarget: 'sales_orders', category: 'core', mandatory: false, autoManaged: false, isPosting: false, postingRole: null },
+      { id: 'deliveryNoteId', label: 'Delivery Note', type: 'SELECT', relationTarget: 'delivery_notes', category: 'shared', mandatory: false, autoManaged: false, isPosting: false, postingRole: null },
+      { id: 'warehouseId', label: 'Default Warehouse', type: 'warehouse-selector', relationTarget: 'warehouses', category: 'shared', mandatory: false, autoManaged: false, isPosting: false, postingRole: null },
+      { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.CURRENCY },
+      { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.EXCHANGE_RATE },
+      { id: 'totalAmount', label: 'Total Amount', type: 'NUMBER', required: false, readOnly: true, calculated: true, category: 'shared', mandatory: false, autoManaged: true, isPosting: true, postingRole: PostingRole.AMOUNT },
+      { id: 'notes', label: 'Notes', type: 'TEXT', category: 'shared', mandatory: false, autoManaged: false, isPosting: false, postingRole: null },
+    ],
+    tableColumns: [
+      { fieldId: 'itemId', label: 'Item', type: 'item-selector', width: '220px', mandatory: true },
+      { fieldId: 'soLineId', label: 'SO Line', type: 'TEXT', width: '130px' },
+      { fieldId: 'dnLineId', label: 'DN Line', type: 'TEXT', width: '130px' },
+      { fieldId: 'warehouseId', label: 'Warehouse', type: 'warehouse-selector', width: '180px' },
+      { fieldId: 'invoicedQty', label: 'Quantity', type: 'NUMBER', width: '100px', mandatory: true },
+      { fieldId: 'uom', label: 'UOM', type: 'TEXT', width: '90px' },
+      { fieldId: 'unitPriceDoc', label: 'Unit Price', type: 'NUMBER', width: '120px' },
+      { fieldId: 'taxCodeId', label: 'Tax Code', type: 'SELECT', width: '130px' },
+      { fieldId: 'lineTotal', label: 'Line Total', type: 'NUMBER', width: '120px', readOnly: true },
+      { fieldId: 'description', label: 'Description', type: 'TEXT', width: '220px' },
+    ],
+    layout: {
+      lineFields: fieldsFromColumns([
+        { fieldId: 'itemId', label: 'Item', type: 'item-selector', mandatory: true },
+        { fieldId: 'soLineId', label: 'SO Line', type: 'TEXT' },
+        { fieldId: 'dnLineId', label: 'DN Line', type: 'TEXT' },
+        { fieldId: 'warehouseId', label: 'Warehouse', type: 'warehouse-selector' },
+        { fieldId: 'invoicedQty', label: 'Quantity', type: 'NUMBER', mandatory: true },
+        { fieldId: 'uom', label: 'UOM', type: 'TEXT' },
+        { fieldId: 'unitPriceDoc', label: 'Unit Price', type: 'NUMBER' },
+        { fieldId: 'taxCodeId', label: 'Tax Code', type: 'SELECT' },
+        { fieldId: 'lineTotal', label: 'Line Total', type: 'NUMBER', readOnly: true },
+        { fieldId: 'description', label: 'Description', type: 'TEXT' },
+      ]),
+      sections: [
+        { id: 'header', title: 'Invoice Details', fieldIds: ['invoiceDate', 'customerId', 'salesOrderId', 'deliveryNoteId', 'warehouseId', 'currency', 'exchangeRate', 'totalAmount', 'notes'] },
+        { id: 'lines', title: 'Invoice Lines', fieldIds: ['lineItems'] },
+      ],
+    },
+    rules: [{ id: 'require_approval', label: 'Require Approval Workflow', enabled: true }],
+    actions: [
+      { type: 'print', label: 'Print Document', enabled: true },
+      { type: 'download_pdf', label: 'Download PDF', enabled: true }
+    ]
+  },
+  {
+    name: "Sales Invoice (Service)",
+    code: "sales_invoice_service",
+    voucherType: "sales_invoice",
+    persona: "service",
+    module: "SALES",
+    sidebarGroup: "Documents",
+    prefix: "SI",
+    headerFields: [
+      { id: 'invoiceDate', label: 'Invoice Date', type: 'DATE', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.DATE },
+      { id: 'customerId', label: 'Customer', type: 'party-selector', relationTarget: 'customers', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: false, postingRole: null },
+      { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.CURRENCY },
+      { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, category: 'core', mandatory: true, autoManaged: false, isPosting: true, postingRole: PostingRole.EXCHANGE_RATE },
+      { id: 'totalAmount', label: 'Total Amount', type: 'NUMBER', required: false, readOnly: true, calculated: true, category: 'shared', mandatory: false, autoManaged: true, isPosting: true, postingRole: PostingRole.AMOUNT },
+      { id: 'notes', label: 'Notes', type: 'TEXT', category: 'shared', mandatory: false, autoManaged: false, isPosting: false, postingRole: null },
+    ],
+    tableColumns: [
+      { fieldId: 'itemId', label: 'Service / Item', type: 'item-selector', width: '220px', mandatory: true },
+      { fieldId: 'invoicedQty', label: 'Quantity', type: 'NUMBER', width: '100px', mandatory: true },
+      { fieldId: 'uom', label: 'UOM', type: 'TEXT', width: '90px' },
+      { fieldId: 'unitPriceDoc', label: 'Unit Price', type: 'NUMBER', width: '120px' },
+      { fieldId: 'taxCodeId', label: 'Tax Code', type: 'SELECT', width: '130px' },
+      { fieldId: 'lineTotal', label: 'Line Total', type: 'NUMBER', width: '120px', readOnly: true },
+      { fieldId: 'description', label: 'Description', type: 'TEXT', width: '220px' },
+    ],
+    layout: {
+      lineFields: fieldsFromColumns([
+        { fieldId: 'itemId', label: 'Service / Item', type: 'item-selector', mandatory: true },
+        { fieldId: 'invoicedQty', label: 'Quantity', type: 'NUMBER', mandatory: true },
+        { fieldId: 'uom', label: 'UOM', type: 'TEXT' },
+        { fieldId: 'unitPriceDoc', label: 'Unit Price', type: 'NUMBER' },
+        { fieldId: 'taxCodeId', label: 'Tax Code', type: 'SELECT' },
+        { fieldId: 'lineTotal', label: 'Line Total', type: 'NUMBER', readOnly: true },
+        { fieldId: 'description', label: 'Description', type: 'TEXT' },
+      ]),
+      sections: [
+        { id: 'header', title: 'Invoice Details', fieldIds: ['invoiceDate', 'customerId', 'currency', 'exchangeRate', 'totalAmount', 'notes'] },
+        { id: 'lines', title: 'Invoice Lines', fieldIds: ['lineItems'] },
+      ],
+    },
+    rules: [{ id: 'require_approval', label: 'Require Approval Workflow', enabled: true }],
+    actions: [
+      { type: 'print', label: 'Print Document', enabled: true },
+      { type: 'download_pdf', label: 'Download PDF', enabled: true }
+    ]
+  },
+
   // --- PURCHASE VOUCHERS ---
   {
     name: "Purchase Order",
