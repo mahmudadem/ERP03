@@ -7,14 +7,45 @@ import { useTranslation } from 'react-i18next';
 interface UIModeWidgetProps {
   showBorder?: boolean;
   showBackground?: boolean;
+  compact?: boolean;
 }
 
 export const UIModeWidget: React.FC<UIModeWidgetProps> = ({
   showBorder = true,
-  showBackground = true
+  showBackground = true,
+  compact = false
 }) => {
   const { t } = useTranslation('common');
   const { uiMode, setUiMode } = useUserPreferences();
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-0.5 bg-slate-100/50 dark:bg-slate-900/50 p-0.5 rounded border border-slate-200/40 dark:border-slate-800/40 select-none text-[9px] font-black leading-none shrink-0">
+        <button
+          onClick={() => setUiMode('windows')}
+          className={clsx(
+            "px-1 py-0.5 rounded-sm transition-all",
+            uiMode === 'windows'
+              ? "bg-indigo-600 text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+          )}
+        >
+          {t('widgets.uiMode.windowsCompact', 'Win')}
+        </button>
+        <button
+          onClick={() => setUiMode('classic')}
+          className={clsx(
+            "px-1 py-0.5 rounded-sm transition-all",
+            uiMode === 'classic'
+              ? "bg-indigo-600 text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+          )}
+        >
+          {t('widgets.uiMode.webCompact', 'Web')}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={clsx(

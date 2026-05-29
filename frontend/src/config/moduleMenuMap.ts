@@ -185,7 +185,8 @@ export const moduleMenuMap: Record<
     label: 'Tools',
     icon: 'Wrench',
     items: [
-      { label: 'Forms Designer', path: '/tools/forms-designer', icon: 'Layout' }
+      { label: 'Forms Designer', path: '/tools/forms-designer', icon: 'Layout' },
+      { label: 'UI Lab 🎨', path: '/dev/ui-lab', icon: 'Sparkles' }
     ]
   },
   'ai-assistant': {
