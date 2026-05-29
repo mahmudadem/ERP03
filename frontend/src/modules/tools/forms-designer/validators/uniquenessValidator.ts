@@ -35,8 +35,13 @@ export interface ExistingFormForUniqueness {
   prefix?: string;
 }
 
-const equalsIgnoreCase = (a: string | undefined, b: string): boolean =>
-  !!a && a.toLowerCase() === b.toLowerCase();
+// Both sides may be empty/undefined (e.g. clones leave ID blank until
+// auto-generation at save time). Treat an empty proposed value as
+// "nothing to check" and return false so we don't fabricate a conflict.
+const equalsIgnoreCase = (a: string | undefined | null, b: string | undefined | null): boolean => {
+  if (!a || !b) return false;
+  return a.toLowerCase() === b.toLowerCase();
+};
 
 /**
  * Validate uniqueness of name, ID, and prefix within company.
