@@ -49,6 +49,7 @@ export const useSidebarConfig = () => {
     'Approval Center': 'sidebar.approvalCenter',
     Vouchers: 'sidebar.vouchers',
     Documents: 'sidebar.documents',
+    Tools: 'sidebar.tools',
     'All Vouchers': 'sidebar.allVouchers',
     'Forms Designer': 'sidebar.formsDesigner',
     'Window Designer': 'sidebar.windowDesigner',
@@ -307,43 +308,51 @@ export const useSidebarConfig = () => {
       });
       
       // === DYNAMIC FORM INJECTION ===
-      // For modules with dynamic forms (accounting, sales, purchase),
-      // inject form entries grouped by sidebarGroup
-      
+      // For modules with dynamic forms (accounting, sales, purchase), merge
+      // the form entries (grouped by sidebarGroup) into the module's existing
+      // static "Documents" group rather than appending them as separate
+      // top-level groups. This keeps the sidebar to the canonical
+      // Overview / [master data] / Documents / Reports / Tools / Settings
+      // shape across every module.
+      //
+      // Special-case: forms originally seeded with sidebarGroup="Vouchers"
+      // (accounting templates) merge into the same "Documents" group so the
+      // user sees one home for "all the documents I can create".
       const dynamicModuleId = moduleId;
-      
+
       if (MODULE_ROUTE_MAP[dynamicModuleId]) {
         const dynamicGroups = buildDynamicFormGroups(dynamicModuleId);
-        
+
         if (dynamicGroups.length > 0) {
-          if (moduleId === 'accounting') {
-            // ACCOUNTING: Remove hardcoded "Vouchers" and inject dynamic groups after COA
-            items = items.filter(item => item.label !== 'Vouchers');
-            
-            const coaIndex = items.findIndex(item => item.label === 'Chart of Accounts');
-            const insertIndex = coaIndex >= 0 ? coaIndex + 1 : 0;
-            
-            items = [
-              ...items.slice(0, insertIndex),
-              ...dynamicGroups as any[],
-              { 
-                label: translateLabel('Window Designer'), 
-                path: '/accounting/window-config-test',
-                permission: 'accounting.settings.manage',
-                icon: 'DraftingCompass'
-              },
-              ...items.slice(insertIndex)
-            ] as any;
-          } else {
-            // SALES / PURCHASE: Inject dynamic groups before Settings
-            const settingsIndex = items.findIndex(item => item.label === 'Settings');
-            const insertIndex = settingsIndex >= 0 ? settingsIndex : items.length;
-            
-            items = [
-              ...items.slice(0, insertIndex),
-              ...dynamicGroups as any[],
-              ...items.slice(insertIndex)
-            ] as any;
+          const findDocumentsIndex = () =>
+            items.findIndex((item) => item.label === 'Documents' && Array.isArray(item.children));
+
+          for (const dynGroup of dynamicGroups) {
+            // Forms whose sidebarGroup is "Vouchers" or "Documents" both
+            // belong in the unified Documents bucket. Anything else stays
+            // as a top-level group (custom sidebar groups remain possible).
+            const isDocumentsGroup =
+              dynGroup.label === 'Documents'
+              || dynGroup.label === 'Vouchers'
+              || translateLabel('Documents') === dynGroup.label
+              || translateLabel('Vouchers') === dynGroup.label;
+
+            if (isDocumentsGroup) {
+              const docIdx = findDocumentsIndex();
+              if (docIdx >= 0) {
+                const existing = items[docIdx];
+                items[docIdx] = {
+                  ...existing,
+                  children: [
+                    ...(existing.children || []),
+                    ...((dynGroup as any).children || []),
+                  ],
+                } as any;
+                continue;
+              }
+            }
+            // No matching static group — append at top level as before.
+            items.push(dynGroup as any);
           }
         }
       }
