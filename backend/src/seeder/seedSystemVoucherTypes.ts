@@ -871,6 +871,25 @@ const def = new VoucherTypeDefinition(
       console.error(`  ❌ Failed to seed template ${t.name}:`, err.message);
     }
   }
-  
+
+  // Reconciliation pass: delete any system template that is no longer in the source
+  // list. The seeder is the source of truth for system_metadata/voucher_types/items
+  // so renaming/removing a template here should remove it from the catalog too.
+  // Already-copied company templates live under companies/{id}/... and are NOT
+  // touched by this — they're independent records owned by each tenant.
+  const sourceCodeSet = new Set(templates.map(t => canonicalizeTemplateCode(t.code)));
+  const orphans = existingTemplates.filter(
+    ex => ex.companyId === SYSTEM_COMPANY_ID && !sourceCodeSet.has(canonicalizeTemplateCode(ex.code))
+  );
+
+  for (const orphan of orphans) {
+    try {
+      await repo.deleteVoucherType(SYSTEM_COMPANY_ID, orphan.id);
+      console.log(`  🗑️  Removed orphan template: ${orphan.name} (${orphan.code})`);
+    } catch (err: any) {
+      console.error(`  ❌ Failed to delete orphan template ${orphan.code}:`, err.message);
+    }
+  }
+
   console.log('System Voucher Types Seeding Complete.');
 };
