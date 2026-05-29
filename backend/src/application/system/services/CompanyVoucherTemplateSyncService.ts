@@ -129,7 +129,12 @@ const cloneVoucherFormForCompany = (
     isDefault: true,
     isSystemGenerated: true,
     isLocked: true,
-    enabled: true,
+    // Default forms install as inactive. The Voucher Type schema is available
+    // immediately (so other modules can reference it), but the user must
+    // explicitly activate the form in Forms Designer to expose it in the
+    // sidebar, or clone it to create an editable variant. This keeps the
+    // initial sidebar clean and gives the user control over what they expose.
+    enabled: false,
     headerFields,
     tableColumns,
     layout: cloneValue(template.layout) || { sections: [] },

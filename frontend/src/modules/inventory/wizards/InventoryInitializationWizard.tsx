@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Box,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { Account, useAccounts } from '../../../context/AccountsContext';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { getAccountingModeLabel } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
@@ -28,6 +30,8 @@ const accountLabel = (account: Account): string =>
   `${account.code} - ${account.name}`;
 
 export const InventoryInitializationWizard: React.FC<InventoryInitializationWizardProps> = ({ onComplete }) => {
+  const queryClient = useQueryClient();
+  const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +154,8 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
         itemCodeNextSeq: autoGenerateItemCode ? itemCodeNextSeq : undefined,
       });
 
-      emitCompanyModulesRefresh({ moduleCode: 'inventory' });
+      emitCompanyModulesRefresh({ companyId, moduleCode: 'inventory' });
+      await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
       onComplete();
     } catch (err: any) {
       console.error('Inventory initialization failed', err);

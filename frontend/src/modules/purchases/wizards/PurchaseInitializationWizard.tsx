@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Calculator,
@@ -17,6 +18,7 @@ import { InitializePurchasesPayload, purchasesApi } from '../../../api/purchases
 import { WorkflowMode } from '../../../api/salesApi';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { useAccounts } from '../../../context/AccountsContext';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,
@@ -34,6 +36,8 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Voucher Types', 'Review'];
 
 const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => {
+  const queryClient = useQueryClient();
+  const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -181,7 +185,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
         prNumberPrefix: prNumberPrefix || 'PR',
         selectedVoucherTypes,
       });
-      emitCompanyModulesRefresh({ moduleCode: 'purchase' });
+      emitCompanyModulesRefresh({ companyId, moduleCode: 'purchase' });
+      await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
       onComplete();
     } catch (err: any) {
       console.error('Purchases initialization failed', err);
@@ -478,7 +483,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
         <div className="py-8 max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Voucher Types</h2>
           <p className="text-gray-600 mb-6 text-center">
-            Pick which purchase documents to activate. You can add or remove forms later from the Forms Designer.
+            Pick which purchase document types to install. Each comes with a default form template &mdash; you'll activate or customize them next.
           </p>
 
           <div className="flex justify-between items-center mb-6">
@@ -551,12 +556,20 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
             )}
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-start gap-2">
-              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-700">
-                Only checked voucher types will be copied to your company. Unchecked ones can be added later from Settings.
-              </p>
+              <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800 space-y-1">
+                <p className="font-semibold">These install as locked, inactive default templates.</p>
+                <p>
+                  The schemas are available immediately, but no sidebar entries appear until you open
+                  <span className="font-semibold"> Tools &rarr; Forms Designer</span> and either:
+                </p>
+                <ul className="list-disc list-inside ml-1 space-y-0.5">
+                  <li><span className="font-semibold">Activate</span> a default form to use it as-is, or</li>
+                  <li><span className="font-semibold">Clone</span> it to create an editable variant.</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
