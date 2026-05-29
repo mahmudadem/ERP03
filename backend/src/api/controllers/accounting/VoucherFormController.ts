@@ -91,8 +91,28 @@ export class VoucherFormController {
       
       // Generate ID if not provided
       const formId = formData.id || `form_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      
+
+      // IMPORTANT: spread formData first so we keep all the layout / rules /
+      // actions / module / voucherType / persona / sidebarGroup / uiModeOverrides
+      // fields the client sent. Earlier this controller hand-picked a small
+      // subset which silently dropped everything else — clones came back
+      // missing their UI mode, rules, actions, and (critically) their module
+      // field, which then made `loadModuleDocumentForms` filter them out so
+      // the user saw "save succeeded" but no new row in the list.
+      // Sentinels like `__isClone` from the frontend never belong in the
+      // persisted shape; strip them along with server-managed fields.
+      const sanitized: any = { ...formData };
+      delete sanitized.id;
+      delete sanitized.companyId;
+      delete sanitized.createdAt;
+      delete sanitized.updatedAt;
+      delete sanitized.createdBy;
+      delete sanitized.isSystemGenerated;
+      delete sanitized.isLocked;
+      delete sanitized.__isClone;
+
       const form: VoucherFormDefinition = {
+        ...sanitized,
         id: formId,
         companyId,
         typeId: formData.typeId,
@@ -111,7 +131,7 @@ export class VoucherFormController {
         updatedAt: new Date(),
         createdBy: userId
       };
-      
+
       const created = await diContainer.voucherFormRepository.create(form);
       res.status(201).json({ success: true, data: created });
     } catch (err) {
@@ -134,15 +154,25 @@ export class VoucherFormController {
       }
       
       const updates: Partial<VoucherFormDefinition> = req.body;
-      
-      // Allow updating 'enabled' field even for locked forms (company preference)
-      const isOnlyEnablingDisabling = Object.keys(updates).length === 1 && 'enabled' in updates;
-      
-      // Prevent editing locked forms (except for enabled field)
-      if (existing.isLocked && !isOnlyEnablingDisabling) {
-        return res.status(403).json({ 
-          success: false, 
-          error: 'Cannot edit locked form. Clone it instead.' 
+
+      // Locked forms (system defaults the company installed) can't have
+      // their *design* changed — layout, rules, fields, etc. But some
+      // fields are organizational preferences attached to the form
+      // rather than its design, and the user must be able to flip those
+      // on ANY form (locked or custom) from the Voucher Designer list:
+      //   - enabled       : show/hide the form in the sidebar
+      //   - sidebarGroup  : which submenu group the form sits under
+      // If every key in the update is one of those, the request bypasses
+      // the locked-form check. Anything else still requires a clone.
+      const ORG_PREFERENCE_KEYS = new Set(['enabled', 'sidebarGroup']);
+      const isOnlyOrgPreference =
+        Object.keys(updates).length > 0 &&
+        Object.keys(updates).every((k) => ORG_PREFERENCE_KEYS.has(k));
+
+      if (existing.isLocked && !isOnlyOrgPreference) {
+        return res.status(403).json({
+          success: false,
+          error: 'Cannot edit locked form. Clone it instead.'
         });
       }
       

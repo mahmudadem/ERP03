@@ -328,14 +328,21 @@ export const useSidebarConfig = () => {
             items.findIndex((item) => item.label === 'Documents' && Array.isArray(item.children));
 
           for (const dynGroup of dynamicGroups) {
-            // Forms whose sidebarGroup is "Vouchers" or "Documents" both
-            // belong in the unified Documents bucket. Anything else stays
-            // as a top-level group (custom sidebar groups remain possible).
+            // Forms whose sidebarGroup matches one of the canonical static
+            // groups get merged INTO that static group (so a form tagged
+            // "Documents" appears as a child of the existing Documents
+            // submenu, not as a duplicate top-level group). Anything else
+            // — including a user-typed custom name like "Approvals" — is
+            // honored verbatim and rendered as its own top-level group.
+            //
+            // We used to silently fold "Vouchers" into Documents as a
+            // migration hack for the legacy seed value. The seed now
+            // defaults to "Documents" directly, and respecting the user's
+            // own choice matters more than uniformity, so the rewrite is
+            // gone.
             const isDocumentsGroup =
               dynGroup.label === 'Documents'
-              || dynGroup.label === 'Vouchers'
-              || translateLabel('Documents') === dynGroup.label
-              || translateLabel('Vouchers') === dynGroup.label;
+              || translateLabel('Documents') === dynGroup.label;
 
             if (isDocumentsGroup) {
               const docIdx = findDocumentsIndex();

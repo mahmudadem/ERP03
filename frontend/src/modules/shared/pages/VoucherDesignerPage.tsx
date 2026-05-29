@@ -23,24 +23,29 @@
  *   Available Types  (one row each, Install button)
  *     Sales Return                                                     [Install]
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Download,
   DownloadCloud,
   Edit3,
+  FileJson,
   FileText,
-  Info,
+  FolderTree,
+  HelpCircle,
   Layers,
   Loader2,
   Lock,
+  MoreVertical,
   PackageCheck,
   Plus,
   RefreshCw,
   X,
 } from 'lucide-react';
+import { InstructionsModal } from '../../../components/instructions/InstructionsModal';
+import type { PageInstructions } from '../../../components/instructions/types';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   DocumentDesigner,
@@ -51,6 +56,7 @@ import {
   loadSystemVoucherTypes as loadSystemVoucherTemplates,
   saveDocumentForm,
   updateFormMetadata,
+  AvailableField,
 } from '../../tools/forms-designer';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -202,6 +208,98 @@ const SYSTEM_FIELDS_GENERIC = [
   { id: 'lineItems', label: 'Line Items Table', type: 'table' as const, category: 'core' as const, mandatory: true, sectionHint: 'BODY' as const },
 ];
 
+const AVAILABLE_FIELDS_BY_MODULE: Record<string, AvailableField[]> = {
+  ACCOUNTING: [
+    { id: 'date', label: 'Voucher Date', type: 'date', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'payee', label: 'Payee / Customer', type: 'text', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'reference', label: 'Reference Doc', type: 'text', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'description', label: 'Description', type: 'text', sectionHint: 'HEADER', category: 'core' },
+    { id: 'currency', label: 'Currency', type: 'select', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'exchangeRate', label: 'Exchange Rate', type: 'number', sectionHint: 'HEADER', category: 'shared', supportedTypes: ['payment_voucher', 'receipt_voucher', 'transfer_voucher'] },
+    { id: 'paymentMethod', label: 'Payment Method', type: 'select', sectionHint: 'HEADER', category: 'shared', supportedTypes: ['payment_voucher'] },
+    { id: 'branch', label: 'Branch / Dept', type: 'select', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'currencyExchange', label: 'Exchange Rate (Smart)', type: 'number', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'account', label: 'Account (Header)', type: 'account-selector', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'costCenter', label: 'Cost Center (Header)', type: 'cost-center-selector', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'lineItems', label: 'Line Items Table', type: 'table', sectionHint: 'BODY', category: 'core', mandatory: true },
+    { id: 'notes', label: 'Internal Notes', type: 'textarea', sectionHint: 'EXTRA', category: 'shared' },
+    { id: 'attachments', label: 'Attachments', type: 'text', sectionHint: 'EXTRA', category: 'shared' },
+  ],
+  SALES: [
+    { id: 'invoiceDate', label: 'Invoice Date', type: 'date', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'deliveryDate', label: 'Delivery Date', type: 'date', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'returnDate', label: 'Return Date', type: 'date', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'customerId', label: 'Customer', type: 'party-selector', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'warehouseId', label: 'Warehouse', type: 'warehouse-selector', sectionHint: 'HEADER', category: 'core' },
+    { id: 'currency', label: 'Currency', type: 'select', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'exchangeRate', label: 'Exchange Rate', type: 'number', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'totalAmount', label: 'Total Amount', type: 'number', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'salesOrderId', label: 'Sales Order Ref', type: 'select', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'deliveryNoteId', label: 'Delivery Note Ref', type: 'select', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'salesInvoiceId', label: 'Sales Invoice Ref', type: 'select', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'reason', label: 'Reason', type: 'text', sectionHint: 'HEADER', category: 'core' },
+    { id: 'notes', label: 'Notes', type: 'textarea', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'lineItems', label: 'Line Items Table', type: 'table', sectionHint: 'BODY', category: 'core', mandatory: true },
+  ],
+  PURCHASE: [
+    { id: 'invoiceDate', label: 'Invoice Date', type: 'date', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'orderDate', label: 'Order Date', type: 'date', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'expectedDeliveryDate', label: 'Expected Delivery Date', type: 'date', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'vendorId', label: 'Vendor', type: 'vendor-account-selector', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'warehouseId', label: 'Default Warehouse', type: 'warehouse-selector', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'currency', label: 'Currency', type: 'select', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'exchangeRate', label: 'Exchange Rate', type: 'number', sectionHint: 'HEADER', category: 'core', mandatory: true },
+    { id: 'totalAmount', label: 'Total Amount', type: 'number', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'purchaseOrderId', label: 'Purchase Order Ref', type: 'select', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'goodsReceiptId', label: 'Goods Receipt Ref', type: 'select', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'notes', label: 'Notes', type: 'textarea', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'internalNotes', label: 'Internal Notes', type: 'textarea', sectionHint: 'HEADER', category: 'shared' },
+    { id: 'lineItems', label: 'Line Items Table', type: 'table', sectionHint: 'BODY', category: 'core', mandatory: true },
+  ],
+};
+
+const AVAILABLE_TABLE_COLUMNS_BY_MODULE: Record<string, any[]> = {
+  ACCOUNTING: [
+    { id: 'account', label: 'Account' },
+    { id: 'debit', label: 'Debit' },
+    { id: 'credit', label: 'Credit' },
+    { id: 'costCenterId', label: 'Cost Center' },
+    { id: 'notes', label: 'Notes' },
+    { id: 'currency', label: 'Currency' },
+    { id: 'parity', label: 'Parity' },
+    { id: 'equivalent', label: 'Equivalent' },
+    { id: 'category', label: 'Category' },
+  ],
+  SALES: [
+    { id: 'itemId', label: 'Item' },
+    { id: 'soLineId', label: 'SO Line' },
+    { id: 'dnLineId', label: 'DN Line' },
+    { id: 'siLineId', label: 'Invoice Line' },
+    { id: 'warehouseId', label: 'Warehouse' },
+    { id: 'deliveredQty', label: 'Delivered Quantity' },
+    { id: 'returnQty', label: 'Return Quantity' },
+    { id: 'invoicedQty', label: 'Invoiced Quantity' },
+    { id: 'uom', label: 'UOM' },
+    { id: 'unitPriceDoc', label: 'Unit Price' },
+    { id: 'taxCodeId', label: 'Tax Code' },
+    { id: 'lineTotal', label: 'Line Total' },
+    { id: 'description', label: 'Description' },
+  ],
+  PURCHASE: [
+    { id: 'itemId', label: 'Item' },
+    { id: 'orderedQty', label: 'Ordered Quantity' },
+    { id: 'invoicedQty', label: 'Invoiced Quantity' },
+    { id: 'poLineId', label: 'PO Line' },
+    { id: 'grnLineId', label: 'GRN Line' },
+    { id: 'warehouseId', label: 'Warehouse' },
+    { id: 'uom', label: 'UOM' },
+    { id: 'unitPriceDoc', label: 'Unit Price' },
+    { id: 'taxCodeId', label: 'Tax Code' },
+    { id: 'lineTotal', label: 'Line Total' },
+    { id: 'description', label: 'Description' },
+  ],
+};
+
 const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, moduleLabel }) => {
   const { companyId } = useCompanyAccess();
   const { user } = useAuth();
@@ -215,6 +313,80 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   const [expandedTypeKeys, setExpandedTypeKeys] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'designer'>('list');
   const [editingForm, setEditingForm] = useState<DocumentFormConfig | null>(null);
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  // Page instructions content — lives next to the page rather than in a
+  // central registry because it's tightly bound to this UI's specific
+  // behaviour (Install / Clone / Activate / Sidebar Group). Memoised so the
+  // module label flows through without re-allocating on every render.
+  const instructions = useMemo<PageInstructions>(() => ({
+    pageId: `forms-management-${module.toLowerCase()}`,
+    title: `Forms Management — ${moduleLabel}`,
+    overview:
+      `Every document the ${moduleLabel} module produces (invoices, orders, receipts, ` +
+      `journals…) is rendered from a Form. A Form belongs to a Voucher Type, which is ` +
+      `the business concept (e.g. "Sales Invoice"). This page is where you install ` +
+      `the types you actually need, choose which form variants are visible to your ` +
+      `team, and customise the layout when the defaults aren't quite right.`,
+    sections: [
+      {
+        title: 'Install a Voucher Type',
+        content:
+          `Anything in the **Available Types** section at the bottom is in the system ` +
+          `catalog but not yet in your company. Click **Install** to copy its default ` +
+          `form variants into your company catalog.\n\n` +
+          `• Newly installed forms are **locked** and **inactive** — they won't appear ` +
+          `in the sidebar yet.\n` +
+          `• Locked means the layout / fields / rules are protected from edits, so the ` +
+          `accounting engine can rely on them.`,
+        tip: 'Install a type even if you only need one of its variants — you can leave the others inactive.',
+      },
+      {
+        title: 'Activate / Deactivate a Form',
+        content:
+          `Flip the green **Active** toggle on any form row to expose it in the ` +
+          `sidebar. The change is immediate — the sidebar refreshes on save and the ` +
+          `form becomes available to anyone with the right permission.\n\n` +
+          `• You can toggle locked default forms freely — activation is a company ` +
+          `preference, not a design change.\n` +
+          `• Deactivate a form to hide it from the sidebar without deleting it.`,
+      },
+      {
+        title: 'Clone or Add a Custom Form',
+        content:
+          `Locked defaults can't be edited directly. To customise one, click the **+** ` +
+          `(Clone) icon on its row — you get an editable copy with a suggested ID and ` +
+          `Prefix you can override. The clone is unlocked and lives alongside the ` +
+          `locked original.\n\n` +
+          `Use **Add Custom Form** at the bottom of a type's expanded list to start a ` +
+          `new variant from the first installed form's defaults.`,
+        tip: 'IDs and prefixes are checked for uniqueness inside your company before save.',
+      },
+      {
+        title: 'Sidebar Group',
+        content:
+          `Open the **⋮ kebab menu** on a form row → **Sidebar Group** to choose which ` +
+          `submenu the form lives under in the sidebar. New forms default to ` +
+          `**Documents**.\n\n` +
+          `• Pick one of the preset chips (Documents, Vouchers, Reports, Operations) or ` +
+          `type any custom name — a new top-level group appears for it.\n` +
+          `• Locked default forms can be re-grouped freely; it's an organisational ` +
+          `preference, not a design change.`,
+      },
+      {
+        title: 'Export & Schema',
+        content:
+          `**Export JSON** on the kebab menu downloads the form's full config as JSON ` +
+          `— useful for moving a customised form between companies or attaching to a ` +
+          `support ticket.\n\n` +
+          `**View Schema** is reserved for an upcoming read-only schema viewer.`,
+      },
+    ],
+    footerWarnings: [
+      'Locked default forms install as inactive on purpose — review them before activating so your team doesn\'t see incomplete defaults.',
+      'Deleting a form that already has documents posted against it will be blocked at the backend; deactivate it instead.',
+    ],
+  }), [module, moduleLabel]);
 
   const reload = useCallback(async () => {
     if (!companyId) return;
@@ -262,6 +434,51 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     });
   };
 
+  /**
+   * Assign (or clear) the sidebar submenu group for a form. Routed through
+   * the backend metadata update — same authorization path the toggle uses,
+   * so the Firestore rules don't block it. After it lands, refresh the
+   * sidebar so the form moves to the new group immediately.
+   */
+  const handleUpdateSidebarGroup = async (formId: string, sidebarGroup: string | null) => {
+    if (!companyId || !user) return;
+    const previous = forms.find((f) => f.id === formId);
+    setForms((prev) => prev.map((f) => (f.id === formId ? ({ ...f, sidebarGroup } as any) : f)));
+    const result = await updateFormMetadata(
+      companyId,
+      module,
+      formId,
+      { sidebarGroup },
+      user.uid,
+    );
+    if (!result.success) {
+      // Rollback the optimistic update
+      setForms((prev) =>
+        prev.map((f) => (f.id === formId ? ({ ...f, sidebarGroup: (previous as any)?.sidebarGroup ?? null } as any) : f)),
+      );
+      errorHandler.showError(result.errors?.[0] || 'Failed to update sidebar group');
+      return;
+    }
+    errorHandler.showInfo(
+      sidebarGroup ? `Moved to "${sidebarGroup}" group.` : 'Removed from sidebar group.',
+    );
+    emitCompanyModulesRefresh({ companyId, moduleCode: module.toLowerCase() });
+    await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
+  };
+
+  /** Trigger a browser download of the form config as JSON. */
+  const handleExportJson = (form: DocumentFormConfig) => {
+    const dataStr =
+      'data:text/json;charset=utf-8,' +
+      encodeURIComponent(JSON.stringify([form], null, 2));
+    const a = document.createElement('a');
+    a.setAttribute('href', dataStr);
+    a.setAttribute('download', `voucher_form_${form.id}.json`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   const handleToggleEnabled = async (formId: string, enabled: boolean) => {
     if (!companyId || !user) return;
     setForms((prev) => prev.map((f) => (f.id === formId ? { ...f, enabled } : f)));
@@ -304,37 +521,90 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     setViewMode('designer');
   };
 
+  /**
+   * Build a suggested ID + Prefix for a new form derived from `seed`.
+   * Mirrors the legacy global Forms Designer:
+   *   - parentPrefix = letters from the seed's prefix (e.g. "JE-" -> "JE")
+   *   - id           = `${parentPrefix}_${timestamp}_${suffix}` (suggested,
+   *                    user can override in Step 2)
+   *   - prefix       = `${parentPrefix}${suffix}-`
+   * The user can override both in the wizard; uniqueness is checked against
+   * the in-memory `existingForms` list (see DocumentDesigner step 2).
+   */
+  const buildSuggestedIdentity = (
+    seed: DocumentFormConfig,
+    suffix: 'C' | 'N',
+  ): { id: string; prefix: string; originalFormType: string; parentPrefix: string } => {
+    const timestamp = Date.now();
+    const originalFormType =
+      (seed as any).formType || (seed as any).baseType || seed.code || seed.id;
+    const parentPrefix =
+      ((seed.prefix || '').replace('-', '').replace(/[^A-Z]/g, '') || 'FORM').slice(0, 6);
+    return {
+      id: `${parentPrefix}_${timestamp}_${suffix}`,
+      prefix: `${parentPrefix}${suffix}-`,
+      originalFormType,
+      parentPrefix,
+    };
+  };
+
   const handleClone = (form: DocumentFormConfig) => {
-    // Strip ids so save treats this as a new form. Mark as not locked / not
-    // system-generated so the editor permits full editing.
+    // Port of the legacy Forms Designer's clone rules. We pre-fill a
+    // suggested id + prefix so the user has sensible defaults but stays in
+    // control — DocumentDesigner step 2 leaves both fields editable when the
+    // `__isClone` sentinel is set, and uniqueness validates against the
+    // company's current forms before advancing. The sentinel is stripped
+    // before saveDocumentForm sends the payload.
+    const suggested = buildSuggestedIdentity(form, 'C');
     const cloned: DocumentFormConfig = {
       ...form,
-      id: undefined as any,
-      name: `${form.name} (Copy)`,
+      id: suggested.id,
+      name: `${form.name} - Copy`,
+      prefix: suggested.prefix,
       isSystemDefault: false,
       isLocked: false,
+      isDefault: false,
       isSystemGenerated: false,
       enabled: true,
+      formType: suggested.originalFormType,
+      voucherType: (form as any).voucherType,
+      persona: (form as any).persona,
+      baseType: suggested.originalFormType,
+      sidebarGroup: (form as any).sidebarGroup || null,
+      module: (form as any).module || null,
+      __isClone: true,
     } as any;
     openEditor(cloned);
   };
 
   const handleAddCustomForm = (node: TypeNode) => {
     // Start from the first installed (or catalog) variant so the user has
-    // sensible field defaults; they can then customise freely.
-    const seed = node.forms[0] || node.catalogVariants[0];
+    // sensible field defaults; they can then customise freely. Same
+    // suggested-id pattern as clone, with an `_N` (new) suffix so the
+    // generated keys are visually distinguishable in the list.
+    const seed = (node.forms[0] || node.catalogVariants[0]) as DocumentFormConfig | undefined;
     if (!seed) {
       openEditor(null);
       return;
     }
+    const suggested = buildSuggestedIdentity(seed, 'N');
     const newForm: DocumentFormConfig = {
       ...(seed as any),
-      id: undefined as any,
+      id: suggested.id,
       name: `${node.name} (Custom)`,
+      prefix: suggested.prefix,
       isSystemDefault: false,
       isLocked: false,
+      isDefault: false,
       isSystemGenerated: false,
       enabled: false,
+      formType: suggested.originalFormType,
+      voucherType: (seed as any).voucherType,
+      persona: (seed as any).persona,
+      baseType: suggested.originalFormType,
+      sidebarGroup: (seed as any).sidebarGroup || null,
+      module: (seed as any).module || null,
+      __isClone: true,
     } as any;
     openEditor(newForm);
   };
@@ -342,20 +612,35 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   const handleSaveAndExit = async (config: DocumentFormConfig) => {
     if (!companyId || !user) return;
     try {
-      const isEdit = !!(config as any).id;
+      // A clone / "Add Custom Form" carries `__isClone: true` even though it
+      // also has a (suggested) id. Treat those as CREATE, not UPDATE — using
+      // editingForm.id alone would route them to the PUT endpoint and 404
+      // because no form with that id exists yet. Strip the sentinel so it
+      // never reaches the backend or Firestore.
+      const isCloneFlow =
+        !!(editingForm as any)?.__isClone || !!(config as any).__isClone;
+      const isEdit = !!(editingForm as any)?.id && !isCloneFlow;
+
+      const cleanConfig = { ...config } as DocumentFormConfig & { __isClone?: boolean };
+      delete (cleanConfig as any).__isClone;
+
       const result = await saveDocumentForm(
         companyId,
         module,
-        config,
+        cleanConfig,
         { systemFields: SYSTEM_FIELDS_GENERIC as any, availableFields: [] },
         user.uid,
         isEdit,
       );
       if (result.success) {
-        errorHandler.showInfo(`${config.name} saved.`);
+        errorHandler.showInfo(`${cleanConfig.name} saved.`);
         await reload();
         setViewMode('list');
         setEditingForm(null);
+        // Refresh the sidebar — a newly created form may need to show up
+        // (or a renamed one needs its label updated).
+        emitCompanyModulesRefresh({ companyId, moduleCode: module.toLowerCase() });
+        await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
       } else {
         errorHandler.showError((result as any).errors?.[0] || 'Save failed');
       }
@@ -374,7 +659,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
         <Loader2 className="animate-spin h-8 w-8 text-primary-600" />
-        <span className="ml-3 text-slate-600">Loading {moduleLabel} voucher designer...</span>
+        <span className="ml-3 text-slate-600">Loading {moduleLabel} forms management...</span>
       </div>
     );
   }
@@ -385,15 +670,20 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
           rather than replacing the page, so users keep their context. */}
       <div className="min-h-screen bg-gray-50 py-8">
           <div className="mx-auto max-w-5xl px-4">
-            <div className="mb-6 flex items-start justify-between">
-              <div>
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-gray-900">
-                  Voucher Designer &mdash; {moduleLabel}
+                  Forms Management &mdash; {moduleLabel}
                 </h1>
-                <p className="mt-1 text-gray-600">
-                  Manage voucher types and their form variants. Each type bundles one or more
-                  default forms that you can activate, clone, or replace with custom variants.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowInstructions(true)}
+                  className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                  title="What is this page for?"
+                  aria-label="Open page instructions"
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </button>
               </div>
               <button
                 type="button"
@@ -404,21 +694,6 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                 <RefreshCw className="h-4 w-4" />
                 Refresh
               </button>
-            </div>
-
-            {/* Locked defaults reminder */}
-            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <div className="flex items-start gap-3">
-                <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
-                <div className="text-sm text-amber-800 space-y-1">
-                  <p className="font-semibold">Locked defaults install as inactive.</p>
-                  <p>
-                    Toggle <span className="font-semibold">Active</span> on a default form to expose
-                    it in the sidebar, or click <span className="font-semibold">Clone</span> to
-                    create an editable copy. Custom forms can be edited freely.
-                  </p>
-                </div>
-              </div>
             </div>
 
             {/* Installed Types */}
@@ -448,6 +723,8 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                       onCloneForm={handleClone}
                       onToggleEnabled={handleToggleEnabled}
                       onAddCustomForm={() => handleAddCustomForm(node)}
+                      onExportJson={handleExportJson}
+                      onUpdateSidebarGroup={handleUpdateSidebarGroup}
                     />
                   ))}
                 </div>
@@ -481,6 +758,15 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
       {/* Editor modal overlay — opens on Edit / Clone / Add Custom. Stays
           on top of the list (which keeps its scroll position underneath)
           so closing the editor lands the user right where they left off. */}
+      {/* Page instructions slide-over — opens from the (?) icon next to the
+          page title. Reuses the shared InstructionsModal so the look matches
+          the rest of the ERP's contextual help. */}
+      <InstructionsModal
+        isOpen={showInstructions}
+        onClose={() => setShowInstructions(false)}
+        instructions={instructions}
+      />
+
       {viewMode === 'designer' && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
@@ -501,7 +787,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                       ? `New Form (from ${editingForm.name})`
                       : 'New Form'}
                 </h2>
-                <p className="text-xs text-slate-500">{moduleLabel} Voucher Designer</p>
+                <p className="text-xs text-slate-500">{moduleLabel} Forms Management</p>
               </div>
               <button
                 type="button"
@@ -519,8 +805,8 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                 onSave={handleSaveAndExit}
                 onCancel={handleCancelEdit}
                 systemFields={SYSTEM_FIELDS_GENERIC as any}
-                availableFields={[]}
-                availableTableColumns={[]}
+                availableFields={AVAILABLE_FIELDS_BY_MODULE[module] || []}
+                availableTableColumns={AVAILABLE_TABLE_COLUMNS_BY_MODULE[module] || []}
                 defaultRules={MODULE_DEFAULTS[module].rules as any}
                 defaultActions={MODULE_DEFAULTS[module].actions as any}
               />
@@ -542,6 +828,8 @@ interface InstalledTypeRowProps {
   onCloneForm: (form: DocumentFormConfig) => void;
   onToggleEnabled: (formId: string, enabled: boolean) => void;
   onAddCustomForm: () => void;
+  onExportJson: (form: DocumentFormConfig) => void;
+  onUpdateSidebarGroup: (formId: string, sidebarGroup: string | null) => void;
 }
 
 const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
@@ -552,17 +840,21 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
   onCloneForm,
   onToggleEnabled,
   onAddCustomForm,
+  onExportJson,
+  onUpdateSidebarGroup,
 }) => {
   const activeCount = node.forms.filter((f) => f.enabled !== false).length;
   const lockedCount = node.forms.filter((f) => (f as any).isLocked).length;
   const customCount = node.forms.length - lockedCount;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    // overflow-visible (not hidden) so the kebab menu on the last form row
+    // can render outside the type-row card without being clipped.
+    <div className="rounded-lg border border-gray-200 bg-white overflow-visible">
       <button
         type="button"
         onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left rounded-t-lg"
       >
         {expanded ? (
           <ChevronDown className="h-4 w-4 text-slate-400" />
@@ -598,6 +890,8 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
               onEdit={() => onEditForm(form)}
               onClone={() => onCloneForm(form)}
               onToggleEnabled={(enabled) => onToggleEnabled(form.id, enabled)}
+              onExportJson={() => onExportJson(form)}
+              onUpdateSidebarGroup={(group) => onUpdateSidebarGroup(form.id, group)}
             />
           ))}
           <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
@@ -621,12 +915,54 @@ interface FormRowProps {
   onEdit: () => void;
   onClone: () => void;
   onToggleEnabled: (enabled: boolean) => void;
+  onExportJson: () => void;
+  onUpdateSidebarGroup: (sidebarGroup: string | null) => void;
 }
 
-const FormRow: React.FC<FormRowProps> = ({ form, onEdit, onClone, onToggleEnabled }) => {
+// Sidebar group preset chips shown in the kebab-menu Sidebar Group editor.
+// Whatever the user picks (or types) is now honored verbatim by
+// `useSidebarConfig`: matching canonical groups (e.g. "Documents") merge
+// into the existing static submenu, anything else becomes its own top-level
+// group. New companies install with `sidebarGroup="Documents"` by default;
+// these chips are just one-click alternatives.
+const SIDEBAR_GROUP_PRESETS = ['Documents', 'Vouchers', 'Reports', 'Operations'];
+
+const FormRow: React.FC<FormRowProps> = ({
+  form,
+  onEdit,
+  onClone,
+  onToggleEnabled,
+  onExportJson,
+  onUpdateSidebarGroup,
+}) => {
   const isLocked = (form as any).isLocked === true;
   const isEnabled = form.enabled !== false;
   const persona = variantLabel({ persona: (form as any).persona, name: form.name });
+  const currentSidebarGroup: string | null = (form as any).sidebarGroup || null;
+
+  const [showMenu, setShowMenu] = useState(false);
+  const [showSidebarEditor, setShowSidebarEditor] = useState(false);
+  const [sidebarInput, setSidebarInput] = useState<string>(currentSidebarGroup || '');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the menu (and the inline editor) when the user clicks outside it.
+  useEffect(() => {
+    if (!showMenu) return;
+    const onClickAway = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+        setShowSidebarEditor(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickAway);
+    return () => document.removeEventListener('mousedown', onClickAway);
+  }, [showMenu]);
+
+  const saveSidebarGroup = (value: string | null) => {
+    onUpdateSidebarGroup(value);
+    setShowSidebarEditor(false);
+    setShowMenu(false);
+  };
 
   return (
     <div className="px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50/50 border-b border-gray-50 last:border-b-0">
@@ -641,6 +977,11 @@ const FormRow: React.FC<FormRowProps> = ({ form, onEdit, onClone, onToggleEnable
           {isLocked && (
             <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 uppercase tracking-wide">
               <Lock className="h-3 w-3" /> Locked default
+            </span>
+          )}
+          {currentSidebarGroup && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded uppercase tracking-wide">
+              <FolderTree className="h-3 w-3" /> {currentSidebarGroup}
             </span>
           )}
         </div>
@@ -681,6 +1022,121 @@ const FormRow: React.FC<FormRowProps> = ({ form, onEdit, onClone, onToggleEnable
       >
         <Edit3 className="h-4 w-4" />
       </button>
+
+      {/* Kebab menu: per-form secondary actions (Export, Schema, Sidebar Group).
+          Sidebar Group is the live action — it routes through the backend
+          metadata update so Firestore rules don't block it, then the page
+          refreshes the sidebar so the form moves to its new group. */}
+      <div className="relative" ref={menuRef}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSidebarInput(currentSidebarGroup || '');
+            setShowMenu((prev) => !prev);
+            setShowSidebarEditor(false);
+          }}
+          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+          title="More options"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+
+        {showMenu && (
+          <div className="absolute right-0 top-full mt-1 w-60 bg-white rounded-lg shadow-xl border border-slate-100 z-50 overflow-hidden text-slate-700">
+            <div className="py-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onExportJson();
+                  setShowMenu(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2"
+              >
+                <Download className="h-3.5 w-3.5" /> Export JSON
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMenu(false)}
+                className="w-full text-left px-4 py-2 text-sm text-slate-400 cursor-not-allowed flex items-center gap-2"
+                title="Coming soon"
+                disabled
+              >
+                <FileJson className="h-3.5 w-3.5" /> View Schema
+              </button>
+              <div className="border-t border-slate-100 mt-1 pt-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSidebarEditor((prev) => !prev);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 hover:text-purple-600 flex items-center gap-2"
+                >
+                  <FolderTree className="h-3.5 w-3.5" /> Sidebar Group
+                  {currentSidebarGroup && (
+                    <span className="ml-auto text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded font-medium">
+                      {currentSidebarGroup}
+                    </span>
+                  )}
+                </button>
+
+                {showSidebarEditor && (
+                  <div className="px-3 pb-3 pt-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={sidebarInput}
+                      onChange={(e) => setSidebarInput(e.target.value)}
+                      placeholder="e.g. Documents, Vouchers..."
+                      className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 mb-2 focus:ring-1 focus:ring-purple-500 outline-none"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          saveSidebarGroup(sidebarInput.trim() || null);
+                        } else if (e.key === 'Escape') {
+                          setShowSidebarEditor(false);
+                        }
+                      }}
+                    />
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {SIDEBAR_GROUP_PRESETS.map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => saveSidebarGroup(preset)}
+                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                            currentSidebarGroup === preset
+                              ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-purple-50 hover:border-purple-200'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => saveSidebarGroup(sidebarInput.trim() || null)}
+                        className="flex-1 text-[10px] bg-purple-600 text-white px-2 py-1 rounded font-medium hover:bg-purple-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveSidebarGroup(null)}
+                        className="text-[10px] text-slate-500 px-2 py-1 rounded border border-slate-200 hover:bg-slate-50"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

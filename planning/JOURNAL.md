@@ -2,6 +2,85 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Forms Management page polish
+
+**Task:** Polish the per-module Voucher Designer page into a production-grade Forms Management page across Accounting, Sales, and Purchases.
+**Agent:** Claude (Sonnet)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md)
+**User guide:** [docs/user-guide/forms-management.md](../docs/user-guide/forms-management.md)
+
+**What was done:**
+- Renamed the page **Voucher Designer → Forms Management** in the title, editor sub-label, loading copy, and all three module entries in `moduleMenuMap.ts`.
+- Removed the verbose descriptive paragraph and amber "Locked defaults install as inactive" callout from the page body.
+- Added a **`?`** HelpCircle icon next to the title that opens the reusable `InstructionsModal` slide-over with a five-section walkthrough (Install / Activate / Clone / Sidebar Group / Export) plus footer warnings.
+- Ported the **legacy global Forms Designer's clone rules** verbatim: `handleClone` and `handleAddCustomForm` now compute `parentPrefix = (form.prefix||'').replace('-','').replace(/[^A-Z]/g,'') || 'FORM'` and suggest `id = ${parentPrefix}_${Date.now()}_C` (or `_N`) and `prefix = ${parentPrefix}C-` (or `N-`). Suggested values; user can override; uniqueness is validated against the in-memory `existingForms` list before save. The `DocumentDesigner` step 2 ID input is now editable for clones (was incorrectly read-only because `initialConfig?.id` was populated for clones too) via a new `isExistingEdit = !!initialConfig?.id && !__isClone` flag.
+- **Critical save fix in `VoucherFormController.create`:** the create method was hand-picking a small subset of `formData` (name, code, typeId, prefix, description, headerFields, tableColumns, layout, enabled, isDefault) and silently dropping `module`, `uiModeOverrides`, `rules`, `actions`, `voucherType`, `persona`, `formType`, `baseType`, `sidebarGroup`, `numberFormat`, `isMultiLine`, `tableStyle`, `defaultCurrency`. Without `module` the repository defaulted to `'ACCOUNTING'`, so cloned Sales/Purchase forms got persisted but filtered out by `loadModuleDocumentForms('SALES'|'PURCHASE')`. Now spreads `formData` first then applies protected overrides; strips client sentinels (`__isClone`) and server-managed fields.
+- Fixed `isEdit` detection in `handleSaveAndExit`: introduced `isCloneFlow` based on `__isClone` sentinel so clones with a suggested id are correctly POSTed (create) rather than PUTted (update against a nonexistent doc).
+- Added a **kebab menu (`⋮`) to every form row** with three options: **Export JSON** (downloads `voucher_form_{id}.json`), **View Schema** (placeholder/disabled), and **Sidebar Group** (inline editor with free-text input and preset chips).
+- Sidebar Group assignment routes through the backend metadata update (Admin SDK) so Firestore rules don't block; optimistic UI with rollback on failure; emits `companyModulesRefresh` so the sidebar moves the form into its new group immediately.
+- **Backend locked-form gate now allows `sidebarGroup` updates** alongside `enabled` (both are organisational preferences, not design changes). Anything else still requires a clone.
+- Removed the **silent `"Vouchers" → "Documents"` sidebar merge** in `useSidebarConfig.ts`. The legacy seed default `"Vouchers"` is now `"Documents"` in `seedSystemVoucherTypes.ts` (5 accounting templates). User-typed custom groups (e.g. "Approvals") render as their own top-level sidebar submenus, honouring user intent verbatim.
+- Fixed kebab dropdown clipping by changing `InstalledTypeRow` from `overflow-hidden` to `overflow-visible` (and adding `rounded-t-lg` to keep the collapsed-state rounding).
+
+**Verification:**
+- `npx tsc --noEmit` (frontend) → exit 0
+- `npx tsc --noEmit` (backend) → exit 0
+- Manual QA script captured in the completion report (5 scenarios across 3 modules).
+
+**Time spent:** ~3.5h
+
+**Result:** Forms Management is the production-grade single home for managing voucher types and forms across every module. Newly installed forms are reliably persisted and visible. Clones flow with suggested-but-editable IDs and Prefixes. Sidebar groups (including for locked defaults) work as the user expects, with no silent rewrites.
+
+## 2026-05-29 (Fri) — Unified Voucher Designer Wizard Saving Fix
+
+**Task:** Fix Voucher/Document Designer wizard save and clone permissions issue (Firestore security rule bypass).
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md)
+
+**What was done:**
+- Fixed `PERMISSION_DENIED` / rules evaluation error during save/clone of custom forms in the unified Voucher/Document Designer wizard.
+- Refactored `saveDocumentForm` in [documentDesignerService.ts](file:///d:/DEV2026/ERP03/frontend/src/modules/tools/forms-designer/services/documentDesignerService.ts) to use the backend `voucherFormApi` REST endpoints (`create`/`update`) instead of writing directly to Firestore using client-side `setDoc`. This routes writes through the backend (Admin SDK) and bypasses security rules, matching the project's architecture guidelines.
+- Fixed `isEdit` logic in [VoucherDesignerPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/shared/pages/VoucherDesignerPage.tsx) to check the initial `editingForm?.id` state instead of final `config.id`, preventing new/cloned forms (where the user assigns a code in the wizard) from being incorrectly treated as updates.
+- Fixed `isSuperAdmin` helper in [firestore.rules](file:///d:/DEV2026/ERP03/firestore.rules) to safely retrieve `globalRole` using `.data.get('globalRole', '')`, preventing security rules evaluation crashes for standard tenant users.
+- Cleaned up unused Firestore imports (`doc`, `getDoc`, `setDoc`, `updateDoc`) from [documentDesignerService.ts](file:///d:/DEV2026/ERP03/frontend/src/modules/tools/forms-designer/services/documentDesignerService.ts).
+- Updated completion report [133-fix-designer-wizard-fields.md](file:///d:/DEV2026/ERP03/planning/done/133-fix-designer-wizard-fields.md) to document the API save fix.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed cleanly
+- `npm --prefix frontend run build` -> passed cleanly
+
+**Time spent:** ~0.7h
+**Result:** Custom document forms can now be cloned and saved successfully without client-side permission issues. Ready to commit current branch and switch to UX Layout Production Hardening.
+
+## 2026-05-29 (Fri) — Frontend UX/Layout Production Audit
+
+**Task:** Deep audit of ERP03 frontend layout, shell, sidebar, top bar, auth/user flow, settings consistency, list/table patterns, RTL/i18n readiness, and production ERP UX risks.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+**Audit report:** [docs/architecture/frontend-ux-layout-audit.md](../docs/architecture/frontend-ux-layout-audit.md)
+**Execution plan:** [planning/tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md)
+**Future-agent brief:** [planning/briefs/20260529-frontend-ux-layout-hardening.md](./briefs/20260529-frontend-ux-layout-hardening.md)
+
+**What was done:**
+- Inspected the frontend shell, route/sidebar configuration, top bar/widget system, auth/landing pages, module settings pages, representative operational list pages, report pattern docs, and existing UI screenshot evidence.
+- Confirmed the strongest current UX pattern is the report system built around `ReportContainer`.
+- Identified production-readiness gaps: dev/demo routes in normal navigation, top-bar layout editing exposed in daily chrome, duplicate React Query providers, incomplete auth/language flow, inconsistent settings taxonomy, inconsistent list/table patterns, raw confirms/alerts, raw date inputs, and demo-oriented dashboard content.
+- Created an English architecture audit, execution-ready task plan, and future-agent brief.
+- Incorporated product-owner observations: shared components are the default project-wide behavior, loading/waiting states need one standard model, and toast/error feedback must distinguish validation, policy, permission, setup, system, and critical/security failures.
+- Incorporated product-owner report/entity observations: `ReportContainer` must govern the full report contract including parameters and filters, and master-data cards must be UI-mode aware with normal web/page and Windows card/window presentations.
+- Did not change application code.
+
+**Verification:**
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted.
+- `git diff --check` -> passed.
+- Frontend typecheck was intentionally not rerun for this documentation-only audit because the current worktree has unrelated pre-existing wizard typecheck failures from local dirty changes.
+
+**Time spent:** ~2.5h
+
+**Result:** UX/Layout hardening is now documented and ready for phased implementation. Recommended first implementation slice: hide dev/demo navigation, consolidate React Query providers, and fix auth/logout routing consistency. The top-bar widget system is frozen for now and must not be modified unless the product owner reopens that scope.
+
 ## 2026-05-28 (Thu) — Phase F: Purchase Price Lists
 
 **Task:** Add Purchases Purchase Price Lists parity as currency-specific supplier pricing agreements.  

@@ -315,6 +315,14 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // Check if document is read-only (system default or locked)
   const isReadOnly = Boolean(initialConfig?.isLocked || initialConfig?.isSystemDefault);
 
+  // "Existing edit" means the form already exists in the company catalog —
+  // the user is opening it to tweak. In that case the ID Key is frozen for
+  // data integrity. For a clone or a fresh "Add Custom Form", `initialConfig`
+  // also carries a (suggested) id, but the page tags it with `__isClone` so
+  // the wizard knows this is a NEW form and the user is free to override
+  // the suggested id / prefix before saving.
+  const isExistingEdit = !!initialConfig?.id && !(initialConfig as any).__isClone;
+
   // Initialize selectedFieldIds from initialConfig when editing
   useEffect(() => {
     if (initialConfig) {
@@ -1797,32 +1805,32 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <label className="block">
                     <span className="text-sm font-medium text-gray-700">ID Key *</span>
-                    <input 
-                      type="text" 
-                      value={config.id} 
+                    <input
+                      type="text"
+                      value={config.id}
                       onChange={e => {
                         setConfig({...config, id: e.target.value});
                         if (validationErrors.id) {
                           setValidationErrors(prev => ({...prev, id: undefined}));
                         }
                       }}
-                      readOnly={!!initialConfig?.id}
-                      disabled={!!initialConfig?.id}
+                      readOnly={isExistingEdit}
+                      disabled={isExistingEdit}
                       className={`mt-1 block w-full rounded-md shadow-sm p-2 border ${
-                        !!initialConfig?.id 
-                          ? 'bg-gray-100 text-gray-600 cursor-not-allowed' 
+                        isExistingEdit
+                          ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
                           : 'bg-white text-slate-900'
                       } ${
                         validationErrors.id ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    {!!initialConfig?.id ? (
+                    {isExistingEdit ? (
                       <p className="mt-1 text-xs text-gray-500">
                         🔒 Form ID cannot be changed after creation to maintain data integrity
                       </p>
                     ) : (
                       <p className="mt-1 text-xs text-gray-500">
-                        Auto-generated for cloned forms (e.g., JE_1234567890_C)
+                        Suggested — feel free to override. Must be unique within the company (e.g., JE_1234567890_C).
                       </p>
                     )}
                     {validationErrors.id && (
