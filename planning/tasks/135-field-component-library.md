@@ -1,6 +1,6 @@
 # Task 135 — Field Component Library (three-layer cascade)
 
-**Status:** planning (no code changes yet)
+**Status:** approved — design closed, ready for Phase A code
 **Owner:** product (super-admin role = project developer)
 **Umbrella task:** #5 — *Unify native voucher pages and Form Designer via shared field schema*
 **Builds on:** [docs/architecture/document-forms-plan.md](../../docs/architecture/document-forms-plan.md), `frontend/src/designer-engine/types/FieldDefinition.ts`, `frontend/src/pages/super-admin/pages/VoucherTemplateEditorPage.tsx`
@@ -160,12 +160,56 @@ Each phase ships independently and is safe to stop at.
 
 ---
 
-## 6. Open questions to resolve before Phase A
+## 6. Decisions (resolved before Phase A)
 
-1. **Field ID namespace** — global flat namespace (`warehouseId`) or scoped (`sales.warehouseId`)? Today the constants use flat. Flat is simpler; scoped allows reuse-with-divergence.
-2. **`custom_metadata` reach** — should companies be able to create their own Layer 1 entries (custom fields) or is Layer 1 strictly super-admin? If companies can, where do they live (`companies/{cid}/field_library/{id}`)?
-3. **Versioning** — when super admin changes a Layer 1 field (e.g., adds a validation rule), do existing forms re-validate? Probably yes, but we need an explicit policy.
-4. **Selector binding extensibility** — `warehouse-selector` resolves to the warehouses collection. If a new selector kind appears, do we register it in code (`registry.ts` pattern) or in Layer 1 (`selectorBinding: { collection, displayField, valueField }`)? `document-forms-plan.md` favours a code-side registry; that's probably right because rendering is code-bound anyway.
+### 6.1 Field ID namespace — **FLAT** ✅
+Global flat namespace. `warehouseId` is the same identity everywhere. Phase A seeder + the super-admin Field Library editor must enforce uniqueness on insert: no two Layer 1 entries can share an `id`. Rationale: matches today's constants, simpler tooling, no scoping ambiguity.
+
+### 6.2 Custom-field authoring — **OPTION B: companies can author `custom_metadata` fields, but only of that fieldClass** ✅
+
+Two-tier Layer 1 storage:
+
+| Source | Path | Who authors | What kinds |
+|---|---|---|---|
+| **System library** (canonical) | `system_metadata/field_library/{fieldId}` | Super-admin | Any `fieldClass` — `system_core`, `system_optional`, `computed`, `custom_metadata`. Engine-aware fields (anything the accounting engine, reporting, or business rules need to understand) live here. |
+| **Company library** (extension) | `companies/{companyId}/field_library/{fieldId}` | Company admin (via Forms Management → Add Custom Field) | **`custom_metadata` only.** Free-form bucket: text, number, date, checkbox, simple select. **No selector kinds** (party-selector, warehouse-selector, account-selector, etc.) — those bind to collections the company doesn't control, so they stay super-admin-only. |
+
+Resolver order when the wizard loads the catalog: read both, merge, system entries win on id collision. The flat-namespace rule (6.1) applies across both tiers — companies can't author a field whose id already exists in the system library.
+
+**Note on the install-time copy pattern:** voucher *types* still get copied to `companies/{cid}/.../voucher_types` on install (today's behaviour, unchanged). Layer 1 fields are NOT copied — they're **referenced** by id. That avoids drift; a system field change reaches every company without a re-install.
+
+### 6.3 Versioning + revalidation — **LAZY** ✅
+
+When super-admin edits a Layer 1 field (label, validation rule, binding, etc.), existing company forms keep working as-is. Revalidation happens at three lazy touchpoints:
+
+1. **On open (Forms Management wizard)** — compare each field reference against current Layer 1. Show a small ⚠ marker on fields whose Layer 1 has changed since the form was last saved. Hover/click reveals what changed (e.g., "validation rule added 2026-06-15: warehouse must be active").
+2. **On save** — re-apply current Layer 1 validation. If the form now fails (e.g., a referenced field was deleted, a new mandatory rule isn't satisfied), block save with an explanatory error so the company admin fixes it before persisting.
+3. **Runtime renderer (GenericVoucherRenderer)** — uses the cached form config until next save. No re-validation on every render (avoids per-document latency).
+
+**Supporting infrastructure:**
+- Each Layer 1 field carries a monotonic `version: number` that bumps on every edit.
+- Each form persists `fieldVersionsSeen: { [fieldId]: number }` recording which Layer 1 version it was last saved against.
+- A super-admin audit page **Form Library Drift** lists `{ companyId, formId, fieldId, currentVersion, savedAgainstVersion, changeSummary }` so super-admin can see who's lagging and why.
+
+**Breaking-change guardrails:**
+- Deleting a Layer 1 field is forbidden if any form references it — only **soft-deprecate** (`deprecated: true`). Deprecated fields render with a strikethrough in the wizard's catalog and emit a warning.
+- Type changes (e.g., `TEXT` → `NUMBER`) are forbidden via the super-admin UI. Need to rename + create a replacement.
+
+### 6.4 Selector binding extensibility — **BOTH (code-registry + Layer 1 metadata)** ✅
+
+A new selector kind ships in two parts; new companies pick it up automatically once the system library entry exists, with no per-company redeploy:
+
+| Concern | Where | Who edits | When the company gets it |
+|---|---|---|---|
+| The **React component** that knows how to render a `project-selector` (the dropdown UI, search behaviour, etc.) | Code: `frontend/src/.../registry.ts` (existing pattern from `document-forms-plan.md`) | Developer (in code) | Next app deploy |
+| The **Layer 1 metadata** describing the selector's data binding: `{ type: 'project-selector', selectorBinding: { collection: 'projects', displayField: 'name', valueField: 'id', filters?: {...} } }` | Firestore: `system_metadata/field_library/{fieldId}` | Super-admin (via Field Library editor UI) | **Immediately, no deploy** — already-running companies see it on next wizard load |
+
+**Cascade:**
+1. You (developer) ship the new `project-selector` React component, registered in the renderer's selector registry. Deploys with the next release.
+2. You (super-admin) add a `projectId` entry to the system Field Library via the UI, with `type: 'project-selector'` and binding metadata.
+3. All running companies can immediately reference `projectId` from their Forms Management page. No per-company config, no per-company redeploy.
+
+Selector kinds remain super-admin-only (per 6.2) — companies can't invent new selector bindings because they'd bind to collections we can't guarantee exist or are populated.
 
 ---
 
@@ -177,6 +221,15 @@ Each phase ships independently and is safe to stop at.
 
 ---
 
-## 8. Next concrete step (when work resumes)
+## 8. Next concrete step
 
-Phase A is the smallest unit of value: seed the Field Library into Firestore from today's constants, behind a feature-flag read path that's not yet wired. That makes the catalog inspectable in Firebase console and unblocks Phase B's UI work without changing any user-facing behaviour. Estimate: 2-3 hours.
+**Phase A** is unblocked and ready to start. Scope:
+
+1. Add a `FieldLibraryEntry` interface (mirrors `FieldDefinition` from `designer-engine/types/`, adds `version`, `deprecated`, `selectorBinding`, `fieldClass` enforced).
+2. Write a one-shot seeder (`backend/src/seeder/seedFieldLibrary.ts`) that ingests today's three constants from `VoucherDesignerPage.tsx` into `system_metadata/field_library/{fieldId}`. Idempotent — re-runnable, bumps `version` only on actual content change.
+3. Add a read API: `getFieldLibrary()` that merges `system_metadata/field_library` + `companies/{cid}/field_library` per the 6.2 resolver order. No write API yet.
+4. **Do not** wire any UI to it. The Forms Management wizard keeps reading from the hardcoded constants. Catalog is silent / inspectable only.
+
+Estimate: 2-3 hours. Verification: Firebase console shows the collection populated with the right `fieldId` records; the new API returns the merged shape; `npx tsc --noEmit` clean both sides.
+
+Phase B (super-admin editor) is the natural follow-up and can ship independently the next session.
