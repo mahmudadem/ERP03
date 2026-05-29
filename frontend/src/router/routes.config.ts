@@ -212,6 +212,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },
+  { path: '/accounting/settings/voucher-types', label: 'Voucher Types', component: lazy(() => import('../modules/accounting/pages/AccountingVoucherTypesSettingsPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },
   { path: '/accounting/window-config-test', label: '🎨 Window Config Test', component: lazy(() => import('../modules/accounting/pages/WindowConfigTestPage').then(m => ({ default: m.WindowConfigTestPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/wizard-test', label: '🧪 Wizard Test', component: lazy(() => import('../modules/accounting/pages/VoucherWizardTestPage')), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/demo', label: '🆕 New Forms Demo', component: lazy(() => import('../modules/accounting/pages/NewVoucherFormsDemo')), section: 'ACCOUNTING', requiredModule: 'accounting' },
@@ -333,6 +334,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/returns/new', label: 'New Sales Return', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/returns/:id', label: 'Sales Return Detail', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/settings', label: 'Sales Settings', component: SalesSettingsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/settings/voucher-types', label: 'Voucher Types', component: lazy(() => import('../modules/sales/pages/SalesVoucherTypesSettingsPage')), section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/price-lists', label: 'Price Lists', component: PriceListsPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/customer-groups', label: 'Customer Groups', component: CustomerGroupsPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/salespersons', label: 'Salespersons', component: SalespersonsPage, section: 'INVENTORY', requiredModule: 'sales' },
@@ -372,6 +374,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases/reports/ap-aging', label: 'AP Aging', component: ApAgingReportPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/reports/purchases-analytics', label: 'Purchases Analytics', component: PurchasesAnalyticsPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/settings', label: 'Purchase Settings', component: PurchaseSettingsPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/settings/voucher-types', label: 'Voucher Types', component: lazy(() => import('../modules/purchases/pages/PurchaseVoucherTypesSettingsPage')), section: 'INVENTORY', requiredModule: 'purchase' },
 
   // Dynamic Purchase Documents (designed in Forms Designer)
   { path: '/purchases/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },

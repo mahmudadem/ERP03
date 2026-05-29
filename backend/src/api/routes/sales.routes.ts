@@ -6,6 +6,7 @@ import { SalesReportingController } from '../controllers/sales/SalesReportingCon
 import { RecurringInvoiceController } from '../controllers/sales/RecurringInvoiceController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
 import { SalesInvoiceAttachmentController } from '../controllers/sales/SalesInvoiceAttachmentController';
+import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeInstallController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -22,6 +23,19 @@ router.use(moduleInitializedGuard('sales'));
 
 router.put('/settings', SalesController.updateSettings);
 router.post('/settings/backfill-party-accounts', SalesController.backfillPartyAccounts);
+
+// Manage Voucher Types — used by the per-module settings page to install
+// additional types after the init wizard. Route param `module` is injected.
+router.get(
+  '/voucher-types/catalog',
+  (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },
+  VoucherTypeInstallController.catalog,
+);
+router.post(
+  '/voucher-types/install',
+  (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },
+  VoucherTypeInstallController.install,
+);
 
 router.post('/orders', SalesController.createSO);
 router.get('/orders', SalesController.listSOs);

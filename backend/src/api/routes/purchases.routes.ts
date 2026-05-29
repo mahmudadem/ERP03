@@ -3,6 +3,7 @@ import { PurchaseController } from '../controllers/purchases/PurchaseController'
 import { PurchaseMasterDataController } from '../controllers/purchases/PurchaseMasterDataController';
 import { PurchaseInvoiceAttachmentController } from '../controllers/purchases/PurchaseInvoiceAttachmentController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
+import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeInstallController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -19,6 +20,19 @@ router.use(moduleInitializedGuard('purchase'));
 
 router.put('/settings', PurchaseController.updateSettings);
 router.post('/settings/backfill-party-accounts', PurchaseController.backfillPartyAccounts);
+
+// Manage Voucher Types — used by the per-module settings page to install
+// additional types after the init wizard. Route param `module` is injected.
+router.get(
+  '/voucher-types/catalog',
+  (req, _res, next) => { (req.params as any).module = 'PURCHASE'; next(); },
+  VoucherTypeInstallController.catalog,
+);
+router.post(
+  '/voucher-types/install',
+  (req, _res, next) => { (req.params as any).module = 'PURCHASE'; next(); },
+  VoucherTypeInstallController.install,
+);
 
 router.post('/vendor-groups', PurchaseMasterDataController.createVendorGroup);
 router.get('/vendor-groups', PurchaseMasterDataController.listVendorGroups);

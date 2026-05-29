@@ -23,6 +23,7 @@ export const moduleMenuMap: Record<
       { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'FileText' },
       { label: 'Forms Designer', path: '/accounting/forms-designer', permission: 'accounting.designer.view', icon: 'Layout' },
+      { label: 'Voucher Types', path: '/accounting/settings/voucher-types', permission: 'accounting.settings.view', icon: 'FileStack' },
       { 
         label: 'Reports', 
         icon: 'BarChart3',
@@ -109,6 +110,7 @@ export const moduleMenuMap: Record<
           { label: 'Sales Analytics', path: '/sales/reports/sales-analytics', icon: 'PieChart' },
         ]
       },
+      { label: 'Voucher Types', path: '/sales/settings/voucher-types', icon: 'FileStack' },
       { label: 'Settings', path: '/sales/settings', icon: 'Settings' }
     ]
   },
@@ -140,6 +142,7 @@ export const moduleMenuMap: Record<
           { label: 'Purchases Analytics', path: '/purchases/reports/purchases-analytics', icon: 'PieChart' },
         ]
       },
+      { label: 'Voucher Types', path: '/purchases/settings/voucher-types', icon: 'FileStack' },
       { label: 'Settings', path: '/purchases/settings', icon: 'Settings' }
     ]
   },
