@@ -7,9 +7,11 @@ const router = Router();
 router.use(authMiddleware);
 router.use(assertSuperAdmin);
 
-router.get('/system/roles', SystemRoleController.list);
-router.get('/system/roles/:roleId', SystemRoleController.get);
-router.post('/system/roles', SystemRoleController.create);
-router.put('/system/roles/:roleId', SystemRoleController.update);
+// Routes are mounted under '/system/roles' by platform.router so the
+// internal paths drop the prefix. External URL stays /system/roles/*.
+router.get('/', SystemRoleController.list);
+router.get('/:roleId', SystemRoleController.get);
+router.post('/', SystemRoleController.create);
+router.put('/:roleId', SystemRoleController.update);
 
 export default router;

@@ -16,9 +16,15 @@ router.use('/super-admin/templates', superAdminTemplatesRoutes);
 router.use('/super-admin/voucher-types', superAdminVoucherTypesRoutes);
 router.use('/platform', aiToolCatalogRoutes);
 router.use('/platform', aiProposalPolicyRoutes);
-router.use(systemPermissionsRoutes);
-router.use(systemRolesRoutes);
-router.use(systemModuleSettingsRoutes);
+// Each system sub-router does `router.use(assertSuperAdmin)` internally,
+// which runs for ANY request entering the sub-router. Mounting them with
+// the correct path prefix means the assertSuperAdmin only fires for
+// requests targeting /system/*, instead of every unmatched tenant URL
+// that fell through to this router. Internal route paths now drop the
+// shared prefix and use just the suffix.
+router.use('/system/permissions', systemPermissionsRoutes);
+router.use('/system/roles', systemRolesRoutes);
+router.use('/system/module-settings', systemModuleSettingsRoutes);
 router.use('/system', systemRoutes);
 
 export default router;

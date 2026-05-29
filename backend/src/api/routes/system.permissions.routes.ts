@@ -7,10 +7,12 @@ const router = Router();
 router.use(authMiddleware);
 router.use(assertSuperAdmin);
 
-router.get('/system/permissions/modules', ModulePermissionsController.listModules);
-router.get('/system/permissions/:moduleId', ModulePermissionsController.getByModule);
-router.post('/system/permissions/:moduleId', ModulePermissionsController.create);
-router.put('/system/permissions/:moduleId', ModulePermissionsController.upsert);
-router.delete('/system/permissions/:moduleId', ModulePermissionsController.remove);
+// Routes are mounted under '/system/permissions' by platform.router so the
+// internal paths drop the prefix. External URL stays /system/permissions/*.
+router.get('/modules', ModulePermissionsController.listModules);
+router.get('/:moduleId', ModulePermissionsController.getByModule);
+router.post('/:moduleId', ModulePermissionsController.create);
+router.put('/:moduleId', ModulePermissionsController.upsert);
+router.delete('/:moduleId', ModulePermissionsController.remove);
 
 export default router;
