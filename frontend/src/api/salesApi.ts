@@ -397,6 +397,7 @@ export interface InitializeSalesPayload {
   srNumberNextSeq?: number;
   quoteNumberPrefix?: string;
   quoteNumberNextSeq?: number;
+  selectedVoucherTypes?: string[];
 }
 
 export interface SalesOrderLineInputDTO {

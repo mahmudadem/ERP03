@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  FileCheck,
   Info,
   Loader2,
   Settings,
@@ -23,13 +24,14 @@ import {
 } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
+import { loadSystemVoucherTypes, SystemVoucherType } from '../../accounting/services/voucherTypesService';
 
 interface PurchaseInitializationWizardProps {
   onComplete: () => void;
 }
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
-const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Review'];
+const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Voucher Types', 'Review'];
 
 const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -51,6 +53,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   const [grnNumberPrefix, setGrnNumberPrefix] = useState('GRN');
   const [piNumberPrefix, setPiNumberPrefix] = useState('PI');
   const [prNumberPrefix, setPrNumberPrefix] = useState('PR');
+  const [systemVoucherTypes, setSystemVoucherTypes] = useState<SystemVoucherType[]>([]);
+  const [selectedVoucherTypes, setSelectedVoucherTypes] = useState<string[]>([]);
   const [inventorySettings, setInventorySettings] = useState<{
     defaultInventoryAssetAccountId?: string;
     accountingMode?: 'INVOICE_DRIVEN' | 'PERPETUAL';
@@ -61,7 +65,10 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     const loadData = async () => {
       try {
         setLoadingSettings(true);
-        const inventorySettingsResult = await inventoryApi.getSettings().catch(() => null);
+        const [inventorySettingsResult, voucherTypes] = await Promise.all([
+          inventoryApi.getSettings().catch(() => null),
+          loadSystemVoucherTypes('PURCHASE'),
+        ]);
         const invSettingsData = inventorySettingsResult
           ? unwrap<any>(inventorySettingsResult)?.data ?? unwrap<any>(inventorySettingsResult)
           : null;
@@ -70,6 +77,10 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
         if (resolveInventoryAccountingMode(invSettingsData) === 'PERPETUAL') {
           setWorkflowMode('OPERATIONAL');
         }
+
+        setSystemVoucherTypes(voucherTypes);
+        const recommended = voucherTypes.filter((vt) => vt.isRecommended).map((vt) => vt.id);
+        setSelectedVoucherTypes(recommended.length > 0 ? recommended : voucherTypes.map((vt) => vt.id));
       } catch (err) {
         console.error('Failed to load dependencies for purchases initialization', err);
       } finally {
@@ -168,6 +179,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
         grnNumberPrefix: grnNumberPrefix || 'GRN',
         piNumberPrefix: piNumberPrefix || 'PI',
         prNumberPrefix: prNumberPrefix || 'PR',
+        selectedVoucherTypes,
       });
       emitCompanyModulesRefresh({ moduleCode: 'purchase' });
       onComplete();
@@ -453,6 +465,104 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       );
     }
 
+    if (currentStep === 4) {
+      const toggleVoucherType = (id: string) => {
+        setSelectedVoucherTypes((prev) =>
+          prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+        );
+      };
+      const selectAll = () => setSelectedVoucherTypes(systemVoucherTypes.map((vt) => vt.id));
+      const clearAll = () => setSelectedVoucherTypes([]);
+
+      return (
+        <div className="py-8 max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Voucher Types</h2>
+          <p className="text-gray-600 mb-6 text-center">
+            Pick which purchase documents to activate. You can add or remove forms later from the Forms Designer.
+          </p>
+
+          <div className="flex justify-between items-center mb-6">
+            <p className="text-sm text-gray-600">
+              {selectedVoucherTypes.length} of {systemVoucherTypes.length} selected
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded transition"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 rounded transition"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {systemVoucherTypes.length === 0 ? (
+              <div className="col-span-2 text-center py-12">
+                <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">No Purchase voucher types available</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  The system catalog has no Purchase templates yet. Contact your administrator.
+                </p>
+              </div>
+            ) : (
+              systemVoucherTypes.map((voucherType) => {
+                const isSelected = selectedVoucherTypes.includes(voucherType.id);
+                return (
+                  <button
+                    type="button"
+                    key={voucherType.id}
+                    onClick={() => toggleVoucherType(voucherType.id)}
+                    className={`p-5 rounded-lg border-2 transition-all text-left hover:border-primary-500 ${
+                      isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-bold text-gray-900">{voucherType.name}</h3>
+                          {voucherType.isRecommended && (
+                            <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                              Recommended
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          Prefix: <span className="font-mono font-semibold">{voucherType.prefix}</span>
+                        </p>
+                        {voucherType.description && (
+                          <p className="text-sm text-gray-500">{voucherType.description}</p>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <CheckCircle className="w-6 h-6 text-primary-600 flex-shrink-0 ml-2" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-700">
+                Only checked voucher types will be copied to your company. Unchecked ones can be added later from Settings.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-3xl space-y-6 py-8">
         <div className="text-center">
@@ -507,6 +617,26 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
             <div>
               <div className="text-xs uppercase tracking-wide text-gray-500">Default Payment Terms</div>
               <div className="mt-1 font-semibold text-gray-900">{defaultPaymentTermsDays} days</div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Selected Voucher Types</div>
+              {selectedVoucherTypes.length === 0 ? (
+                <div className="mt-1 text-sm text-gray-500">None selected. You can add them later from Settings.</div>
+              ) : (
+                <ul className="mt-1 space-y-1">
+                  {selectedVoucherTypes.map((id) => {
+                    const vt = systemVoucherTypes.find((entry) => entry.id === id);
+                    return vt ? (
+                      <li key={id} className="flex items-center gap-2 text-sm text-gray-900">
+                        <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                        <span className="font-medium">{vt.name}</span>
+                        <span className="text-xs text-gray-500">({vt.prefix})</span>
+                      </li>
+                    ) : null;
+                  })}
+                  <li className="text-xs text-gray-600 mt-1">Total: {selectedVoucherTypes.length}</li>
+                </ul>
+              )}
             </div>
           </div>
         </div>

@@ -454,6 +454,7 @@ export const inventoryApi = {
     autoGenerateItemCode?: boolean;
     itemCodePrefix?: string;
     itemCodeNextSeq?: number;
+    selectedVoucherTypes?: string[];
   }) =>
     client.post('/tenant/inventory/initialize', payload),
 

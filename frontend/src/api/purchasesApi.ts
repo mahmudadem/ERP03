@@ -340,6 +340,7 @@ export interface InitializePurchasesPayload {
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
   exchangeGainLossAccountId?: string;
+  selectedVoucherTypes?: string[];
 }
 
 export interface PurchaseOrderLineInputDTO {
