@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { companyModulesApi } from '../../../api/companyModules';
 import { systemMetadataApi } from '../../../api/systemMetadata';
+import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import {
   Calculator,
   Calendar,
@@ -59,6 +61,7 @@ interface CoaTemplate {
 export const AccountingInitializationWizard: React.FC = () => {
   const { companyId, company, refreshCompany } = useCompanyAccess();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -180,7 +183,10 @@ export const AccountingInitializationWizard: React.FC = () => {
       // Initialize module with setup data
       await companyModulesApi.initialize(companyId, 'accounting', setupData);
 
-      // Redirect to accounting module
+      // Refresh cached module status before navigating so the guard does not
+      // bounce us back to /accounting/setup based on a stale "uninitialized" snapshot.
+      emitCompanyModulesRefresh({ companyId, moduleCode: 'accounting' });
+      await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
       await refreshCompany();
       navigate('/accounting', { replace: true });
     } catch (err: any) {
@@ -844,9 +850,13 @@ export const AccountingInitializationWizard: React.FC = () => {
             </div>
 
             <button
-              onClick={() => navigate('/accounting')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 
-                       text-white font-semibold rounded-lg hover:from-primary-600 hover:to-primary-700 
+              onClick={async () => {
+                emitCompanyModulesRefresh({ companyId, moduleCode: 'accounting' });
+                await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
+                navigate('/accounting', { replace: true });
+              }}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600
+                       text-white font-semibold rounded-lg hover:from-primary-600 hover:to-primary-700
                        transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               Go to Accounting Module
