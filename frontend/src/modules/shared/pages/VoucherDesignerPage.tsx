@@ -1,0 +1,712 @@
+/**
+ * VoucherDesignerPage.tsx
+ *
+ * Unified per-module page for managing Voucher Types AND their Forms.
+ * Used by Sales, Purchases, and Accounting via thin wrappers.
+ *
+ * Architecture
+ * - This file is the SHELL: list view (Type-tree layout) + editor entry point.
+ * - The actual field-level editor (`DocumentDesigner` from forms-designer/)
+ *   is reused unchanged when the user clicks Edit / Clone / Add Custom.
+ * - Data loading, save, toggle-enabled, sidebar-group, delete handlers all
+ *   delegate to the existing forms-designer services so we don't duplicate
+ *   the Firestore quirks and optimistic-update logic.
+ * - The "Install" action wires to the Phase 2 voucherTypeManagementApi.
+ *
+ * UI shape
+ *   Installed Types  (expandable rows)
+ *     ▼ Sales Invoice                                 3 forms · 1 active
+ *         Sales Invoice (Direct)   [Locked]   [✓ Active]    [Clone] [Edit] [Group ⌄]
+ *         Sales Invoice (Linked)   [Locked]   [⏸ Inactive]  [Clone] [Edit] [Activate]
+ *         Sales Invoice (Service)  [Locked]   [⏸ Inactive]  [Clone] [Edit] [Activate]
+ *         + Add Custom Form
+ *   Available Types  (one row each, Install button)
+ *     Sales Return                                                     [Install]
+ */
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  DownloadCloud,
+  Edit3,
+  FileText,
+  Info,
+  Layers,
+  Loader2,
+  Lock,
+  PackageCheck,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  DocumentDesigner,
+  DocumentFormConfig,
+  WizardProvider,
+  loadModuleDocumentForms,
+  loadModuleDocumentDefinitions,
+  loadSystemVoucherTypes as loadSystemVoucherTemplates,
+  saveDocumentForm,
+  updateFormMetadata,
+} from '../../tools/forms-designer';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useAuth } from '../../../context/AuthContext';
+import { errorHandler } from '../../../services/errorHandler';
+import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
+import {
+  voucherTypeManagementApi,
+  VoucherTypeModule,
+} from '../../../api/voucherTypeManagementApi';
+
+interface VoucherDesignerPageProps {
+  module: VoucherTypeModule;
+  moduleLabel: string;
+}
+
+interface TypeNode {
+  /** Canonical voucherType key (e.g. "purchase_invoice"). */
+  typeKey: string;
+  /** Display name with persona suffix stripped. */
+  name: string;
+  /** True when the company has at least one form for this type. */
+  isInstalled: boolean;
+  /** All forms (locked defaults + custom clones) the company has for this type. */
+  forms: DocumentFormConfig[];
+  /** System template variants (used to show "Variants: ..." line for available types). */
+  catalogVariants: any[];
+}
+
+const stripPersonaSuffix = (formName: string): string => {
+  const stripped = formName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  return stripped || formName;
+};
+
+const variantLabel = (item: { persona?: string | null; name?: string }): string | null => {
+  if (item.persona) return item.persona.charAt(0).toUpperCase() + item.persona.slice(1);
+  if (!item.name) return null;
+  const match = item.name.match(/\(([^)]+)\)/);
+  return match ? match[1] : null;
+};
+
+const buildTypeTree = (
+  forms: DocumentFormConfig[],
+  definitions: any[],
+  catalog: any[],
+): { installed: TypeNode[]; available: TypeNode[] } => {
+  // Group company forms by their canonical type key. Forms carry typeId
+  // pointing back to the company VoucherTypeDefinition.id; that definition
+  // carries the canonical `voucherType` field.
+  const definitionById = new Map<string, any>(definitions.map((d) => [d.id, d]));
+  const installedByTypeKey = new Map<string, TypeNode>();
+
+  for (const form of forms) {
+    const def = definitionById.get((form as any).typeId);
+    const typeKey: string = (def?.voucherType || def?.code || (form as any).voucherType || form.code || form.id) as string;
+    const existing = installedByTypeKey.get(typeKey);
+    if (existing) {
+      existing.forms.push(form);
+    } else {
+      const baseName = def?.name
+        ? stripPersonaSuffix(def.name)
+        : stripPersonaSuffix(form.name);
+      installedByTypeKey.set(typeKey, {
+        typeKey,
+        name: baseName,
+        isInstalled: true,
+        forms: [form],
+        catalogVariants: [],
+      });
+    }
+  }
+
+  // Available = system catalog types whose canonical key is NOT installed.
+  const availableByTypeKey = new Map<string, TypeNode>();
+  for (const tpl of catalog) {
+    const typeKey: string = tpl.voucherType || tpl.code || tpl.id;
+    if (installedByTypeKey.has(typeKey)) {
+      // Already installed — attach catalog variants for context
+      installedByTypeKey.get(typeKey)!.catalogVariants.push(tpl);
+      continue;
+    }
+    const existing = availableByTypeKey.get(typeKey);
+    if (existing) {
+      existing.catalogVariants.push(tpl);
+    } else {
+      availableByTypeKey.set(typeKey, {
+        typeKey,
+        name: stripPersonaSuffix(tpl.name || tpl.code || typeKey),
+        isInstalled: false,
+        forms: [],
+        catalogVariants: [tpl],
+      });
+    }
+  }
+
+  const sortByName = (a: TypeNode, b: TypeNode) => a.name.localeCompare(b.name);
+  return {
+    installed: Array.from(installedByTypeKey.values()).sort(sortByName),
+    available: Array.from(availableByTypeKey.values()).sort(sortByName),
+  };
+};
+
+const MODULE_DEFAULTS = {
+  ACCOUNTING: {
+    rules: [
+      { id: 'require_approval', label: 'Require Approval Workflow', enabled: true },
+      { id: 'prevent_negative_cash', label: 'Prevent Negative Cash', enabled: false },
+      { id: 'allow_future_date', label: 'Allow Future Posting Dates', enabled: true },
+    ],
+    actions: [
+      { type: 'print', label: 'Print Voucher', enabled: true },
+      { type: 'email', label: 'Email PDF', enabled: true },
+      { type: 'download_pdf', label: 'Download PDF', enabled: true },
+    ],
+  },
+  SALES: {
+    rules: [
+      { id: 'require_approval', label: 'Require Approval Workflow', enabled: true },
+      { id: 'prevent_negative_qty', label: 'Prevent Negative Stock', enabled: true },
+      { id: 'validate_credit_limit', label: 'Check Credit Limit', enabled: true },
+    ],
+    actions: [
+      { type: 'print', label: 'Print Document', enabled: true },
+      { type: 'email', label: 'Email Customer', enabled: true },
+      { type: 'download_pdf', label: 'Download PDF', enabled: true },
+    ],
+  },
+  PURCHASE: {
+    rules: [
+      { id: 'require_approval', label: 'Require Approval Workflow', enabled: true },
+      { id: 'update_inventory', label: 'Auto-Update Stock', enabled: true },
+      { id: 'match_invoice_to_grn', label: 'Three-Way Match', enabled: false },
+    ],
+    actions: [
+      { type: 'print', label: 'Print Document', enabled: true },
+      { type: 'email', label: 'Email Vendor', enabled: true },
+      { type: 'download_pdf', label: 'Download PDF', enabled: true },
+    ],
+  },
+} as const;
+
+const SYSTEM_FIELDS_GENERIC = [
+  { id: 'documentId', label: 'Document Number', type: 'text' as const, category: 'systemMetadata' as const, autoManaged: true, sectionHint: 'HEADER' as const },
+  { id: 'status', label: 'Status', type: 'text' as const, category: 'systemMetadata' as const, autoManaged: true, sectionHint: 'HEADER' as const },
+  { id: 'createdAt', label: 'Creation Date', type: 'date' as const, category: 'systemMetadata' as const, autoManaged: true, sectionHint: 'HEADER' as const },
+  { id: 'createdBy', label: 'Created By', type: 'text' as const, category: 'systemMetadata' as const, autoManaged: true, sectionHint: 'HEADER' as const },
+  { id: 'subtotalDoc', label: 'Subtotal (Doc)', type: 'amount' as const, category: 'systemMetadata' as const, autoManaged: true, sectionHint: 'FOOTER' as const },
+  { id: 'taxTotalDoc', label: 'Tax Total (Doc)', type: 'amount' as const, category: 'systemMetadata' as const, autoManaged: true, sectionHint: 'FOOTER' as const },
+  { id: 'grandTotalDoc', label: 'Grand Total (Doc)', type: 'amount' as const, category: 'systemMetadata' as const, autoManaged: true, sectionHint: 'FOOTER' as const },
+  { id: 'lineItems', label: 'Line Items Table', type: 'table' as const, category: 'core' as const, mandatory: true, sectionHint: 'BODY' as const },
+];
+
+const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, moduleLabel }) => {
+  const { companyId } = useCompanyAccess();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const [forms, setForms] = useState<DocumentFormConfig[]>([]);
+  const [definitions, setDefinitions] = useState<any[]>([]);
+  const [catalog, setCatalog] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [installingTypeKey, setInstallingTypeKey] = useState<string | null>(null);
+  const [expandedTypeKeys, setExpandedTypeKeys] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'list' | 'designer'>('list');
+  const [editingForm, setEditingForm] = useState<DocumentFormConfig | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!companyId) return;
+    setLoading(true);
+    try {
+      const [loadedForms, loadedDefs, loadedCatalog] = await Promise.all([
+        loadModuleDocumentForms(companyId, module),
+        loadModuleDocumentDefinitions(companyId, module),
+        loadSystemVoucherTemplates(module),
+      ]);
+      setForms(loadedForms);
+      setDefinitions(loadedDefs);
+      setCatalog(loadedCatalog);
+    } catch (err: any) {
+      console.error('[VoucherDesigner] Load failed', err);
+      errorHandler.showError('Could not load voucher designer data');
+    } finally {
+      setLoading(false);
+    }
+  }, [companyId, module]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const { installed, available } = useMemo(
+    () => buildTypeTree(forms, definitions, catalog),
+    [forms, definitions, catalog],
+  );
+
+  // Auto-expand the first installed type on first load so user sees the
+  // tree pattern without having to click. Toggled by user thereafter.
+  useEffect(() => {
+    if (installed.length > 0 && expandedTypeKeys.size === 0) {
+      setExpandedTypeKeys(new Set([installed[0].typeKey]));
+    }
+  }, [installed, expandedTypeKeys.size]);
+
+  const toggleExpand = (typeKey: string) => {
+    setExpandedTypeKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(typeKey)) next.delete(typeKey);
+      else next.add(typeKey);
+      return next;
+    });
+  };
+
+  const handleToggleEnabled = async (formId: string, enabled: boolean) => {
+    if (!companyId || !user) return;
+    setForms((prev) => prev.map((f) => (f.id === formId ? { ...f, enabled } : f)));
+    const result = await updateFormMetadata(companyId, module, formId, { enabled }, user.uid);
+    if (!result.success) {
+      // Rollback
+      setForms((prev) => prev.map((f) => (f.id === formId ? { ...f, enabled: !enabled } : f)));
+      errorHandler.showError(result.errors?.[0] || 'Failed to update form status');
+      return;
+    }
+    errorHandler.showInfo(`Form ${enabled ? 'activated' : 'deactivated'}.`);
+    // Refresh sidebar so the form appears/disappears immediately.
+    emitCompanyModulesRefresh({ companyId, moduleCode: module.toLowerCase() });
+    await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
+  };
+
+  const handleInstallType = async (node: TypeNode) => {
+    setInstallingTypeKey(node.typeKey);
+    try {
+      const templateIds = node.catalogVariants.map((v) => v.id);
+      const result = await voucherTypeManagementApi.install(module, templateIds);
+      const total = result.formsCreated + result.formsUpdated;
+      errorHandler.showInfo(
+        `Installed "${node.name}" — ${total} default form${total !== 1 ? 's' : ''} added as locked, inactive.`,
+      );
+      emitCompanyModulesRefresh({ companyId, moduleCode: module.toLowerCase() });
+      await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
+      await reload();
+      setExpandedTypeKeys((prev) => new Set(prev).add(node.typeKey));
+    } catch (err: any) {
+      console.error('[VoucherDesigner] Install failed', err);
+      errorHandler.showError(err?.response?.data?.error || err?.message || 'Install failed');
+    } finally {
+      setInstallingTypeKey(null);
+    }
+  };
+
+  const openEditor = (form: DocumentFormConfig | null) => {
+    setEditingForm(form);
+    setViewMode('designer');
+  };
+
+  const handleClone = (form: DocumentFormConfig) => {
+    // Strip ids so save treats this as a new form. Mark as not locked / not
+    // system-generated so the editor permits full editing.
+    const cloned: DocumentFormConfig = {
+      ...form,
+      id: undefined as any,
+      name: `${form.name} (Copy)`,
+      isSystemDefault: false,
+      isLocked: false,
+      isSystemGenerated: false,
+      enabled: true,
+    } as any;
+    openEditor(cloned);
+  };
+
+  const handleAddCustomForm = (node: TypeNode) => {
+    // Start from the first installed (or catalog) variant so the user has
+    // sensible field defaults; they can then customise freely.
+    const seed = node.forms[0] || node.catalogVariants[0];
+    if (!seed) {
+      openEditor(null);
+      return;
+    }
+    const newForm: DocumentFormConfig = {
+      ...(seed as any),
+      id: undefined as any,
+      name: `${node.name} (Custom)`,
+      isSystemDefault: false,
+      isLocked: false,
+      isSystemGenerated: false,
+      enabled: false,
+    } as any;
+    openEditor(newForm);
+  };
+
+  const handleSaveAndExit = async (config: DocumentFormConfig) => {
+    if (!companyId || !user) return;
+    try {
+      const isEdit = !!(config as any).id;
+      const result = await saveDocumentForm(
+        companyId,
+        module,
+        config,
+        { systemFields: SYSTEM_FIELDS_GENERIC as any, availableFields: [] },
+        user.uid,
+        isEdit,
+      );
+      if (result.success) {
+        errorHandler.showInfo(`${config.name} saved.`);
+        await reload();
+        setViewMode('list');
+        setEditingForm(null);
+      } else {
+        errorHandler.showError((result as any).errors?.[0] || 'Save failed');
+      }
+    } catch (err: any) {
+      console.error('[VoucherDesigner] Save failed', err);
+      errorHandler.showError('Save failed');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setViewMode('list');
+    setEditingForm(null);
+  };
+
+  if (loading && forms.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <Loader2 className="animate-spin h-8 w-8 text-primary-600" />
+        <span className="ml-3 text-slate-600">Loading {moduleLabel} voucher designer...</span>
+      </div>
+    );
+  }
+
+  return (
+    <WizardProvider initialForms={forms}>
+      {viewMode === 'designer' ? (
+        <div className="flex flex-col h-screen bg-slate-50">
+          <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">
+                {editingForm ? `Edit: ${editingForm.name}` : 'New Form'}
+              </h1>
+              <p className="text-xs text-slate-500">{moduleLabel} Voucher Designer</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="text-sm text-slate-600 hover:text-slate-900"
+            >
+              ← Back to list
+            </button>
+          </header>
+          <div className="flex-1 overflow-hidden">
+            <DocumentDesigner
+              initialConfig={editingForm}
+              availableTemplates={forms}
+              onSave={handleSaveAndExit}
+              onCancel={handleCancelEdit}
+              systemFields={SYSTEM_FIELDS_GENERIC as any}
+              availableFields={[]}
+              availableTableColumns={[]}
+              defaultRules={MODULE_DEFAULTS[module].rules as any}
+              defaultActions={MODULE_DEFAULTS[module].actions as any}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="mx-auto max-w-5xl px-4">
+            <div className="mb-6 flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Voucher Designer &mdash; {moduleLabel}
+                </h1>
+                <p className="mt-1 text-gray-600">
+                  Manage voucher types and their form variants. Each type bundles one or more
+                  default forms that you can activate, clone, or replace with custom variants.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void reload()}
+                className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1"
+                title="Refresh"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </button>
+            </div>
+
+            {/* Locked defaults reminder */}
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                <div className="text-sm text-amber-800 space-y-1">
+                  <p className="font-semibold">Locked defaults install as inactive.</p>
+                  <p>
+                    Toggle <span className="font-semibold">Active</span> on a default form to expose
+                    it in the sidebar, or click <span className="font-semibold">Clone</span> to
+                    create an editable copy. Custom forms can be edited freely.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Installed Types */}
+            <section className="mb-8">
+              <div className="mb-3 flex items-center gap-2">
+                <PackageCheck className="h-5 w-5 text-green-600" />
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Installed Types ({installed.length})
+                </h2>
+              </div>
+              {installed.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
+                  <FileText className="mx-auto mb-3 h-10 w-10 text-gray-400" />
+                  <p className="text-sm text-gray-600">
+                    No voucher types installed yet. Pick one from Available below to install.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {installed.map((node) => (
+                    <InstalledTypeRow
+                      key={node.typeKey}
+                      node={node}
+                      expanded={expandedTypeKeys.has(node.typeKey)}
+                      onToggle={() => toggleExpand(node.typeKey)}
+                      onEditForm={openEditor}
+                      onCloneForm={handleClone}
+                      onToggleEnabled={handleToggleEnabled}
+                      onAddCustomForm={() => handleAddCustomForm(node)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Available Types */}
+            {available.length > 0 && (
+              <section>
+                <div className="mb-3 flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Available Types ({available.length})
+                  </h2>
+                </div>
+                <div className="space-y-2">
+                  {available.map((node) => (
+                    <AvailableTypeRow
+                      key={node.typeKey}
+                      node={node}
+                      installing={installingTypeKey === node.typeKey}
+                      onInstall={() => handleInstallType(node)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
+      )}
+    </WizardProvider>
+  );
+};
+
+/* ----------------------------- Sub-components ----------------------------- */
+
+interface InstalledTypeRowProps {
+  node: TypeNode;
+  expanded: boolean;
+  onToggle: () => void;
+  onEditForm: (form: DocumentFormConfig) => void;
+  onCloneForm: (form: DocumentFormConfig) => void;
+  onToggleEnabled: (formId: string, enabled: boolean) => void;
+  onAddCustomForm: () => void;
+}
+
+const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
+  node,
+  expanded,
+  onToggle,
+  onEditForm,
+  onCloneForm,
+  onToggleEnabled,
+  onAddCustomForm,
+}) => {
+  const activeCount = node.forms.filter((f) => f.enabled !== false).length;
+  const lockedCount = node.forms.filter((f) => (f as any).isLocked).length;
+  const customCount = node.forms.length - lockedCount;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+      >
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 text-slate-400" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-slate-400" />
+        )}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base font-semibold text-gray-900">{node.name}</h3>
+            <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
+              {node.forms.length} form{node.forms.length !== 1 ? 's' : ''}
+            </span>
+            {activeCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                <CheckCircle2 className="h-3 w-3" /> {activeCount} active
+              </span>
+            )}
+            {customCount > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                {customCount} custom
+              </span>
+            )}
+          </div>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-100">
+          {node.forms.map((form) => (
+            <FormRow
+              key={form.id}
+              form={form}
+              onEdit={() => onEditForm(form)}
+              onClone={() => onCloneForm(form)}
+              onToggleEnabled={(enabled) => onToggleEnabled(form.id, enabled)}
+            />
+          ))}
+          <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
+            <button
+              type="button"
+              onClick={onAddCustomForm}
+              className="text-sm text-primary-600 font-medium hover:underline flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Add Custom Form
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface FormRowProps {
+  form: DocumentFormConfig;
+  onEdit: () => void;
+  onClone: () => void;
+  onToggleEnabled: (enabled: boolean) => void;
+}
+
+const FormRow: React.FC<FormRowProps> = ({ form, onEdit, onClone, onToggleEnabled }) => {
+  const isLocked = (form as any).isLocked === true;
+  const isEnabled = form.enabled !== false;
+  const persona = variantLabel({ persona: (form as any).persona, name: form.name });
+
+  return (
+    <div className="px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50/50 border-b border-gray-50 last:border-b-0">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-900 truncate">{form.name}</span>
+          {persona && (
+            <span className="inline-flex items-center px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-medium rounded uppercase tracking-wide">
+              {persona}
+            </span>
+          )}
+          {isLocked && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 uppercase tracking-wide">
+              <Lock className="h-3 w-3" /> Locked default
+            </span>
+          )}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onToggleEnabled(!isEnabled)}
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-all ${
+          isEnabled ? 'bg-green-500' : 'bg-slate-300'
+        }`}
+        title={isEnabled ? 'Deactivate' : 'Activate'}
+      >
+        <span
+          aria-hidden
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+            isEnabled ? 'translate-x-4' : 'translate-x-0.5'
+          }`}
+        />
+      </button>
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 w-11">
+        {isEnabled ? 'Active' : 'Off'}
+      </span>
+
+      <button
+        type="button"
+        onClick={onClone}
+        className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+        title="Clone (creates editable copy)"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+        title={isLocked ? 'View / restricted edit' : 'Edit'}
+      >
+        <Edit3 className="h-4 w-4" />
+      </button>
+    </div>
+  );
+};
+
+interface AvailableTypeRowProps {
+  node: TypeNode;
+  installing: boolean;
+  onInstall: () => void;
+}
+
+const AvailableTypeRow: React.FC<AvailableTypeRowProps> = ({ node, installing, onInstall }) => {
+  const variants = node.catalogVariants.map(variantLabel).filter((v): v is string => Boolean(v));
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-3 flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="text-sm font-semibold text-gray-900">{node.name}</h3>
+          <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
+            {node.catalogVariants.length} default form{node.catalogVariants.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        {variants.length > 0 && (
+          <p className="mt-0.5 text-xs text-gray-500">Variants: {variants.join(' · ')}</p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onInstall}
+        disabled={installing}
+        className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+          installing
+            ? 'bg-slate-100 text-slate-400 cursor-wait'
+            : 'bg-primary-600 text-white hover:bg-primary-700'
+        }`}
+      >
+        {installing ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" /> Installing
+          </>
+        ) : (
+          <>
+            <DownloadCloud className="h-3 w-3" /> Install
+          </>
+        )}
+      </button>
+    </div>
+  );
+};
+
+export default VoucherDesignerPage;

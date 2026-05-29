@@ -66,7 +66,7 @@ export const moduleMenuMap: Record<
         label: 'Tools',
         icon: 'Wrench',
         children: [
-          { label: 'Voucher Designer', path: '/accounting/settings/voucher-types', permission: 'accounting.settings.view', icon: 'Layout' },
+          { label: 'Voucher Designer', path: '/accounting/tools/voucher-designer', permission: 'accounting.settings.view', icon: 'Layout' },
           { label: 'Budgets', path: '/accounting/budgets', permission: 'accounting.settings.read', icon: 'PiggyBank' },
           { label: 'Subgroup Tagging', path: '/accounting/settings/subgroup-tagging', permission: 'accounting.accounts.edit', icon: 'Tags' },
         ],
@@ -144,7 +144,7 @@ export const moduleMenuMap: Record<
         label: 'Tools',
         icon: 'Wrench',
         children: [
-          { label: 'Voucher Designer', path: '/sales/settings/voucher-types', icon: 'Layout' },
+          { label: 'Voucher Designer', path: '/sales/tools/voucher-designer', icon: 'Layout' },
           { label: 'Customer Groups', path: '/sales/customer-groups', icon: 'Users2' },
           { label: 'Price Lists', path: '/sales/price-lists', icon: 'Tag' },
           { label: 'Salespersons', path: '/sales/salespersons', icon: 'UserCheck' },
@@ -184,7 +184,7 @@ export const moduleMenuMap: Record<
         label: 'Tools',
         icon: 'Wrench',
         children: [
-          { label: 'Voucher Designer', path: '/purchases/settings/voucher-types', icon: 'Layout' },
+          { label: 'Voucher Designer', path: '/purchases/tools/voucher-designer', icon: 'Layout' },
           { label: 'Vendor Groups', path: '/purchases/vendor-groups', icon: 'Users2' },
           { label: 'Price Lists', path: '/purchases/price-lists', icon: 'Tag' },
         ],
