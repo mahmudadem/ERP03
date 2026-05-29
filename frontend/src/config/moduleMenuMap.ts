@@ -88,11 +88,17 @@ export const moduleMenuMap: Record<
       { label: 'Price Lists', path: '/sales/price-lists', icon: 'Tag' },
       { label: 'Salespersons', path: '/sales/salespersons', icon: 'UserCheck' },
       { label: 'Promotions', path: '/sales/promotions', icon: 'Percent' },
-      { label: 'Quotations', path: '/sales/quotes', icon: 'FileText' },
-      { label: 'Sales Orders', path: '/sales/orders', icon: 'ShoppingCart' },
-      { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },
-      { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
-      { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
+      {
+        label: 'Basic Forms',
+        icon: 'FolderOpen',
+        children: [
+          { label: 'Quotations', path: '/sales/quotes', icon: 'FileText' },
+          { label: 'Sales Orders', path: '/sales/orders', icon: 'ShoppingCart' },
+          { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },
+          { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
+          { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
+        ]
+      },
       { label: 'Aged Backlog', path: '/sales/aged-backlog', icon: 'Clock3' },
       {
         label: 'Reports',
@@ -115,10 +121,16 @@ export const moduleMenuMap: Record<
       { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
       { label: 'Vendor Groups', path: '/purchases/vendor-groups', icon: 'Users2' },
       { label: 'Price Lists', path: '/purchases/price-lists', icon: 'Tag' },
-      { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
-      { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
-      { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
-      { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
+      {
+        label: 'Basic Forms',
+        icon: 'FolderOpen',
+        children: [
+          { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
+          { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
+          { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
+          { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
+        ]
+      },
       {
         label: 'Reports',
         icon: 'BarChart3',

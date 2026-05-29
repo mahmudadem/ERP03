@@ -40,6 +40,12 @@ export class VoucherTypeDefinition {
     public actions?: any[],
     public defaultCurrency?: string,
     public voucherType?: string,
-    public persona?: string
+    public persona?: string,
+    /**
+     * Sidebar group label this voucher type's default form should land under
+     * (e.g. "Documents", "Vouchers"). When null/undefined the form is rendered
+     * as a top-level sidebar entry. Propagates to VoucherFormDefinition at copy.
+     */
+    public sidebarGroup?: string
   ) {}
 }

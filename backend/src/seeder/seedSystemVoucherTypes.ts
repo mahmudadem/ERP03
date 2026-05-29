@@ -848,7 +848,8 @@ const def = new VoucherTypeDefinition(
         (t as any).actions || [],
         (t as any).defaultCurrency,
         (t as any).voucherType || t.code,
-        (t as any).persona || undefined
+        (t as any).persona || undefined,
+        (t as any).sidebarGroup || undefined
       );
       
       // FIX 2: Convert class instance to plain object for Firestore compatibility

@@ -15,6 +15,7 @@ import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { loadCompanyForms } from '../modules/accounting/voucher-wizard/services/voucherWizardService';
 import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 import { voucherFormApi } from '../api/voucherFormApi';
+import { COMPANY_MODULES_REFRESH_EVENT } from '../utils/companyModulesEvents';
 
 export interface SidebarFormEntry {
   id: string;
@@ -38,6 +39,9 @@ export function useVoucherTypes() {
   const [voucherTypes, setVoucherTypes] = useState<VoucherFormConfig[]>([]);
   const [allModuleForms, setAllModuleForms] = useState<SidebarFormEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  // Bumped by the companyModules refresh event so module-init wizards can
+  // re-trigger this hook without a page reload.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     async function loadVouchers() {
@@ -137,7 +141,16 @@ export function useVoucherTypes() {
 
     setLoading(canLoadForms);
     loadVouchers();
-  }, [canLoadForms]);
+  }, [canLoadForms, refreshTick]);
+
+  // Re-fetch voucher forms whenever a module finishes initialization. The Sales
+  // / Purchase / Accounting wizards emit this event so the sidebar picks up the
+  // newly copied forms without forcing the user to reload the page.
+  useEffect(() => {
+    const handleRefresh = () => setRefreshTick((tick) => tick + 1);
+    window.addEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
+    return () => window.removeEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
+  }, []);
 
   return { voucherTypes, allModuleForms, loading };
 }

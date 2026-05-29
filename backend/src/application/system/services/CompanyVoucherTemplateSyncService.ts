@@ -50,7 +50,8 @@ const cloneVoucherTypeForCompany = (companyId: string, template: VoucherTypeDefi
     cloneValue(template.actions) || [],
     template.defaultCurrency,
     template.voucherType || template.code,
-    template.persona || undefined
+    template.persona || undefined,
+    template.sidebarGroup || undefined
   );
 
 const cloneVoucherFormForCompany = (
@@ -142,6 +143,7 @@ const cloneVoucherFormForCompany = (
     voucherType: template.voucherType || template.code,
     persona: template.persona || undefined,
     baseType: template.code,
+    sidebarGroup: template.sidebarGroup || undefined,
     createdAt: now,
     updatedAt: now,
     createdBy,
@@ -247,7 +249,8 @@ export const syncCompanyVoucherTemplatesFromSystem = async (
         defaultCurrency: template.defaultCurrency,
         voucherType: template.voucherType || template.code,
         persona: template.persona || null,
-      });
+        sidebarGroup: template.sidebarGroup || null,
+      } as any);
       companyTypeId = existing.id;
     } else {
       const companyType = cloneVoucherTypeForCompany(input.companyId, template);
