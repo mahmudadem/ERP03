@@ -11,11 +11,15 @@ import client from './client';
 
 export type VoucherTypeModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
 
-/** Maps the module enum to the per-module URL prefix on the backend. */
+/**
+ * Maps the module enum to the per-module URL prefix on the backend.
+ * Backend module IDs are singular ('sales', 'purchase', 'accounting');
+ * mounting at /tenant/purchases (plural) lands on the 404 catch-all.
+ */
 const moduleUrlPrefix: Record<VoucherTypeModule, string> = {
   ACCOUNTING: '/tenant/accounting',
   SALES: '/tenant/sales',
-  PURCHASE: '/tenant/purchases',
+  PURCHASE: '/tenant/purchase',
 };
 
 export interface CatalogTemplate {

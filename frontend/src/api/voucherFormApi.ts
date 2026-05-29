@@ -52,12 +52,17 @@ export type VoucherFormModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
  * repository searches across modules), so we keep them on the accounting
  * URL until we need module scoping on reads.
  */
+// Backend module IDs are singular ('sales', 'purchase', 'accounting') and
+// the tenant router mounts each module router at /tenant/{moduleId}, so
+// the URL prefix has to match those singular IDs exactly. Using
+// '/tenant/purchases' (plural) lands on the catch-all 404 because no
+// purchases module is registered.
 const writePrefix = (module: VoucherFormModule): string => {
   switch (module) {
     case 'SALES':
       return '/tenant/sales';
     case 'PURCHASE':
-      return '/tenant/purchases';
+      return '/tenant/purchase';
     case 'ACCOUNTING':
     default:
       return '/tenant/accounting';
