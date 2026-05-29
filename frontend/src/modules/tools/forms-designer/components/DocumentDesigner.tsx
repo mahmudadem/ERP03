@@ -22,6 +22,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { validateUniqueness } from '../validators/uniquenessValidator';
+import { useWizard } from '../WizardContext';
 import { 
   ArrowLeft, ArrowRight, Check, CheckCircle2, Plus,
   LayoutTemplate, Settings, 
@@ -72,10 +73,10 @@ interface DocumentDesignerProps {
   defaultActions: DocumentAction[];
 }
 
-export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({ 
-  initialConfig, 
+export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
+  initialConfig,
   availableTemplates = [],
-  onSave, 
+  onSave,
   onCancel,
   systemFields = [],
   availableFields = [],
@@ -84,6 +85,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   defaultActions = []
 }) => {
   const { companyId } = useCompanyAccess();
+  // Pull existing company forms from WizardContext so the uniqueness check
+  // runs against an in-memory list rather than hitting Firestore directly.
+  // The Firestore path was failing under rules on the legacy documentTypes
+  // collection and surfacing as a misleading "Failed to validate uniqueness".
+  const { forms: existingForms } = useWizard();
   
   // Wizard State
   // Skip Step 1 (template selection) if editing existing document
@@ -565,7 +571,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         config.name,
         config.id,
         config.prefix,
-        initialConfig?.id // Exclude self when editing
+        initialConfig?.id, // Exclude self when editing
+        existingForms.map((f) => ({ id: f.id, name: f.name, prefix: f.prefix })),
       );
       
       // Also check prefix doesn't contain placeholder characters
