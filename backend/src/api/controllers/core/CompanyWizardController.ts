@@ -141,7 +141,6 @@ export class CompanyWizardController {
                 diContainer.rbacCompanyUserRepository,
                 diContainer.companyRoleRepository,
                 resolver,
-                diContainer.voucherTypeDefinitionRepository,
                 diContainer.companySettingsRepository,
                 diContainer.systemMetadataRepository,
                 diContainer.currencyRepository,
