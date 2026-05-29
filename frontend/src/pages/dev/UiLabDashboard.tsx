@@ -181,12 +181,9 @@ export const UiLabDashboard: React.FC = () => {
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className="flex flex-col justify-center px-2 py-0.5 rounded border border-slate-200/40 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-950/40 cursor-grab select-none min-w-[90px]"
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-slate-200/40 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-950/40 cursor-grab select-none min-w-[60px]"
               >
-                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-0.5 flex items-center gap-1">
-                  <Icon className={clsx("w-2.5 h-2.5 shrink-0", w.color)} />
-                  {w.label}
-                </span>
+                <Icon className={clsx("w-2.5 h-2.5 shrink-0", w.color)} />
                 <div className="text-[10px] font-black text-slate-800 dark:text-slate-200 leading-tight truncate shrink-0">
                   {renderRealWidget(w.type)}
                 </div>
@@ -219,7 +216,6 @@ export const UiLabDashboard: React.FC = () => {
               >
                 <span className="text-indigo-500/85 font-black">[</span>
                 <Icon className={clsx("w-3 h-3 shrink-0", w.color)} />
-                <span className="text-slate-450 font-bold uppercase text-[9px] mr-0.5">{w.label}:</span>
                 <div className="leading-none shrink-0 text-slate-700 dark:text-slate-200">{renderRealWidget(w.type)}</div>
                 <span className="text-indigo-500/85 font-black">]</span>
               </div>
@@ -413,13 +409,10 @@ export const UiLabDashboard: React.FC = () => {
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className="flex flex-col px-2.5 py-0.5 border border-dashed border-sky-450 bg-sky-50/10 text-sky-400 cursor-grab text-[10px]"
+                className="flex items-center gap-1.5 px-2.5 py-1 border border-dashed border-sky-450 bg-sky-50/10 text-sky-400 cursor-grab text-[10px]"
               >
-                <span className="text-[7px] uppercase tracking-wider opacity-70 flex items-center gap-0.5">
-                  <Icon className="w-2.5 h-2.5 text-sky-400 shrink-0" />
-                  {w.label}
-                </span>
-                <div className="font-bold leading-none mt-0.5 shrink-0">{renderRealWidget(w.type)}</div>
+                <Icon className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                <div className="font-bold leading-none shrink-0">{renderRealWidget(w.type)}</div>
               </div>
             );
           })}
