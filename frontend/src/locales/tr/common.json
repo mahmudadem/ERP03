@@ -221,7 +221,13 @@
     }
   },
   "actions": {
-    "close": "Kapat"
+    "close": "Kapat",
+    "open": "Aç",
+    "refresh": "Yenile",
+    "clear": "Temizle",
+    "search": "Ara",
+    "previous": "Önceki",
+    "next": "Sonraki"
   },
   "notifications": {
     "title": "Bildirimler",
@@ -2080,7 +2086,48 @@
       "placeholder": "Tema yapılandırma ayarları burada görünecektir."
     },
     "home": {
-      "title": "Sistem Ayarları"
+      "title": "Sistem Ayarları",
+      "subtitle": "Şirket kontrollerini iş amacına göre bulmak için bu merkezi kullanın: iş akışı, muhasebe, vergi, erişim, iletişim ve kullanıcı deneyimi.",
+      "open": "Aç",
+      "groups": {
+        "general": {
+          "title": "Genel",
+          "description": "Şirket profili, görünüm, menü tercihleri ve bildirim varsayılanları."
+        },
+        "workflow": {
+          "title": "İş Akışı",
+          "description": "Onay davranışı ve satış/satın alma belge akışı kontrolleri."
+        },
+        "finance": {
+          "title": "Muhasebe ve Vergi",
+          "description": "Kayıt varsayılanları, para birimleri, stok muhasebesi ve vergi kodları."
+        },
+        "access": {
+          "title": "Erişim ve Gelişmiş",
+          "description": "Roller, kullanıcı atamaları, AI yapılandırması ve gelişmiş yönetim."
+        }
+      },
+      "links": {
+        "company": { "title": "Şirket Ayarları" },
+        "appearance": { "title": "Görünüm" },
+        "notifications": { "title": "Bildirimler" },
+        "approval": { "title": "Onay İş Akışı" },
+        "sales": { "title": "Satış Ayarları" },
+        "purchases": { "title": "Satın Alma Ayarları" },
+        "accounting": { "title": "Muhasebe Ayarları" },
+        "inventory": { "title": "Stok Ayarları" },
+        "taxCodes": { "title": "Vergi Kodları" },
+        "currencies": { "title": "Para Birimleri" },
+        "roles": { "title": "Roller" },
+        "assignUsers": { "title": "Kullanıcı Ata" },
+        "ai": { "title": "AI Ayarları" }
+      }
+    },
+    "layout": {
+      "unsavedTitle": "Kaydedilmemiş Ayar Değişiklikleri",
+      "unsavedDescription": "Bu modülde kaydedilmemiş değişiklikleriniz var.",
+      "discard": "Vazgeç",
+      "saveChanges": "Değişiklikleri Kaydet"
     },
     "sidebar": {
       "title": "Menü Yapılandırması",
@@ -2135,6 +2182,53 @@
   "success": {
     "SAVE": "Başarıyla kaydedildi"
   },
+  "inventory": {
+    "itemsList": {
+      "title": "Stok Kalemleri",
+      "subtitle": "Satış, satın alma ve stok süreçlerinde kullanılan kalem kartlarını arayın, oluşturun ve açın.",
+      "new": "Yeni Kalem",
+      "newWindowTitle": "Yeni Kalem Kartı",
+      "quickAdd": "Hızlı Kalem Ekle",
+      "quickAddHelp": "Basit kalem kurulumu için kullanın. Muhasebe, stok ve fiyatlandırma ayarları için kalem kartını açın.",
+      "add": "Kalem Ekle",
+      "search": "Ara",
+      "searchPlaceholder": "Kod/ad ara",
+      "allTypes": "Tüm Türler",
+      "loading": "Stok kalemleri yükleniyor...",
+      "emptyTitle": "Gösterilen kalem yok",
+      "emptyDescription": "Kalem kartlarını yüklemek için yukarıdaki arama veya filtreleri kullanın.",
+      "page": "Sayfa {{page}}",
+      "fields": {
+        "code": "Kod",
+        "name": "Ad",
+        "costCurrency": "Maliyet Para Birimi"
+      },
+      "columns": {
+        "code": "Kod",
+        "name": "Ad",
+        "type": "Tür",
+        "baseUom": "Temel Birim",
+        "costCurrency": "Maliyet PB",
+        "costMethod": "Maliyet Yöntemi",
+        "status": "Durum",
+        "actions": "İşlemler"
+      },
+      "typeOptions": {
+        "PRODUCT": "Ürün",
+        "RAW_MATERIAL": "Hammadde",
+        "SERVICE": "Hizmet"
+      },
+      "status": {
+        "active": "Aktif",
+        "inactive": "Pasif"
+      },
+      "messages": {
+        "created": "Kalem oluşturuldu",
+        "createFailed": "Kalem oluşturulamadı",
+        "loadFailed": "Stok kalemleri yüklenemedi"
+      }
+    }
+  },
   "sales": {
     "governance": {
       "operationalWarning": "Operasyonel iş akışı: Doğrudan faturalandırma varsayılan olarak engellenmiştir. Bağlı bir fatura oluşturmak için yukarıdan bir Satış Siparişi seçin veya doğrudan faturalandırma yönetimi istisnası eklemek için yöneticinize başvurun.",
@@ -2145,6 +2239,30 @@
       "directInvoicingStatusLabel": "Doğrudan Faturalandırma",
       "directAllowed": "İzin verildi",
       "directBlockedOperational": "Engellendi (Operasyonel)"
+    },
+    "invoicesList": {
+      "title": "Satış Faturaları",
+      "subtitle": "Gelir ve alacakları muhasebeleştirmek için faturaları kaydedin.",
+      "new": "Yeni Fatura",
+      "status": "Durum",
+      "payment": "Ödeme",
+      "customer": "Müşteri",
+      "allCustomers": "Tüm Müşteriler",
+      "loading": "Satış faturaları yükleniyor...",
+      "emptyTitle": "Satış faturası bulunamadı",
+      "emptyDescription": "Yeni bir fatura oluşturun veya mevcut faturaları bulmak için filtreleri değiştirin.",
+      "statusOptions": {
+        "ALL": "Tüm Durumlar",
+        "DRAFT": "Taslak",
+        "POSTED": "Kaydedildi",
+        "CANCELLED": "İptal Edildi"
+      },
+      "paymentOptions": {
+        "ALL": "Tüm Ödemeler",
+        "UNPAID": "Ödenmedi",
+        "PARTIALLY_PAID": "Kısmen Ödendi",
+        "PAID": "Ödendi"
+      }
     },
     "settings": {
       "arGeneration": {
@@ -2326,6 +2444,30 @@
     }
   },
   "purchases": {
+    "invoicesList": {
+      "title": "Satın Alma Faturaları",
+      "subtitle": "Kaydedilen faturalar borç ve genel muhasebe kayıtları oluşturur.",
+      "new": "Yeni Satın Alma Faturası",
+      "status": "Durum",
+      "payment": "Ödeme",
+      "vendor": "Tedarikçi",
+      "allVendors": "Tüm Tedarikçiler",
+      "loading": "Satın alma faturaları yükleniyor...",
+      "emptyTitle": "Satın alma faturası bulunamadı",
+      "emptyDescription": "Yeni bir tedarikçi faturası oluşturun veya mevcut faturaları bulmak için filtreleri değiştirin.",
+      "statusOptions": {
+        "ALL": "Tüm Durumlar",
+        "DRAFT": "Taslak",
+        "POSTED": "Kaydedildi",
+        "CANCELLED": "İptal Edildi"
+      },
+      "paymentOptions": {
+        "ALL": "Tüm Ödemeler",
+        "UNPAID": "Ödenmedi",
+        "PARTIALLY_PAID": "Kısmen Ödendi",
+        "PAID": "Ödendi"
+      }
+    },
     "settings": {
       "apGeneration": {
         "title": "AP Sub-account Generation",

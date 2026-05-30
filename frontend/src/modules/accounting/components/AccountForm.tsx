@@ -689,12 +689,12 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                             </>
                         ) : (mode === 'create' ? (
                             <>
-                                <CheckCircle2 size={16} className="group-hover:scale-110 transition-transform" />
+                                <CheckCircle2 size={16} className="group-hover:text-indigo-500 transition-colors" />
                                 <span>Commit Creation</span>
                             </>
                         ) : (
                             <>
-                                <CheckCircle2 size={16} className="group-hover:scale-110 transition-transform" />
+                                <CheckCircle2 size={16} className="group-hover:text-indigo-500 transition-colors" />
                                 <span>Update Authority</span>
                             </>
                         ))}

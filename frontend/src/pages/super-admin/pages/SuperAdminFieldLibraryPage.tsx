@@ -32,6 +32,7 @@ import {
   tableSortHeaderClass,
 } from '../../../modules/super-admin/components/SuperAdminPage';
 import { useSuperAdminTable } from '../../../modules/super-admin/hooks/useSuperAdminTable';
+import { useConfirm } from '../../../hooks/useConfirm';
 import {
   superAdminFieldLibraryApi,
   FieldLibraryEntry,
@@ -88,6 +89,8 @@ export const SuperAdminFieldLibraryPage: React.FC = () => {
   const [showDeprecated, setShowDeprecated] = useState(true);
   const [deleteBlocked, setDeleteBlocked] = useState<DeleteBlockedState | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const { confirm, confirmDialog } = useConfirm();
 
   const reload = useCallback(async () => {
     try {
@@ -166,11 +169,14 @@ export const SuperAdminFieldLibraryPage: React.FC = () => {
   };
 
   const handleDelete = async (entry: FieldLibraryEntry) => {
-    if (!window.confirm(
-      `Permanently delete "${entry.id}"? This cannot be undone.\n\n` +
+    const confirmed = await confirm({
+      title: 'Delete Field',
+      tone: 'danger',
+      message: `Permanently delete "${entry.id}"? This cannot be undone.\n\n` +
       `Tip: prefer "Deprecate" — it keeps the entry in the catalog with a ` +
       `strikethrough and bumps version so consumers can detect the change.`
-    )) return;
+    });
+    if (!confirmed) return;
     setBusyId(entry.id);
     setError(null);
     try {
@@ -189,6 +195,7 @@ export const SuperAdminFieldLibraryPage: React.FC = () => {
 
   return (
     <SuperAdminPage>
+      {confirmDialog}
       <SuperAdminHeader
         title="Field Library"
         description="Layer 1 of the three-layer field cascade — the canonical catalog every voucher type and form draws from. Editing here propagates to consumers on their next save (decision 6.3: lazy revalidation)."

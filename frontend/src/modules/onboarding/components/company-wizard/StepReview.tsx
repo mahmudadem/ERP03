@@ -119,7 +119,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
             <div className="md:col-span-2 flex items-start gap-4 pb-4 md:pb-6 border-b border-slate-200">
               <div className="h-12 w-12 md:h-16 md:w-16 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
                 {data.logoPreviewUrl ? (
-                  <img src={data.logoPreviewUrl} alt="Logo" className="h-full w-full object-contain" />
+                  <img src={data.logoPreviewUrl} alt={data.companyName ? `Logo for ${data.companyName}` : "Company Logo"} className="h-full w-full object-contain" />
                 ) : (
                   <Building2 className="h-6 w-6 md:h-8 md:w-8 text-slate-300" />
                 )}

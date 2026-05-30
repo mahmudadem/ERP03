@@ -353,7 +353,7 @@ const LandingPage: React.FC = () => {
                   { title: t('onboarding.landing.cards.globalOps.title', { defaultValue: 'Global Ops' }), desc: t('onboarding.landing.cards.globalOps.desc', { defaultValue: 'Multi-currency, multi-language, and multi-company.' }), icon: Globe },
                 ].map((feature, idx) => (
                   <div key={idx} className="p-8 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 hover:bg-[var(--color-bg-tertiary)]/30 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-                     <div className="h-14 w-14 rounded-xl bg-[var(--color-bg-primary)] border border-[var(--color-border)] flex items-center justify-center mb-6 text-primary-500 shadow-sm group-hover:scale-110 group-hover:bg-primary-500 group-hover:text-white transition-all duration-300">
+                     <div className="h-14 w-14 rounded-xl bg-[var(--color-bg-primary)] border border-[var(--color-border)] flex items-center justify-center mb-6 text-primary-500 shadow-sm group-hover:bg-primary-500 group-hover:text-white transition-colors duration-300">
                         <feature.icon className="h-7 w-7" />
                      </div>
                      <h3 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-3">{feature.title}</h3>

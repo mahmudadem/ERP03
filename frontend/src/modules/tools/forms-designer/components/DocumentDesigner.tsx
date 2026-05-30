@@ -1053,7 +1053,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                    <button
                      key={color.id}
                      onClick={() => updateSectionStyle(sectionName, color.hex)}
-                     className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${color.class} ${currentHex === color.hex ? 'border-indigo-500 scale-125 shadow-sm' : 'border-white hover:scale-110 shadow-xs'}`}
+                     className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${color.class} ${currentHex === color.hex ? 'border-indigo-500 shadow-md' : 'border-white hover:border-indigo-300 shadow-xs'}`}
                      title={`Set background to ${color.id}`}
                    />
                 ))}
@@ -2367,9 +2367,9 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                       isPreview={true} 
                       onAction={(actionId) => {
                         if (actionId === 'save') {
-                          alert('Test Run Success: Document validation passed! This voucher would be Post-Ready.');
+                          toast.success('Test Run Success: Document validation passed! This voucher would be Post-Ready.');
                         } else {
-                          alert(`Preview: Action [${actionId}] triggered.`);
+                          toast(`Preview: Action [${actionId}] triggered.`, { icon: 'ℹ️' });
                         }
                       }}
                     />

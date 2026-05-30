@@ -42,7 +42,7 @@ const AccountingHomePage: React.FC = () => {
            className="p-6 group hover:shadow-xl hover:border-blue-200 transition-all cursor-pointer border-t-4 border-t-blue-500" 
            onClick={() => navigate('/accounting/vouchers')}
          >
-            <div className="bg-blue-50 text-blue-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="bg-blue-50 text-blue-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors group-hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400">
                <FileText size={20} />
             </div>
             <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{t('home.journalTag')}</h3>
@@ -57,7 +57,7 @@ const AccountingHomePage: React.FC = () => {
            className="p-6 group hover:shadow-xl hover:border-indigo-200 transition-all cursor-pointer border-t-4 border-t-indigo-500" 
            onClick={() => navigate('/accounting/accounts')}
          >
-            <div className="bg-indigo-50 text-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="bg-indigo-50 text-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors group-hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400">
                <Settings size={20} />
             </div>
             <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{t('home.structureTag')}</h3>
@@ -72,7 +72,7 @@ const AccountingHomePage: React.FC = () => {
            className="p-6 group hover:shadow-xl hover:border-purple-200 transition-all cursor-pointer border-t-4 border-t-purple-500" 
            onClick={() => navigate('/accounting/reports/trial-balance')}
          >
-            <div className="bg-purple-50 text-purple-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="bg-purple-50 text-purple-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors group-hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400">
                <BarChart2 size={20} />
             </div>
             <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{t('home.analysisTag')}</h3>

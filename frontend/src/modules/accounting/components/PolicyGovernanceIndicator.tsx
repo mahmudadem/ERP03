@@ -34,9 +34,9 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
         {isNewVoucher ? (
           <HelpCircle size={10} className="text-gray-400" />
         ) : isVoucherStrict ? (
-          <Lock size={10} className="text-indigo-500 transition-all group-hover:scale-110" />
+          <Lock size={10} className="text-indigo-500 transition-all group-hover:text-indigo-600" />
         ) : (
-          <Zap size={10} className="text-emerald-500 animate-pulse transition-all group-hover:scale-110" />
+          <Zap size={10} className="text-emerald-500 transition-all group-hover:text-emerald-600" />
         )}
         <span className="text-[8px] font-black uppercase tracking-tighter text-[var(--color-text-muted)] leading-none italic opacity-70">
           {isNewVoucher ? 'N/A' : 'VOC'}
@@ -44,7 +44,7 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
       </div>
 
       {/* Rich Unified Tooltip */}
-      <div className="absolute left-0 top-full mt-2 hidden group-hover:block bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] text-[10px] p-2.5 rounded-lg shadow-2xl z-[9999] border border-[var(--color-border)] min-w-[220px] backdrop-blur-md">
+      <div className="absolute left-0 top-full mt-2 hidden group-hover:block bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] text-[10px] p-2.5 rounded-lg shadow-2xl z-50 border border-[var(--color-border)] min-w-[220px] backdrop-blur-md">
         <div className="flex justify-between items-center border-b border-[var(--color-border)] shadow-sm pb-1.5 mb-2">
           <span className="font-black tracking-widest text-[var(--color-text-secondary)] uppercase">Policy Governance</span>
           <span className="text-[8px] bg-[var(--color-bg-tertiary)] px-1 rounded text-[var(--color-text-muted)]">V2.1</span>
@@ -86,3 +86,4 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
     </div>
   );
 };
+

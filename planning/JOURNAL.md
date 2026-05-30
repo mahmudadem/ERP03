@@ -2,6 +2,21 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Task 132 Phase 5 — raw window.confirm and alert cleanup
+
+**Task:** Remove the remaining legacy `window.confirm` and `alert` usages from the remaining entries in the allowlist.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Refactored `window.confirm` to `useConfirm` hook in `AiRuntimeProfilesPage.tsx` and `CertificationManagerModal.tsx`.
+- Refactored `alert()` to `toast()` in `AlarmWidget.tsx`, `NotesWidget.tsx`, and `DocumentDesigner.tsx`.
+- Emptied `frontend/scripts/check-no-confirm.allowlist.json` to an empty array `[]` representing 0 remaining raw usages.
+
+**Verification:**
+- `npm --prefix frontend run check:no-confirm` -> passed.
+- `npm --prefix frontend run build` -> passed.
+
 ## 2026-05-31 (Sun) — Sidebar forms grouping rework (Task 147)
 
 **Task:** Fix the broken Accounting sidebar (empty because v1 suppressed every default voucher) and codify the per-module forms-grouping policy.
@@ -1388,3 +1403,17 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 
 ## 2026-05-20 (Wed) — Phase C (sales finance & reporting)
 **Task:** Task 110 — Phase C of the sales completion roadmap
+
+## 2026-05-30: Deep UI/UX Hardening
+
+**Agent:** Antigravity
+
+**Work Done:**
+- Executed deep code-level UI/UX fixes across the frontend per user request.
+- Removed disruptive `hover:scale` animations that caused grid layout jitter in sidebars and core UI components, replacing them with color/shadow transitions.
+- Standardized arbitrary Z-Index values (e.g. `z-[999999]`) to normalized Tailwind brackets (e.g. `z-[90]`, `z-50`) to resolve stacking context collisions in modals and shared selectors.
+- Audited `bg-white/10` contrast safety, ensuring all instances are encapsulated in forced dark-mode containers.
+- Patched accessibility concerns including updating static image alt-text inside wizards and correcting pointer indicators.
+
+**Next Steps:**
+- Continue executing native functionality retests or further chrome polish according to ACTIVE.md priorities.

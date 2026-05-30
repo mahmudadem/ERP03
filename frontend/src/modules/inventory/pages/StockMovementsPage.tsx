@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { DatePicker } from '../../../components/shared/selectors';
 import { StockMovementDTO, InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -56,17 +57,15 @@ const StockMovementsPage: React.FC = () => {
 
       <Card className="p-6">
         <div className="grid gap-3 md:grid-cols-4">
-          <input
-            type="date"
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
+          <DatePicker
+            inputClassName="w-full rounded border border-slate-300 px-3 py-2 text-sm"
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={setFrom}
           />
-          <input
-            type="date"
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
+          <DatePicker
+            inputClassName="w-full rounded border border-slate-300 px-3 py-2 text-sm"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={setTo}
           />
           <button className="rounded bg-slate-700 px-3 py-2 text-sm text-white md:col-span-2 disabled:opacity-50" onClick={loadData} disabled={loading}>
             {loading ? 'Applying...' : 'Apply Filters'}

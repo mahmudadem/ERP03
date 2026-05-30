@@ -329,6 +329,7 @@
   "voucherList": {
     "titleAll": "All Vouchers",
     "titleType": "{{name}} vouchers",
+    "subtitle": "Filter, open, approve, post, print, reverse, or delete accounting vouchers.",
     "refresh": "Refresh",
     "new": "New {{name}}",
     "voucher": "Voucher",

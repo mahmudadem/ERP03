@@ -21,9 +21,11 @@ import {
 } from '../../../api/aiAssistantApi';
 import type { AiProviderType, ConversationContextMode } from '../utils/settingsHelpers';
 import { PROVIDER_PRESETS, resolvePresetId, resolveProviderChange } from '../utils/settingsHelpers';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export function useAiSettings(canView: boolean, canManage: boolean) {
   const { t } = useTranslation('aiAssistant');
+  const { confirm, confirmDialog } = useConfirm();
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -470,8 +472,12 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
 
   const handleDeprecateProfile = useCallback(async () => {
     if (!registeredProfileId || !canManage) return;
-    // eslint-disable-next-line no-alert
-    if (!window.confirm(t('settings.customModel.deprecateConfirm', 'Deprecate this model profile? It will be removed from your settings and can no longer be used.'))) return;
+    const confirmed = await confirm({
+      title: t('settings.customModel.deprecateTitle', 'Deprecate Profile'),
+      tone: 'warning',
+      message: t('settings.customModel.deprecateConfirm', 'Deprecate this model profile? It will be removed from your settings and can no longer be used.')
+    });
+    if (!confirmed) return;
     try {
       setIsDeprecating(true);
       setError(null);
@@ -561,5 +567,6 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     handleSelectCertifiedProfile, handleRegisterAndCertify,
     handleRunRegisteredDiagnostics, handleRunRegisteredCertification,
     handleCancelRegistration, handleDeprecateProfile,
+    confirmDialog,
   };
 }

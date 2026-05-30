@@ -36,7 +36,7 @@ export const CompanyCard: React.FC<Props> = ({ company, onEnter }) => {
               <img 
                 src={company.logoUrl} 
                 alt={`${company.name} Logo`} 
-                className="max-h-full max-w-full object-contain p-2 transition-transform duration-500 group-hover:scale-110" 
+                className="max-h-full max-w-full object-contain p-2" 
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   const parent = e.currentTarget.parentElement;

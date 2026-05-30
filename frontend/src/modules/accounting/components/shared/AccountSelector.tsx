@@ -401,12 +401,12 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[9998]" 
+            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40" 
             onClick={() => setShowModal(false)}
           />
           
           {/* Modal */}
-          <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none p-4">
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
             <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[var(--color-border)] w-full max-w-lg max-h-[500px] pointer-events-auto flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               {/* Header */}
               <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
@@ -606,7 +606,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
 
       {/* Create Account Modal Overlay - Portal to body to ensure it's on top of windows but below ConfirmDialog */}
       {showCreateModal && createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100000] p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
            <AccountForm
              mode="create"
              initialValues={{
@@ -668,3 +668,4 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
 AccountSelector.displayName = 'AccountSelector';
 
 export default AccountSelector;
+

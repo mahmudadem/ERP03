@@ -9,6 +9,7 @@ import { VoucherFiltersBar } from '../components/VoucherFiltersBar';
 import { VoucherTable } from '../components/VoucherTable';
 import { Button } from '../../../components/ui/Button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
 import { useVoucherTypes } from '../../../hooks/useVoucherTypes';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -429,9 +430,11 @@ const VouchersListPage: React.FC = () => {
     <AccountsProvider>
       <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] relative transition-colors duration-300">
         <div className="flex-none p-4 pb-0">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{pageTitle}</h1>
-            <div className="flex items-center gap-3">
+          <PageHeader
+            title={pageTitle}
+            subtitle={t('voucherList.subtitle')}
+            action={
+              <div className="flex flex-wrap items-center gap-3">
               <Button 
                 variant="outline" 
                 onClick={() => invalidateVouchers()} 
@@ -459,8 +462,9 @@ const VouchersListPage: React.FC = () => {
                   </Button>
                 </div>
               </RequirePermission>
-            </div>
-          </div>
+              </div>
+            }
+          />
 
           <VoucherFiltersBar 
             dateRange={dateRange}

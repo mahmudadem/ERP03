@@ -10,7 +10,7 @@
 
 **Task 132 chrome work, authored mode-aware from the start** — natives are the v1 surface; chrome must be polished AND honor `uiMode` (classic / windows) before per-voucher polish or QA passes begin. Foundation already exists: `useUserPreferences().uiMode`, `AppShell` mode branch, `TopBar UIModeWidget`.
 
-Concrete next step: **[Task 132](./tasks/132-ux-layout-production-hardening.md) Phase 0.5 (inventory)** — catalog mode-awareness state across shell / sidebar / topbar / settings / list pages, plus the action-safety taxonomy (`window.confirm` / `alert()` usage, raw date inputs, page-local selectors).
+Concrete next step: **[Task 132](./tasks/132-ux-layout-production-hardening.md) Phase 5 continuation** — shrink remaining unsafe action-feedback allowlist entries outside the frozen top-bar widget scope. Phase 0.5 inventory, Phase 1 P0 action/date hardening, raw date cleanup, shared selector promotion, sidebar/navigation polish, Phase 3 settings taxonomy foundation, Sales/Purchase invoice-list standardization, and Accounting/Inventory list standardization are complete.
 
 ---
 
@@ -58,6 +58,8 @@ If you are starting work on a priority item, record it here so other agents don'
 | Claude (Opus 4.7) | Sidebar form grouping policy + migration design | 2026-05-30 | ✅ Done (committed cbe52066) |
 | Claude (Opus 4.7) | SI Direct capability audit | 2026-05-30 | ✅ Done (committed 29ff4aac) |
 | Claude (Opus 4.7) | v1 strategy pivot + Default Forms sidebar hide | 2026-05-30 | ✅ Done (pending commit) |
+| Codex | Task 132 - Settings/list standardization slices 143-145 | 2026-05-30 | ✅ Done |
+| Codex | Task 132 - Raw date input cleanup | 2026-05-30 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -78,4 +80,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-30 by Claude Opus 4.7 (v1 sequence: Task 132 chrome work mode-aware → native QA retest → per-voucher mode polish)_
+_Last updated: 2026-05-30 by Codex (Task 132 next step: shrink unsafe action-feedback allowlist)_

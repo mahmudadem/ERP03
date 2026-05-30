@@ -28,6 +28,7 @@ import {
   superAdminApi,
 } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 const unwrap = <T,>(value: any): T => (value?.data !== undefined ? value.data : value) as T;
 
@@ -50,6 +51,8 @@ export const AiApiKeysPage: React.FC = () => {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+
+  const { confirm, confirmDialog } = useConfirm();
 
   const refresh = async () => {
     try {
@@ -123,7 +126,12 @@ export const AiApiKeysPage: React.FC = () => {
   };
 
   const handleDelete = async (key: AiPlatformApiKey) => {
-    if (!window.confirm(`Delete "${key.label}"? This cannot be undone.`)) return;
+    const confirmed = await confirm({
+      title: 'Delete API Key',
+      tone: 'danger',
+      message: `Delete "${key.label}"? This cannot be undone.`
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deleteAiApiKey(key.id);
       errorHandler.showSuccess('Key deleted');
@@ -147,6 +155,7 @@ export const AiApiKeysPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      {confirmDialog}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { DatePicker } from '../../../components/shared/selectors';
 import {
   BuyXGetYConfig,
   PromotionRuleDTO,
@@ -239,11 +240,11 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
               </div>
               <div>
                 <label className={labelCls}>Valid From</label>
-                <input type="date" className={inputCls} value={form.validFrom} onChange={(e) => set({ validFrom: e.target.value })} />
+                <DatePicker inputClassName={inputCls} value={form.validFrom} onChange={(validFrom) => set({ validFrom })} />
               </div>
               <div>
                 <label className={labelCls}>Valid To</label>
-                <input type="date" className={inputCls} value={form.validTo} onChange={(e) => set({ validTo: e.target.value })} />
+                <DatePicker inputClassName={inputCls} value={form.validTo} onChange={(validTo) => set({ validTo })} />
               </div>
               {form.scope === 'ITEMS' && (
                 <div className="col-span-2">

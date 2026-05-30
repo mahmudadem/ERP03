@@ -329,6 +329,7 @@
   "voucherList": {
     "titleAll": "Tüm Fişler",
     "titleType": "{{name}} fişleri",
+    "subtitle": "Muhasebe fişlerini filtreleyin, açın, onaylayın, kaydedin, yazdırın, ters kayıt oluşturun veya silin.",
     "refresh": "Yenile",
     "new": "Yeni {{name}}",
     "voucher": "Fiş",

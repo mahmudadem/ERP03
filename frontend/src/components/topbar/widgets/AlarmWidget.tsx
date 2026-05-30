@@ -3,6 +3,8 @@ import { BellRing } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 
+import toast from 'react-hot-toast';
+
 interface AlarmWidgetProps {
   showBorder?: boolean;
   showBackground?: boolean;
@@ -24,7 +26,7 @@ export const AlarmWidget: React.FC<AlarmWidgetProps> = ({
         showBackground && "bg-rose-50 hover:bg-rose-100 shadow-sm",
         showBorder && "border border-rose-200"
       )}
-      onClick={() => alert(t('widgets.alarm.clickMessage', 'Alarm widget clicked. Add an alarm.'))}
+      onClick={() => toast(t('widgets.alarm.clickMessage', 'Alarm widget clicked. Add an alarm.'), { icon: 'ℹ️' })}
     >
       {!compact && <BellRing className="w-3.5 h-3.5 shrink-0" />}
       {t('widgets.alarm.label', 'Alarm')}

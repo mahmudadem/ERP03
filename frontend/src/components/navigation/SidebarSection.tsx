@@ -111,7 +111,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
             <ResolvedIcon
               className={clsx(
                 isOpen ? "w-5 h-5" : "w-6 h-6",
-                "transition-transform duration-200 group-hover:scale-110"
+                "transition-colors duration-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
               )}
             />
           </div>

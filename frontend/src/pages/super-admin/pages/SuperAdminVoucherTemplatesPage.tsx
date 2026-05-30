@@ -22,6 +22,7 @@ import {
   SortIcon,
 } from '../../../modules/super-admin/components/SuperAdminPage';
 import { useSuperAdminTable } from '../../../modules/super-admin/hooks/useSuperAdminTable';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export const SuperAdminVoucherTemplatesPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -29,6 +30,8 @@ export const SuperAdminVoucherTemplatesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const { confirm, confirmDialog } = useConfirm();
 
   useEffect(() => {
     loadTemplates();
@@ -61,12 +64,14 @@ export const SuperAdminVoucherTemplatesPage: React.FC = () => {
   const handleDelete = async (template: VoucherTypeDefinition) => {
     if (!template.id) return;
 
-    const confirmed = window.confirm(
-      t('superAdmin.voucherTemplates.confirmDelete', {
+    const confirmed = await confirm({
+      title: t('superAdmin.voucherTemplates.actions.delete', { defaultValue: 'Delete' }),
+      tone: 'danger',
+      message: t('superAdmin.voucherTemplates.confirmDelete', {
         name: template.name,
         defaultValue: `Delete system template "${template.name}"?`
       })
-    );
+    });
     if (!confirmed) return;
 
     try {
@@ -82,6 +87,7 @@ export const SuperAdminVoucherTemplatesPage: React.FC = () => {
 
   return (
     <SuperAdminPage>
+      {confirmDialog}
       <SuperAdminHeader
         title={t('superAdmin.voucherTemplates.title')}
         description="Maintain the official voucher templates copied into companies when modules are activated."

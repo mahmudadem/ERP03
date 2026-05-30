@@ -288,7 +288,7 @@ export const GlobalAiWidget: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-[99999] w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl hover:scale-110 transition-all flex items-center justify-center group"
+        className="fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-[99999] w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl hover:bg-indigo-700 transition-colors flex items-center justify-center group"
       >
         <MessageSquare className="w-7 h-7" />
         <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>

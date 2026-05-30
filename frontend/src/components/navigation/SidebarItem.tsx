@@ -178,7 +178,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
                 className: clsx(
                   (finalIcon as React.ReactElement).props.className,
                   (isOpen || isFlyout) ? "w-4 h-4" : "w-6 h-6",
-                  "transition-transform duration-200 group-hover:scale-110"
+                  "transition-colors duration-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
                 )
               });
             }

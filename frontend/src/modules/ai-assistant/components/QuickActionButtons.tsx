@@ -71,7 +71,7 @@ export const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
         >
           <div className={`
             flex-shrink-0 rounded-xl bg-gray-50 flex items-center justify-center 
-            group-hover:bg-white group-hover:scale-110 transition-all shadow-inner
+            group-hover:bg-white group-hover:text-indigo-600 transition-colors shadow-inner
             ${compact ? 'w-10 h-10' : 'w-12 h-12'}
           `}>
             <span className={compact ? 'text-xl' : 'text-2xl'}>

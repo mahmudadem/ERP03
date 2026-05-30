@@ -27,6 +27,7 @@ import {
   tableRowClass,
 } from '../components/SuperAdminPage';
 import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 const unwrap = <T,>(response: any): T => (response?.data ?? response) as T;
 
@@ -77,6 +78,8 @@ export const AiRuntimeProfilesPage: React.FC = () => {
   const [vaultKeys, setVaultKeys] = useState<AiPlatformApiKey[]>([]);
   const [keyMode, setKeyMode] = useState<'vault' | 'paste'>('vault');
   const [selectedVaultKeyId, setSelectedVaultKeyId] = useState<string>('');
+
+  const { confirm, confirmDialog } = useConfirm();
 
   const selectedProfile = viewState.mode === 'editing' ? profiles.find(profile => profile.id === viewState.profileId) || null : null;
   const isEditing = viewState.mode === 'editing';
@@ -246,7 +249,12 @@ export const AiRuntimeProfilesPage: React.FC = () => {
   };
 
   const handleDelete = async (profile: AiRuntimeProfile) => {
-    if (!window.confirm(t('superAdmin.aiRuntimeProfiles.confirmDelete', { model: profile.modelDisplayName }))) return;
+    const confirmed = await confirm({
+      title: 'Delete Runtime Profile',
+      tone: 'danger',
+      message: t('superAdmin.aiRuntimeProfiles.confirmDelete', { model: profile.modelDisplayName }) as string
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deleteAiRuntimeProfile(profile.id);
       errorHandler.showSuccess(t('superAdmin.aiRuntimeProfiles.messages.deleted'));
@@ -282,6 +290,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
 
   return (
     <SuperAdminPage>
+      {confirmDialog}
       {viewState.mode === 'list' && (
         <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
           <span>

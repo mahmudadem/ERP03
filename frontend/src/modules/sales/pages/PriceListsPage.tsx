@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { DatePicker } from '../../../components/shared/selectors';
 import {
   PriceListDTO,
   PriceListLineDTO,
@@ -259,20 +260,18 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Valid From</label>
-                <input
-                  type="date"
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                <DatePicker
+                  inputClassName="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.validFrom ?? ''}
-                  onChange={e => set({ validFrom: e.target.value || null })}
+                  onChange={validFrom => set({ validFrom: validFrom || null })}
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Valid To</label>
-                <input
-                  type="date"
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                <DatePicker
+                  inputClassName="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.validTo ?? ''}
-                  onChange={e => set({ validTo: e.target.value || null })}
+                  onChange={validTo => set({ validTo: validTo || null })}
                 />
               </div>
               <div className="col-span-2 flex items-center gap-3">

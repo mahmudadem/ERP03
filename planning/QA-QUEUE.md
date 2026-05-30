@@ -8,6 +8,69 @@
 
 ## 🧪 Ready to Test
 
+### Shared UI — Task 132 Date Control Cleanup
+**Added by:** Codex (report 146)
+**What to test:**
+- Open `Inventory -> Stock Movements` and confirm the from/to filters use the ERP calendar date control.
+- Open `Inventory -> Stock Transfers` and confirm the transfer date uses the ERP calendar date control.
+- Open `Sales -> Promotions`, create or edit a promotion, and confirm Valid From / Valid To use the ERP calendar date control.
+- Open `Sales -> Price Lists`, create or edit a price list, and confirm Valid From / Valid To use the ERP calendar date control.
+- In any table with a date-range column filter, confirm the date-range popup uses the ERP date control.
+- Right-click a date field where supported and confirm shortcuts such as today / fiscal year / period options are available.
+
+**Known limitations:**
+- This slice does not change stock posting, stock valuation, promotion rules, price-list pricing, or ledger behavior.
+- Authenticated visual QA is required for actual route access.
+
+---
+
+### Accounting/Inventory — Task 132 Voucher and Item List Standardization
+**Added by:** Codex (report 145)
+**What to test:**
+- Open `Accounting -> Vouchers`.
+- Expected: the page uses the shared header style and existing voucher filters/table still work.
+- Refresh the voucher list and confirm existing row actions still behave as before.
+- Open `Inventory -> Items`.
+- Expected: header, New Item button, quick-add form, search/type filters, Refresh, Clear, active/inactive badges, and Open row action appear consistently.
+- Create a simple item through Quick Add and confirm a success toast appears.
+- Trigger a search/filter and clear it; confirm the list reloads correctly.
+- Switch to Arabic and confirm labels and layout remain readable.
+
+**Known limitations:**
+- This slice does not change voucher posting/approval, item costing, stock valuation, or inventory posting logic.
+- Authenticated visual QA is still required because unauthenticated browser smoke redirects to the auth page.
+
+---
+
+### Sales/Purchases — Task 132 Invoice List Standardization
+**Added by:** Codex (report 144)
+**What to test:**
+- Open `Sales -> Invoices`.
+- Expected: header, New Invoice button, status/payment filters, customer selector, Refresh, and Clear filters appear consistently.
+- Select a customer through the selector and confirm the list reloads for that customer.
+- Confirm status/payment badges are visually distinct for draft/posted/cancelled and unpaid/partial/paid.
+- Click Open on a row and confirm it opens the invoice.
+- Repeat the same checks in `Purchases -> Invoices` using the vendor selector.
+- Switch to Arabic and confirm labels and layout remain readable.
+
+**Known limitations:**
+- This slice does not change posting, payment, cancellation, attachment, or audit actions.
+- Accounting vouchers and Inventory items are the next operational-list standardization targets.
+
+### Settings — Task 132 Settings Taxonomy Foundation
+**Added by:** Codex (report 143)
+**What to test:**
+- Open `Settings` from the sidebar.
+- Confirm the page shows four groups: General, Workflow, Accounting and Tax, Access and Advanced.
+- Open each visible link and confirm existing route permissions still apply.
+- Open Sales Settings, Purchase Settings, Accounting Settings, and Inventory Settings on desktop and narrow/mobile width.
+- Expected: settings tabs are usable on small screens, the save/discard bar remains readable, and no top-bar widget behavior changed.
+- Switch to Arabic and confirm the Settings page is readable in RTL.
+
+**Known limitations:**
+- This slice does not normalize every Sales/Purchase tab label yet.
+- Existing destination pages still own their permissions and save behavior.
+
 ### Super Admin — Field Library Phase C2 Voucher Template Authoring
 **Added by:** Codex (report 135d)
 **What to test:**
@@ -163,4 +226,4 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-05-30 by Codex (Field Library Phase C1/C2 ready for QA)_
+_Last updated: 2026-05-30 by Codex (Task 132 date controls ready for QA)_

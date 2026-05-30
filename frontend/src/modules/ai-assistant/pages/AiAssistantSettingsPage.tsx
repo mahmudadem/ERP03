@@ -59,9 +59,11 @@ export const AiAssistantSettingsPage: React.FC = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <ModuleSettingsLayout
-      title={t('settings.title', 'AI Assistant Settings')}
-      subtitle={t('settings.subtitle', 'Configure the AI provider and preferences for your company.')}
+    <>
+      {ai.confirmDialog}
+      <ModuleSettingsLayout
+        title={t('settings.title', 'AI Assistant Settings')}
+        subtitle={t('settings.subtitle', 'Configure the AI provider and preferences for your company.')}
       tabs={[
         { id: 'provider', label: t('settings.providerTab', 'Provider'), icon: Globe },
         { id: 'security', label: t('settings.securityTab', 'Security'), icon: Shield },
@@ -360,6 +362,7 @@ export const AiAssistantSettingsPage: React.FC = () => {
       {activeTab === 'security' && <SettingsSecurityTab />}
       {activeTab === 'analytics' && <SettingsAnalyticsTab usageLoading={ai.usageLoading} usageAnalytics={ai.usageAnalytics} />}
     </ModuleSettingsLayout>
+    </>
   );
 };
 

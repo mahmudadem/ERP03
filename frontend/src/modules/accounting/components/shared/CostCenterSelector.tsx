@@ -294,12 +294,12 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[9998]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40"
             onClick={() => setShowModal(false)}
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none p-4">
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
             <div className="bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] w-full max-w-md max-h-[450px] pointer-events-auto flex flex-col transition-colors duration-300">
               {/* Header */}
               <div className="p-4 border-b border-[var(--color-border)]">
@@ -385,3 +385,4 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
 CostCenterSelector.displayName = 'CostCenterSelector';
 
 export default CostCenterSelector;
+
