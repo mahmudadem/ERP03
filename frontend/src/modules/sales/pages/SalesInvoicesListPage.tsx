@@ -1,33 +1,52 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { RefreshCw, X } from 'lucide-react';
 import {
   PaymentStatus,
   SalesInvoiceDTO,
   salesApi,
   SIStatus,
 } from '../../../api/salesApi';
+import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
-import { EmptyState } from '../../../components/ui/EmptyState';
 import { PageHeader } from '../../../components/ui/PageHeader';
-import { PartySelector } from '../../../components/shared/selectors';
-import { FileText, Plus, RefreshCw } from 'lucide-react';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
-const STATUS_OPTIONS: Array<{ label: string; value: SIStatus | 'ALL' }> = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Draft', value: 'DRAFT' },
-  { label: 'Posted', value: 'POSTED' },
-  { label: 'Cancelled', value: 'CANCELLED' },
-];
+type SIStatusFilter = SIStatus | 'ALL';
+type PaymentFilter = PaymentStatus | 'ALL';
 
-const PAYMENT_OPTIONS: Array<{ label: string; value: PaymentStatus | 'ALL' }> = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Unpaid', value: 'UNPAID' },
-  { label: 'Partially Paid', value: 'PARTIALLY_PAID' },
-  { label: 'Paid', value: 'PAID' },
-];
+const STATUS_VALUES: SIStatusFilter[] = ['ALL', 'DRAFT', 'POSTED', 'CANCELLED'];
+const PAYMENT_VALUES: PaymentFilter[] = ['ALL', 'UNPAID', 'PARTIALLY_PAID', 'PAID'];
+
+const statusChipClasses = (status: SIStatus): string => {
+  switch (status) {
+    case 'DRAFT':
+      return 'bg-slate-100 text-slate-700';
+    case 'POSTED':
+      return 'bg-emerald-100 text-emerald-700';
+    case 'CANCELLED':
+      return 'bg-rose-100 text-rose-700';
+    default:
+      return 'bg-slate-100 text-slate-700';
+  }
+};
+
+const paymentChipClasses = (status: PaymentStatus): string => {
+  switch (status) {
+    case 'PAID':
+      return 'bg-emerald-100 text-emerald-700';
+    case 'PARTIALLY_PAID':
+      return 'bg-amber-100 text-amber-700';
+    case 'UNPAID':
+      return 'bg-rose-100 text-rose-700';
+    default:
+      return 'bg-slate-100 text-slate-700';
+  }
+};
 
 const formatMoney = (amount: number, currency: string): string => {
   try {
@@ -37,61 +56,61 @@ const formatMoney = (amount: number, currency: string): string => {
   }
 };
 
-const statusChipClass = (status: SIStatus): string => {
-  switch (status) {
-    case 'POSTED':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-    case 'CANCELLED':
-      return 'bg-rose-50 text-rose-700 ring-rose-200';
-    case 'DRAFT':
-    default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
-  }
-};
-
-const paymentChipClass = (status: PaymentStatus): string => {
-  switch (status) {
-    case 'PAID':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-    case 'PARTIALLY_PAID':
-      return 'bg-amber-50 text-amber-700 ring-amber-200';
-    case 'UNPAID':
-    default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
-  }
-};
-
 const SalesInvoicesListPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
-  const [statusFilter, setStatusFilter] = useState<SIStatus | 'ALL'>('ALL');
-  const [paymentFilter, setPaymentFilter] = useState<PaymentStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<SIStatusFilter>('ALL');
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
+  const [customers, setCustomers] = useState<PartyDTO[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoiceDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const customerById = useMemo(
+    () =>
+      customers.reduce<Record<string, string>>((acc, customer) => {
+        acc[customer.id] = customer.displayName;
+        return acc;
+      }, {}),
+    [customers]
+  );
+
+  const hasActiveFilters =
+    statusFilter !== 'ALL' || paymentFilter !== 'ALL' || customerFilter !== 'ALL';
+
+  const clearFilters = () => {
+    setStatusFilter('ALL');
+    setPaymentFilter('ALL');
+    setCustomerFilter('ALL');
+  };
 
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const invoiceResult = await salesApi.listSIs({
-        status: statusFilter === 'ALL' ? undefined : statusFilter,
-        paymentStatus: paymentFilter === 'ALL' ? undefined : paymentFilter,
-        customerId: customerFilter === 'ALL' ? undefined : customerFilter,
-        limit: 200,
-      });
+      const [invoiceResult, customerResult] = await Promise.all([
+        salesApi.listSIs({
+          status: statusFilter === 'ALL' ? undefined : statusFilter,
+          paymentStatus: paymentFilter === 'ALL' ? undefined : paymentFilter,
+          customerId: customerFilter === 'ALL' ? undefined : customerFilter,
+          limit: 200,
+        }),
+        sharedApi.listParties({ role: 'CUSTOMER', active: true }),
+      ]);
 
       const invoiceList = unwrap<SalesInvoiceDTO[]>(invoiceResult);
+      const customerList = unwrap<PartyDTO[]>(customerResult);
       setInvoices(Array.isArray(invoiceList) ? invoiceList : []);
+      setCustomers(Array.isArray(customerList) ? customerList : []);
     } catch (err: any) {
       console.error('Failed to load sales invoices', err);
       setError(
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load sales invoices.'
+          t('sales.invoicesList.loadError')
       );
       setInvoices([]);
     } finally {
@@ -103,169 +122,178 @@ const SalesInvoicesListPage: React.FC = () => {
     load();
   }, [statusFilter, paymentFilter, customerFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasActiveFilters = statusFilter !== 'ALL' || paymentFilter !== 'ALL' || customerFilter !== 'ALL';
-
   return (
     <div className="space-y-6 p-4">
       <PageHeader
         title={t('sales.invoicesList.title')}
         subtitle={t('sales.invoicesList.subtitle')}
         action={
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
-            onClick={() => navigate('/sales/invoices/new')}
-          >
-            <Plus size={16} aria-hidden="true" />
-            {t('sales.invoicesList.new')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => load()}
+              title={t('sales.invoicesList.refresh')}
+              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              onClick={() => navigate('/sales/invoices/new')}
+            >
+              {t('sales.invoicesList.newButton')}
+            </button>
+          </div>
         }
       />
 
       <Card className="p-4">
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_2fr_auto_auto]">
-          <label className="space-y-1">
-            <span className="text-xs font-semibold text-slate-600">{t('sales.invoicesList.status')}</span>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              {t('sales.invoicesList.filters.status')}
+            </label>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as SIStatus | 'ALL')}
+              onChange={(e) => setStatusFilter(e.target.value as SIStatusFilter)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             >
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {t(`sales.invoicesList.statusOptions.${status.value}`)}
+              {STATUS_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`sales.invoicesList.status.${value}`)}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs font-semibold text-slate-600">{t('sales.invoicesList.payment')}</span>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              {t('sales.invoicesList.filters.payment')}
+            </label>
             <select
               value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value as PaymentStatus | 'ALL')}
+              onChange={(e) => setPaymentFilter(e.target.value as PaymentFilter)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             >
-              {PAYMENT_OPTIONS.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {t(`sales.invoicesList.paymentOptions.${status.value}`)}
+              {PAYMENT_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`sales.invoicesList.payment.${value}`)}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs font-semibold text-slate-600">{t('sales.invoicesList.customer')}</span>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              {t('sales.invoicesList.filters.customer')}
+            </label>
             <PartySelector
               role="CUSTOMER"
               value={customerFilter === 'ALL' ? '' : customerFilter}
-              placeholder={t('sales.invoicesList.allCustomers')}
-              onChange={(party) => setCustomerFilter(party?.id || 'ALL')}
+              onChange={(party) => setCustomerFilter(party ? party.id : 'ALL')}
+              placeholder={t('sales.invoicesList.filters.allCustomers')}
             />
-          </label>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-2 self-end rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-            onClick={load}
-            disabled={loading}
-          >
-            <RefreshCw size={16} aria-hidden="true" className={loading ? 'animate-spin' : ''} />
-            {t('actions.refresh')}
-          </button>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              className="self-end rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
-              onClick={() => {
-                setStatusFilter('ALL');
-                setPaymentFilter('ALL');
-                setCustomerFilter('ALL');
-              }}
-            >
-              {t('actions.clear')}
-            </button>
-          )}
+          </div>
+          <div className="flex items-end">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                <X size={14} />
+                {t('sales.invoicesList.clearFilters')}
+              </button>
+            )}
+          </div>
         </div>
       </Card>
 
       <Card className="p-4">
-        {error && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Invoice #</th>
-                <th className="py-2 text-left">Customer</th>
-                <th className="py-2 text-left">Invoice Date</th>
-                <th className="py-2 text-right">Grand Total</th>
-                <th className="py-2 text-left">Payment</th>
-                <th className="py-2 text-left">Status</th>
-                <th className="py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((invoice) => (
-                <tr
-                  key={invoice.id}
-                  className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
-                  onClick={() => navigate(`/sales/invoices/${invoice.id}`)}
-                >
-                  <td className="py-2 font-medium">{invoice.invoiceNumber}</td>
-                  <td className="py-2">{invoice.customerName}</td>
-                  <td className="py-2">{invoice.invoiceDate}</td>
-                  <td className="py-2 text-right">{formatMoney(invoice.grandTotalDoc, invoice.currency)}</td>
-                  <td className="py-2">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ring-1 ${paymentChipClass(invoice.paymentStatus)}`}>
-                      {t(`sales.invoicesList.paymentOptions.${invoice.paymentStatus}`)}
-                    </span>
-                  </td>
-                  <td className="py-2">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ring-1 ${statusChipClass(invoice.status)}`}>
-                      {t(`sales.invoicesList.statusOptions.${invoice.status}`)}
-                    </span>
-                  </td>
-                  <td className="py-2 text-right">
-                    <button
-                      type="button"
-                      className="rounded-md px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(`/sales/invoices/${invoice.id}`);
-                      }}
-                    >
-                      {t('actions.open')}
-                    </button>
-                  </td>
+        {error && (
+          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        {!loading && invoices.length === 0 && !error ? (
+          <EmptyState
+            title={t('sales.invoicesList.empty.title')}
+            description={t('sales.invoicesList.empty.description')}
+            action={
+              <button
+                type="button"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                onClick={() => navigate('/sales/invoices/new')}
+              >
+                {t('sales.invoicesList.newButton')}
+              </button>
+            }
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="py-2 text-left">{t('sales.invoicesList.headers.invoiceNumber')}</th>
+                  <th className="py-2 text-left">{t('sales.invoicesList.headers.customer')}</th>
+                  <th className="py-2 text-left">{t('sales.invoicesList.headers.invoiceDate')}</th>
+                  <th className="py-2 text-right">{t('sales.invoicesList.headers.grandTotal')}</th>
+                  <th className="py-2 text-left">{t('sales.invoicesList.headers.payment')}</th>
+                  <th className="py-2 text-left">{t('sales.invoicesList.headers.status')}</th>
+                  <th className="py-2 text-right">{t('sales.invoicesList.headers.actions')}</th>
                 </tr>
-              ))}
-              {!loading && invoices.length === 0 && (
-                <tr>
-                  <td className="py-8" colSpan={7}>
-                    <EmptyState
-                      icon={<FileText size={36} aria-hidden="true" />}
-                      title={t('sales.invoicesList.emptyTitle')}
-                      description={t('sales.invoicesList.emptyDescription')}
-                      action={
-                        <button
-                          type="button"
-                          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                          onClick={() => navigate('/sales/invoices/new')}
-                        >
-                          {t('sales.invoicesList.new')}
-                        </button>
-                      }
-                    />
-                  </td>
-                </tr>
-              )}
-              {loading && (
-                <tr>
-                  <td className="py-6 text-center text-slate-500" colSpan={7}>
-                    {t('sales.invoicesList.loading')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {invoices.map((invoice) => (
+                  <tr
+                    key={invoice.id}
+                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
+                    onClick={() => navigate(`/sales/invoices/${invoice.id}`)}
+                  >
+                    <td className="py-2 font-medium">{invoice.invoiceNumber}</td>
+                    <td className="py-2">{customerById[invoice.customerId] || invoice.customerName}</td>
+                    <td className="py-2">{invoice.invoiceDate}</td>
+                    <td className="py-2 text-right">
+                      {formatMoney(invoice.grandTotalDoc, invoice.currency)}
+                    </td>
+                    <td className="py-2">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${paymentChipClasses(invoice.paymentStatus)}`}
+                      >
+                        {t(`sales.invoicesList.payment.${invoice.paymentStatus}`, invoice.paymentStatus)}
+                      </span>
+                    </td>
+                    <td className="py-2">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${statusChipClasses(invoice.status)}`}
+                      >
+                        {t(`sales.invoicesList.status.${invoice.status}`, invoice.status)}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-primary-600 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/sales/invoices/${invoice.id}`);
+                        }}
+                      >
+                        {t('sales.invoicesList.open')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {loading && (
+                  <tr>
+                    <td className="py-6 text-center text-slate-500" colSpan={7}>
+                      {t('sales.invoicesList.loading')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );
