@@ -2136,6 +2136,38 @@
     "SAVE": "تم الحفظ بنجاح"
   },
   "sales": {
+    "quotesList": {
+      "title": "Quotations",
+      "subtitle": "Sales quotes and proposals.",
+      "newQuote": "New Quote",
+      "allStatuses": "All Statuses",
+      "allCustomers": "All Customers",
+      "refresh": "Refresh",
+      "clearFilters": "Clear Filters",
+      "quoteNumber": "Quote #",
+      "customer": "Customer",
+      "quoteDate": "Quote Date",
+      "validUntil": "Valid Until",
+      "grandTotal": "Grand Total",
+      "status": "Status",
+      "loading": "Loading...",
+      "emptyTitle": "No Quotations",
+      "emptyDescription": "No quotations match your filters. Create your first quotation or adjust filters.",
+      "loadError": "Failed to load quotations.",
+      "statuses": {
+        "DRAFT": "Draft",
+        "SENT": "Sent",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected",
+        "EXPIRED": "Expired",
+        "CONVERTED": "Converted"
+      }
+    },
+    "invoicesList": {
+      "title": "Sales Invoices",
+      "subtitle": "Post invoices to recognize revenue and receivables.",
+      "newInvoice": "New Invoice"
+    },
     "governance": {
       "operationalWarning": "سير العمل التشغيلي: الفوترة المباشرة محظورة افتراضياً. حدد طلب مبيعات أعلاه لإنشاء فاتورة مرتبطة، أو اتصل بالمسؤول لإضافة استثناء حوكمة للفوترة المباشرة.",
       "settingsOperationalHint": "سير العمل التشغيلي يحظر الفوترة المباشرة افتراضياً. للسماح بالفواتير المباشرة، أضف قاعدة حوكمة في",
