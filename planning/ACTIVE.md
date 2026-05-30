@@ -1,8 +1,9 @@
 # 🎯 Current Focus
 
-**Task:** Task 135 — Field Component Library, Phase C2: Layer 2 voucher type bindings.
-**Status:** Phase C2 implemented on `feat/init-wizard-forms-selection` (2026-05-30). Await commit decision / next slice.
-**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md).
+**Task:** Sidebar form grouping policy + native→default forms migration design.
+**Status:** Implemented on `feat/init-wizard-forms-selection` (2026-05-30). Awaiting visual QA + commit.
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md), [136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md).
+**Design note (long-running):** [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md)
 
 ## 👉 Next agent — start here
 
@@ -143,4 +144,6 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-Commit the Field Library C1/C2 work, then choose between **Field Library drift warnings** or returning to **Purchases RFQ**.
+1. Visual QA on Sales/Purchases/Accounting/Inventory sidebars: confirm `Forms` group (formerly `Documents`) still shows native list pages, the new `Default Forms` group shows the activated default forms, and the user-cloned `Sales Invoice (Direct) - Copy33333` is still under its `Vouchers` group.
+2. Commit report 136 + design note.
+3. Begin per-voucher-type capability audit driven by [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md) — first candidate is Sales Invoice (Direct) since it's the most-used native and the closest in scope to its default counterpart.

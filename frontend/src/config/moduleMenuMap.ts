@@ -1,19 +1,23 @@
 /**
  * moduleMenuMap.ts
  *
- * Module sidebars follow a uniform 4-group shape so users learn the
- * pattern once and find their way around any module:
+ * Module sidebars follow a uniform shape:
  *
  *   Overview
  *   [top-level high-frequency master data]   (Customers, Vendors, Items, ...)
- *   Documents     transactional vouchers
- *   Reports       read-only analytics
- *   Tools         designers, configurators, low-frequency master data
- *   Settings      module-level config
+ *   Forms          native list pages (the current full-featured surface)
+ *   Default Forms  default voucher forms — emitted by useSidebarConfig
+ *                  from the voucher_forms collection (see policy below)
+ *   Reports        read-only analytics
+ *   Tools          designers, configurators, low-frequency master data
+ *   Settings       module-level config
  *
- * Dynamic voucher forms get merged INTO the static Documents group by
- * `useSidebarConfig.buildDynamicFormGroups` so the user sees one home
- * for "all the documents I can create" (native + activated form variants).
+ * Sidebar form sources (see planning/tasks/native-to-default-forms-migration.md):
+ *   - native forms  → entries below, list pages, current senior surface
+ *   - default forms → grouped under "Default Forms" by useSidebarConfig
+ *   - cloned forms  → user-chosen sidebarGroup; blank ⇒ root
+ *
+ * "Forms" was previously named "Documents".
  */
 export const moduleMenuMap: Record<
   string,
@@ -36,7 +40,7 @@ export const moduleMenuMap: Record<
       { label: 'Overview', path: '/accounting', icon: 'LayoutDashboard' },
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
       {
-        label: 'Documents',
+        label: 'Forms',
         icon: 'FolderOpen',
         children: [
           { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
@@ -82,7 +86,7 @@ export const moduleMenuMap: Record<
       { label: 'Items', path: '/inventory/items', permission: 'inventory.items.manage', icon: 'Package' },
       { label: 'Warehouses', path: '/inventory/warehouses', permission: 'inventory.warehouses.view', icon: 'Warehouse' },
       {
-        label: 'Documents',
+        label: 'Forms',
         icon: 'FolderOpen',
         children: [
           { label: 'Opening Stock Documents', path: '/inventory/opening-stock', permission: 'inventory.movements.record', icon: 'PackagePlus' },
@@ -120,7 +124,7 @@ export const moduleMenuMap: Record<
       { label: 'Customers', path: '/sales/customers', icon: 'Users' },
       { label: 'Products & Services', path: '/sales/items', icon: 'Package' },
       {
-        label: 'Documents',
+        label: 'Forms',
         icon: 'FolderOpen',
         children: [
           { label: 'Quotations', path: '/sales/quotes', icon: 'FileText' },
@@ -162,7 +166,7 @@ export const moduleMenuMap: Record<
       { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
       { label: 'Products & Services', path: '/purchases/items', icon: 'Package' },
       {
-        label: 'Documents',
+        label: 'Forms',
         icon: 'FolderOpen',
         children: [
           { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },

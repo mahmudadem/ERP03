@@ -2,6 +2,34 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Sidebar form grouping policy (native / default / cloned)
+
+**Task:** Establish a clear sidebar IA for the three form sources, document the native→default migration direction, and rename the static `Documents` group to `Forms`.
+**Agent:** Claude (Opus 4.7)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md)
+**Design note:** [planning/tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md)
+
+**What was done:**
+- Terminology locked: **native forms** (moduleMenuMap list pages), **default forms** (`voucher_forms` rows with `isDefault`/`isSystemGenerated`/`isLocked`), **cloned forms** (user-created `voucher_forms`).
+- Earlier suppression attempt (suppress defaults whose voucherType matched a native nav entry) was rejected and reverted before commit — defaults are deliberate user activations and hiding them removed working behavior. Direction is the opposite: defaults catch up to natives via Field Library components, then natives retire.
+- Renamed `Documents` → `Forms` across the static `moduleMenuMap.ts` (sales, purchase, accounting, inventory).
+- `useSidebarConfig.buildDynamicFormGroups` now routes default forms to a single per-module `Default Forms` group regardless of their stored `sidebarGroup`. Cloned forms honor their user-chosen `sidebarGroup` verbatim (folds into static `Forms` group when label matches, else own group, blank → root).
+- Added label-key map entries for `Forms` → `sidebar.forms` and `Default Forms` → `sidebar.defaultForms` (i18n falls back to the literal label until Arabic strings are added).
+- `SidebarFormEntry` in `useVoucherTypes.ts` exposes `voucherType`/`isDefault`/`isSystemGenerated`/`isLocked` (kept from the reverted suppression work — the new grouping policy still needs the default-flag bits).
+- Wrote a design note covering the three form sources, the per-voucher-type capability matrix (native vs default), and the staged migration plan (capability audit → ship Field Library components → default parity build → side-by-side QA → native retirement).
+- Added `Other Forms` group as a catch-all for cloned forms with blank `sidebarGroup`, so they no longer strand at sidebar root next to Reports/Tools/Settings.
+- Ordering: dynamic groups are inserted **after** the static `Forms` group in `FORM_GROUP_RANK` order (Default Forms → user-named → Other Forms), keeping `Reports`/`Tools`/`Settings` at the bottom of the section.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` → exit 0
+- `npm --prefix frontend run build` → exit 0
+- Manual sidebar QA pending after commit.
+
+**Time spent:** ~1.5h (including a wrong-direction round trip).
+
+**Result:** Sidebar now expresses the three sources with clear group headings. Visual duplication of "Sales Orders" (under `Forms`) and "Sales Order" (under `Default Forms`) is preserved on purpose — it's an honest signal that the migration is incomplete. The retirement of natives is now a documented, per-voucher-type process gated on capability parity.
+
 ## 2026-05-30 (Sat) — Field Library Phase C2 (voucher template bindings)
 
 **Task:** Phase C2 of task 135 — move Layer 2 super-admin voucher template authoring onto the Field Library instead of hardcoded frontend field suggestions.

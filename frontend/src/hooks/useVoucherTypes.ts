@@ -27,6 +27,13 @@ export interface SidebarFormEntry {
   enabled: boolean;
   formType?: string;
   baseType?: string;
+  // Canonical voucher type (e.g., 'sales_invoice'). Used by useSidebarConfig
+  // to suppress system-default form shortcuts when a static module nav entry
+  // (e.g. "Sales Invoices" list page) already covers the same voucher type.
+  voucherType?: string;
+  isDefault?: boolean;
+  isSystemGenerated?: boolean;
+  isLocked?: boolean;
 }
 
 export function useVoucherTypes() {
@@ -70,6 +77,10 @@ export function useVoucherTypes() {
                 enabled: form.enabled,
                 formType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
                 baseType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
+                voucherType: (form as any).voucherType || (form as any).formType || (form as any).baseType || form.typeId || form.code,
+                isDefault: !!(form as any).isDefault,
+                isSystemGenerated: !!(form as any).isSystemGenerated,
+                isLocked: !!(form as any).isLocked,
               }));
 
             setAllModuleForms(sidebarEntries);
@@ -129,6 +140,10 @@ export function useVoucherTypes() {
           enabled: v.enabled !== false,
           formType: v.formType || v.baseType || v.code || v.id,
           baseType: v.formType || v.baseType || v.code || v.id,
+          voucherType: v.voucherType || v.formType || v.baseType || v.code || v.id,
+          isDefault: !!v.isDefault,
+          isSystemGenerated: !!v.isSystemGenerated,
+          isLocked: !!v.isLocked,
         })));
       } catch (error) {
         console.error('Failed to load voucher types for sidebar:', error);

@@ -8,17 +8,21 @@
 
 ## 🔴 Current Priority (work this first)
 
-**Commit Field Library C1/C2 checkpoint** (~10 min)
-- C1 and C2 are implemented and validated locally.
-- Commit only the scoped Field Library files; do not sweep unrelated work.
+**Visual QA + commit report 136 + design note** (~15 min)
+- Code is in. Confirm `Documents` is now `Forms`, the new `Default Forms` group renders activated defaults, and cloned forms still appear under their user-chosen group.
+- Commit the sidebar policy change and the migration design note together.
 
 ---
 
-## 🟡 Up Next (in order)
+## 🟡 Up Next (May-30 roadmap, in order)
 
-1. **Task 135 — Field Library drift warnings** (~2-4 hours): add `fieldVersionsSeen` and company-form drift notices.
-2. **Phase F — RFQ** (~2-3 hours): Request for Quotation — procure-to-pay workflow parity.
-3. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
+1. **Native → Default forms migration — first voucher type** (Sales Invoice (Direct), ~1 day to start). Drives item #5. Follow [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md): fill in the capability matrix for SI Direct, identify the smallest missing Field Library component, ship it, repeat. Single-voucher-type slices, no big-bang.
+2. **#3 Shared Account Selector standardization + filtering** — selector contract exists ([done/64](./done/64-invoice-party-account-selector-contract.md)); project-wide enforcement is unstarted. Folded into [Task 132](./tasks/132-ux-layout-production-hardening.md) Phases 0.5 + 5.
+3. **#6 + #7 design notes** — Cost & historical-margin layer, Per-party item history + price-source engine. Architectural pair, neither has a spec. Single design doc covering line-snapshot data shape before either is built.
+4. **#2 + #4 UI consistency / maturity pass** — Task 132 implementation phases. Last because it touches the same files the above work would change.
+5. **Task 135 — Field Library drift warnings** (~2-4 hours): add `fieldVersionsSeen` and company-form drift notices. Closes Task 135.
+6. **Phase F — RFQ** (~2-3 hours): Request for Quotation — procure-to-pay workflow parity.
+7. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
 
 ---
 
@@ -43,6 +47,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | Antigravity | Phase F - Purchase Price Lists | 2026-05-28 | ✅ Done |
 | Codex | Task 135 - Field Library Phase C1 | 2026-05-30 | ✅ Done |
 | Codex | Task 135 - Field Library Phase C2 | 2026-05-30 | ✅ Done |
+| Claude (Opus 4.7) | Sidebar form grouping policy + migration design | 2026-05-30 | ✅ Done (pending QA + commit) |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -63,4 +68,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-30 by Codex (Field Library Phase C1/C2 implemented; commit checkpoint next)_
+_Last updated: 2026-05-30 by Claude Opus 4.7 (sidebar form grouping policy implemented; migration design note saved; visual QA + commit next)_

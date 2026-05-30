@@ -467,9 +467,62 @@ const scopeDesignerFieldCatalogForForm = (
 
   return {
     ...fieldCatalog,
-    availableFields: fieldCatalog.availableFields.filter((field) => headerIds.has(field.id)),
+    availableFields: fieldCatalog.availableFields
+      .filter((field) => headerIds.has(field.id))
+      .map((field) =>
+        isDirectSalesInvoiceForm(form) && field.id === 'warehouseId'
+          ? { ...field, mandatory: true, category: 'core' }
+          : field,
+      ),
     availableTableColumns: fieldCatalog.availableTableColumns.filter((field) => lineIds.has(field.id)),
   };
+};
+
+const isDirectSalesInvoiceForm = (form: DocumentFormConfig | null | undefined): boolean => {
+  if (!form) return false;
+  return [
+    (form as any).formType,
+    (form as any).baseType,
+    (form as any).code,
+    (form as any).id,
+    (form as any).persona,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+    .some((value) => value === 'sales_invoice_direct' || value === 'direct');
+};
+
+const normalizeFormTemplateForDesigner = (form: DocumentFormConfig | null): DocumentFormConfig | null => {
+  if (!form || !isDirectSalesInvoiceForm(form)) return form;
+
+  const removeWarehouseLine = (fields: any[] | undefined) =>
+    Array.isArray(fields)
+      ? fields.filter((field) => (field?.id || field?.name || field?.fieldId) !== 'warehouseId')
+      : fields;
+  const requireHeaderWarehouse = (fields: any[] | undefined) =>
+    Array.isArray(fields)
+      ? fields.map((field) =>
+          (field?.id || field?.name || field?.fieldId) === 'warehouseId'
+            ? { ...field, required: true, mandatory: true, category: 'core' }
+            : field,
+        )
+      : fields;
+
+  return {
+    ...form,
+    headerFields: requireHeaderWarehouse((form as any).headerFields),
+    tableColumns: removeWarehouseLine((form as any).tableColumns),
+    lineFields: removeWarehouseLine((form as any).lineFields),
+    uiModeOverrides: {
+      ...((form as any).uiModeOverrides || {}),
+      tableColumns: removeWarehouseLine((form as any).uiModeOverrides?.tableColumns),
+      lineFields: removeWarehouseLine((form as any).uiModeOverrides?.lineFields),
+    },
+    layout: {
+      ...((form as any).layout || {}),
+      lineFields: removeWarehouseLine((form as any).layout?.lineFields),
+    },
+  } as DocumentFormConfig;
 };
 
 const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, moduleLabel }) => {
@@ -598,6 +651,21 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     [forms, definitions, catalog],
   );
 
+  // Distinct sidebarGroups already in use across this company's forms, plus
+  // canonical seeds. Surfaced as a <datalist> in the kebab Sidebar Group
+  // editor so the user picks from real values instead of chip-style presets.
+  // `Default Forms` is intentionally excluded — defaults always force to that
+  // group at render time, so it's not a valid user choice on a clone.
+  const availableSidebarGroups = useMemo(() => {
+    const set = new Set<string>(['Forms', 'Vouchers', 'Reports', 'Operations']);
+    forms.forEach((f) => {
+      const g = (f as any).sidebarGroup;
+      if (typeof g === 'string' && g.trim()) set.add(g.trim());
+    });
+    set.delete('Default Forms');
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [forms]);
+
   const editorFieldCatalog = useMemo(
     () => scopeDesignerFieldCatalogForForm(fieldCatalog, editingForm),
     [fieldCatalog, editingForm],
@@ -703,7 +771,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   };
 
   const openEditor = (form: DocumentFormConfig | null) => {
-    setEditingForm(form);
+    setEditingForm(normalizeFormTemplateForDesigner(form));
     setViewMode('designer');
   };
 
@@ -807,7 +875,9 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
         !!(editingForm as any)?.__isClone || !!(config as any).__isClone;
       const isEdit = !!(editingForm as any)?.id && !isCloneFlow;
 
-      const cleanConfig = { ...config } as DocumentFormConfig & { __isClone?: boolean };
+      const cleanConfig = {
+        ...(normalizeFormTemplateForDesigner(config) || config),
+      } as DocumentFormConfig & { __isClone?: boolean };
       delete (cleanConfig as any).__isClone;
 
       const result = await saveDocumentForm(
@@ -914,6 +984,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                       onAddCustomForm={() => handleAddCustomForm(node)}
                       onExportJson={handleExportJson}
                       onUpdateSidebarGroup={handleUpdateSidebarGroup}
+                      availableSidebarGroups={availableSidebarGroups}
                     />
                   ))}
                 </div>
@@ -1019,6 +1090,7 @@ interface InstalledTypeRowProps {
   onAddCustomForm: () => void;
   onExportJson: (form: DocumentFormConfig) => void;
   onUpdateSidebarGroup: (formId: string, sidebarGroup: string | null) => void;
+  availableSidebarGroups: string[];
 }
 
 const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
@@ -1031,6 +1103,7 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
   onAddCustomForm,
   onExportJson,
   onUpdateSidebarGroup,
+  availableSidebarGroups,
 }) => {
   const activeCount = node.forms.filter((f) => f.enabled !== false).length;
   const lockedCount = node.forms.filter((f) => (f as any).isLocked).length;
@@ -1081,6 +1154,7 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
               onToggleEnabled={(enabled) => onToggleEnabled(form.id, enabled)}
               onExportJson={() => onExportJson(form)}
               onUpdateSidebarGroup={(group) => onUpdateSidebarGroup(form.id, group)}
+              availableSidebarGroups={availableSidebarGroups}
             />
           ))}
           <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
@@ -1106,15 +1180,8 @@ interface FormRowProps {
   onToggleEnabled: (enabled: boolean) => void;
   onExportJson: () => void;
   onUpdateSidebarGroup: (sidebarGroup: string | null) => void;
+  availableSidebarGroups: string[];
 }
-
-// Sidebar group preset chips shown in the kebab-menu Sidebar Group editor.
-// Whatever the user picks (or types) is now honored verbatim by
-// `useSidebarConfig`: matching canonical groups (e.g. "Documents") merge
-// into the existing static submenu, anything else becomes its own top-level
-// group. New companies install with `sidebarGroup="Documents"` by default;
-// these chips are just one-click alternatives.
-const SIDEBAR_GROUP_PRESETS = ['Documents', 'Vouchers', 'Reports', 'Operations'];
 
 const FormRow: React.FC<FormRowProps> = ({
   form,
@@ -1123,6 +1190,7 @@ const FormRow: React.FC<FormRowProps> = ({
   onToggleEnabled,
   onExportJson,
   onUpdateSidebarGroup,
+  availableSidebarGroups,
 }) => {
   const isLocked = (form as any).isLocked === true;
   const isEnabled = form.enabled !== false;
@@ -1274,9 +1342,10 @@ const FormRow: React.FC<FormRowProps> = ({
                   <div className="px-3 pb-3 pt-1" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="text"
+                      list={`sidebar-groups-${form.id}`}
                       value={sidebarInput}
                       onChange={(e) => setSidebarInput(e.target.value)}
-                      placeholder="e.g. Documents, Vouchers..."
+                      placeholder="Type or pick a group…"
                       className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 mb-2 focus:ring-1 focus:ring-purple-500 outline-none"
                       autoFocus
                       onKeyDown={(e) => {
@@ -1287,22 +1356,11 @@ const FormRow: React.FC<FormRowProps> = ({
                         }
                       }}
                     />
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {SIDEBAR_GROUP_PRESETS.map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => saveSidebarGroup(preset)}
-                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                            currentSidebarGroup === preset
-                              ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold'
-                              : 'bg-white border-slate-200 text-slate-600 hover:bg-purple-50 hover:border-purple-200'
-                          }`}
-                        >
-                          {preset}
-                        </button>
+                    <datalist id={`sidebar-groups-${form.id}`}>
+                      {availableSidebarGroups.map((g) => (
+                        <option key={g} value={g} />
                       ))}
-                    </div>
+                    </datalist>
                     <div className="flex gap-1">
                       <button
                         type="button"

@@ -26,6 +26,33 @@ const MODULE_ROUTE_MAP: Record<string, { baseRoute: string; permission: string; 
   purchase:   { baseRoute: '/purchases',            permission: 'purchase.view',            icon: 'File' },
 };
 
+// Sidebar grouping policy (see planning/tasks/native-to-default-forms-migration.md):
+//   - native forms  → static `Forms` group in moduleMenuMap (list pages)
+//   - default forms → always grouped under DEFAULT_FORMS_GROUP, regardless of
+//                     their stored `sidebarGroup` field
+//   - cloned forms  → user-chosen `sidebarGroup`; blank ⇒ root
+//
+// Defaults are the future surface but currently lag native in capability
+// (lists, WhatsApp send, payment record, attachments, ...). Until parity is
+// reached via new Field Library components, both layers coexist in the
+// sidebar under clearly distinct group names.
+const DEFAULT_FORMS_GROUP = 'Default Forms';
+const NATIVE_FORMS_GROUP = 'Forms';
+const OTHER_FORMS_GROUP = 'Other Forms';
+
+// Order of form-related groups within a module section. `Forms` (native) is
+// already declared in moduleMenuMap; the rest are inserted right after it.
+const FORM_GROUP_RANK: Record<string, number> = {
+  [NATIVE_FORMS_GROUP]: 0,
+  [DEFAULT_FORMS_GROUP]: 1,
+  // user-named custom groups (Vouchers, Approvals, …) land between, at rank 2
+  [OTHER_FORMS_GROUP]: 3,
+};
+const USER_GROUP_RANK = 2;
+
+const isSystemDefaultForm = (form: SidebarFormEntry): boolean =>
+  !!(form.isDefault || form.isSystemGenerated || form.isLocked);
+
 export const useSidebarConfig = () => {
   const { isSuperAdmin, moduleBundles, resolvedPermissions, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
   const { hasPermission } = useRBAC();
@@ -49,6 +76,9 @@ export const useSidebarConfig = () => {
     'Approval Center': 'sidebar.approvalCenter',
     Vouchers: 'sidebar.vouchers',
     Documents: 'sidebar.documents',
+    Forms: 'sidebar.forms',
+    'Default Forms': 'sidebar.defaultForms',
+    'Other Forms': 'sidebar.otherForms',
     Tools: 'sidebar.tools',
     'All Vouchers': 'sidebar.allVouchers',
     'Forms Designer': 'sidebar.formsDesigner',
@@ -121,28 +151,33 @@ export const useSidebarConfig = () => {
     const routeConfig = MODULE_ROUTE_MAP[moduleId];
     if (!routeConfig) return [];
 
-    // Group by sidebarGroup
+    // Grouping policy:
+    //   - default forms                     → DEFAULT_FORMS_GROUP
+    //   - cloned forms w/ sidebarGroup      → that group (user choice honored)
+    //   - cloned forms w/o sidebarGroup     → OTHER_FORMS_GROUP (catch-all)
     const groups = new Map<string, SidebarFormEntry[]>();
-    const topLevel: SidebarFormEntry[] = [];
 
     moduleForms.forEach(form => {
-      if (form.sidebarGroup) {
-        if (!groups.has(form.sidebarGroup)) {
-          groups.set(form.sidebarGroup, []);
-        }
-        groups.get(form.sidebarGroup)!.push(form);
-      } else {
-        topLevel.push(form);
+      const groupName = isSystemDefaultForm(form)
+        ? DEFAULT_FORMS_GROUP
+        : (form.sidebarGroup || OTHER_FORMS_GROUP);
+      if (!groups.has(groupName)) {
+        groups.set(groupName, []);
       }
+      groups.get(groupName)!.push(form);
     });
+
+    const formPath = (form: SidebarFormEntry) =>
+      moduleId === 'accounting'
+        ? `${routeConfig.baseRoute}?type=${form.id}`
+        : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`;
 
     const result: SidebarItem[] = [];
 
-    // Add grouped items as submenus
     groups.forEach((forms, groupName) => {
       const children: SidebarItem[] = [];
 
-      // For accounting, add "All Vouchers" link at the top
+      // For accounting, prepend "All Vouchers" inside the legacy Vouchers group.
       if (moduleId === 'accounting' && groupName === 'Vouchers') {
         children.push({
           label: translateLabel('All Vouchers'),
@@ -155,9 +190,7 @@ export const useSidebarConfig = () => {
       forms.forEach(form => {
         children.push({
           label: form.name,
-          path: moduleId === 'accounting' 
-            ? `${routeConfig.baseRoute}?type=${form.id}`
-            : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
+          path: formPath(form),
           permission: routeConfig.permission,
           icon: routeConfig.icon
         });
@@ -165,24 +198,29 @@ export const useSidebarConfig = () => {
 
       result.push({
         label: translateLabel(groupName),
-        icon: groupName === 'Vouchers' ? 'FileText' : 'FolderOpen',
+        icon: groupName === DEFAULT_FORMS_GROUP
+          ? 'Layers'
+          : groupName === OTHER_FORMS_GROUP
+            ? 'Files'
+            : groupName === 'Vouchers'
+              ? 'FileText'
+              : 'FolderOpen',
         children
       });
     });
 
-    // Add top-level items (no submenu)
-    topLevel.forEach(form => {
-      result.push({
-        label: form.name,
-        path: moduleId === 'accounting'
-          ? `${routeConfig.baseRoute}?type=${form.id}`
-          : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
-        permission: routeConfig.permission,
-        icon: routeConfig.icon
-      });
-    });
-
     return result;
+  };
+
+  // Rank used to position dynamic form groups (Default Forms, user-named,
+  // Other Forms) right after the static `Forms` group within a module
+  // section. Lower rank → earlier in the sidebar.
+  const dynamicGroupRank = (label: string): number => {
+    if (FORM_GROUP_RANK[label] !== undefined) return FORM_GROUP_RANK[label];
+    if (translateLabel(DEFAULT_FORMS_GROUP) === label) return FORM_GROUP_RANK[DEFAULT_FORMS_GROUP];
+    if (translateLabel(OTHER_FORMS_GROUP) === label) return FORM_GROUP_RANK[OTHER_FORMS_GROUP];
+    if (translateLabel(NATIVE_FORMS_GROUP) === label) return FORM_GROUP_RANK[NATIVE_FORMS_GROUP];
+    return USER_GROUP_RANK;
   };
 
   const filterSidebarItems = (items: SidebarItem[]): SidebarItem[] => {
@@ -216,7 +254,8 @@ export const useSidebarConfig = () => {
             { label: translateLabel('System Overview'), path: '/super-admin/overview' },
             { label: translateLabel('Appearance Lab'), path: '/super-admin/appearance' },
             { label: translateLabel('System Forms'), path: '/super-admin/system-forms' },
-            { label: translateLabel('Voucher Templates'), path: '/super-admin/voucher-templates' }
+            { label: translateLabel('Voucher Templates'), path: '/super-admin/voucher-templates' },
+            { label: translateLabel('Field Library'), path: '/super-admin/field-library' }
           ]
         },
         'Companies': {
@@ -308,47 +347,41 @@ export const useSidebarConfig = () => {
       });
       
       // === DYNAMIC FORM INJECTION ===
-      // For modules with dynamic forms (accounting, sales, purchase), merge
-      // the form entries (grouped by sidebarGroup) into the module's existing
-      // static "Documents" group rather than appending them as separate
-      // top-level groups. This keeps the sidebar to the canonical
-      // Overview / [master data] / Documents / Reports / Tools / Settings
-      // shape across every module.
+      // Insertion order within a module section:
+      //   Forms (static)        — native list pages + clones tagged "Forms"
+      //   Default Forms         — all default forms
+      //   [user-named groups]   — clones tagged with a custom sidebarGroup
+      //   Other Forms           — clones with blank sidebarGroup
+      //   (then Reports, Tools, Settings as declared in moduleMenuMap)
       //
-      // Special-case: forms originally seeded with sidebarGroup="Vouchers"
-      // (accounting templates) merge into the same "Documents" group so the
-      // user sees one home for "all the documents I can create".
+      // Dynamic groups are inserted right after the static `Forms` group, in
+      // ascending FORM_GROUP_RANK order, instead of being appended at the end
+      // (which would push them past Reports / Tools / Settings).
       const dynamicModuleId = moduleId;
 
       if (MODULE_ROUTE_MAP[dynamicModuleId]) {
         const dynamicGroups = buildDynamicFormGroups(dynamicModuleId);
 
         if (dynamicGroups.length > 0) {
-          const findDocumentsIndex = () =>
-            items.findIndex((item) => item.label === 'Documents' && Array.isArray(item.children));
+          const findFormsIndex = () =>
+            items.findIndex((item) =>
+              (item.label === NATIVE_FORMS_GROUP || item.label === translateLabel(NATIVE_FORMS_GROUP))
+              && Array.isArray(item.children)
+            );
+
+          const toInsert: SidebarItem[] = [];
 
           for (const dynGroup of dynamicGroups) {
-            // Forms whose sidebarGroup matches one of the canonical static
-            // groups get merged INTO that static group (so a form tagged
-            // "Documents" appears as a child of the existing Documents
-            // submenu, not as a duplicate top-level group). Anything else
-            // — including a user-typed custom name like "Approvals" — is
-            // honored verbatim and rendered as its own top-level group.
-            //
-            // We used to silently fold "Vouchers" into Documents as a
-            // migration hack for the legacy seed value. The seed now
-            // defaults to "Documents" directly, and respecting the user's
-            // own choice matters more than uniformity, so the rewrite is
-            // gone.
-            const isDocumentsGroup =
-              dynGroup.label === 'Documents'
-              || translateLabel('Documents') === dynGroup.label;
+            const matchesNativeForms =
+              dynGroup.label === NATIVE_FORMS_GROUP
+              || translateLabel(NATIVE_FORMS_GROUP) === dynGroup.label;
 
-            if (isDocumentsGroup) {
-              const docIdx = findDocumentsIndex();
-              if (docIdx >= 0) {
-                const existing = items[docIdx];
-                items[docIdx] = {
+            if (matchesNativeForms) {
+              // Clone tagged sidebarGroup="Forms" → fold into the static Forms group.
+              const formsIdx = findFormsIndex();
+              if (formsIdx >= 0) {
+                const existing = items[formsIdx];
+                items[formsIdx] = {
                   ...existing,
                   children: [
                     ...(existing.children || []),
@@ -358,9 +391,16 @@ export const useSidebarConfig = () => {
                 continue;
               }
             }
-            // No matching static group — append at top level as before.
-            items.push(dynGroup as any);
+            toInsert.push(dynGroup);
           }
+
+          // Sort dynamic groups by rank: Default Forms → user-named → Other Forms.
+          toInsert.sort((a, b) => dynamicGroupRank(a.label) - dynamicGroupRank(b.label));
+
+          // Insert right after the static Forms group (or at the end if missing).
+          const anchorIdx = findFormsIndex();
+          const insertAt = anchorIdx >= 0 ? anchorIdx + 1 : items.length;
+          items.splice(insertAt, 0, ...toInsert);
         }
       }
 
