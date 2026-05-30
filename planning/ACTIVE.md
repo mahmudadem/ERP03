@@ -144,6 +144,6 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-1. Visual QA on Sales/Purchases/Accounting/Inventory sidebars: confirm `Forms` group (formerly `Documents`) still shows native list pages, the new `Default Forms` group shows the activated default forms, and the user-cloned `Sales Invoice (Direct) - Copy33333` is still under its `Vouchers` group.
-2. Commit report 136 + design note.
-3. Begin per-voucher-type capability audit driven by [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md) — first candidate is Sales Invoice (Direct) since it's the most-used native and the closest in scope to its default counterpart.
+SI Direct capability audit complete — see [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md). Native exposes ~15 capabilities the default form lacks (lists, WhatsApp/Telegram send, attachments, settlement entry, period-lock/credit overrides, audit log, charges, …). Estimated ~35–45 hours to SI Direct parity plus ~2–3 days for the shared list surface.
+
+Recommended next slice: **Tier 1** (~3 hours total) — per-line discount, tax inclusive toggle, base-equivalent calculated totals. Three small wins in one PR. Includes a chance to fold in the dirty `seedSystemVoucherTypes.ts` warehouseId change and the `VoucherTemplateEditorPage.tsx` change since they touch the same SI Direct surface.
