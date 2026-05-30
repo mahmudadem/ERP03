@@ -3,9 +3,50 @@ import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { clsx } from 'clsx';
 import * as Icons from 'lucide-react';
+import {
+  FcHome,
+  FcMoneyTransfer,
+  FcShop,
+  FcShipped,
+  FcPackage,
+  FcConferenceCall,
+  FcBusinessContact,
+  FcTabletAndroid,
+  FcFactory,
+  FcBriefcase,
+  FcEngineering,
+  FcAssistant,
+  FcSettings,
+  FcDepartment,
+  FcLock,
+  FcStatistics,
+} from 'react-icons/fc';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
+
+// Module-header icons get the colorful Flat Color (Icons8) treatment so each
+// module anchors visually in the sidebar. Sub-items keep their monochrome
+// Lucide icons. The map keys are the Lucide icon names declared in
+// moduleMenuMap.ts so the existing config doesn't change.
+const FLAT_COLOR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Home: FcHome,
+  HandCoins: FcMoneyTransfer,           // Accounting
+  ShoppingCart: FcShop,                 // Sales
+  ClipboardList: FcShipped,             // Purchases
+  Package: FcPackage,                   // Inventory
+  Users: FcConferenceCall,              // HR
+  UsersRound: FcBusinessContact,        // CRM (if used)
+  Monitor: FcTabletAndroid,             // POS
+  Factory: FcFactory,                   // Manufacturing
+  Briefcase: FcBriefcase,               // Projects
+  Wrench: FcEngineering,                // Tools
+  Bot: FcAssistant,                     // AI Assistant
+  Settings: FcSettings,                 // System / Settings
+  Building2: FcDepartment,              // Companies (super-admin)
+  Shield: FcLock,                       // Permissions (super-admin)
+  BarChart3: FcStatistics,              // Reports
+};
 
 interface SidebarItemData {
   path?: string;
@@ -41,7 +82,9 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   
   const use3DStyle = appearanceSettings?.id === 'tailwind-play';
 
-  // Resolve Icon from name if provided
+  // Prefer colorful Flat Color icon for module headers; fall back to Lucide
+  // when no FC mapping exists for the given icon name.
+  const FlatColorIcon = iconName ? FLAT_COLOR_ICONS[iconName] : null;
   const ResolvedIcon = iconName ? (Icons as any)[iconName] : null;
 
   const location = useLocation();
@@ -85,27 +128,40 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
 
     return (
       <>
-        {ResolvedIcon && (
+        {(FlatColorIcon || ResolvedIcon) && (
           <div className={clsx(
             "rounded-[var(--radius-md)] transition-all duration-300 flex items-center justify-center shrink-0",
-            isOpen
-              ? "p-1.5 bg-[var(--color-bg-tertiary)]"
-              : use3DStyle
-                ? isActive
-                  ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
-                  : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
-                : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
+            // FlatColorIcons carry their own color, so they don't need the tinted
+            // background pill — render against a plain transparent container.
+            FlatColorIcon
+              ? (isOpen ? "p-0.5" : "w-10 h-10")
+              : isOpen
+                ? "p-1.5 bg-[var(--color-bg-tertiary)]"
+                : use3DStyle
+                  ? isActive
+                    ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
+                    : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
+                  : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
 
-            !use3DStyle && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600",
-            !use3DStyle && (isActiveLink || (isOpen && !isExpanded)) && "bg-primary-50 dark:bg-primary-900/20 text-primary-600"
+            !FlatColorIcon && !use3DStyle && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600",
+            !FlatColorIcon && !use3DStyle && (isActiveLink || (isOpen && !isExpanded)) && "bg-primary-50 dark:bg-primary-900/20 text-primary-600"
           )}>
-            <ResolvedIcon
-              className={clsx(
-                isOpen ? "w-4 h-4" : "w-6 h-6",
-                "transition-transform duration-200 group-hover:scale-110"
-              )}
-              strokeWidth={1.75}
-            />
+            {FlatColorIcon ? (
+              <FlatColorIcon
+                className={clsx(
+                  isOpen ? "w-6 h-6" : "w-8 h-8",
+                  "transition-transform duration-200 group-hover:scale-110"
+                )}
+              />
+            ) : (
+              <ResolvedIcon
+                className={clsx(
+                  isOpen ? "w-4 h-4" : "w-6 h-6",
+                  "transition-transform duration-200 group-hover:scale-110"
+                )}
+                strokeWidth={1.75}
+              />
+            )}
           </div>
         )}
       
