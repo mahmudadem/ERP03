@@ -2,6 +2,50 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Task 132 Phase 1 P0 — confirm/alert/date-input hardening
+
+**Task:** Execute the Phase 0.5 P0 backlog: posting-reversal confirms, raw date inputs, alert() removals, admin/security confirms, taxonomy doc + enforcement.
+**Agent:** Claude Opus 4.7
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Created shared `useConfirm()` hook ([frontend/src/hooks/useConfirm.tsx](../frontend/src/hooks/useConfirm.tsx)) — promise-based replacement for `window.confirm` rendering `ConfirmDialog` with tone (`info` / `warning` / `danger`).
+- Posting-reversal confirms (P0 control risk) migrated to `ConfirmDialog` with `tone="danger"`: `PurchaseInvoiceDetailPage` unpostPI, `GoodsReceiptDetailPage` unpostGRN, `PurchaseReturnDetailPage` unpostReturn.
+- Raw `type="date"` inputs swapped for shared `DatePicker` on 4 finance-sensitive pages: SalesInvoiceDetail (4×), QuotationDetail (2×), PurchaseInvoiceDetail (2 settlement rows), InventoryFinancialIntegrationWizard.
+- `AccountForm` hierarchy `alert()` → `errorHandler.showWarning` (validation toast).
+- 17 admin/security `window.confirm` sites migrated via `useConfirm()` across SuperAdminShell, super-admin Companies/Users/Entitlements, company-admin Users/Roles/Bundles, RBAC AssignUsersRoles, VoucherFormDesigner, DocumentFormDesigner, VoucherTypeManager, ItemMasterCard.
+- `GenericVoucherRenderer` "Feature to be implemented" `alert()` calls → soft `errorHandler.showInfo` toasts pointing to existing report pages.
+- Wrote [docs/architecture/frontend-toast-taxonomy.md](../docs/architecture/frontend-toast-taxonomy.md): 8-tier taxonomy (success / info / validation / business policy / missing setup / permission / system / critical) with copy templates and tone selection.
+- Enforcement: [frontend/scripts/check-no-confirm.mjs](../frontend/scripts/check-no-confirm.mjs) blocks builds on raw `window.confirm`/`alert`. Wired into `npm run build`. Seeded allowlist with 11 remaining super-admin AI/cert sites + 2 frozen-scope topbar widgets + DocumentDesigner preview stubs — must shrink to zero.
+- Kept `/dev/*`, `/canvas-dev`, `/accounting/vouchers/demo` routes visible per user request (pre-deployment).
+
+**Gates:**
+- `npm run typecheck:web` → clean.
+- `npm run check:reports` → 21 report routes OK.
+- `npm run check:no-confirm` → OK (no new violations).
+
+**Time spent:** ~2h
+
+## 2026-05-30 (Sat) — Task 132 Phase 0.5 chrome inventory
+
+**Task:** Catalog the chrome surface before broad Task 132 refactor work begins.
+**Agent:** Claude Opus 4.7
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Ran parallel inventory greps across `frontend/src` for: raw `type="date"` inputs, `window.confirm` / `alert()` usage, `uiMode` branching coverage, `ReportContainer` adoption, shared selectors, and dev/demo route exposure.
+- Authored [planning/tasks/132-phase-0.5-inventory.md](./tasks/132-phase-0.5-inventory.md) — full inventory with prioritized P0/P1 remediation backlog (~10h Phase 1 P0 work).
+- Key findings:
+  - 9 files use raw `type="date"` (4 are posting/finance-sensitive — P0).
+  - 28 files use `window.confirm`/`alert()`; 3 in Purchases are posting-reversal (P0).
+  - 26 files already honor `uiMode`; shell, sidebar, topbar, master lists, and master-card windows are covered. Sales/purchases detail pages are the main mode-aware gap and route to thread #2 (Phase 4.5).
+  - 7 dev/demo routes are exposed in tenant nav with `hideInMenu: false` — must hide in Phase 1.
+  - All 22 active report pages route through `ReportContainer` — no remediation needed.
+- Defined the 8-tier toast/error taxonomy (success, info, validation, business policy, missing setup, permission, system, critical) for Phase 1 documentation + ESLint enforcement.
+- Updated `planning/ACTIVE.md` next-action pointer to Phase 1 dev-route hide.
+
+**Time spent:** ~0.5h
+
 ## 2026-05-30 (Sat) — Visual Layout Editor Polish & Auto Align
 
 **Task:** Fix layout double-scaling bug, refine properties panel auto-show triggers, display width labels, default layout span to 6, and implement Auto Align tool.

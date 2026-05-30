@@ -31,6 +31,7 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { clsx } from 'clsx';
 import { MasterCardLayout, FormSection, Field, MasterCardTab } from '../../../components/layout/MasterCardLayout';
 import { generateNextCode, CODE_PATTERNS } from '../../../utils/codeGenerator';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface ItemMasterCardProps {
   itemId?: string;
@@ -54,6 +55,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   onSaved 
 }) => {
   const { hasPermission } = useRBAC();
+  const { confirm, confirmDialog } = useConfirm();
   const [activeTab, setActiveTab] = useState('GENERAL');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -260,9 +262,12 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
     const existingImpact = conversionImpactById[conversion.id];
     if (existingImpact?.used) {
-      const shouldProceed = window.confirm(
-        'This conversion has posted usage. The system will add stock adjustment delta movements to apply the new factor without changing invoice/payment values. Continue?'
-      );
+      const shouldProceed = await confirm({
+        title: 'Adjust UoM conversion?',
+        message: 'This conversion has posted usage. The system will add stock adjustment delta movements to apply the new factor without changing invoice/payment values. Continue?',
+        confirmLabel: 'Continue',
+        tone: 'warning',
+      });
       if (!shouldProceed) return;
     }
 
@@ -712,6 +717,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
         .form-control:focus { border-color: #2563eb; ring: 2px solid #2563eb; }
         .dark .form-control { background: #0f172a; border-color: #334155; color: #f1f5f9; }
       `}</style>
+      {confirmDialog}
     </MasterCardLayout>
   );
 };

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Account, useAccounts } from '../../../context/AccountsContext';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
@@ -245,11 +246,9 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
           {startBehavior === 'FROM_DATE' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Accounting Start Date <span className="text-red-500">*</span></label>
-              <input
-                type="date"
+              <DatePicker
                 value={accountingStartDate}
-                onChange={(e) => setAccountingStartDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                onChange={(val) => setAccountingStartDate(val)}
               />
             </div>
           )}

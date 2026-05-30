@@ -9,9 +9,11 @@ import { Input } from '../../../components/ui/Input';
 import { useCompanyRoles } from '../../../hooks/useCompanyAdmin';
 import { Edit2, Trash2, Shield, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export const RolesPage: React.FC = () => {
   const { t } = useTranslation('common');
+  const { confirm, confirmDialog } = useConfirm();
   const navigate = useNavigate();
   const { roles, isLoading, deleteRole, isDeleting } = useCompanyRoles();
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,15 +25,20 @@ export const RolesPage: React.FC = () => {
   );
 
   const handleDelete = async (roleId: string, roleName: string) => {
-    if (window.confirm(t('companyAdmin.roles.confirmDelete', {
-      defaultValue: 'Are you sure you want to delete the role \"{{roleName}}\"?',
-      roleName,
-    }))) {
-      setDeletingRoleId(roleId);
-      deleteRole(roleId, {
-        onSettled: () => setDeletingRoleId(null)
-      });
-    }
+    const ok = await confirm({
+      title: t('companyAdmin.roles.confirmDeleteTitle', { defaultValue: 'Delete role?' }),
+      message: t('companyAdmin.roles.confirmDelete', {
+        defaultValue: 'Are you sure you want to delete the role "{{roleName}}"?',
+        roleName,
+      }),
+      confirmLabel: t('common.delete', { defaultValue: 'Delete' }),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setDeletingRoleId(roleId);
+    deleteRole(roleId, {
+      onSettled: () => setDeletingRoleId(null)
+    });
   };
 
   return (
@@ -162,6 +169,7 @@ export const RolesPage: React.FC = () => {
           </table>
         </div>
       )}
+      {confirmDialog}
     </CompanyAdminLayout>
   );
 };

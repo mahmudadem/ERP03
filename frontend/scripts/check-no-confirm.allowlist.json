@@ -1,0 +1,13 @@
+[
+  "src/pages/super-admin/pages/SuperAdminVoucherTemplatesPage.tsx",
+  "src/pages/super-admin/pages/SuperAdminFieldLibraryPage.tsx",
+  "src/modules/ai-assistant/hooks/useAiSettings.ts",
+  "src/modules/super-admin/pages/AiModelProfilesPage.tsx",
+  "src/modules/super-admin/pages/AiSetupWizardPage.tsx",
+  "src/modules/super-admin/pages/AiApiKeysPage.tsx",
+  "src/modules/super-admin/pages/AiRuntimeProfilesPage.tsx",
+  "src/modules/super-admin/components/CertificationManagerModal.tsx",
+  "src/components/topbar/widgets/AlarmWidget.tsx",
+  "src/components/topbar/widgets/NotesWidget.tsx",
+  "src/modules/tools/forms-designer/components/DocumentDesigner.tsx"
+]

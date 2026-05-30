@@ -17,6 +17,7 @@ import { useCompanyUsers, useCompanyProfile } from '../../../hooks/useCompanyAdm
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
 import { Shield, UserCheck, Lock, Settings, FileCode, CheckCircle2, DollarSign, ChevronRight, LayoutGrid, Info, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { errorHandler } from '../../../services/errorHandler';
 
 interface AccountFormProps {
     mode: 'create' | 'edit';
@@ -222,7 +223,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
         if (parentId) {
             const parent = accounts.find(a => a.id === parentId);
             if (parent && parent.accountRole !== 'HEADER') {
-                alert(`Hierarchy Error: Account "${parent.name}" is a Posting account and cannot be selected as a parent.`);
+                errorHandler.showWarning(`Hierarchy Error: Account "${parent.name}" is a Posting account and cannot be selected as a parent.`);
                 return;
             }
         }

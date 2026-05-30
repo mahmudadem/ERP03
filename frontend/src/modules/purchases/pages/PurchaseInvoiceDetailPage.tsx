@@ -122,6 +122,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentDeletingId, setAttachmentDeletingId] = useState<string | null>(null);
   const [attachmentPendingDelete, setAttachmentPendingDelete] = useState<PurchaseInvoiceAttachmentDTO | null>(null);
+  const [unpostConfirmOpen, setUnpostConfirmOpen] = useState(false);
   const [pendingAttachmentFiles, setPendingAttachmentFiles] = useState<File[]>([]);
 
   // Settlement state
@@ -686,12 +687,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const unpostPI = async () => {
     if (!invoice?.id) return;
-    if (!window.confirm('Are you sure you want to unpost this invoice? This will reverse all accounting and inventory entries.')) return;
     try {
       setBusy(true);
       setError(null);
       const unposted = await purchasesApi.unpostPI(invoice.id);
       setInvoice(unwrap<PurchaseInvoiceDTO>(unposted));
+      setUnpostConfirmOpen(false);
     } catch (err: any) {
       console.error('Failed to unpost purchase invoice', err);
       setError(
@@ -1241,13 +1242,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium">Payment Date</label>
-                          <input
-                            type="date"
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          <DatePicker
                             value={row.paymentDate}
-                            onChange={(e) => {
+                            onChange={(val) => {
                               const updated = [...settlementRows];
-                              updated[idx].paymentDate = e.target.value;
+                              updated[idx].paymentDate = val;
                               setSettlementRows(updated);
                             }}
                           />
@@ -1628,13 +1627,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-medium">Payment Date</label>
-                        <input
-                          type="date"
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                        <DatePicker
                           value={row.paymentDate}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const updated = [...settlementRows];
-                            updated[idx].paymentDate = e.target.value;
+                            updated[idx].paymentDate = val;
                             setSettlementRows(updated);
                           }}
                         />
@@ -1764,13 +1761,25 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-            onClick={unpostPI}
+            onClick={() => setUnpostConfirmOpen(true)}
             disabled={busy || canCreatePayment === false || invoice.paymentStatus !== 'UNPAID'}
           >
             {busy ? 'Unposting...' : 'Unpost Invoice'}
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={unpostConfirmOpen}
+        title={t('purchases.invoices.unpost.confirmTitle', 'Unpost Purchase Invoice')}
+        message={t('purchases.invoices.unpost.confirmMessage', 'This will reverse all accounting and inventory entries posted for this invoice. The action is auditable but cannot be undone in place. Continue?')}
+        confirmLabel={t('purchases.invoices.unpost.confirmAction', 'Unpost Invoice')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        tone="danger"
+        isConfirming={busy}
+        onConfirm={unpostPI}
+        onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
+      />
 
       <ConfirmDialog
         isOpen={!!attachmentPendingDelete}

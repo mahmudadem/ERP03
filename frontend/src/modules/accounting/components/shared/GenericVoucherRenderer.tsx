@@ -13,6 +13,7 @@ import { Account } from '../../../../context/AccountsContext';
 import { useAccounts } from '../../../../context/AccountsContext';
 import { useCompanySettings } from '../../../../hooks/useCompanySettings';
 import { formatCompanyDate, formatCompanyTime, formatForInput, getCompanyToday } from '../../../../utils/dateUtils';
+import { errorHandler } from '../../../../services/errorHandler';
 import { DatePicker } from './DatePicker';
 import { PartySelector } from '../../../../components/shared/selectors/PartySelector';
 import { ItemSelector } from '../../../../components/shared/selectors/ItemSelector';
@@ -1385,19 +1386,15 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   const handleOpenStatement = (rowId: number) => {
     const row = rows.find(r => r.id === rowId);
     if (row?.account) {
-      // TODO: Open account statement window
-      console.log('Open statement for account:', row.account);
-      alert(`Account Statement for: ${row.account}\n(Feature to be implemented)`);
+      errorHandler.showInfo(`Account statement drill-down for "${row.account}" is coming soon. Use Accounting → Reports → Account Statement in the meantime.`);
     }
     closeLineContextMenu();
   };
-  
+
   const handleAccountBalance = (rowId: number) => {
     const row = rows.find(r => r.id === rowId);
     if (row?.account) {
-      // TODO: Show account balance
-      console.log('Show balance for account:', row.account);
-      alert(`Account Balance for: ${row.account}\n(Feature to be implemented)`);
+      errorHandler.showInfo(`Account balance lookup for "${row.account}" is coming soon. Use Accounting → Reports → Trial Balance in the meantime.`);
     }
     closeLineContextMenu();
   };

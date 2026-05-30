@@ -22,6 +22,7 @@ import { errorHandler } from '../../../../services/errorHandler';
 import { designerApi } from '../../../../api/designerApi';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { useAuth } from '../../../../hooks/useAuth';
+import { useConfirm } from '../../../../hooks/useConfirm';
 
 interface Props { // Renamed from DocumentFormDesignerProps as per the snippet
   templates?: DocumentFormConfig[]; // System-wide templates for Step 1
@@ -65,6 +66,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
     suggestion: ''
   });
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['custom']);
+  const { confirm, confirmDialog } = useConfirm();
   const { forms: allForms, addForm, updateForm, deleteForm } = useWizard();
   const { companyId: currentCompanyId } = useCompanyAccess();
   const { user } = useAuth();
@@ -124,10 +126,14 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
       });
       return;
     }
-    if (!window.confirm('⚠️ Are you sure you want to delete this form? This cannot be undone.')) {
-      return;
-    }
-    
+    const ok = await confirm({
+      title: 'Delete form?',
+      message: 'Are you sure you want to delete this form? This cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
     try {
       await deleteForm(id);
       if (onDeleteForm) onDeleteForm(id);
@@ -335,7 +341,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-800 overflow-hidden relative">
-      
+      {confirmDialog}
+
       {/* Warning Modal */}
       <WarningModal
         isOpen={warningModal.isOpen}

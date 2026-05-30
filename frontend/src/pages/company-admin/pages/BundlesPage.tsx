@@ -6,15 +6,22 @@ import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useCompanyBundles } from '../../../hooks/useCompanyAdmin';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export const BundlesPage: React.FC = () => {
   const { t } = useTranslation('common');
   const { currentBundle, availableBundles, isLoading, upgradeBundle, isUpgrading } = useCompanyBundles();
+  const { confirm, confirmDialog } = useConfirm();
 
-  const handleUpgrade = (bundleId: string, bundleName: string) => {
-    if (window.confirm(t('companyAdmin.bundles.confirmUpgrade', { bundleName }))) {
-      upgradeBundle({ bundleId });
-    }
+  const handleUpgrade = async (bundleId: string, bundleName: string) => {
+    const ok = await confirm({
+      title: t('companyAdmin.bundles.confirmUpgradeTitle', { defaultValue: 'Change subscription plan?' }),
+      message: t('companyAdmin.bundles.confirmUpgrade', { bundleName }),
+      confirmLabel: t('common.confirm', { defaultValue: 'Confirm' }),
+      tone: 'warning',
+    });
+    if (!ok) return;
+    upgradeBundle({ bundleId });
   };
 
   return (
@@ -137,6 +144,7 @@ export const BundlesPage: React.FC = () => {
           </div>
         )}
       </div>
+      {confirmDialog}
     </CompanyAdminLayout>
   );
 };

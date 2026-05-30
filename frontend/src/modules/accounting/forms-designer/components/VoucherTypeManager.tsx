@@ -6,6 +6,7 @@ import { useVouchers } from '../VoucherContext';
 import { Button } from './ui/Button';
 import { AccountsProvider } from '../../../../context/AccountsContext';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '../../../../hooks/useConfirm';
 
 interface VoucherTypeManagerProps {
   onExit: () => void;
@@ -16,6 +17,7 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
   const [viewMode, setViewMode] = useState<'list' | 'designer'>('list');
   const [editingDefinition, setEditingDefinition] = useState<VoucherTypeDefinition | null>(null);
   const { definitions, addDefinition, updateDefinition, deleteDefinition } = useVouchers();
+  const { confirm, confirmDialog } = useConfirm();
 
   const handleCreateNew = () => {
     setEditingDefinition(null); // Clear for new
@@ -27,10 +29,15 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
     setViewMode('designer');
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm(t('voucherTypeManager.confirmDelete'))) {
-      deleteDefinition(id);
-    }
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: t('voucherTypeManager.confirmDeleteTitle', { defaultValue: 'Delete voucher type?' }),
+      message: t('voucherTypeManager.confirmDelete'),
+      confirmLabel: t('common.delete', { defaultValue: 'Delete' }),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    deleteDefinition(id);
   };
 
   const handleSave = (definition: VoucherTypeDefinition) => {
@@ -64,7 +71,8 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
 
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-800 overflow-hidden relative">
-      
+      {confirmDialog}
+
       {/* Modal Overlay for Designer */}
       {viewMode === 'designer' && (
         <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4">

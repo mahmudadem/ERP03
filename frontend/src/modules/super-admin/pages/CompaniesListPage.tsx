@@ -20,10 +20,12 @@ import {
   SortIcon,
 } from '../components/SuperAdminPage';
 import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export default function CompaniesListPage() {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
+  const { confirm, confirmDialog } = useConfirm();
   const [companies, setCompanies] = useState<SuperAdminCompany[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +58,13 @@ export default function CompaniesListPage() {
   };
 
   const handleImpersonate = async (companyId: string) => {
-    if (!window.confirm(t('superAdmin.companies.confirmImpersonate'))) return;
+    const ok = await confirm({
+      title: t('superAdmin.companies.confirmImpersonateTitle', { defaultValue: 'Enter company context?' }),
+      message: t('superAdmin.companies.confirmImpersonate'),
+      confirmLabel: t('superAdmin.companies.impersonate', { defaultValue: 'Impersonate' }),
+      tone: 'warning',
+    });
+    if (!ok) return;
     try {
       await superAdminApi.startImpersonation(companyId);
       errorHandler.showSuccess(t('superAdmin.companies.messages.impersonationStarted'));
@@ -157,6 +165,7 @@ export default function CompaniesListPage() {
           </SuperAdminTable>
         </div>
       )}
+      {confirmDialog}
     </SuperAdminPage>
   );
 }

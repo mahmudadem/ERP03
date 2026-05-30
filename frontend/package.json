@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "dev:remote": "vite --host 0.0.0.0 --port 5173",
-    "build": "npm run check:reports && tsc && vite build",
+    "build": "npm run check:reports && npm run check:no-confirm && tsc && vite build",
     "check:reports": "node scripts/check-reports.mjs",
+    "check:no-confirm": "node scripts/check-no-confirm.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },

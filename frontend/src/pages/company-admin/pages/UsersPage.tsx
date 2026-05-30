@@ -8,9 +8,11 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { useCompanyUsers, useCompanyRoles } from '../../../hooks/useCompanyAdmin';
 import { Edit2, Search, Shield, User as UserIcon, Mail, Power, UserPlus, X, Save, CheckCircle, Ban, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export const UsersPage: React.FC = () => {
   const { t } = useTranslation('common');
+  const { confirm, confirmDialog } = useConfirm();
   const { 
     users, 
     isLoading, 
@@ -78,30 +80,39 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = (user: any) => {
+  const handleToggleStatus = async (user: any) => {
     const action = user.status === 'active'
       ? t('companyAdmin.users.confirm.disableVerb', { defaultValue: 'disable' })
       : t('companyAdmin.users.confirm.enableVerb', { defaultValue: 'enable' });
-    if (window.confirm(t('companyAdmin.users.confirm.toggleStatus', {
-      defaultValue: 'Are you sure you want to {{action}} {{email}}?',
-      action,
-      email: user.email,
-    }))) {
-      if (user.status === 'active') {
-        disableUser(user.userId);
-      } else {
-        enableUser(user.userId);
-      }
+    const ok = await confirm({
+      title: t('companyAdmin.users.confirm.toggleStatusTitle', { defaultValue: 'Change user status?' }),
+      message: t('companyAdmin.users.confirm.toggleStatus', {
+        defaultValue: 'Are you sure you want to {{action}} {{email}}?',
+        action,
+        email: user.email,
+      }),
+      tone: user.status === 'active' ? 'warning' : 'info',
+    });
+    if (!ok) return;
+    if (user.status === 'active') {
+      disableUser(user.userId);
+    } else {
+      enableUser(user.userId);
     }
   };
 
-  const handleDeleteUser = (user: any) => {
-    if (window.confirm(t('companyAdmin.users.confirm.removeUser', {
-      defaultValue: 'Are you sure you want to remove {{email}} from the company?',
-      email: user.email,
-    }))) {
-      deleteUser(user.userId);
-    }
+  const handleDeleteUser = async (user: any) => {
+    const ok = await confirm({
+      title: t('companyAdmin.users.confirm.removeUserTitle', { defaultValue: 'Remove user from company?' }),
+      message: t('companyAdmin.users.confirm.removeUser', {
+        defaultValue: 'Are you sure you want to remove {{email}} from the company?',
+        email: user.email,
+      }),
+      confirmLabel: t('common.remove', { defaultValue: 'Remove' }),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    deleteUser(user.userId);
   };
 
   const isActionLoading = isDisabling || isEnabling || isDeleting;
@@ -429,6 +440,7 @@ export const UsersPage: React.FC = () => {
           </Card>
         </div>
       )}
+      {confirmDialog}
     </CompanyAdminLayout>
   );
 };

@@ -13,6 +13,21 @@
 
 ## 👉 Next agent — start here
 
+**Task 132 Phase 1 partial (2026-05-30):** see [tasks/132-phase-0.5-inventory.md](./tasks/132-phase-0.5-inventory.md). **Done this session:**
+- 3 posting-reversal `window.confirm` in Purchases (PI/GR/PR unpost) → `ConfirmDialog` with danger tone.
+- Raw `type="date"` swapped for shared `DatePicker` on 4 finance-sensitive pages: SalesInvoiceDetail (4 instances), QuotationDetail (2 instances), PurchaseInvoiceDetail (2 settlement rows), InventoryFinancialIntegrationWizard.
+- `AccountForm` hierarchy `alert()` → `errorHandler.showWarning`.
+- 17 admin/security `window.confirm` sites migrated via new `useConfirm()` hook ([frontend/src/hooks/useConfirm.tsx](../frontend/src/hooks/useConfirm.tsx)): SuperAdminShell logout, super-admin Companies/Users/Entitlements impersonate/promote/demote/revoke, company-admin Users/Roles/Bundles, RBAC AssignUsersRoles, VoucherFormDesigner, DocumentFormDesigner, VoucherTypeManager, ItemMasterCard.
+- `GenericVoucherRenderer` "Feature to be implemented" `alert()` → soft `showInfo` toast.
+- Feedback taxonomy doc: [docs/architecture/frontend-toast-taxonomy.md](../docs/architecture/frontend-toast-taxonomy.md).
+- Enforcement: [frontend/scripts/check-no-confirm.mjs](../frontend/scripts/check-no-confirm.mjs) blocks builds on new raw `window.confirm`/`alert`. Wired into `npm run build`. Allowlist seeded with 11 remaining super-admin AI/cert/template/wizard sites + the 2 frozen-scope topbar widgets + DocumentDesigner preview stubs — must shrink to zero.
+
+**Kept dev/demo routes visible** (per user request — pre-deployment).
+
+**Deferred — left in allowlist:** 11 super-admin AI/cert/voucher-template confirms, useAiSettings deprecate confirm, DocumentDesigner preview stubs. Migrate as part of the AI super-admin polish thread.
+
+**Next step:** continue Phase 1 — promote `AccountSelectorSimple` + `DatePicker` to `components/shared/selectors/` (move + shim re-export), then move on to Phase 2 (list/action standardization) per [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md).
+
 **Visual Layout Editor Polish & Auto Align (2026-05-30):**
 - Fixed 12-to-24 column grid coordinate double-scaling bug by implementing versioned `layoutVersion = 2` checks.
 - Refined Properties Panel triggers to only open when the Pencil edit icon is explicitly clicked.

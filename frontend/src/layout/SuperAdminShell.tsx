@@ -13,8 +13,10 @@ import { useSidebarConfig } from '../hooks/useSidebarConfig';
 import { PageTitleManager } from '../components/common/PageTitleManager';
 import { useTranslation } from 'react-i18next';
 import { SuperAdminThemeProvider } from '../modules/super-admin/theme/SuperAdminThemeProvider';
+import { useConfirm } from '../hooks/useConfirm';
 export const SuperAdminShell: React.FC = () => {
   const { t } = useTranslation('common');
+  const { confirm, confirmDialog } = useConfirm();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
@@ -28,10 +30,16 @@ export const SuperAdminShell: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (window.confirm(t('shell.superAdmin.confirmLogout'))) {
-      await logout();
-      navigate('/admin/login');
-    }
+    const ok = await confirm({
+      title: t('shell.superAdmin.confirmLogoutTitle', { defaultValue: 'Sign out of Super Admin?' }),
+      message: t('shell.superAdmin.confirmLogout'),
+      confirmLabel: t('common.signOut', { defaultValue: 'Sign out' }),
+      cancelLabel: t('common.cancel', { defaultValue: 'Cancel' }),
+      tone: 'warning',
+    });
+    if (!ok) return;
+    await logout();
+    navigate('/admin/login');
   };
 
   return (
@@ -255,6 +263,7 @@ export const SuperAdminShell: React.FC = () => {
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
+      {confirmDialog}
     </div>
     </SuperAdminThemeProvider>
   );

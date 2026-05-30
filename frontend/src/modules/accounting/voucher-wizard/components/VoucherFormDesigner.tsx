@@ -19,6 +19,7 @@ import { FormCard } from './FormCard';
 import { WarningModal } from './WarningModal';
 import { RequirePermission } from '../../../../components/auth/RequirePermission';
 import { errorHandler } from '../../../../services/errorHandler';
+import { useConfirm } from '../../../../hooks/useConfirm';
 
 interface Props { // Renamed from VoucherFormDesignerProps as per the snippet
   templates?: VoucherFormConfig[]; // System-wide templates for Step 1
@@ -48,6 +49,7 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
     suggestion: ''
   });
   const { forms: allForms, addForm, updateForm, deleteForm } = useWizard();
+  const { confirm, confirmDialog } = useConfirm();
 
   // Filter forms based on search query
   const forms = allForms.filter(f => 
@@ -102,9 +104,13 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
       });
       return;
     }
-    if (!window.confirm('⚠️ Are you sure you want to delete this form? This cannot be undone.')) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Delete form?',
+      message: 'Are you sure you want to delete this form? This cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
     
     try {
       await deleteForm(id);
@@ -267,7 +273,8 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-800 overflow-hidden relative">
-      
+      {confirmDialog}
+
       {/* Warning Modal */}
       <WarningModal
         isOpen={warningModal.isOpen}

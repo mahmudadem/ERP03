@@ -6,6 +6,7 @@ import { errorHandler } from '../../../services/errorHandler';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 import { SuperAdminHeader, SuperAdminPage } from '../components/SuperAdminPage';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface UserWithCompanies extends SuperAdminUser {
   companies?: SuperAdminCompany[];
@@ -20,6 +21,7 @@ export default function SuperAdminUsersManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<'ALL' | 'USER' | 'SUPER_ADMIN'>('ALL');
   const [selectedUser, setSelectedUser] = useState<UserWithCompanies | null>(null);
+  const { confirm, confirmDialog } = useConfirm();
 
   useEffect(() => {
     loadData();
@@ -53,7 +55,12 @@ export default function SuperAdminUsersManagementPage() {
   };
 
   const handlePromote = async (userId: string) => {
-    if (!window.confirm(t('superAdmin.usersManagement.confirm.promote'))) return;
+    const ok = await confirm({
+      title: t('superAdmin.usersManagement.confirm.promoteTitle', { defaultValue: 'Promote to Super Admin?' }),
+      message: t('superAdmin.usersManagement.confirm.promote'),
+      tone: 'warning',
+    });
+    if (!ok) return;
     try {
       await superAdminApi.promoteUser(userId);
       errorHandler.showSuccess(t('superAdmin.usersManagement.messages.promoted'));
@@ -64,7 +71,12 @@ export default function SuperAdminUsersManagementPage() {
   };
 
   const handleDemote = async (userId: string) => {
-    if (!window.confirm(t('superAdmin.usersManagement.confirm.demote'))) return;
+    const ok = await confirm({
+      title: t('superAdmin.usersManagement.confirm.demoteTitle', { defaultValue: 'Demote Super Admin?' }),
+      message: t('superAdmin.usersManagement.confirm.demote'),
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await superAdminApi.demoteUser(userId);
       errorHandler.showSuccess(t('superAdmin.usersManagement.messages.demoted'));
@@ -75,7 +87,12 @@ export default function SuperAdminUsersManagementPage() {
   };
 
   const handleImpersonate = async (companyId: string) => {
-    if (!window.confirm(t('superAdmin.usersManagement.confirm.startImpersonation'))) return;
+    const ok = await confirm({
+      title: t('superAdmin.usersManagement.confirm.impersonationTitle', { defaultValue: 'Start impersonation?' }),
+      message: t('superAdmin.usersManagement.confirm.startImpersonation'),
+      tone: 'warning',
+    });
+    if (!ok) return;
     try {
       const { impersonationToken } = await superAdminApi.startImpersonation(companyId);
       // Store the impersonation token
@@ -391,6 +408,7 @@ export default function SuperAdminUsersManagementPage() {
           </div>
         </div>
       )}
+      {confirmDialog}
     </SuperAdminPage>
   );
 }

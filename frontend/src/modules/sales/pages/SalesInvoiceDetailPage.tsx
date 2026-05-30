@@ -1851,13 +1851,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium">Payment Date</label>
-                          <input
-                            type="date"
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          <DatePicker
                             value={row.paymentDate}
-                            onChange={(e) => {
+                            onChange={(val) => {
                               const updated = [...settlementRows];
-                              updated[idx].paymentDate = e.target.value;
+                              updated[idx].paymentDate = val;
                               setSettlementRows(updated);
                             }}
                           />
@@ -2257,13 +2255,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-medium">Payment Date</label>
-                        <input
-                          type="date"
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                        <DatePicker
                           value={row.paymentDate}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const updated = [...settlementRows];
-                            updated[idx].paymentDate = e.target.value;
+                            updated[idx].paymentDate = val;
                             setSettlementRows(updated);
                           }}
                         />
@@ -2685,22 +2681,18 @@ const SalesInvoiceDetailPage: React.FC = () => {
               <label className="mb-1 block text-xs font-medium text-slate-600">
                 {t('sales.recurring.fields.startDate', 'Start Date *')}
               </label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker
                 value={cloneRecurringStartDate}
-                onChange={(e) => setCloneRecurringStartDate(e.target.value)}
+                onChange={(val) => setCloneRecurringStartDate(val)}
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
                 {t('sales.recurring.fields.endDate', 'End Date')}
               </label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker
                 value={cloneRecurringEndDate}
-                onChange={(e) => setCloneRecurringEndDate(e.target.value)}
+                onChange={(val) => setCloneRecurringEndDate(val)}
               />
             </div>
             <div>

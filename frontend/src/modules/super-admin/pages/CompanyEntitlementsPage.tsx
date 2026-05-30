@@ -18,6 +18,7 @@ import {
   tableRowClass,
 } from '../components/SuperAdminPage';
 import { Button } from '../../../components/ui/Button';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 /** Platform/boot modules that should not appear as grantable */
 const PLATFORM_IDS = ['companyadmin', 'core', 'auth', 'rbac', 'settings', 'system'];
@@ -43,6 +44,7 @@ export default function CompanyEntitlementsPage() {
   const [granting, setGranting] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [showGrantModal, setShowGrantModal] = useState(false);
+  const { confirm, confirmDialog } = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
   const [aiReportMode, setAiReportMode] = useState<'standard' | 'authoritative'>('standard');
   const [savingReportMode, setSavingReportMode] = useState(false);
@@ -101,7 +103,13 @@ export default function CompanyEntitlementsPage() {
 
   const handleRevoke = async (moduleKey: string) => {
     if (!companyId) return;
-    if (!window.confirm(t('superAdmin.companyEntitlements.confirmRevoke', { defaultValue: `Revoke access to module '{{moduleKey}}'? This may affect company users.`, moduleKey }))) return;
+    const ok = await confirm({
+      title: t('superAdmin.companyEntitlements.confirmRevokeTitle', { defaultValue: 'Revoke module access?' }),
+      message: t('superAdmin.companyEntitlements.confirmRevoke', { defaultValue: `Revoke access to module '{{moduleKey}}'? This may affect company users.`, moduleKey }),
+      confirmLabel: t('common.revoke', { defaultValue: 'Revoke' }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     setRevoking(moduleKey);
     try {
       await superAdminApi.revokeModuleFromCompany(companyId, moduleKey);
@@ -439,6 +447,7 @@ export default function CompanyEntitlementsPage() {
           </div>
         </SuperAdminModal>
       )}
+      {confirmDialog}
     </SuperAdminPage>
   );
 }

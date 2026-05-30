@@ -6,6 +6,7 @@ import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterData
 import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
 import { sharedApi, PartyDTO, TaxCodeDTO } from '../../../api/sharedApi';
 import { PartySelector } from '../../../components/shared/selectors';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { FileText, ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -597,12 +598,10 @@ const QuotationDetailPage: React.FC = () => {
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Quote Date
                 </label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                <DatePicker
                   value={form.quoteDate}
                   disabled={isReadOnly}
-                  onChange={(e) => setForm((prev) => ({ ...prev, quoteDate: e.target.value }))}
+                  onChange={(val) => setForm((prev) => ({ ...prev, quoteDate: val }))}
                 />
               </div>
 
@@ -610,12 +609,10 @@ const QuotationDetailPage: React.FC = () => {
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Valid Until
                 </label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                <DatePicker
                   value={form.validUntil}
                   disabled={isReadOnly}
-                  onChange={(e) => setForm((prev) => ({ ...prev, validUntil: e.target.value }))}
+                  onChange={(val) => setForm((prev) => ({ ...prev, validUntil: val }))}
                 />
               </div>
 
