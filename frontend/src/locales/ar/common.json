@@ -2323,6 +2323,159 @@
       "cloneModal": {
         "title": "نسخ الفاتورة إلى قالب متكرر"
       }
+    },
+    "invoicesList": {
+      "title": "Sales Invoices",
+      "subtitle": "Post invoices to recognize revenue and receivables.",
+      "newButton": "New Invoice",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales invoices...",
+      "loadError": "Failed to load sales invoices.",
+      "filters": {
+        "status": "Status",
+        "payment": "Payment",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "payment": {
+        "ALL": "All",
+        "UNPAID": "Unpaid",
+        "PARTIALLY_PAID": "Partially Paid",
+        "PAID": "Paid"
+      },
+      "headers": {
+        "invoiceNumber": "Invoice #",
+        "customer": "Customer",
+        "invoiceDate": "Invoice Date",
+        "grandTotal": "Grand Total",
+        "payment": "Payment",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales invoices yet",
+        "description": "Create your first invoice to recognize revenue and receivables."
+      }
+    },
+    "ordersList": {
+      "title": "Sales Orders",
+      "subtitle": "Commercial sales commitments (no inventory/GL effects from SO itself).",
+      "newButton": "New Sales Order",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales orders...",
+      "loadError": "Failed to load sales orders.",
+      "filters": {
+        "status": "Status",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "CONFIRMED": "Confirmed",
+        "PARTIALLY_DELIVERED": "Partially Delivered",
+        "FULLY_DELIVERED": "Fully Delivered",
+        "CLOSED": "Closed",
+        "CANCELLED": "Cancelled"
+      },
+      "headers": {
+        "orderNumber": "Order #",
+        "customer": "Customer",
+        "orderDate": "Order Date",
+        "total": "Total",
+        "currency": "Currency",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales orders yet",
+        "description": "Create your first sales order to track customer commitments."
+      }
+    },
+    "deliveryNotesList": {
+      "title": "Delivery Notes",
+      "subtitle": "Post delivery to issue stock and recognize COGS.",
+      "newButton": "New Delivery Note",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading delivery notes...",
+      "loadError": "Failed to load delivery notes.",
+      "filters": {
+        "status": "Status",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All Warehouses",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "headers": {
+        "dnNumber": "DN #",
+        "customer": "Customer",
+        "deliveryDate": "Delivery Date",
+        "warehouse": "Warehouse",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No delivery notes yet",
+        "description": "Create your first delivery note to issue stock and recognize COGS."
+      }
+    },
+    "returnsList": {
+      "title": "Sales Returns",
+      "subtitle": "Track sales return documents posted before or after invoicing.",
+      "newButton": "New Sales Return",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales returns...",
+      "loadError": "Failed to load sales returns.",
+      "filters": {
+        "status": "Status",
+        "context": "Context",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "context": {
+        "ALL": "All",
+        "AFTER_INVOICE": "After Invoice",
+        "BEFORE_INVOICE": "Before Invoice"
+      },
+      "headers": {
+        "returnNumber": "Return #",
+        "customer": "Customer",
+        "returnDate": "Return Date",
+        "context": "Context",
+        "grandTotal": "Grand Total",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales returns yet",
+        "description": "Record customer returns posted before or after invoicing."
+      }
     }
   },
   "purchases": {
