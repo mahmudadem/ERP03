@@ -2,6 +2,115 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-31 (Sun) — Sidebar forms grouping rework (Task 147)
+
+**Task:** Fix the broken Accounting sidebar (empty because v1 suppressed every default voucher) and codify the per-module forms-grouping policy.
+**Agent:** Claude (Opus 4.7)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- New authoritative doc `docs/architecture/sidebar-forms-grouping.md` with vocabulary (native / default / cloned), per-module target, current implementation, and follow-ups.
+- `frontend/src/hooks/useSidebarConfig.ts`: rewrote `buildDynamicFormGroups` with per-module `effectiveGroup(form)` defaulting; removed default-form suppression; groupless clones now render as top-level sidebar leaves; `All Vouchers` is dynamically prepended inside the accounting `Vouchers` group.
+- `frontend/src/config/moduleMenuMap.ts`: removed the static `Forms` group from Accounting; promoted `Approval Center` to a root-level Accounting item; `All Vouchers` moved out (now dynamic).
+- Updated `docs/user-guide/forms-management.md` with a per-module sidebar-defaulting table.
+- Report: `planning/done/147-sidebar-forms-grouping-rework.md`.
+
+**Why:** the v1 sidebar rule (suppress every system default) left a fresh Accounting tenant with no usable sidebar entries — Accounting *is* vouchers and they were all marked as defaults. Fixed at the sidebar layer so no data migration is needed. The seed value `sidebarGroup: "Documents"` is now treated as an unset placeholder at runtime.
+
+## 2026-05-30 (Sat) — Task 132 Phase 5 — raw date input cleanup
+
+**Task:** Remove the remaining user-facing native date inputs from Task 132 surfaces and route them through the shared `DatePicker`.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Replaced native date inputs in Stock Movements, Stock Transfers, Sales Promotions, and Sales Price Lists with the shared `DatePicker`.
+- Replaced the generic `DataTableFilter` date-range native inputs with the shared `DatePicker`, removing the last raw date inputs found under `frontend/src`.
+- Updated `docs/architecture/operational-lists.md` and added `docs/user-guide/lists/date-controls.md`.
+- Created completion report `planning/done/146-raw-date-input-cleanup.md`.
+
+**Accounting/control note:** no posting, pricing, promotion eligibility, inventory costing, stock valuation, or ledger logic changed. Existing API date values remain ISO strings.
+
+**Verification:**
+- Raw date scan across `frontend/src` -> no matches
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+
+**Time spent:** ~0.4h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 4/5 — voucher and item list standardization
+
+**Task:** Continue the operational-list standardization pass after Sales/Purchase invoices by covering Accounting Vouchers and Inventory Items.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Updated `VouchersListPage` to use the shared `PageHeader` while preserving its specialized `VoucherFiltersBar` and `VoucherTable`.
+- Updated `ItemsListPage` with shared `PageHeader`, translated quick-add/search/filter controls, refresh/clear actions, `EmptyState`, status chips, explicit Open row action, and toast feedback for create/load failures.
+- Added English/Arabic/Turkish locale keys for the new visible list strings.
+- Expanded `docs/architecture/operational-lists.md` and added `docs/user-guide/lists/accounting-and-items-lists.md`.
+- Created completion report `planning/done/145-voucher-and-item-list-standardization.md`.
+
+**Accounting/control note:** no posting, approval, costing, or valuation behavior changed. The voucher list intentionally kept its accounting-specific table/actions instead of replacing lifecycle behavior with a generic list.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+
+**Time spent:** ~0.7h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 4/5 — invoice list standardization
+
+**Task:** Standardize the first high-traffic operational-list pair after the settings taxonomy slice.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Standardized `SalesInvoicesListPage` and `PurchaseInvoicesListPage` around the same page pattern: `PageHeader`, filter card, shared party selector, refresh/clear actions, status/payment chips, `EmptyState`, and explicit Open row action.
+- Replaced page-local customer/vendor dropdown filters with shared `PartySelector` using `role="CUSTOMER"` / `role="VENDOR"`.
+- Added English/Arabic/Turkish locale keys for the new visible list strings.
+- Added docs: `docs/architecture/operational-lists.md`, `docs/user-guide/lists/invoice-lists.md`.
+- Created completion report `planning/done/144-invoice-list-standardization.md`.
+
+**Accounting/control note:** no posting, payment, cancellation, or ledger behavior changed. The control improvement is consistent filtering and clear status/payment visibility on two financial document lists.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+
+**Time spent:** ~0.8h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 3 — settings taxonomy foundation
+
+**Task:** Continue Task 132 after sidebar/navigation polish by turning Settings Home into a production settings hub and improving the shared module settings layout.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Replaced placeholder `SettingsHomePage` with a grouped settings hub: General, Workflow, Accounting and Tax, Access and Advanced.
+- Kept existing route ownership and permission guards; the hub links to existing settings pages instead of bypassing security.
+- Improved `ModuleSettingsLayout` for responsive tabs, mobile spacing, Windows-mode-aware header spacing, and a responsive unsaved-change save/discard bar.
+- Added English/Arabic/Turkish locale keys for the hub and shared layout copy.
+- Added docs: `docs/architecture/settings.md`, `docs/user-guide/settings/settings-home.md`.
+- Created completion report `planning/done/143-settings-taxonomy-foundation.md`.
+
+**Accounting/control note:** no posting logic changed. This improves discoverability for approval, workflow, tax, currency, account-default, and role controls.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+- Browser smoke reached `/#/settings` and redirected unauthenticated users to `/#/auth`; authenticated visual QA is queued.
+
+**Time spent:** ~0.7h.
+
 ## 2026-05-30 (Sat) — Task 132 Phase 1 P0 — confirm/alert/date-input hardening
 
 **Task:** Execute the Phase 0.5 P0 backlog: posting-reversal confirms, raw date inputs, alert() removals, admin/security confirms, taxonomy doc + enforcement.

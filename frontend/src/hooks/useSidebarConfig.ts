@@ -26,29 +26,34 @@ const MODULE_ROUTE_MAP: Record<string, { baseRoute: string; permission: string; 
   purchase:   { baseRoute: '/purchases',            permission: 'purchase.view',            icon: 'File' },
 };
 
-// Sidebar grouping policy (see planning/tasks/native-to-default-forms-migration.md):
-//   - native forms  → static `Forms` group in moduleMenuMap (list pages)
-//   - default forms → always grouped under DEFAULT_FORMS_GROUP, regardless of
-//                     their stored `sidebarGroup` field
-//   - cloned forms  → user-chosen `sidebarGroup`; blank ⇒ root
+// Sidebar grouping policy — see docs/architecture/sidebar-forms-grouping.md
+//   - native forms       → static `Forms` group declared in moduleMenuMap
+//   - accounting forms   → `Vouchers` group (defaults AND clones, unless the
+//                          user explicitly assigned a different group)
+//   - default forms (sales/purchases) → `Default Forms` group
+//   - cloned forms (sales/purchases, no explicit group) → root of the module
+//                          sidebar (top-level leaves, not nested)
+//   - explicit user group → honored verbatim
 //
-// Defaults are the future surface but currently lag native in capability
-// (lists, WhatsApp send, payment record, attachments, ...). Until parity is
-// reached via new Field Library components, both layers coexist in the
-// sidebar under clearly distinct group names.
+// The literal `"Documents"` value is treated as an unset placeholder because
+// the system seed sets every voucher type to `sidebarGroup: "Documents"`
+// regardless of module — see backend/src/seeder/seedSystemVoucherTypes.ts.
 const DEFAULT_FORMS_GROUP = 'Default Forms';
 const NATIVE_FORMS_GROUP = 'Forms';
-const OTHER_FORMS_GROUP = 'Other Forms';
+const VOUCHERS_GROUP = 'Vouchers';
+const SEED_PLACEHOLDER_GROUP = 'Documents';
 
 // Order of form-related groups within a module section. `Forms` (native) is
 // already declared in moduleMenuMap; the rest are inserted right after it.
 const FORM_GROUP_RANK: Record<string, number> = {
   [NATIVE_FORMS_GROUP]: 0,
   [DEFAULT_FORMS_GROUP]: 1,
-  // user-named custom groups (Vouchers, Approvals, …) land between, at rank 2
-  [OTHER_FORMS_GROUP]: 3,
+  [VOUCHERS_GROUP]: 2,
+  // user-named custom groups land at rank 3.
 };
-const USER_GROUP_RANK = 2;
+const USER_GROUP_RANK = 3;
+// Root-level leaves (groupless clones) sort between Default Forms and Vouchers.
+const ROOT_LEAF_RANK = 1.5;
 
 const isSystemDefaultForm = (form: SidebarFormEntry): boolean =>
   !!(form.isDefault || form.isSystemGenerated || form.isLocked);
@@ -151,21 +156,26 @@ export const useSidebarConfig = () => {
     const routeConfig = MODULE_ROUTE_MAP[moduleId];
     if (!routeConfig) return [];
 
-    // Grouping policy (v1 — see planning/tasks/native-to-default-forms-migration.md
-    // "v1 strategy" section):
-    //   - default forms  → SUPPRESSED from sidebar entirely. Activated defaults
-    //                      remain reachable through Tools → Forms Management.
-    //                      The Default Forms sidebar group is held in reserve
-    //                      for when the migration to default-driven UIs resumes.
-    //   - cloned forms w/ sidebarGroup    → that group (user choice honored)
-    //   - cloned forms w/o sidebarGroup   → OTHER_FORMS_GROUP (catch-all)
+    // Per-module defaulting — see docs/architecture/sidebar-forms-grouping.md.
+    // Returns the effective sidebar group for a form, or `null` to emit the
+    // form as a top-level leaf at the module root.
+    const effectiveGroup = (form: SidebarFormEntry): string | null => {
+      const explicit = (form.sidebarGroup || '').trim();
+      if (explicit && explicit !== SEED_PLACEHOLDER_GROUP) return explicit;
+      if (moduleId === 'accounting') return VOUCHERS_GROUP;
+      if (isSystemDefaultForm(form)) return DEFAULT_FORMS_GROUP;
+      return null; // sales/purchases clone with no explicit group → root
+    };
+
     const groups = new Map<string, SidebarFormEntry[]>();
+    const rootLeaves: SidebarFormEntry[] = [];
 
     moduleForms.forEach(form => {
-      if (isSystemDefaultForm(form)) {
-        return; // Defaults don't render in the sidebar for v1.
+      const groupName = effectiveGroup(form);
+      if (groupName === null) {
+        rootLeaves.push(form);
+        return;
       }
-      const groupName = form.sidebarGroup || OTHER_FORMS_GROUP;
       if (!groups.has(groupName)) {
         groups.set(groupName, []);
       }
@@ -177,18 +187,25 @@ export const useSidebarConfig = () => {
         ? `${routeConfig.baseRoute}?type=${form.id}`
         : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`;
 
+    const groupIcon = (groupName: string): string => {
+      if (groupName === DEFAULT_FORMS_GROUP) return 'Layers';
+      if (groupName === VOUCHERS_GROUP) return 'FileText';
+      return 'FolderOpen';
+    };
+
     const result: SidebarItem[] = [];
 
     groups.forEach((forms, groupName) => {
       const children: SidebarItem[] = [];
 
-      // For accounting, prepend "All Vouchers" inside the legacy Vouchers group.
-      if (moduleId === 'accounting' && groupName === 'Vouchers') {
+      // Accounting's Vouchers group gets an "All Vouchers" entry up front so
+      // users can reach the unified list without scanning the per-type entries.
+      if (moduleId === 'accounting' && groupName === VOUCHERS_GROUP) {
         children.push({
           label: translateLabel('All Vouchers'),
           path: '/accounting/vouchers',
           permission: routeConfig.permission,
-          icon: 'FileSearch'
+          icon: 'FileSearch',
         });
       }
 
@@ -197,33 +214,40 @@ export const useSidebarConfig = () => {
           label: form.name,
           path: formPath(form),
           permission: routeConfig.permission,
-          icon: routeConfig.icon
+          icon: routeConfig.icon,
         });
       });
 
       result.push({
         label: translateLabel(groupName),
-        icon: groupName === DEFAULT_FORMS_GROUP
-          ? 'Layers'
-          : groupName === OTHER_FORMS_GROUP
-            ? 'Files'
-            : groupName === 'Vouchers'
-              ? 'FileText'
-              : 'FolderOpen',
-        children
+        icon: groupIcon(groupName),
+        children,
+      });
+    });
+
+    // Groupless clones render as top-level sidebar leaves at the module root.
+    rootLeaves.forEach(form => {
+      result.push({
+        label: form.name,
+        path: formPath(form),
+        permission: routeConfig.permission,
+        icon: routeConfig.icon,
       });
     });
 
     return result;
   };
 
-  // Rank used to position dynamic form groups (Default Forms, user-named,
-  // Other Forms) right after the static `Forms` group within a module
-  // section. Lower rank → earlier in the sidebar.
-  const dynamicGroupRank = (label: string): number => {
+  // Rank used to position dynamic form groups and root-level form leaves
+  // right after the static `Forms` group within a module section. Lower rank
+  // → earlier in the sidebar. Items without a known label rank as user groups.
+  const dynamicGroupRank = (item: SidebarItem): number => {
+    // Root-level leaves (no children) — groupless clones rendered flat.
+    if (!item.children) return ROOT_LEAF_RANK;
+    const label = item.label;
     if (FORM_GROUP_RANK[label] !== undefined) return FORM_GROUP_RANK[label];
     if (translateLabel(DEFAULT_FORMS_GROUP) === label) return FORM_GROUP_RANK[DEFAULT_FORMS_GROUP];
-    if (translateLabel(OTHER_FORMS_GROUP) === label) return FORM_GROUP_RANK[OTHER_FORMS_GROUP];
+    if (translateLabel(VOUCHERS_GROUP) === label) return FORM_GROUP_RANK[VOUCHERS_GROUP];
     if (translateLabel(NATIVE_FORMS_GROUP) === label) return FORM_GROUP_RANK[NATIVE_FORMS_GROUP];
     return USER_GROUP_RANK;
   };
@@ -400,7 +424,7 @@ export const useSidebarConfig = () => {
           }
 
           // Sort dynamic groups by rank: Default Forms → user-named → Other Forms.
-          toInsert.sort((a, b) => dynamicGroupRank(a.label) - dynamicGroupRank(b.label));
+          toInsert.sort((a, b) => dynamicGroupRank(a) - dynamicGroupRank(b));
 
           // Insert right after the static Forms group (or at the end if missing).
           const anchorIdx = findFormsIndex();

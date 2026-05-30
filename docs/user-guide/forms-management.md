@@ -50,6 +50,19 @@ The system catalog items your company hasn't installed yet. Each row has an **In
 1. Expand a type → click **+ Add Custom Form** at the bottom of its list.
 2. Same flow as Clone — suggested ID with an `_N` suffix and a `N-` prefix.
 
+### Where forms appear in the sidebar by default
+
+The default location depends on the module and the kind of form:
+
+| Module               | Native (hard-coded) | Default (shipped, locked) | Cloned / custom               |
+| -------------------- | ------------------- | ------------------------- | ----------------------------- |
+| **Accounting**       | Forms group         | **Vouchers** group        | Vouchers group                |
+| **Sales / Purchases**| Forms group         | **Default Forms** group   | **Root of the module sidebar** (until you pick a group) |
+
+You can always override the location with the *Sidebar Group* picker below.
+The full policy with code references lives in
+[docs/architecture/sidebar-forms-grouping.md](../architecture/sidebar-forms-grouping.md).
+
 ### Move a form to a different sidebar group
 1. Click the **`⋮`** (kebab) icon on the form's row → **Sidebar Group**.
 2. Pick one of the preset chips — **Documents · Vouchers · Reports · Operations** — or type a custom name (e.g. "Approvals", "POS") and press Enter.

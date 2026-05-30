@@ -39,14 +39,7 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Overview', path: '/accounting', icon: 'LayoutDashboard' },
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
-      {
-        label: 'Forms',
-        icon: 'FolderOpen',
-        children: [
-          { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
-          { label: 'All Vouchers', path: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'FileText' },
-        ],
-      },
+      { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
       {
         label: 'Reports',
         icon: 'BarChart3',
