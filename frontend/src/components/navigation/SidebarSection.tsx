@@ -5,26 +5,6 @@ import { clsx } from 'clsx';
 import * as Icons from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
-
-const FLUENT_3D_ICON_MAP: Record<string, string> = {
-  Home: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/House/3D/house_3d.png',
-  Package: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Package/3D/package_3d.png',
-  HandCoins: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Money%20bag/3D/money_bag_3d.png',
-  ShoppingCart: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20cart/3D/shopping_cart_3d.png',
-  ClipboardList: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Clipboard/3D/clipboard_3d.png',
-  Users: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/People/3D/people_3d.png',
-  Monitor: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
-  Factory: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Factory/3D/factory_3d.png',
-  Briefcase: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Briefcase/3D/briefcase_3d.png',
-  Wrench: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png',
-  Bot: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png',
-  Settings: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Gear/3D/gear_3d.png',
-  Code: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
-  Layout: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20chart/3D/bar_chart_3d.png',
-  Table: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Calendar/3D/calendar_3d.png',
-  FileText: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Page%20facing%20up/3D/page_facing_up_3d.png',
-  Brain: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Brain/3D/brain_3d.png',
-};
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 
 interface SidebarItemData {
@@ -101,37 +81,31 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   );
 
   const renderHeaderContent = (isActiveLink = false) => {
-    const iconUrl = use3DStyle ? FLUENT_3D_ICON_MAP[iconName || ''] : null;
     const isActive = isActiveLink || isSectionActive;
 
     return (
       <>
-        {(iconUrl || ResolvedIcon) && (
+        {ResolvedIcon && (
           <div className={clsx(
             "rounded-[var(--radius-md)] transition-all duration-300 flex items-center justify-center shrink-0",
-            isOpen 
-              ? "p-1.5 bg-[var(--color-bg-tertiary)]" 
+            isOpen
+              ? "p-1.5 bg-[var(--color-bg-tertiary)]"
               : use3DStyle
                 ? isActive
                   ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
                   : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
                 : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
-            
+
             !use3DStyle && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600",
             !use3DStyle && (isActiveLink || (isOpen && !isExpanded)) && "bg-primary-50 dark:bg-primary-900/20 text-primary-600"
           )}>
-            {iconUrl ? (
-              <img 
-                src={iconUrl} 
-                alt={iconName || 'Icon'} 
-                className={clsx(
-                  "select-none pointer-events-none object-contain",
-                  isOpen ? "w-4 h-4" : "w-7 h-7"
-                )} 
-              />
-            ) : (
-              ResolvedIcon && <ResolvedIcon className={clsx(isOpen ? "w-4 h-4" : "w-6 h-6")} />
-            )}
+            <ResolvedIcon
+              className={clsx(
+                isOpen ? "w-4 h-4" : "w-6 h-6",
+                "transition-transform duration-200 group-hover:scale-110"
+              )}
+              strokeWidth={1.75}
+            />
           </div>
         )}
       

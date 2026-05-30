@@ -7,26 +7,6 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { Portal } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
 
-const FLUENT_3D_ICON_MAP: Record<string, string> = {
-  Home: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/House/3D/house_3d.png',
-  Package: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Package/3D/package_3d.png',
-  HandCoins: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Money%20bag/3D/money_bag_3d.png',
-  ShoppingCart: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20cart/3D/shopping_cart_3d.png',
-  ClipboardList: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Clipboard/3D/clipboard_3d.png',
-  Users: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/People/3D/people_3d.png',
-  Monitor: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
-  Factory: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Factory/3D/factory_3d.png',
-  Briefcase: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Briefcase/3D/briefcase_3d.png',
-  Wrench: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png',
-  Bot: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png',
-  Settings: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Gear/3D/gear_3d.png',
-  Code: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
-  Layout: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20chart/3D/bar_chart_3d.png',
-  Table: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Calendar/3D/calendar_3d.png',
-  FileText: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Page%20facing%20up/3D/page_facing_up_3d.png',
-  Brain: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Brain/3D/brain_3d.png',
-};
-
 interface SidebarItemProps {
   path?: string;
   label: string;
@@ -60,9 +40,11 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   
   const use3DStyle = appearanceSettings?.id === 'tailwind-play';
 
-  // Resolve Icon from name if provided
+  // Resolve Icon from name if provided. strokeWidth 1.75 reads a touch heavier
+  // than Lucide's default 2 at small sidebar sizes — feels less papery without
+  // looking chunky.
   const ResolvedIcon = iconName ? (Icons as any)[iconName] : null;
-  const finalIcon = icon || (ResolvedIcon ? <ResolvedIcon className="w-4 h-4" /> : null);
+  const finalIcon = icon || (ResolvedIcon ? <ResolvedIcon className="w-4 h-4" strokeWidth={1.75} /> : null);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isHovered, setIsHovered] = React.useState(false);
   const hasChildren = children && children.length > 0;
@@ -177,28 +159,12 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"
         )}>
           {(() => {
-            const iconUrl = use3DStyle ? FLUENT_3D_ICON_MAP[iconName || ''] : null;
-
-            if (iconUrl) {
-              return (
-                <img 
-                  src={iconUrl} 
-                  alt={iconName || 'Icon'} 
-                  className={clsx(
-                    "select-none pointer-events-none object-contain",
-                    (isOpen || isFlyout) ? "w-4 h-4" : "w-7 h-7"
-                  )} 
-                />
-              );
-            }
-
             if (finalIcon) {
-              return React.cloneElement(finalIcon as React.ReactElement, { 
+              return React.cloneElement(finalIcon as React.ReactElement, {
                 className: clsx(
                   (finalIcon as React.ReactElement).props.className,
-                  (isOpen || isFlyout) 
-                    ? "w-4 h-4" 
-                    : "w-6 h-6"
+                  (isOpen || isFlyout) ? "w-4 h-4" : "w-6 h-6",
+                  "transition-transform duration-200 group-hover:scale-110"
                 )
               });
             }
