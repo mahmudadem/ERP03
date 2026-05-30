@@ -2230,6 +2230,38 @@
     }
   },
   "sales": {
+    "quotesList": {
+      "title": "Quotations",
+      "subtitle": "Sales quotes and proposals.",
+      "newQuote": "New Quote",
+      "allStatuses": "All Statuses",
+      "allCustomers": "All Customers",
+      "refresh": "Refresh",
+      "clearFilters": "Clear Filters",
+      "quoteNumber": "Quote #",
+      "customer": "Customer",
+      "quoteDate": "Quote Date",
+      "validUntil": "Valid Until",
+      "grandTotal": "Grand Total",
+      "status": "Status",
+      "loading": "Loading...",
+      "emptyTitle": "No Quotations",
+      "emptyDescription": "No quotations match your filters. Create your first quotation or adjust filters.",
+      "loadError": "Failed to load quotations.",
+      "statuses": {
+        "DRAFT": "Draft",
+        "SENT": "Sent",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected",
+        "EXPIRED": "Expired",
+        "CONVERTED": "Converted"
+      }
+    },
+    "invoicesList": {
+      "title": "Sales Invoices",
+      "subtitle": "Post invoices to recognize revenue and receivables.",
+      "newInvoice": "New Invoice"
+    },
     "governance": {
       "operationalWarning": "Operasyonel iş akışı: Doğrudan faturalandırma varsayılan olarak engellenmiştir. Bağlı bir fatura oluşturmak için yukarıdan bir Satış Siparişi seçin veya doğrudan faturalandırma yönetimi istisnası eklemek için yöneticinize başvurun.",
       "settingsOperationalHint": "Operasyonel iş akışı varsayılan olarak doğrudan faturalandırmayı engeller. Doğrudan faturalara izin vermek için şuradan bir yönetim kuralı ekleyin:",
