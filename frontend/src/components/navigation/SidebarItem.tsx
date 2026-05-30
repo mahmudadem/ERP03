@@ -1,51 +1,11 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
-import * as Icons from 'lucide-react';
 import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
-import {
-  FcHome,
-  FcMoneyTransfer,
-  FcShop,
-  FcShipped,
-  FcPackage,
-  FcConferenceCall,
-  FcBusinessContact,
-  FcTabletAndroid,
-  FcFactory,
-  FcBriefcase,
-  FcEngineering,
-  FcAssistant,
-  FcSettings,
-  FcDepartment,
-  FcLock,
-  FcStatistics,
-} from 'react-icons/fc';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { Portal } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
-
-// Module-header icons get the colorful Flat Color (Icons8) treatment. Keys
-// are the Lucide icon names declared in moduleMenuMap.ts. Same map lives in
-// SidebarSection.tsx for the alternate (classic / accordion) render mode.
-const FLAT_COLOR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Home: FcHome,
-  HandCoins: FcMoneyTransfer,
-  ShoppingCart: FcShop,
-  ClipboardList: FcShipped,
-  Package: FcPackage,
-  Users: FcConferenceCall,
-  UsersRound: FcBusinessContact,
-  Monitor: FcTabletAndroid,
-  Factory: FcFactory,
-  Briefcase: FcBriefcase,
-  Wrench: FcEngineering,
-  Bot: FcAssistant,
-  Settings: FcSettings,
-  Building2: FcDepartment,
-  Shield: FcLock,
-  BarChart3: FcStatistics,
-};
+import { resolveSidebarIcon } from './sidebarIcons';
 
 interface SidebarItemProps {
   path?: string;
@@ -80,14 +40,11 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   
   const use3DStyle = appearanceSettings?.id === 'tailwind-play';
 
-  // Prefer colorful Flat Color icon when the iconName matches the module-header
-  // map; otherwise fall back to Lucide. strokeWidth 1.75 reads a touch heavier
-  // than Lucide's default 2 at small sidebar sizes.
-  const FlatColorIcon = iconName ? FLAT_COLOR_ICONS[iconName] : null;
-  const ResolvedIcon = iconName ? (Icons as any)[iconName] : null;
-  const finalIcon = icon
-    || (FlatColorIcon ? <FlatColorIcon className="w-4 h-4" /> : null)
-    || (ResolvedIcon ? <ResolvedIcon className="w-4 h-4" strokeWidth={1.75} /> : null);
+  // Phosphor Duotone icons across the whole sidebar. resolveSidebarIcon
+  // returns a Phosphor component for known names, falling back to Lucide for
+  // anything not yet mapped.
+  const ResolvedIcon = resolveSidebarIcon(iconName);
+  const finalIcon = icon || (ResolvedIcon ? <ResolvedIcon className="w-4 h-4" /> : null);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isHovered, setIsHovered] = React.useState(false);
   const hasChildren = children && children.length > 0;
