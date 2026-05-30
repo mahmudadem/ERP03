@@ -127,20 +127,22 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       (active || (isAnyChildActive && !isExpanded && !isSubmenusMode))
         ? (use3DStyle && isChild && !isFlyout)
           ? "bg-transparent text-primary-600 font-bold"
-          : "bg-primary-50 text-primary-700 font-medium dark:bg-primary-900/20 dark:text-primary-400" 
+          : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
         : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
-      {/* Active Indicator (vertical strip for expanded, maybe different for shrunk) */}
+      {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).
+          Inverted active state fills the row with primary, so the indicator is
+          white to stay visible against the blue background. */}
       {!isFlyout && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
         <span
           className={clsx(
-            "absolute top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]",
+            "absolute top-1/2 -translate-y-1/2 w-1 h-6 bg-white/80",
             isRtl ? "right-0 rounded-l-full" : "left-0 rounded-r-full"
           )}
         />
       ) : (
-        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary-600 rounded-t-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
+        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-white/80 rounded-t-full" />
       ))}
 
       {/* Icon or First Letter */}
@@ -153,7 +155,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           (active || isAnyChildActive)
             ? use3DStyle && !isOpen && !isFlyout
               ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
-              : "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400" 
+              : "bg-white/20 text-white"
             : use3DStyle && !isOpen && !isFlyout
               ? "bg-transparent text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
               : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"

@@ -91,15 +91,18 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
           <div className={clsx(
             "rounded-[var(--radius-md)] transition-all duration-300 flex items-center justify-center shrink-0",
             isOpen
-              ? "p-1.5 bg-[var(--color-bg-tertiary)]"
+              ? isActive
+                ? "p-1.5 bg-white/20 text-white"
+                : "p-1.5 bg-[var(--color-bg-tertiary)]"
               : use3DStyle
                 ? isActive
                   ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
                   : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
-                : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
+                : isActive
+                  ? "w-10 h-10 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                  : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
 
-            !use3DStyle && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600",
-            !use3DStyle && (isActiveLink || (isOpen && !isExpanded)) && "bg-primary-50 dark:bg-primary-900/20 text-primary-600"
+            !use3DStyle && !isActive && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600"
           )}>
             <ResolvedIcon
               className={clsx(
@@ -139,7 +142,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
             isActive && (
               use3DStyle
                 ? "bg-transparent text-primary-600 font-bold"
-                : "bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400"
+                : "bg-primary-600 text-white shadow-sm dark:bg-primary-500"
             )
           )}
         >
