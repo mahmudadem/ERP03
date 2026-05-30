@@ -2,10 +2,10 @@
 
 **Strategy (2026-05-30):** v1 ships natives as the primary surface. Default Forms / Field Library / cloning preserved as v2 customization path, hidden from sidebar for now. See journal entry "v1 strategy decision" for full reasoning.
 
-**Active threads:**
-1. **Native functionality retest** — manual QA on every native voucher flow per module (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override).
-2. **Native UI-mode awareness** — hardcoded polished renderings for web mode AND Windows card/window mode for each native page. Standard in [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md) Phase 4.5.
-3. **Task 132 phases** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n.
+**Active threads (execution order set 2026-05-30):**
+1. **Task 132 chrome work** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n. **Each touched component is authored mode-aware from the start** (reads `uiMode` from `useUserPreferences`; both `'classic'` and `'windows'` renderings provided and tested via the TopBar UIModeWidget). No infrastructure work needed — `UiMode` context, `AppShell` mode branch, and `UIModeWidget` already exist.
+2. **Native functionality retest** — once the chrome is polished, walk every native voucher flow end-to-end per module (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override). Captures regressions and a real polish backlog.
+3. **Native UI-mode awareness (per-voucher)** — hardcoded polished renderings for web AND Windows card/window mode for each native voucher page. Standard in [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md) Phase 4.5. Last because it depends on stable chrome + verified functionality.
 
 **Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md), [136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md).
 
@@ -148,8 +148,16 @@ Commits on `feat/phase-a-sales-master-data`:
 8. **Phase G** — Purchases-specific (three-way match + vendor master) — 3-4 days
 9. **Phase H** — Final hardening — 1 week
 
+## Rabbit Holes
+
+- Architecture boundary test failure (`AccountingBoundary.test.ts`): `PurchasesReportingUseCases` and `ReceivablesReportingUseCases` violate dependency rules by importing accounting repository interfaces directly. Needs decoupling via clean use-cases or services.
+
 ## Next action
 
-1. Commit the Default Forms sidebar suppression + the v1 strategy doc pivot.
-2. Start the **native functionality retest** — pick one module (Sales is the obvious first) and walk every voucher flow end-to-end. Capture pass/fail per scenario in a new `planning/done/138-native-qa-pass-sales.md` (or similar). Findings drive the polish backlog.
-3. Audit the dirty worktree changes (`seedSystemVoucherTypes.ts` warehouseId promotion, `VoucherTemplateEditorPage.tsx` 74-line change, `DocumentDesigner.tsx`) and decide commit / refine / discard per the new v1 lens.
+Start **#1 Task 132 chrome work** with the mode-aware contract:
+
+1. **Task 132 Phase 0.5 (inventory)** — catalog the chrome surface: which shell/sidebar/topbar/settings/list pages already honor `uiMode`, which use raw `window.confirm` / `alert()`, which embed page-local account/date/party selectors instead of shared ones. The audit feeds Phases 1–6.
+2. **Task 132 Phase 1 (shell cleanup)** — hide dev/demo routes from tenant nav, consolidate React Query providers, fix hash-router auth links. Verify both modes by toggling UIModeWidget.
+3. Proceed through Phases 2 / 3 / 5 / 6 in order, each ending in a two-mode visual check.
+
+Phases 4 / 4.5 (list/table standardization + entity cards + report contract) touch the same surfaces as #2 (per-voucher mode polish) and may merge with that thread when it activates.

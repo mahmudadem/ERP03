@@ -8,18 +8,18 @@
 
 ## 🔴 Current Priority (work this first)
 
-**v1 native QA + polish pass** — natives are the v1 surface. Before any new feature work, retest every native voucher flow per module and capture findings.
+**Task 132 chrome work, authored mode-aware from the start** — natives are the v1 surface; chrome must be polished AND honor `uiMode` (classic / windows) before per-voucher polish or QA passes begin. Foundation already exists: `useUserPreferences().uiMode`, `AppShell` mode branch, `TopBar UIModeWidget`.
 
-Concrete next step: pick a module (Sales recommended) and walk every native flow — create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override. Save findings in `planning/done/138-native-qa-pass-sales.md`.
+Concrete next step: **[Task 132](./tasks/132-ux-layout-production-hardening.md) Phase 0.5 (inventory)** — catalog mode-awareness state across shell / sidebar / topbar / settings / list pages, plus the action-safety taxonomy (`window.confirm` / `alert()` usage, raw date inputs, page-local selectors).
 
 ---
 
 ## 🟡 Up Next (v1, in order)
 
-1. **Native QA passes** — Sales, then Purchases, then Accounting, then Inventory. One module per session.
-2. **Native UI-mode awareness** — hardcode web-mode + Windows card/window-mode renderings for each native page. Standard in [Task 132](./tasks/132-ux-layout-production-hardening.md) Phase 4.5.
-3. **Task 132 phases (re-aimed for v1)** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n. Skip phases that imply default-driven UIs.
-4. **#3 Shared Account Selector standardization + filtering** — selector contract exists ([done/64](./done/64-invoice-party-account-selector-contract.md)); project-wide enforcement still unstarted. Folded into Task 132 Phases 0.5 + 5.
+1. **Task 132 phases 1 → 6** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n. Each touched component reads `uiMode` and provides both renderings; each phase ends in a two-mode visual check via UIModeWidget.
+2. **Native QA passes** — once chrome is stable, retest every native voucher flow per module (Sales → Purchases → Accounting → Inventory). One module per session. Findings into `planning/done/138-…` reports.
+3. **Native UI-mode per-voucher polish** — hardcoded web-mode + Windows card/window-mode renderings for each native voucher page. Task 132 Phase 4.5 standard.
+4. **#3 Shared Account Selector standardization + filtering** — selector contract exists ([done/64](./done/64-invoice-party-account-selector-contract.md)); enforcement folds into Task 132 Phases 0.5 + 5.
 5. **Phase F — RFQ** (~2–3 hours): Request for Quotation — procure-to-pay parity. Still a v1 must-have for Purchases.
 6. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days). v1 if buyer-critical, else defer.
 
@@ -78,4 +78,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-30 by Claude Opus 4.7 (v1 strategy adopted: natives are headline surface, defaults deferred to v2; Default Forms sidebar group hidden)_
+_Last updated: 2026-05-30 by Claude Opus 4.7 (v1 sequence: Task 132 chrome work mode-aware → native QA retest → per-voucher mode polish)_

@@ -24,6 +24,13 @@ The product owner clarified three non-negotiable UX consistency rules:
 4. Reports must follow one full report contract through `ReportContainer`: parameters, filters, loading/results display, refresh, export/print, density, empty/error states, and UI-mode routing.
 5. Master-data entity cards must be UI-mode aware. Core entities such as Customers, Vendors, Items, Warehouses, and Accounts need consistent normal web/page presentation and Windows UI mode card/window presentation.
 6. The top-bar widget system is frozen for the current implementation pass. Do not modify widget behavior, widget defaults, `widgetStore`, `DraggableWidgetSpace`, or top-bar widget files until the product owner explicitly reopens this scope.
+7. **Mode-aware chrome contract (added 2026-05-30, v1 sequencing decision).** Every chrome page or shared component touched by this task — shell, sidebar, settings, lists, modals, action bars, list filters — MUST be authored mode-aware from day one, not retrofit later.
+   - **Read mode from one source:** `const { uiMode } = useUserPreferences()`. Type is `'classic' | 'windows'`. No new mode primitives or contexts.
+   - **Branch where it matters:** when the visual difference is real (layout, container chrome, density, focus model), branch on `uiMode === 'windows'` and provide the two renderings inline or via a small wrapper component. Don't conditionally hide content — only swap presentation.
+   - **Default for new components:** if the visual difference is cosmetic, render once and let Tailwind handle the variance. Don't force every component to be a two-branch switch.
+   - **Verify both modes per slice:** every phase ends in a two-mode visual check via the TopBar `UIModeWidget`. A change that ships passing only one mode is a regression.
+   - **Test before merging:** at minimum manually toggle the widget on the touched pages; if a per-mode storybook or visual test exists for that area, use it.
+   - **Rationale:** v1 strategy puts natives as the headline surface. Polishing chrome twice (once for classic, once for windows) is wasted work. Authoring mode-aware on first pass keeps the per-voucher polish thread (#2 in [planning/ACTIVE.md](../ACTIVE.md)) from re-doing chrome work.
 
 Implementation priority:
 
