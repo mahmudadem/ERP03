@@ -2788,5 +2788,55 @@
     "active": "نشط",
     "inactive": "غير نشط",
     "loading": "جارٍ التحميل..."
+  },
+  "messaging": {
+    "whatsapp": {
+      "modalTitle": "Send via WhatsApp",
+      "senderLabel": "Sender Account",
+      "senderDefaultOption": "Use system default sender",
+      "defaultTag": "Default",
+      "phoneLabel": "Recipient Phone (E.164)",
+      "phonePlaceholder": "+905551112233",
+      "documentUrlLabel": "Document URL (Optional)",
+      "documentUrlPlaceholder": "https://...",
+      "messageLabel": "Message",
+      "send": "Send",
+      "sending": "Sending...",
+      "success": "WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).",
+      "defaultSender": "default sender",
+      "sendError": "Failed to send via WhatsApp."
+    },
+    "telegram": {
+      "modalTitle": "Send via Telegram",
+      "senderLabel": "Sender Account",
+      "senderDefaultOption": "Use default sender",
+      "defaultTag": "Default",
+      "chatLabel": "Recipient Chat ID or @Username",
+      "chatPlaceholder": "@customer_username or -1001234567890",
+      "documentUrlLabel": "Document URL (Optional)",
+      "documentUrlPlaceholder": "https://...",
+      "messageLabel": "Message",
+      "send": "Send",
+      "sending": "Sending...",
+      "success": "Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).",
+      "defaultSender": "default sender",
+      "sendError": "Failed to send via Telegram."
+    }
+  },
+  "attachments": {
+    "title": "Attachments",
+    "upload": "Upload Attachment",
+    "uploading": "Uploading...",
+    "help": "Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files.",
+    "empty": "No attachments yet.",
+    "open": "Open",
+    "remove": "Remove",
+    "removing": "Removing...",
+    "uploadSuccess": "Attachment uploaded successfully.",
+    "uploadError": "Failed to upload attachment.",
+    "removeError": "Failed to remove attachment.",
+    "downloadError": "Failed to generate download link.",
+    "fileTooLarge": "File is too large. Maximum size is 10 MB.",
+    "maxFilesReached": "Maximum number of files (5) reached."
   }
 }
