@@ -8,21 +8,29 @@
 
 ## 🔴 Current Priority (work this first)
 
-**Visual QA + commit report 136 + design note** (~15 min)
-- Code is in. Confirm `Documents` is now `Forms`, the new `Default Forms` group renders activated defaults, and cloned forms still appear under their user-chosen group.
-- Commit the sidebar policy change and the migration design note together.
+**v1 native QA + polish pass** — natives are the v1 surface. Before any new feature work, retest every native voucher flow per module and capture findings.
+
+Concrete next step: pick a module (Sales recommended) and walk every native flow — create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override. Save findings in `planning/done/138-native-qa-pass-sales.md`.
 
 ---
 
-## 🟡 Up Next (May-30 roadmap, in order)
+## 🟡 Up Next (v1, in order)
 
-1. **Native → Default forms migration — first voucher type** (Sales Invoice (Direct), ~1 day to start). Drives item #5. Follow [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md): fill in the capability matrix for SI Direct, identify the smallest missing Field Library component, ship it, repeat. Single-voucher-type slices, no big-bang.
-2. **#3 Shared Account Selector standardization + filtering** — selector contract exists ([done/64](./done/64-invoice-party-account-selector-contract.md)); project-wide enforcement is unstarted. Folded into [Task 132](./tasks/132-ux-layout-production-hardening.md) Phases 0.5 + 5.
-3. **#6 + #7 design notes** — Cost & historical-margin layer, Per-party item history + price-source engine. Architectural pair, neither has a spec. Single design doc covering line-snapshot data shape before either is built.
-4. **#2 + #4 UI consistency / maturity pass** — Task 132 implementation phases. Last because it touches the same files the above work would change.
-5. **Task 135 — Field Library drift warnings** (~2-4 hours): add `fieldVersionsSeen` and company-form drift notices. Closes Task 135.
-6. **Phase F — RFQ** (~2-3 hours): Request for Quotation — procure-to-pay workflow parity.
-7. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
+1. **Native QA passes** — Sales, then Purchases, then Accounting, then Inventory. One module per session.
+2. **Native UI-mode awareness** — hardcode web-mode + Windows card/window-mode renderings for each native page. Standard in [Task 132](./tasks/132-ux-layout-production-hardening.md) Phase 4.5.
+3. **Task 132 phases (re-aimed for v1)** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n. Skip phases that imply default-driven UIs.
+4. **#3 Shared Account Selector standardization + filtering** — selector contract exists ([done/64](./done/64-invoice-party-account-selector-contract.md)); project-wide enforcement still unstarted. Folded into Task 132 Phases 0.5 + 5.
+5. **Phase F — RFQ** (~2–3 hours): Request for Quotation — procure-to-pay parity. Still a v1 must-have for Purchases.
+6. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days). v1 if buyer-critical, else defer.
+
+---
+
+## ⏸ Deferred to v2 (preserved, no code removed)
+
+- **Native → Default forms migration** ([tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md)) — all tiers, all voucher types.
+- **SI Direct capability audit** ([tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md)) — stays valid as the v2 starting point.
+- **Task 135 — Field Library drift warnings** — only relevant once defaults are the primary surface.
+- **#6 + #7 design notes** — Cost & historical-margin layer + Per-party item history / price-source engine. Architectural pair; revisit when v1 ships.
 
 ---
 
@@ -47,7 +55,9 @@ If you are starting work on a priority item, record it here so other agents don'
 | Antigravity | Phase F - Purchase Price Lists | 2026-05-28 | ✅ Done |
 | Codex | Task 135 - Field Library Phase C1 | 2026-05-30 | ✅ Done |
 | Codex | Task 135 - Field Library Phase C2 | 2026-05-30 | ✅ Done |
-| Claude (Opus 4.7) | Sidebar form grouping policy + migration design | 2026-05-30 | ✅ Done (pending QA + commit) |
+| Claude (Opus 4.7) | Sidebar form grouping policy + migration design | 2026-05-30 | ✅ Done (committed cbe52066) |
+| Claude (Opus 4.7) | SI Direct capability audit | 2026-05-30 | ✅ Done (committed 29ff4aac) |
+| Claude (Opus 4.7) | v1 strategy pivot + Default Forms sidebar hide | 2026-05-30 | ✅ Done (pending commit) |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -68,4 +78,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-30 by Claude Opus 4.7 (sidebar form grouping policy implemented; migration design note saved; visual QA + commit next)_
+_Last updated: 2026-05-30 by Claude Opus 4.7 (v1 strategy adopted: natives are headline surface, defaults deferred to v2; Default Forms sidebar group hidden)_

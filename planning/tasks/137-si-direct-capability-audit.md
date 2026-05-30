@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-30
 **Agent:** Claude (Opus 4.7)
-**Status:** Audit (no code yet)
+**Status:** ⏸ Deferred to v2 — see [native-to-default-forms-migration.md](./native-to-default-forms-migration.md) "v1 strategy". This audit stays valid as the v2 starting point; no work scheduled until natives are polished and shipped.
 **Parent design:** [native-to-default-forms-migration.md](./native-to-default-forms-migration.md)
 **Target voucher type:** `sales_invoice` with persona `direct`
 **Why this one first:** highest traffic transactional document in Sales; if defaults can replace SI Direct, every other SI persona (Linked, Service) and most Sales documents follow the same playbook.

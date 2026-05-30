@@ -1,9 +1,15 @@
 # 🎯 Current Focus
 
-**Task:** Sidebar form grouping policy + native→default forms migration design.
-**Status:** Implemented on `feat/init-wizard-forms-selection` (2026-05-30). Awaiting visual QA + commit.
+**Strategy (2026-05-30):** v1 ships natives as the primary surface. Default Forms / Field Library / cloning preserved as v2 customization path, hidden from sidebar for now. See journal entry "v1 strategy decision" for full reasoning.
+
+**Active threads:**
+1. **Native functionality retest** — manual QA on every native voucher flow per module (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override).
+2. **Native UI-mode awareness** — hardcoded polished renderings for web mode AND Windows card/window mode for each native page. Standard in [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md) Phase 4.5.
+3. **Task 132 phases** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n.
+
 **Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md), [136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md).
-**Design note (long-running):** [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md)
+
+**Deferred to v2 (preserved as roadmap, no code removed):** [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md), [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md).
 
 ## 👉 Next agent — start here
 
@@ -144,6 +150,6 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-SI Direct capability audit complete — see [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md). Native exposes ~15 capabilities the default form lacks (lists, WhatsApp/Telegram send, attachments, settlement entry, period-lock/credit overrides, audit log, charges, …). Estimated ~35–45 hours to SI Direct parity plus ~2–3 days for the shared list surface.
-
-Recommended next slice: **Tier 1** (~3 hours total) — per-line discount, tax inclusive toggle, base-equivalent calculated totals. Three small wins in one PR. Includes a chance to fold in the dirty `seedSystemVoucherTypes.ts` warehouseId change and the `VoucherTemplateEditorPage.tsx` change since they touch the same SI Direct surface.
+1. Commit the Default Forms sidebar suppression + the v1 strategy doc pivot.
+2. Start the **native functionality retest** — pick one module (Sales is the obvious first) and walk every voucher flow end-to-end. Capture pass/fail per scenario in a new `planning/done/138-native-qa-pass-sales.md` (or similar). Findings drive the polish backlog.
+3. Audit the dirty worktree changes (`seedSystemVoucherTypes.ts` warehouseId promotion, `VoucherTemplateEditorPage.tsx` 74-line change, `DocumentDesigner.tsx`) and decide commit / refine / discard per the new v1 lens.

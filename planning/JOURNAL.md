@@ -2,6 +2,38 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — v1 strategy decision: natives are the headline surface
+
+**Decision (product owner):** for the first deployment, ship **native forms as the primary UI**. Defaults / Field Library / cloning stay available as opt-in customization but are not put in front of typical small/medium-company users.
+
+**Why:**
+- After the SI Direct capability audit ([tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md)) the gap was concrete: ~15 features missing on the default form, ~35–45h of component work plus a ~2–3d shared list surface to close it.
+- Closing all of that before deploy is not justified for v1 buyers. They want a finished product, not a configuration framework.
+- Native is already battle-tested. Polishing what works is faster and lower risk than rebuilding.
+
+**What changed in code (this session):**
+- [useSidebarConfig.ts](../frontend/src/hooks/useSidebarConfig.ts) `buildDynamicFormGroups` now suppresses any default form from the sidebar render. Activated defaults still live in Firestore and still appear inside Forms Management. The `DEFAULT_FORMS_GROUP` constant and label-key entry stay in place as the v2 hook point — uncommenting the early return restores the group when the migration resumes.
+- Cloned forms render unchanged: their user-chosen `sidebarGroup` (or `Other Forms` if blank) honored.
+
+**What changed in docs:**
+- [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md) prepended with a "v1 strategy" section and marked status as ⏸ Deferred to v2.
+- [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md) marked ⏸ Deferred. The audit + tier-ordered component list stay as the v2 starting point.
+- [done/136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md) decision-log extended with the visibility change.
+
+**New v1 focus (next sessions):**
+1. **Native functionality retest** — end-to-end QA pass on every native voucher flow (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override) per module. Track findings as a manual QA task.
+2. **Native UI-mode awareness** — hardcode polished web-mode AND Windows card/window-mode renderings for each native page. Standard already lives in [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md) Phase 4.5.
+3. **Task 132 phases** become the active execution plan for shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n.
+
+**What stays preserved (no code removed):**
+- Field Library Phases A/B/C (seed + super-admin editor + tenant cascade consumption).
+- Default voucher templates seeded by `seedSystemVoucherTypes.ts`.
+- Super-admin Field Library editor, voucher template editor, tenant Forms Management page. All still function. They're the v2 foundation.
+
+**Time spent:** ~0.5h on the decision, code change, and doc pivot.
+
+**Result:** v1 scope is contained and shippable. The architectural investment in Field Library / defaults / cloning is preserved as the v2 roadmap, not lost. Sidebar shows only what a typical user needs: native list pages, plus any clones the user explicitly created.
+
 ## 2026-05-30 (Sat) — Sidebar form grouping policy (native / default / cloned)
 
 **Task:** Establish a clear sidebar IA for the three form sources, document the native→default migration direction, and rename the static `Documents` group to `Forms`.

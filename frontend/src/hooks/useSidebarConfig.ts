@@ -151,16 +151,21 @@ export const useSidebarConfig = () => {
     const routeConfig = MODULE_ROUTE_MAP[moduleId];
     if (!routeConfig) return [];
 
-    // Grouping policy:
-    //   - default forms                     → DEFAULT_FORMS_GROUP
-    //   - cloned forms w/ sidebarGroup      → that group (user choice honored)
-    //   - cloned forms w/o sidebarGroup     → OTHER_FORMS_GROUP (catch-all)
+    // Grouping policy (v1 — see planning/tasks/native-to-default-forms-migration.md
+    // "v1 strategy" section):
+    //   - default forms  → SUPPRESSED from sidebar entirely. Activated defaults
+    //                      remain reachable through Tools → Forms Management.
+    //                      The Default Forms sidebar group is held in reserve
+    //                      for when the migration to default-driven UIs resumes.
+    //   - cloned forms w/ sidebarGroup    → that group (user choice honored)
+    //   - cloned forms w/o sidebarGroup   → OTHER_FORMS_GROUP (catch-all)
     const groups = new Map<string, SidebarFormEntry[]>();
 
     moduleForms.forEach(form => {
-      const groupName = isSystemDefaultForm(form)
-        ? DEFAULT_FORMS_GROUP
-        : (form.sidebarGroup || OTHER_FORMS_GROUP);
+      if (isSystemDefaultForm(form)) {
+        return; // Defaults don't render in the sidebar for v1.
+      }
+      const groupName = form.sidebarGroup || OTHER_FORMS_GROUP;
       if (!groups.has(groupName)) {
         groups.set(groupName, []);
       }

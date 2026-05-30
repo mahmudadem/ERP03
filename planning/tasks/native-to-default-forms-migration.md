@@ -1,9 +1,33 @@
 # Native → Default Forms Migration
 
 **Created:** 2026-05-30
-**Status:** Design note (no code commitment yet)
+**Status:** ⏸ Deferred to v2 (see "v1 strategy" below)
 **Owner:** Product (decisions) + Engineering (execution)
-**Related:** [Task 135 — Field Component Library](./135-field-component-library.md), item #5 of the 2026-05-30 roadmap
+**Related:** [Task 135 — Field Component Library](./135-field-component-library.md), item #5 of the 2026-05-30 roadmap, [Task 132 — UX Layout Production Hardening](./132-ux-layout-production-hardening.md)
+
+## v1 strategy (decided 2026-05-30, after the SI Direct audit)
+
+**Product decision:** for the first deployment we ship **native forms as the primary surface**. Defaults / Field Library / cloning stay available as power-user customization, but they are not the headline UI for typical small/medium customers.
+
+Why:
+- Native is already battle-tested. Polishing it ships faster and with less risk than building 35–45 hours of Field Library components plus a list-surface renderer.
+- The audit (see [137-si-direct-capability-audit.md](./137-si-direct-capability-audit.md)) made the gap concrete: 15+ features missing on defaults. Closing all of them before deploy is not justified.
+- Small/medium-company buyers want a finished product, not a configuration framework. They'll opt into customization later if they outgrow native.
+
+What changes in the codebase:
+- **Default Forms sidebar group is hidden in v1** (suppressed in [useSidebarConfig.ts](../../frontend/src/hooks/useSidebarConfig.ts)). Activated defaults still live in Firestore and remain reachable from Tools → Forms Management. They just don't clutter the per-module sidebar.
+- **Cloned forms still render** in their user-chosen sidebar group (or under `Other Forms` if blank). Customers who already cloned and tagged a form keep that UX.
+- **Native pages are the polish target.** Task 132 (UX layout production hardening) becomes the active execution plan, with one addition: native list+detail pages must be **UI-mode aware** (web/page mode vs Windows card/window mode) per the product owner's standard.
+
+What stays in place:
+- The three-layer Field Library architecture (Phases A/B/C all merged).
+- The default voucher templates seeded by `seedSystemVoucherTypes.ts`.
+- The super-admin Field Library editor, voucher template editor, and tenant Forms Management page. All three still function — they're the v2 path's foundation.
+- The capability matrix below stays valid as the v2 roadmap. Just paused.
+
+When v2 resumes: pick up this doc and [137-si-direct-capability-audit.md](./137-si-direct-capability-audit.md) at the Tier 1 starting point.
+
+---
 
 ## Three sources of forms
 
@@ -100,3 +124,4 @@ Do this one voucher type at a time. Don't ship a partial migration ("create work
 ## Decision log
 
 - **2026-05-30** — Naming locked: native / default / cloned forms. Sidebar groups renamed "Documents" → "Forms". Defaults always group under "Default Forms" regardless of stored `sidebarGroup`. Decision driven by user observation that the suppression attempt removed working functionality from the sidebar.
+- **2026-05-30** — v1 strategy adopted: natives are the primary v1 surface; Default Forms group is hidden from sidebar; defaults reachable from Tools → Forms Management. Migration paused, design + audit preserved as v2 roadmap. Reason: ship a finished product for small/medium-company buyers faster than completing the ~35–45h Field Library catch-up plus the ~2–3d list-surface renderer.
