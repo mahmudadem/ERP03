@@ -1,5 +1,5 @@
 import React from 'react';
-import { LucideIcon, Save } from 'lucide-react';
+import { LucideIcon, Save, RotateCcw, AlertTriangle } from 'lucide-react';
 
 interface Tab {
   id: string;
@@ -15,6 +15,10 @@ interface ModuleSettingsLayoutProps {
   onTabChange: (id: string) => void;
   children: React.ReactNode;
   topActions?: React.ReactNode;
+  hasChanges?: boolean;
+  onSave?: () => void;
+  onDiscard?: () => void;
+  saving?: boolean;
 }
 
 export const ModuleSettingsLayout: React.FC<ModuleSettingsLayoutProps> = ({
@@ -24,10 +28,14 @@ export const ModuleSettingsLayout: React.FC<ModuleSettingsLayoutProps> = ({
   activeTab,
   onTabChange,
   children,
-  topActions
+  topActions,
+  hasChanges = false,
+  onSave,
+  onDiscard,
+  saving = false
 }) => {
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-[var(--color-bg-primary)]">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-[var(--color-bg-primary)] relative">
       {/* Header */}
       <div className="flex-none px-8 py-6 bg-white dark:bg-[var(--color-bg-secondary)] border-b border-gray-200 dark:border-[var(--color-border)] flex items-center justify-between">
         <div>
@@ -82,6 +90,49 @@ export const ModuleSettingsLayout: React.FC<ModuleSettingsLayoutProps> = ({
           </div>
         </main>
       </div>
+
+      {/* Floating global save bar at the bottom */}
+      {hasChanges && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:left-[calc((100vw-var(--app-sidebar-width))/2+var(--app-sidebar-width))] md:translate-x-[-50%] z-[100] w-full max-w-2xl px-6 transition-all duration-300 transform translate-y-0 opacity-100">
+          <div className="bg-slate-900 dark:bg-slate-950 text-white rounded-2xl p-4 shadow-2xl border border-slate-800/80 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg">
+                <AlertTriangle size={18} />
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-bold">Unsaved Settings Changes</div>
+                <div className="text-[10px] text-slate-400">You have unsaved changes in this module.</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {onDiscard && (
+                <button
+                  onClick={onDiscard}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-800 hover:bg-slate-800 text-xs font-bold rounded-xl transition-all active:scale-95"
+                >
+                  <RotateCcw size={14} />
+                  Discard
+                </button>
+              )}
+              {onSave && (
+                <button
+                  onClick={onSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-xs font-bold rounded-xl shadow-lg transition-all active:scale-95"
+                >
+                  {saving ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Save size={14} />
+                  )}
+                  Save Changes
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

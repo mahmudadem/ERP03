@@ -8,6 +8,7 @@ import { Loader2, Settings, Info, Warehouse, Hash, DollarSign } from 'lucide-rea
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
+import toast from 'react-hot-toast';
 import {
   getAccountingModeLabel,
   resolveInventoryAccountingMode,
@@ -117,6 +118,13 @@ const InventorySettingsPage: React.FC = () => {
       tabs={tabs as any}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as TabId)}
+      hasChanges={hasChanges}
+      onSave={handleSave}
+      onDiscard={() => {
+        setSettings(originalSettings);
+        toast('Changes discarded', { icon: 'ℹ️' });
+      }}
+      saving={saving}
     >
       <AccountingIntegrationStatus
         moduleCode="inventory"
@@ -132,6 +140,7 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">
@@ -206,6 +215,7 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">
@@ -267,6 +277,7 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">

@@ -10,7 +10,8 @@ export type WidgetType =
   | "fiscal-year"
   | "base-currency"
   | "approval-mode"
-  | "ui-mode";
+  | "ui-mode"
+  | "search";
 
 export interface WidgetLayout {
   x: number;
@@ -129,6 +130,13 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
     type: "alarm",
     visible: false,
     layout: { x: 80, y: 0, w: 10, h: 1, minW: 8 },
+    style: { showBorder: true, showBackground: true },
+  },
+  {
+    id: "widget-search",
+    type: "search",
+    visible: true,
+    layout: { x: 90, y: 0, w: 16, h: 1, minW: 10 },
     style: { showBorder: true, showBackground: true },
   },
 ];

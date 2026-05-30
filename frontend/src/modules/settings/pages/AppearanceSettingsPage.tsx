@@ -64,6 +64,20 @@ const AppearanceSettingsPage: React.FC = () => {
   } = useUserPreferences();
   
   const [draft, setDraft] = useState<UserAppearanceSettings>(() => normalizeUserAppearance(appearanceSettings));
+  
+  const [widgetStyle, setWidgetStyle] = useState(() => {
+    return localStorage.getItem('erp_topbar_widget_style') || '1';
+  });
+
+  React.useEffect(() => {
+    const handleStyleChange = (e: any) => {
+      if (e.detail?.style) {
+        setWidgetStyle(e.detail.style);
+      }
+    };
+    window.addEventListener('topbar-widget-style-changed', handleStyleChange);
+    return () => window.removeEventListener('topbar-widget-style-changed', handleStyleChange);
+  }, []);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [activeColorTab, setActiveColorTab] = useState<'brand' | 'light' | 'dark'>('brand');
@@ -302,6 +316,29 @@ const AppearanceSettingsPage: React.FC = () => {
                   <select className={fieldClass} value={draft.sidebarSurface} onChange={event => updateRoot('sidebarSurface', event.target.value as any)}>
                     <option value="default">Default (Matches background)</option>
                     <option value="contrast">Contrast (Brand colored)</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>TopBar Widget Style</span>
+                  <select
+                    className={fieldClass}
+                    value={widgetStyle}
+                    onChange={event => {
+                      const val = event.target.value;
+                      setWidgetStyle(val);
+                      localStorage.setItem('erp_topbar_widget_style', val);
+                      window.dispatchEvent(new CustomEvent('topbar-widget-style-changed', { detail: { style: val } }));
+                    }}
+                  >
+                    <option value="1">1: العرض المزدوج الرأسي المتكدس (Double Decker)</option>
+                    <option value="2">2: النظام الهندسي البرمجي (Tech Terminal)</option>
+                    <option value="3">3: خطوط الفاصل العمودي (Pipeline Separators)</option>
+                    <option value="5">5: الكبسولة الفقاعية الموحدة (Bubble Pill)</option>
+                    <option value="10">10: الأشكال الهندسية المائلة (Slanted Angles)</option>
+                    <option value="11">11: الإطارات المنقطة التقنية (Dotted Matrix)</option>
+                    <option value="16">16: بطاقة الكوبون المثقوبة (Coupon Tag)</option>
+                    <option value="17">17: المخطط الهندسي المتقطع (Dashed Blueprint)</option>
+                    <option value="18">18: مؤشرات النقاط الملونة (State Indicator)</option>
                   </select>
                 </label>
               </div>

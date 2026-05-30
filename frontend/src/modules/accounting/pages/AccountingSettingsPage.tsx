@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Settings, Shield, Lock, Unlock, Pencil, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import FXRevaluationTab from './settings/FXRevaluationTab';
 import AccountSelector from '../components/shared/AccountSelector';
@@ -340,6 +341,77 @@ const AccountingSettingsPageContent: React.FC = () => {
   // Global change flag (for reference)
   const hasAnyChanges = hasGeneralChanges || hasPolicyChanges || hasMethodChanges || hasCostCenterChanges || hasErrorModeChanges || hasFiscalChanges;
 
+  const tabHasChanges = 
+    (activeTab === 'general' || activeTab === 'fx-revaluation') ? hasGeneralChanges :
+    activeTab === 'policies' ? hasPolicyChanges :
+    activeTab === 'payment-methods' ? hasMethodChanges :
+    activeTab === 'cost-center' ? hasCostCenterChanges :
+    activeTab === 'error-mode' ? hasErrorModeChanges :
+    activeTab === 'fiscal' ? hasFiscalChanges :
+    false;
+
+  const handleGlobalSave = () => {
+    if (activeTab === 'general' || activeTab === 'fx-revaluation') {
+      handleSave('general');
+    } else if (activeTab === 'policies') {
+      handleSave('policies');
+    } else if (activeTab === 'payment-methods') {
+      handleSave('payment-methods');
+    } else if (activeTab === 'cost-center') {
+      handleSave('cost-center');
+    } else if (activeTab === 'error-mode') {
+      handleSave('error-mode');
+    } else if (activeTab === 'fiscal') {
+      handleSave('fiscal');
+    }
+  };
+
+  const handleGlobalDiscard = () => {
+    if (activeTab === 'general' || activeTab === 'fx-revaluation') {
+      setLocalCoreSettings(originalCoreSettings);
+      toast('Changes discarded', { icon: 'ℹ️' });
+    } else if (originalConfig) {
+      if (activeTab === 'policies') {
+        setConfig(prev => ({
+          ...prev,
+          financialApprovalEnabled: originalConfig.financialApprovalEnabled,
+          faApplyMode: originalConfig.faApplyMode,
+          custodyConfirmationEnabled: originalConfig.custodyConfirmationEnabled,
+          ccThirdPartyMode: originalConfig.ccThirdPartyMode,
+          ccAmountThreshold: originalConfig.ccAmountThreshold,
+          ccAllowSelfConfirmation: originalConfig.ccAllowSelfConfirmation,
+          ccBlockIfNoCustodian: originalConfig.ccBlockIfNoCustodian,
+          ccReversalMode: originalConfig.ccReversalMode,
+          autoPostEnabled: originalConfig.autoPostEnabled,
+          allowEditDeletePosted: originalConfig.allowEditDeletePosted
+        }));
+      } else if (activeTab === 'payment-methods') {
+        setConfig(prev => ({
+          ...prev,
+          paymentMethods: originalConfig.paymentMethods
+        }));
+      } else if (activeTab === 'cost-center') {
+        setConfig(prev => ({
+          ...prev,
+          costCenterPolicy: originalConfig.costCenterPolicy
+        }));
+      } else if (activeTab === 'error-mode') {
+        setConfig(prev => ({
+          ...prev,
+          policyErrorMode: originalConfig.policyErrorMode
+        }));
+      } else if (activeTab === 'fiscal') {
+        setConfig(prev => ({
+          ...prev,
+          periodLockEnabled: originalConfig.periodLockEnabled,
+          lockedThroughDate: originalConfig.lockedThroughDate,
+          allowPeriodLockOverride: originalConfig.allowPeriodLockOverride
+        }));
+      }
+      toast('Changes discarded', { icon: 'ℹ️' });
+    }
+  };
+
   const handleCreateFiscalYear = async () => {
     // Prevent duplicate years
     const exists = fiscalYears.find(fy => fy.name.includes(fyYear.toString()));
@@ -670,6 +742,10 @@ const AccountingSettingsPageContent: React.FC = () => {
       tabs={tabs}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as any)}
+      hasChanges={tabHasChanges}
+      onSave={handleGlobalSave}
+      onDiscard={handleGlobalDiscard}
+      saving={saving}
       topActions={
         <InstructionsButton 
           instructions={
@@ -696,6 +772,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           disabled={!hasGeneralChanges || saving}
           saving={saving}
           saveLabel={t('settings.saveLabel', { section: t('settings.tabs.fxRevaluation') })}
+          hideSaveButton={true}
         >
           <div className="bg-white dark:bg-[var(--color-bg-secondary)] border border-slate-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm mb-6 transition-all duration-200">
             <div className="flex items-start gap-4">
@@ -748,6 +825,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           disabled={!hasGeneralChanges || saving}
           saving={saving}
           saveLabel={t('settings.saveLabel', { section: t('settings.tabs.general') })}
+          hideSaveButton={true}
         >
           <div className="space-y-6">
 
@@ -866,6 +944,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           disabled={!hasPolicyChanges || saving}
           saving={saving}
           saveLabel={t('settings.saveLabel', { section: t('settings.tabs.policies') })}
+          hideSaveButton={true}
         >
           <div className="w-full space-y-8">
 
@@ -1345,6 +1424,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           disabled={!hasMethodChanges || saving}
           saving={saving}
           saveLabel={t('settings.saveLabel', { section: t('settings.tabs.paymentMethods') })}
+          hideSaveButton={true}
         >
           <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm uppercase font-bold text-xs">
             {/* Payment methods content ... */}
@@ -1456,6 +1536,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           disabled={!hasCostCenterChanges || saving}
           saving={saving}
           saveLabel={t('settings.saveLabel', { section: t('settings.tabs.costCenter') })}
+          hideSaveButton={true}
         >
           <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
             {/* Cost center content... */}
@@ -1547,6 +1628,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           disabled={!hasErrorModeChanges || saving}
           saving={saving}
           saveLabel={t('settings.saveLabel', { section: t('settings.errorMode.title') })}
+          hideSaveButton={true}
         >
           <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
             {/* Error mode content... */}
@@ -1611,6 +1693,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           disabled={!hasFiscalChanges || saving}
           saving={saving}
           saveLabel={t('settings.saveLabel', { section: t('settings.fiscal.title') })}
+          hideSaveButton={true}
         >
                   
                 {fiscalYears.length === 0 && (

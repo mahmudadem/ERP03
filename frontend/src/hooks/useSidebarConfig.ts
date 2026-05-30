@@ -462,6 +462,12 @@ export const useSidebarConfig = () => {
           path: '/dev/tailwind-play-demo',
           icon: 'Layout',
           badge: 'New'
+        },
+        { 
+          label: 'UI Lab 🎨', 
+          path: '/dev/ui-lab',
+          icon: 'Sparkles',
+          badge: 'New'
         }
       ]
     };

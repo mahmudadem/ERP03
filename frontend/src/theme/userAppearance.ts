@@ -396,6 +396,7 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, 
   const root = document.documentElement;
   
   const palette = themeMode === 'dark' ? settings.dark : settings.light;
+  const isDark = themeMode === 'dark';
 
   const vars: Record<string, string> = {
     '--color-bg-primary': palette.bgPrimary,
@@ -425,9 +426,11 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, 
     
     '--app-sidebar-surface': settings.sidebarSurface === 'contrast' 
       ? settings.primary 
-      : settings.sidebarSurface === 'secondary' 
+      : isDark 
         ? palette.bgSecondary 
-        : palette.bgPrimary,
+        : palette.bgTertiary,
+    '--app-topbar-surface-rgb': hexToRgb(isDark ? palette.bgSecondary : palette.bgTertiary),
+    '--app-topbar-surface': `rgba(${hexToRgb(isDark ? palette.bgSecondary : palette.bgTertiary)}, 0.8)`,
     '--app-sidebar-text': settings.sidebarSurface === 'contrast' ? '#ffffff' : palette.textPrimary,
     '--app-sidebar-muted': settings.sidebarSurface === 'contrast' 
       ? 'rgba(255,255,255,0.7)' 

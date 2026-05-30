@@ -2,42 +2,39 @@
 
 ## Purpose
 
-The production top bar now uses a 96-cell horizontal precision grid for widget placement. This gives enough resolution for small top-bar widgets while keeping all placement data simple and SQL-migration-ready in the frontend preference store.
+To provide a highly interactive, customizable, and professional top header layout. Active dashboard widgets are rendered inline inside the `TopBar` itself (which maintains a fixed height of `h-12`). 
 
 ## Files
 
-- `frontend/src/components/topbar/DraggableWidgetSpace.tsx` — renders the precision grid, widget wrappers, drag behavior, selected-widget controls, background picker, and border variants.
-- `frontend/src/layout/TopBar.tsx` — owns the unified layout actions menu and auto-align command.
-- `frontend/src/store/widgetStore.ts` — owns default widget definitions, 96-cell layout values, and persisted style fields.
-- `frontend/src/pages/dev/CanvasDevPage.tsx` — keeps the earlier sandbox for comparing the precision layout against older experiments.
+- `frontend/src/layout/TopBar.tsx` — renders the top navigation bar, handles layout selection, and manages the inline widget styling patterns.
+- `frontend/src/components/topbar/DraggableWidgetSpace.tsx` — renders the full 96-column grid workspace when in "Layout Edit" mode, allowing drag-and-drop repositioning and resizing.
+- `frontend/src/store/widgetStore.ts` — owns default widget configurations, visibility status, coordinates, custom styles, and preferences.
+- `frontend/src/components/topbar/widgets/` — directory containing individual modular widgets:
+  - `CompanyLogoNameWidget.tsx` (Logo/Name)
+  - `FiscalYearWidget.tsx` (Active Fiscal Year)
+  - `BaseCurrencyWidget.tsx` (Base Currency)
+  - `ApprovalModeWidget.tsx` (Approval Settings)
+  - `UIModeWidget.tsx` (Current UI Mode - Win/Web)
+  - `ClockWidget.tsx` (Local Time)
+  - `DateWidget.tsx` (Date)
+  - `NotesWidget.tsx` (Quick Notes)
+  - `AlarmWidget.tsx` (Alarms)
+  - `SearchWidget.tsx` (Dynamic Global Search)
 
-## Layout Model
+## Layout & Styling Model
 
-- The top bar has `96` columns.
-- Each widget has an `x` position and `w` width in cells.
-- Minimum widget width is `8` cells.
-- Auto-align divides `96` by the number of visible widgets and assigns remainder cells to the first widgets.
-- The widget grid keeps internal padding so widgets use the available bar height without touching the parent edges.
-
-## Styling Model
-
-The precision wrapper owns the top-bar widget presentation:
-
-- Child widgets are rendered with internal background and border disabled.
-- `isBold` applies a wrapper-level typography override.
-- `bgColor` selects a neutral or colored background swatch.
-- `borderVariant` controls border intensity.
-- Border color is derived from the chosen widget background so colored widgets keep a matching outline.
-
-## Migration Notes
-
-The persisted key changed from `topbar-widgets-grid` to `topbar-widgets-precision-grid`. This avoids loading incompatible legacy layout coordinates into the 96-cell grid.
-
-When adding a new top-bar widget:
-1. Add it to the existing widget registry.
-2. Add it to the layout actions add-widget list.
-3. Choose a default width of at least `8` cells.
-4. Let the wrapper own border/background styling unless the widget needs a domain-specific visual state.
+- In **Normal Mode**, widgets are displayed inline using one of the selected preset visual styles:
+  - **Style 1:** Double-Decker Micro Cards (Double vertical stacked layout)
+  - **Style 2:** Tech Terminal Brackets (Monospace brackets `[icon value]`)
+  - **Style 3:** Pipeline Separators (Horizontal separators `|`)
+  - **Style 5:** Unified Bubble Pill (Harmonious rounded pills)
+  - **Style 10:** Slanted Angles (Technological angled tabs)
+  - **Style 11:** Tech Dotted Matrix (Dashed borders)
+  - **Style 16:** Perforated Coupon Tag (Card ticket theme)
+  - **Style 17:** Dashed Blueprint (Sky blue blueprints)
+  - **Style 18:** Glowing Dot Indicator (Color pulse states)
+- In **Layout Edit Mode** (activated by clicking "Edit & Layout" in the widgets menu), the TopBar switches to the custom 96-column `DraggableWidgetSpace` grid. Here, users can drag, reposition, and resize widgets to adjust their layout configuration.
+- Individual widgets accept a `compact` prop which strips away labels and icons, maximizing readability in narrow containers.
 
 ## Verification
 

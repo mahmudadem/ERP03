@@ -2,31 +2,33 @@
 
 ## What It Does
 
-The top bar can now be customized with precise widget placement. You can move widgets, resize them, change their visual style, add hidden widgets back, and quickly spread all visible widgets across the bar.
+The top navigation header displays useful dashboard widgets (like clock, calendar, fiscal year, active currency, and global search) inline to keep them easily accessible without causing layout shifts or cluttering your screen space.
 
 ## Who Can Use It
 
-Any user with access to the top-bar layout controls can customize their visible widget layout.
+Any authenticated user can view the widgets and configure their layout.
 
-## How To Edit The Top Bar
+## How to Customize Your Widgets
 
-1. Open the top-bar layout actions menu.
-2. Select `Edit & Layout`.
-3. Click the widget you want to change.
-4. Use the left and right arrow buttons to move it one step at a time.
-5. Change the width number to resize the widget.
-6. Use the bold button to make the widget text stronger.
-7. Use the border button to choose a border intensity.
-8. Use the background button to choose a widget color.
-9. Select `Auto Align` to evenly arrange all visible widgets.
-10. Select `Done Editing` when finished.
+### 1. Show or Hide Specific Widgets
+1. In the top navigation bar, click the **ListChecks (☰)** menu button on the right.
+2. Under the **Show / Hide Widgets** section, click on any widget name to toggle its visibility. Active widgets display a green dot; hidden ones display a gray dot.
 
-## Adding Widgets
+### 2. Choose a Visual Style
+1. Click the **ListChecks (☰)** menu button.
+2. Locate the **Bar Style** dropdown.
+3. Select from one of the nine professional design themes (e.g. *العرض المزدوج الرأسي المتكدس*, *النظام الهندسي البرمجي*, *خطوط الفاصل العمودي*, *الكبسولة الفقاعية الموحدة*, etc.). The header style will update instantly.
 
-Open the layout actions menu and use the `Add Widget` section. Widgets that are already visible are disabled in the list.
+### 3. Drag and Drop to Reorder
+- While in normal mode, you can click and drag any widget directly in the header to reorder its horizontal position.
+
+### 4. Precision Layout Customization (Canvas Designer)
+1. Click the **ListChecks (☰)** menu button.
+2. Select **Edit & Layout** (or navigate to `/settings/widgets`).
+3. The header switches to edit mode, allowing you to drag widgets freely along a 96-column layout grid, drag edges to resize them, or edit custom borders, padding, and background colors.
+4. Click **Done Editing** to save.
 
 ## Tips
 
-- Use `Auto Align` first when the bar looks crowded.
-- Use wider widgets for labels such as company names or approval mode.
-- Use compact widths for time, date, notes, and simple status widgets.
+- Use the **Search** widget to quickly find menu paths and actions.
+- Use styles like **النظام الهندسي البرمجي (الترمينال)** for a compact monospace layout, or **الكبسولة الفقاعية (Bubble Pill)** for a modern, rounded aesthetic.
