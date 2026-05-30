@@ -245,8 +245,113 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
 
 export const useUserPreferencesContext = () => {
   const context = useContext(UserPreferencesContext);
-  if (context === undefined) {
-    throw new Error('useUserPreferencesContext must be used within a UserPreferencesProvider');
+  const [fallbackUiMode, setFallbackUiMode] = useState<UiMode>(() => {
+    return (localStorage.getItem('erp_ui_mode') as UiMode) || 'windows';
+  });
+  const [fallbackTheme, setFallbackTheme] = useState<Theme>(() => {
+    return (localStorage.getItem('erp_theme') as Theme) || 'light';
+  });
+  const [fallbackSidebarMode, setFallbackSidebarMode] = useState<SidebarMode>(() => {
+    return (localStorage.getItem('erp_sidebar_mode') as SidebarMode) || 'classic';
+  });
+  const [fallbackSidebarPinned, setFallbackSidebarPinned] = useState<boolean>(() => {
+    const saved = localStorage.getItem('erp_sidebar_pinned');
+    return saved === null ? true : saved === 'true';
+  });
+  const [fallbackShowWidgetsOnMobile, setFallbackShowWidgetsOnMobile] = useState<boolean>(() => {
+    const saved = localStorage.getItem('erp_show_widgets_mobile');
+    return saved === null ? false : saved === 'true';
+  });
+  const [fallbackShowTopbarActionsOnMobile, setFallbackShowTopbarActionsOnMobile] = useState<boolean>(() => {
+    const saved = localStorage.getItem('erp_show_topbar_actions_mobile');
+    return saved === null ? false : saved === 'true';
+  });
+  const [fallbackLanguage, setFallbackLanguage] = useState(() => {
+    return localStorage.getItem('erp_language') || i18n.language || 'en';
+  });
+  const [fallbackAppearanceSettings, setFallbackAppearanceSettings] = useState<UserAppearanceSettings>(() => {
+    return loadLocalUserAppearance();
+  });
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    console.warn('[Prefs] Missing UserPreferencesProvider; using local fallback preferences.');
+  }, [context]);
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    localStorage.setItem('erp_theme', fallbackTheme);
+    if (fallbackTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    applyUserAppearanceToDocument(fallbackAppearanceSettings || DEFAULT_USER_APPEARANCE, fallbackTheme);
+  }, [context, fallbackTheme, fallbackAppearanceSettings]);
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    localStorage.setItem('erp_ui_mode', fallbackUiMode);
+  }, [context, fallbackUiMode]);
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    localStorage.setItem('erp_sidebar_mode', fallbackSidebarMode);
+  }, [context, fallbackSidebarMode]);
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    localStorage.setItem('erp_sidebar_pinned', String(fallbackSidebarPinned));
+  }, [context, fallbackSidebarPinned]);
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    localStorage.setItem('erp_show_widgets_mobile', String(fallbackShowWidgetsOnMobile));
+  }, [context, fallbackShowWidgetsOnMobile]);
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    localStorage.setItem('erp_show_topbar_actions_mobile', String(fallbackShowTopbarActionsOnMobile));
+  }, [context, fallbackShowTopbarActionsOnMobile]);
+
+  useEffect(() => {
+    if (context !== undefined) return;
+    localStorage.setItem('erp_language', fallbackLanguage);
+    if (i18n.language !== fallbackLanguage) {
+      i18n.changeLanguage(fallbackLanguage);
+    }
+  }, [context, fallbackLanguage]);
+
+  if (context !== undefined) {
+    return context;
   }
-  return context;
+
+  const setFallbackAppearance = (settings: UserAppearanceSettings) => {
+    setFallbackAppearanceSettings(normalizeUserAppearance(settings));
+  };
+
+  return {
+    uiMode: fallbackUiMode,
+    sidebarMode: fallbackSidebarMode,
+    theme: fallbackTheme,
+    appearanceSettings: fallbackAppearanceSettings,
+    language: fallbackLanguage,
+    sidebarPinned: fallbackSidebarPinned,
+    showWidgetsOnMobile: fallbackShowWidgetsOnMobile,
+    showTopbarActionsOnMobile: fallbackShowTopbarActionsOnMobile,
+    setUiMode: setFallbackUiMode,
+    setSidebarMode: setFallbackSidebarMode,
+    setTheme: setFallbackTheme,
+    setAppearanceSettings: setFallbackAppearance,
+    setLanguage: setFallbackLanguage,
+    setSidebarPinned: setFallbackSidebarPinned,
+    setShowWidgetsOnMobile: setFallbackShowWidgetsOnMobile,
+    setShowTopbarActionsOnMobile: setFallbackShowTopbarActionsOnMobile,
+    toggleUiMode: () => setFallbackUiMode((prev) => prev === 'classic' ? 'windows' : 'classic'),
+    toggleSidebarMode: () => setFallbackSidebarMode((prev) => prev === 'classic' ? 'submenus' : 'classic'),
+    toggleTheme: () => setFallbackTheme((prev) => prev === 'light' ? 'dark' : 'light'),
+    toggleSidebarPinned: () => setFallbackSidebarPinned((prev) => !prev),
+    savePreferences: async () => {},
+    loadingFromServer: false,
+  };
 };

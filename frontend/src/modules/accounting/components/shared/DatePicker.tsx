@@ -9,6 +9,7 @@ interface Props {
   value: string; // ISO format (YYYY-MM-DD)
   onChange: (val: string) => void;
   className?: string;
+  inputClassName?: string;
   disabled?: boolean;
 }
 
@@ -32,7 +33,7 @@ const getSharedFiscalYears = async () => {
  * Provides a localized text input for dates that respects company settings.
  * Includes a custom popover calendar for selecting dates format agnostically.
  */
-export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', disabled = false }) => {
+export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', inputClassName, disabled = false }) => {
   const { settings } = useCompanySettings();
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -307,7 +308,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', d
         disabled={disabled}
         onClick={() => !disabled && !isOpen && setIsOpen(true)}
         placeholder={settings?.dateFormat || 'YYYY-MM-DD'}
-        className={`w-full h-[36px] px-3 pr-8 border border-[var(--color-border)] rounded text-sm focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
+        className={inputClassName || `w-full h-[36px] px-3 pr-8 border border-[var(--color-border)] rounded text-sm focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
           disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : 'bg-[var(--color-bg-primary)]'
         }`}
       />

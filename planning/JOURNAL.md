@@ -2,6 +2,30 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Runtime voucher field control UI hardening
+
+**Task:** Manual QA follow-up from SI Direct default-form design: runtime voucher header controls looked inconsistent because text inputs, selectors, date picker, and specialized widgets each owned their own input chrome.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Added shared header-field control classes inside `GenericVoucherRenderer` for 32px height, border radius, label style, read-only state, and selector framing.
+- Wrapped account/party/item/warehouse selectors in a consistent renderer frame while preserving their modal/search behavior.
+- Let `DatePicker` accept an optional `inputClassName`, so the runtime voucher renderer can use the same 32px control style without changing date picker defaults elsewhere.
+- Extended `CustomComponentProps` with `className`/`noBorder` so registry-based selectors can participate in the shared styling.
+- Corrected the UX after PO clarification: unified control chrome is **not forced globally**. The Visual Layout Editor now has a **Uniform controls** toggle stored at `metadata.uniformControlChrome`; runtime rendering only applies the unified selector/date/input chrome when that saved form setting is enabled.
+- Follow-up crash fix: `useUserPreferencesContext` now falls back to local preference state instead of white-screening if a dev refresh/HMR path renders a shell consumer before the provider is attached.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` → exit 0
+- `npm --prefix frontend run build` → exit 0
+- `git diff --check` → exit 0
+- Browser check reached only the unauthenticated local app shell, so visual confirmation still needs Mahmud's open authenticated session after refresh.
+
+**Time spent:** ~0.5h.
+
+**Result:** Designers can choose per form whether runtime voucher header controls keep their native/custom appearance or use a unified control shape. Field definitions, Field Library metadata, and posting behavior are unchanged.
+
 ## 2026-05-30 (Sat) — UI/UX: Full-Width TopBar & Pinned/Overlay Sidebar Layout Refactor
 **Task:** Refactor application shell, topbar, and sidebar layout to make TopBar span full width, remove brand header/logo, and support dynamic overlay/docked sidebar behaviors.
 **Agent:** Antigravity (Gemini 3.5 Flash)
@@ -272,27 +296,6 @@
 **Time spent:** ~2.5h
 
 **Result:** UX/Layout hardening is now documented and ready for phased implementation. Recommended first implementation slice: hide dev/demo navigation, consolidate React Query providers, and fix auth/logout routing consistency. The top-bar widget system is frozen for now and must not be modified unless the product owner reopens that scope.
-=======
-## 2026-05-30 (Sat) — UI/UX: Full-Width TopBar & Pinned/Overlay Sidebar Layout Refactor
-**Task:** Refactor application shell, topbar, and sidebar layout to make TopBar span full width, remove brand header/logo, and support dynamic overlay/docked sidebar behaviors.
-**Agent:** Antigravity (Gemini 3.5 Flash)
-**Branch:** `feat/ui-ux-revamp-playground`
-
-**What was done:**
-- Restructured `AppShell.tsx` to mount `TopBar` as a full-width header at the root layout level, below which the sidebar and main workspace reside.
-- Positioned `Sidebar.tsx` dynamically so that it floats on top of the TopBar (`z-50 top-0 bottom-0`) when unpinned, and docks below the TopBar (`z-30 top-12 bottom-0`) when pinned on desktop viewports.
-- Configured dynamic margins on the main workspace container to shift content to the side only when the sidebar is open and pinned (in accordion mode) or dynamically based on open/closed widths (in flat mode).
-- Configured theme variables to set the sidebar and topbar background surfaces to be darker than the main workspace content area (using tertiary in light mode and secondary in dark mode).
-- Removed `backdrop-blur-sm` from the overlay backdrop in `AppShell.tsx` to prevent blurring the background application when the sidebar is expanded.
-- Removed the branding/logo button ("ERP03 Enterprise") from the sidebar, replacing it with a clean utility header containing the pin button and a close button (which centers the Pin icon when collapsed in flat mode).
-- Configured Sidebar to behave conditionally based on the user's `sidebarMode` selection: in accordion mode, the sidebar completely hides off-screen when closed; in flat mode, it collapses to a persistent narrow 6rem (`w-24`) icon-strip on desktop viewports below the TopBar.
-- Removed the `lg:hidden` constraint on the TopBar hamburger menu button so it is visible on all screen sizes to toggle the sidebar.
-- Verified TypeScript compilation and Vite build bundle successfully without errors.
-
-**Verification:**
-- `npm run typecheck` -> passed.
-- `npm run build` -> passed.
-
 ## 2026-05-29 (Fri) — UI/UX: Dead Widget Code Cleanup and Documentation Sync
 **Task:** Remove unused widget and tray components and synchronize TopBar documentation.  
 **Agent:** Antigravity (Gemini 3.5 Flash)  
@@ -374,7 +377,6 @@
 
 **Time spent:** ~3.2h  
 **Result:** Live widgets integrated, draggable, styled in 20 distinct presets, and fully selectable via the TopBar widgets menu inside the worktree repository.
->>>>>>> feat/ui-ux-revamp-playground
 
 ## 2026-05-28 (Thu) — Phase F: Purchase Price Lists
 

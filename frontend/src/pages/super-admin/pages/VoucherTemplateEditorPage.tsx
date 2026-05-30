@@ -167,6 +167,30 @@ const buildFieldPatch = (current: FieldDefinition, updates: Partial<FieldDefinit
   return next;
 };
 
+const fieldKey = (field: Partial<FieldDefinition>) => field.id || field.name || '';
+
+const applyFieldLibraryRules = (
+  field: FieldDefinition,
+  entriesById: Map<string, FieldLibraryEntry>,
+): FieldDefinition => {
+  const entry = entriesById.get(fieldKey(field));
+  const next = buildFieldPatch(field, {});
+  if (!entry) return next;
+
+  next.label = entry.label;
+  next.type = libraryTypeToDesignerType(entry.type);
+  next.fieldClass = entry.fieldClass as any;
+  next.relationTarget = entry.selectorBinding?.collection || next.relationTarget;
+  (next as any).fieldLibraryVersion = entry.version;
+
+  if (entry.alwaysMandatory) {
+    next.required = true;
+    (next as any).mandatory = true;
+  }
+
+  return buildFieldPatch(next, {});
+};
+
 const isOfficialField = (field: FieldDefinition) => {
   return field.fieldClass !== 'custom_metadata' || field.bindingTarget !== 'metadata.customFields';
 };
@@ -196,6 +220,7 @@ const FieldListEditor = ({
   scope: FieldScope;
   fieldLibraryEntries: FieldLibraryEntry[];
 }) => {
+  const entriesById = new Map(fieldLibraryEntries.map((entry) => [entry.id, entry]));
   const existingFieldIds = new Set(fields.map(field => field.id || field.name));
   const missingLibraryFields = fieldLibraryEntries
     .filter(entry => shouldOfferLibraryEntry(entry, templateCode, scope))
@@ -227,7 +252,10 @@ const FieldListEditor = ({
 
   const updateField = (index: number, updates: Partial<FieldDefinition>) => {
     const newFields = [...fields];
-    newFields[index] = buildFieldPatch(newFields[index], updates);
+    newFields[index] = applyFieldLibraryRules(
+      buildFieldPatch(newFields[index], updates),
+      entriesById,
+    );
     onChange(newFields);
   };
 
@@ -278,9 +306,16 @@ const FieldListEditor = ({
         )}
       </div>
 
-      {fields.map((field, idx) => (
+      {fields.map((rawField, idx) => {
+        const field = applyFieldLibraryRules(rawField, entriesById);
+        return (
         <div key={idx} className="flex items-start space-x-4 p-4 bg-gray-50 rounded border border-gray-200">
           <div className="grid grid-cols-5 gap-4 flex-1">
+            {(() => {
+              const libraryEntry = entriesById.get(fieldKey(field));
+              const isAlwaysMandatory = Boolean(libraryEntry?.alwaysMandatory);
+              return (
+                <>
             <div>
               <div className="flex items-center gap-2">
                 <label className="block text-xs font-medium text-gray-500">{t('superAdmin.voucherTemplatesEditor.fields.label', { defaultValue: 'Label' })}</label>
@@ -326,7 +361,8 @@ const FieldListEditor = ({
                 <input
                   type="checkbox"
                   className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  checked={field.required}
+                  checked={Boolean(field.required || isAlwaysMandatory)}
+                  disabled={isAlwaysMandatory}
                   onChange={e => updateField(idx, { required: e.target.checked })}
                 />
                 <span className="ml-2 text-sm text-gray-600">{t('superAdmin.voucherTemplatesEditor.fields.required', { defaultValue: 'Required' })}</span>
@@ -353,6 +389,9 @@ const FieldListEditor = ({
                 ))}
               </select>
             </div>
+                </>
+              );
+            })()}
           </div>
           <button
             type="button"
@@ -364,7 +403,8 @@ const FieldListEditor = ({
             Remove
           </button>
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 };
@@ -407,6 +447,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
       const fieldLibraryPromise = superAdminFieldLibraryApi.list();
       const templatePromise = !isNew && id ? superAdminVoucherTypesApi.list() : Promise.resolve([]);
       const [libraryEntries, templates] = await Promise.all([fieldLibraryPromise, templatePromise]);
+      const entriesById = new Map(libraryEntries.map((entry) => [entry.id, entry]));
 
       setFieldLibraryEntries(libraryEntries);
 
@@ -416,11 +457,15 @@ export const VoucherTemplateEditorPage: React.FC = () => {
           // Ensure layout.lineFields exists.
           const safeDef = {
             ...found,
-            headerFields: (found.headerFields || []).map((field: FieldDefinition) => buildFieldPatch(field, {})),
+            headerFields: (found.headerFields || []).map((field: FieldDefinition) =>
+              applyFieldLibraryRules(field, entriesById),
+            ),
             layout: {
               ...found.layout,
               sections: (found.layout as any)?.sections || [],
-              lineFields: ((found.layout as any)?.lineFields || []).map((field: FieldDefinition) => buildFieldPatch(field, {})),
+              lineFields: ((found.layout as any)?.lineFields || []).map((field: FieldDefinition) =>
+                applyFieldLibraryRules(field, entriesById),
+              ),
             }
           };
           setDefinition(safeDef);
@@ -439,11 +484,24 @@ export const VoucherTemplateEditorPage: React.FC = () => {
     try {
       setError(null);
       setLoading(true);
+      const entriesById = new Map(fieldLibraryEntries.map((entry) => [entry.id, entry]));
+      const definitionToSave = {
+        ...definition,
+        headerFields: (definition.headerFields || []).map((field: FieldDefinition) =>
+          applyFieldLibraryRules(field, entriesById),
+        ),
+        layout: {
+          ...definition.layout,
+          lineFields: (((definition.layout as any)?.lineFields || []) as FieldDefinition[]).map((field) =>
+            applyFieldLibraryRules(field, entriesById),
+          ),
+        },
+      };
       
       if (isNew) {
-        await superAdminVoucherTypesApi.create(definition);
+        await superAdminVoucherTypesApi.create(definitionToSave);
       } else if (id) {
-        await superAdminVoucherTypesApi.update(id, definition);
+        await superAdminVoucherTypesApi.update(id, definitionToSave);
       }
       navigate('/super-admin/voucher-templates');
     } catch (err: any) {

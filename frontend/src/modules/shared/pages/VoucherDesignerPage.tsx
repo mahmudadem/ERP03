@@ -455,6 +455,7 @@ const buildDesignerFieldCatalog = (
 const scopeDesignerFieldCatalogForForm = (
   fieldCatalog: DesignerFieldCatalog,
   form: DocumentFormConfig | null,
+  catalog: any[],
 ): DesignerFieldCatalog => {
   if (!form) return fieldCatalog;
 
@@ -464,6 +465,26 @@ const scopeDesignerFieldCatalogForForm = (
   addFieldIds(lineIds, (form as any).lineFields);
   addFieldIds(lineIds, (form as any).tableColumns);
   addLayoutFieldIds(headerIds, lineIds, (form as any).uiModeOverrides);
+
+  const formKeys = new Set(
+    [
+      (form as any).formType,
+      (form as any).baseType,
+      (form as any).code,
+      (form as any).id,
+    ]
+      .filter(Boolean)
+      .map((value) => String(value).toLowerCase()),
+  );
+  const matchingTemplate = catalog.find((template) =>
+    [template?.code, template?.id].some((value) => value && formKeys.has(String(value).toLowerCase())),
+  );
+  if (matchingTemplate) {
+    addFieldIds(headerIds, matchingTemplate.headerFields);
+    addFieldIds(lineIds, matchingTemplate.lineFields);
+    addFieldIds(lineIds, matchingTemplate.tableColumns);
+    addFieldIds(lineIds, matchingTemplate.layout?.lineFields);
+  }
 
   return {
     ...fieldCatalog,
@@ -667,8 +688,8 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   }, [forms]);
 
   const editorFieldCatalog = useMemo(
-    () => scopeDesignerFieldCatalogForForm(fieldCatalog, editingForm),
-    [fieldCatalog, editingForm],
+    () => scopeDesignerFieldCatalogForForm(fieldCatalog, editingForm, catalog),
+    [fieldCatalog, editingForm, catalog],
   );
 
   // Auto-expand the first installed type on first load so user sees the

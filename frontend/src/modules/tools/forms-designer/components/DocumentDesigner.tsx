@@ -155,6 +155,47 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
   // --- GRID CONSTANTS ---
   const GRID_COLS = 24;
+  const SECTION_DEFAULTS: Array<{ key: SectionType; order: number }> = [
+    { key: 'HEADER', order: 0 },
+    { key: 'BODY', order: 1 },
+    { key: 'EXTRA', order: 2 },
+    { key: 'FOOTER', order: 3 },
+    { key: 'ACTIONS', order: 4 },
+  ];
+
+  const createEmptyLayoutConfig = (): DocumentLayoutConfig => ({
+    sections: SECTION_DEFAULTS.reduce((acc, section) => {
+      acc[section.key] = { order: section.order, fields: [] };
+      return acc;
+    }, {} as DocumentLayoutConfig['sections']),
+  });
+
+  const normalizeUiModeOverrides = (overrides: any): Record<UIMode, DocumentLayoutConfig> => {
+    const normalized = {} as Record<UIMode, DocumentLayoutConfig>;
+    const modes: UIMode[] = ['classic', 'windows'];
+
+    modes.forEach((mode) => {
+      const existing = overrides?.[mode];
+      const next = existing?.sections ? { ...existing, sections: { ...existing.sections } } : createEmptyLayoutConfig();
+
+      SECTION_DEFAULTS.forEach((section) => {
+        const existingSection = next.sections[section.key];
+        next.sections[section.key] = {
+          order: existingSection?.order ?? section.order,
+          fields: Array.isArray(existingSection?.fields) ? existingSection.fields : [],
+        };
+      });
+
+      normalized[mode] = next;
+    });
+
+    return normalized;
+  };
+
+  const normalizeDocumentConfig = (configToNormalize: DocumentFormConfig): DocumentFormConfig => ({
+    ...configToNormalize,
+    uiModeOverrides: normalizeUiModeOverrides((configToNormalize as any).uiModeOverrides),
+  });
 
   const isFieldAllowed = (fieldId: string, formType?: string) => {
     const field = availableFields.find(f => f.id === fieldId);
@@ -167,21 +208,22 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // --- MIGRATION UTILITY ---
   // If a layout has fields with colSpan <= 12 and max width <= 12, it might be from the old system
   const migrateTo24Columns = (configToMigrate: DocumentFormConfig) => {
-    if (!configToMigrate.uiModeOverrides) return configToMigrate;
+    const normalizedConfig = normalizeDocumentConfig(configToMigrate);
     
     // We check classic mode as a benchmark
-    const needsMigration = Object.values(configToMigrate.uiModeOverrides).some(mode => {
-      return Object.values(mode.sections).some(section => 
+    const needsMigration = Object.values(normalizedConfig.uiModeOverrides).some(mode => {
+      return Object.values(mode?.sections || {}).some(section =>
+        Array.isArray(section.fields) &&
         section.fields.some(f => (f.col + f.colSpan) <= 12 && f.colSpan > 0 && f.colSpan < 12)
       );
     });
 
-    if (!needsMigration) return configToMigrate;
+    if (!needsMigration) return normalizedConfig;
 
-    const newConfig = JSON.parse(JSON.stringify(configToMigrate));
+    const newConfig = JSON.parse(JSON.stringify(normalizedConfig));
     Object.values(newConfig.uiModeOverrides).forEach((mode: any) => {
-      Object.values(mode.sections).forEach((section: any) => {
-        section.fields.forEach((f: any) => {
+      Object.values(mode?.sections || {}).forEach((section: any) => {
+        (section.fields || []).forEach((f: any) => {
           // Double the horizontal coordinates
           f.col = f.col * 2;
           f.colSpan = f.colSpan * 2;
@@ -252,7 +294,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     if (initial) {
       // Automatic migration for older 12-column documents
       initial = migrateTo24Columns(initial);
-      return { ...(initial as DocumentFormConfig), isMultiLine: true } as DocumentFormConfig;
+      return { ...normalizeDocumentConfig(initial as DocumentFormConfig), isMultiLine: true } as DocumentFormConfig;
     }
     
     // Default config for new forms
@@ -298,6 +340,16 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   });
 
   const [previewMode, setPreviewMode] = useState<UIMode>('windows');
+  const uniformControlChrome = Boolean((config.metadata as any)?.uniformControlChrome);
+  const setUniformControlChrome = (enabled: boolean) => {
+    setConfig(prev => ({
+      ...prev,
+      metadata: {
+        ...(prev.metadata || {}),
+        uniformControlChrome: enabled,
+      },
+    }));
+  };
   const normalizeColumnLabel = (columnId: string, fallback?: string): string => {
     const normalized = String(columnId || '').trim().toLowerCase();
     if (normalized === 'exchangerate' || normalized === 'parity') return 'Exchange Rate';
@@ -466,7 +518,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       ]));
 
       const missingFieldIds = allRequiredFieldIds.filter(id => {
-        return !Object.values(currentModeConfig.sections).some((s: any) => s.fields.some((f: any) => f.fieldId === id));
+        return !Object.values(currentModeConfig.sections || {}).some((s: any) => (s.fields || []).some((f: any) => f.fieldId === id));
       });
 
       if (missingFieldIds.length === 0) continue; // Skip this mode
@@ -548,9 +600,9 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     getCoreFieldIds(formType).forEach(id => fieldIds.add(id));
 
     if (template.config.uiModeOverrides) {
-      Object.values(template.config.uiModeOverrides).forEach(mode => {
-        Object.values(mode.sections).forEach(section => {
-          section.fields.forEach(f => {
+      Object.values(normalizeUiModeOverrides(template.config.uiModeOverrides)).forEach(mode => {
+        Object.values(mode.sections || {}).forEach(section => {
+          (section.fields || []).forEach(f => {
             if (!f.fieldId.startsWith('action_') && !systemFields.some(sf => sf.id === f.fieldId)) {
               if (isFieldAllowed(f.fieldId, formType)) {
                 fieldIds.add(f.fieldId);
@@ -1166,6 +1218,18 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                    <p className="text-xs text-gray-500">Drag fields to move/resize. Drag table headers to reorder/resize.</p>
                 </div>
                 <div className="flex items-center gap-4">
+                  <label className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${uniformControlChrome ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-500 hover:text-gray-700'}`}>
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={uniformControlChrome}
+                      onChange={(event) => setUniformControlChrome(event.target.checked)}
+                    />
+                    <span className={`h-4 w-7 rounded-full p-0.5 transition-colors ${uniformControlChrome ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                      <span className={`block h-3 w-3 rounded-full bg-white shadow transition-transform ${uniformControlChrome ? 'translate-x-3' : ''}`} />
+                    </span>
+                    Uniform controls
+                  </label>
                   <div className="flex bg-gray-100 p-1 rounded-lg">
                     <button onClick={() => setPreviewMode('classic')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'classic' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Classic</button>
                     <button onClick={() => setPreviewMode('windows')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'windows' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Windows</button>

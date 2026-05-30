@@ -23,6 +23,7 @@ import { BaseCurrencyWidget } from "../../../components/topbar/widgets/BaseCurre
 import { ApprovalModeWidget } from "../../../components/topbar/widgets/ApprovalModeWidget";
 import { UIModeWidget } from "../../../components/topbar/widgets/UIModeWidget";
 import { useWidgetStore, WidgetConfig, WidgetStyle, WidgetType } from "../../../store/widgetStore";
+import { SearchWidget } from "../../../components/topbar/widgets/SearchWidget";
 
 const WIDGET_COMPONENT_MAP: Record<string, React.FC<any>> = {
   clock: ClockWidget,
@@ -34,6 +35,7 @@ const WIDGET_COMPONENT_MAP: Record<string, React.FC<any>> = {
   "base-currency": BaseCurrencyWidget,
   "approval-mode": ApprovalModeWidget,
   "ui-mode": UIModeWidget,
+  search: SearchWidget,
 };
 
 const WIDGET_TYPES: { type: WidgetType; icon: string }[] = [
@@ -46,6 +48,7 @@ const WIDGET_TYPES: { type: WidgetType; icon: string }[] = [
   { type: "base-currency", icon: "💰" },
   { type: "approval-mode", icon: "🛡️" },
   { type: "ui-mode", icon: "🖥️" },
+  { type: "search", icon: "🔍" },
 ];
 
 const BG_OPTIONS = [
@@ -101,6 +104,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "widget-clock", type: "clock", visible: true, layout: { x: 84, y: 0, w: 12, h: 1, minW: 8 }, style: { showBorder: true, showBackground: true } },
   { id: "widget-notes", type: "notes", visible: false, layout: { x: 69, y: 0, w: 10, h: 1, minW: 8 }, style: { showBorder: true, showBackground: true } },
   { id: "widget-alarm", type: "alarm", visible: false, layout: { x: 80, y: 0, w: 10, h: 1, minW: 8 }, style: { showBorder: true, showBackground: true } },
+  { id: "widget-search", type: "search", visible: true, layout: { x: 90, y: 0, w: 16, h: 1, minW: 10 }, style: { showBorder: true, showBackground: true } },
 ];
 
 const TopbarWidgetDesignerPage: React.FC = () => {
