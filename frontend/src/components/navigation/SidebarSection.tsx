@@ -91,16 +91,20 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
           <div className={clsx(
             "rounded-[var(--radius-md)] transition-all duration-300 flex items-center justify-center shrink-0",
             isOpen
-              ? isActive
-                ? "p-1.5 bg-white/20 text-white"
-                : "p-1.5 bg-[var(--color-bg-tertiary)]"
+              ? isActiveLink
+                ? "p-1.5 bg-white/20 text-white"           // direct active route → row is blue, pill is translucent white
+                : isSectionActive
+                  ? "p-1.5 bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"  // child is active → soft brand tint
+                  : "p-1.5 bg-[var(--color-bg-tertiary)]"
               : use3DStyle
                 ? isActive
                   ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
                   : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
-                : isActive
+                : isActiveLink
                   ? "w-10 h-10 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
-                  : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
+                  : isSectionActive
+                    ? "w-10 h-10 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
+                    : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
 
             !use3DStyle && !isActive && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600"
           )}>
@@ -149,9 +153,15 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
           {({ isActive }) => renderHeaderContent(isActive)}
         </NavLink>
       ) : (
-        <button 
+        <button
           onClick={toggleExpand}
-          className={headerClass}
+          className={clsx(
+            headerClass,
+            // Section contains the active route — soft brand tint so the
+            // parent acknowledges it without competing with the child's
+            // solid-fill active row.
+            isSectionActive && !use3DStyle && "text-primary-700 dark:text-primary-300"
+          )}
         >
           {renderHeaderContent(false)}
         </button>

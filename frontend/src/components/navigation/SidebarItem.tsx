@@ -124,11 +124,17 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       (isOpen || isFlyout) ? "flex-row gap-3 px-3 py-2" : "flex-col gap-1.5 px-2 py-3 justify-center items-center",
       
       isChild ? "text-xs font-normal py-1.5" : "text-sm font-medium",
-      (active || (isAnyChildActive && !isExpanded && !isSubmenusMode))
+      // Three active states:
+      //   1. This item is the direct active route → solid blue fill.
+      //   2. A child is active AND parent is collapsed → solid blue fill so the collapsed parent still signals it.
+      //   3. A child is active AND parent is expanded → soft brand-tinted text (the child carries the strong fill).
+      active || (isAnyChildActive && !isExpanded && !isSubmenusMode)
         ? (use3DStyle && isChild && !isFlyout)
           ? "bg-transparent text-primary-600 font-bold"
           : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
-        : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
+        : isAnyChildActive
+          ? "text-primary-700 dark:text-primary-300 hover:bg-[var(--color-bg-tertiary)]"
+          : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).
@@ -152,13 +158,19 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           (isOpen || isFlyout) 
             ? "w-6 h-6" 
             : "w-10 h-10 mb-1",
-          (active || isAnyChildActive)
+          // Icon pill state matches the row state:
+          //   - row solid blue (direct active OR collapsed-parent-with-active-child) → pill is bg-white/20
+          //   - row tinted (expanded parent with active child) → pill is bg-primary-100 / text-primary-700
+          //   - inactive → muted
+          active || (isAnyChildActive && !isExpanded && !isSubmenusMode)
             ? use3DStyle && !isOpen && !isFlyout
               ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
               : "bg-white/20 text-white"
-            : use3DStyle && !isOpen && !isFlyout
-              ? "bg-transparent text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
-              : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"
+            : isAnyChildActive
+              ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+              : use3DStyle && !isOpen && !isFlyout
+                ? "bg-transparent text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
+                : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"
         )}>
           {(() => {
             if (finalIcon) {
