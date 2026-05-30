@@ -7,11 +7,18 @@
 2. **Native functionality retest** — once the chrome is polished, walk every native voucher flow end-to-end per module (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override). Captures regressions and a real polish backlog.
 3. **Native UI-mode awareness (per-voucher)** — hardcoded polished renderings for web AND Windows card/window mode for each native voucher page. Standard in [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md) Phase 4.5. Last because it depends on stable chrome + verified functionality.
 
-**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md), [136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md).
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md), [136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md), [138-forms-visual-fixes.md](./done/138-forms-visual-fixes.md), [139-vertical-stepper-wizard.md](./done/139-vertical-stepper-wizard.md), [140-visual-layout-overflow-fixes.md](./done/140-visual-layout-overflow-fixes.md).
 
 **Deferred to v2 (preserved as roadmap, no code removed):** [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md), [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md).
 
 ## 👉 Next agent — start here
+
+**Visual Layout Editor Polish & Auto Align (2026-05-30):**
+- Fixed 12-to-24 column grid coordinate double-scaling bug by implementing versioned `layoutVersion = 2` checks.
+- Refined Properties Panel triggers to only open when the Pencil edit icon is explicitly clicked.
+- Added `Width: {span}` labels directly to canvas component boxes for better alignment visibility.
+- Defaulted layout placement/missing field span to 6 (4 components per row).
+- Implemented the smart **Auto Align** button toolbar action to clean and wrap canvas layouts to sequential rows of span 6 components.
 
 **Field Library Phase C1 is complete**:
 

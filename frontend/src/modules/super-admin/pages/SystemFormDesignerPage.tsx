@@ -464,8 +464,10 @@ const SystemFormDesignerPage: React.FC = () => {
             <div className="h-14 bg-slate-900 text-white px-6 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <LayoutTemplate size={18} className="text-indigo-400" />
-                <h2 className="font-bold text-sm">
-                  Designing: {editingTemplate.name}
+                <h2 className="font-bold text-sm flex items-center gap-2">
+                  <span className="text-white/60">System Wizard</span>
+                  <span className="text-white/30 font-normal">/</span>
+                  <span className="text-indigo-400">{editingTemplate.name}</span>
                 </h2>
                 <span className="text-xs text-slate-500 font-mono bg-slate-800 px-2 py-0.5 rounded">
                   {editingTemplate.code}
@@ -500,6 +502,7 @@ const SystemFormDesignerPage: React.FC = () => {
                   defaultActions={systemTemplateToFormConfig(editingTemplate).actions || []}
                   onSave={handleSaveLayout}
                   onCancel={() => setEditingTemplate(null)}
+                  hideHeader={true}
                 />
               </MockDesignerShell>
             </div>

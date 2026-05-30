@@ -20,11 +20,12 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 import { useWizard } from '../WizardContext';
 import { 
-  ArrowLeft, ArrowRight, Check, CheckCircle2, Plus,
+  ArrowLeft, ArrowRight, Check, CheckCircle2, Plus, Pencil,
   LayoutTemplate, Settings, 
   FileText, Shield, Layers, PlayCircle, MousePointerClick, Save,
   GripVertical, X, Sliders, ChevronDown, ChevronRight, Palette
@@ -71,6 +72,7 @@ interface DocumentDesignerProps {
   availableTableColumns?: any[];
   defaultRules: DocumentRule[];
   defaultActions: DocumentAction[];
+  hideHeader?: boolean;
 }
 
 export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
@@ -82,7 +84,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   availableFields = [],
   availableTableColumns = [],
   defaultRules = [],
-  defaultActions = []
+  defaultActions = [],
+  hideHeader = false
 }) => {
   const { companyId } = useCompanyAccess();
   // Pull existing company forms from WizardContext so the uniqueness check
@@ -163,6 +166,22 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     { key: 'ACTIONS', order: 4 },
   ];
 
+  const sanitizeLayoutConfig = (layoutConfig: DocumentLayoutConfig): DocumentLayoutConfig => {
+    if (!layoutConfig || !layoutConfig.sections) return layoutConfig;
+    const sanitized = JSON.parse(JSON.stringify(layoutConfig));
+    Object.values(sanitized.sections).forEach((section: any) => {
+      if (Array.isArray(section.fields)) {
+        section.fields.forEach((f: any) => {
+          // Clamp colSpan to be at least 1 and at most GRID_COLS
+          f.colSpan = Math.max(1, Math.min(GRID_COLS, f.colSpan || 1));
+          // Clamp col to be at least 0 and at most GRID_COLS - f.colSpan
+          f.col = Math.max(0, Math.min(GRID_COLS - f.colSpan, f.col || 0));
+        });
+      }
+    });
+    return sanitized;
+  };
+
   const createEmptyLayoutConfig = (): DocumentLayoutConfig => ({
     sections: SECTION_DEFAULTS.reduce((acc, section) => {
       acc[section.key] = { order: section.order, fields: [] };
@@ -186,7 +205,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         };
       });
 
-      normalized[mode] = next;
+      normalized[mode] = sanitizeLayoutConfig(next);
     });
 
     return normalized;
@@ -210,26 +229,57 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   const migrateTo24Columns = (configToMigrate: DocumentFormConfig) => {
     const normalizedConfig = normalizeDocumentConfig(configToMigrate);
     
-    // We check classic mode as a benchmark
-    const needsMigration = Object.values(normalizedConfig.uiModeOverrides).some(mode => {
+    // If it has already been migrated or is explicitly version 2, skip migration
+    if (normalizedConfig.metadata?.layoutVersion === 2) {
+      return normalizedConfig;
+    }
+
+    // Check if any field exceeds 12 columns. If it does, it's already a 24-column layout.
+    const hasFieldExceeding12 = Object.values(normalizedConfig.uiModeOverrides).some(mode => {
       return Object.values(mode?.sections || {}).some(section =>
         Array.isArray(section.fields) &&
-        section.fields.some(f => (f.col + f.colSpan) <= 12 && f.colSpan > 0 && f.colSpan < 12)
+        section.fields.some(f => f.colSpan > 12 || (f.col + f.colSpan) > 12)
       );
     });
 
-    if (!needsMigration) return normalizedConfig;
+    if (hasFieldExceeding12) {
+      // It's already 24 columns, just mark it as version 2 so we don't scan it again
+      const updatedConfig = JSON.parse(JSON.stringify(normalizedConfig));
+      if (!updatedConfig.metadata) updatedConfig.metadata = {};
+      updatedConfig.metadata.layoutVersion = 2;
+      return updatedConfig;
+    }
 
+    // Otherwise, check if it's a non-empty layout where every field is within 12 columns
+    // and there's at least one field to migrate
+    const hasFields = Object.values(normalizedConfig.uiModeOverrides).some(mode => {
+      return Object.values(mode?.sections || {}).some(section =>
+        Array.isArray(section.fields) && section.fields.length > 0
+      );
+    });
+
+    if (!hasFields) {
+      // Empty layout, just mark as version 2
+      const updatedConfig = JSON.parse(JSON.stringify(normalizedConfig));
+      if (!updatedConfig.metadata) updatedConfig.metadata = {};
+      updatedConfig.metadata.layoutVersion = 2;
+      return updatedConfig;
+    }
+
+    // We migrate only if all fields fit in 12 columns and it has fields to double
     const newConfig = JSON.parse(JSON.stringify(normalizedConfig));
     Object.values(newConfig.uiModeOverrides).forEach((mode: any) => {
       Object.values(mode?.sections || {}).forEach((section: any) => {
         (section.fields || []).forEach((f: any) => {
           // Double the horizontal coordinates
-          f.col = f.col * 2;
-          f.colSpan = f.colSpan * 2;
+          f.col = (f.col || 0) * 2;
+          f.colSpan = (f.colSpan || 1) * 2;
         });
       });
     });
+    
+    if (!newConfig.metadata) newConfig.metadata = {};
+    newConfig.metadata.layoutVersion = 2;
     
     return newConfig;
   };
@@ -307,7 +357,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       isMultiLine: true,
       tableColumns: [],
       actions: defaultActions,
-      uiModeOverrides: {} as Record<UIMode, DocumentLayoutConfig>
+      uiModeOverrides: {} as Record<UIMode, DocumentLayoutConfig>,
+      metadata: { layoutVersion: 2 }
     };
 
     // Ensure uiModeOverrides is NEVER null and has both modes initialized
@@ -490,11 +541,14 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         }
       });
 
-      // 1. Filter out fields that are no longer selected or actions that are no longer enabled
+      // 1. Filter out fields that are no longer selected, actions that are no longer enabled, or have undefined coordinates
       Object.keys(currentModeConfig.sections).forEach(sectionKey => {
         const section = currentModeConfig.sections[sectionKey as SectionType];
         if (section?.fields) {
           section.fields = section.fields.filter((f: FieldLayout) => {
+            if (f.row === undefined || f.col === undefined || f.colSpan === undefined) {
+              return false;
+            }
             if (f.fieldId.startsWith('action_')) {
               const actionType = f.fieldId.replace('action_', '');
               return config.actions.find(a => a.type === actionType)?.enabled ?? false;
@@ -526,7 +580,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       // 3. Place missing fields
       missingFieldIds.forEach(fieldId => {
         let targetSection: SectionType = 'HEADER';
-        let span = isWindows ? 8 : 24; // Scaled for 24 columns
+        let span = 6; // Default to 6 columns (4 components per row)
         
         const systemField = systemFields.find(f => f.id === fieldId);
         const availableField = availableFields.find(f => f.id === fieldId);
@@ -534,13 +588,13 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
         if (systemField) {
           targetSection = (systemField.sectionHint as SectionType) || 'HEADER';
-          span = systemField.id === 'lineItems' ? 24 : (isWindows ? 6 : 24);
+          span = systemField.id === 'lineItems' ? 24 : 6;
         } else if (availableField) {
           targetSection = (availableField.sectionHint as SectionType) || 'HEADER';
-          span = isWindows ? 8 : 24;
+          span = 6;
         } else if (isAction) {
           targetSection = 'ACTIONS';
-          span = isWindows ? 4 : 24; // Actions are usually smaller
+          span = 6;
         }
 
         // Final safety check for target section existence
@@ -568,6 +622,51 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     setConfig(prev => ({ ...prev, uiModeOverrides: newOverrides }));
   };
 
+  const handleAutoAlign = () => {
+    const overrides = JSON.parse(JSON.stringify(config.uiModeOverrides || '{}'));
+    const modeConfig = overrides[previewMode];
+    if (!modeConfig || !modeConfig.sections) return;
+
+    Object.keys(modeConfig.sections).forEach(sectionKey => {
+      const section = modeConfig.sections[sectionKey as SectionType];
+      if (!section || !Array.isArray(section.fields)) return;
+
+      // Sort fields by their current row and col to preserve their relative order
+      const sortedFields = [...section.fields].sort((a, b) => {
+        if (a.row !== b.row) return a.row - b.row;
+        return a.col - b.col;
+      });
+
+      let currentRow = 0;
+      let currentCol = 0;
+
+      sortedFields.forEach(field => {
+        let span = 6;
+        if (field.fieldId === 'lineItems') {
+          span = 24;
+        }
+
+        // If it doesn't fit on this row, wrap to the next row
+        if (currentCol + span > 24) {
+          currentRow++;
+          currentCol = 0;
+        }
+
+        field.row = currentRow;
+        field.col = currentCol;
+        field.colSpan = span;
+        field.rowSpan = 1;
+
+        currentCol += span;
+      });
+
+      section.fields = sortedFields;
+    });
+
+    setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
+    toast.success(`Auto-aligned layout to 4 components per row (${previewMode} mode)`);
+  };
+
   // --- HANDLERS ---
 
   const handleTemplateSelect = (templateId: string) => {
@@ -589,7 +688,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       rules: template.config.rules || defaultRules,
       actions: template.config.actions || defaultActions,
       // Priority: Use template's layout if it exists, otherwise fallback to empty sections
-      uiModeOverrides: template.config.uiModeOverrides || prev.uiModeOverrides,
+      uiModeOverrides: template.config.uiModeOverrides ? normalizeUiModeOverrides(template.config.uiModeOverrides) : prev.uiModeOverrides,
     }));
     
     // Sync selectedFieldIds from template if available
@@ -703,7 +802,6 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     e.dataTransfer.setData('fieldId', fieldId);
     e.dataTransfer.setData('section', section);
     e.dataTransfer.setData('type', 'field');
-    setSelectedField({ id: fieldId, section });
   };
 
   const handleDropField = (e: React.DragEvent, targetSection: string, targetRow: number, targetCol: number) => {
@@ -757,7 +855,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
            fieldsToMove.forEach(f => {
               f.row = targetRow;
               f.col = currentColOffset;
-              currentColOffset += (f.colSpan || 1);
+              f.colSpan = Math.max(1, Math.min(GRID_COLS - currentColOffset, f.colSpan || 1));
+              currentColOffset += f.colSpan;
            });
        } else {
            // Fallback if logic fails somehow
@@ -781,7 +880,6 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     targetFields.push(...fieldsToMove);
 
     setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
-    setSelectedField({ id: fieldId, section: targetSection });
   };
 
   // --- RESIZE HANDLERS ---
@@ -842,6 +940,9 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       if (key === 'colSpan') {
          const newSpan = parseInt(value);
          field.colSpan = Math.max(1, Math.min(GRID_COLS - field.col, newSpan));
+      } else if (key === 'col') {
+         const newCol = parseInt(value);
+         field.col = Math.max(0, Math.min(GRID_COLS - field.colSpan, newCol));
       } else {
          // @ts-ignore
          field[key] = value;
@@ -923,15 +1024,15 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     return (
       <div 
         key={sectionName}
-        className={`mb-6 border border-gray-200 rounded-xl overflow-hidden shadow-sm transition-all relative group ${bgColorClass}`}
+        className={`mb-6 border border-gray-200 rounded-xl overflow-hidden shadow-sm transition-all relative group ${bgColorClass} min-w-[800px]`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDropField(e, sectionName, maxRow, 0)}
       >
         <div className={`px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-white/60 backdrop-blur-sm sticky top-0 z-[15]`}>
           <div className="flex items-center gap-3">
              <button 
-               onClick={() => setExpandedVisualSections(prev => prev.includes(sectionName) ? prev.filter(s => s !== sectionName) : [...prev, sectionName])}
-               className="p-1 hover:bg-gray-100 rounded text-gray-400"
+                onClick={() => setExpandedVisualSections(prev => prev.includes(sectionName) ? prev.filter(s => s !== sectionName) : [...prev, sectionName])}
+                className="p-1 hover:bg-gray-100 rounded text-gray-400"
              >
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
              </button>
@@ -944,36 +1045,36 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
              </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 shrink-0">
              {/* Background Style Picker */}
-             <div className="flex items-center gap-1.5 p-1 bg-gray-50 rounded-lg border border-gray-100">
-                <Palette size={12} className="text-gray-400 mx-1" />
+             <div className="flex items-center gap-1.5 p-1 bg-gray-50 rounded-lg border border-gray-100 shrink-0">
+                <Palette size={12} className="text-gray-400 mx-1 shrink-0" />
                 {softColors.map(color => (
                    <button
                      key={color.id}
                      onClick={() => updateSectionStyle(sectionName, color.hex)}
-                     className={`w-4 h-4 rounded-full border-2 transition-all ${color.class} ${currentHex === color.hex ? 'border-indigo-500 scale-125 shadow-sm' : 'border-white hover:scale-110 shadow-xs'}`}
+                     className={`w-4 h-4 rounded-full border-2 transition-all shrink-0 ${color.class} ${currentHex === color.hex ? 'border-indigo-500 scale-125 shadow-sm' : 'border-white hover:scale-110 shadow-xs'}`}
                      title={`Set background to ${color.id}`}
                    />
                 ))}
              </div>
 
-             <div className="h-6 w-px bg-gray-200"></div>
+             <div className="h-6 w-px bg-gray-200 shrink-0"></div>
 
-             <div className="flex gap-1">
+             <div className="flex gap-1 shrink-0">
                 <button 
                   onClick={() => updateSectionOrder(sectionName, layout.order - 1)} 
                   disabled={layout.order === 0} 
-                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-20"
+                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-20 shrink-0"
                 >
-                   <ArrowLeft size={14} className="rotate-90" />
+                   <ArrowLeft size={14} className="rotate-90 shrink-0" />
                 </button>
                 <button 
                   onClick={() => updateSectionOrder(sectionName, layout.order + 1)} 
                   disabled={layout.order === 4} 
-                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-20"
+                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-20 shrink-0"
                 >
-                   <ArrowRight size={14} className="rotate-90" />
+                   <ArrowRight size={14} className="rotate-90 shrink-0" />
                 </button>
              </div>
           </div>
@@ -1050,30 +1151,39 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                              // Though true grouped dragging would require more complex offset logic
                              handleDragStartField(e, field.fieldId, sectionName);
                            }}
-                           onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
+                           onClick={(e) => { 
+                             e.stopPropagation(); 
+                             if (selectedField) {
+                               setSelectedField({ id: field.fieldId, section: sectionName }); 
+                             }
+                           }}
                            className={`
                              rounded-lg border p-1 flex justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all
                              ${isAnySelected ? 'ring-2 ring-indigo-500 border-indigo-500 z-20 bg-indigo-50/50' : 'bg-white border-gray-200 text-gray-700 hover:border-indigo-400 cursor-move'}
                            `}
                            style={{
                              gridColumnStart: group[0].col + 1,
-                             gridColumnEnd: `span ${totalColSpan}`,
+                             gridColumnEnd: `span ${Math.min(GRID_COLS - group[0].col, totalColSpan)}`,
                              gridRowStart: group[0].row + 1,
                              gridRowEnd: `span ${group[0].rowSpan || 1}`,
                            }}
                          >
-                           <div className="flex w-full h-full items-center justify-center divide-x divide-gray-200">
+                           <div className="flex w-full h-full items-center justify-center divide-x divide-gray-200 mr-6">
                              {group.map((gf: any) => {
                                 const actionType = gf.fieldId.replace('action_', '');
                                 const actionDef = config.actions.find(a => a.type === actionType);
-                                const label = gf.labelOverride || actionDef?.label || actionType;
                                 const isSelected = selectedField?.id === gf.fieldId;
                                 
                                 return (
                                   <div 
                                     key={gf.fieldId}
                                     className={`flex-1 h-full flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-50'}`}
-                                    onClick={(e) => { e.stopPropagation(); setSelectedField({ id: gf.fieldId, section: sectionName }); }}
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      if (selectedField) {
+                                        setSelectedField({ id: gf.fieldId, section: sectionName }); 
+                                      }
+                                    }}
                                   >
                                     <span className="font-medium text-[10px] uppercase truncate px-1 text-center">{gf.iconOverride || 'Icon'}</span>
                                   </div>
@@ -1081,6 +1191,15 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                              })}
                            </div>
                            
+                           {/* Edit Pencil Button (visible on hover) */}
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
+                             className="absolute right-1 top-1 p-0.5 bg-white hover:bg-indigo-50 text-indigo-600 rounded border border-gray-200 hover:border-indigo-300 transition-all opacity-0 group-hover/item:opacity-100 shadow-sm z-30 pointer-events-auto"
+                             title="Edit properties"
+                           >
+                             <Pencil size={10} />
+                           </button>
+
                            {/* Resize Handle */}
                            <div 
                              className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-indigo-400/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center z-30"
@@ -1106,7 +1225,12 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     key={field.fieldId}
                     draggable
                     onDragStart={(e) => handleDragStartField(e, field.fieldId, sectionName)}
-                    onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (selectedField) {
+                        setSelectedField({ id: field.fieldId, section: sectionName }); 
+                      }
+                    }}
                     className={`
                       rounded border p-2 flex flex-col justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all min-w-0
                       ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-500 z-20' : ''}
@@ -1124,6 +1248,18 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     <span className="truncate w-full text-center md:text-start font-medium pointer-events-none">
                       {field.labelOverride || meta?.label || field.fieldId}
                     </span>
+                    <span className="text-[9px] text-slate-400 font-semibold mt-1 pointer-events-none select-none">
+                      Width: {field.colSpan}
+                    </span>
+                    
+                    {/* Edit Pencil Button (visible on hover) */}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
+                      className="absolute right-2 top-2 p-1 bg-white hover:bg-indigo-50 text-indigo-600 rounded border border-gray-200 hover:border-indigo-300 transition-all opacity-0 group-hover/item:opacity-100 shadow-sm z-30 pointer-events-auto"
+                      title="Edit properties"
+                    >
+                      <Pencil size={10} />
+                    </button>
                     
                     {/* Resize Handle */}
                     <div 
@@ -1234,18 +1370,25 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     <button onClick={() => setPreviewMode('classic')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'classic' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Classic</button>
                     <button onClick={() => setPreviewMode('windows')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'windows' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Windows</button>
                   </div>
+                  <button 
+                    onClick={handleAutoAlign} 
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-700 shadow-sm transition-all"
+                    title="Auto Align all fields to rows of 4 components (span 6)"
+                  >
+                    <Sliders size={14} /> Auto Align
+                  </button>
                   <button onClick={() => setIsTesting(true)} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700">
                     <PlayCircle size={14} /> Test Run
                   </button>
                 </div>
              </div>
              
-              <div className="flex-1 overflow-y-auto pr-2 pb-10">
+              <div className="flex-1 overflow-auto pr-2 pb-10">
                  {sortedSections.map(([key, _]) => renderInteractiveGrid(key))}
 
                  {/* Table Column Configuration (Live Interactive Table) */}
                  {config.isMultiLine && (
-                    <div className="mt-8 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="mt-8 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 min-w-[800px]">
                        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
                           <div className="flex items-center gap-3">
                              <div className="bg-indigo-500 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20"><Layers size={20} /></div>
@@ -1578,16 +1721,23 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
          </div>
 
          {/* Properties Panel (Right Sidebar) */}
-         <div className="w-72 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col shrink-0 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-               <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                 <Sliders size={16} /> Properties
-               </h3>
-            </div>
-            
-            <div className="p-4 flex-1 overflow-y-auto">
-                {selectedField ? (
-                  <div className="space-y-6">
+         {selectedField && (
+            <div className="w-64 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col shrink-0 overflow-hidden">
+               <div className="p-4 border-b border-gray-100 bg-slate-50 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-700 flex items-center gap-2 text-xs">
+                    <Sliders size={14} className="text-slate-500" /> Field Properties
+                  </h3>
+                  <button 
+                    onClick={() => setSelectedField(null)} 
+                    className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Close properties panel"
+                  >
+                    <X size={14} />
+                  </button>
+               </div>
+               
+               <div className="p-4 flex-1 overflow-y-auto">
+                   <div className="space-y-6">
                      <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Field ID</label>
                         <div className="text-sm font-mono bg-gray-100 p-2 rounded text-gray-600">{selectedField.id}</div>
@@ -1770,15 +1920,10 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                            ))}
                         </select>
                      </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-400 py-10">
-                     <MousePointerClick size={40} className="mx-auto mb-2 opacity-50" />
-                     <p className="text-sm">Select a field in the grid to edit its properties.</p>
-                  </div>
-                )}
-             </div>
-          </div>
+                 </div>
+              </div>
+           </div>
+         )}
        </div>
     );
   };
@@ -2202,7 +2347,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-800 relative">
+    <div className="flex h-full bg-slate-50 font-sans text-slate-800 relative overflow-hidden">
       {/* Test Run Modal */}
       {isTesting && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8">
@@ -2234,96 +2379,109 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         </div>
       )}
 
-      {/* Top Bar */}
-      <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-20 shrink-0">
-         <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 text-white p-2 rounded-lg"><LayoutTemplate size={20} /></div>
-            <div>
-               <h1 className="text-lg font-bold text-slate-800 leading-tight flex items-center gap-2">
-                 Document Wizard 
-                 {currentStep > 1 && config.name && config.name !== 'New Document Form' && (
-                    <>
-                       <span className="text-gray-300 font-normal">/</span>
-                       <span className="text-indigo-600">{config.name}</span>
-                    </>
-                 )}
-               </h1>
-            </div>
+      {/* Left Vertical Stepper Sidebar */}
+      <div className="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0 h-full overflow-y-auto py-8 px-6">
+         <div className="mb-8 flex items-center gap-2">
+            <div className="bg-indigo-600 text-white p-1.5 rounded-lg"><LayoutTemplate size={16} /></div>
+            <span className="font-bold text-slate-800 text-sm">Form Designer</span>
          </div>
-         <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm font-medium">Cancel</button>
+
+         <div className="flex-1 flex flex-col gap-6 relative">
+           {STEPS.map((step, idx) => {
+             const isActive = step.id === currentStep;
+             const isCompleted = step.id < currentStep;
+             const isPlayable = step.id <= currentStep;
+             const Icon = step.icon;
+
+             return (
+               <div
+                 key={step.id}
+                 onClick={() => handleStepClick(step.id)}
+                 className={`flex items-start gap-3 relative z-10 transition-all group ${!isPlayable ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+               >
+                 {/* Connector line between steps */}
+                 {idx < STEPS.length - 1 && (
+                   <div className={`absolute left-[15px] top-8 w-0.5 h-[calc(100%+1.5rem)] -z-10 ${step.id < currentStep ? 'bg-green-500' : 'bg-gray-200'}`} />
+                 )}
+
+                 <div className={`
+                   w-8 h-8 rounded-full flex items-center justify-center border-2 shrink-0 transition-all 
+                   ${isActive ? 'bg-indigo-600 border-indigo-600 text-white shadow-md ring-4 ring-indigo-100 scale-105' : isCompleted ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-400 group-hover:border-indigo-300'}
+                 `}>
+                   {isCompleted ? <Check size={16} /> : <Icon size={16} />}
+                 </div>
+                 <div className="flex flex-col min-w-0">
+                   <span className={`text-[10px] font-black uppercase tracking-wider block leading-tight ${isActive ? 'text-indigo-600' : 'text-gray-500'}`}>
+                     {step.title}
+                   </span>
+                   <span className="text-[9px] text-gray-400 font-medium leading-normal mt-0.5">
+                     {step.description}
+                   </span>
+                 </div>
+               </div>
+             );
+           })}
+         </div>
       </div>
 
-      {/* Read-only Warning Banner */}
-      {isReadOnly && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3">
-          <div className="flex items-center gap-2 text-yellow-800">
-            <span className="font-semibold">⚠️ Read Only:</span>
-            <span className="text-sm">This is a system default document. Use the Clone button to create a customizable version.</span>
-          </div>
-        </div>
-      )}
-
-      {/* Steps */}
-      <div className="flex items-center justify-between px-8 py-6 bg-white border-b border-gray-200 shrink-0 overflow-x-auto gap-4">
-        {STEPS.map((step, idx) => {
-          const isActive = step.id === currentStep;
-          const isCompleted = step.id < currentStep;
-          const isPlayable = step.id <= currentStep; // User can click back
-          const Icon = step.icon;
-          
-          return (
-            <div 
-              key={step.id} 
-              onClick={() => handleStepClick(step.id)}
-              className={`flex flex-col items-center relative z-10 w-24 min-w-[6rem] transition-all group ${!isPlayable ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              <div className={`
-                w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all 
-                ${isActive ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg ring-4 ring-indigo-100 scale-110' : isCompleted ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-400 group-hover:border-indigo-300'}
-              `}>
-                {isCompleted ? <Check size={20} /> : <Icon size={20} />}
+      {/* Right Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+         {/* Top Bar */}
+         {!hideHeader && (
+           <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-20 shrink-0">
+              <div className="flex items-center gap-3">
+                 <div>
+                    <h1 className="text-lg font-bold text-slate-800 leading-tight flex items-center gap-2">
+                      Document Wizard 
+                      {currentStep > 1 && config.name && config.name !== 'New Document Form' && (
+                         <>
+                            <span className="text-gray-300 font-normal">/</span>
+                            <span className="text-indigo-600">{config.name}</span>
+                         </>
+                      )}
+                    </h1>
+                 </div>
               </div>
-              <div className="text-center mt-2">
-                <span className={`text-[10px] font-black uppercase tracking-tighter block leading-none ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
-                  {step.title}
-                </span>
-                {isActive && step.description && (
-                  <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-tight whitespace-nowrap">{step.description}</span>
-                )}
-              </div>
-              {idx < STEPS.length - 1 && (
-                <div className={`absolute top-5 left-[calc(50%+1.25rem)] w-[calc(100%-2rem)] h-0.5 -z-10 ${step.id < currentStep ? 'bg-green-400' : 'bg-gray-100'}`} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-8">
-         {renderContent()}
-      </div>
-
-      {/* Footer */}
-      <div className="h-20 bg-white border-t border-gray-200 px-8 flex items-center justify-between shrink-0">
-         <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"><ArrowLeft size={18} /> Back</button>
-         {currentStep === 7 ? (
-            <button 
-              onClick={() => onSave?.(config)} 
-              disabled={isReadOnly}
-              className="flex items-center gap-2 px-8 py-2.5 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              <Save size={18} /> {isReadOnly ? 'Read Only' : 'Save & Close'}
-            </button>
-         ) : (
-            <button 
-              onClick={handleNext} 
-              disabled={(currentStep === 1 && !selectedTemplate) || isValidating}
-              className="flex items-center gap-2 px-8 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isValidating ? 'Validating...' : 'Next'} <ArrowRight size={18} />
-            </button>
+              <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm font-medium">Cancel</button>
+           </div>
          )}
+
+         {/* Read-only Warning Banner */}
+         {isReadOnly && (
+           <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3 shrink-0">
+             <div className="flex items-center gap-2 text-yellow-800">
+               <span className="font-semibold">⚠️ Read Only:</span>
+               <span className="text-sm">This is a system default document. Use the Clone button to create a customizable version.</span>
+             </div>
+           </div>
+         )}
+
+         {/* Content */}
+         <div className="flex-1 overflow-y-auto p-8">
+            {renderContent()}
+         </div>
+
+         {/* Footer */}
+         <div className="h-20 bg-white border-t border-gray-200 px-8 flex items-center justify-between shrink-0">
+            <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"><ArrowLeft size={18} /> Back</button>
+            {currentStep === 7 ? (
+               <button 
+                 onClick={() => onSave?.(normalizeDocumentConfig(config))} 
+                 disabled={isReadOnly}
+                 className="flex items-center gap-2 px-8 py-2.5 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+               >
+                 <Save size={18} /> {isReadOnly ? 'Read Only' : 'Save & Close'}
+               </button>
+            ) : (
+               <button 
+                 onClick={handleNext} 
+                 disabled={(currentStep === 1 && !selectedTemplate) || isValidating}
+                 className="flex items-center gap-2 px-8 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+                 {isValidating ? 'Validating...' : 'Next'} <ArrowRight size={18} />
+               </button>
+            )}
+         </div>
       </div>
     </div>
   );

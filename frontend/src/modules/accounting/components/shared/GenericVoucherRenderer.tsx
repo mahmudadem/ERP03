@@ -3842,6 +3842,22 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       return null;
     }
 
+    // Deduplicate grandtotaldoc and totalamount representing the same "Total Amount" visual block
+    const seenLowerIds = new Set<string>();
+    const filteredSummaryFields = summaryFields.filter((field: any) => {
+      const lowerFid = (field.fieldId || '').toLowerCase();
+      const canonicalId = (lowerFid === 'grandtotaldoc' || lowerFid === 'totalamount') ? 'total_amount_canonical' : lowerFid;
+      if (seenLowerIds.has(canonicalId)) {
+        return false;
+      }
+      seenLowerIds.add(canonicalId);
+      return true;
+    });
+
+    if (filteredSummaryFields.length === 0) {
+      return null;
+    }
+
     return (
       <div
         className="sticky bottom-0 z-20 border-t border-[var(--color-border)] backdrop-blur shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-colors"
@@ -3849,7 +3865,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       >
         <div className="px-4 py-3">
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
-            {summaryFields.map((field: any) => {
+            {filteredSummaryFields.map((field: any) => {
               const value = getFieldValue(field.fieldId);
               const unit = getSummaryFieldUnit(field.fieldId);
 
@@ -3974,12 +3990,30 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     if (sortedFields.length === 0) {
       return null;
     }
+
+    let filteredFields = sortedFields;
+    if (sectionKey === 'FOOTER') {
+      const seenLowerIds = new Set<string>();
+      filteredFields = sortedFields.filter((field: any) => {
+        const lowerFid = (field.fieldId || '').toLowerCase();
+        const canonicalId = (lowerFid === 'grandtotaldoc' || lowerFid === 'totalamount') ? 'total_amount_canonical' : lowerFid;
+        if (seenLowerIds.has(canonicalId)) {
+          return false;
+        }
+        seenLowerIds.add(canonicalId);
+        return true;
+      });
+    }
+
+    if (filteredFields.length === 0) {
+      return null;
+    }
     
     return (
        <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle(sectionKey)}>
          {title && <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{title}</h3>}
         <div className="grid gap-x-2 xl:gap-x-4 gap-y-2" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}>
-          {renderFieldList(sortedFields)}
+          {renderFieldList(filteredFields)}
         </div>
       </div>
     );

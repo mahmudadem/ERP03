@@ -1061,12 +1061,16 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden border border-slate-200">
             <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  {editingForm && (editingForm as any).id
-                    ? `Edit: ${editingForm.name}`
-                    : editingForm
-                      ? `New Form (from ${editingForm.name})`
-                      : 'New Form'}
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <span className="text-slate-800">Document Wizard</span>
+                  <span className="text-gray-300 font-normal">/</span>
+                  <span className="text-indigo-600">
+                    {editingForm && (editingForm as any).id
+                      ? editingForm.name
+                      : editingForm
+                        ? editingForm.name
+                        : 'New Form'}
+                  </span>
                 </h2>
                 <p className="text-xs text-slate-500">{moduleLabel} Forms Management</p>
               </div>
@@ -1090,6 +1094,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                 availableTableColumns={editorFieldCatalog.availableTableColumns}
                 defaultRules={MODULE_DEFAULTS[module].rules as any}
                 defaultActions={MODULE_DEFAULTS[module].actions as any}
+                hideHeader={true}
               />
             </div>
           </div>

@@ -2,6 +2,92 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Visual Layout Editor Polish & Auto Align
+
+**Task:** Fix layout double-scaling bug, refine properties panel auto-show triggers, display width labels, default layout span to 6, and implement Auto Align tool.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/141-visual-layout-editor-polish-and-auto-align.md](./done/141-visual-layout-editor-polish-and-auto-align.md)
+
+**What landed:**
+- Fixed the 12-to-24 columns double-migration bug in `migrateTo24Columns` helper by checking `metadata.layoutVersion === 2` and only doubling coordinates when all fields fit in 12 columns. Added `layoutVersion: 2` default to new forms metadata.
+- Refined Properties panel triggers so the panel only opens when clicking the Pencil edit button (preventing layout shifts during drags). Click selection is only allowed if the sidebar is already open.
+- Displayed `Width: {field.colSpan}` monospace width label badges on canvas components.
+- Defaulted layout placement/missing field span to 6 (for exactly 4 items per row).
+- Added a smart **Auto Align** button next to Test Run, with `handleAutoAlign()` logic that organizes all fields in every section into sequential rows of 4 components (span 6), wrapping columns at the grid limit.
+- Verified TypeScript compilation successfully (`npm run typecheck` in frontend -> passed).
+
+**Time spent:** ~0.4h
+
+
+## 2026-05-30 (Sat) — Visual Layout Editor Overflow & Grid Constraints Fix
+
+**Task:** Fix Visual Layout Editor grid overflow and answer grid queries.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Explained to the user that the layout editor uses a 24-column CSS grid with relative coordinate structures. Out-of-bounds fields (`col + colSpan > 24`) cause implicit grid columns, stretching the container and causing overflow.
+- Explained that the TopBar Widget Canvas in `DraggableWidgetSpace.tsx` uses `@dnd-kit/core` with a 96-column layout managed dynamically with collision checks and style toolbars.
+- Added `sanitizeLayoutConfig` helper to `DocumentDesigner.tsx` to automatically clamp all loaded, cloned, or selected base template fields so that `colSpan` and `col` strictly fit within the 24-column range.
+- Added coordinate safety constraints when modifying Column Start (`col`) inside the Properties Panel `updateSelectedField` function, preventing manually entered values from exceeding remaining columns.
+- Clamped action group layouts and drop calculations to prevent spans from exceeding remaining grid columns.
+- Filtered out fields with missing/undefined coordinates from coordinates state on load, preventing them from rendering with default row 0 col 0 spans and stacking on top of each other.
+- Defaulted the Windows layout autoplacement width span to `6` instead of `8` for available fields and actions, enabling exactly 4 components per row on new designs.
+- Shrunk the Right Sidebar Properties Panel from `w-72` (288px) to `w-64` (256px) so it occupies less space and leaves more room for the visual designer canvas.
+- Verified compilation (`npm run typecheck:web` -> passed) and build (`npm run build:web` -> passed).
+- Updated AST Graph successfully (`npm run graph:update`).
+
+**Time spent:** ~0.5h
+
+
+## 2026-05-30 (Sat) — Visual Layout Editor Polish (Breadcrumbs & Collapsible Properties)
+
+**Task:** Fix visual wizard layout bugs: syntax error typo, horizontal canvas overflow, table designer alignment, duplicate stacked headers, and always-on properties panel.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Reverted the syntax error `retu <div` back to `return (` in `DocumentDesigner.tsx` and removed a duplicate premature closing `</div>` tag that was closing the grid card container early.
+- Restored the Document Wizard vertical stepper sidebar layout in `DocumentDesigner.tsx` with connected steps and background line indicators.
+- Changed the main canvas scroll wrapper class from `overflow-y-auto` to `overflow-auto` (enabling horizontal scrollbars) to prevent canvas sections with `min-w-[800px]` from stretching the parent container and pushing the properties panel off-screen.
+- Added `min-w-[800px]` to the Table Column Configuration designer card to prevent column headers from squeezing and to keep it visually aligned with grid sections.
+- Consolidated stacked headers: moved the breadcrumb layout title to the modal upper header band in `VoucherDesignerPage.tsx` and `SystemFormDesignerPage.tsx` and passed `hideHeader={true}` to hide the duplicate inner topbar header.
+- Collapsed the Properties Panel by default when no field is selected, allowing the canvas to occupy the full modal width. Added an absolute positioned Pencil hover edit button on grid fields to open the panel, and an `X` close button on the panel header to collapse it.
+- Verified TypeScript compilation (`npm run typecheck:web` -> passed) and build packaging (`npm run build:web` -> passed).
+
+**Time spent:** ~0.8h
+
+## 2026-05-30 (Sat) — Wizard vertical stepper layout & Forms visual fixes
+
+**Task:** Refactor Document Wizard steps to vertical layout, and address visual bugs in voucher renderer (duplicate footer cards and exchange rate icon/spacing).
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Refactored `DocumentDesigner.tsx` layout to position step navigation vertically inside a left sidebar column instead of the horizontal header, with custom SVG vector icons and continuous line connectors.
+- Deduplicated `grandTotalDoc` and `totalAmount` footer summary cards in `GenericVoucherRenderer.tsx` for both Classic and Windows modes by introducing a common canonical mapping filtering pass.
+- Upgraded the currency conversion indicator icon in `CurrencyExchangeWidget.tsx` from raw unicode `→` (which rendered as a hyphen `-`) to a vector `<svg>` arrow supporting automatic RTL rotation.
+- Adjusted container min-widths inside `CurrencyExchangeWidget.tsx` to `min-w-[72px]` for the left identifier and `min-w-[64px]` for the right, eliminating text cramping and excessive whitespace.
+- Created completion reports `planning/done/138-forms-visual-fixes.md` and `planning/done/139-vertical-stepper-wizard.md`.
+- Verified TypeScript compilation (`npm run typecheck:web` -> passed) and build packaging (`npm run build:web` -> passed).
+
+**Time spent:** ~0.8h
+
+## 2026-05-30 (Sat) — UI Worktree Deletion
+
+**Task:** Delete the UI revamp playground worktree (`D:\DEV2026\ERP03-ui-lab`) as requested.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What was done:**
+- Unregistered the `D:\DEV2026\ERP03-ui-lab` worktree from Git using `git worktree remove`.
+- Identified and terminated running node/esbuild processes locked in that directory (specifically the Vite dev server processes).
+- Recursively deleted all files and subfolders within `D:\DEV2026\ERP03-ui-lab`. The directory is now completely empty.
+- Note: The empty parent directory folder itself is temporarily locked by another active process (likely the editor/Codex or terminal), which will be released once closed.
+
+**Time spent:** ~0.1h.
+
 ## 2026-05-30 (Sat) — Main Workspace Layout Revamp Integration & Search Widget Polish
 
 **Task:** Resolve pop-stash merge conflicts from merging the revamp playground worktree, register the Search Widget in the Widget Designer UI, and perform full typecheck/build verification.
