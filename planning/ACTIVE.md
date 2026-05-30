@@ -26,7 +26,11 @@
 
 **Deferred — left in allowlist:** 11 super-admin AI/cert/voucher-template confirms, useAiSettings deprecate confirm, DocumentDesigner preview stubs. Migrate as part of the AI super-admin polish thread.
 
-**Next step:** continue Phase 1 — promote `AccountSelectorSimple` + `DatePicker` to `components/shared/selectors/` (move + shim re-export), then move on to Phase 2 (list/action standardization) per [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md).
+**Shared selector promotion (2026-05-30):** `DatePicker` and `AccountSelectorSimple` are now re-exported from [frontend/src/components/shared/selectors/](../frontend/src/components/shared/selectors/) and added to the barrel. Implementation files stay in `modules/accounting/...` for now; new code should import from `@/components/shared/selectors`. Migration of existing 42+ import sites can happen incrementally.
+
+**Done report:** [done/142-phase-1-p0-confirms-dates-taxonomy.md](./done/142-phase-1-p0-confirms-dates-taxonomy.md).
+
+**Next step:** Task 132 Phase 2 — list/action standardization per [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md).
 
 **Visual Layout Editor Polish & Auto Align (2026-05-30):**
 - Fixed 12-to-24 column grid coordinate double-scaling bug by implementing versioned `layoutVersion = 2` checks.

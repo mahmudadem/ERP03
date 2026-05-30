@@ -26,6 +26,10 @@
 
 **Time spent:** ~2h
 
+**Follow-on (same session):**
+- Wrote completion report [planning/done/142-phase-1-p0-confirms-dates-taxonomy.md](./done/142-phase-1-p0-confirms-dates-taxonomy.md) with QA script.
+- Promoted `DatePicker` and `AccountSelectorSimple` to `components/shared/selectors/` via shim re-export files. Updated barrel `index.ts`. Implementation files stay put; future imports use the canonical path. Typecheck clean.
+
 ## 2026-05-30 (Sat) — Task 132 Phase 0.5 chrome inventory
 
 **Task:** Catalog the chrome surface before broad Task 132 refactor work begins.
