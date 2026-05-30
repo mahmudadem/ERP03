@@ -8,6 +8,7 @@ interface ClockWidgetProps {
   showBackground?: boolean;
   clockFormat?: "12h" | "24h";
   showSeconds?: boolean;
+  compact?: boolean;
 }
 
 export const ClockWidget: React.FC<ClockWidgetProps> = ({
@@ -15,6 +16,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({
   showBackground = true,
   clockFormat = "24h",
   showSeconds = true,
+  compact = false
 }) => {
   const { i18n } = useTranslation('common');
   const [time, setTime] = useState(new Date());
@@ -26,11 +28,12 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({
 
   return (
     <div className={clsx(
-      "flex justify-center items-center gap-1.5 px-3 rounded-lg text-xs font-bold text-slate-700 h-full w-full overflow-hidden transition-all",
+      "flex justify-center items-center gap-1.5 rounded-lg text-xs font-bold text-slate-700 h-full w-full overflow-hidden transition-all",
+      !compact && "px-3",
       showBackground && "bg-slate-100 shadow-sm",
       showBorder && "border border-slate-200"
     )}>
-      <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+      {!compact && <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
       {time.toLocaleTimeString(i18n.language, {
         hour: '2-digit',
         minute: '2-digit',

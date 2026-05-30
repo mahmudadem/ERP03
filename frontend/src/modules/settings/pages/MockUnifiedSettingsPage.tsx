@@ -23,7 +23,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
       try {
         setLoading(true);
         const res = await salesApi.getSettings();
-        const data = res?.data ?? res;
+        const data = (res as any)?.data ?? res;
         setSettings(data);
         setOriginalSettings(data);
       } catch (err) {

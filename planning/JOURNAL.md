@@ -2,6 +2,108 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — UI/UX: Full-Width TopBar & Pinned/Overlay Sidebar Layout Refactor
+**Task:** Refactor application shell, topbar, and sidebar layout to make TopBar span full width, remove brand header/logo, and support dynamic overlay/docked sidebar behaviors.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/ui-ux-revamp-playground`
+
+**What was done:**
+- Restructured `AppShell.tsx` to mount `TopBar` as a full-width header at the root layout level, below which the sidebar and main workspace reside.
+- Positioned `Sidebar.tsx` dynamically so that it floats on top of the TopBar (`z-50 top-0 bottom-0`) when unpinned, and docks below the TopBar (`z-30 top-12 bottom-0`) when pinned on desktop viewports.
+- Configured dynamic margins on the main workspace container to shift content to the side only when the sidebar is open and pinned (in accordion mode) or dynamically based on open/closed widths (in flat mode).
+- Configured theme variables to set the sidebar and topbar background surfaces to be darker than the main workspace content area (using tertiary in light mode and secondary in dark mode).
+- Removed `backdrop-blur-sm` from the overlay backdrop in `AppShell.tsx` to prevent blurring the background application when the sidebar is expanded.
+- Removed the branding/logo button ("ERP03 Enterprise") from the sidebar, replacing it with a clean utility header containing the pin button and a close button (which centers the Pin icon when collapsed in flat mode).
+- Configured Sidebar to behave conditionally based on the user's `sidebarMode` selection: in accordion mode, the sidebar completely hides off-screen when closed; in flat mode, it collapses to a persistent narrow 6rem (`w-24`) icon-strip on desktop viewports below the TopBar.
+- Removed the `lg:hidden` constraint on the TopBar hamburger menu button so it is visible on all screen sizes to toggle the sidebar.
+- Verified TypeScript compilation and Vite build bundle successfully without errors.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm run build` -> passed.
+
+## 2026-05-29 (Fri) — UI/UX: Dead Widget Code Cleanup and Documentation Sync
+**Task:** Remove unused widget and tray components and synchronize TopBar documentation.  
+**Agent:** Antigravity (Gemini 3.5 Flash)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+
+**What landed:**
+- Deleted deprecated `WidgetTray.tsx` and `MockWidgetTray.tsx` layout components.
+- Deleted unused modular widgets `CompanyInfoWidget.tsx` and `CompanyLogoWidget.tsx`.
+- Updated architecture (`docs/architecture/topbar-precision-widget-layout.md`) and user guide (`docs/user-guide/topbar-widget-layout.md`) documentation to describe the inline visual styles model and grid-based canvas editor.
+- Updated completion report `planning/done/132-topbar-widget-tray-and-unified-settings.md`.
+- Verified typescript compilation (`npm run typecheck`) and bundle build (`npm run build`) pass cleanly with zero errors.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm run build` -> passed.
+
+**Time spent:** ~1.5h  
+
+## 2026-05-29 (Fri) — UI/UX: Layout Filtering, Search Widget, and UI Mode Enhancements
+
+**Task:** Clean up and filter TopBar layout design styles (keeping only 1, 2, 3, 5, 10, 11, 16, 17, 18), implement a new Search Widget, and modify UIModeWidget to display both UI modes always with highlights.  
+**Agent:** Antigravity (Gemini 1.5 Pro)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+
+**What landed:**
+- Cleaned up `TopBar.tsx`, `UiLabDashboard.tsx`, and `AppearanceSettingsPage.tsx` to retain only the selected 9 widget layouts (1, 2, 3, 5, 10, 11, 16, 17, 18) and discarded all other variations.
+- Created `SearchWidget.tsx` featuring standard component props, localized placeholder values, and fluid CSS focus transitions. Registered the widget within Zustand store (`DEFAULT_WIDGETS`), `TopBar.tsx`, and `UiLabDashboard.tsx` configurations.
+- Upgraded the compact mode rendering in `UIModeWidget.tsx` to display both "Win" and "Web" buttons side-by-side on the TopBar at all times, highlighting the currently active mode.
+- Verified that all modifications are isolated to the git worktree `D:\DEV2026\ERP03-ui-lab` and compiled typecheck and production build successfully.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm run build` -> passed.
+
+**Time spent:** ~1.2h  
+**Result:** Code compiles cleanly, production build passes, and UI features are fully updated per user specifications.
+
+## 2026-05-29 (Fri) — UI/UX: Real Inline TopBar Widgets & 20 Layout Gallery Sync
+
+**Task:** Integrate 9 real widgets into the 20 TopBar style variations, support full width mockups in UI Lab, remove duplicate icons with compact prop, and sync selectors with settings.  
+**Agent:** Antigravity (Gemini 1.5 Pro)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+**Completion report:** [planning/done/132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md)
+
+**What landed:**
+- Added `compact?: boolean` prop to all 9 system widgets to hide internal icons and horizontal margins/padding inside inline designs.
+- Integrated a simplified UIMode switcher toggler and hidden text labels (e.g. "Currency: ") when `compact` is active.
+- Configured real system TopBar inline widget rendering to pass `compact={true}` to widgets, and forced all 9 widgets to `visible: true` inside Zustand store on mount.
+- Added a "TopBar Widget Style" select dropdown configuration inside `AppearanceSettingsPage.tsx` under *Layout & Behavior* and synced it bidirectionally with header actions via custom event listeners.
+- Expanded the width of `UiLabDashboard.tsx` to full screen dimensions in widgets view, loaded initial widgets ordering from store, and wired drag-and-drop actions to update the Zustand store in real-time.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed.
+
+**Time spent:** ~3.0h  
+**Result:** Widgets are fully integrated inline inside the real TopBar and settings page, and preview beautifully at full screen width inside the UI Lab playground. Ready for QA.
+
+## 2026-05-29 (Fri) — UI/UX Revamp: Integrated TopBar Widgets & Style Preferences
+
+**Task:** Pro-level UI/UX Revamp (Widget Bar Style Gallery, Live Reordering, and Unified Settings) directly in the worktree codebase.  
+**Agent:** Antigravity (Gemini 3.5 Pro)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+**Completion report:** [planning/done/132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md)
+
+**What landed:**
+- Integrated the 20 widget bar layout styles directly inside the real system `TopBar.tsx` centered space, matching the exact spacing and width bounds of the system header.
+- Wired all 9 real widget components (Company Details, Fiscal Year, Base Currency, Approval Mode, UI Mode, Clock, Date, Notes, Alarm) using actual React components rather than mock text.
+- Implemented native HTML5 drag-and-drop reordering inside the live `TopBar.tsx`, allowing users to grab and move widgets dynamically, updating the Zustand store and layout coordinates on the fly.
+- Mounted a widget layout style dropdown selector in the TopBar configuration menu, allowing users to choose their preferred layout (1 to 20) on any page, persisting choices in `localStorage`.
+- Removed the secondary collapsible `WidgetTray` in `AppShell.tsx` and consolidated all widget layouts inside the `TopBar` itself.
+- Re-coded the UI Lab page (`UiLabDashboard.tsx`) to render all 20 live mockups using system widgets side-by-side with select buttons.
+- Fixed TypeScript typecheck compilation error in `MockUnifiedSettingsPage.tsx`.
+- Ensured 100% clean isolation of changes inside the dedicated worktree repository (`D:\DEV2026\ERP03-ui-lab`) with zero uncommitted changes in the main codebase (`D:\DEV2026\ERP03`).
+
+**Verification:**
+- `npm run typecheck` inside `frontend/` -> passed.
+- `npm run build` inside `frontend/` -> passed.
+
+**Time spent:** ~3.2h  
+**Result:** Live widgets integrated, draggable, styled in 20 distinct presets, and fully selectable via the TopBar widgets menu inside the worktree repository.
+
 ## 2026-05-28 (Thu) — Phase F: Purchase Price Lists
 
 **Task:** Add Purchases Purchase Price Lists parity as currency-specific supplier pricing agreements.  

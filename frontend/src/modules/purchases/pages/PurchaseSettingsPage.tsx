@@ -226,6 +226,13 @@ const PurchaseSettingsPage: React.FC = () => {
         tabs={tabs as any}
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as TabId)}
+        hasChanges={hasChanges}
+        onSave={handleSave}
+        onDiscard={() => {
+          setSettings(originalSettings);
+          toast('Changes discarded', { icon: 'ℹ️' });
+        }}
+        saving={saving}
       >
       <AccountingIntegrationStatus
         moduleCode="purchases"
@@ -240,6 +247,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="grid gap-8 md:grid-cols-2">
@@ -364,6 +372,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-8">
@@ -514,6 +523,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
@@ -563,6 +573,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <div className="space-y-6">
             <Card className="p-6 border-indigo-100 bg-indigo-50/30">

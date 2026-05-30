@@ -7,6 +7,7 @@ import { SidebarItem } from '../components/navigation/SidebarItem';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,6 +20,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   const { sidebarMode, sidebarPinned, toggleSidebarPinned, appearanceSettings } = useUserPreferences();
   const { t, i18n } = useTranslation('common');
   const isRtl = i18n.dir() === 'rtl';
+  const isDesktop = useBreakpoint('lg');
+  const isPinnedAndDocked = sidebarPinned && isDesktop;
+
   const toggleSidebar = () => {
     if (onToggle) onToggle();
   };
@@ -77,72 +81,83 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   }, [sections, searchQuery]);
 
   const isTailwindPlayTheme = appearanceSettings?.id === 'tailwind-play';
+  const isAccordionMode = sidebarMode === 'submenus';
+
+  // Determine classes based on mode (accordion vs flat) and screen sizes
+  let asideClasses: string[] = [];
+  if (isAccordionMode) {
+    if (isPinnedAndDocked) {
+      asideClasses = [
+        "top-12 bottom-0 z-30",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        "w-[var(--app-sidebar-width)]",
+        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
+      ];
+    } else {
+      asideClasses = [
+        "top-0 bottom-0 z-50",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        "w-64 shadow-2xl",
+        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
+      ];
+    }
+  } else {
+    // Flat Mode (not accordion): persistent narrow icon-strip on desktop when closed
+    if (isDesktop) {
+      asideClasses = [
+        "top-12 bottom-0 z-30",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        isOpen ? "w-64" : "w-24",
+        "translate-x-0",
+      ];
+    } else {
+      // Mobile: standard overlay drawer
+      asideClasses = [
+        "top-0 bottom-0 z-50",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        "w-64 shadow-2xl",
+        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
+      ];
+    }
+  }
 
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 z-40 flex flex-col print:hidden",
-        "bg-[var(--app-sidebar-surface)] border-[var(--color-border)]",
-        "transition-all duration-300 ease-out",
-        isRtl
-          ? [
-              "right-0 border-l",
-              "lg:w-[var(--app-sidebar-width)] lg:translate-x-0",
-              "w-64",
-              isOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0",
-            ]
-          : [
-              "left-0 border-r",
-              "lg:w-[var(--app-sidebar-width)] lg:translate-x-0",
-              "w-64",
-              isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-            ]
+        "fixed flex flex-col print:hidden bg-[var(--app-sidebar-surface)] border-[var(--color-border)] transition-all duration-300 ease-out",
+        asideClasses
       )}
     >
-      {/* Header / Logo Area */}
+      {/* Header Area with Pin & Close Buttons */}
       <div className={clsx(
-        "flex items-center justify-between px-4 shrink-0 group/header",
-        isTailwindPlayTheme ? "h-16 border-b-0" : "h-20 border-b border-[var(--color-border)]"
+        "h-12 flex items-center shrink-0 border-b border-[var(--color-border)]",
+        isOpen ? "justify-between px-4" : "justify-center px-2"
       )}>
-        <button 
-          onClick={toggleSidebar}
-          className="flex items-center gap-3 overflow-hidden transition-all duration-300 hover:opacity-80 outline-none"
-        >
-          <div className={clsx(
-            "rounded-[var(--radius-md)] bg-primary-600 flex items-center justify-center shrink-0",
-            isTailwindPlayTheme ? "w-6 h-6" : "w-10 h-10 shadow-lg shadow-primary-500/20"
-          )}>
-            <LayoutDashboard className={clsx("text-white", isTailwindPlayTheme ? "w-4 h-4" : "w-6 h-6")} />
-          </div>
-          {isOpen && (
-            <div className="flex flex-col items-start animate-in fade-in slide-in-from-left-2 duration-300">
-              <span className="text-lg font-black text-[var(--app-sidebar-text)] tracking-tighter leading-none">
-                ERP<span className="text-primary-600">03</span>
-              </span>
-              {!isTailwindPlayTheme && (
-                <span className="text-[10px] text-[var(--app-sidebar-muted)] font-bold uppercase tracking-widest mt-0.5">
-                  Enterprise
-                </span>
-              )}
-            </div>
+        {/* Pin button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleSidebarPinned();
+          }}
+          className={clsx(
+            "p-1.5 rounded-lg transition-all duration-200",
+            sidebarPinned 
+              ? "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400 rotate-[-45deg]" 
+              : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
           )}
+          title={sidebarPinned ? "Unpin Sidebar" : "Pin Sidebar"}
+        >
+          <Icons.Pin className="w-4 h-4" />
         </button>
 
-        {isOpen && !isTailwindPlayTheme && (
+        {/* Close button */}
+        {isOpen && (
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleSidebarPinned();
-            }}
-            className={clsx(
-              "p-1.5 rounded-lg transition-all duration-200 animate-in fade-in zoom-in duration-300",
-              sidebarPinned 
-                ? "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400 rotate-[-45deg]" 
-                : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
-            )}
-            title={sidebarPinned ? "Unpin Sidebar" : "Pin Sidebar"}
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] transition-all duration-200"
+            title="Close Sidebar"
           >
-            <Icons.Pin className="w-4 h-4" />
+            <Icons.X className="w-4 h-4" />
           </button>
         )}
       </div>

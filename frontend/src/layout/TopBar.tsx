@@ -392,16 +392,17 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
     // NOTE: NO overflow-hidden here — dropdowns must be able to render outside the bar
     <header
       className={clsx(
-        "h-12 flex items-center justify-between pl-0 pr-3 sticky top-0 z-50 shrink-0 print:hidden",
+        "h-12 flex items-center justify-between px-3 sticky top-0 z-40 shrink-0 print:hidden",
         isTailwindPlayTheme
-          ? "bg-[rgba(var(--color-bg-primary-rgb),0.8)] backdrop-blur-md border-b-0"
-          : "bg-[rgba(var(--color-bg-primary-rgb),0.8)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm",
+          ? "bg-[var(--app-topbar-surface)] backdrop-blur-md border-b-0"
+          : "bg-[var(--app-topbar-surface)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm",
       )}
     >
-      {/* Hamburger — mobile only */}
+      {/* Hamburger menu toggle button */}
       <button
         onClick={onMenuClick}
-        className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded lg:hidden shrink-0"
+        className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded shrink-0"
+        title="Toggle Sidebar"
       >
         <Menu className="w-5 h-5" />
       </button>

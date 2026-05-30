@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-**Task:** Phase F — Purchases parity. Purchase Price Lists now built and ready for QA (2026-05-28).
-**Status:** In progress on `codex/phase-f-vendor-groups`. Remaining parity gaps: RFQ.
-**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md).
+**Task:** Pro-level UI/UX Revamp (TopBar Inline Widgets & settings layout sync) directly in the worktree codebase.
+**Status:** Complete. Retained selected widget styles (1, 2, 3, 5, 10, 11, 16, 17, 18), removed the rest, integrated a new Search widget, and updated UIModeWidget to display both modes always. Completed dead widget code cleanup (deleted unused widgets and WidgetTray) and synchronized documentation. Also refactored app layout to support full-width TopBar, removed logo/project text from Sidebar header, and implemented toggled overlay/docked Sidebar behaviors. Verified typecheck and build.
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md).
 
 ## 👉 Next agent — start here
 
@@ -118,4 +118,5 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-Next step is to manually QA **Vendor Groups**, then continue **Phase F Purchases parity** with **Purchase Price Lists**, then RFQ.
+Next step is to merge these UI/UX layout enhancements from the worktree repository, then continue Purchases module parity / RFQ implementation.
+

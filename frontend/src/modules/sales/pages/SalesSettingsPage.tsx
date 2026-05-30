@@ -282,6 +282,14 @@ const SalesSettingsPage: React.FC = () => {
         tabs={tabs as any}
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as TabId)}
+        hasChanges={hasChanges}
+        onSave={handleSave}
+        onDiscard={() => {
+          setSettings(originalSettings);
+          setCredentialDraftByAccountId({});
+          toast('Changes discarded', { icon: 'ℹ️' });
+        }}
+        saving={saving}
       >
       <AccountingIntegrationStatus
         moduleCode="sales"
@@ -296,6 +304,7 @@ const SalesSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="grid md:grid-cols-2 gap-8">
@@ -464,6 +473,7 @@ const SalesSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-8">
@@ -615,6 +625,7 @@ const SalesSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
@@ -668,6 +679,7 @@ const SalesSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <div className="space-y-6">
             <Card className="p-6">
@@ -862,6 +874,7 @@ const SalesSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <div className="space-y-6">
             {/* Base Policy Summary */}
