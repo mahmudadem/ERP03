@@ -2,6 +2,23 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Main Workspace Layout Revamp Integration & Search Widget Polish
+
+**Task:** Resolve pop-stash merge conflicts from merging the revamp playground worktree, register the Search Widget in the Widget Designer UI, and perform full typecheck/build verification.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What was done:**
+- Resolved pop-stash conflicts in `planning/JOURNAL.md` by deduplicating layout refactor entries and merging the stashed runtime control hardening entry.
+- Discovered and fixed a missing registration for the **Search Widget** in the TopBar Widget Designer page (`TopbarWidgetDesignerPage.tsx`), importing `SearchWidget` and placing it in `WIDGET_COMPONENT_MAP`, `WIDGET_TYPES`, and `DEFAULT_WIDGETS`.
+- Logged pre-existing architecture boundary check violations in `AccountingBoundary.test.ts` (relating to Reporting use cases) under **Rabbit Holes** in `planning/ACTIVE.md`.
+- Staged and committed all pending files successfully. Cleaned up the merged stash.
+- Verified TypeScript compilation (`npm run typecheck` -> exit 0) and Vite production build (`npm run build` -> exit 0).
+
+**Time spent:** ~0.5h.
+
+**Result:** Layout enhancements are integrated, search widget is customizable via settings, and the worktree compiles cleanly.
+
 ## 2026-05-30 (Sat) — Runtime voucher field control UI hardening
 
 **Task:** Manual QA follow-up from SI Direct default-form design: runtime voucher header controls looked inconsistent because text inputs, selectors, date picker, and specialized widgets each owned their own input chrome.
