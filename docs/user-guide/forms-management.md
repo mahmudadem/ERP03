@@ -10,6 +10,10 @@ This page is the single home for everything related to the *documents* a module 
 
 A **voucher type** is the business concept ("Sales Invoice"). A **form** is a specific layout/variant of that type that your team will actually use ("Sales Invoice (Direct)", "Sales Invoice (Linked to SO)"). One type can have several forms. Locked default forms ship from the system catalog; you can also clone them or build your own.
 
+The field list in the form wizard comes from the platform **Field Library** managed by the super-admin. This keeps field names and selector types consistent across modules. Required financial and operational fields stay protected, so company admins can change layout and optional fields without weakening posting or reporting controls.
+
+Super-admins also use the Field Library when maintaining the system voucher templates. The library defines the official field identity and selector type, while each voucher template decides where that field belongs and whether it is required for that document type.
+
 ---
 
 ## Sections of the page

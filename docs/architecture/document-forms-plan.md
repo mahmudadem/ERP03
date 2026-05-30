@@ -6,6 +6,37 @@
 
 ---
 
+## Current Implementation Note — Field Library Phase C2 (2026-05-30)
+
+Phase C2 moves the super-admin voucher template editor onto the Field Library authoring path:
+
+- Super-admin client: `frontend/src/api/superAdmin/fieldLibrary.ts`
+- Consumer: `frontend/src/pages/super-admin/pages/VoucherTemplateEditorPage.tsx`
+
+The voucher template editor now loads `/super-admin/field-library` and offers non-deprecated Field Library entries in the Header Fields and Line Fields tabs. Field Library entries provide the official field identity, label, renderer type, class, selector relation hint, and library version. The voucher template still owns Layer 2 decisions: whether a field is present on a voucher type, whether it is required for that voucher type, and whether a line field is visible as a table column.
+
+Table columns are now derived from the template's own `layout.lineFields` rather than from a frontend hardcoded voucher-type map. That keeps tenant-facing grids aligned with the saved template definition and avoids global field leakage between Sales, Purchases, and Accounting.
+
+Guardrail: C2 does not change posting services, ledger generation, source-document validation, or the saved company form shape. Existing saved template fields are preserved when opened, and custom metadata remains available for informational fields that should be stored under `metadata.customFields` instead of the posting payload.
+
+Remaining future slice: persist smaller company-level form overrides/diffs with `fieldVersionsSeen` and add drift warnings when a company form has seen an older Field Library version.
+
+## Previous Implementation Note — Field Library Phase C1 (2026-05-30)
+
+The Forms Management page now reads the tenant-resolved Field Library through:
+
+- Backend: `GET /tenant/designer/field-library`
+- Frontend client: `frontend/src/api/fieldLibraryApi.ts`
+- Consumer: `frontend/src/modules/shared/pages/VoucherDesignerPage.tsx`
+
+This is a conservative consumption slice. The wizard hydrates its field picker from the Field Library so super-admin-managed labels and renderer types can reach Accounting, Sales, and Purchases Forms Management without a frontend redeploy. If the API is unavailable, the page falls back to the previous built-in catalog so form editing remains available.
+
+Important boundary: Phase C1 does **not** change the persisted form model and does **not** make the Field Library's flat `fieldClass`/`alwaysMandatory` flags authoritative for existing module fields. Existing module-specific mandatory/optional behavior is preserved from the previous Forms Management catalog and from installed voucher templates. This avoids accidentally making a Sales/Purchase field mandatory or dropping existing line-table fields such as `warehouseId` before Layer 2 type placement is live.
+
+Phase C2 later made the super-admin voucher template editor consume the Field Library directly. Company forms can now move toward a smaller override/diff model with `fieldVersionsSeen` for lazy drift detection.
+
+---
+
 ## 1. Problem Statement
 
 The ERP has multiple document types across modules:

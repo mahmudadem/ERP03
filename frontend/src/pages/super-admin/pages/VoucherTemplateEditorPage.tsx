@@ -3,6 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../../components/ui/Button';
 import { superAdminVoucherTypesApi } from '../../../api/superAdmin';
+import {
+  FieldLibraryEntry,
+  superAdminFieldLibraryApi,
+} from '../../../api/superAdmin/fieldLibrary';
 import { VoucherTypeDefinition } from '../../../designer-engine/types/VoucherTypeDefinition';
 import { FieldDefinition } from '../../../designer-engine/types/FieldDefinition';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
@@ -53,255 +57,65 @@ type SuggestedField = Partial<FieldDefinition> & {
   id: string;
   label: string;
   type: any;
+  fieldLibraryVersion?: number;
 };
 
-const f = (id: string, label: string, type: any, extra: Partial<FieldDefinition> = {}): SuggestedField => ({
-  id,
-  name: id,
-  label,
-  type,
-  required: false,
-  readOnly: false,
+const shouldOfferLibraryEntry = (entry: FieldLibraryEntry, templateCode: string | undefined, scope: FieldScope) => {
+  if (entry.deprecated) return false;
+
+  const normalizedTemplateCode = String(templateCode || '').toLowerCase();
+  if (
+    entry.supportedTypes?.length &&
+    normalizedTemplateCode &&
+    !entry.supportedTypes.map(type => type.toLowerCase()).includes(normalizedTemplateCode)
+  ) {
+    return false;
+  }
+
+  if (
+    entry.excludedTypes?.length &&
+    normalizedTemplateCode &&
+    entry.excludedTypes.map(type => type.toLowerCase()).includes(normalizedTemplateCode)
+  ) {
+    return false;
+  }
+
+  if (scope === 'line') {
+    return entry.sectionHint === 'BODY';
+  }
+
+  return entry.sectionHint !== 'BODY';
+};
+
+const libraryTypeToDesignerType = (type: string): FieldDefinition['type'] => {
+  const normalized = type.toLowerCase();
+  if (normalized === 'text') return 'TEXT';
+  if (normalized === 'textarea') return 'TEXTAREA';
+  if (normalized === 'number' || normalized === 'amount') return 'NUMBER';
+  if (normalized === 'date') return 'DATE';
+  if (normalized === 'select') return 'SELECT';
+  if (normalized === 'checkbox' || normalized === 'boolean') return 'CHECKBOX';
+  if (normalized === 'relation') return 'RELATION';
+  return type as FieldDefinition['type'];
+};
+
+const libraryEntryToField = (entry: FieldLibraryEntry): SuggestedField => ({
+  id: entry.id,
+  name: entry.id,
+  label: entry.label,
+  type: libraryTypeToDesignerType(entry.type),
+  required: entry.alwaysMandatory ?? false,
+  readOnly: entry.fieldClass === 'computed',
   isPosting: false,
   postingRole: null,
-  fieldClass: 'system_optional',
-  bindingTarget: 'payload',
-  nameLocked: false,
-  computed: false,
+  fieldClass: entry.fieldClass,
+  bindingTarget: entry.fieldClass === 'custom_metadata' ? 'metadata.customFields' : 'payload',
+  nameLocked: entry.fieldClass !== 'custom_metadata',
+  computed: entry.fieldClass === 'computed',
   schemaVersion: 2,
-  ...extra,
+  relationTarget: entry.selectorBinding?.collection,
+  fieldLibraryVersion: entry.version,
 });
-
-const SUPPORTED_FIELDS_BY_CODE: Record<string, { header: SuggestedField[]; line: SuggestedField[] }> = {
-  journal_entry: {
-    header: [
-      f('date', 'Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('reference', 'Reference', 'TEXT'),
-      f('description', 'Description', 'TEXT'),
-    ],
-    line: [
-      f('accountId', 'Account', 'account-selector', { required: true, fieldClass: 'system_core' }),
-      f('side', 'Side', 'SELECT', { required: true, fieldClass: 'system_core' }),
-      f('amount', 'Amount', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('currency', 'Currency', 'currency-selector'),
-      f('exchangeRate', 'Parity', 'NUMBER'),
-      f('equivalent', 'Equivalent', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-      f('notes', 'Notes', 'TEXT'),
-      f('costCenterId', 'Cost Center', 'cost-center-selector'),
-    ],
-  },
-  payment: {
-    header: [
-      f('date', 'Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('payFromAccountId', 'Paid From', 'ACCOUNT_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('description', 'Description', 'TEXT'),
-    ],
-    line: [
-      f('payToAccountId', 'Pay To', 'account-selector', { required: true, fieldClass: 'system_core' }),
-      f('amount', 'Amount', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('notes', 'Notes', 'TEXT'),
-    ],
-  },
-  receipt: {
-    header: [
-      f('date', 'Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('depositToAccountId', 'Deposit To', 'ACCOUNT_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('description', 'Description', 'TEXT'),
-    ],
-    line: [
-      f('receiveFromAccountId', 'Receive From', 'account-selector', { required: true, fieldClass: 'system_core' }),
-      f('amount', 'Amount', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('notes', 'Notes', 'TEXT'),
-    ],
-  },
-  opening_balance: {
-    header: [
-      f('date', 'Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('description', 'Description', 'TEXT'),
-    ],
-    line: [
-      f('accountId', 'Account', 'account-selector', { required: true, fieldClass: 'system_core' }),
-      f('side', 'Side', 'SELECT', { required: true, fieldClass: 'system_core' }),
-      f('amount', 'Amount', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('notes', 'Notes', 'TEXT'),
-      f('costCenterId', 'Cost Center', 'cost-center-selector'),
-    ],
-  },
-  fx_revaluation: {
-    header: [
-      f('date', 'As Of Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('targetAccountId', 'Gain/Loss Account', 'ACCOUNT_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('description', 'Description', 'TEXT'),
-    ],
-    line: [
-      f('accountId', 'Account', 'account-selector', { required: true, fieldClass: 'system_core' }),
-      f('currency', 'Currency', 'currency-selector'),
-      f('foreignBalance', 'Foreign Balance', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-      f('newRate', 'New Rate', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('deltaBase', 'Equivalent Delta', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-    ],
-  },
-  sales_invoice: {
-    header: [
-      f('date', 'Invoice Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('customerId', 'Customer', 'customer-account-selector', { required: true, fieldClass: 'system_core', relationTarget: 'customers' }),
-      f('salesOrderId', 'Sales Order', 'SELECT', { relationTarget: 'sales_orders' }),
-      f('warehouseId', 'Default Warehouse', 'warehouse-selector', { relationTarget: 'warehouses' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('totalAmount', 'Total Amount', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-      f('description', 'Description', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('warehouseId', 'Warehouse', 'warehouse-selector'),
-      f('invoicedQty', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('uom', 'UOM', 'TEXT'),
-      f('unitPriceDoc', 'Unit Price', 'NUMBER'),
-      f('taxCodeId', 'Tax Code', 'SELECT'),
-      f('lineTotal', 'Line Total', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-      f('description', 'Description', 'TEXT'),
-    ],
-  },
-  sales_order: {
-    header: [
-      f('orderDate', 'Order Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('customerId', 'Customer', 'party-selector', { required: true, fieldClass: 'system_core', relationTarget: 'customers' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('notes', 'Internal Notes', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('warehouseId', 'Warehouse', 'warehouse-selector'),
-      f('orderedQty', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('uom', 'UOM', 'TEXT'),
-      f('unitPriceDoc', 'Unit Price', 'NUMBER'),
-      f('taxCodeId', 'Tax Code', 'SELECT'),
-      f('lineTotal', 'Line Total', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-      f('description', 'Description', 'TEXT'),
-    ],
-  },
-  delivery_note: {
-    header: [
-      f('deliveryDate', 'Delivery Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('salesOrderId', 'Sales Order', 'SELECT', { relationTarget: 'sales_orders' }),
-      f('customerId', 'Customer', 'party-selector', { relationTarget: 'customers' }),
-      f('warehouseId', 'Warehouse', 'warehouse-selector', { required: true, fieldClass: 'system_core', relationTarget: 'warehouses' }),
-      f('notes', 'Notes', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('soLineId', 'SO Line', 'TEXT'),
-      f('deliveredQty', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('uom', 'UOM', 'TEXT'),
-      f('description', 'Description', 'TEXT'),
-    ],
-  },
-  sales_return: {
-    header: [
-      f('returnDate', 'Return Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('salesInvoiceId', 'Sales Invoice', 'SELECT', { relationTarget: 'sales_invoices' }),
-      f('deliveryNoteId', 'Delivery Note', 'SELECT', { relationTarget: 'delivery_notes' }),
-      f('salesOrderId', 'Sales Order', 'SELECT', { relationTarget: 'sales_orders' }),
-      f('warehouseId', 'Warehouse', 'warehouse-selector', { relationTarget: 'warehouses' }),
-      f('reason', 'Reason', 'TEXT', { required: true, fieldClass: 'system_core' }),
-      f('notes', 'Notes', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('warehouseId', 'Warehouse', 'warehouse-selector'),
-      f('returnQty', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('uom', 'UOM', 'TEXT'),
-      f('taxCodeId', 'Tax Code', 'SELECT'),
-      f('description', 'Description', 'TEXT'),
-    ],
-  },
-  purchase_invoice: {
-    header: [
-      f('date', 'Invoice Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('supplierId', 'Supplier', 'vendor-account-selector', { required: true, fieldClass: 'system_core', relationTarget: 'vendors' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('totalAmount', 'Total Amount', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-      f('description', 'Description', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('quantity', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('unitPrice', 'Unit Price', 'NUMBER'),
-      f('lineTotal', 'Line Total', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-    ],
-  },
-  purchase_order: {
-    header: [
-      f('orderDate', 'Order Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('supplierId', 'Supplier', 'party-selector', { required: true, fieldClass: 'system_core', relationTarget: 'vendors' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('notes', 'Internal Notes', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('quantity', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('unitPrice', 'Unit Price', 'NUMBER'),
-      f('lineTotal', 'Line Total', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),
-    ],
-  },
-  goods_receipt: {
-    header: [
-      f('receiptDate', 'Receipt Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('purchaseOrderId', 'Purchase Order', 'SELECT', { relationTarget: 'purchase_orders' }),
-      f('vendorId', 'Vendor', 'party-selector', { relationTarget: 'vendors' }),
-      f('warehouseId', 'Warehouse', 'warehouse-selector', { required: true, fieldClass: 'system_core', relationTarget: 'warehouses' }),
-      f('notes', 'Notes', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('poLineId', 'PO Line', 'TEXT'),
-      f('receivedQty', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('uom', 'UOM', 'TEXT'),
-      f('unitCostDoc', 'Unit Cost', 'NUMBER'),
-      f('moveCurrency', 'Currency', 'currency-selector'),
-      f('fxRateMovToBase', 'FX Rate', 'NUMBER'),
-      f('fxRateCCYToBase', 'CCY Rate', 'NUMBER'),
-      f('description', 'Description', 'TEXT'),
-    ],
-  },
-  purchase_return: {
-    header: [
-      f('returnDate', 'Return Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('purchaseInvoiceId', 'Purchase Invoice', 'SELECT', { relationTarget: 'purchase_invoices' }),
-      f('goodsReceiptId', 'Goods Receipt', 'SELECT', { relationTarget: 'goods_receipts' }),
-      f('purchaseOrderId', 'Purchase Order', 'SELECT', { relationTarget: 'purchase_orders' }),
-      f('vendorId', 'Vendor', 'party-selector', { relationTarget: 'vendors' }),
-      f('warehouseId', 'Warehouse', 'warehouse-selector', { required: true, fieldClass: 'system_core', relationTarget: 'warehouses' }),
-      f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
-      f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
-      f('reason', 'Reason', 'TEXT', { required: true, fieldClass: 'system_core' }),
-      f('notes', 'Notes', 'TEXT'),
-    ],
-    line: [
-      f('itemId', 'Item', 'item-selector', { required: true, fieldClass: 'system_core' }),
-      f('piLineId', 'PI Line', 'TEXT'),
-      f('grnLineId', 'GRN Line', 'TEXT'),
-      f('poLineId', 'PO Line', 'TEXT'),
-      f('returnQty', 'Quantity', 'NUMBER', { required: true, fieldClass: 'system_core' }),
-      f('uom', 'UOM', 'TEXT'),
-      f('unitCostDoc', 'Unit Cost', 'NUMBER'),
-      f('taxCodeId', 'Tax Code', 'SELECT'),
-      f('accountId', 'Account', 'account-selector'),
-      f('description', 'Description', 'TEXT'),
-    ],
-  },
-};
-
 // Simple Tab Component
 const Tabs = ({ active, onChange, tabs }: { active: string, onChange: (t: string) => void, tabs: Array<{ id: string; label: string }> }) => (
   <div className="border-b border-gray-200 mb-4">
@@ -342,7 +156,7 @@ const buildFieldPatch = (current: FieldDefinition, updates: Partial<FieldDefinit
     next.nameLocked = false;
   } else {
     next.bindingTarget = 'payload';
-    next.nameLocked = false;
+    next.nameLocked = next.nameLocked ?? false;
   }
 
   if (next.fieldClass === 'computed') {
@@ -373,16 +187,21 @@ const FieldListEditor = ({
   t,
   templateCode,
   scope,
+  fieldLibraryEntries,
 }: {
   fields: FieldDefinition[];
   onChange: (f: FieldDefinition[]) => void;
   t: (k: string, o?: any) => string;
   templateCode?: string;
   scope: FieldScope;
+  fieldLibraryEntries: FieldLibraryEntry[];
 }) => {
-  const supportedFields = SUPPORTED_FIELDS_BY_CODE[String(templateCode || '').toLowerCase()]?.[scope] || [];
   const existingFieldIds = new Set(fields.map(field => field.id || field.name));
-  const missingSupportedFields = supportedFields.filter(field => !existingFieldIds.has(field.id));
+  const missingLibraryFields = fieldLibraryEntries
+    .filter(entry => shouldOfferLibraryEntry(entry, templateCode, scope))
+    .map(libraryEntryToField)
+    .filter(field => !existingFieldIds.has(field.id))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const addField = () => {
     onChange([...fields, {
@@ -402,7 +221,7 @@ const FieldListEditor = ({
     }]);
   };
 
-  const addSupportedField = (field: SuggestedField) => {
+  const addLibraryField = (field: SuggestedField) => {
     onChange([...fields, buildFieldPatch(field as FieldDefinition, {})]);
   };
 
@@ -431,21 +250,21 @@ const FieldListEditor = ({
       <div className="rounded-md border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-gray-900">Available supported fields</div>
-            <div className="text-xs text-gray-500">These are known fields for this voucher type that are not currently on the template.</div>
+            <div className="text-sm font-semibold text-gray-900">Available Field Library fields</div>
+            <div className="text-xs text-gray-500">Add official fields from Layer 1, then control placement and required status on this template.</div>
           </div>
           <Button variant="secondary" onClick={addField}>
             <Plus size={14} className="mr-1" />
             Custom metadata
           </Button>
         </div>
-        {missingSupportedFields.length > 0 ? (
+        {missingLibraryFields.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {missingSupportedFields.map(field => (
+            {missingLibraryFields.map(field => (
               <button
                 key={field.id}
                 type="button"
-                onClick={() => addSupportedField(field)}
+                onClick={() => addLibraryField(field)}
                 className="inline-flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
                 title={`${field.id} / ${field.type}`}
               >
@@ -455,7 +274,7 @@ const FieldListEditor = ({
             ))}
           </div>
         ) : (
-          <div className="text-xs text-gray-500">No missing supported fields for this voucher type.</div>
+          <div className="text-xs text-gray-500">No missing Field Library fields for this scope.</div>
         )}
       </div>
 
@@ -560,6 +379,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jsonText, setJsonText] = useState('');
+  const [fieldLibraryEntries, setFieldLibraryEntries] = useState<FieldLibraryEntry[]>([]);
 
   // State for the definition
   const [definition, setDefinition] = useState<Partial<VoucherTypeDefinition>>({
@@ -574,34 +394,39 @@ export const VoucherTemplateEditorPage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!isNew && id) {
-      loadTemplate(id);
-    }
+    loadPageData();
   }, [id, isNew]);
 
   useEffect(() => {
     setJsonText(JSON.stringify(definition, null, 2));
   }, [definition]);
 
-  const loadTemplate = async (templateId: string) => {
+  const loadPageData = async () => {
     try {
       setLoading(true);
-      const list = await superAdminVoucherTypesApi.list();
-      const found = list.find(t => t.id === templateId);
-      if (found) {
-        // Ensure layout.lineFields exists
-        const safeDef = {
-          ...found,
-          headerFields: (found.headerFields || []).map((field: FieldDefinition) => buildFieldPatch(field, {})),
-          layout: {
-            ...found.layout,
-            sections: (found.layout as any)?.sections || [],
-            lineFields: ((found.layout as any)?.lineFields || []).map((field: FieldDefinition) => buildFieldPatch(field, {})),
-          }
-        };
-        setDefinition(safeDef);
-      } else {
-        setError(t('superAdmin.voucherTemplatesEditor.errors.templateNotFound', { defaultValue: 'Template not found' }));
+      const fieldLibraryPromise = superAdminFieldLibraryApi.list();
+      const templatePromise = !isNew && id ? superAdminVoucherTypesApi.list() : Promise.resolve([]);
+      const [libraryEntries, templates] = await Promise.all([fieldLibraryPromise, templatePromise]);
+
+      setFieldLibraryEntries(libraryEntries);
+
+      if (!isNew && id) {
+        const found = templates.find(t => t.id === id);
+        if (found) {
+          // Ensure layout.lineFields exists.
+          const safeDef = {
+            ...found,
+            headerFields: (found.headerFields || []).map((field: FieldDefinition) => buildFieldPatch(field, {})),
+            layout: {
+              ...found.layout,
+              sections: (found.layout as any)?.sections || [],
+              lineFields: ((found.layout as any)?.lineFields || []).map((field: FieldDefinition) => buildFieldPatch(field, {})),
+            }
+          };
+          setDefinition(safeDef);
+        } else {
+          setError(t('superAdmin.voucherTemplatesEditor.errors.templateNotFound', { defaultValue: 'Template not found' }));
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -635,9 +460,11 @@ export const VoucherTemplateEditorPage: React.FC = () => {
     setDefinition(prev => ({ ...prev, layout: { ...prev.layout, ...updates } }));
   };
 
-  const supportedLineFields = SUPPORTED_FIELDS_BY_CODE[String(definition.code || '').toLowerCase()]?.line || [];
+  const lineFieldsForTable = ((definition.layout as any)?.lineFields || []) as FieldDefinition[];
   const existingTableColumnIds = new Set((definition.tableColumns || []).map((col: any) => col.fieldId || col.id));
-  const missingTableColumns = supportedLineFields.filter(field => !existingTableColumnIds.has(field.id));
+  const missingTableColumns = lineFieldsForTable
+    .filter(field => field.id && !existingTableColumnIds.has(field.id))
+    .sort((a, b) => String(a.label || a.id).localeCompare(String(b.label || b.id)));
 
   const addSupportedTableColumn = (field: SuggestedField) => {
     setDefinition(prev => {
@@ -733,6 +560,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
             t={t}
             templateCode={definition.code}
             scope="header"
+            fieldLibraryEntries={fieldLibraryEntries}
           />
         )}
 
@@ -743,6 +571,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
             t={t}
             templateCode={definition.code}
             scope="line"
+            fieldLibraryEntries={fieldLibraryEntries}
           />
         )}
 
@@ -751,14 +580,14 @@ export const VoucherTemplateEditorPage: React.FC = () => {
             <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
               <div className="font-semibold">Table Columns are the visible line grid.</div>
               <div className="text-xs leading-5">
-                They should point to Line Fields by Field ID. Adding a supported column here also restores the matching Line Field if it was removed.
+                They point to Line Fields by Field ID. Add the line field from the Field Library first, then expose it here when it should appear in the grid.
               </div>
             </div>
 
             <div className="rounded-md border border-gray-200 bg-white p-4">
               <div className="mb-3">
-                <div className="text-sm font-semibold text-gray-900">Available supported columns</div>
-                <div className="text-xs text-gray-500">Known line fields for this voucher type that are not currently visible in the table.</div>
+                <div className="text-sm font-semibold text-gray-900">Available line fields</div>
+                <div className="text-xs text-gray-500">Line fields on this voucher template that are not currently visible in the table.</div>
               </div>
               {missingTableColumns.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -776,7 +605,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-gray-500">No missing supported columns for this voucher type.</div>
+                <div className="text-xs text-gray-500">No missing line fields for this table.</div>
               )}
             </div>
 

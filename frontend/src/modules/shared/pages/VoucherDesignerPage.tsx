@@ -66,6 +66,11 @@ import {
   voucherTypeManagementApi,
   VoucherTypeModule,
 } from '../../../api/voucherTypeManagementApi';
+import {
+  fieldLibraryApi,
+  FieldLibraryEntry,
+  ResolvedFieldLibrary,
+} from '../../../api/fieldLibraryApi';
 
 interface VoucherDesignerPageProps {
   module: VoucherTypeModule;
@@ -83,6 +88,13 @@ interface TypeNode {
   forms: DocumentFormConfig[];
   /** System template variants (used to show "Variants: ..." line for available types). */
   catalogVariants: any[];
+}
+
+interface DesignerFieldCatalog {
+  systemFields: AvailableField[];
+  availableFields: AvailableField[];
+  availableTableColumns: AvailableField[];
+  source: 'field-library' | 'legacy';
 }
 
 const stripPersonaSuffix = (formName: string): string => {
@@ -300,6 +312,166 @@ const AVAILABLE_TABLE_COLUMNS_BY_MODULE: Record<string, any[]> = {
   ],
 };
 
+const normalizeFieldId = (field: any): string =>
+  String(field?.fieldId || field?.id || field?.name || field || '').trim();
+
+const toBodyFallback = (column: any): AvailableField => ({
+  id: normalizeFieldId(column),
+  label: column?.label || column?.labelOverride || normalizeFieldId(column),
+  type: column?.type,
+  sectionHint: 'BODY',
+  category: 'shared',
+  mandatory: Boolean(column?.mandatory || column?.required),
+  autoManaged: Boolean(column?.autoManaged),
+  supportedTypes: column?.supportedTypes,
+  excludedTypes: column?.excludedTypes,
+});
+
+const legacyDesignerFieldCatalog = (module: VoucherTypeModule): DesignerFieldCatalog => ({
+  systemFields: SYSTEM_FIELDS_GENERIC as AvailableField[],
+  availableFields: (AVAILABLE_FIELDS_BY_MODULE[module] || []).filter(
+    (field) => field.sectionHint !== 'BODY'
+      && !SYSTEM_FIELDS_GENERIC.some((systemField) => systemField.id === field.id),
+  ),
+  availableTableColumns: (AVAILABLE_TABLE_COLUMNS_BY_MODULE[module] || []).map(toBodyFallback),
+  source: 'legacy',
+});
+
+const categoryForFieldClass = (fieldClass: FieldLibraryEntry['fieldClass']): AvailableField['category'] => {
+  if (fieldClass === 'computed') return 'systemMetadata';
+  if (fieldClass === 'system_core') return 'core';
+  return 'shared';
+};
+
+const hydrateField = (
+  entry: FieldLibraryEntry | undefined,
+  fallback: AvailableField | undefined,
+  defaultSection: AvailableField['sectionHint'],
+  options: { preserveFallbackMandatory?: boolean; preserveLibraryMandatory?: boolean } = {},
+): AvailableField => {
+  const id = entry?.id || fallback?.id || '';
+  const hasFallback = Boolean(fallback);
+  const mandatoryFromFallback = options.preserveFallbackMandatory && Boolean(fallback?.mandatory);
+  const mandatoryFromLibrary = options.preserveLibraryMandatory
+    && Boolean(entry?.alwaysMandatory || entry?.fieldClass === 'system_core');
+
+  return {
+    id,
+    label: entry?.label || fallback?.label || id,
+    type: (entry?.type || fallback?.type || 'text') as AvailableField['type'],
+    sectionHint: fallback?.sectionHint || entry?.sectionHint || defaultSection,
+    category: hasFallback ? fallback?.category : categoryForFieldClass(entry?.fieldClass || 'system_optional'),
+    mandatory: mandatoryFromFallback || (!hasFallback && mandatoryFromLibrary),
+    autoManaged: hasFallback ? Boolean(fallback?.autoManaged) : entry?.fieldClass === 'computed',
+    supportedTypes: fallback?.supportedTypes ?? entry?.supportedTypes,
+    excludedTypes: fallback?.excludedTypes ?? entry?.excludedTypes,
+    ...(entry ? {
+      fieldLibraryVersion: entry.version,
+      deprecated: entry.deprecated,
+      selectorBinding: entry.selectorBinding,
+    } : {}),
+  } as AvailableField;
+};
+
+const addFieldIds = (target: Set<string>, fields: any[] | undefined) => {
+  if (!Array.isArray(fields)) return;
+  for (const field of fields) {
+    const id = normalizeFieldId(field);
+    if (id && !id.startsWith('action_')) target.add(id);
+  }
+};
+
+const addLayoutFieldIds = (headerTarget: Set<string>, lineTarget: Set<string>, uiModeOverrides: any) => {
+  if (!uiModeOverrides) return;
+  Object.values(uiModeOverrides).forEach((mode: any) => {
+    Object.entries(mode?.sections || {}).forEach(([sectionKey, section]: [string, any]) => {
+      addFieldIds(sectionKey === 'BODY' ? lineTarget : headerTarget, section?.fields);
+    });
+  });
+};
+
+const buildDesignerFieldCatalog = (
+  module: VoucherTypeModule,
+  fieldLibrary: ResolvedFieldLibrary | null,
+  forms: DocumentFormConfig[],
+  systemCatalog: any[],
+): DesignerFieldCatalog => {
+  const legacy = legacyDesignerFieldCatalog(module);
+  if (!fieldLibrary?.entries?.length) return legacy;
+
+  const entriesById = new Map(fieldLibrary.entries.map((entry) => [entry.id, entry]));
+  const systemFallbackById = new Map(legacy.systemFields.map((field) => [field.id, field]));
+  const headerFallbackById = new Map(legacy.availableFields.map((field) => [field.id, field]));
+  const lineFallbackById = new Map(legacy.availableTableColumns.map((field) => [field.id, field]));
+
+  const systemIds = new Set(legacy.systemFields.map((field) => field.id));
+  const headerIds = new Set(legacy.availableFields.map((field) => field.id));
+  const lineIds = new Set(legacy.availableTableColumns.map((field) => field.id));
+
+  for (const template of systemCatalog) {
+    addFieldIds(headerIds, template?.headerFields);
+    addFieldIds(lineIds, template?.lineFields);
+    addFieldIds(lineIds, template?.tableColumns);
+  }
+
+  for (const form of forms) {
+    addFieldIds(headerIds, (form as any).headerFields);
+    addFieldIds(lineIds, (form as any).lineFields);
+    addFieldIds(lineIds, (form as any).tableColumns);
+    addLayoutFieldIds(headerIds, lineIds, (form as any).uiModeOverrides);
+  }
+
+  for (const entry of fieldLibrary.entries) {
+    if (entry.fieldClass === 'custom_metadata') {
+      if (entry.sectionHint === 'BODY') lineIds.add(entry.id);
+      else headerIds.add(entry.id);
+    }
+  }
+  for (const systemId of systemIds) {
+    lineIds.delete(systemId);
+  }
+
+  const makeFields = (
+    ids: Set<string>,
+    fallbackById: Map<string, AvailableField>,
+    defaultSection: AvailableField['sectionHint'],
+    options?: { preserveFallbackMandatory?: boolean; preserveLibraryMandatory?: boolean },
+  ): AvailableField[] =>
+    Array.from(ids)
+      .filter(Boolean)
+      .map((id) => hydrateField(entriesById.get(id), fallbackById.get(id), defaultSection, options))
+      .filter((field) => field.id);
+
+  return {
+    systemFields: makeFields(systemIds, systemFallbackById, 'HEADER', {
+      preserveFallbackMandatory: true,
+    }),
+    availableFields: makeFields(headerIds, headerFallbackById, 'HEADER'),
+    availableTableColumns: makeFields(lineIds, lineFallbackById, 'BODY'),
+    source: 'field-library',
+  };
+};
+
+const scopeDesignerFieldCatalogForForm = (
+  fieldCatalog: DesignerFieldCatalog,
+  form: DocumentFormConfig | null,
+): DesignerFieldCatalog => {
+  if (!form) return fieldCatalog;
+
+  const headerIds = new Set<string>();
+  const lineIds = new Set<string>();
+  addFieldIds(headerIds, (form as any).headerFields);
+  addFieldIds(lineIds, (form as any).lineFields);
+  addFieldIds(lineIds, (form as any).tableColumns);
+  addLayoutFieldIds(headerIds, lineIds, (form as any).uiModeOverrides);
+
+  return {
+    ...fieldCatalog,
+    availableFields: fieldCatalog.availableFields.filter((field) => headerIds.has(field.id)),
+    availableTableColumns: fieldCatalog.availableTableColumns.filter((field) => lineIds.has(field.id)),
+  };
+};
+
 const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, moduleLabel }) => {
   const { companyId } = useCompanyAccess();
   const { user } = useAuth();
@@ -308,6 +480,9 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   const [forms, setForms] = useState<DocumentFormConfig[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]);
+  const [fieldCatalog, setFieldCatalog] = useState<DesignerFieldCatalog>(() =>
+    legacyDesignerFieldCatalog(module),
+  );
   const [loading, setLoading] = useState(true);
   const [installingTypeKey, setInstallingTypeKey] = useState<string | null>(null);
   const [expandedTypeKeys, setExpandedTypeKeys] = useState<Set<string>>(new Set());
@@ -392,14 +567,20 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     if (!companyId) return;
     setLoading(true);
     try {
-      const [loadedForms, loadedDefs, loadedCatalog] = await Promise.all([
+      const fieldLibraryPromise = fieldLibraryApi.list().catch((fieldLibraryError) => {
+        console.warn('[VoucherDesigner] Field Library load failed; using legacy field catalog:', fieldLibraryError);
+        return null;
+      });
+      const [loadedForms, loadedDefs, loadedCatalog, loadedFieldLibrary] = await Promise.all([
         loadModuleDocumentForms(companyId, module),
         loadModuleDocumentDefinitions(companyId, module),
         loadSystemVoucherTemplates(module),
+        fieldLibraryPromise,
       ]);
       setForms(loadedForms);
       setDefinitions(loadedDefs);
       setCatalog(loadedCatalog);
+      setFieldCatalog(buildDesignerFieldCatalog(module, loadedFieldLibrary, loadedForms, loadedCatalog));
     } catch (err: any) {
       console.error('[VoucherDesigner] Load failed', err);
       errorHandler.showError('Could not load voucher designer data');
@@ -415,6 +596,11 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   const { installed, available } = useMemo(
     () => buildTypeTree(forms, definitions, catalog),
     [forms, definitions, catalog],
+  );
+
+  const editorFieldCatalog = useMemo(
+    () => scopeDesignerFieldCatalogForForm(fieldCatalog, editingForm),
+    [fieldCatalog, editingForm],
   );
 
   // Auto-expand the first installed type on first load so user sees the
@@ -628,7 +814,10 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
         companyId,
         module,
         cleanConfig,
-        { systemFields: SYSTEM_FIELDS_GENERIC as any, availableFields: [] },
+        {
+          systemFields: editorFieldCatalog.systemFields,
+          availableFields: editorFieldCatalog.availableFields,
+        },
         user.uid,
         isEdit,
       );
@@ -804,9 +993,9 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                 availableTemplates={forms}
                 onSave={handleSaveAndExit}
                 onCancel={handleCancelEdit}
-                systemFields={SYSTEM_FIELDS_GENERIC as any}
-                availableFields={AVAILABLE_FIELDS_BY_MODULE[module] || []}
-                availableTableColumns={AVAILABLE_TABLE_COLUMNS_BY_MODULE[module] || []}
+                systemFields={editorFieldCatalog.systemFields}
+                availableFields={editorFieldCatalog.availableFields}
+                availableTableColumns={editorFieldCatalog.availableTableColumns}
                 defaultRules={MODULE_DEFAULTS[module].rules as any}
                 defaultActions={MODULE_DEFAULTS[module].actions as any}
               />

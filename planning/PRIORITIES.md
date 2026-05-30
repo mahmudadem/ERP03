@@ -8,14 +8,17 @@
 
 ## 🔴 Current Priority (work this first)
 
-**Phase F — RFQ** (~2-3 hours)
-- Request for Quotation — procure-to-pay workflow parity
+**Commit Field Library C1/C2 checkpoint** (~10 min)
+- C1 and C2 are implemented and validated locally.
+- Commit only the scoped Field Library files; do not sweep unrelated work.
 
 ---
 
 ## 🟡 Up Next (in order)
 
-1. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
+1. **Task 135 — Field Library drift warnings** (~2-4 hours): add `fieldVersionsSeen` and company-form drift notices.
+2. **Phase F — RFQ** (~2-3 hours): Request for Quotation — procure-to-pay workflow parity.
+3. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days)
 
 ---
 
@@ -38,6 +41,8 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Phase F - PI Attachments | 2026-05-28 | ✅ Done |
 | Codex | Phase F - Vendor Groups | 2026-05-28 | ✅ Done |
 | Antigravity | Phase F - Purchase Price Lists | 2026-05-28 | ✅ Done |
+| Codex | Task 135 - Field Library Phase C1 | 2026-05-30 | ✅ Done |
+| Codex | Task 135 - Field Library Phase C2 | 2026-05-30 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -58,4 +63,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-28 by Antigravity (Purchase Price Lists done; RFQ next)_
+_Last updated: 2026-05-30 by Codex (Field Library Phase C1/C2 implemented; commit checkpoint next)_

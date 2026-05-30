@@ -1,10 +1,35 @@
 # 🎯 Current Focus
 
-**Task:** Phase F — Purchases parity. Purchase Price Lists now built and ready for QA (2026-05-28).
-**Status:** In progress on `codex/phase-f-vendor-groups`. Remaining parity gaps: RFQ.
-**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md).
+**Task:** Task 135 — Field Component Library, Phase C2: Layer 2 voucher type bindings.
+**Status:** Phase C2 implemented on `feat/init-wizard-forms-selection` (2026-05-30). Await commit decision / next slice.
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md).
 
 ## 👉 Next agent — start here
+
+**Field Library Phase C1 is complete**:
+
+1. Forms Management now loads the tenant Field Library read API.
+2. The existing saved form shape (`headerFields`, `tableColumns`, `uiModeOverrides`) is unchanged.
+3. Current module-specific mandatory/optional semantics are preserved until Phase C2 introduces true Layer 2 type bindings.
+4. Required accounting/sales/purchase fields, selector fields, and posting-related controls were not relaxed.
+
+**Field Library Phase C2 is implemented**:
+
+1. Super-admin voucher templates now load the Field Library API.
+2. Header/Line authoring offers Field Library entries instead of frontend hardcoded voucher suggestions.
+3. Table column suggestions derive from the template's own `layout.lineFields`.
+4. Type-level placement/mandatory status is controlled by the voucher template while Field Library remains the official field metadata source.
+
+Phase C1 actual: **~1.9 hours**. Report: [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md).
+Phase C2 actual: **~1.2 hours**. Report: [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md).
+
+Remaining Field Library follow-up estimate: **2-4 hours**:
+- Add `fieldVersionsSeen` and company-form drift warnings.
+- Decide whether the Field Library seed needs tighter `supportedTypes` scoping for super-admin convenience.
+
+---
+
+## Earlier Purchases focus (still open after the Field Library arc)
 
 Piece A and Piece B are complete:
 
@@ -118,4 +143,4 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-Next step is to manually QA **Vendor Groups**, then continue **Phase F Purchases parity** with **Purchase Price Lists**, then RFQ.
+Commit the Field Library C1/C2 work, then choose between **Field Library drift warnings** or returning to **Purchases RFQ**.

@@ -2,6 +2,58 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-05-30 (Sat) — Field Library Phase C2 (voucher template bindings)
+
+**Task:** Phase C2 of task 135 — move Layer 2 super-admin voucher template authoring onto the Field Library instead of hardcoded frontend field suggestions.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md)
+**Time spent:** ~1.2h.
+
+**What was done:**
+- Updated `VoucherTemplateEditorPage.tsx` to load `/super-admin/field-library`.
+- Removed the active hardcoded `SUPPORTED_FIELDS_BY_CODE` authoring path.
+- Header and Line Field tabs now offer non-deprecated Field Library entries and respect `supportedTypes`, `excludedTypes`, and `sectionHint`.
+- Field Library entries now hydrate into `FieldDefinition` records with official IDs, labels, renderer types, field class, selector relation hints, and `fieldLibraryVersion`.
+- Table Columns now suggest from the template's own `layout.lineFields`, keeping visible grids aligned with saved voucher template bindings.
+- Updated Forms Management architecture/user docs and created completion report `planning/done/135d-field-library-phase-c2.md`.
+
+**Validation:**
+- `npm --prefix frontend run typecheck` — passed.
+- `npm --prefix frontend run build` — passed.
+- `npm --prefix backend run build` — passed.
+- `git diff --check` — passed.
+
+**Result:** Super-admin template authoring is now Field Library driven. Voucher templates remain the Layer 2 authority for field placement and required status. Remaining follow-up is `fieldVersionsSeen`/drift warnings and optional tighter seed scoping for super-admin convenience.
+
+## 2026-05-30 (Sat) — Field Library Phase C1 (Forms Management consumption)
+
+**Task:** Phase C1 of task 135 — Forms Management reads the tenant-resolved Field Library catalog while preserving the current form persistence shape and mandatory-field behavior.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md)
+
+**What was done:**
+- Mounted the existing designer routes under `/tenant/designer`, making `GET /tenant/designer/field-library` reachable by the tenant frontend.
+- Added `fieldLibraryApi` as a read-only frontend client for the resolved field catalog.
+- Updated `VoucherDesignerPage.tsx` so the Forms Management wizard hydrates its system/header/table field lists from the Field Library response.
+- Kept legacy module field IDs as a compatibility allowlist until Phase C2 adds real Layer 2 type bindings.
+- Preserved legacy mandatory/optional semantics for existing module fields, preventing Field Library flat-namespace de-duping from accidentally making fields required in the wrong module.
+- Corrected the C1 compatibility mapper after UI smoke feedback: Sales Invoice clones no longer inherit unrelated module-wide required fields like Delivery Date, Return Date, or Order Date, and BODY fields stay out of the header picker.
+- Passed the active field catalog into `saveDocumentForm` so canonical output has the current field metadata.
+- Updated architecture/user docs, QA queue, ACTIVE, and PRIORITIES.
+
+**Verification:**
+- `npm --prefix backend run build` -> exit 0
+- `npm --prefix frontend run typecheck` -> exit 0
+- `npm --prefix frontend run build` -> exit 0
+- `git diff --check` -> exit 0
+- Browser smoke on local Vite route -> app rendered and redirected unauthenticated; signed-in Forms Management QA remains queued.
+
+**Time spent:** ~1.9h
+
+**Result:** Forms Management now consumes the Field Library catalog without weakening posting controls or changing saved form documents. Phase C2 should make voucher-type placement/mandatory bindings authoritative.
+
 ## 2026-05-30 (Sat) — Field Library Phase B (super-admin editor)
 
 **Task:** Phase B of task 135 — super-admin authoring surface for the Layer 1 catalog seeded in Phase A. Builds the editor page, the six CRUD endpoints, the policy use cases (id uniqueness, id-immutability, reference-safety gate).

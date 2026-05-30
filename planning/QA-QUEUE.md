@@ -8,6 +8,35 @@
 
 ## 🧪 Ready to Test
 
+### Super Admin — Field Library Phase C2 Voucher Template Authoring
+**Added by:** Codex (report 135d)
+**What to test:**
+- Sign in as SUPER_ADMIN and open `Super Admin -> Voucher Templates`.
+- Edit a Sales Invoice template and open the Header Fields tab.
+- Expected: the "Available Field Library fields" area offers official fields from Field Library; adding one creates a field row with the library label/type.
+- Open the Line Fields tab, add a BODY field from the Field Library, then open Table Columns.
+- Expected: that line field appears as an available table column; table column suggestions come from the template's own line fields.
+- Save the template, then open a tenant Forms Management wizard for that type.
+- Expected: the field placement and required flags follow the saved voucher template.
+
+**Known limitations:**
+- `fieldVersionsSeen` drift warnings are not included yet.
+- The current Field Library seed has broad shared fields, so super-admins must still choose the correct official fields for each template.
+
+### Forms Management — Field Library Phase C1
+**Added by:** Codex (report 135c)
+**What to test:**
+- Sign in as SUPER_ADMIN and open `Super Admin -> Field Library`.
+- Edit `warehouseId` and temporarily change the label to `Warehouse Test`.
+- Open `Sales -> Forms Management`, clone or edit a Sales form, and go to the wizard's Fields step.
+- Expected: the Warehouse field label reflects the Field Library change, while required fields remain protected.
+- Open a Sales or Purchases form that has a line-table Warehouse column.
+- Expected: saving the form does not remove the existing `warehouseId` table column.
+- Change the `warehouseId` label back in Field Library after the smoke test.
+
+**Known limitations:**
+- This C1 smoke confirms company Forms Management consumption. Layer 2 authoring is covered by the Phase C2 QA item above; `fieldVersionsSeen` drift warnings are still pending.
+
 ### Purchases — Phase F: Purchase Price Lists
 **Added by:** Antigravity (report 131)
 **What to test:**
@@ -134,4 +163,4 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-05-28 by Antigravity (Purchase Price Lists ready for QA)_
+_Last updated: 2026-05-30 by Codex (Field Library Phase C1/C2 ready for QA)_
