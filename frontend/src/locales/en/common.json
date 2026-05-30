@@ -2035,19 +2035,45 @@
         }
       },
       "links": {
-        "company": { "title": "Company Settings" },
-        "appearance": { "title": "Appearance" },
-        "notifications": { "title": "Notifications" },
-        "approval": { "title": "Approval Workflow" },
-        "sales": { "title": "Sales Settings" },
-        "purchases": { "title": "Purchase Settings" },
-        "accounting": { "title": "Accounting Settings" },
-        "inventory": { "title": "Inventory Settings" },
-        "taxCodes": { "title": "Tax Codes" },
-        "currencies": { "title": "Currencies" },
-        "roles": { "title": "Roles" },
-        "assignUsers": { "title": "Assign Users" },
-        "ai": { "title": "AI Settings" }
+        "company": {
+          "title": "Company Settings"
+        },
+        "appearance": {
+          "title": "Appearance"
+        },
+        "notifications": {
+          "title": "Notifications"
+        },
+        "approval": {
+          "title": "Approval Workflow"
+        },
+        "sales": {
+          "title": "Sales Settings"
+        },
+        "purchases": {
+          "title": "Purchase Settings"
+        },
+        "accounting": {
+          "title": "Accounting Settings"
+        },
+        "inventory": {
+          "title": "Inventory Settings"
+        },
+        "taxCodes": {
+          "title": "Tax Codes"
+        },
+        "currencies": {
+          "title": "Currencies"
+        },
+        "roles": {
+          "title": "Roles"
+        },
+        "assignUsers": {
+          "title": "Assign Users"
+        },
+        "ai": {
+          "title": "AI Settings"
+        }
       }
     },
     "layout": {
@@ -2187,7 +2213,43 @@
     "invoicesList": {
       "title": "Sales Invoices",
       "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newInvoice": "New Invoice"
+      "newButton": "New Invoice",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales invoices...",
+      "loadError": "Failed to load sales invoices.",
+      "filters": {
+        "status": "Status",
+        "payment": "Payment",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "payment": {
+        "ALL": "All",
+        "UNPAID": "Unpaid",
+        "PARTIALLY_PAID": "Partially Paid",
+        "PAID": "Paid"
+      },
+      "headers": {
+        "invoiceNumber": "Invoice #",
+        "customer": "Customer",
+        "invoiceDate": "Invoice Date",
+        "grandTotal": "Grand Total",
+        "payment": "Payment",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales invoices yet",
+        "description": "Create your first invoice to recognize revenue and receivables."
+      }
     },
     "governance": {
       "operationalWarning": "Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.",
@@ -2198,30 +2260,6 @@
       "directInvoicingStatusLabel": "Direct Invoicing",
       "directAllowed": "Allowed",
       "directBlockedOperational": "Blocked (Operational)"
-    },
-    "invoicesList": {
-      "title": "Sales Invoices",
-      "subtitle": "Post invoices to recognize revenue and receivables.",
-      "new": "New Invoice",
-      "status": "Status",
-      "payment": "Payment",
-      "customer": "Customer",
-      "allCustomers": "All Customers",
-      "loading": "Loading sales invoices...",
-      "emptyTitle": "No sales invoices found",
-      "emptyDescription": "Create a new invoice or adjust the filters to find existing invoices.",
-      "statusOptions": {
-        "ALL": "All Statuses",
-        "DRAFT": "Draft",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
-      },
-      "paymentOptions": {
-        "ALL": "All Payments",
-        "UNPAID": "Unpaid",
-        "PARTIALLY_PAID": "Partially Paid",
-        "PAID": "Paid"
-      }
     },
     "settings": {
       "arGeneration": {
@@ -2399,47 +2437,6 @@
       },
       "cloneModal": {
         "title": "Clone Invoice to Recurring Template"
-      }
-    },
-    "invoicesList": {
-      "title": "Sales Invoices",
-      "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newButton": "New Invoice",
-      "refresh": "Refresh",
-      "clearFilters": "Clear filters",
-      "open": "Open",
-      "loading": "Loading sales invoices...",
-      "loadError": "Failed to load sales invoices.",
-      "filters": {
-        "status": "Status",
-        "payment": "Payment",
-        "customer": "Customer",
-        "allCustomers": "All Customers"
-      },
-      "status": {
-        "ALL": "All",
-        "DRAFT": "Draft",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
-      },
-      "payment": {
-        "ALL": "All",
-        "UNPAID": "Unpaid",
-        "PARTIALLY_PAID": "Partially Paid",
-        "PAID": "Paid"
-      },
-      "headers": {
-        "invoiceNumber": "Invoice #",
-        "customer": "Customer",
-        "invoiceDate": "Invoice Date",
-        "grandTotal": "Grand Total",
-        "payment": "Payment",
-        "status": "Status",
-        "actions": "Actions"
-      },
-      "empty": {
-        "title": "No sales invoices yet",
-        "description": "Create your first invoice to recognize revenue and receivables."
       }
     },
     "ordersList": {

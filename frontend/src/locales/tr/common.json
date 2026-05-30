@@ -2108,19 +2108,45 @@
         }
       },
       "links": {
-        "company": { "title": "Şirket Ayarları" },
-        "appearance": { "title": "Görünüm" },
-        "notifications": { "title": "Bildirimler" },
-        "approval": { "title": "Onay İş Akışı" },
-        "sales": { "title": "Satış Ayarları" },
-        "purchases": { "title": "Satın Alma Ayarları" },
-        "accounting": { "title": "Muhasebe Ayarları" },
-        "inventory": { "title": "Stok Ayarları" },
-        "taxCodes": { "title": "Vergi Kodları" },
-        "currencies": { "title": "Para Birimleri" },
-        "roles": { "title": "Roller" },
-        "assignUsers": { "title": "Kullanıcı Ata" },
-        "ai": { "title": "AI Ayarları" }
+        "company": {
+          "title": "Şirket Ayarları"
+        },
+        "appearance": {
+          "title": "Görünüm"
+        },
+        "notifications": {
+          "title": "Bildirimler"
+        },
+        "approval": {
+          "title": "Onay İş Akışı"
+        },
+        "sales": {
+          "title": "Satış Ayarları"
+        },
+        "purchases": {
+          "title": "Satın Alma Ayarları"
+        },
+        "accounting": {
+          "title": "Muhasebe Ayarları"
+        },
+        "inventory": {
+          "title": "Stok Ayarları"
+        },
+        "taxCodes": {
+          "title": "Vergi Kodları"
+        },
+        "currencies": {
+          "title": "Para Birimleri"
+        },
+        "roles": {
+          "title": "Roller"
+        },
+        "assignUsers": {
+          "title": "Kullanıcı Ata"
+        },
+        "ai": {
+          "title": "AI Ayarları"
+        }
       }
     },
     "layout": {
@@ -2260,7 +2286,43 @@
     "invoicesList": {
       "title": "Sales Invoices",
       "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newInvoice": "New Invoice"
+      "newButton": "New Invoice",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales invoices...",
+      "loadError": "Failed to load sales invoices.",
+      "filters": {
+        "status": "Status",
+        "payment": "Payment",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "payment": {
+        "ALL": "All",
+        "UNPAID": "Unpaid",
+        "PARTIALLY_PAID": "Partially Paid",
+        "PAID": "Paid"
+      },
+      "headers": {
+        "invoiceNumber": "Invoice #",
+        "customer": "Customer",
+        "invoiceDate": "Invoice Date",
+        "grandTotal": "Grand Total",
+        "payment": "Payment",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales invoices yet",
+        "description": "Create your first invoice to recognize revenue and receivables."
+      }
     },
     "governance": {
       "operationalWarning": "Operasyonel iş akışı: Doğrudan faturalandırma varsayılan olarak engellenmiştir. Bağlı bir fatura oluşturmak için yukarıdan bir Satış Siparişi seçin veya doğrudan faturalandırma yönetimi istisnası eklemek için yöneticinize başvurun.",
@@ -2271,30 +2333,6 @@
       "directInvoicingStatusLabel": "Doğrudan Faturalandırma",
       "directAllowed": "İzin verildi",
       "directBlockedOperational": "Engellendi (Operasyonel)"
-    },
-    "invoicesList": {
-      "title": "Satış Faturaları",
-      "subtitle": "Gelir ve alacakları muhasebeleştirmek için faturaları kaydedin.",
-      "new": "Yeni Fatura",
-      "status": "Durum",
-      "payment": "Ödeme",
-      "customer": "Müşteri",
-      "allCustomers": "Tüm Müşteriler",
-      "loading": "Satış faturaları yükleniyor...",
-      "emptyTitle": "Satış faturası bulunamadı",
-      "emptyDescription": "Yeni bir fatura oluşturun veya mevcut faturaları bulmak için filtreleri değiştirin.",
-      "statusOptions": {
-        "ALL": "Tüm Durumlar",
-        "DRAFT": "Taslak",
-        "POSTED": "Kaydedildi",
-        "CANCELLED": "İptal Edildi"
-      },
-      "paymentOptions": {
-        "ALL": "Tüm Ödemeler",
-        "UNPAID": "Ödenmedi",
-        "PARTIALLY_PAID": "Kısmen Ödendi",
-        "PAID": "Ödendi"
-      }
     },
     "settings": {
       "arGeneration": {
@@ -2472,47 +2510,6 @@
       },
       "cloneModal": {
         "title": "Faturayı Tekrarlayan Şablona Kopyala"
-      }
-    },
-    "invoicesList": {
-      "title": "Sales Invoices",
-      "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newButton": "New Invoice",
-      "refresh": "Refresh",
-      "clearFilters": "Clear filters",
-      "open": "Open",
-      "loading": "Loading sales invoices...",
-      "loadError": "Failed to load sales invoices.",
-      "filters": {
-        "status": "Status",
-        "payment": "Payment",
-        "customer": "Customer",
-        "allCustomers": "All Customers"
-      },
-      "status": {
-        "ALL": "All",
-        "DRAFT": "Draft",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
-      },
-      "payment": {
-        "ALL": "All",
-        "UNPAID": "Unpaid",
-        "PARTIALLY_PAID": "Partially Paid",
-        "PAID": "Paid"
-      },
-      "headers": {
-        "invoiceNumber": "Invoice #",
-        "customer": "Customer",
-        "invoiceDate": "Invoice Date",
-        "grandTotal": "Grand Total",
-        "payment": "Payment",
-        "status": "Status",
-        "actions": "Actions"
-      },
-      "empty": {
-        "title": "No sales invoices yet",
-        "description": "Create your first invoice to recognize revenue and receivables."
       }
     },
     "ordersList": {

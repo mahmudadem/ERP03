@@ -2108,19 +2108,45 @@
         }
       },
       "links": {
-        "company": { "title": "إعدادات الشركة" },
-        "appearance": { "title": "المظهر" },
-        "notifications": { "title": "الإشعارات" },
-        "approval": { "title": "سير الموافقة" },
-        "sales": { "title": "إعدادات المبيعات" },
-        "purchases": { "title": "إعدادات المشتريات" },
-        "accounting": { "title": "إعدادات المحاسبة" },
-        "inventory": { "title": "إعدادات المخزون" },
-        "taxCodes": { "title": "رموز الضرائب" },
-        "currencies": { "title": "العملات" },
-        "roles": { "title": "الأدوار" },
-        "assignUsers": { "title": "تعيين المستخدمين" },
-        "ai": { "title": "إعدادات الذكاء الاصطناعي" }
+        "company": {
+          "title": "إعدادات الشركة"
+        },
+        "appearance": {
+          "title": "المظهر"
+        },
+        "notifications": {
+          "title": "الإشعارات"
+        },
+        "approval": {
+          "title": "سير الموافقة"
+        },
+        "sales": {
+          "title": "إعدادات المبيعات"
+        },
+        "purchases": {
+          "title": "إعدادات المشتريات"
+        },
+        "accounting": {
+          "title": "إعدادات المحاسبة"
+        },
+        "inventory": {
+          "title": "إعدادات المخزون"
+        },
+        "taxCodes": {
+          "title": "رموز الضرائب"
+        },
+        "currencies": {
+          "title": "العملات"
+        },
+        "roles": {
+          "title": "الأدوار"
+        },
+        "assignUsers": {
+          "title": "تعيين المستخدمين"
+        },
+        "ai": {
+          "title": "إعدادات الذكاء الاصطناعي"
+        }
       }
     },
     "layout": {
@@ -2260,7 +2286,43 @@
     "invoicesList": {
       "title": "Sales Invoices",
       "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newInvoice": "New Invoice"
+      "newButton": "New Invoice",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales invoices...",
+      "loadError": "Failed to load sales invoices.",
+      "filters": {
+        "status": "Status",
+        "payment": "Payment",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "payment": {
+        "ALL": "All",
+        "UNPAID": "Unpaid",
+        "PARTIALLY_PAID": "Partially Paid",
+        "PAID": "Paid"
+      },
+      "headers": {
+        "invoiceNumber": "Invoice #",
+        "customer": "Customer",
+        "invoiceDate": "Invoice Date",
+        "grandTotal": "Grand Total",
+        "payment": "Payment",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales invoices yet",
+        "description": "Create your first invoice to recognize revenue and receivables."
+      }
     },
     "governance": {
       "operationalWarning": "سير العمل التشغيلي: الفوترة المباشرة محظورة افتراضياً. حدد طلب مبيعات أعلاه لإنشاء فاتورة مرتبطة، أو اتصل بالمسؤول لإضافة استثناء حوكمة للفوترة المباشرة.",
@@ -2271,30 +2333,6 @@
       "directInvoicingStatusLabel": "الفوترة المباشرة",
       "directAllowed": "مسموح",
       "directBlockedOperational": "محظور (تشغيلي)"
-    },
-    "invoicesList": {
-      "title": "فواتير المبيعات",
-      "subtitle": "ترحيل الفواتير لإثبات الإيرادات والذمم المدينة.",
-      "new": "فاتورة جديدة",
-      "status": "الحالة",
-      "payment": "الدفع",
-      "customer": "العميل",
-      "allCustomers": "كل العملاء",
-      "loading": "جارٍ تحميل فواتير المبيعات...",
-      "emptyTitle": "لا توجد فواتير مبيعات",
-      "emptyDescription": "أنشئ فاتورة جديدة أو غيّر الفلاتر للعثور على فواتير موجودة.",
-      "statusOptions": {
-        "ALL": "كل الحالات",
-        "DRAFT": "مسودة",
-        "POSTED": "مرحل",
-        "CANCELLED": "ملغى"
-      },
-      "paymentOptions": {
-        "ALL": "كل حالات الدفع",
-        "UNPAID": "غير مدفوع",
-        "PARTIALLY_PAID": "مدفوع جزئياً",
-        "PAID": "مدفوع"
-      }
     },
     "settings": {
       "arGeneration": {
@@ -2472,47 +2510,6 @@
       },
       "cloneModal": {
         "title": "نسخ الفاتورة إلى قالب متكرر"
-      }
-    },
-    "invoicesList": {
-      "title": "Sales Invoices",
-      "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newButton": "New Invoice",
-      "refresh": "Refresh",
-      "clearFilters": "Clear filters",
-      "open": "Open",
-      "loading": "Loading sales invoices...",
-      "loadError": "Failed to load sales invoices.",
-      "filters": {
-        "status": "Status",
-        "payment": "Payment",
-        "customer": "Customer",
-        "allCustomers": "All Customers"
-      },
-      "status": {
-        "ALL": "All",
-        "DRAFT": "Draft",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
-      },
-      "payment": {
-        "ALL": "All",
-        "UNPAID": "Unpaid",
-        "PARTIALLY_PAID": "Partially Paid",
-        "PAID": "Paid"
-      },
-      "headers": {
-        "invoiceNumber": "Invoice #",
-        "customer": "Customer",
-        "invoiceDate": "Invoice Date",
-        "grandTotal": "Grand Total",
-        "payment": "Payment",
-        "status": "Status",
-        "actions": "Actions"
-      },
-      "empty": {
-        "title": "No sales invoices yet",
-        "description": "Create your first invoice to recognize revenue and receivables."
       }
     },
     "ordersList": {
