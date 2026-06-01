@@ -11,6 +11,7 @@ import {
 } from '../../../api/salesApi';
 import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
+import { StatusChip } from '../../../components/ui/StatusChip';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
@@ -91,6 +92,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const warehouseLabelById = useMemo(
     () =>
@@ -140,6 +142,27 @@ const DeliveryNoteDetailPage: React.FC = () => {
       })
       .filter((line): line is EditableLine => line !== null);
   };
+
+  const toEditableFormFromDTO = (dto: DeliveryNoteDTO): EditableForm => ({
+    salesOrderId: dto.salesOrderId || '',
+    customerId: dto.customerId || '',
+    deliveryDate: dto.deliveryDate || todayIso(),
+    promisedDate: dto.promisedDate || '',
+    warehouseId: dto.warehouseId || '',
+    notes: dto.notes || '',
+    lines: (dto.lines || []).map((line) => ({
+      lineId: line.lineId,
+      soLineId: line.soLineId,
+      itemId: line.itemId,
+      itemCode: line.itemCode,
+      itemName: line.itemName,
+      deliveredQty: line.deliveredQty,
+      uomId: line.uomId,
+      uom: line.uom,
+      warehouseId: dto.warehouseId || undefined,
+      description: line.description,
+    })),
+  });
 
   const loadReferenceData = async () => {
     const [settingsResult, warehouseResult, customerResult, itemResult, salesOrderResult] = await Promise.all([
@@ -231,6 +254,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setIsEditing(false);
 
       const currentSettings = await loadReferenceData();
       const defaultWarehouseId = currentSettings?.defaultWarehouseId || '';
@@ -433,6 +457,54 @@ const DeliveryNoteDetailPage: React.FC = () => {
     }
   };
 
+  const beginEdit = () => {
+    if (!deliveryNote) return;
+    setForm(toEditableFormFromDTO(deliveryNote));
+    setError(null);
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setError(null);
+  };
+
+  const saveEdits = async () => {
+    if (!deliveryNote?.id) return;
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    try {
+      setBusy(true);
+      setError(null);
+      const mappedLines = form.lines
+        .filter((line) => line.itemId && line.deliveredQty > 0)
+        .map((line, index) => buildLinePayload(line, index));
+      const updated = await salesApi.updateDN(deliveryNote.id, {
+        customerId: form.salesOrderId ? undefined : form.customerId || undefined,
+        deliveryDate: form.deliveryDate,
+        promisedDate: form.promisedDate || undefined,
+        warehouseId: form.warehouseId,
+        lines: mappedLines.length ? mappedLines : undefined,
+        notes: form.notes || undefined,
+      });
+      setDeliveryNote(unwrap<DeliveryNoteDTO>(updated));
+      setIsEditing(false);
+    } catch (err: any) {
+      console.error('Failed to update delivery note', err);
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t('sales.dnDetail.updateFailed', 'Failed to update delivery note.')
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4 p-4">
@@ -442,17 +514,24 @@ const DeliveryNoteDetailPage: React.FC = () => {
     );
   }
 
-  if (isCreateMode) {
+  if (isCreateMode || isEditing) {
     return (
       <div className="space-y-6 p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">New Delivery Note</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {isEditing
+                ? t('sales.dnDetail.editTitle', 'Edit Delivery Note')
+                : t('sales.dnDetail.newTitle', 'New Delivery Note')}
+            </h1>
+            {isEditing && deliveryNote && <StatusChip status={deliveryNote.status} type="dn" />}
+          </div>
           <button
             type="button"
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => navigate('/sales/delivery-notes')}
+            onClick={() => (isEditing ? cancelEdit() : navigate('/sales/delivery-notes'))}
           >
-            Back to List
+            {isEditing ? t('sales.dnDetail.cancel', 'Cancel') : t('sales.dnDetail.backToList', 'Back to List')}
           </button>
         </div>
 
@@ -464,8 +543,9 @@ const DeliveryNoteDetailPage: React.FC = () => {
               <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order (optional unless SO is required for stock items)</label>
               <div className="flex gap-2">
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
                   value={form.salesOrderId}
+                  disabled={isEditing}
                   onChange={(e) => handleSalesOrderChange(e.target.value)}
                 >
                   <option value="">No sales order</option>
@@ -479,7 +559,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
                   type="button"
                   className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium disabled:opacity-50"
                   onClick={() => loadSalesOrderLines(form.salesOrderId)}
-                  disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
+                  disabled={busy || orderLineLoading || !form.salesOrderId.trim() || isEditing}
                 >
                   {orderLineLoading ? 'Loading...' : 'Load SO Lines'}
                 </button>
@@ -668,14 +748,32 @@ const DeliveryNoteDetailPage: React.FC = () => {
           </Card>
         )}
 
-        <button
-          type="button"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          onClick={createDraft}
-          disabled={busy || orderLineLoading}
-        >
-          {busy ? 'Creating...' : 'Create Draft Delivery Note'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+            onClick={isEditing ? saveEdits : createDraft}
+            disabled={busy || orderLineLoading}
+          >
+            {busy
+              ? isEditing
+                ? t('sales.dnDetail.saving', 'Saving...')
+                : t('sales.dnDetail.creating', 'Creating...')
+              : isEditing
+                ? t('sales.dnDetail.saveChanges', 'Save Changes')
+                : t('sales.dnDetail.createDraft', 'Create Draft Delivery Note')}
+          </button>
+          {isEditing && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              onClick={cancelEdit}
+              disabled={busy}
+            >
+              {t('sales.dnDetail.cancel', 'Cancel')}
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -704,9 +802,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
               : ''}
           </p>
         </div>
-        <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
-          {deliveryNote.status}
-        </span>
+        <StatusChip status={deliveryNote.status} type="dn" className="w-fit" />
       </div>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -824,11 +920,21 @@ const DeliveryNoteDetailPage: React.FC = () => {
         {deliveryNote.status === 'DRAFT' && (
           <button
             type="button"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            onClick={beginEdit}
+            disabled={busy}
+          >
+            {t('sales.dnDetail.edit', 'Edit')}
+          </button>
+        )}
+        {deliveryNote.status === 'DRAFT' && (
+          <button
+            type="button"
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             onClick={() => postDraft()}
             disabled={busy}
           >
-            {busy ? 'Posting...' : 'Post Delivery Note'}
+            {busy ? t('sales.dnDetail.posting', 'Posting...') : t('sales.dnDetail.post', 'Post Delivery Note')}
           </button>
         )}
         {canCreateReturn && (
