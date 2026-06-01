@@ -2,6 +2,127 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-01 (Mon) — Native-detail contract: Quotation frontend + DN/SR editable (Task 148)
+
+**Task:** Continue the native-detail contract rollout (frontend-wins-first scope).
+**Agent:** Claude (Opus 4.8)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- **Build fix (`319f1ebd`):** repaired unbalanced JSX in `SalesInvoiceV2LayoutPage.tsx`
+  (a stray `</div>` closed the return root early) — the whole frontend was failing
+  `tsc`/`vite` before this.
+- **Quotation (`5d8d3f17`):** finished the native-detail frontend — shared `StatusChip`,
+  shared `ItemSelector`/`CurrencySelector`/`CurrencyExchangeWidget`, currency from
+  `company.baseCurrency`, Discard action, rationalized 4-color palette, full i18n
+  (`sales.quoteDetail.*`, en/ar/tr).
+- **Delivery Note + Sales Return (`06256cda`):** made DRAFT drafts **editable** (the top
+  systemic 🔴 gap, F38/F41). DN reuses its create form via an `isEditing` flag and saves
+  through `updateDN`; SR gets a header-only inline edit (date/warehouse/settlement/reason/
+  restocking/notes) via `updateReturn` with lines intentionally untouched. Both gained
+  `StatusChip` + primary-palette action buttons.
+
+**Key discovery:** the contract doc overstated backend readiness — WhatsApp/Telegram send
+and attachments exist **only for Sales Invoice**. `Edit` is backend-ready everywhere, but
+non-invoice messaging/attachments, DN/SR Cancel, and quote audit emission need backend
+work. Filed as [tasks/152-sales-doc-messaging-attachments-backend.md](./tasks/152-sales-doc-messaging-attachments-backend.md).
+Corrected `docs/architecture/native-detail-contract.md`.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (`check:reports`, `check:no-confirm`, tsc, vite).
+
+**Commits scoped via pathspec** to avoid disturbing the heavy in-flight WIP in the tree
+(communications backend module, SI refactor) which remain uncommitted.
+
+## 2026-06-01 (Mon) — Sales Invoice V2 Card Layout Mockup Alignment (Task 150)
+
+**Task:** Align the dev mockup layout page to match the user's Variant V2 Card layout specifications, incorporating smart selectors and double-entry allocation presets.
+**Agent:** Antigravity (Gemini 1.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Aligned `/dev/sales-invoice-v2` (`SalesInvoiceV2LayoutPage.tsx`) dev mockup to Variant V2 layout with 5 cards: Core details, Financial settings, Line items table, Action buttons & allocation grid, and Totals & action footer.
+- Integrated canonical selectors (`PartySelector`, `WarehouseSelector`, `DatePicker`, `CurrencySelector`, and `AccountSelector`).
+- Added smart selection for `financialClientAccount` mapping to customer's AR account on credit terms or to cash safe on cash payment terms.
+- Structured the items table to display exactly 10 scrollable rows with a sticky header.
+- Implemented a balanced double-entry Account Ledger & Taxes Allocation Grid with a Syrian tax preset toggle (VAT 5% and Discount 2%).
+- Built mock modals for Attachments, Internal Notes, and Send actions.
+- Introduced simulated status-switching tabs (Create, Draft, Posted) in the header to preview footer action lifecycle states.
+- Verified TypeScript compilation and production build checks successfully (exit code 0).
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed.
+
+**Time spent:** ~0.6h.
+
+## 2026-06-01 (Mon) — Sales Invoice V3 Card Layout Mockup (Task 150)
+
+**Task:** Final alignment of the dev mockup layout page to match the user's Variant V3 Card layout screenshot exactly.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Set Variant V3 (`v3`) as the default active layout for `/dev/sales-invoice-v2` dev mockup.
+- Pre-populated the form's default state to mirror the user's mockup: Customer name set to "الشركة العربية للتجارة والخدمات (Arabian Trade Corp)" and 3 lines of Server Rack Module items.
+- Uppercased all column headers in the V3 table to match the screenshot.
+- Removed the duplicate code/name text span below the item selector to clean up the item cells.
+- Standardized the bottom totals block (Subtotal, Tax, Grand Total) to remove its gray container box, styling it with clean horizontal flex lines and uppercase labels.
+- Verified TypeScript compilation and production build (all checks passed successfully).
+- Registered manual verification details in `planning/QA-QUEUE.md` and updated completion report `planning/done/150-sales-invoice-page-refinement.md`.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (checked 21 report routes and confirm/alert checks).
+
+**Time spent:** ~0.4h.
+
+## 2026-06-01 (Mon) — Purchase Direct Invoicing Governance Fix (Task 151)
+
+**Task:** Fix Purchases settings mismatch where **Allow Direct Invoicing** appeared enabled but direct Purchase Invoice creation failed with `Purchase invoice persona 'direct' is not allowed by company governance policy`.
+**Agent:** Codex
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Kept `DocumentPolicyResolver` as the backend authority; no invoice guard was weakened.
+- Added Purchases settings reconciliation so OPERATIONAL `allowDirectInvoicing: true` writes a company-scope `direct` governance allow rule.
+- Disabling the setting removes company-scope direct rules while preserving branch/form exceptions.
+- Changed new OPERATIONAL Purchase Settings defaults to strict direct-invoicing blocked unless explicitly enabled.
+- Updated Purchase Settings UI so the toggle updates governance rules and policy summary uses effective governance.
+- Updated Purchases architecture/user docs and created `planning/done/151-purchase-direct-invoicing-governance.md`.
+- Ran graph update after code changes.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/purchases/PurchaseSettingsUseCases.test.ts` -> passed.
+- `npm --prefix backend run build` -> passed.
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (`check:reports`, `check:no-confirm`, `tsc`, Vite build).
+- `npm run graph:update` -> passed.
+
+**Time spent:** ~1.0h.
+
+## 2026-05-31 (Sun) — Sales Invoice Page Refinement (Task 150)
+
+**Task:** Refine Sales Invoice Page (List & Detail view) to support MDI desktop windows (`uiMode === 'windows'`) and premium layout aesthetics (`ui-ux-pro-max` styling).
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Integrated `uiMode` preference checks into Sales Invoice list & detail views to support draggable overlay windows (`isWindow={true}`) and router navigation fallbacks.
+- Mapped `'sales_invoice'` window type in `WindowsDesktop.tsx` and resolved local variable shadowing (`window` -> `win`) to fix compiler error.
+- Grouped header inputs on details page into two clean glassmorphic cards: "Customer & Timelines" and "Financial Details" with tailored responsive grid styles.
+- Polished the line items table with right-aligned monospaced number styling (`font-mono`), transition hovers, and clean inputs.
+- Structured the action bar with a split layout: metadata, history, sharing, and GL impact triggers on the left; and state-changing actions (Save, Post, Discard) on the right.
+- Fixed JSX nested tag structure compilation errors (unclosed outer div in `renderHeaderForm` and mismatched `</Card>` tag in `renderChargesSection`).
+- Created completion report `planning/done/150-sales-invoice-page-refinement.md`.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (all custom report and confirm safety audits passed).
+
+**Time spent:** ~0.6h.
+
 ## 2026-05-30 (Sat) — Task 132 Phase 5 — raw window.confirm and alert cleanup
 
 **Task:** Remove the remaining legacy `window.confirm` and `alert` usages from the remaining entries in the allowlist.
@@ -1417,3 +1538,31 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 
 **Next Steps:**
 - Continue executing native functionality retests or further chrome polish according to ACTIVE.md priorities.
+
+### Session: 2026-05-31 (Shared Selector Enforcement)
+
+- **Goal:** Phase 5 task to enforce WarehouseSelector and ItemSelector usage across all frontend modules where raw manual text/select inputs were used for IDs.
+- **What was done:** Scanned the codebase and migrated straggling manual text inputs in StockAdjustmentPage, PurchaseReturnDetailPage, and PromotionsPage to their respective shared selectors. Created completion report 148.
+- **Detours:** Addressed TypeScript errors in SalesInvoiceDetailPage.tsx caused by recent shared component API changes (ConfirmDialog tone, AttachmentsCard onChange removal of readOnly, messaging accounts casting).
+- **Next:** Proceed with the rest of Task 132 Phase 6 hardening, or hand back to the main Orchestrator for the native functionality retest.
+
+
+### Session: 2026-05-31 (Chart of Accounts UI Update)
+
+- **Goal:** Update the Chart of Accounts (COA) page UI to exactly match the provided design mockup screenshots.
+- **What was done:**
+  - Restructured \AccountsListPage.tsx\ to implement the new grid/table layout with mocked balance data.
+  - Implemented the \classFilter\ logic allowing users to quickly filter the tree by classifications (Asset, Liability, etc.).
+  - Built \AccountDrilldownModal.tsx\ which displays account summaries and mocked recent journal entries upon clicking an account row.
+  - Preserved existing functionality for row-level actions (+, Edit, Deactivate).
+  - Wrote completion report \149-coa-ui-update.md\ and created a user guide for the updated COA.
+- **Next:** Proceed with the native functionality retest as outlined in ACTIVE.md, or continue with Task 132 polish.
+
+### Session: 2026-06-01 (Architecture Control Layer Diagnosis)
+
+- **Goal:** Diagnose whether ERP03 has a real architecture/control-layer problem around governance, business rules, engine rules, and warnings, and produce a handoff for second-check before planning repairs.
+- **What was done:** Inspected planning docs, AGENTS.md, backend policy/posting services, frontend document policy helpers, frontend validation/rules, forms/designer architecture notes, and accounting boundary tests. Created `planning/briefs/20260601-architecture-control-layer-diagnosis.md`.
+- **Key finding:** The concern is valid. The highest-risk confirmed issues are inconsistent subledger posting policy enforcement, Sales-only period-lock wiring, frontend "business rules" that sound authoritative but are client-only, backend/frontend governance duplication, and an existing failing accounting-boundary architecture test.
+- **Verification:** `npm --prefix backend test -- --runInBand backend/src/tests/architecture/AccountingBoundary.test.ts` failed with six known/confirmed Sales/Purchases reporting boundary violations.
+- **Time spent:** ~1.2h.
+- **Next:** Send the brief to a read-only second-check agent (`erp-backend-architect`, `erp-frontend-architect`, `erp-api-contract`, then `erp-reviewer`) before any builder starts.

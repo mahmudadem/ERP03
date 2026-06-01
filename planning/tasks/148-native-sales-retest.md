@@ -238,6 +238,11 @@ This is the "v1 hardcoded native polish" the user described — one contract, ap
 - [ ] **PB12**: Adopt shared `ItemSelector` / `CurrencySelector` / `CurrencyExchangeWidget` across Quote/SO/DN/SR Detail.
 - [ ] **PB13**: Add tax-inclusive per-line override to Quote/SO/DN/SR Detail.
 - [ ] **PB14**: Always show status chip (including DRAFT) on all detail pages.
+- [ ] **PB15**: When `workflowMode === 'OPERATIONAL'` and persona is not allowed, disable Save Draft / Save & Post (with tooltip pointing to banner) rather than letting click → backend error.
+- [ ] **PB16**: Hide `Print Template` field when there is ≤1 eligible template; rename label "Invoice Template" → "Print Template"; add helper text. ✅ done in SI Detail; replicate when Quote/SO/DN/SR adopt the contract.
+- [ ] **PB17**: `CurrencySelector` renders as a text input by design. Add a clearer dropdown affordance (chevron, click-to-open list) so users recognize it as selectable, not free-text.
+- [ ] **PB18**: **Universal GL Impact viewer.** Promote the current `GlImpactModal` (sales-specific) into a generic component that works for ANY document that posts to the general ledger — purchases (PI, GR, PR), accounting vouchers (JV, payments, receipts), inventory adjustments, payroll entries, recurring invoices, opening balances, anything that creates a PostingLog. Reuse the same modal shape: source header, journal entries per voucher (debits/credits with account names), warnings, account-resolution table. Wire from each document detail page via a shared `<GlImpactButton entityType="..." entityId="..." />`. Backend already writes `PostingLog` with `sourceModule` / `sourceType` / `sourceId` for sales — extend the convention to all modules. Defer to after the v1 native-detail contract rollout is complete.
+- [ ] **PB19**: **Receiving Account must be a hard COA reference, never silent fallback.** The settlement modal's "Receiving Account (Cash / Bank)" field already uses `AccountSelector` (COA picker), but the placeholder "Leave empty to use payment method mapping" and the backend's `resolvePaymentMethodAccount` fallback let users submit with the field blank. When the payment method has no configured `settlementAccountId`, posting fails with a runtime error. Fix: (1) make the field required client-side; (2) pre-fill from `paymentMethodConfigs[paymentMethod].settlementAccountId` whenever the payment method changes; (3) drop the "leave empty" placeholder; (4) validate before submit with a clear error pointing to the field. Apply the same rule across Sales Returns (refund account) and Purchases (payment-out account). Same UX principle: any money-bearing voucher slot must be a real COA account ID, never an implicit string lookup.
 
 ## Bugs filed (🔴) — running
 
@@ -358,6 +363,30 @@ Each generation evolved without backporting. **The v1 native-detail contract is 
 | 4-color action button palette | (none yet — bug everywhere) | All 5 |
 
 Implementing this contract uniformly is the answer to "the simplest thing for a regular company to start working on onboarding". Estimated effort: **5–7 working days** across all 5 pages, parallelizable.
+
+## Implementation log (2026-06-01)
+
+Frontend-wins-first execution (user-chosen scope). Discovered the contract doc
+overstated backend readiness: **messaging + attachments exist only for Sales Invoice.**
+`Edit` is backend-ready on all 5 docs; Cancel exists for Quote/SO/SI only; quote
+write-paths emit no audit records. Non-invoice messaging/attachments + DN/SR cancel +
+quote audit emission are now tracked in
+[152-sales-doc-messaging-attachments-backend.md](./152-sales-doc-messaging-attachments-backend.md).
+
+Landed (branch `feat/init-wizard-forms-selection`):
+- `319f1ebd` — fix unbalanced JSX in `SalesInvoiceV2LayoutPage` (whole frontend was
+  failing tsc/vite before this).
+- `5d8d3f17` — **Quotation** native-detail frontend (B1-equiv done for quotes): StatusChip,
+  shared selectors, currency-from-company, Discard, palette, full i18n.
+- `06256cda` — **Delivery Note + Sales Return** drafts now editable (**B-series Edit gap
+  F38/F41 closed**) via `updateDN` / `updateReturn`; StatusChip + primary-palette buttons.
+  SR edit is header-only by design (lines immutable — backend skips omitted lines).
+
+Verified: `npm --prefix frontend run typecheck` ✅ and `npm --prefix frontend run build` ✅
+(includes `check:reports` + `check:no-confirm`).
+
+Still open from the contract: SI credit-override RBAC backport (F34, security); full-page
+i18n for DN/SR/SO; SO StatusChip swap; everything in task 152.
 
 ## Definition of Done
 

@@ -79,9 +79,12 @@ Pattern source: **SI Detail** modals at lines 2450 and 2532. Extract to shared c
 - `frontend/src/components/messaging/SendWhatsAppModal.tsx` taking `{ document: { id, number, customerId, customerName, currency, total, date }, onSend }`
 - `frontend/src/components/messaging/SendTelegramModal.tsx` (same shape)
 
-The send action handlers call per-module APIs (`salesApi.sendInvoiceWhatsApp`, `salesApi.sendQuoteWhatsApp`, etc.) — backend already supports them.
+The send action handlers call per-module APIs. **Correction (2026-06-01):** only Sales
+Invoice has backend send endpoints (`send-whatsapp` / `send-telegram`). The
+`sendQuoteWhatsApp` etc. endpoints do **not** exist yet. Quote/SO/DN/SR messaging is
+tracked in [planning/tasks/152-sales-doc-messaging-attachments-backend.md](../../planning/tasks/152-sales-doc-messaging-attachments-backend.md).
 
-Quote, SO, DN, SR all need these.
+Quote, SO, DN, SR all need these (backend + frontend wiring).
 
 ### 8. Have an Attachments section
 
@@ -157,6 +160,24 @@ SI Detail's auto-pricing lookup (line 651) catches and ignores errors. User sees
 | 13 | Skeleton + EmptyState | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 |
 | 14 | Modal state reset | n/a | n/a | 🔴 | n/a | n/a |
 | 15 | Surfaced silent fails | n/a | n/a | 🔴 | n/a | n/a |
+
+## Implementation progress (2026-06-01)
+
+- **Quotation** — frontend contract applied (commit `5d8d3f17`): shared StatusChip,
+  shared Item/Currency/Exchange selectors, currency-from-company, Discard, 4-color
+  palette, full i18n. Remaining: messaging, attachments, audit (all backend-gated → task 152).
+- **Delivery Note** — Edit verb wired (commit `06256cda`) by reusing the create form
+  via an `isEditing` flag; StatusChip + Post moved to the primary palette. Remaining:
+  Cancel (no backend), messaging/attachments (task 152), full-page i18n sweep.
+- **Sales Return** — header-only Edit wired (commit `06256cda`): date / warehouse /
+  settlement / reason / restocking / notes via `updateReturn` (lines intentionally
+  untouched — the backend skips lines when omitted); StatusChip + palette. Remaining:
+  messaging/attachments (task 152), full-page i18n sweep.
+- **Sales Invoice** — native-detail rewrite landed earlier (commit `ac5da18e`); a further
+  communications-module refactor is in flight (uncommitted).
+- **SO** — already has Edit / Cancel / Audit / RBAC credit-override; remaining: shared
+  StatusChip swap, messaging/attachments (task 152). **Security (F34):** backport SO's
+  RBAC credit-override gate to Sales Invoice Detail.
 
 ## Suggested implementation order
 

@@ -8,6 +8,67 @@
 
 ## 🧪 Ready to Test
 
+### Sales — Native-detail contract: Quotation + editable Delivery Note / Sales Return
+**Added by:** Claude (Opus 4.8) — Task 148, commits `5d8d3f17`, `06256cda`
+**What to test:**
+- **Quotation** (`Sales -> Quotations -> open/new`): status chip is always shown and
+  color-coded; Customer/Item/Currency use the shared selectors (not plain dropdowns);
+  a new quote defaults its currency to the company base currency; a DRAFT quote shows a
+  red **Discard** button that confirms then deletes; action buttons use one
+  primary/neutral/danger palette. Switch to Arabic/Turkish — labels translate.
+- **Delivery Note** (`Sales -> Delivery Notes -> open a DRAFT`): an **Edit** button appears
+  next to Post. Click it → the create-style form reopens populated with the note; the
+  Sales Order field is locked. Change the delivery date / a line qty (for standalone DNs)
+  / notes → **Save Changes** persists and returns to the view; **Cancel** discards.
+  Confirm a POSTED note shows no Edit button.
+- **Sales Return** (`Sales -> Returns -> open a DRAFT`): an **Edit** button appears. Click it
+  → header fields (date, warehouse, settlement, reason, reason code, restocking fee, notes)
+  become editable inline; **lines stay read-only** by design. Save persists via the return
+  update; Cancel discards. Confirm restocking-fee editing is hidden for BEFORE_INVOICE returns.
+- All three: confirm the status chip colors match (DRAFT slate, POSTED/ACCEPTED emerald,
+  CANCELLED/REJECTED rose, etc.).
+
+**Known limitations:**
+- Quote/DN/SR still lack WhatsApp/Telegram send + attachments (backend is Sales-Invoice-only;
+  tracked in task 152). DN/SR have no Cancel/void yet. DN/SR pages are not fully translated yet.
+- Editing does not change posting, stock, tax, or accounting math.
+
+### Sales — Sales Invoice V3 Card Layout Mockup Page
+**Added by:** Antigravity (report 150)
+**What to test:**
+- Open `Tools -> Sales Invoice V2 🎨` from the sidebar (or navigate directly to `/#/dev/sales-invoice-v2`).
+- Expected: The page loads Variant V3 (Classic Clean Card style) by default.
+- Verify that it matches the layout skeleton exactly:
+  - Header: Shows "Sales Invoice V2" page, layout variant toggle buttons, and record mode badge.
+  - Top Card: Displays details fields including Sales Order, Invoice Template, Customer selector displaying `الشركة العربية للتجارة والخدمات (Arabian Trade Corp)`, salesperson, date fields, Currency `SYP`, and notes.
+  - Line Items Card: Uppercase headers (`ITEM`, `QTY`, etc.), 3 pre-populated lines with `[HW-SRV-001] - Server Rack Module` at unit price `2,100,000`.
+  - Charges card: Displays charges section with empty state.
+  - Attachments card: Displays attachments card with file upload box.
+  - Footer actions: Displays Cancel / Return and Save Draft buttons on the left, `Publish & Post` on the right, and Subtotal/Tax/Grand Total values inline side-by-side.
+- Click the Variant V2 toggle button in the header bar and verify it transitions to the double-banner style.
+- Toggle back to Variant V3, add/remove lines, edit quantities or prices, and confirm totals calculate dynamically.
+
+**Known limitations:**
+- This page is a high-fidelity dev layout replica for visual evaluation and styling parity. It runs on mock state values and does not post financial entries to the backend ledger.
+
+---
+
+
+### Purchases — Direct Purchase Invoice Governance
+**Added by:** Codex (report 151)
+**What to test:**
+- Open `Purchases -> Settings -> Procurement Policy`.
+- In OPERATIONAL workflow, enable `Allow Direct Invoicing` and save.
+- Open `Purchases -> Invoices -> New Bill` without a PO/GRN reference.
+- Expected: saving the direct Purchase Invoice no longer fails with the company governance policy error.
+- Return to Purchase Settings, disable `Allow Direct Invoicing`, save, and try another direct invoice.
+- Expected: the governance policy error returns unless a form/branch-specific direct exception exists.
+
+**Known limitations:**
+- This fix only aligns the settings toggle with the existing governance policy. It does not change posting math, AP accounts, inventory valuation, tax calculation, or Purchase Invoice page layout.
+
+---
+
 ### Shared UI — Task 132 Date Control Cleanup
 **Added by:** Codex (report 146)
 **What to test:**
