@@ -172,14 +172,20 @@ export class PurchaseController {
         diContainer.ledgerRepository,
         diContainer.companyCurrencyRepository,
         diContainer.accountRepository,
-        new VoucherValidationService()
+        new VoucherValidationService(),
+        undefined,
+        diContainer.policyRegistry as any
       );
     }
 
     return new SubledgerVoucherPostingService(
       diContainer.voucherRepository,
       diContainer.ledgerRepository,
-      diContainer.companyCurrencyRepository
+      diContainer.companyCurrencyRepository,
+      undefined,
+      undefined,
+      undefined,
+      diContainer.policyRegistry as any
     );
   }
 

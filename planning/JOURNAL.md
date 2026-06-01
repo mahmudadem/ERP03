@@ -2,6 +2,31 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-01 (Mon) - Posting authority policy guard
+
+**Task:** Task 132 - Correct the accounting control-layer split so automatic module postings use the same policy registry as manual vouchers
+**Agent:** Codex
+**Branch:** `codex/posting-authority-policy-guard`
+**Completion report:** [planning/done/132-posting-authority-policy-guard.md](./done/132-posting-authority-policy-guard.md)
+
+**What I did:**
+- Added `AccountingPolicyRegistry` enforcement to `SubledgerVoucherPostingService` after core/account validation and before ledger/voucher writes.
+- Wired Sales, Purchases, and Inventory controller posting-service constructors to pass `diContainer.policyRegistry`.
+- Kept Sales' `PeriodLockService` path for structured soft-lock override responses, while making `PeriodLockPolicy` understand the shared override payload.
+- Hardened period-lock override config handling so `allowPeriodLockOverride === false` blocks override attempts in both `PeriodLockService` and `PeriodLockPolicy`.
+- Added structured backend handling for generic `PostingError` so policy failures do not fall through to 500.
+- Updated accounting architecture/user docs and created completion report 132.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand backend/src/application/accounting/services/__tests__/SubledgerVoucherPostingServicePolicy.test.ts backend/src/tests/domain/accounting/policies/PeriodLockPolicy.test.ts backend/src/application/accounting/services/__tests__/PeriodLockService.test.ts` -> pass (15 tests).
+- `npx prisma generate` from `backend/` -> pass.
+- `npm --prefix backend run build` -> pass.
+- `graphify update .` -> not run; `graphify` command is not available on PATH.
+
+**Time spent:** ~1.4h
+**Result:** Complete. Sales/Purchases/Inventory automatic postings now share the accounting policy guard before ledger persistence.
+**Next:** Commit and merge if clean. Phase F RFQ remains the next functional roadmap item.
+
 ## 2026-05-28 (Thu) — Phase F: Purchase Price Lists
 
 **Task:** Add Purchases Purchase Price Lists parity as currency-specific supplier pricing agreements.  

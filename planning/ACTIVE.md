@@ -2,7 +2,7 @@
 
 **Task:** Phase F — Purchases parity. Purchase Price Lists now built and ready for QA (2026-05-28).
 **Status:** In progress on `codex/phase-f-vendor-groups`. Remaining parity gaps: RFQ.
-**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md).
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [132-posting-authority-policy-guard.md](./done/132-posting-authority-policy-guard.md).
 
 ## 👉 Next agent — start here
 
@@ -31,6 +31,12 @@ Phase F progress:
 6. PI Attachments — tenant-scoped vendor bill/supporting evidence attachments on Purchase Invoices (report 129).
 7. Vendor Groups — optional supplier segmentation master data with vendor Party assignment (report 130).
 8. Purchase Price Lists — optional currency-specific supplier pricing agreements (report 131).
+
+Architecture control exception completed 2026-06-01:
+1. `SubledgerVoucherPostingService` now runs `AccountingPolicyRegistry` before ledger/voucher persistence.
+2. Sales, Purchases, and Inventory controller construction paths pass the shared policy registry.
+3. Period-lock soft override remains a reason/user payload and is accepted only when company config allows it; fiscal locked/closed periods remain non-overridable.
+4. Remaining follow-up: Purchases/Inventory need module UI if the business wants period-lock override prompts there.
 
 Remaining parity gaps (prioritized):
 - RFQ (Request for Quotation) — bigger feature, 2-3 hours
@@ -91,7 +97,7 @@ Commits on `feat/phase-a-sales-master-data`:
   - Comprehensive template upgraded from placeholder to full enterprise chart.
   - Related commits: `30055d9f`, `4385873d`.
   - Follow-up: add wizard-side validation/auto-create warning when required perpetual defaults do not resolve.
-- `PeriodLockService` is now wired into `buildAccountingPostingService()` — enforcement is live for all Sales posting paths.
+- `PeriodLockService` is wired into Sales for structured soft-lock override responses, and `SubledgerVoucherPostingService` now also runs the shared accounting policy registry for Sales/Purchases/Inventory before ledger write.
 - D.7 full free-canvas/sketch-board invoice designer is deferred; current model is controlled template selection via Forms Designer templates.
 
 ## Sequence (remaining)
@@ -118,4 +124,4 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Next action
 
-Next step is to manually QA **Vendor Groups**, then continue **Phase F Purchases parity** with **Purchase Price Lists**, then RFQ.
+Next step remains **Phase F Purchases parity — RFQ**. The posting-authority guard correction is complete; do not add new financial posting policy logic outside `AccountingPolicyRegistry` / `SubledgerVoucherPostingService`.

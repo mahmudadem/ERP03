@@ -222,7 +222,8 @@ export class SalesController {
         diContainer.companyCurrencyRepository,
         diContainer.accountRepository,
         new VoucherValidationService(),
-        diContainer.periodLockService
+        diContainer.periodLockService,
+        diContainer.policyRegistry as any
       );
     }
 
@@ -232,7 +233,8 @@ export class SalesController {
       diContainer.companyCurrencyRepository,
       undefined,
       undefined,
-      diContainer.periodLockService
+      diContainer.periodLockService,
+      diContainer.policyRegistry as any
     );
   }
 

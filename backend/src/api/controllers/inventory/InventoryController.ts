@@ -128,7 +128,9 @@ export class InventoryController {
       diContainer.ledgerRepository,
       diContainer.companyCurrencyRepository,
       diContainer.accountRepository,
-      new VoucherValidationService()
+      new VoucherValidationService(),
+      undefined,
+      diContainer.policyRegistry as any
     );
   }
 

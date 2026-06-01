@@ -25,7 +25,8 @@ export class PeriodLockPolicy implements IPostingPolicy {
 
   constructor(
     private readonly lockedThroughDate?: string,
-    private readonly resolveFiscalPeriodStatus?: (companyId: string, date: string, postingPeriodNo?: number) => Promise<PeriodStatus | null> | undefined
+    private readonly resolveFiscalPeriodStatus?: (companyId: string, date: string, postingPeriodNo?: number) => Promise<PeriodStatus | null> | undefined,
+    private readonly allowSoftLockOverride: boolean = true
   ) {}
 
   async validate(ctx: PostingPolicyContext): Promise<PolicyResult> {
@@ -55,6 +56,22 @@ export class PeriodLockPolicy implements IPostingPolicy {
       const lockedDate = normalizeAccountingDate(this.lockedThroughDate);
 
       if (voucherDate <= lockedDate) {
+        const override = ctx.metadata?.periodLockOverride;
+        if (override?.reason?.trim() && override?.overriddenBy?.trim()) {
+          if (!this.allowSoftLockOverride) {
+            return {
+              ok: false,
+              error: {
+                code: 'PERIOD_LOCK_OVERRIDE_DISABLED',
+                message: `Period-lock overrides are disabled. Voucher date ${voucherDate} is on or before locked through date ${lockedDate}`,
+                fieldHints: ['date']
+              }
+            };
+          }
+
+          return { ok: true };
+        }
+
         return {
           ok: false,
           error: {

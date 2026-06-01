@@ -36,6 +36,9 @@ export class PeriodLockService {
       const lockedDate = normalizeAccountingDate(config.lockedThroughDate);
       if (date <= lockedDate) {
         if (override?.reason?.trim()) {
+          if (config.allowPeriodLockOverride === false) {
+            throw new PeriodLockedError({ tier: 'SOFT', documentDate: date, lockedThroughDate: config.lockedThroughDate });
+          }
           return;
         }
         throw new PeriodLockedError({ tier: 'SOFT', documentDate: date, lockedThroughDate: config.lockedThroughDate });

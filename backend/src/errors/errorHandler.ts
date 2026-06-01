@@ -4,6 +4,7 @@ import { ErrorCode, ErrorSeverity, ApiErrorResponse } from './ErrorCodes';
 import { ProviderError } from './ProviderErrors';
 import { ApiError as HttpApiError } from '../api/errors/ApiError';
 import { PeriodLockedError } from '../domain/accounting/errors/PeriodLockedError';
+import { PostingError } from '../domain/shared/errors/AppError';
 
 function isFirestoreTransactionError(err: Error): boolean {
   const msg = err.message || '';
@@ -84,6 +85,10 @@ export function errorHandler(
       },
     };
     return res.status(422).json(response);
+  }
+
+  if (err instanceof PostingError || err.name === 'PostingError') {
+    return res.status(400).json((err as PostingError).toJSON());
   }
 
   // Detect Firestore transaction read-after-write violations

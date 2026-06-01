@@ -56,7 +56,11 @@ export class AccountingPolicyRegistry {
             return period?.status ?? null;
           }
         : undefined;
-      policies.push(new PeriodLockPolicy(config.lockedThroughDate, fiscalResolver));
+      policies.push(new PeriodLockPolicy(
+        config.lockedThroughDate,
+        fiscalResolver,
+        config.allowPeriodLockOverride !== false
+      ));
     }
 
     if (config.accountAccessEnabled && this.userScopeProvider && this.accountLookup) {

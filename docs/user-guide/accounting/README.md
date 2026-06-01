@@ -133,6 +133,8 @@ Once a month/year is closed:
 3. The system will reject any new postings to dates on or before that date.
 4. To re-open, change the date (admin-only, audited).
 
+If your company allows soft-lock overrides and your role has permission, some posting screens may ask for an override reason instead of blocking immediately. That reason becomes part of the posting control trail. A closed fiscal period cannot be overridden; post the document in an open period or ask an administrator to reopen the period if that is a valid business decision.
+
 ---
 
 ## Recurring vouchers

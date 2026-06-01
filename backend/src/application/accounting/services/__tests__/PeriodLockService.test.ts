@@ -82,6 +82,19 @@ describe('PeriodLockService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('rejects SOFT lock override when overrides are disabled by policy config', async () => {
+    configProvider.getConfig.mockResolvedValue(makeConfig({
+      periodLockEnabled: true,
+      lockedThroughDate: '2026-05-31',
+      allowPeriodLockOverride: false,
+    }));
+    fiscalYearRepo.findActiveForDate.mockResolvedValue(null);
+
+    await expect(
+      service.assertPostingAllowed('comp-1', '2026-05-15', { reason: 'Urgent correction', overriddenBy: 'user-1' })
+    ).rejects.toThrow(PeriodLockedError);
+  });
+
   it('throws HARD PeriodLockedError when fiscal period is CLOSED, even with override', async () => {
     configProvider.getConfig.mockResolvedValue(makeConfig({ periodLockEnabled: true, lockedThroughDate: undefined }));
     fiscalYearRepo.findActiveForDate.mockResolvedValue(
