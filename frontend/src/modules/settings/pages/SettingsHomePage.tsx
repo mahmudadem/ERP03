@@ -7,6 +7,7 @@ import {
   Building2,
   Coins,
   FileText,
+  MessageSquare,
   Palette,
   ReceiptText,
   ShieldCheck,
@@ -23,6 +24,7 @@ const settingsGroups = [
       { id: 'company', path: '/company-admin/settings', icon: Building2 },
       { id: 'appearance', path: '/settings/appearance', icon: Palette },
       { id: 'notifications', path: '/settings/notifications', icon: Bell },
+      { id: 'communications', path: '/settings/communications', icon: MessageSquare },
     ],
   },
   {

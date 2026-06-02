@@ -60,11 +60,16 @@ If you are starting work on a priority item, record it here so other agents don'
 | Claude (Opus 4.7) | v1 strategy pivot + Default Forms sidebar hide | 2026-05-30 | ✅ Done (pending commit) |
 | Codex | Task 132 - Settings/list standardization slices 143-145 | 2026-05-30 | ✅ Done |
 | Codex | Task 132 - Raw date input cleanup | 2026-05-30 | ✅ Done |
+| Antigravity | Sales Invoice Refinement Page (Detail & List) | 2026-05-31 | ✅ Done |
+| Codex | Purchase direct invoicing governance fix | 2026-06-01 | ✅ Done |
+| Codex | AI floating launcher settings toggle | 2026-06-02 | ✅ Done |
+| Antigravity | Unify Windows UI MDI window wrappers & drag/resize | 2026-06-03 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
 2. When done, mark Status = ✅ Done and move the item to `planning/done/`
 3. Update `planning/ACTIVE.md` and append to `planning/JOURNAL.md`
+4. Commit everything: `git add -A && git commit -m "feat: ..."`
 
 ---
 
@@ -80,4 +85,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-05-30 by Codex (Task 132 next step: shrink unsafe action-feedback allowlist)_
+_Last updated: 2026-06-03 by Antigravity (MDI window wrappers unified; Task 132 remains current priority)_

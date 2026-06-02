@@ -95,8 +95,18 @@ export function setupErrorInterceptor() {
         error.config?.headers?.['x-silent-error'] === 'true';
 
       if (errorResponse && !errorResponse.success && errorResponse.error) {
-        // Show error using centralized handler
-        if (!isSilent) {
+        // Skip auto-toast for POLICY / known-handled error codes — the page's
+        // own catch block handles these with a context-specific UX (modals,
+        // banners, etc.). Showing a global toast on top creates duplicates.
+        const err = errorResponse.error as any;
+        const isPagePolicyHandled =
+          err?.category === 'POLICY' ||
+          err?.code === 'PERIOD_LOCKED' ||
+          err?.code === 'CREDIT_LIMIT_EXCEEDED' ||
+          err?.code === 'PERSONA_NOT_ALLOWED' ||
+          err?.code === 'UNSETTLED_COST_BLOCKED' ||
+          err?.code === 'GOVERNANCE_RULE_VIOLATION';
+        if (!isSilent && !isPagePolicyHandled) {
           errorHandler.showError(errorResponse.error);
         }
       } else {

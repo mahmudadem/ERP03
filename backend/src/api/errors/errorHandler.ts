@@ -7,6 +7,7 @@ import { ApiError } from './ApiError';
 import { InfrastructureError as InfraError } from '../../infrastructure/errors/InfrastructureError';
 import { AppError } from '../../errors/AppError';
 import { CreditLimitExceededError } from '../../domain/sales/errors/CreditLimitExceededError';
+import { PostingError, ErrorCategory } from '../../domain/shared/errors/AppError';
 
 export const errorHandler = (
   err: Error,
@@ -41,6 +42,36 @@ export const errorHandler = (
         currentExposure: err.currentExposure,
         orderAmount: err.orderAmount,
         projectedExposure: err.projectedExposure,
+      },
+    });
+    return;
+  }
+
+  // Handle Posting / Policy domain errors — these are user-recoverable validations,
+  // not system failures. Return 400 with category so the frontend can render as
+  // a warning toast instead of a critical-error modal.
+  if (err instanceof PostingError) {
+    const anyErr = err as any;
+    // PostingError stores AppError on .appError, not as own properties.
+    const appError = anyErr.appError || {};
+    const code = appError.code || anyErr.code;
+    const category = appError.category || anyErr.category;
+    const isPolicy = category === ErrorCategory.POLICY;
+    // Pass through any subclass-specific properties (tier, documentDate,
+    // lockedThroughDate, etc.) so the frontend can branch on them.
+    const subclassExtras: Record<string, any> = {};
+    for (const key of ['tier', 'documentDate', 'lockedThroughDate']) {
+      if (anyErr[key] !== undefined) subclassExtras[key] = anyErr[key];
+    }
+    (res as any).status(isPolicy ? 400 : 422).json({
+      success: false,
+      error: {
+        code,
+        message: err.message,
+        category,
+        severity: isPolicy ? 'warning' : 'error',
+        details: appError.details || anyErr.details,
+        ...subclassExtras,
       },
     });
     return;

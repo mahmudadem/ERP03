@@ -241,6 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
             { label: t('sidebar.currencies'), path: '/system/currencies', icon: 'Coins' },
             { label: 'Tax Codes', path: '/settings/tax-codes', icon: 'Percent' },
             { label: t('sidebar.notifications'), path: '/settings/notifications', icon: 'Bell' },
+            { label: t('sidebar.communications', { defaultValue: 'Communications' }), path: '/settings/communications', icon: 'MessageSquare' },
             { label: t('sidebar.generalSettings'), path: '/company-admin/settings', icon: 'Settings' }
           ]}
         />

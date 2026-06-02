@@ -119,7 +119,9 @@ import { AxiosHttpClient } from '../http/AxiosHttpClient';
 import { IInvoiceMessagingProvider } from '../../application/sales/services/IInvoiceMessagingProvider';
 import { ICompanyMessagingResolver } from '../../application/sales/services/ICompanyMessagingResolver';
 import { MetaWhatsAppCloudProvider } from '../messaging/MetaWhatsAppCloudProvider';
-import { SalesSettingsMessagingResolver } from '../messaging/SalesSettingsMessagingResolver';
+import { CommunicationsSettingsMessagingResolver } from '../messaging/CommunicationsSettingsMessagingResolver';
+import { ICommunicationsSettingsRepository } from '../../repository/interfaces/communications/ICommunicationsSettingsRepository';
+import { FirestoreCommunicationsSettingsRepository } from '../firestore/repositories/communications/FirestoreCommunicationsSettingsRepository';
 import { FirestoreAiChatRepository } from '../firestore/repositories/ai-assistant/FirestoreAiChatRepository';
 import { FirestoreAiSettingsRepository } from '../firestore/repositories/ai-assistant/FirestoreAiSettingsRepository';
 import { FirestoreAiUsageLogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiUsageLogRepository';
@@ -1286,8 +1288,12 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
     });
   },
 
+  get communicationsSettingsRepository(): ICommunicationsSettingsRepository {
+    return new FirestoreCommunicationsSettingsRepository(getDb());
+  },
+
   get companyMessagingResolver(): ICompanyMessagingResolver {
-    return new SalesSettingsMessagingResolver(this.salesSettingsRepository, this.encryptionService);
+    return new CommunicationsSettingsMessagingResolver(this.communicationsSettingsRepository, this.encryptionService);
   },
 
   // AUTH

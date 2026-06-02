@@ -2,6 +2,93 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Unify MDI window wrappers & drag/resize hardening
+
+**Task:** Unify all window wrapper containers in Windows UI mode under `MdiWindowFrame.tsx` and fix text selection/dragging lag.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+**Actual time spent:** ~0.5h
+
+**What changed:**
+- Replaced the duplicate/laggy `DraggableWindow` component with the standardized `MdiWindowFrame` wrapper for `sales_invoice` (Sales Invoice detail view), `item` (Inventory Item Card), `party` (Customer/Vendor master card), and `warehouse` (Warehouse master card) window types.
+- Overhauled and simplified `ReportWindow.tsx` to delegate window shell rendering, header controls, drag handlers, and resize handles directly to `MdiWindowFrame`.
+- Deleted the now completely redundant `DraggableWindow.tsx` file.
+- Hardened `MdiWindowFrame.tsx` by adding `e.preventDefault()` inside dragging (`handleMouseDown`) and resizing (`handleResizeMouseDown`) click handlers. This blocks default browser click-and-drag text highlighting gestures when interacting with window headers/borders.
+- Verified type check and production bundling successfully.
+
+**Accounting/control impact:** none. Layout shell changes only.
+
+## 2026-06-02 (Tue) — AI floating launcher settings toggle
+
+**Task:** Add an AI Settings option to show/hide the global floating AI Assistant launcher and refresh its icon.
+**Agent:** Codex
+**Branch:** `feat/init-wizard-forms-selection`
+**Actual time spent:** ~1.0h
+
+**What changed:**
+- Added `AiProviderConfig.showFloatingAssistant`, defaulting ON for existing and new tenant configs.
+- Extended AI settings update validation/use case/controller/DTOs and persisted the new flag.
+- Added `GET /tenant/ai-assistant/settings/widget-preferences`, guarded by `ai-assistant.chat.use`, so normal chat users can respect the admin launcher preference without full settings access.
+- Added **Show Floating AI Launcher** in AI Assistant Settings and wired it into normal save/dirty-state behavior.
+- Updated `GlobalAiWidget` to hide when the setting is off or AI is disabled, and changed the closed launcher icon to Lucide `BrainCircuit` + `Sparkles`.
+- Added English/Arabic/Turkish strings, architecture/user docs, completion report 153, and QA queue instructions.
+
+**Accounting/control impact:** none to ledger, posting, tax, inventory valuation, reports, or financial controls. Disabling AI remains separate and server-enforced through `isEnabled`; hiding the launcher only removes the shell shortcut.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand src/tests/domain/ai-assistant/AiProviderConfig.test.ts src/tests/application/ai-assistant/AiSettingsUseCase.test.ts` -> passed, 36 tests.
+- `npm --prefix backend run build` -> passed.
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed.
+- `npm run graph:update` -> passed.
+- Browser smoke at `http://127.0.0.1:5173/` loaded to `/#/auth` with no runtime error from this change; only the existing React Router v7 future-flag warning appeared.
+
+## 2026-06-01 (Mon) — Second-check of Codex control-layer diagnosis
+
+**Task:** Verify Codex's architecture control-layer diagnosis brief for Mahmud (read-only).
+**Agent:** Claude (Opus 4.8)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What I did:** Read the key control-layer files and re-ran the architecture boundary test
+to check Codex's findings against the actual code. Verdict: diagnosis holds.
+
+**Directly verified (high confidence):**
+- **F4** — `SubledgerVoucherPostingService` never calls `validatePolicies()` (no policy
+  registry); runs only `validateCore`/`validateAccounts` + optional period lock.
+- **F5** — only `SalesController` injects `periodLockService`; Purchases/Inventory build the
+  same service without it.
+- **F6** — both `PeriodLockService` and `PeriodLockPolicy` exist; root cause is F4 (registry
+  unreachable from the engine, so a parallel lock was bolted on).
+- **F7** — both ledger repos enforce iron laws only, no policies.
+- **F8** — re-ran `AccountingBoundary.test.ts`: same 6 violations (Sales/Purchases reporting).
+- **F2** — `frontend/src/utils/documentPolicy.ts` duplicates backend `DocumentPolicyResolver`.
+- New: manual path (`VoucherUseCases`/`PostVoucherUseCase`) DOES run the full registry — this
+  asymmetry is the spine of F4–F7.
+
+**Framing correction filed:** the shared engine and `VoucherPostingStrategyFactory` are NOT
+broken — the factory's per-document line generation is correct and should stay. Real issue =
+shared engine carries a reduced rulebook + inconsistent period-lock injection. It's a
+unify-the-checkpoint job, not a rebuild.
+
+**Recorded target north star** (Mahmud's framing): one posting door, one guard running the
+complete rulebook (core invariants + every enabled policy), per-module preparation preserved,
+no side tunnels to the ledger.
+
+**Output:** [briefs/20260601-codex-control-layer-second-check.md](./briefs/20260601-codex-control-layer-second-check.md)
+— reply to Codex with verification table, framing correction, north star, and open decisions
+(read-side boundary, checkpoint shape, warning taxonomy, vocabulary lock-in). No code changed.
+ACTIVE.md untouched (stays on Task 148/132).
+
+**Decisions captured with Mahmud this session:**
+- **Decision 1 (override) — DECIDED:** uniform **ticket-based** override that travels with the
+  transaction; guard checks active tenant locks, rejects all bypass attempts unless a valid
+  ticket is present; keep the **hard (absolute) / soft (overridable)** two-tier. Documented with
+  a worked example showing today's three gaps (Sales-only guard; ticket not auth-checked; audit
+  hand-wired per use-case). Open sub-decisions: who may issue a ticket; confirm always-audited.
+- **`allowDirectInvoicing` meaning clarified:** = raise a Sales Invoice standalone, skipping the
+  SO→DN chain (`direct` persona); skipping DN shifts the stock-out onto the invoice. Open product
+  call: in OPERATIONAL mode, allow direct invoices or force the chain.
+
 ## 2026-06-01 (Mon) — Native-detail contract: Quotation frontend + DN/SR editable (Task 148)
 
 **Task:** Continue the native-detail contract rollout (frontend-wins-first scope).
@@ -49,6 +136,8 @@ Corrected `docs/architecture/native-detail-contract.md`.
 - Implemented a balanced double-entry Account Ledger & Taxes Allocation Grid with a Syrian tax preset toggle (VAT 5% and Discount 2%).
 - Built mock modals for Attachments, Internal Notes, and Send actions.
 - Introduced simulated status-switching tabs (Create, Draft, Posted) in the header to preview footer action lifecycle states.
+- Implemented GVR-style right-click context menu options (Copy, Paste, Insert Below, Highlight Row, Delete Row) on the Material Line Items table index cell.
+- Adjusted root layout element height from `h-screen` to `h-full` to eliminate parent-shell viewport overflow.
 - Verified TypeScript compilation and production build checks successfully (exit code 0).
 
 **Verification:**

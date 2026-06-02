@@ -8,6 +8,24 @@
 
 ## 🧪 Ready to Test
 
+### AI Assistant — Floating Launcher Toggle
+**Added by:** Codex (report 153)
+**What to test:**
+- Open `AI Assistant -> Settings -> Provider`.
+- Confirm the new **Show Floating AI Launcher** switch appears below **Enable AI Assistant**.
+- Turn it off and save.
+- Navigate to a normal ERP page such as `Settings` or an invoice list.
+- Expected: the floating AI shortcut is hidden.
+- Open AI Assistant from the normal menu and confirm chat is still accessible if the user has permission.
+- Return to AI Settings, turn **Show Floating AI Launcher** on, save, and navigate back to a normal ERP page.
+- Expected: the floating launcher appears again with the AI brain/sparkles icon.
+- Confirm that disabling **Enable AI Assistant** still blocks chat separately from the launcher toggle.
+
+**Known limitations:**
+- This toggle only controls the global floating shortcut. It does not change provider configuration, model certification, permissions, posting, ledger behavior, reports, or AI chat safety rules.
+
+---
+
 ### Sales — Native-detail contract: Quotation + editable Delivery Note / Sales Return
 **Added by:** Claude (Opus 4.8) — Task 148, commits `5d8d3f17`, `06256cda`
 **What to test:**
@@ -287,4 +305,5 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-05-30 by Codex (Task 132 date controls ready for QA)_
+_Last updated: 2026-06-03 by Antigravity (MDI windows unified and drag/resize fixed)_
+
