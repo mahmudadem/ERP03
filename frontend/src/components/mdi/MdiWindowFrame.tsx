@@ -54,6 +54,7 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.window-header') && 
         !(e.target as HTMLElement).closest('button')) {
+      e.preventDefault();
       setIsDragging(true);
       const rect = windowRef.current?.getBoundingClientRect();
       if (rect) {
@@ -68,6 +69,7 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
 
   const handleResizeMouseDown = (e: React.MouseEvent, type: string) => {
     e.stopPropagation();
+    e.preventDefault();
     setIsResizing(true);
     setResizeType(type);
     focusWindow(win.id);
