@@ -6,8 +6,9 @@ import { accountingApi, Account, AccountClassification, AccountRole, CurrencyPol
 import { AccountForm } from '../components/AccountForm';
 import { errorHandler } from '../../../services/errorHandler';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
-import { Folder, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe, AlertCircle } from 'lucide-react';
+import { Folder, FolderOpen, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe, AlertCircle, Sliders } from 'lucide-react';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { AccountDrilldownModal } from '../components/AccountDrilldownModal';
 
 export default function AccountsListPage() {
     const { t } = useTranslation('accounting');
@@ -20,6 +21,8 @@ export default function AccountsListPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showPostingWarning, setShowPostingWarning] = useState(false);
     const [warningParentName, setWarningParentName] = useState('');
+    const [classFilter, setClassFilter] = useState<string>('All Classes');
+    const [drilldownAccount, setDrilldownAccount] = useState<Account | null>(null);
 
     const toggleCollapse = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -107,19 +110,23 @@ export default function AccountsListPage() {
     };
 
     // Build account tree
-    const buildTree = (accounts: Account[], parentId: string | null = null, level: number = 0, visited = new Set<string>()): any[] => {
-        return accounts
-            .filter((acc) => (acc.parentId || null) === parentId)
-            .map((acc) => {
+    const buildTree = (accounts: Account[], parentId: string | null = null, level: number = 0, visited = new Set<string>(), isLastPath: boolean[] = []): any[] => {
+        const children = accounts.filter((acc) => (acc.parentId || null) === parentId);
+        return children
+            .map((acc, index) => {
                 // Infinite loop protection
                 if (visited.has(acc.id)) return null;
                 const newVisited = new Set(visited);
                 newVisited.add(acc.id);
 
+                const isLastChild = index === children.length - 1;
+                const nextPath = [...isLastPath, isLastChild];
+
                 return {
                     ...acc,
                     level,
-                    children: buildTree(accounts, acc.id, level + 1, newVisited),
+                    isLastPath: nextPath,
+                    children: buildTree(accounts, acc.id, level + 1, newVisited, nextPath),
                 };
             })
             .filter(Boolean);
@@ -178,27 +185,35 @@ export default function AccountsListPage() {
         : accountTree;
     
     // Search filter logic
-    const filterTree = (nodes: any[], query: string): any[] => {
-        if (!query) return nodes;
+    const filterTree = (nodes: any[], query: string, classificationFilter: string): any[] => {
+        if (!query && classificationFilter === 'All Classes') return nodes;
         const search = query.toLowerCase();
         
         return nodes.map(node => {
-            const matches = 
-                node.name.toLowerCase().includes(search) || 
-                (node.userCode || '').toLowerCase().includes(search) ||
-                (node.classification || '').toLowerCase().includes(search);
+            let matchesSearch = true;
+            if (query) {
+                matchesSearch = 
+                    node.name.toLowerCase().includes(search) || 
+                    (node.userCode || '').toLowerCase().includes(search) ||
+                    (node.classification || '').toLowerCase().includes(search);
+            }
+
+            let matchesClass = true;
+            if (classificationFilter !== 'All Classes') {
+                matchesClass = (node.classification || node.type || '').toUpperCase() === classificationFilter.toUpperCase();
+            }
             
-            const filteredChildren = filterTree(node.children || [], query);
+            const filteredChildren = filterTree(node.children || [], query, classificationFilter);
             const hasMatchingChildren = filteredChildren.length > 0;
             
-            if (matches || hasMatchingChildren) {
-                return { ...node, children: filteredChildren, matchesSearch: matches };
+            if ((matchesSearch && matchesClass) || hasMatchingChildren) {
+                return { ...node, children: filteredChildren, matchesSearch: (matchesSearch && matchesClass) };
             }
             return null;
         }).filter(Boolean);
     };
 
-    const filteredTree = filterTree(finalAccountTree, searchQuery);
+    const filteredTree = filterTree(finalAccountTree, searchQuery, classFilter);
     
     // Auto-expand parents when searching
     const effectiveCollapsedIds = searchQuery ? new Set() : collapsedIds;
@@ -278,52 +293,16 @@ export default function AccountsListPage() {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{t('accountsList.title', { defaultValue: 'Chart of Accounts' })}</h1>
-                    <p className="text-sm text-gray-500 mt-1">{t('accountsList.subtitle', { defaultValue: 'Manage your financial account structure' })}</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                    <div className="flex bg-gray-100 rounded-md p-0.5 border border-gray-200">
-                        <button
-                            onClick={expandAll}
-                            className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-all shadow-sm"
-                        >
-                            {t('accountsList.actions.expandAll', { defaultValue: 'Expand All' })}
-                        </button>
-                        <button
-                            onClick={collapseAll}
-                            className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-all shadow-sm"
-                        >
-                            {t('accountsList.actions.collapseAll', { defaultValue: 'Collapse All' })}
-                        </button>
-                    </div>
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm transition-colors flex items-center"
-                    >
-                        <span className="text-lg mr-1">+</span> {t('accountsList.actions.newAccount', { defaultValue: 'New Account' })}
-                    </button>
-                </div>
-            </div>
-
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h3 className="font-bold text-gray-900 text-base">{t('accountsList.preview.title', { defaultValue: 'Chart Preview' })}</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            {t('accountsList.preview.count', { count: accounts.length, defaultValue: '{{count}} accounts' })} • {t('accountsList.preview.expandHint', { defaultValue: 'Click to expand/collapse' })}
-                        </p>
-                    </div>
-                    
-                    <div className="relative w-full md:w-64">
+                <div className="px-5 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="relative w-full md:w-96">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
-                            placeholder={t('accountsList.searchPlaceholder', { defaultValue: 'Search accounts...' })}
+                            placeholder={t('accountsList.searchPlaceholder', { defaultValue: 'Search by accounts code or name...' })}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                         />
                         {searchQuery && (
                             <button 
@@ -334,9 +313,69 @@ export default function AccountsListPage() {
                             </button>
                         )}
                     </div>
+                    
+                    <div className="flex items-center space-x-3">
+                        <div className="flex rounded-md p-0.5 border border-gray-200">
+                            <button
+                                onClick={expandAll}
+                                className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all border-r border-gray-200"
+                            >
+                                {t('accountsList.actions.expandAll', { defaultValue: 'Expand All' })}
+                            </button>
+                            <button
+                                onClick={collapseAll}
+                                className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                            >
+                                {t('accountsList.actions.collapseAll', { defaultValue: 'Collapse All' })}
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="px-4 py-1.5 bg-blue-600 text-white font-bold text-sm rounded hover:bg-blue-700 shadow-sm transition-colors flex items-center"
+                        >
+                            <span className="text-lg mr-1 leading-none">+</span> {t('accountsList.actions.newAccount', { defaultValue: 'New Account' })}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="divide-y divide-gray-50 max-h-[calc(100vh-250px)] overflow-y-auto">
+                <div className="px-5 pb-4 flex items-center gap-3">
+                    <div className="flex items-center text-gray-400 text-xs font-bold tracking-wider">
+                        <Sliders className="w-4 h-4 mr-1.5" />
+                        FILTER:
+                    </div>
+                    <div className="flex gap-1.5">
+                        {['All Classes', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'].map(cls => (
+                            <button
+                                key={cls}
+                                onClick={() => setClassFilter(cls)}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                                    classFilter === cls 
+                                        ? 'bg-gray-100 text-gray-900 border border-gray-200' 
+                                        : 'text-gray-500 hover:bg-gray-50 border border-transparent'
+                                }`}
+                            >
+                                {cls}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-12 px-6 py-3 border-t border-b border-gray-100 bg-gray-50/50">
+                    <div className="col-span-8 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                        Account Code & Name
+                    </div>
+                    <div className="col-span-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">
+                        Class
+                    </div>
+                    <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">
+                        CCY
+                    </div>
+                    <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">
+                        Balance SYP
+                    </div>
+                </div>
+
+                <div className="divide-y divide-gray-50 max-h-[calc(100vh-250px)] overflow-y-auto pb-4">
                     {flatAccounts.map((account) => {
                         const isHeader = account.accountRole === 'HEADER';
                         const hasChildren = account.children?.length > 0;
@@ -347,146 +386,152 @@ export default function AccountsListPage() {
                         return (
                             <div 
                                 key={account.id} 
-                                className="group flex items-start py-4 px-6 hover:bg-gray-50/80 transition-all cursor-pointer border-l-4 border-l-transparent hover:border-l-blue-500"
-                                onClick={() => canExpand && toggleCollapse(account.id, { stopPropagation: () => {} } as any)}
+                                className="group grid grid-cols-12 items-stretch px-6 hover:bg-gray-50/80 transition-all cursor-pointer min-h-[44px]"
+                                onClick={() => setDrilldownAccount(account)}
                             >
-                                <div className="flex items-start flex-1" style={{ paddingLeft: `${paddingLeft}px` }}>
-                                    {/* Chevron/Icon Column */}
-                                    <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 -mt-1">
-                                        {canExpand ? (
-                                            <div className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-                                                {isExpanded ? (
-                                                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                                                ) : (
-                                                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                                <div className="col-span-8 flex items-stretch flex-1">
+                                    {/* Ancestor tree lines */}
+                                    {Array.from({ length: account.level }).map((_, i) => {
+                                        const showVertical = account.isLastPath && !account.isLastPath[i];
+                                        return (
+                                            <div key={i} className="w-8 flex-shrink-0 relative">
+                                                {showVertical && (
+                                                    <div className="absolute top-0 bottom-0 start-1/2 border-s border-gray-300" />
                                                 )}
                                             </div>
-                                        ) : (
-                                            <Circle className="w-1.5 h-1.5 text-gray-300 fill-current" />
+                                        );
+                                    })}
+
+                                    {/* Current node tree lines and chevron */}
+                                    <div className="w-8 flex-shrink-0 relative flex items-center justify-center">
+                                        {account.level > 0 && (
+                                            <>
+                                                {/* Curved elbow connecting from parent */}
+                                                <div className="absolute top-0 start-1/2 w-[calc(50%+4px)] h-1/2 border-s border-b border-gray-300 rounded-es-lg" />
+                                                
+                                                {/* Line continuing downwards to next sibling */}
+                                                {account.isLastPath && !account.isLastPath[account.level] && (
+                                                    <div className="absolute top-1/2 bottom-0 start-1/2 border-s border-gray-300" />
+                                                )}
+                                            </>
                                         )}
+
+                                        <div 
+                                            className="w-5 h-5 flex items-center justify-center cursor-pointer hover:bg-gray-200 rounded-full bg-white z-10 relative"
+                                            onClick={(e) => {
+                                                if (canExpand) {
+                                                    e.stopPropagation();
+                                                    toggleCollapse(account.id, e as any);
+                                                }
+                                            }}
+                                        >
+                                            {canExpand ? (
+                                                isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-gray-500" strokeWidth={2.5} /> : <ChevronRight className="w-3.5 h-3.5 text-gray-500" strokeWidth={2.5} />
+                                            ) : (
+                                                <div className="w-3.5 h-3.5" />
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Content Column */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-mono text-[13px] text-gray-400 w-12 flex-shrink-0 tracking-tight">
-                                                {account.userCode}
-                                            </span>
-                                            <span className={`text-[16px] tracking-tight ${isHeader ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
-                                                {account.name}
-                                            </span>
-                                            {account.isOrphan && (
-                                                <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-600 font-bold px-1.5 py-0.5 rounded border border-amber-100">
-                                                    <AlertTriangle className="w-3 h-3" /> {t('accountsList.badges.orphaned', { defaultValue: 'Orphaned' })}
-                                                </span>
-                                            )}
-                                            {account.isCircular && (
-                                                <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded border border-red-100" title={t('accountsList.badges.circularTooltip', { defaultValue: 'Circular Reference Detected: This account points to its own descendant!' })}>
-                                                    <AlertTriangle className="w-3 h-3" /> {t('accountsList.badges.circular', { defaultValue: 'Circular Loop' })}
-                                                </span>
-                                            )}
-                                            {account.isProtected && <Lock className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                                    <div className="flex items-center gap-3 py-2.5 ms-2">
+                                        <span className="font-mono text-xs text-gray-400 w-12 flex-shrink-0 tracking-tight text-right rtl:text-left">
+                                            {account.userCode}
+                                        </span>
+                                        {isHeader ? (
+                                            isExpanded ? (
+                                                <FolderOpen className={`w-4 h-4 ${account.level === 0 ? 'text-blue-500' : 'text-yellow-500'}`} />
+                                            ) : (
+                                                <Folder className={`w-4 h-4 ${account.level === 0 ? 'text-blue-500' : 'text-yellow-500'}`} />
+                                            )
+                                        ) : (
+                                            <FileText className="w-4 h-4 text-emerald-500" />
+                                        )}
+                                        <span className={`text-sm tracking-tight ${isHeader ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                                            {account.name}
+                                        </span>
+                                        
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity space-x-1 ml-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (account.accountRole === 'POSTING') {
+                                                        setWarningParentName(account.name);
+                                                        setShowPostingWarning(true);
+                                                        return;
+                                                    }
+                                                    const parentCode = account.userCode || '';
+                                                    const children = safeAccounts.filter(a => a.parentId === account.id);
+                                                    const suffixes = children
+                                                        .map(c => (c.userCode || '').slice(parentCode.length))
+                                                        .filter(s => /^\d+$/.test(s))
+                                                        .map(s => parseInt(s, 10));
+                                                    
+                                                    const nextSeq = suffixes.length > 0 ? Math.max(...suffixes) + 1 : 1;
+                                                    const suggestedCode = `${parentCode}${nextSeq.toString().padStart(2, '0')}`;
 
-                                            {/* Actions - Visible on Hover next to name/badges */}
-                                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity space-x-0.5 ml-2">
+                                                    setPrePopulatedData({
+                                                        parentId: account.id,
+                                                        userCode: suggestedCode,
+                                                        classification: account.classification || account.type as any,
+                                                        balanceNature: account.balanceNature,
+                                                        currencyPolicy: account.currencyPolicy,
+                                                        fixedCurrencyCode: account.fixedCurrencyCode || account.currency,
+                                                        accountRole: 'POSTING'
+                                                    });
+                                                    setIsCreateModalOpen(true);
+                                                }}
+                                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                                title={t('accountsList.actions.addChild', { defaultValue: 'Add Child Account' })}
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingAccount(account);
+                                                }}
+                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                title={t('accountsList.actions.edit', { defaultValue: 'Edit Account' })}
+                                            >
+                                                <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            {!account.isProtected && (account.status === 'ACTIVE' || account.isActive) && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        
-                                                        // Safety Check: Prevent creating children under Posting accounts
-                                                        if (account.accountRole === 'POSTING') {
-                                                            setWarningParentName(account.name);
-                                                            setShowPostingWarning(true);
-                                                            return;
-                                                        }
-
-                                                        // Smart Code Suggestion Logic
-                                                        const parentCode = account.userCode || '';
-                                                        const children = safeAccounts.filter(a => a.parentId === account.id);
-                                                        const suffixes = children
-                                                            .map(c => (c.userCode || '').slice(parentCode.length))
-                                                            .filter(s => /^\d+$/.test(s))
-                                                            .map(s => parseInt(s, 10));
-                                                        
-                                                        const nextSeq = suffixes.length > 0 ? Math.max(...suffixes) + 1 : 1;
-                                                        const suggestedCode = `${parentCode}${nextSeq.toString().padStart(2, '0')}`;
-
-                                                        setPrePopulatedData({
-                                                            parentId: account.id,
-                                                            userCode: suggestedCode,
-                                                            classification: account.classification || account.type as any,
-                                                            balanceNature: account.balanceNature,
-                                                            currencyPolicy: account.currencyPolicy,
-                                                            fixedCurrencyCode: account.fixedCurrencyCode || account.currency,
-                                                            accountRole: 'POSTING'
-                                                        });
-                                                        setIsCreateModalOpen(true);
+                                                        handleDeactivate(account.id, account.name);
                                                     }}
-                                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
-                                                    title={t('accountsList.actions.addChild', { defaultValue: 'Add Child Account' })}
+                                                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                    title={t('accountsList.actions.deactivate', { defaultValue: 'Deactivate Account' })}
                                                 >
-                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingAccount(account);
-                                                    }}
-                                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                    title={t('accountsList.actions.edit', { defaultValue: 'Edit Account' })}
-                                                >
-                                                    <Edit2 className="w-3.5 h-3.5" />
-                                                </button>
-                                                {!account.isProtected && (account.status === 'ACTIVE' || account.isActive) && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeactivate(account.id, account.name);
-                                                        }}
-                                                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                        title={t('accountsList.actions.deactivate', { defaultValue: 'Deactivate Account' })}
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-0.5 ml-[60px]">
-                                            <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-                                                {account.classification?.toLowerCase() || account.type?.toLowerCase()}
-                                            </span>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold uppercase tracking-tight ${
-                                                isHeader 
-                                                    ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' 
-                                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                            }`}>
-                                                {account.accountRole || (hasChildren ? t('accountsList.roles.header', { defaultValue: 'HEADER' }) : t('accountsList.roles.posting', { defaultValue: 'POSTING' }))}
-                                            </span>
-                                            {(() => {
-                                                const effective = getEffectiveCurrency(account);
-                                                if (effective.type === 'OPEN') {
-                                                    return (
-                                                        <span className="text-[10px] bg-purple-50 text-purple-600 font-extrabold px-1.5 py-0.5 rounded uppercase border border-purple-100 flex items-center gap-1">
-                                                            <Globe className="w-2.5 h-2.5" /> ANY
-                                                        </span>
-                                                    );
-                                                }
-                                                return (
-                                                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase border flex items-center gap-1 ${
-                                                        effective.isInherited 
-                                                            ? 'bg-transparent text-blue-400 border-blue-200 border-dashed' 
-                                                            : 'bg-blue-50 text-blue-600 border-blue-100'
-                                                    }`} title={account.level === 0 ? t('accountsList.currency.rootLock', { defaultValue: 'Root Level Currency Lock (Immutable)' }) : effective.isInherited ? t('accountsList.currency.inheritedPolicy', { defaultValue: 'Inherited Policy' }) : t('accountsList.currency.fixedPolicy', { defaultValue: 'Fixed Policy' })}>
-                                                        {account.level === 0 && <Lock size={10} className="text-blue-500 opacity-80" />}
-                                                        {effective.code}
-                                                        {effective.isInherited && account.level !== 0 && <span className="text-[8px] opacity-70">↓</span>}
-                                                    </span>
-                                                );
-                                            })()}
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
+                                <div className="col-span-2 flex justify-center items-center py-2.5">
+                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold tracking-tight capitalize ${
+                                        isHeader 
+                                            ? 'bg-gray-100 text-gray-500' 
+                                            : 'bg-emerald-50 text-emerald-600'
+                                    }`}>
+                                        {account.accountRole || (hasChildren ? 'Header' : 'Posting')}
+                                    </span>
+                                </div>
+
+                                <div className="col-span-1 flex justify-center items-center py-2.5">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                        {getEffectiveCurrency(account).code}
+                                    </span>
+                                </div>
+
+                                <div className="col-span-1 text-right flex items-center justify-end py-2.5">
+                                    <span className="text-sm font-bold text-gray-700">
+                                        -
+                                    </span>
+                                </div>
                             </div>
                         );
                     })}
@@ -525,6 +570,12 @@ export default function AccountsListPage() {
                     />
                 </div>
             )}
+
+            <AccountDrilldownModal 
+                isOpen={!!drilldownAccount}
+                onClose={() => setDrilldownAccount(null)}
+                account={drilldownAccount}
+            />
 
             {/* Posting Account Safety Overlay */}
             <ConfirmDialog
