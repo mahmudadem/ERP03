@@ -16,6 +16,7 @@ import {
   SalesSettingsDTO,
   UpdateSalesInvoicePayload,
 } from '../../../api/salesApi';
+import { communicationsApi, CommunicationsSettingsDTO } from '../../../api/communicationsApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
@@ -24,13 +25,15 @@ import { Modal } from '../../../components/ui/Modal';
 import { StatusChip } from '../../../components/ui/StatusChip';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { AttachmentsCard } from '../../../components/attachments/AttachmentsCard';
-import { SendWhatsAppModal } from '../../../components/messaging/SendWhatsAppModal';
-import { SendTelegramModal } from '../../../components/messaging/SendTelegramModal';
+import { SendDocumentButton } from '../../../components/messaging/SendDocumentButton';
+import type { MessagingAccount } from '../../../components/messaging/SendWhatsAppModal';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { useDocumentPolicies } from '../../../hooks/useDocumentPolicies';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { errorHandler } from '../../../services/errorHandler';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { clsx } from 'clsx';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
@@ -126,20 +129,44 @@ const createEmptyCharge = (): EditableCharge => ({
   description: '',
 });
 
-const SalesInvoiceDetailPage: React.FC = () => {
+export interface SalesInvoiceDetailProps {
+  invoiceId?: string;
+  isWindow?: boolean;
+  onClose?: () => void;
+  onSaved?: () => void;
+}
+
+export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
+  invoiceId,
+  isWindow = false,
+  onClose,
+  onSaved,
+}) => {
   const { t } = useTranslation();
   const { company } = useCompanyAccess();
   const { hasPermission, isOwner } = useRBAC();
   const { salesSettings } = useDocumentPolicies();
-  const { confirm } = useConfirm();
+  const { confirm, confirmDialog } = useConfirm();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const isCreateMode = !params.id || params.id === 'new';
+  const resolvedId = invoiceId !== undefined ? invoiceId : params.id;
+  const isCreateMode = !resolvedId || resolvedId === 'new';
+  const { uiMode } = useUserPreferences();
+  const isWindowsMode = uiMode === 'windows';
 
   const canOverrideCredit =
     salesSettings?.allowCreditOverride !== false &&
     (isOwner || hasPermission('sales.creditOverride'));
+
+  const LINE_DISPLAY_MIN = 10;
+  const padLinesToMin = (lines: EditableLine[]): EditableLine[] => {
+    if (lines.length >= LINE_DISPLAY_MIN) return lines;
+    const pad: EditableLine[] = [];
+    for (let i = lines.length; i < LINE_DISPLAY_MIN; i++) pad.push(createEmptyLine());
+    return [...lines, ...pad];
+  };
+  const filledLines = (lines: EditableLine[]): EditableLine[] => lines.filter((l) => !!l.itemId);
 
   const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
     salesOrderId,
@@ -153,7 +180,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     currency: company?.baseCurrency || 'USD',
     exchangeRate: 1,
     notes: '',
-    lines: [createEmptyLine()],
+    lines: padLinesToMin([]),
     charges: [],
   });
 
@@ -162,6 +189,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   const [invoice, setInvoice] = useState<SalesInvoiceDTO | null>(null);
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
+  const [commSettings, setCommSettings] = useState<CommunicationsSettingsDTO | null>(null);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
   const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
@@ -180,6 +208,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [glImpactOpen, setGlImpactOpen] = useState(false);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
+  const [pendingPeriodLockRetry, setPendingPeriodLockRetry] = useState<((reason: string) => void) | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [cloneRecurringOpen, setCloneRecurringOpen] = useState(false);
   const [cloneRecurringBusy, setCloneRecurringBusy] = useState(false);
@@ -190,8 +219,6 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [cloneRecurringStartDate, setCloneRecurringStartDate] = useState(todayIso());
   const [cloneRecurringEndDate, setCloneRecurringEndDate] = useState('');
   const [cloneRecurringMaxOccurrences, setCloneRecurringMaxOccurrences] = useState('');
-  const [sendWhatsAppOpen, setSendWhatsAppOpen] = useState(false);
-  const [sendTelegramOpen, setSendTelegramOpen] = useState(false);
   const [templateTouched, setTemplateTouched] = useState(false);
 
   // Credit check override state
@@ -213,7 +240,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     setArAccountId('');
     setSettlementRows([]);
     setShowSettlement(false);
-  }, [params.id]);
+  }, [resolvedId]);
 
   // Clause 1: mode flag — DRAFT is editable, everything else is read-only
   const isReadOnly = !isCreateMode && !(invoice?.status === 'DRAFT');
@@ -248,25 +275,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
       }, {}),
     [customers]
   );
-  const whatsappAccounts = useMemo<SalesMessagingAccountDTO[]>(
+  const messagingAccounts = useMemo<MessagingAccount[]>(
     () =>
-      (settings?.messagingAccounts || [])
-        .filter((account) => account.channel === 'WHATSAPP' && account.isActive !== false)
+      ((commSettings?.messagingAccounts || []) as SalesMessagingAccountDTO[])
+        .filter((account) => account.isActive !== false)
         .sort((a, b) => {
           if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
           return (a.label || '').localeCompare(b.label || '');
-        }),
-    [settings]
-  );
-  const telegramAccounts = useMemo<SalesMessagingAccountDTO[]>(
-    () =>
-      (settings?.messagingAccounts || [])
-        .filter((account) => account.channel === 'TELEGRAM' && account.isActive !== false)
-        .sort((a, b) => {
-          if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
-          return (a.label || '').localeCompare(b.label || '');
-        }),
-    [settings]
+        }) as unknown as MessagingAccount[],
+    [commSettings]
   );
   const eligibleInvoiceTemplates = useMemo(
     () =>
@@ -408,7 +425,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   };
 
   const loadReferenceData = async () => {
-    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult, salespersonResult] = await Promise.all([
+    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult, salespersonResult, commResult] = await Promise.all([
       salesApi.getSettings(),
       sharedApi.listParties({ role: 'CUSTOMER', active: true }),
       inventoryApi.listItems({ active: true, limit: 500 }),
@@ -416,6 +433,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       inventoryApi.listWarehouses({ active: true }),
       salesApi.listSOs({ limit: 500 }),
       salesMasterDataApi.listSalespersons({ status: 'ACTIVE' }),
+      communicationsApi.getSettings().catch(() => null),
     ]);
 
     const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
@@ -426,6 +444,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     const salesOrderList = unwrap<SalesOrderDTO[]>(salesOrderResult);
 
     setSettings(currentSettings);
+    setCommSettings(commResult);
     setCustomers(Array.isArray(customerList) ? customerList : []);
     setItems(Array.isArray(itemList) ? itemList : []);
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
@@ -480,7 +499,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       }));
     } catch (err: any) {
       console.error('Failed to load invoiceable linked lines', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.loadLinkedLinesFailed', 'Failed to load invoiceable linked lines.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.loadLinkedLinesFailed', 'Failed to load invoiceable linked lines.'));
     } finally {
       setOrderLineLoading(false);
     }
@@ -502,7 +521,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       currency: loaded.currency,
       exchangeRate: loaded.exchangeRate,
       notes: loaded.notes || '',
-      lines: (loaded.lines || []).map((l) => ({
+      lines: padLinesToMin((loaded.lines || []).map((l) => ({
         lineId: l.lineId,
         soLineId: l.soLineId,
         dnLineId: l.dnLineId,
@@ -519,7 +538,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
         priceIsInclusive: (l as any).priceIsInclusive,
         warehouseId: l.warehouseId,
         description: l.description,
-      })),
+      }))),
       charges: ((loaded as any).charges || []).map((c: any) => ({
         chargeId: c.chargeId,
         code: c.code,
@@ -537,8 +556,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
       setLoading(true);
       setError(null);
       await loadReferenceData();
-      if (!isCreateMode && params.id) {
-        const result = await salesApi.getSI(params.id);
+      if (!isCreateMode && resolvedId) {
+        const result = await salesApi.getSI(resolvedId);
         const loaded = unwrap<SalesInvoiceDTO>(result);
         setInvoice(loaded);
         setAttachments(Array.isArray(loaded.attachments) ? loaded.attachments : []);
@@ -552,8 +571,16 @@ const SalesInvoiceDetailPage: React.FC = () => {
         }
       }
     } catch (err: any) {
+      // A missing invoice is a normal not-found state, not a critical error.
+      // Leave `invoice` null so the friendly not-found EmptyState renders.
+      const status = err?.response?.status;
+      const code = err?.response?.data?.error?.code;
+      if (status === 404 || code === 'NOT_FOUND') {
+        setInvoice(null);
+        return;
+      }
       console.error('Failed to load sales invoice detail', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.loadFailed', 'Failed to load sales invoice.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.loadFailed', 'Failed to load sales invoice.'));
     } finally {
       setLoading(false);
     }
@@ -561,7 +588,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   useEffect(() => {
     load();
-  }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resolvedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const ids = Array.from(new Set<string>(form.lines.map((line) => line.itemId).filter((id): id is string => Boolean(id))));
@@ -672,10 +699,10 @@ const SalesInvoiceDetailPage: React.FC = () => {
     if (!form.invoiceDate) return t('sales.invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
     if (!form.currency.trim()) return t('sales.invoiceDetail.validation.currencyRequired', 'Currency is required.');
     if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('sales.invoiceDetail.validation.exchangeRateInvalid', 'Exchange rate must be greater than 0.');
-    if (!form.lines.length) return t('sales.invoiceDetail.validation.linesRequired', 'At least one line is required.');
-    for (let i = 0; i < form.lines.length; i += 1) {
-      const line = form.lines[i];
-      if (!line.itemId) return t('sales.invoiceDetail.validation.lineItemRequired', 'Line {{n}}: item is required.', { n: i + 1 });
+    const usable = filledLines(form.lines);
+    if (!usable.length) return t('sales.invoiceDetail.validation.linesRequired', 'At least one line is required.');
+    for (let i = 0; i < usable.length; i += 1) {
+      const line = usable[i];
       if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('sales.invoiceDetail.validation.lineUnitPriceInvalid', 'Line {{n}}: unit price must be >= 0.', { n: i + 1 });
       if (line.discountType && (Number.isNaN(line.discountValue || 0) || (line.discountValue || 0) < 0)) return t('sales.invoiceDetail.validation.lineDiscountInvalid', 'Line {{n}}: discount must be >= 0.', { n: i + 1 });
       const item = itemById[line.itemId];
@@ -685,8 +712,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
     }
     for (let i = 0; i < form.charges.length; i += 1) {
       const charge = form.charges[i];
-      if (!charge.name.trim()) return t('sales.invoiceDetail.validation.chargeNameRequired', 'Charge {{n}}: name is required.', { n: i + 1 });
-      if (Number.isNaN(charge.amountDoc) || charge.amountDoc < 0) return t('sales.invoiceDetail.validation.chargeAmountInvalid', 'Charge {{n}}: amount must be >= 0.', { n: i + 1 });
+      const hasName = !!charge.name?.trim();
+      const hasAmount = (charge.amountDoc || 0) > 0;
+      if (!hasName && !hasAmount) continue; // empty row — silently dropped on save
+      if (!hasName) return t('sales.invoiceDetail.validation.chargeNameRequired', 'Charge {{n}}: name is required.', { n: i + 1 });
+      if (!hasAmount) return t('sales.invoiceDetail.validation.chargeAmountInvalid', 'Charge {{n}}: amount must be greater than 0.', { n: i + 1 });
     }
     return null;
   };
@@ -724,8 +754,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
     dueDate: form.dueDate || undefined,
     currency: form.currency.toUpperCase(),
     exchangeRate: form.exchangeRate,
-    lines: form.lines.map((line, index) => buildLinePayload(line, index)),
-    charges: form.charges.map((charge) => ({
+    lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
+    charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
       chargeId: charge.chargeId,
       code: charge.code || undefined,
       name: charge.name,
@@ -749,8 +779,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
     dueDate: form.dueDate || undefined,
     currency: form.currency.toUpperCase(),
     exchangeRate: form.exchangeRate,
-    lines: form.lines.map((line, index) => buildLinePayload(line, index)),
-    charges: form.charges.map((charge) => ({
+    lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
+    charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
       chargeId: charge.chargeId,
       code: charge.code || undefined,
       name: charge.name,
@@ -762,6 +792,50 @@ const SalesInvoiceDetailPage: React.FC = () => {
     notes: form.notes || undefined,
   });
 
+  /**
+   * Detect a SOFT period-lock error and open the override modal.
+   * Returns true if handled (caller should `return` without further error UI).
+   * `retry` will be called with the override reason once user confirms.
+   */
+  const handlePeriodLock = (err: any, retry: (reason: string) => void): boolean => {
+    const data = err?.response?.data?.error;
+    if (!data || data.code !== 'PERIOD_LOCKED') return false;
+    if (data.tier === 'SOFT') {
+      setOverrideModalData({
+        documentDate: data.documentDate || form.invoiceDate,
+        lockedThroughDate: data.lockedThroughDate || '',
+      });
+      setPendingPeriodLockRetry(() => retry);
+      setOverrideModalOpen(true);
+      return true;
+    }
+    // HARD: cannot override
+    errorHandler.showWarning(data.message || t('sales.invoiceDetail.periodLockedHard', 'This accounting period is closed and cannot be overridden.'));
+    return true;
+  };
+
+  /** Detect known policy/governance blocks (expected validation, not a system error). Returns true if handled. */
+  const handlePolicyBlock = (err: any): boolean => {
+    const data = err?.response?.data;
+    const code = data?.code ?? data?.error?.code ?? '';
+    const category = data?.category ?? data?.error?.category ?? '';
+    const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+    // PERIOD_LOCKED has its own dedicated modal flow — don't catch it here.
+    if (code === 'PERIOD_LOCKED') return false;
+    const isPolicy =
+      code === 'PERSONA_NOT_ALLOWED' ||
+      code === 'GOVERNANCE_RULE_VIOLATION' ||
+      code === 'UNSETTLED_COST_BLOCKED' ||
+      category === 'POLICY' ||
+      msg.toLowerCase().includes('governance policy') ||
+      msg.toLowerCase().includes('inventory cost');
+    if (isPolicy) {
+      errorHandler.showWarning(msg || t('sales.invoiceDetail.policyBlocked', 'This action is blocked by company policy.'));
+      return true;
+    }
+    return false;
+  };
+
   const handleCreditBlock = (err: any, payload: CreateSalesInvoicePayload, mode: 'draft' | 'createAndPost') => {
     const data = err?.response?.data;
     const code = data?.code ?? data?.error?.code ?? '';
@@ -772,7 +846,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       msg.toLowerCase().includes('credit_limit');
     if (isCreditBlock) {
       if (!canOverrideCredit) {
-        setError(t('sales.invoiceDetail.creditLimitBlocked', 'Customer is over their credit limit. You do not have permission to override.'));
+        errorHandler.showError(t('sales.invoiceDetail.creditLimitBlocked', 'Customer is over their credit limit. You do not have permission to override.'));
         return true;
       }
       setPendingCreatePayload({ payload, mode });
@@ -786,7 +860,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   const createDraft = async (creditOverrideReasonParam?: string) => {
     const validationError = validateBeforeSave();
-    if (validationError) { setError(validationError); return; }
+    if (validationError) { errorHandler.showError(validationError); return; }
     try {
       setBusy(true);
       setError(null);
@@ -799,14 +873,20 @@ const SalesInvoiceDetailPage: React.FC = () => {
           setCreditWarnBanner(t('sales.invoiceDetail.creditWarn', 'Invoice created — customer is over their credit limit (warning). Limit: {{limit}}, Exposure: {{exposure}}.', { limit: creditCheck.creditLimit ?? '—', exposure: creditCheck.currentExposure ?? '—' }));
         }
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        errorHandler.showSuccess(t('sales.invoiceDetail.createSuccess', 'Invoice {{number}} saved as draft.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        }
       } catch (err: any) {
         if (handleCreditBlock(err, payload, 'draft')) return;
         throw err;
       }
     } catch (err: any) {
+      if (handlePolicyBlock(err)) return;
       console.error('Failed to create sales invoice', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.createFailed', 'Failed to create sales invoice draft.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.createFailed', 'Failed to create sales invoice draft.'));
     } finally {
       setBusy(false);
     }
@@ -815,7 +895,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const saveDraftChanges = async () => {
     if (!invoice?.id) return;
     const validationError = validateBeforeSave();
-    if (validationError) { setError(validationError); return; }
+    if (validationError) { errorHandler.showError(validationError); return; }
     try {
       setBusy(true);
       setError(null);
@@ -823,18 +903,19 @@ const SalesInvoiceDetailPage: React.FC = () => {
       const dto = unwrap<SalesInvoiceDTO>(updated);
       setInvoice(dto);
       populateFormFromInvoice(dto);
-      errorHandler.showInfo(t('sales.invoiceDetail.saveChangesSuccess', 'Changes saved successfully.'));
+      errorHandler.showSuccess(t('sales.invoiceDetail.saveChangesSuccess', 'Changes saved successfully.'));
+      window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'SI' } }));
     } catch (err: any) {
       console.error('Failed to update sales invoice', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.updateFailed', 'Failed to save changes.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.updateFailed', 'Failed to save changes.'));
     } finally {
       setBusy(false);
     }
   };
 
-  const createAndPostDraft = async (creditOverrideReasonParam?: string) => {
+  const createAndPostDraft = async (creditOverrideReasonParam?: string, periodLockOverrideReason?: string) => {
     const validationError = validateBeforeSave();
-    if (validationError) { setError(validationError); return; }
+    if (validationError) { errorHandler.showError(validationError); return; }
     try {
       setBusy(true);
       setError(null);
@@ -854,21 +935,28 @@ const SalesInvoiceDetailPage: React.FC = () => {
       } : undefined;
       const payload = buildCreatePayload(creditOverrideReasonParam, settlementInput);
       try {
-        const created = await salesApi.createAndPostSI(payload);
+        const created = await salesApi.createAndPostSI(payload, periodLockOverrideReason);
         const raw = created as any;
         const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
         if (creditCheck?.outcome === 'WARN') {
           setCreditWarnBanner(t('sales.invoiceDetail.creditWarn', 'Invoice created — customer is over their credit limit (warning). Limit: {{limit}}, Exposure: {{exposure}}.', { limit: creditCheck.creditLimit ?? '—', exposure: creditCheck.currentExposure ?? '—' }));
         }
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        errorHandler.showSuccess(t('sales.invoiceDetail.createAndPostSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        }
       } catch (err: any) {
         if (handleCreditBlock(err, payload, 'createAndPost')) return;
+        if (handlePeriodLock(err, (reason) => createAndPostDraft(creditOverrideReasonParam, reason))) return;
         throw err;
       }
     } catch (err: any) {
+      if (handlePolicyBlock(err)) return;
       console.error('Failed to create and post sales invoice', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.createAndPostFailed', 'Failed to create and post sales invoice.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.createAndPostFailed', 'Failed to create and post sales invoice.'));
     } finally {
       setBusy(false);
     }
@@ -887,15 +975,25 @@ const SalesInvoiceDetailPage: React.FC = () => {
       if (mode === 'draft') {
         const created = await salesApi.createSI(newPayload);
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        errorHandler.showSuccess(t('sales.invoiceDetail.createSuccess', 'Invoice {{number}} saved as draft.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        }
       } else {
         const created = await salesApi.createAndPostSI(newPayload);
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        errorHandler.showSuccess(t('sales.invoiceDetail.createAndPostSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        }
       }
     } catch (err: any) {
       console.error('Failed to create invoice with credit override', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.creditOverrideFailed', 'Failed to create invoice with credit override.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.creditOverrideFailed', 'Failed to create invoice with credit override.'));
     } finally {
       setBusy(false);
     }
@@ -923,24 +1021,17 @@ const SalesInvoiceDetailPage: React.FC = () => {
       setInvoice(dto);
       populateFormFromInvoice(dto);
       setShowSettlement(false);
-    } catch (err: any) {
-      const errorCode = err?.response?.data?.error?.code;
-      if (errorCode === 'PERIOD_LOCKED') {
-        const errorData = err?.response?.data?.error;
-        if (errorData?.tier === 'SOFT') {
-          setOverrideModalData({
-            documentDate: errorData.documentDate || invoice.invoiceDate,
-            lockedThroughDate: errorData.lockedThroughDate || '',
-          });
-          setOverrideModalOpen(true);
-          return;
-        } else {
-          setError(t('sales.invoiceDetail.periodLockedHard', 'This accounting period is closed and cannot be overridden.'));
-          return;
-        }
+      errorHandler.showSuccess(t('sales.invoiceDetail.postSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
+      if (isWindow && onSaved) {
+        onSaved();
+      } else {
+        window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'SI' } }));
       }
+    } catch (err: any) {
+      if (handlePeriodLock(err, (reason) => postDraft(reason))) return;
+      if (handlePolicyBlock(err)) return;
       console.error('Failed to post sales invoice', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.postFailed', 'Failed to post sales invoice.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.postFailed', 'Failed to post sales invoice.'));
     } finally {
       setBusy(false);
     }
@@ -958,6 +1049,14 @@ const SalesInvoiceDetailPage: React.FC = () => {
   };
 
   const handleDiscard = async () => {
+    if (!invoice?.id) {
+      if (isWindow && onClose) {
+        onClose();
+      } else {
+        navigate('/sales/invoices');
+      }
+      return;
+    }
     const confirmed = await confirm({
       title: t('sales.invoiceDetail.discardTitle', 'Discard Invoice'),
       message: t('sales.invoiceDetail.discardMessage', 'Are you sure you want to discard this draft invoice? This action cannot be undone.'),
@@ -965,8 +1064,20 @@ const SalesInvoiceDetailPage: React.FC = () => {
       tone: 'danger',
     });
     if (!confirmed) return;
-    // TODO: call salesApi.deleteSI(invoice.id) when endpoint is available
-    navigate('/sales/invoices');
+    try {
+      setBusy(true);
+      await salesApi.deleteSI(invoice.id);
+      errorHandler.showSuccess(t('sales.invoiceDetail.discardSuccess', 'Invoice {{number}} discarded.', { number: invoice.invoiceNumber }));
+      if (isWindow && onClose) {
+        onClose();
+      } else {
+        navigate('/sales/invoices');
+      }
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || t('sales.invoiceDetail.discardFailed', 'Failed to discard invoice.'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const openCloneRecurringModal = () => {
@@ -984,7 +1095,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const cloneAsRecurringTemplate = async () => {
     if (!invoice?.id) return;
     if (!cloneRecurringName.trim()) {
-      setError(t('sales.recurring.validation.cloneNameRequired', 'Template name is required'));
+      errorHandler.showError(t('sales.recurring.validation.cloneNameRequired', 'Template name is required'));
       return;
     }
     try {
@@ -1000,9 +1111,14 @@ const SalesInvoiceDetailPage: React.FC = () => {
         maxOccurrences: cloneRecurringMaxOccurrences ? parseInt(cloneRecurringMaxOccurrences, 10) : undefined,
       });
       setCloneRecurringOpen(false);
-      navigate('/sales/recurring-invoices');
+      errorHandler.showSuccess(t('sales.recurring.success.cloneFromInvoice', 'Recurring template created successfully.'));
+      if (isWindow && onClose) {
+        onClose();
+      } else {
+        navigate('/sales/recurring-invoices');
+      }
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.recurring.errors.cloneFromInvoice', 'Failed to clone invoice as recurring template.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.recurring.errors.cloneFromInvoice', 'Failed to clone invoice as recurring template.'));
     } finally {
       setCloneRecurringBusy(false);
     }
@@ -1088,7 +1204,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
                 <div className="text-sm font-medium text-slate-700">{t('sales.invoiceDetail.settlement.paymentRow', 'Payment Row {{n}}', { n: idx + 1 })}</div>
                 <div className="grid gap-2 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium">{t('sales.invoiceDetail.settlement.settlementAccount', 'Settlement Account (Optional Override)')}</label>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.settlementAccount', 'Receiving Account (Cash / Bank)')}</label>
                     <AccountSelector
                       value={row.settlementAccountId}
                       placeholder={t('sales.invoiceDetail.settlement.settlementAccountPlaceholder', 'Leave empty to use payment method mapping')}
@@ -1098,16 +1214,17 @@ const SalesInvoiceDetailPage: React.FC = () => {
                         setSettlementRows(updated);
                       }}
                     />
+                    <p className="mt-1 text-[11px] text-slate-500">{t('sales.invoiceDetail.settlement.settlementAccountHint', 'Where the money lands. The customer’s AR account is reduced automatically.')}</p>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium">{t('sales.invoiceDetail.settlement.amountBase', 'Amount (Base)')}</label>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.amountBase', 'Amount (Base)')}</label>
                     <input type="number" step="0.01" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
                       value={row.amountBase}
                       onChange={(e) => { const updated = [...settlementRows]; updated[idx].amountBase = parseFloat(e.target.value) || 0; setSettlementRows(updated); }}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium">{t('sales.invoiceDetail.settlement.paymentMethod', 'Payment Method')}</label>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.paymentMethod', 'Payment Method')}</label>
                     <select className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
                       value={row.paymentMethod}
                       onChange={(e) => { const updated = [...settlementRows]; updated[idx].paymentMethod = e.target.value; setSettlementRows(updated); }}
@@ -1128,21 +1245,21 @@ const SalesInvoiceDetailPage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium">{t('sales.invoiceDetail.settlement.paymentDate', 'Payment Date')}</label>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.paymentDate', 'Payment Date')}</label>
                     <input type="date" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
                       value={row.paymentDate}
                       onChange={(e) => { const updated = [...settlementRows]; updated[idx].paymentDate = e.target.value; setSettlementRows(updated); }}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium">{t('sales.invoiceDetail.settlement.reference', 'Reference')}</label>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.reference', 'Reference')}</label>
                     <input type="text" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
                       value={row.reference}
                       onChange={(e) => { const updated = [...settlementRows]; updated[idx].reference = e.target.value; setSettlementRows(updated); }}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium">{t('sales.invoiceDetail.settlement.notes', 'Notes')}</label>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.notes', 'Notes')}</label>
                     <input type="text" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
                       value={row.notes}
                       onChange={(e) => { const updated = [...settlementRows]; updated[idx].notes = e.target.value; setSettlementRows(updated); }}
@@ -1188,182 +1305,196 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   // ─── Header fields form (shared for create + edit DRAFT) ─────────────────
   const renderHeaderForm = () => (
-    <Card className="p-5">
+    <div className="flex-none bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200/60 dark:border-slate-800/60 p-4 space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceDetail.salesOrder', 'Sales Order (optional)')}</label>
-          <div className="flex gap-2">
-            <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-              value={form.salesOrderId}
-              disabled={isReadOnly}
-              onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
-            >
-              <option value="">{t('sales.invoiceDetail.noSalesOrder', 'No sales order')}</option>
-              {salesOrders.map((order) => (
-                <option key={order.id} value={order.id}>{order.orderNumber} - {order.customerName}</option>
-              ))}
-            </select>
-            {!isReadOnly && (
-              <button type="button"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                onClick={() => loadSalesOrderLines(form.salesOrderId)}
-                disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
+        {/* Card 1: Customer & Logistics */}
+        <div className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/85 p-4 shadow-sm space-y-3">
+          <div className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-2">
+            {t('sales.invoiceDetail.sections.customerLogistics', 'Customer & Timelines')}
+          </div>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <div className="col-span-full">
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.customer', 'Customer')}</label>
+              {isReadOnly ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900">
+                  {customerNameById[form.customerId] || form.customerName || form.customerId || '—'}
+                </div>
+              ) : (
+                <PartySelector
+                  value={form.customerId}
+                  onChange={(party) => {
+                    setTemplateTouched(false);
+                    setForm((prev) => ({
+                      ...prev,
+                      customerId: party?.id || '',
+                      customerName: party?.displayName || '',
+                      currency: party?.defaultCurrency || prev.currency,
+                      invoiceTemplateId: party ? prev.invoiceTemplateId : '',
+                      invoiceTemplateFormType: party ? prev.invoiceTemplateFormType : currentInvoiceFormType,
+                    }));
+                  }}
+                />
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.invoiceDate', 'Invoice Date')}</label>
+              <DatePicker value={form.invoiceDate} onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))} disabled={isReadOnly} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.dueDate', 'Due Date (optional)')}</label>
+              <DatePicker value={form.dueDate} onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))} disabled={isReadOnly} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.salesperson', 'Salesperson')}</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
+                value={form.salespersonId || ''}
+                disabled={isReadOnly}
+                onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
               >
-                {orderLineLoading ? t('sales.invoiceDetail.loading', 'Loading...') : t('sales.invoiceDetail.loadLines', 'Load Lines')}
-              </button>
+                <option value="">{t('sales.invoiceDetail.none', '— None —')}</option>
+                {salespersons.map((sp) => (
+                  <option key={sp.id} value={sp.id}>{sp.name}</option>
+                ))}
+              </select>
+            </div>
+            {eligibleInvoiceTemplates.length > 1 && (
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceTemplates.fieldLabel', 'Print Template')}</label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
+                  value={form.invoiceTemplateId}
+                  disabled={isReadOnly}
+                  onChange={(e) => {
+                    const selected = eligibleInvoiceTemplates.find((template) => template.id === e.target.value);
+                    setTemplateTouched(true);
+                    setForm((prev) => ({
+                      ...prev,
+                      invoiceTemplateId: e.target.value,
+                      invoiceTemplateFormType: selected?.formType || currentInvoiceFormType,
+                    }));
+                  }}
+                >
+                  <option value="">{t('sales.invoiceTemplates.autoSelect', 'Auto Select')}</option>
+                  {eligibleInvoiceTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}{template.isDefault ? ` ${t('sales.invoiceTemplates.defaultTag', '(Default)')}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceDetail.customer', 'Customer')}</label>
-          {isReadOnly ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
-              {customerNameById[form.customerId] || form.customerName || form.customerId || '—'}
+
+        {/* Card 2: Financial Details & Origin */}
+        <div className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/85 p-4 shadow-sm space-y-3">
+          <div className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-2">
+            {t('sales.invoiceDetail.sections.financialDetails', 'Financial Details')}
+          </div>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <div className="col-span-full">
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.salesOrder', 'Sales Order (optional)')}</label>
+              <div className="flex gap-2">
+                <select
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
+                  value={form.salesOrderId}
+                  disabled={isReadOnly}
+                  onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
+                >
+                  <option value="">{t('sales.invoiceDetail.noSalesOrder', 'No sales order')}</option>
+                  {salesOrders.map((order) => (
+                    <option key={order.id} value={order.id}>{order.orderNumber} - {order.customerName}</option>
+                  ))}
+                </select>
+                {!isReadOnly && (
+                  <button type="button"
+                    className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
+                    onClick={() => loadSalesOrderLines(form.salesOrderId)}
+                    disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
+                  >
+                    {orderLineLoading ? t('sales.invoiceDetail.loading', 'Loading...') : t('sales.invoiceDetail.loadLines', 'Load Lines')}
+                  </button>
+                )}
+              </div>
             </div>
-          ) : (
-            <PartySelector
-              value={form.customerId}
-              onChange={(party) => {
-                setTemplateTouched(false);
-                setForm((prev) => ({
-                  ...prev,
-                  customerId: party?.id || '',
-                  customerName: party?.displayName || '',
-                  currency: party?.defaultCurrency || prev.currency,
-                  invoiceTemplateId: party ? prev.invoiceTemplateId : '',
-                  invoiceTemplateFormType: party ? prev.invoiceTemplateFormType : currentInvoiceFormType,
-                }));
-              }}
-            />
-          )}
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceTemplates.fieldLabel', 'Invoice Template')}</label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-            value={form.invoiceTemplateId}
-            disabled={isReadOnly}
-            onChange={(e) => {
-              const selected = eligibleInvoiceTemplates.find((template) => template.id === e.target.value);
-              setTemplateTouched(true);
-              setForm((prev) => ({
-                ...prev,
-                invoiceTemplateId: e.target.value,
-                invoiceTemplateFormType: selected?.formType || currentInvoiceFormType,
-              }));
-            }}
-          >
-            <option value="">{t('sales.invoiceTemplates.autoSelect', 'Auto Select')}</option>
-            {eligibleInvoiceTemplates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}{template.isDefault ? ` ${t('sales.invoiceTemplates.defaultTag', '(Default)')}` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceDetail.salesperson', 'Salesperson')}</label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-            value={form.salespersonId || ''}
-            disabled={isReadOnly}
-            onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
-          >
-            <option value="">{t('sales.invoiceDetail.none', '— None —')}</option>
-            {salespersons.map((sp) => (
-              <option key={sp.id} value={sp.id}>{sp.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceDetail.customerInvoiceNumber', 'Customer Invoice #')}</label>
-          <input type="text"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-            value={form.customerInvoiceNumber}
-            disabled={isReadOnly}
-            onChange={(e) => setForm((prev) => ({ ...prev, customerInvoiceNumber: e.target.value }))}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceDetail.invoiceDate', 'Invoice Date')}</label>
-          <DatePicker value={form.invoiceDate} onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))} disabled={isReadOnly} />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceDetail.dueDate', 'Due Date (optional)')}</label>
-          <DatePicker value={form.dueDate} onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))} disabled={isReadOnly} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700">{t('sales.invoiceDetail.currency', 'Currency')}</label>
-          <CurrencySelector value={form.currency} onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))} disabled={isReadOnly || busy} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700">{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
-          <CurrencyExchangeWidget
-            currency={form.currency}
-            baseCurrency={company?.baseCurrency || 'USD'}
-            voucherDate={form.invoiceDate}
-            value={form.exchangeRate}
-            onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
-            disabled={isReadOnly || busy}
-          />
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.customerInvoiceNumber', 'Customer Invoice #')}</label>
+              <input type="text"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
+                value={form.customerInvoiceNumber}
+                disabled={isReadOnly}
+                onChange={(e) => setForm((prev) => ({ ...prev, customerInvoiceNumber: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.currency', 'Currency')}</label>
+              <CurrencySelector value={form.currency} onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))} disabled={isReadOnly || busy} />
+            </div>
+            <div className="flex flex-col gap-1 col-span-full">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
+              <CurrencyExchangeWidget
+                currency={form.currency}
+                baseCurrency={company?.baseCurrency || 'USD'}
+                voucherDate={form.invoiceDate}
+                value={form.exchangeRate}
+                onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+                disabled={isReadOnly || busy}
+              />
+            </div>
+          </div>
         </div>
       </div>
-      <div className="mt-4">
-        <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.invoiceDetail.notes', 'Notes')}</label>
-        <textarea rows={3}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+      <div className="bg-white/85 dark:bg-slate-900/85 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
+        <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.notes', 'Notes')}</label>
+        <textarea rows={1.5}
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-y text-slate-900 dark:text-slate-100"
           value={form.notes}
           disabled={isReadOnly}
           onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
         />
       </div>
-      {isCreateMode && (
-        <div className="mt-4 text-xs text-slate-500">
-          {t('sales.invoiceDetail.linkedLinesHint', 'If a Sales Order is selected, stock lines load from posted Delivery Notes and service lines load from uninvoiced Sales Order quantities.')}
-        </div>
-      )}
-    </Card>
+    </div>
   );
 
   const renderLinesTable = () => (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.lineItems', 'Line Items')}</h2>
+    <div className="flex-1 min-h-[250px] flex flex-col bg-white dark:bg-slate-900 border-y border-slate-200/60 dark:border-slate-800/60">
+      <div className="flex-none flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.invoiceDetail.lineItems', 'Line Items')}</h2>
         {!isReadOnly && (
           <button type="button"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
             onClick={addLine} disabled={busy}
           >
-            {t('sales.invoiceDetail.addItem', 'Add Item')}
+            {t('sales.invoiceDetail.addItem', 'Add Row')}
           </button>
         )}
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200">
-              <th className="py-2 text-left">{t('sales.invoiceDetail.col.item', 'Item')}</th>
-              <th className="py-2 text-right">{t('sales.invoiceDetail.col.qty', 'Qty')}</th>
-              <th className="py-2 text-left">{t('sales.invoiceDetail.col.uom', 'UOM')}</th>
-              <th className="py-2 text-right">{t('sales.invoiceDetail.col.unitPrice', 'Unit Price')}</th>
-              <th className="py-2 text-left">{t('sales.invoiceDetail.col.discountType', 'Discount Type')}</th>
-              <th className="py-2 text-right">{t('sales.invoiceDetail.col.discount', 'Discount')}</th>
-              <th className="py-2 text-left">{t('sales.invoiceDetail.col.taxCode', 'Tax Code')}</th>
-              <th className="py-2 text-left">{t('sales.invoiceDetail.col.warehouse', 'Warehouse')}</th>
-              <th className="py-2 text-right">{t('sales.invoiceDetail.col.discountAmt', 'Discount Amt')}</th>
-              <th className="py-2 text-right">{t('sales.invoiceDetail.col.lineTotal', 'Line Total')}</th>
-              <th className="py-2 text-right">{t('sales.invoiceDetail.col.tax', 'Tax')}</th>
-              <th className="py-2 text-right">{t('sales.invoiceDetail.col.lineBase', 'Line Base')}</th>
-              {!isReadOnly && <th className="py-2 text-right" />}
+      <div className="flex-1 overflow-auto">
+        <table className="min-w-full text-xs border-collapse">
+          <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60 z-10 shadow-sm">
+            <tr>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.item', 'Item')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.qty', 'Qty')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.uom', 'UOM')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.unitPrice', 'Unit Price')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discountType', 'Discount Type')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discount', 'Discount')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.taxCode', 'Tax Code')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.warehouse', 'Warehouse')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discountAmt', 'Discount Amt')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.lineTotal', 'Line Total')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.tax', 'Tax')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.lineBase', 'Line Base')}</th>
+              {!isReadOnly && <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500" />}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {form.lines.map((line, index) => (
-              <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                <td className="py-2 pr-2">
+              <tr key={line.lineId || `line-${index}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-950/40 align-middle transition-colors duration-150">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle min-w-[180px]">
                   {isReadOnly ? (
-                    <div className="text-sm">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName || '—'}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName || '—'}</div>
                   ) : (
                     <>
                       <ItemSelector value={line.itemId}
@@ -1377,27 +1508,27 @@ const SalesInvoiceDetailPage: React.FC = () => {
                         }}
                       />
                       {(line.itemCode || line.itemName) && (
-                        <div className="mt-1 text-xs text-slate-500">{(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}</div>
+                        <div className="mt-1 text-[10px] text-slate-400">{(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}</div>
                       )}
                     </>
                   )}
                 </td>
-                <td className="py-2 pr-2">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[70px]">
                   {isReadOnly ? (
-                    <div className="text-right text-sm">{line.invoicedQty}</div>
+                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.invoicedQty}</div>
                   ) : (
                     <input type="number" min={0.000001} step={0.000001}
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
                       value={line.invoicedQty}
                       onChange={(e) => setLine(index, { invoicedQty: Number(e.target.value) })}
                     />
                   )}
                 </td>
-                <td className="py-2 pr-2">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[80px]">
                   {isReadOnly ? (
-                    <div className="text-sm uppercase">{line.uom || '—'}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 uppercase">{line.uom || '—'}</div>
                   ) : (
-                    <select className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                    <select className="w-full border-0 bg-transparent px-1 py-1.5 text-xs uppercase focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
                       value={findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId || line.uomId || line.uom}
                       disabled={!line.itemId}
                       onChange={(e) => {
@@ -1412,22 +1543,22 @@ const SalesInvoiceDetailPage: React.FC = () => {
                     </select>
                   )}
                 </td>
-                <td className="py-2 pr-2">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[90px]">
                   {isReadOnly ? (
-                    <div className="text-right text-sm">{line.unitPriceDoc?.toFixed(2)}</div>
+                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.unitPriceDoc?.toFixed(2)}</div>
                   ) : (
                     <input type="number" min={0} step={0.01}
-                      className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
                       value={line.unitPriceDoc}
                       onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
                     />
                   )}
                 </td>
-                <td className="py-2 pr-2">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[100px]">
                   {isReadOnly ? (
-                    <div className="text-sm">{line.discountType || t('sales.invoiceDetail.noDiscount', 'No Discount')}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.discountType || t('sales.invoiceDetail.noDiscount', 'No Discount')}</div>
                   ) : (
-                    <select className="w-28 rounded-lg border border-slate-300 px-2 py-1.5"
+                    <select className="w-full border-0 bg-transparent px-1 py-1.5 text-xs focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
                       value={line.discountType || ''}
                       onChange={(e) => setLine(index, { discountType: (e.target.value || undefined) as any, discountValue: 0 })}
                     >
@@ -1437,24 +1568,24 @@ const SalesInvoiceDetailPage: React.FC = () => {
                     </select>
                   )}
                 </td>
-                <td className="py-2 pr-2">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[70px]">
                   {isReadOnly ? (
-                    <div className="text-right text-sm">{line.discountValue || 0}</div>
+                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.discountValue || 0}</div>
                   ) : (
                     <input type="number" min={0} step={0.01}
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
                       value={line.discountValue || 0}
                       disabled={!line.discountType}
                       onChange={(e) => setLine(index, { discountValue: Number(e.target.value) })}
                     />
                   )}
                 </td>
-                <td className="py-2 pr-2">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[110px]">
                   {isReadOnly ? (
-                    <div className="text-sm">{line.taxCodeId ? taxById[line.taxCodeId]?.code || line.taxCodeId : t('sales.invoiceDetail.noTax', 'No Tax')}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.taxCodeId ? taxById[line.taxCodeId]?.code || line.taxCodeId : t('sales.invoiceDetail.noTax', 'No Tax')}</div>
                   ) : (
-                    <>
-                      <select className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
+                    <div className="flex flex-col p-1 gap-1">
+                      <select className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-1 py-0.5 text-xs focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
                         value={line.taxCodeId || ''}
                         onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
                       >
@@ -1467,45 +1598,42 @@ const SalesInvoiceDetailPage: React.FC = () => {
                         const tc = taxById[line.taxCodeId];
                         const effective = line.priceIsInclusive !== undefined ? line.priceIsInclusive : tc?.priceIsInclusive === true;
                         return (
-                          <label className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
-                            <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300"
+                          <label className="flex items-center gap-1 text-[10px] text-slate-500 select-none">
+                            <input type="checkbox" className="h-3 w-3 rounded border-slate-300 dark:border-slate-700 text-primary-600 focus:ring-primary-500"
                               checked={effective}
                               onChange={(e) => setLine(index, { priceIsInclusive: e.target.checked })}
                             />
-                            <span>
-                              {t('sales.invoiceDetail.taxInclusive', 'Tax-inclusive')}
-                              {line.priceIsInclusive === undefined && tc?.priceIsInclusive && (
-                                <span className="ml-1 text-[10px] text-slate-400">({t('sales.invoiceDetail.default', 'default')})</span>
-                              )}
+                            <span className="truncate">
+                              {t('sales.invoiceDetail.taxInclusive', 'Tax-incl.')}
                             </span>
                           </label>
                         );
                       })()}
-                    </>
+                    </div>
                   )}
                 </td>
-                <td className="py-2 pr-2">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle min-w-[120px]">
                   {line.dnLineId ? (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
-                      {t('sales.invoiceDetail.autoFromDN', 'Auto from Delivery Note')}
+                    <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 text-[10px] text-slate-500">
+                      {t('sales.invoiceDetail.autoFromDN', 'Auto from DN')}
                     </div>
                   ) : isReadOnly ? (
-                    <div className="text-sm">{line.warehouseId ? (warehouses.find(w => w.id === line.warehouseId)?.name || line.warehouseId) : '—'}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.warehouseId ? (warehouses.find(w => w.id === line.warehouseId)?.name || line.warehouseId) : '—'}</div>
                   ) : (
                     <WarehouseSelector value={line.warehouseId} onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })} />
                   )}
                 </td>
-                <td className="py-2 pr-2 text-right">{form.currency} {computedLines[index]?.discountAmountDoc.toFixed(2)}</td>
-                <td className="py-2 pr-2 text-right">{form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}</td>
-                <td className="py-2 pr-2 text-right">{form.currency} {computedLines[index]?.taxAmountDoc.toFixed(2)}</td>
-                <td className="py-2 pr-2 text-right">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.discountAmountDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{computedLines[index]?.lineTotalDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.taxAmountDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
                 {!isReadOnly && (
-                  <td className="py-2 text-right">
+                  <td className="px-2 py-1 text-center align-middle">
                     <button type="button"
-                      className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50 hover:bg-slate-50"
+                      className="rounded-full h-5 w-5 inline-flex items-center justify-center border border-slate-200 dark:border-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 transition-all active:scale-[0.98]"
                       onClick={() => removeLine(index)} disabled={busy || form.lines.length <= 1}
                     >
-                      {t('sales.invoiceDetail.remove', 'Remove')}
+                      ✕
                     </button>
                   </td>
                 )}
@@ -1514,70 +1642,80 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </tbody>
         </table>
       </div>
-    </Card>
+    </div>
   );
 
   const renderChargesSection = () => (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.charges', 'Charges / Additions')}</h3>
+    <div className="py-2 space-y-3 bg-white dark:bg-slate-900">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.invoiceDetail.charges', 'Charges / Additions')}</h3>
         {!isReadOnly && (
           <button type="button"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
             onClick={addCharge} disabled={busy}
           >
             {t('sales.invoiceDetail.addCharge', 'Add Charge')}
           </button>
         )}
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {form.charges.length === 0 && (
-          <div className="text-sm text-slate-500">{t('sales.invoiceDetail.noCharges', 'No charges added.')}</div>
+          <div className="text-xs text-slate-400 dark:text-slate-500 py-2 italic">{t('sales.invoiceDetail.noCharges', 'No charges added.')}</div>
         )}
         {form.charges.map((charge, index) => (
-          <div key={charge.chargeId || `charge-${index}`} className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-6">
-            <input type="text"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50"
-              placeholder={t('sales.invoiceDetail.chargeName', 'Charge name')}
-              value={charge.name} disabled={isReadOnly}
-              onChange={(e) => setCharge(index, { name: e.target.value })}
-            />
-            <input type="number" min={0} step={0.01}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-right disabled:bg-slate-50"
-              placeholder={t('sales.invoiceDetail.chargeAmount', 'Amount')}
-              value={charge.amountDoc} disabled={isReadOnly}
-              onChange={(e) => setCharge(index, { amountDoc: Number(e.target.value) })}
-            />
-            <select className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50"
-              value={charge.taxCodeId || ''} disabled={isReadOnly}
-              onChange={(e) => setCharge(index, { taxCodeId: e.target.value || undefined })}
-            >
-              <option value="">{t('sales.invoiceDetail.noTax', 'No Tax')}</option>
-              {salesTaxCodes.map((taxCode) => (
-                <option key={taxCode.id} value={taxCode.id}>{taxCode.code} ({Math.round(taxCode.rate * 100)}%)</option>
-              ))}
-            </select>
-            <input type="text"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50"
-              placeholder={t('sales.invoiceDetail.chargeDescription', 'Description (optional)')}
-              value={charge.description || ''} disabled={isReadOnly}
-              onChange={(e) => setCharge(index, { description: e.target.value })}
-            />
-            <div className="flex items-center justify-end text-sm font-medium text-slate-700">
-              {form.currency} {computedCharges[index]?.amountDoc.toFixed(2)} + {t('sales.invoiceDetail.tax', 'Tax')} {computedCharges[index]?.taxAmountDoc.toFixed(2)}
+          <div key={charge.chargeId || `charge-${index}`} className="grid gap-3 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/20 md:grid-cols-6 items-center">
+            <div>
+              <input type="text"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.invoiceDetail.chargeName', 'Charge name')}
+                value={charge.name} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { name: e.target.value })}
+              />
             </div>
-            {!isReadOnly && (
-              <button type="button"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-rose-700 hover:bg-rose-50"
-                onClick={() => removeCharge(index)} disabled={busy}
+            <div>
+              <input type="number" min={0} step={0.01}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-right font-mono focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.invoiceDetail.chargeAmount', 'Amount')}
+                value={charge.amountDoc} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { amountDoc: Number(e.target.value) })}
+              />
+            </div>
+            <div>
+              <select className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                value={charge.taxCodeId || ''} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { taxCodeId: e.target.value || undefined })}
               >
-                {t('sales.invoiceDetail.remove', 'Remove')}
-              </button>
-            )}
+                <option value="">{t('sales.invoiceDetail.noTax', 'No Tax')}</option>
+                {salesTaxCodes.map((taxCode) => (
+                  <option key={taxCode.id} value={taxCode.id}>{taxCode.code} ({Math.round(taxCode.rate * 100)}%)</option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2 flex items-center gap-2">
+              <input type="text"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.invoiceDetail.chargeDescription', 'Description (optional)')}
+                value={charge.description || ''} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { description: e.target.value })}
+              />
+              <div className="text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                {form.currency} {computedCharges[index]?.amountDoc.toFixed(2)} + {t('sales.invoiceDetail.tax', 'Tax')} {computedCharges[index]?.taxAmountDoc.toFixed(2)}
+              </div>
+            </div>
+            <div className="flex items-center justify-end">
+              {!isReadOnly && (
+                <button type="button"
+                  className="rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-slate-900 px-3 py-1 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-[0.98]"
+                  onClick={() => removeCharge(index)} disabled={busy}
+                >
+                  {t('sales.invoiceDetail.remove', 'Remove')}
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
-    </Card>
+    </div>
   );
 
   const renderTotals = () => (
@@ -1614,18 +1752,18 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   // ─── Main render ──────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 p-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+    <div className={clsx("flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950", isWindow ? "h-full w-full" : "h-[calc(100vh-3.5rem)]")}>
+      {/* Info bar — ~5% */}
+      <div className="flex-none flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
             {isCreateMode ? t('sales.invoiceDetail.newTitle', 'New Sales Invoice') : (invoice?.invoiceNumber || t('sales.invoiceDetail.title', 'Sales Invoice'))}
           </h1>
           {invoice && (
-            <p className="text-sm text-slate-600">
-              {t('sales.invoiceDetail.customerLabel', 'Customer:')} <span className="font-medium">{customerNameById[invoice.customerId] || invoice.customerName}</span>
-              {invoice.customerInvoiceNumber ? ` • ${t('sales.invoiceDetail.customerRef', 'Customer Ref:')} ${invoice.customerInvoiceNumber}` : ''}
-            </p>
+            <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              {customerNameById[invoice.customerId] || invoice.customerName}
+              {invoice.customerInvoiceNumber ? ` · ${t('sales.invoiceDetail.customerRef', 'Customer Ref:')} ${invoice.customerInvoiceNumber}` : ''}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -1634,28 +1772,23 @@ const SalesInvoiceDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Governance warning */}
+      {/* Banners */}
       {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.')}
+        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300">
+          {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked. Select a Sales Order or ask an admin for an exception.')}
         </div>
       )}
-
-      {/* Credit warn banner */}
       {creditWarnBanner && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start justify-between gap-2">
+        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2">
           <span>{creditWarnBanner}</span>
           <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
         </div>
       )}
 
-      {/* Error */}
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-      {/* Payment info (view only, for posted) */}
-      {invoice && (
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-3">
+      {/* Payment info — POSTED only, inline compact strip */}
+      {invoice && invoice.status !== 'DRAFT' && (
+        <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-2">
+          <div className="grid gap-2 grid-cols-3 md:grid-cols-6">
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.invoiceDateLabel', 'Invoice Date')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.invoiceDate}</div>
@@ -1709,171 +1842,262 @@ const SalesInvoiceDetailPage: React.FC = () => {
               </div>
             </div>
           )}
-        </Card>
+        </div>
       )}
 
       {/* DRAFT: editable form */}
       {(isCreateMode || invoice?.status === 'DRAFT') && renderHeaderForm()}
 
-      {/* Lines */}
+      {/* Lines — flex-1 */}
       {renderLinesTable()}
 
-      {/* Totals */}
-      {renderTotals()}
+      {/* Charges (collapsible) — flex-none */}
+      <details className="flex-none bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60 group">
+        <summary className="cursor-pointer px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 select-none hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors duration-150">
+          {t('sales.invoiceDetail.charges', 'Charges / Additions')} {form.charges.length > 0 && <span className="text-slate-400">({form.charges.length})</span>}
+        </summary>
+        <div className="px-4 pb-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">{renderChargesSection()}</div>
+      </details>
 
-      {/* Charges */}
-      {renderChargesSection()}
+      {/* Totals + Attachments (collapsed) — flex-none */}
+      <div className="flex-none px-4 py-3 bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+        <div className="text-xs text-slate-500">
+          {!isCreateMode && invoice && (
+            <details className="inline-block relative">
+              <summary className="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 select-none transition-colors duration-150 font-medium">
+                📎 {t('sales.invoiceDetail.attachmentsLink', 'Attachments')} ({attachments.length})
+              </summary>
+              <div className="absolute right-0 bottom-full mb-2 z-[999] w-[480px] max-w-[90vw] rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 p-3 shadow-xl">
+                <AttachmentsCard
+                  entityId={invoice.id}
+                  attachments={attachments as any}
+                  onChange={(list) => {
+                    setAttachments(list as SalesInvoiceAttachmentDTO[]);
+                    setInvoice((current) => (current ? { ...current, attachments: list as SalesInvoiceAttachmentDTO[] } : current));
+                  }}
+                  api={{
+                    list: (id) => salesApi.listInvoiceAttachments(id) as any,
+                    upload: (id, file) => salesApi.uploadInvoiceAttachment(id, file) as any,
+                    remove: (id, attachmentId) => salesApi.removeInvoiceAttachment(id, attachmentId) as any,
+                    getDownloadLink: (id, attachmentId) => salesApi.getInvoiceAttachmentDownloadLink(id, attachmentId) as any,
+                  }}
+                />
+              </div>
+            </details>
+          )}
+        </div>
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.subtotal', 'Subtotal')}</span>
+            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.tax', 'Tax')}</span>
+            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
+          </div>
+          <div className="flex flex-col items-end border-l border-slate-200 dark:border-slate-800 pl-6">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.grandTotal', 'Grand Total')}</span>
+            <span className="font-mono font-black text-xl text-primary-600 dark:text-primary-400">{form.currency} {totals.grandTotalDoc.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
 
-      {/* Settlement */}
+      {/* Settlement section (conditional overlay-style band) */}
       {showSettlement && (
-        isCreateMode
-          ? renderSettlementSection(() => createAndPostDraft(), t('sales.invoiceDetail.confirmSaveAndPost', 'Confirm Save & Post'))
-          : renderSettlementSection(() => postDraft(), t('sales.invoiceDetail.confirmPost', 'Confirm & Post'))
+        <div className="flex-none px-4 py-2 bg-blue-50 border-t border-blue-200 max-h-[40vh] overflow-auto">
+          {isCreateMode
+            ? renderSettlementSection(() => createAndPostDraft(), t('sales.invoiceDetail.confirmSaveAndPost', 'Confirm Save & Post'))
+            : renderSettlementSection(() => postDraft(), t('sales.invoiceDetail.confirmPost', 'Confirm & Post'))}
+        </div>
       )}
 
-      {/* Attachments (for existing invoices only) */}
-      {!isCreateMode && invoice && (
-        <AttachmentsCard
-          entityId={invoice.id}
-          attachments={attachments as any}
-          onChange={(list) => {
-            setAttachments(list as SalesInvoiceAttachmentDTO[]);
-            setInvoice((current) => (current ? { ...current, attachments: list as SalesInvoiceAttachmentDTO[] } : current));
-          }}
-          api={{
-            list: (id) => salesApi.listInvoiceAttachments(id) as any,
-            upload: (id, file) => salesApi.uploadInvoiceAttachment(id, file) as any,
-            remove: (id, attachmentId) => salesApi.removeInvoiceAttachment(id, attachmentId) as any,
-            getDownloadLink: (id, attachmentId) => salesApi.getInvoiceAttachmentDownloadLink(id, attachmentId) as any,
-          }}
-        />
-      )}
-
-      {/* Action buttons */}
-      <div className="flex flex-wrap gap-2">
-        {/* Neutral */}
-        <button type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          onClick={() => navigate('/sales/invoices')}
-        >
-          {t('sales.invoiceDetail.backToList', 'Back to List')}
-        </button>
-
-        {/* Primary: create flow */}
-        {isCreateMode && (
-          <>
+      {/* Action button bar — sticky bottom, flex-none */}
+      <div className="flex-none flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60">
+        {/* Left Side: Back, History, Sharing, GL Impact */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button"
+            className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+            onClick={() => {
+              if (isWindow && onClose) {
+                onClose();
+              } else {
+                navigate('/sales/invoices');
+              }
+            }}
+          >
+            {isWindow ? t('common.close', 'Close') : t('sales.invoiceDetail.backToList', 'Back to List')}
+          </button>
+          
+          {!isCreateMode && (
             <button type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-              onClick={() => createDraft()} disabled={busy || orderLineLoading}
+              className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+              onClick={() => setAuditModalOpen(true)}
             >
-              {busy ? t('sales.invoiceDetail.creating', 'Creating...') : t('sales.invoiceDetail.saveDraft', 'Save Draft')}
+              {t('sales.invoiceDetail.history', 'History')}
             </button>
-            <button type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-              onClick={() => {
-                const outstanding = roundMoney(totals.grandTotalBase);
-                if (outstanding > 0.005) {
-                  setShowSettlement(true);
-                  setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
-                } else {
-                  setSettlementMode('DEFERRED');
-                  createAndPostDraft();
-                }
-              }}
-              disabled={busy || orderLineLoading}
-            >
-              {busy ? t('sales.invoiceDetail.savingAndPosting', 'Saving & Posting...') : t('sales.invoiceDetail.saveAndPost', 'Save & Post')}
-            </button>
-          </>
-        )}
+          )}
 
-        {/* DRAFT actions */}
-        {!isCreateMode && invoice?.status === 'DRAFT' && (
-          <>
-            <button type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-              onClick={saveDraftChanges} disabled={busy}
-            >
-              {busy ? t('sales.invoiceDetail.saving', 'Saving...') : t('sales.invoiceDetail.saveChanges', 'Save Changes')}
-            </button>
-            {!showSettlement && (
+          {invoice?.status === 'POSTED' && (
+            <>
+              {/* GL Impact */}
               <button type="button"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-                onClick={handlePostClick} disabled={busy}
+                className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+                onClick={() => setGlImpactOpen(true)}
               >
-                {busy ? t('sales.invoiceDetail.posting', 'Posting...') : t('sales.invoiceDetail.postInvoice', 'Post Invoice')}
+                {t('sales.invoiceDetail.glImpact', 'GL Impact')}
               </button>
-            )}
-            {/* Danger: discard */}
-            <button type="button"
-              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-              onClick={handleDiscard} disabled={busy}
-            >
-              {t('sales.invoiceDetail.discard', 'Discard')}
-            </button>
-          </>
-        )}
+              
+              {/* Unified send (WhatsApp / Telegram / share link) */}
+              <SendDocumentButton
+                accounts={messagingAccounts}
+                defaultPhone={invoice ? (customerById[invoice.customerId]?.phone || '').trim() : ''}
+                documentNumber={invoice?.invoiceNumber || ''}
+                customerName={invoice ? (customerNameById[invoice.customerId] || invoice.customerName) : ''}
+                amount={invoice?.grandTotalDoc || 0}
+                currency={invoice?.currency || ''}
+                documentDate={invoice?.invoiceDate || ''}
+                onSendWhatsApp={async (params) => {
+                  if (!invoice?.id) return { messageId: '', recipientPhoneNumber: '' };
+                  const result = await salesApi.sendInvoiceWhatsApp(invoice.id, {
+                    messagingAccountId: params.messagingAccountId,
+                    toPhoneNumber: params.toPhoneNumber,
+                    messageText: params.messageText,
+                    documentUrl: params.documentUrl,
+                  });
+                  const payload = unwrap<any>(result);
+                  errorHandler.showInfo(
+                    t('sales.invoices.whatsapp.success', 'WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).', {
+                      phone: payload.recipientPhoneNumber,
+                      sender: payload.senderLabel || t('sales.invoices.whatsapp.defaultSender', 'default sender'),
+                      messageId: payload.messageId,
+                    })
+                  );
+                  return payload;
+                }}
+                onSendTelegram={async (params) => {
+                  if (!invoice?.id) return { messageId: '', recipientChatId: '' };
+                  const result = await salesApi.sendInvoiceTelegram(invoice.id, {
+                    messagingAccountId: params.messagingAccountId,
+                    toChatId: params.toChatId,
+                    messageText: params.messageText,
+                    documentUrl: params.documentUrl,
+                  });
+                  const payload = unwrap<any>(result);
+                  errorHandler.showInfo(
+                    t('sales.invoices.telegram.success', 'Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).', {
+                      chatId: payload.recipientChatId,
+                      sender: payload.senderLabel || t('sales.invoices.telegram.defaultSender', 'default sender'),
+                      messageId: payload.messageId,
+                    })
+                  );
+                  return payload;
+                }}
+              />
+            </>
+          )}
+        </div>
 
-        {/* POSTED actions */}
-        {invoice?.status === 'POSTED' && (
-          <>
-            {/* Caution: create return */}
-            <button type="button"
-              className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50"
-              onClick={() => navigate(createReturnHref)}
-            >
-              {t('sales.invoiceDetail.createReturn', 'Create Reversing Sales Return')}
-            </button>
-            {/* Outbound: create receipt */}
-            <button type="button"
-              className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => navigate(receiptHref)} disabled={!canCreateReceipt}
-            >
-              {t('sales.invoiceDetail.createReceipt', 'Create Receipt')}
-            </button>
-            {/* Outbound: WhatsApp */}
-            <button type="button"
-              className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-              onClick={() => setSendWhatsAppOpen(true)}
-            >
-              {t('sales.invoices.whatsapp.action', 'Send via WhatsApp')}
-            </button>
-            {/* Outbound: Telegram */}
-            <button type="button"
-              className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-              onClick={() => setSendTelegramOpen(true)}
-            >
-              {t('sales.invoices.telegram.action', 'Send via Telegram')}
-            </button>
-            {/* Neutral: GL Impact */}
-            <button type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              onClick={() => setGlImpactOpen(true)}
-            >
-              {t('sales.invoiceDetail.glImpact', 'GL Impact')}
-            </button>
-          </>
-        )}
+        {/* Right Side: State changes (Save, Post, Discard, Reversing, Receipt) */}
+        <div className="flex flex-wrap items-center gap-2 justify-end">
+          {/* POSTED actions (Refund/Receipt/Recurring) */}
+          {invoice?.status === 'POSTED' && (
+            <>
+              {/* Caution: clone to recurring */}
+              <button type="button"
+                className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-all active:scale-[0.98]"
+                onClick={openCloneRecurringModal}
+              >
+                {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
+              </button>
 
-        {/* Caution: clone to recurring (DRAFT or POSTED) */}
-        {(invoice?.status === 'DRAFT' || invoice?.status === 'POSTED') && (
-          <button type="button"
-            className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50"
-            onClick={openCloneRecurringModal}
-          >
-            {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
-          </button>
-        )}
+              {/* Caution: create return */}
+              <button type="button"
+                className="rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 px-4 py-2 text-sm font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-100/50 dark:hover:bg-rose-950/40 transition-all active:scale-[0.98]"
+                onClick={() => navigate(createReturnHref)}
+              >
+                {t('sales.invoiceDetail.createReturn', 'Create Reversing Sales Return')}
+              </button>
 
-        {/* Neutral: history */}
-        {!isCreateMode && (
-          <button type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => setAuditModalOpen(true)}
-          >
-            {t('sales.invoiceDetail.history', 'History')}
-          </button>
-        )}
+              {/* Outbound: create receipt */}
+              <button type="button"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                onClick={() => navigate(receiptHref)} disabled={!canCreateReceipt}
+              >
+                {t('sales.invoiceDetail.createReceipt', 'Create Receipt')}
+              </button>
+            </>
+          )}
+
+          {/* DRAFT actions */}
+          {!isCreateMode && invoice?.status === 'DRAFT' && (
+            <>
+              {/* Clone to recurring (draft) */}
+              <button type="button"
+                className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-all active:scale-[0.98]"
+                onClick={openCloneRecurringModal}
+              >
+                {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
+              </button>
+
+              {/* Discard */}
+              <button type="button"
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={handleDiscard} disabled={busy}
+              >
+                {t('sales.invoiceDetail.discard', 'Discard')}
+              </button>
+
+              {/* Save Draft Changes */}
+              <button type="button"
+                className="rounded-lg bg-slate-800 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 dark:hover:bg-slate-600 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={saveDraftChanges} disabled={busy}
+              >
+                {busy ? t('sales.invoiceDetail.saving', 'Saving...') : t('sales.invoiceDetail.saveChanges', 'Save Changes')}
+              </button>
+
+              {/* Post Invoice */}
+              {!showSettlement && (
+                <button type="button"
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                  onClick={handlePostClick} disabled={busy}
+                >
+                  {busy ? t('sales.invoiceDetail.posting', 'Posting...') : t('sales.invoiceDetail.postInvoice', 'Post Invoice')}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* CREATE actions */}
+          {isCreateMode && (
+            <>
+              {/* Save Draft */}
+              <button type="button"
+                className="rounded-lg bg-slate-800 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 dark:hover:bg-slate-600 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={() => createDraft()} disabled={busy || orderLineLoading}
+              >
+                {busy ? t('sales.invoiceDetail.creating', 'Creating...') : t('sales.invoiceDetail.saveDraft', 'Save Draft')}
+              </button>
+
+              {/* Save & Post */}
+              <button type="button"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={() => {
+                  const outstanding = roundMoney(totals.grandTotalBase);
+                  if (outstanding > 0.005) {
+                    setShowSettlement(true);
+                    setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+                  } else {
+                    setSettlementMode('DEFERRED');
+                    createAndPostDraft();
+                  }
+                }}
+                disabled={busy || orderLineLoading}
+              >
+                {busy ? t('sales.invoiceDetail.savingAndPosting', 'Saving & Posting...') : t('sales.invoiceDetail.saveAndPost', 'Save & Post')}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Modals */}
@@ -1890,10 +2114,17 @@ const SalesInvoiceDetailPage: React.FC = () => {
       {overrideModalData && (
         <PeriodLockOverrideModal
           isOpen={overrideModalOpen}
-          onClose={() => setOverrideModalOpen(false)}
+          onClose={() => { setOverrideModalOpen(false); setPendingPeriodLockRetry(null); }}
           documentDate={overrideModalData.documentDate}
           lockedThroughDate={overrideModalData.lockedThroughDate}
-          onConfirm={(reason) => { setOverrideModalOpen(false); postDraft(reason); }}
+          onConfirm={(reason) => {
+            setOverrideModalOpen(false);
+            // Prefer the pending retry callback (set by handlePeriodLock) so the
+            // override works for both postDraft AND createAndPostDraft paths.
+            const retry = pendingPeriodLockRetry;
+            setPendingPeriodLockRetry(null);
+            if (retry) retry(reason); else postDraft(reason);
+          }}
         />
       )}
 
@@ -1952,78 +2183,17 @@ const SalesInvoiceDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* WhatsApp send modal */}
-      <SendWhatsAppModal
-        isOpen={sendWhatsAppOpen}
-        onClose={() => setSendWhatsAppOpen(false)}
-        accounts={whatsappAccounts as any}
-        defaultPhone={invoice ? (customerById[invoice.customerId]?.phone || '').trim() : ''}
-        documentNumber={invoice?.invoiceNumber || ''}
-        customerName={invoice ? (customerNameById[invoice.customerId] || invoice.customerName) : ''}
-        amount={invoice?.grandTotalDoc || 0}
-        currency={invoice?.currency || ''}
-        documentDate={invoice?.invoiceDate || ''}
-        onSend={async (params) => {
-          if (!invoice?.id) return { messageId: '', recipientPhoneNumber: '' };
-          const result = await salesApi.sendInvoiceWhatsApp(invoice.id, {
-            messagingAccountId: params.messagingAccountId,
-            toPhoneNumber: params.toPhoneNumber,
-            messageText: params.messageText,
-            documentUrl: params.documentUrl,
-          });
-          const payload = unwrap<any>(result);
-          errorHandler.showInfo(
-            t('sales.invoices.whatsapp.success', 'WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).', {
-              phone: payload.recipientPhoneNumber,
-              sender: payload.senderLabel || t('sales.invoices.whatsapp.defaultSender', 'default sender'),
-              messageId: payload.messageId,
-            })
-          );
-          return payload;
-        }}
-      />
-
-      {/* Telegram send modal */}
-      <SendTelegramModal
-        isOpen={sendTelegramOpen}
-        onClose={() => setSendTelegramOpen(false)}
-        accounts={telegramAccounts as any}
-        documentNumber={invoice?.invoiceNumber || ''}
-        customerName={invoice ? (customerNameById[invoice.customerId] || invoice.customerName) : ''}
-        amount={invoice?.grandTotalDoc || 0}
-        currency={invoice?.currency || ''}
-        documentDate={invoice?.invoiceDate || ''}
-        onSend={async (params) => {
-          if (!invoice?.id) return { messageId: '', recipientChatId: '' };
-          const result = await salesApi.sendInvoiceTelegram(invoice.id, {
-            messagingAccountId: params.messagingAccountId,
-            toChatId: params.toChatId,
-            messageText: params.messageText,
-            documentUrl: params.documentUrl,
-          });
-          const payload = unwrap<any>(result);
-          errorHandler.showInfo(
-            t('sales.invoices.telegram.success', 'Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).', {
-              chatId: payload.recipientChatId,
-              sender: payload.senderLabel || t('sales.invoices.telegram.defaultSender', 'default sender'),
-              messageId: payload.messageId,
-            })
-          );
-          return payload;
-        }}
-      />
-
       {/* Clone to recurring modal */}
       <Modal isOpen={cloneRecurringOpen} onClose={() => setCloneRecurringOpen(false)} title={t('sales.recurring.cloneModal.title', 'Clone Invoice to Recurring Template')}>
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">{t('sales.recurring.fields.templateName', 'Template Name *')}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.templateName', 'Template Name *')}</label>
             <input type="text" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               value={cloneRecurringName} onChange={(e) => setCloneRecurringName(e.target.value)} />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">{t('sales.recurring.fields.frequency', 'Frequency *')}</label>
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.frequency', 'Frequency *')}</label>
               <select className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 value={cloneRecurringFrequency} onChange={(e) => setCloneRecurringFrequency(e.target.value as RecurrenceFrequency)}>
                 <option value="WEEKLY">{t('sales.recurring.frequency.weekly', 'Weekly')}</option>
@@ -2033,7 +2203,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-sm font-medium text-slate-600">
                 {cloneRecurringFrequency === 'WEEKLY' ? t('sales.recurring.fields.dayOfWeek', 'Day of Week') : t('sales.recurring.fields.dayOfMonth', 'Day of Month')}
               </label>
               {cloneRecurringFrequency === 'WEEKLY' ? (
@@ -2055,17 +2225,17 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">{t('sales.recurring.fields.startDate', 'Start Date *')}</label>
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.startDate', 'Start Date *')}</label>
               <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 value={cloneRecurringStartDate} onChange={(e) => setCloneRecurringStartDate(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">{t('sales.recurring.fields.endDate', 'End Date')}</label>
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.endDate', 'End Date')}</label>
               <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 value={cloneRecurringEndDate} onChange={(e) => setCloneRecurringEndDate(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">{t('sales.recurring.fields.maxOccurrences', 'Max Occurrences')}</label>
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.maxOccurrences', 'Max Occurrences')}</label>
               <input type="number" min={1} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 value={cloneRecurringMaxOccurrences} onChange={(e) => setCloneRecurringMaxOccurrences(e.target.value)}
                 placeholder={t('sales.recurring.placeholders.maxOccurrences', 'Leave empty for unlimited')} />
@@ -2085,8 +2255,14 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {confirmDialog}
     </div>
   );
+};
+
+export const SalesInvoiceDetailPage: React.FC = () => {
+  return <SalesInvoiceDetail />;
 };
 
 export default SalesInvoiceDetailPage;

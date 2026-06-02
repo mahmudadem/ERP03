@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
-import { DatePicker } from '../../../components/shared/selectors';
+import { DatePicker, ItemSelector } from '../../../components/shared/selectors';
 import {
   BuyXGetYConfig,
   PromotionRuleDTO,
@@ -278,7 +278,11 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
                 </div>
                 <div>
                   <label className={labelCls}>Free Item ID (optional)</label>
-                  <input className={inputCls} value={form.getItemId} onChange={(e) => set({ getItemId: e.target.value })} placeholder="Leave blank = same item" />
+                  <ItemSelector 
+                    value={form.getItemId} 
+                    onChange={(item) => set({ getItemId: item?.id || '' })} 
+                    placeholder="Leave blank = same item" 
+                  />
                 </div>
               </div>
             </Card>

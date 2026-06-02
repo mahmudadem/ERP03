@@ -7,7 +7,7 @@ import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
+import { PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyCurrencies } from '../../accounting/hooks/useCompanyCurrencies';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
@@ -990,10 +990,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
             {isEditMode ? (
-              <select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white" value={editWarehouseId} onChange={(e) => setEditWarehouseId(e.target.value)}>
-                <option value="">-- Select --</option>
-                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </select>
+              <div className="mt-1">
+                <WarehouseSelector 
+                  value={editWarehouseId} 
+                  onChange={(wh) => setEditWarehouseId(wh?.id || '')} 
+                />
+              </div>
             ) : (
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{purchaseReturn.warehouseId}</div>
             )}
