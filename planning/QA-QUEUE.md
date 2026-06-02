@@ -8,6 +8,188 @@
 
 ## 🧪 Ready to Test
 
+### Accounting — Stage 2b Posting-Authority Decoupling & Reactive Approvals
+**Added by:** Antigravity (report 155)
+**What to test:**
+- Note: This is a backend-only structural change that decouples the posting use cases from local module settings. The user-facing behavior remains functionally identical to before but is now driven by central accounting policies.
+- Ensure central approval policies are active (configured in Accounting settings).
+- Create a new Sales Invoice and click **Post**.
+- Expected: The invoice status changes to **Pending Approval** (amber badge) with no stock or ledger impact.
+- Repeat the same for a Purchase Invoice and confirm it also transitions to **Pending Approval**.
+- Log in as an authorized approver, open the document, and click **Approve & Post**.
+- Expected: The status transitions to **Posted** and the ledger entries and stock levels are finalized.
+
+### AI Assistant — Floating Launcher Toggle
+**Added by:** Codex (report 153)
+**What to test:**
+- Open `AI Assistant -> Settings -> Provider`.
+- Confirm the new **Show Floating AI Launcher** switch appears below **Enable AI Assistant**.
+- Turn it off and save.
+- Navigate to a normal ERP page such as `Settings` or an invoice list.
+- Expected: the floating AI shortcut is hidden.
+- Open AI Assistant from the normal menu and confirm chat is still accessible if the user has permission.
+- Return to AI Settings, turn **Show Floating AI Launcher** on, save, and navigate back to a normal ERP page.
+- Expected: the floating launcher appears again with the AI brain/sparkles icon.
+- Confirm that disabling **Enable AI Assistant** still blocks chat separately from the launcher toggle.
+
+**Known limitations:**
+- This toggle only controls the global floating shortcut. It does not change provider configuration, model certification, permissions, posting, ledger behavior, reports, or AI chat safety rules.
+
+---
+
+### Sales — Native-detail contract: Quotation + editable Delivery Note / Sales Return
+**Added by:** Claude (Opus 4.8) — Task 148, commits `5d8d3f17`, `06256cda`
+**What to test:**
+- **Quotation** (`Sales -> Quotations -> open/new`): status chip is always shown and
+  color-coded; Customer/Item/Currency use the shared selectors (not plain dropdowns);
+  a new quote defaults its currency to the company base currency; a DRAFT quote shows a
+  red **Discard** button that confirms then deletes; action buttons use one
+  primary/neutral/danger palette. Switch to Arabic/Turkish — labels translate.
+- **Delivery Note** (`Sales -> Delivery Notes -> open a DRAFT`): an **Edit** button appears
+  next to Post. Click it → the create-style form reopens populated with the note; the
+  Sales Order field is locked. Change the delivery date / a line qty (for standalone DNs)
+  / notes → **Save Changes** persists and returns to the view; **Cancel** discards.
+  Confirm a POSTED note shows no Edit button.
+- **Sales Return** (`Sales -> Returns -> open a DRAFT`): an **Edit** button appears. Click it
+  → header fields (date, warehouse, settlement, reason, reason code, restocking fee, notes)
+  become editable inline; **lines stay read-only** by design. Save persists via the return
+  update; Cancel discards. Confirm restocking-fee editing is hidden for BEFORE_INVOICE returns.
+- All three: confirm the status chip colors match (DRAFT slate, POSTED/ACCEPTED emerald,
+  CANCELLED/REJECTED rose, etc.).
+
+**Known limitations:**
+- Quote/DN/SR still lack WhatsApp/Telegram send + attachments (backend is Sales-Invoice-only;
+  tracked in task 152). DN/SR have no Cancel/void yet. DN/SR pages are not fully translated yet.
+- Editing does not change posting, stock, tax, or accounting math.
+
+### Sales — Sales Invoice V3 Card Layout Mockup Page
+**Added by:** Antigravity (report 150)
+**What to test:**
+- Open `Tools -> Sales Invoice V2 🎨` from the sidebar (or navigate directly to `/#/dev/sales-invoice-v2`).
+- Expected: The page loads Variant V3 (Classic Clean Card style) by default.
+- Verify that it matches the layout skeleton exactly:
+  - Header: Shows "Sales Invoice V2" page, layout variant toggle buttons, and record mode badge.
+  - Top Card: Displays details fields including Sales Order, Invoice Template, Customer selector displaying `الشركة العربية للتجارة والخدمات (Arabian Trade Corp)`, salesperson, date fields, Currency `SYP`, and notes.
+  - Line Items Card: Uppercase headers (`ITEM`, `QTY`, etc.), 3 pre-populated lines with `[HW-SRV-001] - Server Rack Module` at unit price `2,100,000`.
+  - Charges card: Displays charges section with empty state.
+  - Attachments card: Displays attachments card with file upload box.
+  - Footer actions: Displays Cancel / Return and Save Draft buttons on the left, `Publish & Post` on the right, and Subtotal/Tax/Grand Total values inline side-by-side.
+- Click the Variant V2 toggle button in the header bar and verify it transitions to the double-banner style.
+- Toggle back to Variant V3, add/remove lines, edit quantities or prices, and confirm totals calculate dynamically.
+
+**Known limitations:**
+- This page is a high-fidelity dev layout replica for visual evaluation and styling parity. It runs on mock state values and does not post financial entries to the backend ledger.
+
+---
+
+
+### Purchases — Direct Purchase Invoice Governance
+**Added by:** Codex (report 151)
+**What to test:**
+- Open `Purchases -> Settings -> Procurement Policy`.
+- In OPERATIONAL workflow, enable `Allow Direct Invoicing` and save.
+- Open `Purchases -> Invoices -> New Bill` without a PO/GRN reference.
+- Expected: saving the direct Purchase Invoice no longer fails with the company governance policy error.
+- Return to Purchase Settings, disable `Allow Direct Invoicing`, save, and try another direct invoice.
+- Expected: the governance policy error returns unless a form/branch-specific direct exception exists.
+
+**Known limitations:**
+- This fix only aligns the settings toggle with the existing governance policy. It does not change posting math, AP accounts, inventory valuation, tax calculation, or Purchase Invoice page layout.
+
+---
+
+### Shared UI — Task 132 Date Control Cleanup
+**Added by:** Codex (report 146)
+**What to test:**
+- Open `Inventory -> Stock Movements` and confirm the from/to filters use the ERP calendar date control.
+- Open `Inventory -> Stock Transfers` and confirm the transfer date uses the ERP calendar date control.
+- Open `Sales -> Promotions`, create or edit a promotion, and confirm Valid From / Valid To use the ERP calendar date control.
+- Open `Sales -> Price Lists`, create or edit a price list, and confirm Valid From / Valid To use the ERP calendar date control.
+- In any table with a date-range column filter, confirm the date-range popup uses the ERP date control.
+- Right-click a date field where supported and confirm shortcuts such as today / fiscal year / period options are available.
+
+**Known limitations:**
+- This slice does not change stock posting, stock valuation, promotion rules, price-list pricing, or ledger behavior.
+- Authenticated visual QA is required for actual route access.
+
+---
+
+### Accounting/Inventory — Task 132 Voucher and Item List Standardization
+**Added by:** Codex (report 145)
+**What to test:**
+- Open `Accounting -> Vouchers`.
+- Expected: the page uses the shared header style and existing voucher filters/table still work.
+- Refresh the voucher list and confirm existing row actions still behave as before.
+- Open `Inventory -> Items`.
+- Expected: header, New Item button, quick-add form, search/type filters, Refresh, Clear, active/inactive badges, and Open row action appear consistently.
+- Create a simple item through Quick Add and confirm a success toast appears.
+- Trigger a search/filter and clear it; confirm the list reloads correctly.
+- Switch to Arabic and confirm labels and layout remain readable.
+
+**Known limitations:**
+- This slice does not change voucher posting/approval, item costing, stock valuation, or inventory posting logic.
+- Authenticated visual QA is still required because unauthenticated browser smoke redirects to the auth page.
+
+---
+
+### Sales/Purchases — Task 132 Invoice List Standardization
+**Added by:** Codex (report 144)
+**What to test:**
+- Open `Sales -> Invoices`.
+- Expected: header, New Invoice button, status/payment filters, customer selector, Refresh, and Clear filters appear consistently.
+- Select a customer through the selector and confirm the list reloads for that customer.
+- Confirm status/payment badges are visually distinct for draft/posted/cancelled and unpaid/partial/paid.
+- Click Open on a row and confirm it opens the invoice.
+- Repeat the same checks in `Purchases -> Invoices` using the vendor selector.
+- Switch to Arabic and confirm labels and layout remain readable.
+
+**Known limitations:**
+- This slice does not change posting, payment, cancellation, attachment, or audit actions.
+- Accounting vouchers and Inventory items are the next operational-list standardization targets.
+
+### Settings — Task 132 Settings Taxonomy Foundation
+**Added by:** Codex (report 143)
+**What to test:**
+- Open `Settings` from the sidebar.
+- Confirm the page shows four groups: General, Workflow, Accounting and Tax, Access and Advanced.
+- Open each visible link and confirm existing route permissions still apply.
+- Open Sales Settings, Purchase Settings, Accounting Settings, and Inventory Settings on desktop and narrow/mobile width.
+- Expected: settings tabs are usable on small screens, the save/discard bar remains readable, and no top-bar widget behavior changed.
+- Switch to Arabic and confirm the Settings page is readable in RTL.
+
+**Known limitations:**
+- This slice does not normalize every Sales/Purchase tab label yet.
+- Existing destination pages still own their permissions and save behavior.
+
+### Super Admin — Field Library Phase C2 Voucher Template Authoring
+**Added by:** Codex (report 135d)
+**What to test:**
+- Sign in as SUPER_ADMIN and open `Super Admin -> Voucher Templates`.
+- Edit a Sales Invoice template and open the Header Fields tab.
+- Expected: the "Available Field Library fields" area offers official fields from Field Library; adding one creates a field row with the library label/type.
+- Open the Line Fields tab, add a BODY field from the Field Library, then open Table Columns.
+- Expected: that line field appears as an available table column; table column suggestions come from the template's own line fields.
+- Save the template, then open a tenant Forms Management wizard for that type.
+- Expected: the field placement and required flags follow the saved voucher template.
+
+**Known limitations:**
+- `fieldVersionsSeen` drift warnings are not included yet.
+- The current Field Library seed has broad shared fields, so super-admins must still choose the correct official fields for each template.
+
+### Forms Management — Field Library Phase C1
+**Added by:** Codex (report 135c)
+**What to test:**
+- Sign in as SUPER_ADMIN and open `Super Admin -> Field Library`.
+- Edit `warehouseId` and temporarily change the label to `Warehouse Test`.
+- Open `Sales -> Forms Management`, clone or edit a Sales form, and go to the wizard's Fields step.
+- Expected: the Warehouse field label reflects the Field Library change, while required fields remain protected.
+- Open a Sales or Purchases form that has a line-table Warehouse column.
+- Expected: saving the form does not remove the existing `warehouseId` table column.
+- Change the `warehouseId` label back in Field Library after the smoke test.
+
+**Known limitations:**
+- This C1 smoke confirms company Forms Management consumption. Layer 2 authoring is covered by the Phase C2 QA item above; `fieldVersionsSeen` drift warnings are still pending.
+
 ### Purchases — Phase F: Purchase Price Lists
 **Added by:** Antigravity (report 131)
 **What to test:**
@@ -134,4 +316,5 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-05-28 by Antigravity (Purchase Price Lists ready for QA)_
+_Last updated: 2026-06-03 by Antigravity (Stage 2b Posting-Authority QA added)_
+

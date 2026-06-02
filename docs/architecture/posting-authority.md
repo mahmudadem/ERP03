@@ -116,7 +116,7 @@ the Sales guard. **Reading another domain's data ≠ the rule belonging to that 
 | `allowPeriodLockOverride` is an accounting concern | ✅ holds (accounting config) |
 | One accounting guard, literally at the ledger write | ⚠️ partial — the ledger write only enforces iron laws; policy enforcement is upstream, so a direct call could bypass |
 | No forged "approved" stamp | ✅ **Stage 1** — the guard now derives approval from the caller's *real* state, not a self-stamped status (per-module wiring lands in Stage 2) |
-| Approval owned in Accounting (one rulebook + scope) | ❌ broken — currently per-module `requireApprovalBeforePosting` flags (Sales/Purchases) |
+| Approval owned in Accounting (one rulebook + scope) | ✅ solved (decoupled in Stage 2b) |
 | Period lock has one implementation | ⚠️ duplicated — `PeriodLockService` **and** `PeriodLockPolicy` |
 | Each guard signs its refusal (uniform contract) | ⚠️ partial — typed errors exist but no uniform `{ guard, code }` contract |
 | All-or-nothing transaction | ✅ holds for postings |

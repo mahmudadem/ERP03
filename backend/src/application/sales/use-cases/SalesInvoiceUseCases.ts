@@ -67,6 +67,7 @@ import { PromotionApplicationService, PromotionEvalLine } from '../services/Prom
 import { CreditCheckService, CreditCheckResult } from '../services/CreditCheckService';
 import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
+import { PostingError } from '../../../domain/shared/errors/AppError';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -955,19 +956,6 @@ export class PostSalesInvoiceUseCase {
 
     if (!si) throw new Error('Invalid sales invoice state');
 
-    // ── Approval gate (safe-by-default) ────────────────────────────────
-    // When the company enables requireApprovalBeforePosting, a DRAFT invoice
-    // is parked as PENDING_APPROVAL and produces NO financial effect (no
-    // ledger, no stock, no settlement). ApproveSalesInvoiceUseCase re-enters
-    // with approvalContext set, which bypasses the gate and runs the real
-    // post below. When the flag is off (default) this block is skipped and
-    // behaviour is identical to before.
-    if (settings.requireApprovalBeforePosting === true && !approvalContext) {
-      if (si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
-      si.status = 'PENDING_APPROVAL';
-      await this.salesInvoiceRepo.update(si);
-      return si;
-    }
     if (approvalContext && si.status === 'PENDING_APPROVAL') {
       si.status = 'DRAFT';
     }
@@ -1402,6 +1390,7 @@ export class PostSalesInvoiceUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: si.invoiceNumber,
             baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
+            approved: !!approvalContext,
           },
           transaction
         );
@@ -1449,6 +1438,7 @@ export class PostSalesInvoiceUseCase {
                 postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
                 reference: si.invoiceNumber,
                 baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
+                approved: !!approvalContext,
               },
               transaction
             );
@@ -1485,10 +1475,32 @@ export class PostSalesInvoiceUseCase {
       await this.salesInvoiceRepo.update(si, transaction);
     };
 
-    if (externalTransaction) {
-      await postingLogic(externalTransaction);
-    } else {
-      await this.transactionManager.runTransaction(postingLogic);
+    try {
+      if (externalTransaction) {
+        await postingLogic(externalTransaction);
+      } else {
+        await this.transactionManager.runTransaction(postingLogic);
+      }
+    } catch (err: any) {
+      if (err instanceof PostingError && err.appError.code === 'APPROVAL_REQUIRED') {
+        if (externalTransaction) {
+          throw err;
+        }
+        await this.transactionManager.runTransaction(async (tx) => {
+          const latestSi = await this.salesInvoiceRepo.getById(companyId, si.id);
+          if (!latestSi) throw new Error('Sales invoice not found during parking');
+          if (latestSi.status !== 'DRAFT') {
+            throw new Error(`Cannot park sales invoice. Expected DRAFT, but current status is ${latestSi.status}`);
+          }
+          latestSi.status = 'PENDING_APPROVAL';
+          latestSi.updatedAt = new Date();
+          await this.salesInvoiceRepo.update(latestSi, tx);
+        });
+        si.status = 'PENDING_APPROVAL';
+        si.updatedAt = new Date();
+        return si;
+      }
+      throw err;
     }
 
     // PostingLog write runs AFTER the transaction commits — best-effort, must not

@@ -64,7 +64,19 @@ describe('Architecture guard: posting authority', () => {
 
   // Stage 2 — Law/policy scope: the approval decision lives in accounting policy config (with
   // per-type scope/exemptions), NOT as per-module `requireApprovalBeforePosting` settings flags.
-  it.todo('Stage 2: approval decision is owned by accounting policy config, not per-module flags');
+  it('Stage 2: approval decision is owned by accounting policy config, not per-module flags', () => {
+    const salesInvoiceUseCasesFile = path.resolve(SRC, 'application/sales/use-cases/SalesInvoiceUseCases.ts');
+    const purchaseInvoiceUseCasesFile = path.resolve(SRC, 'application/purchases/use-cases/PurchaseInvoiceUseCases.ts');
+
+    const salesContent = fs.readFileSync(salesInvoiceUseCasesFile, 'utf8');
+    const purchaseContent = fs.readFileSync(purchaseInvoiceUseCasesFile, 'utf8');
+
+    expect(salesContent).not.toContain('AccountingPolicyRegistry');
+    expect(purchaseContent).not.toContain('AccountingPolicyRegistry');
+
+    expect(salesContent).not.toMatch(/settings\.requireApprovalBeforePosting/);
+    expect(purchaseContent).not.toMatch(/settings\.requireApprovalBeforePosting/);
+  });
 
   // Stage 3: a single period-lock implementation is the authority (no PeriodLockService vs
   // PeriodLockPolicy divergence).

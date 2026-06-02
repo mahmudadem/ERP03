@@ -1,33 +1,85 @@
 # 🎯 Current Focus
 
-**Task:** **Posting-authority architecture rollout (2026-06-03).** Spec + staged fix plan agreed
-with Mahmud after a long design review. Stages 0, 1, 2a are **done** on `main` (all safe-by-default,
-no behaviour change to existing flows). **Stage 2b is the next behavioural step and is gated on
-`erp-reviewer` per the plan.**
+**Strategy (2026-05-30):** v1 ships natives as the primary surface. Default Forms / Field Library / cloning preserved as v2 customization path, hidden from sidebar for now. See journal entry "v1 strategy decision" for full reasoning.
 
-- **Spec:** [docs/architecture/posting-authority.md](../docs/architecture/posting-authority.md)
-- **Plan:** [briefs/20260603-posting-authority-fix-plan.md](./briefs/20260603-posting-authority-fix-plan.md)
-- **Guardrails:** `backend/src/tests/architecture/PostingAuthority.test.ts` (Stages 0/1 active; 2/3/4 as `it.todo` checklist)
+**Active threads (execution order set 2026-05-30):**
+1. **Task 132 chrome work** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n. **Each touched component is authored mode-aware from the start** (reads `uiMode` from `useUserPreferences`; both `'classic'` and `'windows'` renderings provided and tested via the TopBar UIModeWidget). No infrastructure work needed — `UiMode` context, `AppShell` mode branch, and `UIModeWidget` already exist.
+2. **Native functionality retest** — once the chrome is polished, walk every native voucher flow end-to-end per module (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override). Captures regressions and a real polish backlog.
+3. **Native UI-mode awareness (per-voucher)** — hardcoded polished renderings for web AND Windows card/window mode for each native voucher page. Standard in [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md) Phase 4.5. Last because it depends on stable chrome + verified functionality.
+
+**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md), [133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md), [134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md), [135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md), [135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md), [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md), [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md), [136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md), [138-forms-visual-fixes.md](./done/138-forms-visual-fixes.md), [139-vertical-stepper-wizard.md](./done/139-vertical-stepper-wizard.md), [140-visual-layout-overflow-fixes.md](./done/140-visual-layout-overflow-fixes.md), [143-settings-taxonomy-foundation.md](./done/143-settings-taxonomy-foundation.md), [144-invoice-list-standardization.md](./done/144-invoice-list-standardization.md), [145-voucher-and-item-list-standardization.md](./done/145-voucher-and-item-list-standardization.md), [146-raw-date-input-cleanup.md](./done/146-raw-date-input-cleanup.md), [132-ui-ux-fixes-completion-report.md](./done/132-ui-ux-fixes-completion-report.md), [148-shared-selectors-enforcement.md](./done/148-shared-selectors-enforcement.md), [149-coa-ui-update.md](./done/149-coa-ui-update.md), [150-sales-invoice-page-refinement.md](./done/150-sales-invoice-page-refinement.md), [151-purchase-direct-invoicing-governance.md](./done/151-purchase-direct-invoicing-governance.md), [153-ai-floating-assistant-launcher-toggle.md](./done/153-ai-floating-assistant-launcher-toggle.md), [154-unify-mdi-windows.md](./done/154-unify-mdi-windows.md), [155-posting-authority-decoupling.md](./done/155-posting-authority-decoupling.md).
+
+
+**Deferred to v2 (preserved as roadmap, no code removed):** [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md), [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md).
 
 ## 👉 Next agent — start here
 
-**Stage 2b — wire each source module to the central approval policy.** The helper
-`AccountingPolicyRegistry.isApprovalRequiredForVoucherType(companyId, voucherType)` is the
-single read point (added 2026-06-03, tested). In each module's posting flow:
+**Posting-Authority Decoupling & Reactive Approvals (2026-06-03, Stage 2b):** Decoupled `PostSalesInvoiceUseCase` and `PostPurchaseInvoiceUseCase` from local settings-based approval flags. They now pass the real approval context to `SubledgerVoucherPostingService`. Unapproved postings are rejected by the centralized accounting guard with code `APPROVAL_REQUIRED`, which the use cases catch and handle by transactionally parking the document status as `PENDING_APPROVAL`. Added mock registry unit tests and Stage 2 architecture rules. Documented in `docs/architecture/posting-authority.md`, `purchases.md`, `sales.md` and added user guide `docs/user-guide/accounting/posting-approvals.md`. Report: [done/155-posting-authority-decoupling.md](./done/155-posting-authority-decoupling.md). All Stage 2b tests passed cleanly.
 
-1. Replace the `settings.requireApprovalBeforePosting` read with `policyRegistry.isApprovalRequiredForVoucherType(companyId, voucherType)`.
-2. When required AND the document isn't approved → park as `PENDING_APPROVAL` (existing 133/134 machinery).
-3. Pass `approved: <real state>` into `SubledgerVoucherPostingService.postInTransaction(...)` (Stage-1 hook).
-4. Add tests (exempt-type posts; non-exempt parks; approve posts).
-5. Flip `it.todo('Stage 2 …')` in `PostingAuthority.test.ts` → active.
-6. **Then Stage 2c** retires `requireApprovalBeforePosting` from Sales/Purchases settings + DTOs + UI.
+**AI floating launcher toggle completed (2026-06-02):** AI Settings now has **Show Floating AI Launcher**. It persists as `AiProviderConfig.showFloatingAssistant`, defaults ON for old tenants, and the global launcher reads a small chat-permission endpoint so normal chat users respect the admin setting without full settings access. The launcher icon now uses an AI brain/sparkles visual. Report: [done/153-ai-floating-assistant-launcher-toggle.md](./done/153-ai-floating-assistant-launcher-toggle.md). QA item added to [QA-QUEUE.md](./QA-QUEUE.md). No accounting/posting behavior changed.
 
-**Run `erp-reviewer` first** — 2b is the first behavioural change to the live approval path.
+**Native-detail contract — frontend wins landed (2026-06-01, Task 148):** Quotation frontend
+contract complete (`5d8d3f17`); **Delivery Note & Sales Return drafts are now editable**
+(`06256cda`) via existing `updateDN`/`updateReturn`. Frontend build/tsc green. The contract
+doc's "backend already supports messaging" claim was **wrong** — messaging + attachments are
+**Sales-Invoice-only**; non-invoice messaging/attachments, DN/SR Cancel, and quote audit
+emission are filed in [tasks/152-sales-doc-messaging-attachments-backend.md](./tasks/152-sales-doc-messaging-attachments-backend.md).
+**Next frontend wins (no backend):** (1) backport SO's RBAC credit-override gate to Sales
+Invoice Detail — security finding F34; (2) swap SO's bespoke status badge for shared
+`StatusChip`; (3) full-page i18n sweep for DN/SR/SO. NOTE: the working tree carries heavy
+uncommitted WIP (communications backend module + SI refactor + a stray `frontend/src.zip`)
+— commit work with explicit pathspec to avoid bundling it.
 
-**Prior in-flight work (unchanged):**
-- Phase F — Purchases parity (RFQ remaining). Lock owners: see PRIORITIES.md.
+**Sales Invoice V2 Card Layout Mockup Alignment (2026-06-01):** Aligned `/dev/sales-invoice-v2` (`SalesInvoiceV2LayoutPage.tsx`) dev mockup to Variant V2 card layout with 5 cards (Core Settings, Financial Details, line items table, actions and allocation grid, totals and actions footer), smart selectors, Syrian tax preset calculations, mock action modals, and simulated lifecycle state switching. Report: [done/150-sales-invoice-page-refinement.md](./done/150-sales-invoice-page-refinement.md).
 
-## 👉 Previous focus — start here
+**Purchase direct invoicing governance fix (2026-06-01):** Purchase Settings now maps the OPERATIONAL **Allow Direct Invoicing** toggle to the explicit company-scope `direct` governance rule required by `DocumentPolicyResolver`. New OPERATIONAL purchase defaults are strict-by-default. Report: [done/151-purchase-direct-invoicing-governance.md](./done/151-purchase-direct-invoicing-governance.md).
+
+
+**Done report:** [done/142-phase-1-p0-confirms-dates-taxonomy.md](./done/142-phase-1-p0-confirms-dates-taxonomy.md).
+
+**Settings taxonomy foundation (2026-05-30):** Settings Home is now a real hub grouped by business purpose (General, Workflow, Accounting and Tax, Access and Advanced). `ModuleSettingsLayout` has responsive mobile/desktop tabs and translatable unsaved-change copy. Docs: [docs/architecture/settings.md](../docs/architecture/settings.md), [docs/user-guide/settings/settings-home.md](../docs/user-guide/settings/settings-home.md). Report: [done/143-settings-taxonomy-foundation.md](./done/143-settings-taxonomy-foundation.md).
+
+**Invoice list standardization (2026-05-30):** Sales and Purchase invoice lists now share the same operational-list pattern: `PageHeader`, shared `PartySelector` customer/vendor filters, refresh/clear actions, status/payment chips, `EmptyState`, and explicit Open row action. Docs: [docs/architecture/operational-lists.md](../docs/architecture/operational-lists.md), [docs/user-guide/lists/invoice-lists.md](../docs/user-guide/lists/invoice-lists.md). Report: [done/144-invoice-list-standardization.md](./done/144-invoice-list-standardization.md).
+
+**Voucher and item list standardization (2026-05-30):** Accounting Vouchers now uses the shared outer `PageHeader` while keeping its specialized `VoucherFiltersBar`/`VoucherTable`. Inventory Items now has consistent header, search/filter, refresh/clear, empty state, status chips, Open action, and create/load toast feedback. Docs: [docs/architecture/operational-lists.md](../docs/architecture/operational-lists.md), [docs/user-guide/lists/accounting-and-items-lists.md](../docs/user-guide/lists/accounting-and-items-lists.md). Report: [done/145-voucher-and-item-list-standardization.md](./done/145-voucher-and-item-list-standardization.md).
+
+**Raw date input cleanup (2026-05-30):** Remaining native `type="date"` controls were replaced with shared `DatePicker` in Stock Movements, Stock Transfers, Sales Promotions, Sales Price Lists, and generic `DataTableFilter` date-range filters. Raw date scan across `frontend/src` now returns no matches. Docs: [docs/user-guide/lists/date-controls.md](../docs/user-guide/lists/date-controls.md). Report: [done/146-raw-date-input-cleanup.md](./done/146-raw-date-input-cleanup.md).
+
+**Sidebar forms grouping rework (2026-05-31):** Removed the v1 default-suppression rule in `useSidebarConfig`; per-module defaulting now lands accounting forms in **Vouchers** (with *All Vouchers* dynamically prepended), sales/purchase defaults in **Default Forms**, and groupless sales/purchase clones at the **root** of the module sidebar. Accounting's static `Forms` group is gone — *Approval Center* is now a root-level Accounting item. Authoritative policy: [docs/architecture/sidebar-forms-grouping.md](../docs/architecture/sidebar-forms-grouping.md). Report: [done/147-sidebar-forms-grouping-rework.md](./done/147-sidebar-forms-grouping-rework.md).
+
+**Next step:** Native functionality retest. Once the chrome is polished (Task 132 Phase 5 complete), walk every native voucher flow end-to-end per module (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override). Captures regressions and a real polish backlog.
+
+**Visual Layout Editor Polish & Auto Align (2026-05-30):**
+- Fixed 12-to-24 column grid coordinate double-scaling bug by implementing versioned `layoutVersion = 2` checks.
+- Refined Properties Panel triggers to only open when the Pencil edit icon is explicitly clicked.
+- Added `Width: {span}` labels directly to canvas component boxes for better alignment visibility.
+- Defaulted layout placement/missing field span to 6 (4 components per row).
+- Implemented the smart **Auto Align** button toolbar action to clean and wrap canvas layouts to sequential rows of span 6 components.
+
+**Field Library Phase C1 is complete**:
+
+1. Forms Management now loads the tenant Field Library read API.
+2. The existing saved form shape (`headerFields`, `tableColumns`, `uiModeOverrides`) is unchanged.
+3. Current module-specific mandatory/optional semantics are preserved until Phase C2 introduces true Layer 2 type bindings.
+4. Required accounting/sales/purchase fields, selector fields, and posting-related controls were not relaxed.
+
+**Field Library Phase C2 is implemented**:
+
+1. Super-admin voucher templates now load the Field Library API.
+2. Header/Line authoring offers Field Library entries instead of frontend hardcoded voucher suggestions.
+3. Table column suggestions derive from the template's own `layout.lineFields`.
+4. Type-level placement/mandatory status is controlled by the voucher template while Field Library remains the official field metadata source.
+
+Phase C1 actual: **~1.9 hours**. Report: [135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md).
+Phase C2 actual: **~1.2 hours**. Report: [135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md).
+
+Remaining Field Library follow-up estimate: **2-4 hours**:
+- Add `fieldVersionsSeen` and company-form drift warnings.
+- Decide whether the Field Library seed needs tighter `supportedTypes` scoping for super-admin convenience.
+
+---
+
+## Earlier Purchases focus (still open after the Field Library arc)
 
 Piece A and Piece B are complete:
 
@@ -54,12 +106,6 @@ Phase F progress:
 6. PI Attachments — tenant-scoped vendor bill/supporting evidence attachments on Purchase Invoices (report 129).
 7. Vendor Groups — optional supplier segmentation master data with vendor Party assignment (report 130).
 8. Purchase Price Lists — optional currency-specific supplier pricing agreements (report 131).
-
-Architecture control exception completed 2026-06-01:
-1. `SubledgerVoucherPostingService` now runs `AccountingPolicyRegistry` before ledger/voucher persistence.
-2. Sales, Purchases, and Inventory controller construction paths pass the shared policy registry.
-3. Period-lock soft override remains a reason/user payload and is accepted only when company config allows it; fiscal locked/closed periods remain non-overridable.
-4. Remaining follow-up: Purchases/Inventory need module UI if the business wants period-lock override prompts there.
 
 Remaining parity gaps (prioritized):
 - RFQ (Request for Quotation) — bigger feature, 2-3 hours
@@ -120,7 +166,7 @@ Commits on `feat/phase-a-sales-master-data`:
   - Comprehensive template upgraded from placeholder to full enterprise chart.
   - Related commits: `30055d9f`, `4385873d`.
   - Follow-up: add wizard-side validation/auto-create warning when required perpetual defaults do not resolve.
-- `PeriodLockService` is wired into Sales for structured soft-lock override responses, and `SubledgerVoucherPostingService` now also runs the shared accounting policy registry for Sales/Purchases/Inventory before ledger write.
+- `PeriodLockService` is now wired into `buildAccountingPostingService()` — enforcement is live for all Sales posting paths.
 - D.7 full free-canvas/sketch-board invoice designer is deferred; current model is controlled template selection via Forms Designer templates.
 
 ## Sequence (remaining)
@@ -145,6 +191,16 @@ Commits on `feat/phase-a-sales-master-data`:
 8. **Phase G** — Purchases-specific (three-way match + vendor master) — 3-4 days
 9. **Phase H** — Final hardening — 1 week
 
+## Rabbit Holes
+
+- Architecture boundary test failure (`AccountingBoundary.test.ts`): `PurchasesReportingUseCases` and `ReceivablesReportingUseCases` violate dependency rules by importing accounting repository interfaces directly. Needs decoupling via clean use-cases or services.
+
 ## Next action
 
-Next step remains **Phase F Purchases parity — RFQ**. The posting-authority guard correction is complete; do not add new financial posting policy logic outside `AccountingPolicyRegistry` / `SubledgerVoucherPostingService`.
+Start **#1 Task 132 chrome work** with the mode-aware contract:
+
+1. **Task 132 Phase 0.5 (inventory)** — catalog the chrome surface: which shell/sidebar/topbar/settings/list pages already honor `uiMode`, which use raw `window.confirm` / `alert()`, which embed page-local account/date/party selectors instead of shared ones. The audit feeds Phases 1–6.
+2. **Task 132 Phase 1 (shell cleanup)** — hide dev/demo routes from tenant nav, consolidate React Query providers, fix hash-router auth links. Verify both modes by toggling UIModeWidget.
+3. Proceed through Phases 2 / 3 / 5 / 6 in order, each ending in a two-mode visual check.
+
+Phases 4 / 4.5 (list/table standardization + entity cards + report contract) touch the same surfaces as #2 (per-voucher mode polish) and may merge with that thread when it activates.

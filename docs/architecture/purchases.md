@@ -178,14 +178,16 @@ Vendor-specific overrides:
 
 The Vendors list at `/purchases/vendors` is a filtered view of the Party API.
 
-## Approval before posting (2026-06-02)
+## Approval before posting (2026-06-03)
 
-`PurchaseSettings.requireApprovalBeforePosting` (default `false`) gates Purchase Invoice posting,
-identical to the Sales implementation — see [sales.md](./sales.md#approval-before-posting-2026-06-02)
-for the full rationale. When on, posting a DRAFT PI parks it as `PENDING_APPROVAL` with no
-financial effect; `ApprovePurchaseInvoiceUseCase` re-enters `PostPurchaseInvoiceUseCase.execute`
-with an `approvalContext` to run the real post. Endpoint: `POST /tenant/purchase/invoices/:id/approve`.
-Safe-by-default (flag off → unchanged). See [134-purchases-approval-before-posting.md](../../planning/done/134-purchases-approval-before-posting.md).
+In Stage 2b, the Purchases module is decoupled entirely from settings-based approval flags.
+
+- **Decoupled Posting Flow:** `PostPurchaseInvoiceUseCase` does NOT read local settings or check approval flags. It simply attempts to post the document, passing the real approval state (`approved: !!approvalContext`) directly to the `SubledgerVoucherPostingService`.
+- **Reactive Guard Rejection & Parking:** If the central accounting policy requires approval and the document is not approved, the posting service throws a `PostingError` with the code `APPROVAL_REQUIRED`.
+- **Safe Transactional Status Parking:** The use case catches `APPROVAL_REQUIRED`, rolls back any database writes (via the transaction boundary), and executes a mini serializable transaction to safely park the document status to `PENDING_APPROVAL` without race conditions.
+- **Approve Re-entry:** `ApprovePurchaseInvoiceUseCase` re-enters `PostPurchaseInvoiceUseCase.execute` with `approvalContext` set, which sets the document status to `DRAFT` in-memory and passes `approved: true` to succeed.
+
+See [134-purchases-approval-before-posting.md](../../planning/done/134-purchases-approval-before-posting.md).
 
 ## Accounting Integration
 
@@ -272,7 +274,6 @@ All under `backend/src/application/purchases/use-cases/`.
 | **Withholding Tax** | Deferred V2. Market-specific complexity. |
 | **Landed Cost Allocation** | Deferred V2. Freight/duty allocation across received items. |
 | **Vendor Price Lists** | Implemented V1 (Purchase Price Lists). |
-| **Approval Workflow** | Deferred V2. Needs a generic approval engine. |
 | **GRNI Accrual** | Deferred V2. No "Goods Received Not Invoiced" interim account. |
 | **Three-Way Matching Reports** | Deferred V2. Compare PO ↔ GRN ↔ PI. |
 | **Vendor Credit Limits** | Deferred V2. |

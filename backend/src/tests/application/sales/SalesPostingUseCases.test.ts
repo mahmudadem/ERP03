@@ -720,7 +720,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
   });
 
   it('A1) PostSI with requireApprovalBeforePosting parks as PENDING_APPROVAL (no financial effect)', async () => {
-    const settings = makeSettings('SIMPLE', { requireApprovalBeforePosting: true });
+    const settings = makeSettings('SIMPLE');
     const customer = makeCustomer();
     const stockItem = makeItem('stock-appr', {
       trackInventory: true,
@@ -734,6 +734,34 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const invoiceStore = new Map([[si.id, si]]);
     const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
     const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
+    };
+
+    const mockTxManager = {
+      runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => {
+        try {
+          return await operation({ id: 'txn-1' });
+        } catch (err) {
+          inventoryService.writeStockMovement.mockClear();
+          voucherRepo.save.mockClear();
+          ledgerRepo.recordForVoucher.mockClear();
+          throw err;
+        }
+      }),
+    };
 
     const useCase = new PostSalesInvoiceUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
@@ -756,10 +784,14 @@ describe('Sales posting use-cases (Phase 2)', () => {
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
       ),
       undefined,
-      makeTransactionManager() as any
+      mockTxManager as any
     );
 
     const result = await useCase.execute(COMPANY_ID, si.id);
@@ -770,7 +802,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
   });
 
   it('A2) ApproveSalesInvoiceUseCase runs the real post on a PENDING_APPROVAL invoice', async () => {
-    const settings = makeSettings('SIMPLE', { requireApprovalBeforePosting: true });
+    const settings = makeSettings('SIMPLE');
     const customer = makeCustomer();
     const stockItem = makeItem('stock-appr2', {
       trackInventory: true,
@@ -788,6 +820,21 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const siRepo = {
       getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
       update: jest.fn(async (entity: SalesInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
     };
 
     const postUseCase = new PostSalesInvoiceUseCase(
@@ -808,7 +855,11 @@ describe('Sales posting use-cases (Phase 2)', () => {
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
       ),
       undefined,
       makeTransactionManager() as any

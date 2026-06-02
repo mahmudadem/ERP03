@@ -2,170 +2,888 @@
 
 > Append new entries at the top. One entry per work session.
 
-## 2026-06-03 (Wed) — Stage 2b prep: `isApprovalRequiredForVoucherType` helper + handoff tighten
+## 2026-06-03 (Wed) — Decouple Sales/Purchases Posting & Wire Reactive Approval Guard
 
-**Task:** Prepare Stage 2b (no behavioural change) so the next reviewed pass is a one-liner per
-module, and update ACTIVE.md (was stale) so any agent can pick this up cold.
-**Agent:** Claude (Opus 4.8) · **Branch:** `main`
+**Task:** Decouple Sales/Purchases document posting from local settings approval flags and implement reactive parking under the Posting-Authority architecture (Stage 2b).
+**Agent:** Antigravity (Gemini 1.5 Pro)
+**Branch:** `main` (in `d:\DEV2026\ERP03-posting-authority` worktree) / `feat/init-wizard-forms-selection` (in `d:\DEV2026\ERP03`)
+**Actual time spent:** ~3.5h
 
-**Landed (safe, additive):**
-- `AccountingPolicyRegistry.isApprovalRequiredForVoucherType(companyId, voucherType)` — the single
-  read point each source module will use in Stage 2b. Returns false when the global toggle is off
-  OR the type is in `approvalExemptVoucherTypes`. Test:
-  `AccountingPolicyRegistry.isApprovalRequiredForVoucherType.test.ts` (3 passed).
-- `planning/ACTIVE.md` rewritten to point at the posting-authority rollout + Stage 2b as the next
-  step (with the exact 6-step recipe and "`erp-reviewer` first" warning).
-- `planning/PRIORITIES.md` lock table updated with Stages 0/1/2a done and Stage 2b open.
-- Plan brief updated with the helper's signature so a fresh agent can find it.
+**What changed:**
+- Removed local module settings reads (e.g. `settings.requireApprovalBeforePosting`) from `PostSalesInvoiceUseCase` and `PostPurchaseInvoiceUseCase`.
+- Passed the caller's real approval context (`approved: !!approvalContext`) directly to `SubledgerVoucherPostingService.postInTransaction()`.
+- Implemented reactive `PostingError` catching for the centralized accounting guard rejection code `APPROVAL_REQUIRED`.
+- Added serializable transaction status transitions to safely park unapproved documents as `PENDING_APPROVAL` in the database without race conditions or lost updates.
+- Mocked the policy registry in `SalesPostingUseCases.test.ts` and `PurchasePostingUseCases.test.ts` to assert parking and approval post re-entry.
+- Enabled Stage 2 architecture checks in `PostingAuthority.test.ts` to assert that Sales and Purchases use cases contain no policy registry references or local settings approval flags.
+- Updated technical docs `docs/architecture/posting-authority.md`, `sales.md`, and `purchases.md` (removing redundant Approval Workflow rows from unimplemented list).
+- Created end-user user guide `docs/user-guide/accounting/posting-approvals.md` and completion report `planning/done/155-posting-authority-decoupling.md`.
 
-**Did NOT do (deliberately):** Stage 2b behavioural wiring — the plan flags `erp-reviewer` first,
-and going past my own warning because the user said "do the best" would misuse that trust. The
-helper makes 2b small and safe to land in a focused reviewed pass.
-
-**Verification:** `tsc --noEmit` clean; helper test 3/3.
-
-## 2026-06-03 (Wed) — Posting-authority Stage 2a: per-type scope on the approval policy
-
-**Task:** Begin Stage 2 (centralize the approval decision) with its safe, additive foundation —
-give the accounting approval policy per-document-type scope/exemptions.
-**Agent:** Claude (Opus 4.8) · **Branch:** `main` (in `ERP03-posting-authority` worktree)
-
-**What landed (additive, safe-by-default):**
-- `AccountingPolicyConfig.approvalExemptVoucherTypes?: string[]` — voucher types exempt from
-  approval even when `approvalRequired` is on (empty/undefined → all subject).
-- `ApprovalRequiredPolicy(exemptVoucherTypes)` — skips exempt `ctx.voucherType`; existing
-  no-arg construction still valid.
-- `AccountingPolicyRegistry` passes `config.approvalExemptVoucherTypes`.
-- Tests in `ApprovalRequiredPolicy.test.ts` (exempt passes while unapproved; non-exempt still gated).
-
-**Verification:** `tsc --noEmit` clean; approval-policy + subledger-guard suites green (8 passed).
-No behaviour change to existing flows (empty exemptions = today).
-
-**Next:** Stage 2b — drive the per-module park from this central policy + pass real `approved`
-state into the guard (Stage-1/2a hooks ready); then Stage 2c retires the per-module flags. Run
-`erp-reviewer` first (2b is the first behavioural change to the live approval path).
-
-## 2026-06-03 (Wed) — Posting-authority Stage 1: kill the forged "approved" stamp
-
-**Task:** Execute Stage 1 of the posting-authority fix plan — stop the subledger guard from
-trusting a self-stamped APPROVED status, so it can honestly reject unapproved postings.
-**Agent:** Claude (Opus 4.8) · **Branch:** `main` (in `ERP03-posting-authority` worktree)
-
-**What landed (surgical + safe-by-default):**
-- `SubledgerVoucherPostingService`: new `approved?: boolean` on `PostSubledgerVoucherInput`. The
-  policy context's `status`/`isApproved` are now **derived from the caller's real approval state**
-  (`approved !== false`) instead of the forged voucher status. An active `ApprovalRequiredPolicy`
-  now rejects an unapproved subledger posting **before** any ledger/voucher write.
-- `approved` omitted → treated as approved → **existing callers (incl. Sales/Purchases) unchanged.**
-
-**Verification:** `tsc --noEmit` clean; new tests in `SubledgerVoucherPostingServicePolicy.test.ts`
-(reject-when-unapproved + post-when-default) pass; `PostingAuthority.test.ts` Stage-1 guardrail
-flipped todo→active; `SalesPostingUseCases` + `PurchasePostingUseCases` suites still green
-(40 passed, 3 todo across the run). No regression.
-
-**Next:** Stage 2 — centralize the approval *decision* in accounting policy config + per-type scope,
-wire each module to pass its real `approved` state (Stage-1 hook is ready), retire the per-module
-`requireApprovalBeforePosting` flags. Run `erp-reviewer` first.
-
-## 2026-06-03 (Wed) — Posting-authority architecture spec + fix plan (Stage 0)
-
-**Task:** After a long design review with Mahmud on the "one guard at the ledger door" model,
-write the target architecture + a staged fix plan so another agent can execute it, and start Stage 0.
-**Agent:** Claude (Opus 4.8) · **Branch:** `main` (in `ERP03-posting-authority` worktree)
-
-**Context / why:** The Sales+Purchases approval slices (133/134) added approval as *per-module*
-document gates — useful machinery, wrong *layer*. Design review established: one accounting guard
-at the ledger door, module guards composed in front by effect, each guard owns its policy + its
-override rule, guards compose by AND (only tighten), overrides are an *override reason* (no
-"ticket"), and the root bug is that source modules **forge an APPROVED stamp** that defeats the
-approval policy.
-
-**Delivered (Stage 0 — no behaviour change):**
-- [docs/architecture/posting-authority.md](../docs/architecture/posting-authority.md) — the laws,
-  the ownership test ("does it apply to any posting from any module?"), worked examples, and a
-  current-conformance table.
-- [briefs/20260603-posting-authority-fix-plan.md](./briefs/20260603-posting-authority-fix-plan.md)
-  — verified current state + Stages 1–7 (each independently mergeable) + a "next agent starts here".
-- `backend/src/tests/architecture/PostingAuthority.test.ts` — guardrails: **2 passing** (accounting
-  is ignorant of credit-limit; subledger consults the policy registry) + **4 `it.todo`** targets
-  for Stages 1–4. Suite green.
-
-**Verification:** `npx jest PostingAuthority.test.ts` → 2 passed, 4 todo.
-
-**Handoff:** Next = **Stage 1, kill the forged stamp** in `SubledgerVoucherPostingService` (run
-`erp-reviewer` first). Sales/Purchases per-module approval stays live until Stage 2 migrates it;
-Inventory approval intentionally not built.
-
-## 2026-06-02 (Tue) — Approval before posting: Purchases slice (134)
-
-**Task:** Extend the approval-before-posting system to Purchases (mirror of the Sales slice).
-**Agent:** Claude (Opus 4.8) · **Branch:** `feat/approval-system` (off `main`)
-**Completion report:** [planning/done/134-purchases-approval-before-posting.md](./done/134-purchases-approval-before-posting.md)
-
-**What I did:** Replicated the exact gate pattern for Purchase Invoices —
-`PurchaseSettings.requireApprovalBeforePosting`, `PENDING_APPROVAL` PI status, gate in
-`PostPurchaseInvoiceUseCase.execute`, `ApprovePurchaseInvoiceUseCase`, `approvePI` controller +
-`POST /invoices/:id/approve` route, DTO/settings threading, and frontend (toggle, Approve & Post
-action, amber badge, list filter).
-
-**Verification:** backend `tsc` clean; `PurchasePostingUseCases.test.ts` → **14/14** (incl. 2 new
-park/approve tests); frontend `tsc` clean.
-
-**Next:** Inventory (Stock Adjustments + Opening Stock) — same pattern, two document types.
-
-## 2026-06-02 (Tue) — Approval before posting: Sales slice (133)
-
-**Task:** Add a per-module "require approval before posting" system — on = invoice waits for
-approval, off = auto-posts. Sales slice first (Purchases + Inventory replicate next).
-**Agent:** Claude (Opus 4.8)
-**Branch:** `feat/approval-system` (off `main`)
-**Completion report:** [planning/done/133-sales-approval-before-posting.md](./done/133-sales-approval-before-posting.md)
-
-**What I did:**
-- Designed approval as a **gate in front of the existing post** (not a partial post): when the
-  new `SalesSettings.requireApprovalBeforePosting` is on, `PostSalesInvoiceUseCase.execute` parks
-  a DRAFT invoice as `PENDING_APPROVAL` with **no** ledger/stock/settlement effect. The gate is
-  at the top of `execute`, so post / create-and-post / update-and-post are all covered, and it is
-  **safe-by-default** (flag off → behaviour unchanged).
-- Added `ApproveSalesInvoiceUseCase` (re-enters the real post via an `approvalContext`),
-  `SalesController.approveSI`, and route `POST /tenant/sales/invoices/:id/approve`.
-- New `SIStatus = …| 'PENDING_APPROVAL'`; threaded the flag through settings use-cases + DTOs.
-- Frontend: settings toggle, "Approve & Post" action + amber **PENDING APPROVAL** badge on SI
-  detail, and a "Pending Approval" list filter; `salesApi.approveSI`.
+**Accounting/control impact:** Centralized posting compliance. Sales and Purchases no longer evaluate posting approvals locally. Documents are evaluated by the central Accounting policy registry at post time and are parked as `PENDING_APPROVAL` with zero GL or stock impact until approved.
 
 **Verification:**
-- Backend `tsc --noEmit` clean; `SalesPostingUseCases.test.ts` → **20/20** (incl. 2 new: park
-  produces no effect; approve runs the real post).
-- Frontend `tsc --noEmit` clean.
+- `npm test` inside `backend/` -> passed for all posting/authority/use-case suites (135 passed). Known pre-existing failures (`AiModelCertificationUseCase` and `AccountingBoundary` violations) remain tracked in ACTIVE.md.
 
-**Follow-ups:** replicate the gate for Purchases + Inventory; optionally surface parked invoices
-in the shared Accounting Approvals page. Built in the `ERP03-posting-authority` worktree and
-merged to `main`.
+## 2026-06-03 (Wed) — Unify MDI window wrappers & drag/resize hardening
 
-## 2026-06-01 (Mon) - Posting authority policy guard
+**Task:** Unify all window wrapper containers in Windows UI mode under `MdiWindowFrame.tsx` and fix text selection/dragging lag.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+**Actual time spent:** ~0.5h
 
-**Task:** Task 132 - Correct the accounting control-layer split so automatic module postings use the same policy registry as manual vouchers
+**What changed:**
+- Replaced the duplicate/laggy `DraggableWindow` component with the standardized `MdiWindowFrame` wrapper for `sales_invoice` (Sales Invoice detail view), `item` (Inventory Item Card), `party` (Customer/Vendor master card), and `warehouse` (Warehouse master card) window types.
+- Overhauled and simplified `ReportWindow.tsx` to delegate window shell rendering, header controls, drag handlers, and resize handles directly to `MdiWindowFrame`.
+- Deleted the now completely redundant `DraggableWindow.tsx` file.
+- Hardened `MdiWindowFrame.tsx` by adding `e.preventDefault()` inside dragging (`handleMouseDown`) and resizing (`handleResizeMouseDown`) click handlers. This blocks default browser click-and-drag text highlighting gestures when interacting with window headers/borders.
+- Verified type check and production bundling successfully.
+
+**Accounting/control impact:** none. Layout shell changes only.
+
+## 2026-06-02 (Tue) — AI floating launcher settings toggle
+
+**Task:** Add an AI Settings option to show/hide the global floating AI Assistant launcher and refresh its icon.
 **Agent:** Codex
-**Branch:** `codex/posting-authority-policy-guard`
-**Completion report:** [planning/done/132-posting-authority-policy-guard.md](./done/132-posting-authority-policy-guard.md)
+**Branch:** `feat/init-wizard-forms-selection`
+**Actual time spent:** ~1.0h
 
-**What I did:**
-- Added `AccountingPolicyRegistry` enforcement to `SubledgerVoucherPostingService` after core/account validation and before ledger/voucher writes.
-- Wired Sales, Purchases, and Inventory controller posting-service constructors to pass `diContainer.policyRegistry`.
-- Kept Sales' `PeriodLockService` path for structured soft-lock override responses, while making `PeriodLockPolicy` understand the shared override payload.
-- Hardened period-lock override config handling so `allowPeriodLockOverride === false` blocks override attempts in both `PeriodLockService` and `PeriodLockPolicy`.
-- Added structured backend handling for generic `PostingError` so policy failures do not fall through to 500.
-- Updated accounting architecture/user docs and created completion report 132.
+**What changed:**
+- Added `AiProviderConfig.showFloatingAssistant`, defaulting ON for existing and new tenant configs.
+- Extended AI settings update validation/use case/controller/DTOs and persisted the new flag.
+- Added `GET /tenant/ai-assistant/settings/widget-preferences`, guarded by `ai-assistant.chat.use`, so normal chat users can respect the admin launcher preference without full settings access.
+- Added **Show Floating AI Launcher** in AI Assistant Settings and wired it into normal save/dirty-state behavior.
+- Updated `GlobalAiWidget` to hide when the setting is off or AI is disabled, and changed the closed launcher icon to Lucide `BrainCircuit` + `Sparkles`.
+- Added English/Arabic/Turkish strings, architecture/user docs, completion report 153, and QA queue instructions.
+
+**Accounting/control impact:** none to ledger, posting, tax, inventory valuation, reports, or financial controls. Disabling AI remains separate and server-enforced through `isEnabled`; hiding the launcher only removes the shell shortcut.
 
 **Verification:**
-- `npm --prefix backend test -- --runInBand backend/src/application/accounting/services/__tests__/SubledgerVoucherPostingServicePolicy.test.ts backend/src/tests/domain/accounting/policies/PeriodLockPolicy.test.ts backend/src/application/accounting/services/__tests__/PeriodLockService.test.ts` -> pass (15 tests).
-- `npx prisma generate` from `backend/` -> pass.
-- `npm --prefix backend run build` -> pass.
-- `graphify update .` -> not run; `graphify` command is not available on PATH.
+- `npm --prefix backend test -- --runInBand src/tests/domain/ai-assistant/AiProviderConfig.test.ts src/tests/application/ai-assistant/AiSettingsUseCase.test.ts` -> passed, 36 tests.
+- `npm --prefix backend run build` -> passed.
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed.
+- `npm run graph:update` -> passed.
+- Browser smoke at `http://127.0.0.1:5173/` loaded to `/#/auth` with no runtime error from this change; only the existing React Router v7 future-flag warning appeared.
 
-**Time spent:** ~1.4h
-**Result:** Complete. Sales/Purchases/Inventory automatic postings now share the accounting policy guard before ledger persistence.
-**Next:** Commit and merge if clean. Phase F RFQ remains the next functional roadmap item.
+## 2026-06-01 (Mon) — Second-check of Codex control-layer diagnosis
+
+**Task:** Verify Codex's architecture control-layer diagnosis brief for Mahmud (read-only).
+**Agent:** Claude (Opus 4.8)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What I did:** Read the key control-layer files and re-ran the architecture boundary test
+to check Codex's findings against the actual code. Verdict: diagnosis holds.
+
+**Directly verified (high confidence):**
+- **F4** — `SubledgerVoucherPostingService` never calls `validatePolicies()` (no policy
+  registry); runs only `validateCore`/`validateAccounts` + optional period lock.
+- **F5** — only `SalesController` injects `periodLockService`; Purchases/Inventory build the
+  same service without it.
+- **F6** — both `PeriodLockService` and `PeriodLockPolicy` exist; root cause is F4 (registry
+  unreachable from the engine, so a parallel lock was bolted on).
+- **F7** — both ledger repos enforce iron laws only, no policies.
+- **F8** — re-ran `AccountingBoundary.test.ts`: same 6 violations (Sales/Purchases reporting).
+- **F2** — `frontend/src/utils/documentPolicy.ts` duplicates backend `DocumentPolicyResolver`.
+- New: manual path (`VoucherUseCases`/`PostVoucherUseCase`) DOES run the full registry — this
+  asymmetry is the spine of F4–F7.
+
+**Framing correction filed:** the shared engine and `VoucherPostingStrategyFactory` are NOT
+broken — the factory's per-document line generation is correct and should stay. Real issue =
+shared engine carries a reduced rulebook + inconsistent period-lock injection. It's a
+unify-the-checkpoint job, not a rebuild.
+
+**Recorded target north star** (Mahmud's framing): one posting door, one guard running the
+complete rulebook (core invariants + every enabled policy), per-module preparation preserved,
+no side tunnels to the ledger.
+
+**Output:** [briefs/20260601-codex-control-layer-second-check.md](./briefs/20260601-codex-control-layer-second-check.md)
+— reply to Codex with verification table, framing correction, north star, and open decisions
+(read-side boundary, checkpoint shape, warning taxonomy, vocabulary lock-in). No code changed.
+ACTIVE.md untouched (stays on Task 148/132).
+
+**Decisions captured with Mahmud this session:**
+- **Decision 1 (override) — DECIDED:** uniform **ticket-based** override that travels with the
+  transaction; guard checks active tenant locks, rejects all bypass attempts unless a valid
+  ticket is present; keep the **hard (absolute) / soft (overridable)** two-tier. Documented with
+  a worked example showing today's three gaps (Sales-only guard; ticket not auth-checked; audit
+  hand-wired per use-case). Open sub-decisions: who may issue a ticket; confirm always-audited.
+- **`allowDirectInvoicing` meaning clarified:** = raise a Sales Invoice standalone, skipping the
+  SO→DN chain (`direct` persona); skipping DN shifts the stock-out onto the invoice. Open product
+  call: in OPERATIONAL mode, allow direct invoices or force the chain.
+
+## 2026-06-01 (Mon) — Native-detail contract: Quotation frontend + DN/SR editable (Task 148)
+
+**Task:** Continue the native-detail contract rollout (frontend-wins-first scope).
+**Agent:** Claude (Opus 4.8)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- **Build fix (`319f1ebd`):** repaired unbalanced JSX in `SalesInvoiceV2LayoutPage.tsx`
+  (a stray `</div>` closed the return root early) — the whole frontend was failing
+  `tsc`/`vite` before this.
+- **Quotation (`5d8d3f17`):** finished the native-detail frontend — shared `StatusChip`,
+  shared `ItemSelector`/`CurrencySelector`/`CurrencyExchangeWidget`, currency from
+  `company.baseCurrency`, Discard action, rationalized 4-color palette, full i18n
+  (`sales.quoteDetail.*`, en/ar/tr).
+- **Delivery Note + Sales Return (`06256cda`):** made DRAFT drafts **editable** (the top
+  systemic 🔴 gap, F38/F41). DN reuses its create form via an `isEditing` flag and saves
+  through `updateDN`; SR gets a header-only inline edit (date/warehouse/settlement/reason/
+  restocking/notes) via `updateReturn` with lines intentionally untouched. Both gained
+  `StatusChip` + primary-palette action buttons.
+
+**Key discovery:** the contract doc overstated backend readiness — WhatsApp/Telegram send
+and attachments exist **only for Sales Invoice**. `Edit` is backend-ready everywhere, but
+non-invoice messaging/attachments, DN/SR Cancel, and quote audit emission need backend
+work. Filed as [tasks/152-sales-doc-messaging-attachments-backend.md](./tasks/152-sales-doc-messaging-attachments-backend.md).
+Corrected `docs/architecture/native-detail-contract.md`.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (`check:reports`, `check:no-confirm`, tsc, vite).
+
+**Commits scoped via pathspec** to avoid disturbing the heavy in-flight WIP in the tree
+(communications backend module, SI refactor) which remain uncommitted.
+
+## 2026-06-01 (Mon) — Sales Invoice V2 Card Layout Mockup Alignment (Task 150)
+
+**Task:** Align the dev mockup layout page to match the user's Variant V2 Card layout specifications, incorporating smart selectors and double-entry allocation presets.
+**Agent:** Antigravity (Gemini 1.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Aligned `/dev/sales-invoice-v2` (`SalesInvoiceV2LayoutPage.tsx`) dev mockup to Variant V2 layout with 5 cards: Core details, Financial settings, Line items table, Action buttons & allocation grid, and Totals & action footer.
+- Integrated canonical selectors (`PartySelector`, `WarehouseSelector`, `DatePicker`, `CurrencySelector`, and `AccountSelector`).
+- Added smart selection for `financialClientAccount` mapping to customer's AR account on credit terms or to cash safe on cash payment terms.
+- Structured the items table to display exactly 10 scrollable rows with a sticky header.
+- Implemented a balanced double-entry Account Ledger & Taxes Allocation Grid with a Syrian tax preset toggle (VAT 5% and Discount 2%).
+- Built mock modals for Attachments, Internal Notes, and Send actions.
+- Introduced simulated status-switching tabs (Create, Draft, Posted) in the header to preview footer action lifecycle states.
+- Implemented GVR-style right-click context menu options (Copy, Paste, Insert Below, Highlight Row, Delete Row) on the Material Line Items table index cell.
+- Adjusted root layout element height from `h-screen` to `h-full` to eliminate parent-shell viewport overflow.
+- Verified TypeScript compilation and production build checks successfully (exit code 0).
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed.
+
+**Time spent:** ~0.6h.
+
+## 2026-06-01 (Mon) — Sales Invoice V3 Card Layout Mockup (Task 150)
+
+**Task:** Final alignment of the dev mockup layout page to match the user's Variant V3 Card layout screenshot exactly.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Set Variant V3 (`v3`) as the default active layout for `/dev/sales-invoice-v2` dev mockup.
+- Pre-populated the form's default state to mirror the user's mockup: Customer name set to "الشركة العربية للتجارة والخدمات (Arabian Trade Corp)" and 3 lines of Server Rack Module items.
+- Uppercased all column headers in the V3 table to match the screenshot.
+- Removed the duplicate code/name text span below the item selector to clean up the item cells.
+- Standardized the bottom totals block (Subtotal, Tax, Grand Total) to remove its gray container box, styling it with clean horizontal flex lines and uppercase labels.
+- Verified TypeScript compilation and production build (all checks passed successfully).
+- Registered manual verification details in `planning/QA-QUEUE.md` and updated completion report `planning/done/150-sales-invoice-page-refinement.md`.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (checked 21 report routes and confirm/alert checks).
+
+**Time spent:** ~0.4h.
+
+## 2026-06-01 (Mon) — Purchase Direct Invoicing Governance Fix (Task 151)
+
+**Task:** Fix Purchases settings mismatch where **Allow Direct Invoicing** appeared enabled but direct Purchase Invoice creation failed with `Purchase invoice persona 'direct' is not allowed by company governance policy`.
+**Agent:** Codex
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Kept `DocumentPolicyResolver` as the backend authority; no invoice guard was weakened.
+- Added Purchases settings reconciliation so OPERATIONAL `allowDirectInvoicing: true` writes a company-scope `direct` governance allow rule.
+- Disabling the setting removes company-scope direct rules while preserving branch/form exceptions.
+- Changed new OPERATIONAL Purchase Settings defaults to strict direct-invoicing blocked unless explicitly enabled.
+- Updated Purchase Settings UI so the toggle updates governance rules and policy summary uses effective governance.
+- Updated Purchases architecture/user docs and created `planning/done/151-purchase-direct-invoicing-governance.md`.
+- Ran graph update after code changes.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/purchases/PurchaseSettingsUseCases.test.ts` -> passed.
+- `npm --prefix backend run build` -> passed.
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (`check:reports`, `check:no-confirm`, `tsc`, Vite build).
+- `npm run graph:update` -> passed.
+
+**Time spent:** ~1.0h.
+
+## 2026-05-31 (Sun) — Sales Invoice Page Refinement (Task 150)
+
+**Task:** Refine Sales Invoice Page (List & Detail view) to support MDI desktop windows (`uiMode === 'windows'`) and premium layout aesthetics (`ui-ux-pro-max` styling).
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Integrated `uiMode` preference checks into Sales Invoice list & detail views to support draggable overlay windows (`isWindow={true}`) and router navigation fallbacks.
+- Mapped `'sales_invoice'` window type in `WindowsDesktop.tsx` and resolved local variable shadowing (`window` -> `win`) to fix compiler error.
+- Grouped header inputs on details page into two clean glassmorphic cards: "Customer & Timelines" and "Financial Details" with tailored responsive grid styles.
+- Polished the line items table with right-aligned monospaced number styling (`font-mono`), transition hovers, and clean inputs.
+- Structured the action bar with a split layout: metadata, history, sharing, and GL impact triggers on the left; and state-changing actions (Save, Post, Discard) on the right.
+- Fixed JSX nested tag structure compilation errors (unclosed outer div in `renderHeaderForm` and mismatched `</Card>` tag in `renderChargesSection`).
+- Created completion report `planning/done/150-sales-invoice-page-refinement.md`.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed (all custom report and confirm safety audits passed).
+
+**Time spent:** ~0.6h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 5 — raw window.confirm and alert cleanup
+
+**Task:** Remove the remaining legacy `window.confirm` and `alert` usages from the remaining entries in the allowlist.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Refactored `window.confirm` to `useConfirm` hook in `AiRuntimeProfilesPage.tsx` and `CertificationManagerModal.tsx`.
+- Refactored `alert()` to `toast()` in `AlarmWidget.tsx`, `NotesWidget.tsx`, and `DocumentDesigner.tsx`.
+- Emptied `frontend/scripts/check-no-confirm.allowlist.json` to an empty array `[]` representing 0 remaining raw usages.
+
+**Verification:**
+- `npm --prefix frontend run check:no-confirm` -> passed.
+- `npm --prefix frontend run build` -> passed.
+
+## 2026-05-31 (Sun) — Sidebar forms grouping rework (Task 147)
+
+**Task:** Fix the broken Accounting sidebar (empty because v1 suppressed every default voucher) and codify the per-module forms-grouping policy.
+**Agent:** Claude (Opus 4.7)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- New authoritative doc `docs/architecture/sidebar-forms-grouping.md` with vocabulary (native / default / cloned), per-module target, current implementation, and follow-ups.
+- `frontend/src/hooks/useSidebarConfig.ts`: rewrote `buildDynamicFormGroups` with per-module `effectiveGroup(form)` defaulting; removed default-form suppression; groupless clones now render as top-level sidebar leaves; `All Vouchers` is dynamically prepended inside the accounting `Vouchers` group.
+- `frontend/src/config/moduleMenuMap.ts`: removed the static `Forms` group from Accounting; promoted `Approval Center` to a root-level Accounting item; `All Vouchers` moved out (now dynamic).
+- Updated `docs/user-guide/forms-management.md` with a per-module sidebar-defaulting table.
+- Report: `planning/done/147-sidebar-forms-grouping-rework.md`.
+
+**Why:** the v1 sidebar rule (suppress every system default) left a fresh Accounting tenant with no usable sidebar entries — Accounting *is* vouchers and they were all marked as defaults. Fixed at the sidebar layer so no data migration is needed. The seed value `sidebarGroup: "Documents"` is now treated as an unset placeholder at runtime.
+
+## 2026-05-30 (Sat) — Task 132 Phase 5 — raw date input cleanup
+
+**Task:** Remove the remaining user-facing native date inputs from Task 132 surfaces and route them through the shared `DatePicker`.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Replaced native date inputs in Stock Movements, Stock Transfers, Sales Promotions, and Sales Price Lists with the shared `DatePicker`.
+- Replaced the generic `DataTableFilter` date-range native inputs with the shared `DatePicker`, removing the last raw date inputs found under `frontend/src`.
+- Updated `docs/architecture/operational-lists.md` and added `docs/user-guide/lists/date-controls.md`.
+- Created completion report `planning/done/146-raw-date-input-cleanup.md`.
+
+**Accounting/control note:** no posting, pricing, promotion eligibility, inventory costing, stock valuation, or ledger logic changed. Existing API date values remain ISO strings.
+
+**Verification:**
+- Raw date scan across `frontend/src` -> no matches
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+
+**Time spent:** ~0.4h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 4/5 — voucher and item list standardization
+
+**Task:** Continue the operational-list standardization pass after Sales/Purchase invoices by covering Accounting Vouchers and Inventory Items.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Updated `VouchersListPage` to use the shared `PageHeader` while preserving its specialized `VoucherFiltersBar` and `VoucherTable`.
+- Updated `ItemsListPage` with shared `PageHeader`, translated quick-add/search/filter controls, refresh/clear actions, `EmptyState`, status chips, explicit Open row action, and toast feedback for create/load failures.
+- Added English/Arabic/Turkish locale keys for the new visible list strings.
+- Expanded `docs/architecture/operational-lists.md` and added `docs/user-guide/lists/accounting-and-items-lists.md`.
+- Created completion report `planning/done/145-voucher-and-item-list-standardization.md`.
+
+**Accounting/control note:** no posting, approval, costing, or valuation behavior changed. The voucher list intentionally kept its accounting-specific table/actions instead of replacing lifecycle behavior with a generic list.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+
+**Time spent:** ~0.7h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 4/5 — invoice list standardization
+
+**Task:** Standardize the first high-traffic operational-list pair after the settings taxonomy slice.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Standardized `SalesInvoicesListPage` and `PurchaseInvoicesListPage` around the same page pattern: `PageHeader`, filter card, shared party selector, refresh/clear actions, status/payment chips, `EmptyState`, and explicit Open row action.
+- Replaced page-local customer/vendor dropdown filters with shared `PartySelector` using `role="CUSTOMER"` / `role="VENDOR"`.
+- Added English/Arabic/Turkish locale keys for the new visible list strings.
+- Added docs: `docs/architecture/operational-lists.md`, `docs/user-guide/lists/invoice-lists.md`.
+- Created completion report `planning/done/144-invoice-list-standardization.md`.
+
+**Accounting/control note:** no posting, payment, cancellation, or ledger behavior changed. The control improvement is consistent filtering and clear status/payment visibility on two financial document lists.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+
+**Time spent:** ~0.8h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 3 — settings taxonomy foundation
+
+**Task:** Continue Task 132 after sidebar/navigation polish by turning Settings Home into a production settings hub and improving the shared module settings layout.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Replaced placeholder `SettingsHomePage` with a grouped settings hub: General, Workflow, Accounting and Tax, Access and Advanced.
+- Kept existing route ownership and permission guards; the hub links to existing settings pages instead of bypassing security.
+- Improved `ModuleSettingsLayout` for responsive tabs, mobile spacing, Windows-mode-aware header spacing, and a responsive unsaved-change save/discard bar.
+- Added English/Arabic/Turkish locale keys for the hub and shared layout copy.
+- Added docs: `docs/architecture/settings.md`, `docs/user-guide/settings/settings-home.md`.
+- Created completion report `planning/done/143-settings-taxonomy-foundation.md`.
+
+**Accounting/control note:** no posting logic changed. This improves discoverability for approval, workflow, tax, currency, account-default, and role controls.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted
+- `npm --prefix frontend run check:no-confirm` -> passed
+- `npm --prefix frontend run build` -> passed
+- Browser smoke reached `/#/settings` and redirected unauthenticated users to `/#/auth`; authenticated visual QA is queued.
+
+**Time spent:** ~0.7h.
+
+## 2026-05-30 (Sat) — Task 132 Phase 1 P0 — confirm/alert/date-input hardening
+
+**Task:** Execute the Phase 0.5 P0 backlog: posting-reversal confirms, raw date inputs, alert() removals, admin/security confirms, taxonomy doc + enforcement.
+**Agent:** Claude Opus 4.7
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Created shared `useConfirm()` hook ([frontend/src/hooks/useConfirm.tsx](../frontend/src/hooks/useConfirm.tsx)) — promise-based replacement for `window.confirm` rendering `ConfirmDialog` with tone (`info` / `warning` / `danger`).
+- Posting-reversal confirms (P0 control risk) migrated to `ConfirmDialog` with `tone="danger"`: `PurchaseInvoiceDetailPage` unpostPI, `GoodsReceiptDetailPage` unpostGRN, `PurchaseReturnDetailPage` unpostReturn.
+- Raw `type="date"` inputs swapped for shared `DatePicker` on 4 finance-sensitive pages: SalesInvoiceDetail (4×), QuotationDetail (2×), PurchaseInvoiceDetail (2 settlement rows), InventoryFinancialIntegrationWizard.
+- `AccountForm` hierarchy `alert()` → `errorHandler.showWarning` (validation toast).
+- 17 admin/security `window.confirm` sites migrated via `useConfirm()` across SuperAdminShell, super-admin Companies/Users/Entitlements, company-admin Users/Roles/Bundles, RBAC AssignUsersRoles, VoucherFormDesigner, DocumentFormDesigner, VoucherTypeManager, ItemMasterCard.
+- `GenericVoucherRenderer` "Feature to be implemented" `alert()` calls → soft `errorHandler.showInfo` toasts pointing to existing report pages.
+- Wrote [docs/architecture/frontend-toast-taxonomy.md](../docs/architecture/frontend-toast-taxonomy.md): 8-tier taxonomy (success / info / validation / business policy / missing setup / permission / system / critical) with copy templates and tone selection.
+- Enforcement: [frontend/scripts/check-no-confirm.mjs](../frontend/scripts/check-no-confirm.mjs) blocks builds on raw `window.confirm`/`alert`. Wired into `npm run build`. Seeded allowlist with 11 remaining super-admin AI/cert sites + 2 frozen-scope topbar widgets + DocumentDesigner preview stubs — must shrink to zero.
+- Kept `/dev/*`, `/canvas-dev`, `/accounting/vouchers/demo` routes visible per user request (pre-deployment).
+
+**Gates:**
+- `npm run typecheck:web` → clean.
+- `npm run check:reports` → 21 report routes OK.
+- `npm run check:no-confirm` → OK (no new violations).
+
+**Time spent:** ~2h
+
+**Follow-on (same session):**
+- Wrote completion report [planning/done/142-phase-1-p0-confirms-dates-taxonomy.md](./done/142-phase-1-p0-confirms-dates-taxonomy.md) with QA script.
+- Promoted `DatePicker` and `AccountSelectorSimple` to `components/shared/selectors/` via shim re-export files. Updated barrel `index.ts`. Implementation files stay put; future imports use the canonical path. Typecheck clean.
+
+## 2026-05-30 (Sat) — Task 132 Phase 0.5 chrome inventory
+
+**Task:** Catalog the chrome surface before broad Task 132 refactor work begins.
+**Agent:** Claude Opus 4.7
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Ran parallel inventory greps across `frontend/src` for: raw `type="date"` inputs, `window.confirm` / `alert()` usage, `uiMode` branching coverage, `ReportContainer` adoption, shared selectors, and dev/demo route exposure.
+- Authored [planning/tasks/132-phase-0.5-inventory.md](./tasks/132-phase-0.5-inventory.md) — full inventory with prioritized P0/P1 remediation backlog (~10h Phase 1 P0 work).
+- Key findings:
+  - 9 files use raw `type="date"` (4 are posting/finance-sensitive — P0).
+  - 28 files use `window.confirm`/`alert()`; 3 in Purchases are posting-reversal (P0).
+  - 26 files already honor `uiMode`; shell, sidebar, topbar, master lists, and master-card windows are covered. Sales/purchases detail pages are the main mode-aware gap and route to thread #2 (Phase 4.5).
+  - 7 dev/demo routes are exposed in tenant nav with `hideInMenu: false` — must hide in Phase 1.
+  - All 22 active report pages route through `ReportContainer` — no remediation needed.
+- Defined the 8-tier toast/error taxonomy (success, info, validation, business policy, missing setup, permission, system, critical) for Phase 1 documentation + ESLint enforcement.
+- Updated `planning/ACTIVE.md` next-action pointer to Phase 1 dev-route hide.
+
+**Time spent:** ~0.5h
+
+## 2026-05-30 (Sat) — Visual Layout Editor Polish & Auto Align
+
+**Task:** Fix layout double-scaling bug, refine properties panel auto-show triggers, display width labels, default layout span to 6, and implement Auto Align tool.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/141-visual-layout-editor-polish-and-auto-align.md](./done/141-visual-layout-editor-polish-and-auto-align.md)
+
+**What landed:**
+- Fixed the 12-to-24 columns double-migration bug in `migrateTo24Columns` helper by checking `metadata.layoutVersion === 2` and only doubling coordinates when all fields fit in 12 columns. Added `layoutVersion: 2` default to new forms metadata.
+- Refined Properties panel triggers so the panel only opens when clicking the Pencil edit button (preventing layout shifts during drags). Click selection is only allowed if the sidebar is already open.
+- Displayed `Width: {field.colSpan}` monospace width label badges on canvas components.
+- Defaulted layout placement/missing field span to 6 (for exactly 4 items per row).
+- Added a smart **Auto Align** button next to Test Run, with `handleAutoAlign()` logic that organizes all fields in every section into sequential rows of 4 components (span 6), wrapping columns at the grid limit.
+- Verified TypeScript compilation successfully (`npm run typecheck` in frontend -> passed).
+
+**Time spent:** ~0.4h
+
+
+## 2026-05-30 (Sat) — Visual Layout Editor Overflow & Grid Constraints Fix
+
+**Task:** Fix Visual Layout Editor grid overflow and answer grid queries.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Explained to the user that the layout editor uses a 24-column CSS grid with relative coordinate structures. Out-of-bounds fields (`col + colSpan > 24`) cause implicit grid columns, stretching the container and causing overflow.
+- Explained that the TopBar Widget Canvas in `DraggableWidgetSpace.tsx` uses `@dnd-kit/core` with a 96-column layout managed dynamically with collision checks and style toolbars.
+- Added `sanitizeLayoutConfig` helper to `DocumentDesigner.tsx` to automatically clamp all loaded, cloned, or selected base template fields so that `colSpan` and `col` strictly fit within the 24-column range.
+- Added coordinate safety constraints when modifying Column Start (`col`) inside the Properties Panel `updateSelectedField` function, preventing manually entered values from exceeding remaining columns.
+- Clamped action group layouts and drop calculations to prevent spans from exceeding remaining grid columns.
+- Filtered out fields with missing/undefined coordinates from coordinates state on load, preventing them from rendering with default row 0 col 0 spans and stacking on top of each other.
+- Defaulted the Windows layout autoplacement width span to `6` instead of `8` for available fields and actions, enabling exactly 4 components per row on new designs.
+- Shrunk the Right Sidebar Properties Panel from `w-72` (288px) to `w-64` (256px) so it occupies less space and leaves more room for the visual designer canvas.
+- Verified compilation (`npm run typecheck:web` -> passed) and build (`npm run build:web` -> passed).
+- Updated AST Graph successfully (`npm run graph:update`).
+
+**Time spent:** ~0.5h
+
+
+## 2026-05-30 (Sat) — Visual Layout Editor Polish (Breadcrumbs & Collapsible Properties)
+
+**Task:** Fix visual wizard layout bugs: syntax error typo, horizontal canvas overflow, table designer alignment, duplicate stacked headers, and always-on properties panel.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Reverted the syntax error `retu <div` back to `return (` in `DocumentDesigner.tsx` and removed a duplicate premature closing `</div>` tag that was closing the grid card container early.
+- Restored the Document Wizard vertical stepper sidebar layout in `DocumentDesigner.tsx` with connected steps and background line indicators.
+- Changed the main canvas scroll wrapper class from `overflow-y-auto` to `overflow-auto` (enabling horizontal scrollbars) to prevent canvas sections with `min-w-[800px]` from stretching the parent container and pushing the properties panel off-screen.
+- Added `min-w-[800px]` to the Table Column Configuration designer card to prevent column headers from squeezing and to keep it visually aligned with grid sections.
+- Consolidated stacked headers: moved the breadcrumb layout title to the modal upper header band in `VoucherDesignerPage.tsx` and `SystemFormDesignerPage.tsx` and passed `hideHeader={true}` to hide the duplicate inner topbar header.
+- Collapsed the Properties Panel by default when no field is selected, allowing the canvas to occupy the full modal width. Added an absolute positioned Pencil hover edit button on grid fields to open the panel, and an `X` close button on the panel header to collapse it.
+- Verified TypeScript compilation (`npm run typecheck:web` -> passed) and build packaging (`npm run build:web` -> passed).
+
+**Time spent:** ~0.8h
+
+## 2026-05-30 (Sat) — Wizard vertical stepper layout & Forms visual fixes
+
+**Task:** Refactor Document Wizard steps to vertical layout, and address visual bugs in voucher renderer (duplicate footer cards and exchange rate icon/spacing).
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Refactored `DocumentDesigner.tsx` layout to position step navigation vertically inside a left sidebar column instead of the horizontal header, with custom SVG vector icons and continuous line connectors.
+- Deduplicated `grandTotalDoc` and `totalAmount` footer summary cards in `GenericVoucherRenderer.tsx` for both Classic and Windows modes by introducing a common canonical mapping filtering pass.
+- Upgraded the currency conversion indicator icon in `CurrencyExchangeWidget.tsx` from raw unicode `→` (which rendered as a hyphen `-`) to a vector `<svg>` arrow supporting automatic RTL rotation.
+- Adjusted container min-widths inside `CurrencyExchangeWidget.tsx` to `min-w-[72px]` for the left identifier and `min-w-[64px]` for the right, eliminating text cramping and excessive whitespace.
+- Created completion reports `planning/done/138-forms-visual-fixes.md` and `planning/done/139-vertical-stepper-wizard.md`.
+- Verified TypeScript compilation (`npm run typecheck:web` -> passed) and build packaging (`npm run build:web` -> passed).
+
+**Time spent:** ~0.8h
+
+## 2026-05-30 (Sat) — UI Worktree Deletion
+
+**Task:** Delete the UI revamp playground worktree (`D:\DEV2026\ERP03-ui-lab`) as requested.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What was done:**
+- Unregistered the `D:\DEV2026\ERP03-ui-lab` worktree from Git using `git worktree remove`.
+- Identified and terminated running node/esbuild processes locked in that directory (specifically the Vite dev server processes).
+- Recursively deleted all files and subfolders within `D:\DEV2026\ERP03-ui-lab`. The directory is now completely empty.
+- Note: The empty parent directory folder itself is temporarily locked by another active process (likely the editor/Codex or terminal), which will be released once closed.
+
+**Time spent:** ~0.1h.
+
+## 2026-05-30 (Sat) — Main Workspace Layout Revamp Integration & Search Widget Polish
+
+**Task:** Resolve pop-stash merge conflicts from merging the revamp playground worktree, register the Search Widget in the Widget Designer UI, and perform full typecheck/build verification.
+**Agent:** Antigravity (Gemini 3.5 Pro)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What was done:**
+- Resolved pop-stash conflicts in `planning/JOURNAL.md` by deduplicating layout refactor entries and merging the stashed runtime control hardening entry.
+- Discovered and fixed a missing registration for the **Search Widget** in the TopBar Widget Designer page (`TopbarWidgetDesignerPage.tsx`), importing `SearchWidget` and placing it in `WIDGET_COMPONENT_MAP`, `WIDGET_TYPES`, and `DEFAULT_WIDGETS`.
+- Logged pre-existing architecture boundary check violations in `AccountingBoundary.test.ts` (relating to Reporting use cases) under **Rabbit Holes** in `planning/ACTIVE.md`.
+- Staged and committed all pending files successfully. Cleaned up the merged stash.
+- Verified TypeScript compilation (`npm run typecheck` -> exit 0) and Vite production build (`npm run build` -> exit 0).
+
+**Time spent:** ~0.5h.
+
+**Result:** Layout enhancements are integrated, search widget is customizable via settings, and the worktree compiles cleanly.
+
+## 2026-05-30 (Sat) — Runtime voucher field control UI hardening
+
+**Task:** Manual QA follow-up from SI Direct default-form design: runtime voucher header controls looked inconsistent because text inputs, selectors, date picker, and specialized widgets each owned their own input chrome.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+
+**What changed:**
+- Added shared header-field control classes inside `GenericVoucherRenderer` for 32px height, border radius, label style, read-only state, and selector framing.
+- Wrapped account/party/item/warehouse selectors in a consistent renderer frame while preserving their modal/search behavior.
+- Let `DatePicker` accept an optional `inputClassName`, so the runtime voucher renderer can use the same 32px control style without changing date picker defaults elsewhere.
+- Extended `CustomComponentProps` with `className`/`noBorder` so registry-based selectors can participate in the shared styling.
+- Corrected the UX after PO clarification: unified control chrome is **not forced globally**. The Visual Layout Editor now has a **Uniform controls** toggle stored at `metadata.uniformControlChrome`; runtime rendering only applies the unified selector/date/input chrome when that saved form setting is enabled.
+- Follow-up crash fix: `useUserPreferencesContext` now falls back to local preference state instead of white-screening if a dev refresh/HMR path renders a shell consumer before the provider is attached.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` → exit 0
+- `npm --prefix frontend run build` → exit 0
+- `git diff --check` → exit 0
+- Browser check reached only the unauthenticated local app shell, so visual confirmation still needs Mahmud's open authenticated session after refresh.
+
+**Time spent:** ~0.5h.
+
+**Result:** Designers can choose per form whether runtime voucher header controls keep their native/custom appearance or use a unified control shape. Field definitions, Field Library metadata, and posting behavior are unchanged.
+
+## 2026-05-30 (Sat) — UI/UX: Full-Width TopBar & Pinned/Overlay Sidebar Layout Refactor
+**Task:** Refactor application shell, topbar, and sidebar layout to make TopBar span full width, remove brand header/logo, and support dynamic overlay/docked sidebar behaviors.
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/ui-ux-revamp-playground`
+
+**What was done:**
+- Restructured `AppShell.tsx` to mount `TopBar` as a full-width header at the root layout level, below which the sidebar and main workspace reside.
+- Positioned `Sidebar.tsx` dynamically so that it floats on top of the TopBar (`z-50 top-0 bottom-0`) when unpinned, and docks below the TopBar (`z-30 top-12 bottom-0`) when pinned on desktop viewports.
+- Configured dynamic margins on the main workspace container to shift content to the side only when the sidebar is open and pinned (in accordion mode) or dynamically based on open/closed widths (in flat mode).
+- Configured theme variables to set the sidebar and topbar background surfaces to be darker than the main workspace content area (using tertiary in light mode and secondary in dark mode).
+- Removed `backdrop-blur-sm` from the overlay backdrop in `AppShell.tsx` to prevent blurring the background application when the sidebar is expanded.
+- Removed the branding/logo button ("ERP03 Enterprise") from the sidebar, replacing it with a clean utility header containing the pin button and a close button (which centers the Pin icon when collapsed in flat mode).
+- Configured Sidebar to behave conditionally based on the user's `sidebarMode` selection: in accordion mode, the sidebar completely hides off-screen when closed; in flat mode, it collapses to a persistent narrow 6rem (`w-24`) icon-strip on desktop viewports below the TopBar.
+- Removed the `lg:hidden` constraint on the TopBar hamburger menu button so it is visible on all screen sizes to toggle the sidebar.
+- Verified TypeScript compilation and Vite build bundle successfully without errors.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm run build` -> passed.
+
+## 2026-05-30 (Sat) — v1 strategy decision: natives are the headline surface
+
+**Decision (product owner):** for the first deployment, ship **native forms as the primary UI**. Defaults / Field Library / cloning stay available as opt-in customization but are not put in front of typical small/medium-company users.
+
+**Why:**
+- After the SI Direct capability audit ([tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md)) the gap was concrete: ~15 features missing on the default form, ~35–45h of component work plus a ~2–3d shared list surface to close it.
+- Closing all of that before deploy is not justified for v1 buyers. They want a finished product, not a configuration framework.
+- Native is already battle-tested. Polishing what works is faster and lower risk than rebuilding.
+
+**What changed in code (this session):**
+- [useSidebarConfig.ts](../frontend/src/hooks/useSidebarConfig.ts) `buildDynamicFormGroups` now suppresses any default form from the sidebar render. Activated defaults still live in Firestore and still appear inside Forms Management. The `DEFAULT_FORMS_GROUP` constant and label-key entry stay in place as the v2 hook point — uncommenting the early return restores the group when the migration resumes.
+- Cloned forms render unchanged: their user-chosen `sidebarGroup` (or `Other Forms` if blank) honored.
+
+**What changed in docs:**
+- [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md) prepended with a "v1 strategy" section and marked status as ⏸ Deferred to v2.
+- [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md) marked ⏸ Deferred. The audit + tier-ordered component list stay as the v2 starting point.
+- [done/136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md) decision-log extended with the visibility change.
+
+**New v1 focus (next sessions):**
+1. **Native functionality retest** — end-to-end QA pass on every native voucher flow (create / edit / post / pay / cancel / void / send / attach / audit / period-lock override / credit override) per module. Track findings as a manual QA task.
+2. **Native UI-mode awareness** — hardcode polished web-mode AND Windows card/window-mode renderings for each native page. Standard already lives in [tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md) Phase 4.5.
+3. **Task 132 phases** become the active execution plan for shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n.
+
+**What stays preserved (no code removed):**
+- Field Library Phases A/B/C (seed + super-admin editor + tenant cascade consumption).
+- Default voucher templates seeded by `seedSystemVoucherTypes.ts`.
+- Super-admin Field Library editor, voucher template editor, tenant Forms Management page. All still function. They're the v2 foundation.
+
+**Time spent:** ~0.5h on the decision, code change, and doc pivot.
+
+**Result:** v1 scope is contained and shippable. The architectural investment in Field Library / defaults / cloning is preserved as the v2 roadmap, not lost. Sidebar shows only what a typical user needs: native list pages, plus any clones the user explicitly created.
+
+## 2026-05-30 (Sat) — Sidebar form grouping policy (native / default / cloned)
+
+**Task:** Establish a clear sidebar IA for the three form sources, document the native→default migration direction, and rename the static `Documents` group to `Forms`.
+**Agent:** Claude (Opus 4.7)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/136-sidebar-form-grouping-policy.md](./done/136-sidebar-form-grouping-policy.md)
+**Design note:** [planning/tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md)
+
+**What was done:**
+- Terminology locked: **native forms** (moduleMenuMap list pages), **default forms** (`voucher_forms` rows with `isDefault`/`isSystemGenerated`/`isLocked`), **cloned forms** (user-created `voucher_forms`).
+- Earlier suppression attempt (suppress defaults whose voucherType matched a native nav entry) was rejected and reverted before commit — defaults are deliberate user activations and hiding them removed working behavior. Direction is the opposite: defaults catch up to natives via Field Library components, then natives retire.
+- Renamed `Documents` → `Forms` across the static `moduleMenuMap.ts` (sales, purchase, accounting, inventory).
+- `useSidebarConfig.buildDynamicFormGroups` now routes default forms to a single per-module `Default Forms` group regardless of their stored `sidebarGroup`. Cloned forms honor their user-chosen `sidebarGroup` verbatim (folds into static `Forms` group when label matches, else own group, blank → root).
+- Added label-key map entries for `Forms` → `sidebar.forms` and `Default Forms` → `sidebar.defaultForms` (i18n falls back to the literal label until Arabic strings are added).
+- `SidebarFormEntry` in `useVoucherTypes.ts` exposes `voucherType`/`isDefault`/`isSystemGenerated`/`isLocked` (kept from the reverted suppression work — the new grouping policy still needs the default-flag bits).
+- Wrote a design note covering the three form sources, the per-voucher-type capability matrix (native vs default), and the staged migration plan (capability audit → ship Field Library components → default parity build → side-by-side QA → native retirement).
+- Added `Other Forms` group as a catch-all for cloned forms with blank `sidebarGroup`, so they no longer strand at sidebar root next to Reports/Tools/Settings.
+- Ordering: dynamic groups are inserted **after** the static `Forms` group in `FORM_GROUP_RANK` order (Default Forms → user-named → Other Forms), keeping `Reports`/`Tools`/`Settings` at the bottom of the section.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` → exit 0
+- `npm --prefix frontend run build` → exit 0
+- Manual sidebar QA pending after commit.
+
+**Time spent:** ~1.5h (including a wrong-direction round trip).
+
+**Result:** Sidebar now expresses the three sources with clear group headings. Visual duplication of "Sales Orders" (under `Forms`) and "Sales Order" (under `Default Forms`) is preserved on purpose — it's an honest signal that the migration is incomplete. The retirement of natives is now a documented, per-voucher-type process gated on capability parity.
+
+## 2026-05-30 (Sat) — Field Library Phase C2 (voucher template bindings)
+
+**Task:** Phase C2 of task 135 — move Layer 2 super-admin voucher template authoring onto the Field Library instead of hardcoded frontend field suggestions.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135d-field-library-phase-c2.md](./done/135d-field-library-phase-c2.md)
+**Time spent:** ~1.2h.
+
+**What was done:**
+- Updated `VoucherTemplateEditorPage.tsx` to load `/super-admin/field-library`.
+- Removed the active hardcoded `SUPPORTED_FIELDS_BY_CODE` authoring path.
+- Header and Line Field tabs now offer non-deprecated Field Library entries and respect `supportedTypes`, `excludedTypes`, and `sectionHint`.
+- Field Library entries now hydrate into `FieldDefinition` records with official IDs, labels, renderer types, field class, selector relation hints, and `fieldLibraryVersion`.
+- Table Columns now suggest from the template's own `layout.lineFields`, keeping visible grids aligned with saved voucher template bindings.
+- Updated Forms Management architecture/user docs and created completion report `planning/done/135d-field-library-phase-c2.md`.
+
+**Validation:**
+- `npm --prefix frontend run typecheck` — passed.
+- `npm --prefix frontend run build` — passed.
+- `npm --prefix backend run build` — passed.
+- `git diff --check` — passed.
+
+**Result:** Super-admin template authoring is now Field Library driven. Voucher templates remain the Layer 2 authority for field placement and required status. Remaining follow-up is `fieldVersionsSeen`/drift warnings and optional tighter seed scoping for super-admin convenience.
+
+## 2026-05-30 (Sat) — Field Library Phase C1 (Forms Management consumption)
+
+**Task:** Phase C1 of task 135 — Forms Management reads the tenant-resolved Field Library catalog while preserving the current form persistence shape and mandatory-field behavior.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135c-field-library-phase-c1.md](./done/135c-field-library-phase-c1.md)
+
+**What was done:**
+- Mounted the existing designer routes under `/tenant/designer`, making `GET /tenant/designer/field-library` reachable by the tenant frontend.
+- Added `fieldLibraryApi` as a read-only frontend client for the resolved field catalog.
+- Updated `VoucherDesignerPage.tsx` so the Forms Management wizard hydrates its system/header/table field lists from the Field Library response.
+- Kept legacy module field IDs as a compatibility allowlist until Phase C2 adds real Layer 2 type bindings.
+- Preserved legacy mandatory/optional semantics for existing module fields, preventing Field Library flat-namespace de-duping from accidentally making fields required in the wrong module.
+- Corrected the C1 compatibility mapper after UI smoke feedback: Sales Invoice clones no longer inherit unrelated module-wide required fields like Delivery Date, Return Date, or Order Date, and BODY fields stay out of the header picker.
+- Passed the active field catalog into `saveDocumentForm` so canonical output has the current field metadata.
+- Updated architecture/user docs, QA queue, ACTIVE, and PRIORITIES.
+
+**Verification:**
+- `npm --prefix backend run build` -> exit 0
+- `npm --prefix frontend run typecheck` -> exit 0
+- `npm --prefix frontend run build` -> exit 0
+- `git diff --check` -> exit 0
+- Browser smoke on local Vite route -> app rendered and redirected unauthenticated; signed-in Forms Management QA remains queued.
+
+**Time spent:** ~1.9h
+
+**Result:** Forms Management now consumes the Field Library catalog without weakening posting controls or changing saved form documents. Phase C2 should make voucher-type placement/mandatory bindings authoritative.
+
+## 2026-05-30 (Sat) — Field Library Phase B (super-admin editor)
+
+**Task:** Phase B of task 135 — super-admin authoring surface for the Layer 1 catalog seeded in Phase A. Builds the editor page, the six CRUD endpoints, the policy use cases (id uniqueness, id-immutability, reference-safety gate).
+**Agent:** Claude (Sonnet)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135b-field-library-phase-b.md](./done/135b-field-library-phase-b.md)
+
+**What was done:**
+- Extended `IFieldLibraryRepository` with `getSystemEntry`, `setSystemEntryDeprecated`, `hardDeleteSystemEntry`. The deprecate path re-routes through `upsertSystemEntry` so the content-hash + version-bump logic stays in one place — flipping `deprecated` always produces a different hash and bumps version by 1 as decision 6.3 promises.
+- Three application-layer use cases in `FieldLibraryUseCases.ts`: id-uniqueness probe on create, id-immutable patching on update, reference-safety probe against system voucher templates on hard-delete (returns `{ ok: false, usedBy[] }` instead of raising, so the controller can surface a structured 409).
+- `SuperAdminFieldLibraryController` translates use-case errors into 400 (validation/collision), 404 (missing), 409 (referenced) with structured payloads.
+- New route file mounted at `/super-admin/field-library` under `authMiddleware + assertSuperAdmin`. Six routes: GET list, GET one, POST create, PUT update, PATCH deprecated, DELETE.
+- Typed FE API client `superAdminFieldLibraryApi` with mirrors of `FieldClass`, `FieldSectionHint`, `SelectorBinding`, `FieldLibraryEntry`. Uses the same unwrap pattern as the other super-admin clients.
+- Super-admin page at `/super-admin/field-library`. Reuses `SuperAdminPage`/`SuperAdminTable`/`SuperAdminStatCard`/`SuperAdminModal` and the `useSuperAdminTable` hook so the surface stays visually consistent with `SuperAdminVoucherTemplatesPage`. Features: stat row (Total/Selectors/Custom metadata/Deprecated), sortable + searchable table, show-deprecated toggle, inline edit modal with id-collision hint while typing, selector-binding sub-form that appears when the type is one of the seven selector kinds, soft-deprecate one-click toggle, hard-delete with confirm-dialog + "blocked" modal that surfaces the `usedBy[]` list when a system voucher template references the field.
+- Registered the lazy-loaded page in `routes.config.ts` under `SUPER_ADMIN` section, `requiredGlobalRole: 'SUPER_ADMIN'`.
+
+**Intentional limits:**
+- Reference-safety probe scans system voucher templates only. Company voucher types and forms are deferred to Phase C — today's forms inline field definitions which makes a robust scan fragile. Phase C migrates form storage to `{ fieldId }` references and the gate extends.
+- Wizard consumption is NOT wired this phase. Forms Management still reads from hardcoded constants; super-admin edits are silent until Phase C.
+
+**Verification:**
+- `npx tsc --noEmit` (backend) -> exit 0
+- `npx tsc --noEmit` (frontend) -> exit 0
+
+**Time spent:** ~2.5h
+
+**Result:** Super-admin can now see and author the field catalog from a UI without touching code. The system voucher template reference gate prevents foot-guns. Phase C (wizard consumption + form differential model + drift audit) unblocks task #5.
+
+## 2026-05-30 (Sat) — Field Library Phase A (seed + read API)
+
+**Task:** Phase A of task 135 — land Layer 1 of the three-layer field cascade. Seed the Field Library into Firestore from today's hardcoded constants, expose a silent read API, no UI consumer yet.
+**Agent:** Claude (Sonnet)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/135a-field-library-phase-a.md](./done/135a-field-library-phase-a.md)
+**Planning doc:** [planning/tasks/135-field-component-library.md](./tasks/135-field-component-library.md)
+
+**What was done:**
+- New domain entity `FieldLibraryEntry` with `FieldClass` (`system_core`/`system_optional`/`computed`/`custom_metadata`), `SelectorBinding`, `ResolvedFieldLibrary` resolver shape.
+- New repository interface `IFieldLibraryRepository` (`listSystemEntries`, `listCompanyEntries`, `resolveForCompany`, `upsertSystemEntry`).
+- `FirestoreFieldLibraryRepository` implements content-hash idempotency: SHA-1 of the meaningful fields; identical content -> no version bump, no write. Honors decision 6.3 (monotonic version) and 6.2 (system wins on id collision in the resolver merge).
+- `seedFieldLibrary.ts` duplicates the frontend constants from VoucherDesignerPage.tsx and de-dupes per the flat-namespace rule (6.1) — `currency` in ACCOUNTING + SALES collapse into one entry; `supportedTypes`/`excludedTypes` arrays are unioned so historical scoping is preserved. Inferred `fieldClass` from the legacy `category`/`mandatory`/`autoManaged` tags. SELECTOR_BINDINGS map kicks in for the seven selector kinds.
+- Hooked into `runSystemSeeder.ts` as Step 4 with `{written, unchanged, total}` console output.
+- New `FieldLibraryController` exposes `GET /tenant/designer/field-library` (merged catalog for the auth'd company) and `GET /tenant/designer/field-library/system` (system-tier alone). Mounted under `designer.vouchertypes.view` permission.
+- Storage path is `system_metadata/field_library/items/{fieldId}` mirroring the existing `voucher_types/items` shape so the future super-admin UI's directory stays consistent.
+- DI binding is Firestore-only this phase; Prisma binding follows in Phase B when the super-admin UI needs scaled reads.
+
+**What was intentionally NOT done:**
+- No frontend changes. Forms Management wizard still reads from hardcoded constants. The new endpoint is silent.
+- No super-admin UI. Phase B.
+- No company custom-field write path. Phase D.
+- No `fieldVersionsSeen[]` on forms or drift audit page. Phase B/C.
+
+**Verification:**
+- `npx tsc --noEmit` (backend) -> exit 0.
+- Frontend untouched (not re-run).
+
+**Time spent:** ~2.5h.
+
+**Result:** Layer 1 of the field component library is in place and inspectable. Phase B (super-admin Field Library editor) is unblocked; Phase C (wizard cascade) follows. Forms Management UX continues unchanged.
+
+## 2026-05-30 (Sat) — Forms Management page polish
+
+**Task:** Polish the per-module Voucher Designer page into a production-grade Forms Management page across Accounting, Sales, and Purchases.
+**Agent:** Claude (Sonnet)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/134-forms-management-page-polish.md](./done/134-forms-management-page-polish.md)
+**User guide:** [docs/user-guide/forms-management.md](../docs/user-guide/forms-management.md)
+
+**What was done:**
+- Renamed the page **Voucher Designer → Forms Management** in the title, editor sub-label, loading copy, and all three module entries in `moduleMenuMap.ts`.
+- Removed the verbose descriptive paragraph and amber "Locked defaults install as inactive" callout from the page body.
+- Added a **`?`** HelpCircle icon next to the title that opens the reusable `InstructionsModal` slide-over with a five-section walkthrough (Install / Activate / Clone / Sidebar Group / Export) plus footer warnings.
+- Ported the **legacy global Forms Designer's clone rules** verbatim: `handleClone` and `handleAddCustomForm` now compute `parentPrefix = (form.prefix||'').replace('-','').replace(/[^A-Z]/g,'') || 'FORM'` and suggest `id = ${parentPrefix}_${Date.now()}_C` (or `_N`) and `prefix = ${parentPrefix}C-` (or `N-`). Suggested values; user can override; uniqueness is validated against the in-memory `existingForms` list before save. The `DocumentDesigner` step 2 ID input is now editable for clones (was incorrectly read-only because `initialConfig?.id` was populated for clones too) via a new `isExistingEdit = !!initialConfig?.id && !__isClone` flag.
+- **Critical save fix in `VoucherFormController.create`:** the create method was hand-picking a small subset of `formData` (name, code, typeId, prefix, description, headerFields, tableColumns, layout, enabled, isDefault) and silently dropping `module`, `uiModeOverrides`, `rules`, `actions`, `voucherType`, `persona`, `formType`, `baseType`, `sidebarGroup`, `numberFormat`, `isMultiLine`, `tableStyle`, `defaultCurrency`. Without `module` the repository defaulted to `'ACCOUNTING'`, so cloned Sales/Purchase forms got persisted but filtered out by `loadModuleDocumentForms('SALES'|'PURCHASE')`. Now spreads `formData` first then applies protected overrides; strips client sentinels (`__isClone`) and server-managed fields.
+- Fixed `isEdit` detection in `handleSaveAndExit`: introduced `isCloneFlow` based on `__isClone` sentinel so clones with a suggested id are correctly POSTed (create) rather than PUTted (update against a nonexistent doc).
+- Added a **kebab menu (`⋮`) to every form row** with three options: **Export JSON** (downloads `voucher_form_{id}.json`), **View Schema** (placeholder/disabled), and **Sidebar Group** (inline editor with free-text input and preset chips).
+- Sidebar Group assignment routes through the backend metadata update (Admin SDK) so Firestore rules don't block; optimistic UI with rollback on failure; emits `companyModulesRefresh` so the sidebar moves the form into its new group immediately.
+- **Backend locked-form gate now allows `sidebarGroup` updates** alongside `enabled` (both are organisational preferences, not design changes). Anything else still requires a clone.
+- Removed the **silent `"Vouchers" → "Documents"` sidebar merge** in `useSidebarConfig.ts`. The legacy seed default `"Vouchers"` is now `"Documents"` in `seedSystemVoucherTypes.ts` (5 accounting templates). User-typed custom groups (e.g. "Approvals") render as their own top-level sidebar submenus, honouring user intent verbatim.
+- Fixed kebab dropdown clipping by changing `InstalledTypeRow` from `overflow-hidden` to `overflow-visible` (and adding `rounded-t-lg` to keep the collapsed-state rounding).
+
+**Verification:**
+- `npx tsc --noEmit` (frontend) → exit 0
+- `npx tsc --noEmit` (backend) → exit 0
+- Manual QA script captured in the completion report (5 scenarios across 3 modules).
+
+**Time spent:** ~3.5h
+
+**Result:** Forms Management is the production-grade single home for managing voucher types and forms across every module. Newly installed forms are reliably persisted and visible. Clones flow with suggested-but-editable IDs and Prefixes. Sidebar groups (including for locked defaults) work as the user expects, with no silent rewrites.
+
+## 2026-05-29 (Fri) — Unified Voucher Designer Wizard Saving Fix
+
+**Task:** Fix Voucher/Document Designer wizard save and clone permissions issue (Firestore security rule bypass).
+**Agent:** Antigravity (Gemini 3.5 Flash)
+**Branch:** `feat/init-wizard-forms-selection`
+**Completion report:** [planning/done/133-fix-designer-wizard-fields.md](./done/133-fix-designer-wizard-fields.md)
+
+**What was done:**
+- Fixed `PERMISSION_DENIED` / rules evaluation error during save/clone of custom forms in the unified Voucher/Document Designer wizard.
+- Refactored `saveDocumentForm` in [documentDesignerService.ts](file:///d:/DEV2026/ERP03/frontend/src/modules/tools/forms-designer/services/documentDesignerService.ts) to use the backend `voucherFormApi` REST endpoints (`create`/`update`) instead of writing directly to Firestore using client-side `setDoc`. This routes writes through the backend (Admin SDK) and bypasses security rules, matching the project's architecture guidelines.
+- Fixed `isEdit` logic in [VoucherDesignerPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/shared/pages/VoucherDesignerPage.tsx) to check the initial `editingForm?.id` state instead of final `config.id`, preventing new/cloned forms (where the user assigns a code in the wizard) from being incorrectly treated as updates.
+- Fixed `isSuperAdmin` helper in [firestore.rules](file:///d:/DEV2026/ERP03/firestore.rules) to safely retrieve `globalRole` using `.data.get('globalRole', '')`, preventing security rules evaluation crashes for standard tenant users.
+- Cleaned up unused Firestore imports (`doc`, `getDoc`, `setDoc`, `updateDoc`) from [documentDesignerService.ts](file:///d:/DEV2026/ERP03/frontend/src/modules/tools/forms-designer/services/documentDesignerService.ts).
+- Updated completion report [133-fix-designer-wizard-fields.md](file:///d:/DEV2026/ERP03/planning/done/133-fix-designer-wizard-fields.md) to document the API save fix.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed cleanly
+- `npm --prefix frontend run build` -> passed cleanly
+
+**Time spent:** ~0.7h
+**Result:** Custom document forms can now be cloned and saved successfully without client-side permission issues. Ready to commit current branch and switch to UX Layout Production Hardening.
+
+## 2026-05-29 (Fri) — Frontend UX/Layout Production Audit
+
+**Task:** Deep audit of ERP03 frontend layout, shell, sidebar, top bar, auth/user flow, settings consistency, list/table patterns, RTL/i18n readiness, and production ERP UX risks.
+**Agent:** Codex (GPT-5)
+**Branch:** `feat/init-wizard-forms-selection`
+**Audit report:** [docs/architecture/frontend-ux-layout-audit.md](../docs/architecture/frontend-ux-layout-audit.md)
+**Execution plan:** [planning/tasks/132-ux-layout-production-hardening.md](./tasks/132-ux-layout-production-hardening.md)
+**Future-agent brief:** [planning/briefs/20260529-frontend-ux-layout-hardening.md](./briefs/20260529-frontend-ux-layout-hardening.md)
+
+**What was done:**
+- Inspected the frontend shell, route/sidebar configuration, top bar/widget system, auth/landing pages, module settings pages, representative operational list pages, report pattern docs, and existing UI screenshot evidence.
+- Confirmed the strongest current UX pattern is the report system built around `ReportContainer`.
+- Identified production-readiness gaps: dev/demo routes in normal navigation, top-bar layout editing exposed in daily chrome, duplicate React Query providers, incomplete auth/language flow, inconsistent settings taxonomy, inconsistent list/table patterns, raw confirms/alerts, raw date inputs, and demo-oriented dashboard content.
+- Created an English architecture audit, execution-ready task plan, and future-agent brief.
+- Incorporated product-owner observations: shared components are the default project-wide behavior, loading/waiting states need one standard model, and toast/error feedback must distinguish validation, policy, permission, setup, system, and critical/security failures.
+- Incorporated product-owner report/entity observations: `ReportContainer` must govern the full report contract including parameters and filters, and master-data cards must be UI-mode aware with normal web/page and Windows card/window presentations.
+- Did not change application code.
+
+**Verification:**
+- `npm --prefix frontend run check:reports` -> passed, 21 report routes checked, 0 allowlisted.
+- `git diff --check` -> passed.
+- Frontend typecheck was intentionally not rerun for this documentation-only audit because the current worktree has unrelated pre-existing wizard typecheck failures from local dirty changes.
+
+**Time spent:** ~2.5h
+
+**Result:** UX/Layout hardening is now documented and ready for phased implementation. Recommended first implementation slice: hide dev/demo navigation, consolidate React Query providers, and fix auth/logout routing consistency. The top-bar widget system is frozen for now and must not be modified unless the product owner reopens that scope.
+## 2026-05-29 (Fri) — UI/UX: Dead Widget Code Cleanup and Documentation Sync
+**Task:** Remove unused widget and tray components and synchronize TopBar documentation.  
+**Agent:** Antigravity (Gemini 3.5 Flash)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+
+**What landed:**
+- Deleted deprecated `WidgetTray.tsx` and `MockWidgetTray.tsx` layout components.
+- Deleted unused modular widgets `CompanyInfoWidget.tsx` and `CompanyLogoWidget.tsx`.
+- Updated architecture (`docs/architecture/topbar-precision-widget-layout.md`) and user guide (`docs/user-guide/topbar-widget-layout.md`) documentation to describe the inline visual styles model and grid-based canvas editor.
+- Updated completion report `planning/done/132-topbar-widget-tray-and-unified-settings.md`.
+- Verified typescript compilation (`npm run typecheck`) and bundle build (`npm run build`) pass cleanly with zero errors.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm run build` -> passed.
+
+**Time spent:** ~1.5h  
+
+## 2026-05-29 (Fri) — UI/UX: Layout Filtering, Search Widget, and UI Mode Enhancements
+
+**Task:** Clean up and filter TopBar layout design styles (keeping only 1, 2, 3, 5, 10, 11, 16, 17, 18), implement a new Search Widget, and modify UIModeWidget to display both UI modes always with highlights.  
+**Agent:** Antigravity (Gemini 1.5 Pro)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+
+**What landed:**
+- Cleaned up `TopBar.tsx`, `UiLabDashboard.tsx`, and `AppearanceSettingsPage.tsx` to retain only the selected 9 widget layouts (1, 2, 3, 5, 10, 11, 16, 17, 18) and discarded all other variations.
+- Created `SearchWidget.tsx` featuring standard component props, localized placeholder values, and fluid CSS focus transitions. Registered the widget within Zustand store (`DEFAULT_WIDGETS`), `TopBar.tsx`, and `UiLabDashboard.tsx` configurations.
+- Upgraded the compact mode rendering in `UIModeWidget.tsx` to display both "Win" and "Web" buttons side-by-side on the TopBar at all times, highlighting the currently active mode.
+- Verified that all modifications are isolated to the git worktree `D:\DEV2026\ERP03-ui-lab` and compiled typecheck and production build successfully.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm run build` -> passed.
+
+**Time spent:** ~1.2h  
+**Result:** Code compiles cleanly, production build passes, and UI features are fully updated per user specifications.
+
+## 2026-05-29 (Fri) — UI/UX: Real Inline TopBar Widgets & 20 Layout Gallery Sync
+
+**Task:** Integrate 9 real widgets into the 20 TopBar style variations, support full width mockups in UI Lab, remove duplicate icons with compact prop, and sync selectors with settings.  
+**Agent:** Antigravity (Gemini 1.5 Pro)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+**Completion report:** [planning/done/132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md)
+
+**What landed:**
+- Added `compact?: boolean` prop to all 9 system widgets to hide internal icons and horizontal margins/padding inside inline designs.
+- Integrated a simplified UIMode switcher toggler and hidden text labels (e.g. "Currency: ") when `compact` is active.
+- Configured real system TopBar inline widget rendering to pass `compact={true}` to widgets, and forced all 9 widgets to `visible: true` inside Zustand store on mount.
+- Added a "TopBar Widget Style" select dropdown configuration inside `AppearanceSettingsPage.tsx` under *Layout & Behavior* and synced it bidirectionally with header actions via custom event listeners.
+- Expanded the width of `UiLabDashboard.tsx` to full screen dimensions in widgets view, loaded initial widgets ordering from store, and wired drag-and-drop actions to update the Zustand store in real-time.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` -> passed.
+- `npm --prefix frontend run build` -> passed.
+
+**Time spent:** ~3.0h  
+**Result:** Widgets are fully integrated inline inside the real TopBar and settings page, and preview beautifully at full screen width inside the UI Lab playground. Ready for QA.
+
+## 2026-05-29 (Fri) — UI/UX Revamp: Integrated TopBar Widgets & Style Preferences
+
+**Task:** Pro-level UI/UX Revamp (Widget Bar Style Gallery, Live Reordering, and Unified Settings) directly in the worktree codebase.  
+**Agent:** Antigravity (Gemini 3.5 Pro)  
+**Branch:** `feat/ui-ux-revamp-playground`  
+**Completion report:** [planning/done/132-topbar-widget-tray-and-unified-settings.md](./done/132-topbar-widget-tray-and-unified-settings.md)
+
+**What landed:**
+- Integrated the 20 widget bar layout styles directly inside the real system `TopBar.tsx` centered space, matching the exact spacing and width bounds of the system header.
+- Wired all 9 real widget components (Company Details, Fiscal Year, Base Currency, Approval Mode, UI Mode, Clock, Date, Notes, Alarm) using actual React components rather than mock text.
+- Implemented native HTML5 drag-and-drop reordering inside the live `TopBar.tsx`, allowing users to grab and move widgets dynamically, updating the Zustand store and layout coordinates on the fly.
+- Mounted a widget layout style dropdown selector in the TopBar configuration menu, allowing users to choose their preferred layout (1 to 20) on any page, persisting choices in `localStorage`.
+- Removed the secondary collapsible `WidgetTray` in `AppShell.tsx` and consolidated all widget layouts inside the `TopBar` itself.
+- Re-coded the UI Lab page (`UiLabDashboard.tsx`) to render all 20 live mockups using system widgets side-by-side with select buttons.
+- Fixed TypeScript typecheck compilation error in `MockUnifiedSettingsPage.tsx`.
+- Ensured 100% clean isolation of changes inside the dedicated worktree repository (`D:\DEV2026\ERP03-ui-lab`) with zero uncommitted changes in the main codebase (`D:\DEV2026\ERP03`).
+
+**Verification:**
+- `npm run typecheck` inside `frontend/` -> passed.
+- `npm run build` inside `frontend/` -> passed.
+
+**Time spent:** ~3.2h  
+**Result:** Live widgets integrated, draggable, styled in 20 distinct presets, and fully selectable via the TopBar widgets menu inside the worktree repository.
 
 ## 2026-05-28 (Thu) — Phase F: Purchase Price Lists
 
@@ -917,3 +1635,45 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 
 ## 2026-05-20 (Wed) — Phase C (sales finance & reporting)
 **Task:** Task 110 — Phase C of the sales completion roadmap
+
+## 2026-05-30: Deep UI/UX Hardening
+
+**Agent:** Antigravity
+
+**Work Done:**
+- Executed deep code-level UI/UX fixes across the frontend per user request.
+- Removed disruptive `hover:scale` animations that caused grid layout jitter in sidebars and core UI components, replacing them with color/shadow transitions.
+- Standardized arbitrary Z-Index values (e.g. `z-[999999]`) to normalized Tailwind brackets (e.g. `z-[90]`, `z-50`) to resolve stacking context collisions in modals and shared selectors.
+- Audited `bg-white/10` contrast safety, ensuring all instances are encapsulated in forced dark-mode containers.
+- Patched accessibility concerns including updating static image alt-text inside wizards and correcting pointer indicators.
+
+**Next Steps:**
+- Continue executing native functionality retests or further chrome polish according to ACTIVE.md priorities.
+
+### Session: 2026-05-31 (Shared Selector Enforcement)
+
+- **Goal:** Phase 5 task to enforce WarehouseSelector and ItemSelector usage across all frontend modules where raw manual text/select inputs were used for IDs.
+- **What was done:** Scanned the codebase and migrated straggling manual text inputs in StockAdjustmentPage, PurchaseReturnDetailPage, and PromotionsPage to their respective shared selectors. Created completion report 148.
+- **Detours:** Addressed TypeScript errors in SalesInvoiceDetailPage.tsx caused by recent shared component API changes (ConfirmDialog tone, AttachmentsCard onChange removal of readOnly, messaging accounts casting).
+- **Next:** Proceed with the rest of Task 132 Phase 6 hardening, or hand back to the main Orchestrator for the native functionality retest.
+
+
+### Session: 2026-05-31 (Chart of Accounts UI Update)
+
+- **Goal:** Update the Chart of Accounts (COA) page UI to exactly match the provided design mockup screenshots.
+- **What was done:**
+  - Restructured \AccountsListPage.tsx\ to implement the new grid/table layout with mocked balance data.
+  - Implemented the \classFilter\ logic allowing users to quickly filter the tree by classifications (Asset, Liability, etc.).
+  - Built \AccountDrilldownModal.tsx\ which displays account summaries and mocked recent journal entries upon clicking an account row.
+  - Preserved existing functionality for row-level actions (+, Edit, Deactivate).
+  - Wrote completion report \149-coa-ui-update.md\ and created a user guide for the updated COA.
+- **Next:** Proceed with the native functionality retest as outlined in ACTIVE.md, or continue with Task 132 polish.
+
+### Session: 2026-06-01 (Architecture Control Layer Diagnosis)
+
+- **Goal:** Diagnose whether ERP03 has a real architecture/control-layer problem around governance, business rules, engine rules, and warnings, and produce a handoff for second-check before planning repairs.
+- **What was done:** Inspected planning docs, AGENTS.md, backend policy/posting services, frontend document policy helpers, frontend validation/rules, forms/designer architecture notes, and accounting boundary tests. Created `planning/briefs/20260601-architecture-control-layer-diagnosis.md`.
+- **Key finding:** The concern is valid. The highest-risk confirmed issues are inconsistent subledger posting policy enforcement, Sales-only period-lock wiring, frontend "business rules" that sound authoritative but are client-only, backend/frontend governance duplication, and an existing failing accounting-boundary architecture test.
+- **Verification:** `npm --prefix backend test -- --runInBand backend/src/tests/architecture/AccountingBoundary.test.ts` failed with six known/confirmed Sales/Purchases reporting boundary violations.
+- **Time spent:** ~1.2h.
+- **Next:** Send the brief to a read-only second-check agent (`erp-backend-architect`, `erp-frontend-architect`, `erp-api-contract`, then `erp-reviewer`) before any builder starts.

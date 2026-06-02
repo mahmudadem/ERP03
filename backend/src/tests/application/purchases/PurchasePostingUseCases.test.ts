@@ -667,7 +667,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
   });
 
   it('A1) PostPI with requireApprovalBeforePosting parks as PENDING_APPROVAL (no financial effect)', async () => {
-    const settings = makeSettings('SIMPLE', { requireApprovalBeforePosting: true });
+    const settings = makeSettings('SIMPLE');
     const vendor = makeVendor();
     const stockItem = makeItem('stock-appr', { trackInventory: true, inventoryAssetAccountId: 'INV-700' });
     const pi = makePI({ id: 'pi-appr', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
@@ -679,6 +679,34 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const invoiceRepo = {
       getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
       update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
+    };
+
+    const mockTxManager = {
+      runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => {
+        try {
+          return await operation({ id: 'txn-1' });
+        } catch (err) {
+          inventoryService.writeStockMovement.mockClear();
+          voucherRepo.save.mockClear();
+          ledgerRepo.recordForVoucher.mockClear();
+          throw err;
+        }
+      }),
     };
 
     const useCase = new PostPurchaseInvoiceUseCase(
@@ -699,10 +727,14 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
       ),
       undefined,
-      makeTransactionManager() as any
+      mockTxManager as any
     );
 
     const result = await useCase.execute(COMPANY_ID, pi.id);
@@ -713,7 +745,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
   });
 
   it('A2) ApprovePurchaseInvoiceUseCase runs the real post on a PENDING_APPROVAL invoice', async () => {
-    const settings = makeSettings('SIMPLE', { requireApprovalBeforePosting: true });
+    const settings = makeSettings('SIMPLE');
     const vendor = makeVendor();
     const stockItem = makeItem('stock-appr2', { trackInventory: true, inventoryAssetAccountId: 'INV-700' });
     const pi = makePI({ id: 'pi-appr2', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
@@ -726,6 +758,21 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const invoiceRepo = {
       getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
       update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
     };
 
     const postUseCase = new PostPurchaseInvoiceUseCase(
@@ -746,7 +793,11 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
       ),
       undefined,
       makeTransactionManager() as any
