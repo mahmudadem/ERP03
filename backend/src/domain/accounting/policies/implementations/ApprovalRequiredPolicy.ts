@@ -18,7 +18,18 @@ export class ApprovalRequiredPolicy implements IPostingPolicy {
   readonly id = 'approval-required';
   readonly name = 'Approval Required';
 
+  /**
+   * @param exemptVoucherTypes voucher types that skip the approval requirement (per-type scope,
+   *   owned by Accounting). Empty -> all types are subject to approval (safe-by-default).
+   */
+  constructor(private readonly exemptVoucherTypes: string[] = []) {}
+
   validate(ctx: PostingPolicyContext): PolicyResult {
+    // Per-type scope: exempt voucher types skip the approval requirement entirely.
+    if (this.exemptVoucherTypes.includes(ctx.voucherType)) {
+      return { ok: true };
+    }
+
     // Check if voucher is approved
     if (ctx.status !== VoucherStatus.APPROVED) {
       return {

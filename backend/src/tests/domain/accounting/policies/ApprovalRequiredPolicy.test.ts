@@ -50,4 +50,20 @@ describe('ApprovalRequiredPolicy', () => {
       expect(result.error.code).toBe('APPROVAL_REQUIRED');
     }
   });
+
+  // Per-type scope (posting-authority Stage 2a)
+  it('exempts a voucher type listed in scope, even when unapproved', () => {
+    const scopedPolicy = new ApprovalRequiredPolicy([VoucherType.PAYMENT]);
+    const result = scopedPolicy.validate(createContext(VoucherStatus.DRAFT));
+    expect(result.ok).toBe(true);
+  });
+
+  it('still gates a non-exempt type when other types are exempt', () => {
+    const scopedPolicy = new ApprovalRequiredPolicy([VoucherType.SALES_INVOICE]);
+    const result: PolicyResult = scopedPolicy.validate(createContext(VoucherStatus.DRAFT));
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.error.code).toBe('APPROVAL_REQUIRED');
+    }
+  });
 });

@@ -72,18 +72,31 @@ batch behavioural stages. Run `erp-reviewer` before Stage 1 and Stage 4.
   enforcing it honestly. `erp-reviewer` recommended before Stage 2 wires the modules.
 
 ### Stage 2 — Centralize the approval decision (one rulebook + scope)
-- Move the decision out of `SalesSettings`/`PurchaseSettings` into accounting policy config:
-  `approvalRequired` (exists) **+** a scope/exemption list **by document type**
-  (`approvalScope: { exemptTypes: string[] }` or similar) on `AccountingPolicyConfig`.
-- `AccountingPolicyRegistry` builds `ApprovalRequiredPolicy` with the scope; the policy checks
-  `ctx.voucherType` against the exemptions.
-- Keep the document-level **park as `PENDING_APPROVAL`** as a *convenience pre-check* (reuse the
-  machinery from `cc37e78e`/`7fc4ce7e`), but driven by **reading the central policy**, not a local
-  flag. Retire `requireApprovalBeforePosting` from Sales/Purchases settings + DTOs + UI (no
-  migration needed).
-- Exemption changes must be change-logged.
-- **Acceptance:** one accounting setting + per-type scope controls approval for all modules; Sales
-  UI no longer carries its own approval flag; tests cover "exempt type posts; non-exempt parks".
+
+**Stage 2a — Per-type scope on the accounting policy — ✅ DONE 2026-06-03**
+- `AccountingPolicyConfig.approvalExemptVoucherTypes?: string[]` added (per-type exemptions; empty
+  → all types subject; safe-by-default).
+- `ApprovalRequiredPolicy` now takes `exemptVoucherTypes` and skips exempt `ctx.voucherType`.
+- `AccountingPolicyRegistry` passes `config.approvalExemptVoucherTypes` when building the policy.
+- Tests added in `tests/domain/accounting/policies/ApprovalRequiredPolicy.test.ts` (exempt passes
+  while unapproved; non-exempt still gated). Typecheck + policy suites green; additive, no
+  behaviour change to existing flows.
+
+**Stage 2b — Wire the modules + drive the park from the central policy (behavioural) — TODO**
+- In each source module's posting flow, read the **central** approval policy (is approval required
+  for this voucher type, per scope?) instead of `settings.requireApprovalBeforePosting`. If
+  required and the document is not approved → **park as `PENDING_APPROVAL`** (reuse the 133/134
+  machinery). On approve → pass `approved: true` (and on normal post when required-but-unapproved,
+  pass `approved: false`) into `SubledgerVoucherPostingService` (Stage-1 hook).
+- **Acceptance:** with `approvalRequired` on (and the type not exempt), an unapproved source posting
+  parks; approving posts; an exempt type posts straight through — all driven by the central policy,
+  proven by tests. **Risk: high — `erp-reviewer` first.**
+
+**Stage 2c — Retire the per-module flags (cleanup) — TODO**
+- Remove `requireApprovalBeforePosting` from `SalesSettings`/`PurchaseSettings` + their use-cases +
+  DTOs + settings UI once 2b drives everything from the central policy. (No migration — pre-alpha.)
+- Flip the `it.todo('Stage 2 …')` guardrail in `PostingAuthority.test.ts` to active.
+- Exemption-config changes must be change-logged.
 
 ### Stage 3 — Unify period lock
 - Collapse to **one** authority: keep `PeriodLockPolicy` (registry/guard path) as the enforcer;
@@ -128,13 +141,14 @@ batch behavioural stages. Run `erp-reviewer` before Stage 1 and Stage 4.
 
 ## Status — where I left off / next agent starts here
 
-- **Done:** Stage 0 (spec, this plan, guardrail test) + **Stage 1** (guard derives approval from the
-  caller, not a forged stamp — safe-by-default; behavioural + guardrail tests green). Committed to `main`.
-- **Next:** **Stage 2 — centralize the approval decision.** Move the on/off from Sales/Purchases
-  `requireApprovalBeforePosting` flags into accounting policy config + per-type scope; have each
-  module pass its **real approval state** (`approved`) into `SubledgerVoucherPostingService` (the
-  Stage-1 hook is ready); keep the document-level "park as PENDING_APPROVAL" as the convenience
-  pre-check, driven by the central policy. Retire the per-module flags. Run `erp-reviewer` first.
+- **Done:** Stage 0 (spec, plan, guardrails) + **Stage 1** (guard derives approval from the caller,
+  not a forged stamp) + **Stage 2a** (accounting approval policy has per-type scope/exemptions).
+  All committed to `main`, all safe-by-default, all verified.
+- **Next:** **Stage 2b — wire the modules.** Drive the per-module park from the **central** approval
+  policy (not the `requireApprovalBeforePosting` flags) and pass the real `approved` state into
+  `SubledgerVoucherPostingService` (Stage-1 + Stage-2a hooks are both ready). Then **Stage 2c**
+  retires the per-module flags. **Run `erp-reviewer` first — 2b is the first behavioural change to
+  the live Sales/Purchases approval path.**
 - Sales + Purchases per-module approval (`cc37e78e`, `7fc4ce7e`) remain on `main` and keep working
   in the meantime; Stage 2 migrates them. Inventory approval was deliberately not built.
 - Guardrail checklist: `PostingAuthority.test.ts` now has Stage 1 active + Stages 2–4 as `it.todo`.

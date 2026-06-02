@@ -2,6 +2,27 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Posting-authority Stage 2a: per-type scope on the approval policy
+
+**Task:** Begin Stage 2 (centralize the approval decision) with its safe, additive foundation —
+give the accounting approval policy per-document-type scope/exemptions.
+**Agent:** Claude (Opus 4.8) · **Branch:** `main` (in `ERP03-posting-authority` worktree)
+
+**What landed (additive, safe-by-default):**
+- `AccountingPolicyConfig.approvalExemptVoucherTypes?: string[]` — voucher types exempt from
+  approval even when `approvalRequired` is on (empty/undefined → all subject).
+- `ApprovalRequiredPolicy(exemptVoucherTypes)` — skips exempt `ctx.voucherType`; existing
+  no-arg construction still valid.
+- `AccountingPolicyRegistry` passes `config.approvalExemptVoucherTypes`.
+- Tests in `ApprovalRequiredPolicy.test.ts` (exempt passes while unapproved; non-exempt still gated).
+
+**Verification:** `tsc --noEmit` clean; approval-policy + subledger-guard suites green (8 passed).
+No behaviour change to existing flows (empty exemptions = today).
+
+**Next:** Stage 2b — drive the per-module park from this central policy + pass real `approved`
+state into the guard (Stage-1/2a hooks ready); then Stage 2c retires the per-module flags. Run
+`erp-reviewer` first (2b is the first behavioural change to the live approval path).
+
 ## 2026-06-03 (Wed) — Posting-authority Stage 1: kill the forged "approved" stamp
 
 **Task:** Execute Stage 1 of the posting-authority fix plan — stop the subledger guard from

@@ -45,7 +45,7 @@ export class AccountingPolicyRegistry {
 
     // Wire policies based on config
     if (config.approvalRequired) {
-      policies.push(new ApprovalRequiredPolicy());
+      policies.push(new ApprovalRequiredPolicy(config.approvalExemptVoucherTypes));
     }
 
     if (config.periodLockEnabled) {
