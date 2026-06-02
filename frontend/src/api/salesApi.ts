@@ -10,7 +10,7 @@ export type SOStatus =
   | 'CLOSED'
   | 'CANCELLED';
 export type DNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
-export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type SIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 export type ReturnSettlementMode = 'CREDIT_NOTE' | 'REFUND';
@@ -59,6 +59,7 @@ export interface SalesSettingsDTO {
   allowCreditOverride?: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
+  requireApprovalBeforePosting: boolean;
   defaultARAccountId?: string;
   arParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -376,6 +377,7 @@ export interface InitializeSalesPayload {
   defaultRevenueAccountId?: string;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
+  requireApprovalBeforePosting?: boolean;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
@@ -775,6 +777,9 @@ export const salesApi = {
 
   postSI: (id: string, settlementInput?: SettlementInputPayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/post`, { settlementInput, periodLockOverrideReason }),
+
+  approveSI: (id: string, settlementInput?: SettlementInputPayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
+    client.post(`/tenant/sales/invoices/${id}/approve`, { settlementInput, periodLockOverrideReason }),
 
   updatePaymentStatus: (id: string, payload: UpdateSalesInvoicePaymentStatusPayload): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/payment-status`, payload),

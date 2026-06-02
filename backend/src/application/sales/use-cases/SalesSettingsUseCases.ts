@@ -152,6 +152,7 @@ export interface InitializeSalesInput {
   defaultRevenueAccountId: string;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
+  requireApprovalBeforePosting?: boolean;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
@@ -181,6 +182,7 @@ export interface UpdateSalesSettingsInput {
   allowCreditOverride?: boolean;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
+  requireApprovalBeforePosting?: boolean;
   defaultARAccountId?: string;
   arParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -337,6 +339,7 @@ export class InitializeSalesUseCase {
       workflowMode,
       allowDirectInvoicing: workflowDefaults.allowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
+      requireApprovalBeforePosting: input.requireApprovalBeforePosting ?? false,
       defaultARAccountId: input.defaultARAccountId,
       arParentAccountId: input.arParentAccountId,
       partyAccountCodeFormat: input.partyAccountCodeFormat,
@@ -506,6 +509,10 @@ export class UpdateSalesSettingsUseCase {
           : existing.allowCreditOverride,
       allowDirectInvoicing: nextAllowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
+      requireApprovalBeforePosting:
+        input.requireApprovalBeforePosting !== undefined
+          ? input.requireApprovalBeforePosting === true
+          : existing.requireApprovalBeforePosting,
       defaultARAccountId: nextARAccountId,
       arParentAccountId: nextARParentAccountId,
       partyAccountCodeFormat: nextPartyAccountCodeFormat,

@@ -1,6 +1,6 @@
 import { AppliedPromotionInfo } from './AppliedPromotion';
 
-export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type SIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
 export type SalesDiscountType = 'PERCENT' | 'AMOUNT';
@@ -127,7 +127,7 @@ export interface SalesInvoiceProps {
   appliedPromotions?: AppliedPromotionInfo[];
 }
 
-const SI_STATUSES: SIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
+const SI_STATUSES: SIStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
 const DISCOUNT_TYPES: SalesDiscountType[] = ['PERCENT', 'AMOUNT'];

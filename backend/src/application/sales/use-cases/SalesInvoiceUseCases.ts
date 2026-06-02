@@ -176,7 +176,7 @@ export interface UpdateSalesInvoiceInput {
 export interface ListSalesInvoicesFilters {
   customerId?: string;
   salesOrderId?: string;
-  status?: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  status?: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   paymentStatus?: PaymentStatus;
   limit?: number;
 }
@@ -925,7 +925,8 @@ export class PostSalesInvoiceUseCase {
     externalTransaction?: any,
     settlementInput?: SettlementInput,
     periodLockOverride?: { reason: string; overriddenBy: string },
-    actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }
+    actor?: { userId: string; userEmail?: string; lockedThroughDate?: string },
+    approvalContext?: { approvedBy: string }
   ): Promise<SalesInvoice> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
@@ -948,11 +949,29 @@ export class PostSalesInvoiceUseCase {
       });
     }
 
-    const si = typeof idOrSI === 'string' 
+    const si = typeof idOrSI === 'string'
       ? await this.salesInvoiceRepo.getById(companyId, idOrSI)
       : idOrSI;
 
-    if (!si || si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
+    if (!si) throw new Error('Invalid sales invoice state');
+
+    // ── Approval gate (safe-by-default) ────────────────────────────────
+    // When the company enables requireApprovalBeforePosting, a DRAFT invoice
+    // is parked as PENDING_APPROVAL and produces NO financial effect (no
+    // ledger, no stock, no settlement). ApproveSalesInvoiceUseCase re-enters
+    // with approvalContext set, which bypasses the gate and runs the real
+    // post below. When the flag is off (default) this block is skipped and
+    // behaviour is identical to before.
+    if (settings.requireApprovalBeforePosting === true && !approvalContext) {
+      if (si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
+      si.status = 'PENDING_APPROVAL';
+      await this.salesInvoiceRepo.update(si);
+      return si;
+    }
+    if (approvalContext && si.status === 'PENDING_APPROVAL') {
+      si.status = 'DRAFT';
+    }
+    if (si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
     const id = si.id;
 
     const customer = await this.partyRepo.getById(companyId, si.customerId);
@@ -1911,6 +1930,40 @@ export class UpdateAndPostSalesInvoiceUseCase {
   async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesInvoice> {
     const si = await this.updateUseCase.execute(input, undefined, actor);
     return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride, actor);
+  }
+}
+
+export class ApproveSalesInvoiceUseCase {
+  constructor(
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository,
+    private readonly postUseCase: PostSalesInvoiceUseCase
+  ) {}
+
+  async execute(
+    companyId: string,
+    id: string,
+    actor: { userId: string; userEmail?: string; lockedThroughDate?: string },
+    settlementInput?: SettlementInput,
+    periodLockOverride?: { reason: string; overriddenBy: string }
+  ): Promise<SalesInvoice> {
+    const si = await this.salesInvoiceRepo.getById(companyId, id);
+    if (!si) throw new Error(`Sales invoice not found: ${id}`);
+    if (si.status !== 'PENDING_APPROVAL') {
+      throw new Error('Only sales invoices pending approval can be approved');
+    }
+    // Re-enter the post flow with approvalContext set. This bypasses the
+    // approval gate and runs the full, real post (ledger + stock + settlement)
+    // exactly as a normal post would — nothing about posting is duplicated.
+    return this.postUseCase.execute(
+      companyId,
+      si,
+      true,
+      undefined,
+      settlementInput,
+      periodLockOverride,
+      actor,
+      { approvedBy: actor.userId }
+    );
   }
 }
 

@@ -38,6 +38,8 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Phase F - PI Attachments | 2026-05-28 | ✅ Done |
 | Codex | Phase F - Vendor Groups | 2026-05-28 | ✅ Done |
 | Antigravity | Phase F - Purchase Price Lists | 2026-05-28 | ✅ Done |
+| Codex | Posting authority policy guard (132) | 2026-06-01 | ✅ Done |
+| Claude (Opus 4.8) | Approval before posting — Sales slice (133) | 2026-06-02 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date

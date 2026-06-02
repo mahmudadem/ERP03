@@ -14,6 +14,7 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const STATUS_OPTIONS: Array<{ label: string; value: SIStatus | 'ALL' }> = [
   { label: 'All', value: 'ALL' },
   { label: 'Draft', value: 'DRAFT' },
+  { label: 'Pending Approval', value: 'PENDING_APPROVAL' },
   { label: 'Posted', value: 'POSTED' },
   { label: 'Cancelled', value: 'CANCELLED' },
 ];
@@ -171,7 +172,7 @@ const SalesInvoicesListPage: React.FC = () => {
                   <td className="py-2 text-right">{formatMoney(invoice.grandTotalDoc, invoice.currency)}</td>
                   <td className="py-2">{invoice.paymentStatus}</td>
                   <td className="py-2">
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium">{invoice.status}</span>
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${invoice.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100'}`}>{invoice.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : invoice.status}</span>
                   </td>
                 </tr>
               ))}

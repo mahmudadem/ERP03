@@ -41,6 +41,7 @@ export interface SalesSettingsDTO {
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
+  requireApprovalBeforePosting: boolean;
   defaultARAccountId?: string;
   arParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -259,7 +260,7 @@ export interface SalesInvoiceDTO {
   paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
   paidAmountBase: number;
   outstandingAmountBase: number;
-  status: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   voucherId?: string | null;
   cogsVoucherId?: string | null;
   notes?: string;
@@ -390,6 +391,7 @@ export class SalesDTOMapper {
       workflowMode: settings.workflowMode,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
+      requireApprovalBeforePosting: settings.requireApprovalBeforePosting,
       defaultARAccountId: settings.defaultARAccountId,
       arParentAccountId: settings.arParentAccountId,
       partyAccountCodeFormat: settings.partyAccountCodeFormat,

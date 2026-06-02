@@ -967,7 +967,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
         })),
       } : undefined;
 
-      const posted = await salesApi.postSI(invoice.id, settlementInput, periodLockOverrideReason);
+      const action = invoice.status === 'PENDING_APPROVAL' ? salesApi.approveSI : salesApi.postSI;
+      const posted = await action(invoice.id, settlementInput, periodLockOverrideReason);
       setInvoice(unwrap<SalesInvoiceDTO>(posted));
       setShowSettlement(false);
     } catch (err: any) {
@@ -1989,8 +1990,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
             {invoice.customerInvoiceNumber ? ` • Customer Ref: ${invoice.customerInvoiceNumber}` : ''}
           </p>
         </div>
-        <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
-          {invoice.status}
+        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${invoice.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100'}`}>
+          {invoice.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : invoice.status}
         </span>
       </div>
 
@@ -2357,6 +2358,16 @@ const SalesInvoiceDetailPage: React.FC = () => {
             disabled={busy}
           >
             {busy ? 'Posting...' : 'Post Invoice'}
+          </button>
+        )}
+        {invoice.status === 'PENDING_APPROVAL' && !showSettlement && (
+          <button
+            type="button"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            onClick={handlePostClick}
+            disabled={busy}
+          >
+            {busy ? 'Approving...' : 'Approve & Post'}
           </button>
         )}
         {invoice.status === 'POSTED' && (

@@ -2,6 +2,35 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-02 (Tue) — Approval before posting: Sales slice (133)
+
+**Task:** Add a per-module "require approval before posting" system — on = invoice waits for
+approval, off = auto-posts. Sales slice first (Purchases + Inventory replicate next).
+**Agent:** Claude (Opus 4.8)
+**Branch:** `feat/approval-system` (off `main`)
+**Completion report:** [planning/done/133-sales-approval-before-posting.md](./done/133-sales-approval-before-posting.md)
+
+**What I did:**
+- Designed approval as a **gate in front of the existing post** (not a partial post): when the
+  new `SalesSettings.requireApprovalBeforePosting` is on, `PostSalesInvoiceUseCase.execute` parks
+  a DRAFT invoice as `PENDING_APPROVAL` with **no** ledger/stock/settlement effect. The gate is
+  at the top of `execute`, so post / create-and-post / update-and-post are all covered, and it is
+  **safe-by-default** (flag off → behaviour unchanged).
+- Added `ApproveSalesInvoiceUseCase` (re-enters the real post via an `approvalContext`),
+  `SalesController.approveSI`, and route `POST /tenant/sales/invoices/:id/approve`.
+- New `SIStatus = …| 'PENDING_APPROVAL'`; threaded the flag through settings use-cases + DTOs.
+- Frontend: settings toggle, "Approve & Post" action + amber **PENDING APPROVAL** badge on SI
+  detail, and a "Pending Approval" list filter; `salesApi.approveSI`.
+
+**Verification:**
+- Backend `tsc --noEmit` clean; `SalesPostingUseCases.test.ts` → **20/20** (incl. 2 new: park
+  produces no effect; approve runs the real post).
+- Frontend `tsc --noEmit` clean.
+
+**Follow-ups:** replicate the gate for Purchases + Inventory; optionally surface parked invoices
+in the shared Accounting Approvals page. Built in the `ERP03-posting-authority` worktree and
+merged to `main`.
+
 ## 2026-06-01 (Mon) - Posting authority policy guard
 
 **Task:** Task 132 - Correct the accounting control-layer split so automatic module postings use the same policy registry as manual vouchers
