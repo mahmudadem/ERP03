@@ -106,7 +106,7 @@ export class PurchaseSettings {
     return new PurchaseSettings({
       companyId,
       workflowMode: 'OPERATIONAL',
-      allowDirectInvoicing: true,
+      allowDirectInvoicing: false,
       requirePOForStockItems: false,
       defaultAPAccountId,
       allowOverDelivery: false,
@@ -159,7 +159,7 @@ export class PurchaseSettings {
     return new PurchaseSettings({
       companyId: data.companyId,
       workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
-      allowDirectInvoicing: data.allowDirectInvoicing ?? true,
+      allowDirectInvoicing: data.allowDirectInvoicing ?? (data.workflowMode === 'SIMPLE'),
       requirePOForStockItems: data.requirePOForStockItems ?? false,
       defaultAPAccountId: data.defaultAPAccountId,
       apParentAccountId: data.apParentAccountId,

@@ -1,6 +1,6 @@
 # Architecture: Purchases Module
 
-**Last updated:** 2026-05-28
+**Last updated:** 2026-06-01
 **Status:** Feature-complete for V1 (4 document types). Requisitions and Debit Notes deferred.
 **Module-level docs:** [`docs/modules/purchases/`](../modules/purchases/)
 
@@ -163,9 +163,13 @@ Configured in `Purchases → Settings`. Same SIMPLE vs OPERATIONAL split as Sale
 | Aspect | SIMPLE | OPERATIONAL |
 |---|---|---|
 | PO required (stock items) | No | Yes |
-| Standalone PI allowed | Yes | No (must reference a GRN) |
+| Standalone PI allowed | Yes | No by default; only through an explicit governance exception |
 | GRN required for stock | No | Yes |
 | Inventory recognized at | PI posting (if no GRN) | GRN posting |
+
+Operational direct Purchase Invoices are not enabled by the legacy `allowDirectInvoicing` flag alone. The backend authority is `DocumentPolicyResolver.isPurchaseInvoicePersonaAllowed()`, which evaluates workflow base policy plus company/branch/form governance rules. The Purchase Settings policy toggle is a convenience control: when enabled in OPERATIONAL mode it writes a company-scope governance rule for persona `direct`; when disabled it removes company-scope direct rules while preserving form/branch-specific exceptions.
+
+This keeps the market-standard procurement flow strict by default (`PO -> GRN -> PI`) while allowing a company-admin-approved direct PI exception for expenses, service bills, or controlled ad-hoc purchases.
 
 ## Vendors
 

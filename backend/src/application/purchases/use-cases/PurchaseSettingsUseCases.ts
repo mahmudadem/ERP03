@@ -38,6 +38,36 @@ const ensureVoucherTypeScope = async (
   }
 };
 
+const DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID = 'purchase-direct-invoicing-company-policy';
+
+const isCompanyDirectInvoiceRule = (rule: GovernanceRule): boolean =>
+  rule.persona === 'direct' && rule.scope === 'company';
+
+const reconcileDirectPurchaseInvoiceGovernanceRules = (
+  governanceRules: GovernanceRule[] | undefined,
+  workflowMode: 'SIMPLE' | 'OPERATIONAL',
+  allowDirectInvoicing: boolean,
+  shouldReconcile: boolean
+): GovernanceRule[] => {
+  const rules = governanceRules ?? [];
+  if (!shouldReconcile) return rules;
+
+  const rulesWithoutCompanyDirect = rules.filter((rule) => !isCompanyDirectInvoiceRule(rule));
+  if (workflowMode !== 'OPERATIONAL' || !allowDirectInvoicing) {
+    return rulesWithoutCompanyDirect;
+  }
+
+  return [
+    ...rulesWithoutCompanyDirect,
+    {
+      id: DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID,
+      scope: 'company',
+      action: 'allow',
+      persona: 'direct',
+    },
+  ];
+};
+
 export interface InitializePurchasesInput {
   companyId: string;
   userId: string;
@@ -63,6 +93,7 @@ export interface InitializePurchasesInput {
   piNumberNextSeq?: number;
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
+  governanceRules?: GovernanceRule[];
   /**
    * IDs of system Purchase voucher templates the user picked in the wizard.
    * `undefined` keeps legacy behavior (copy every PURCHASE template).
@@ -163,9 +194,15 @@ export class InitializePurchasesUseCase {
       : 'INVOICE_DRIVEN';
     DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
     const workflowDefaults = DocumentPolicyResolver.applyPurchaseWorkflowDefaults(workflowMode, {
-      allowDirectInvoicing: input.allowDirectInvoicing ?? true,
+      allowDirectInvoicing: input.allowDirectInvoicing ?? workflowMode === 'SIMPLE',
       requirePOForStockItems: input.requirePOForStockItems ?? false,
     });
+    const governanceRules = reconcileDirectPurchaseInvoiceGovernanceRules(
+      input.governanceRules,
+      workflowMode,
+      workflowDefaults.allowDirectInvoicing,
+      input.allowDirectInvoicing !== undefined || input.governanceRules !== undefined
+    );
     if (accountingMode === 'PERPETUAL' && !input.defaultGRNIAccountId) {
       throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
     }
@@ -194,6 +231,7 @@ export class InitializePurchasesUseCase {
       piNumberNextSeq: input.piNumberNextSeq ?? 1,
       prNumberPrefix: input.prNumberPrefix || 'PR',
       prNumberNextSeq: input.prNumberNextSeq ?? 1,
+      governanceRules,
     });
 
     await this.settingsRepo.saveSettings(settings);
@@ -299,6 +337,12 @@ export class UpdatePurchaseSettingsUseCase {
       requirePOForStockItems: input.requirePOForStockItems ?? existing.requirePOForStockItems,
     });
     const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
+    const nextGovernanceRules = reconcileDirectPurchaseInvoiceGovernanceRules(
+      input.governanceRules ?? existing.governanceRules,
+      workflowMode,
+      nextAllowDirectInvoicing,
+      input.allowDirectInvoicing !== undefined
+    );
     const nextAPAccountId = input.defaultAPAccountId ?? existing.defaultAPAccountId;
     const nextAPParentAccountId = input.apParentAccountId ?? existing.apParentAccountId;
     const nextPartyAccountCodeFormat = input.partyAccountCodeFormat ?? existing.partyAccountCodeFormat;
@@ -358,7 +402,7 @@ export class UpdatePurchaseSettingsUseCase {
       piNumberNextSeq: input.piNumberNextSeq ?? existing.piNumberNextSeq,
       prNumberPrefix: input.prNumberPrefix ?? existing.prNumberPrefix,
       prNumberNextSeq: input.prNumberNextSeq ?? existing.prNumberNextSeq,
-      governanceRules: input.governanceRules ?? existing.governanceRules,
+      governanceRules: nextGovernanceRules,
       defaultPurchaseInvoicePersona: input.defaultPurchaseInvoicePersona ?? existing.defaultPurchaseInvoicePersona,
     });
 

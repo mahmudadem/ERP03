@@ -161,17 +161,23 @@ describe('UpdatePurchaseSettingsUseCase — workflow transition guards', () => {
       allowOverDelivery: false,
       overDeliveryTolerancePct: 0,
       overInvoiceTolerancePct: 0,
+      governanceRules: [],
     });
 
   const buildUseCase = (opts: {
     existingWorkflow: 'SIMPLE' | 'OPERATIONAL';
     hasOpenPOs: boolean;
     hasUnpostedGRNs: boolean;
+    existingGovernanceRules?: any[];
   }) => {
     const existing = makeExistingSettings(opts.existingWorkflow);
+    existing.governanceRules = opts.existingGovernanceRules || [];
+    let savedSettings: PurchaseSettings | null = null;
     const settingsRepo = {
       getSettings: jest.fn(async () => existing),
-      saveSettings: jest.fn(),
+      saveSettings: jest.fn(async (settings: PurchaseSettings) => {
+        savedSettings = settings;
+      }),
     };
     const purchaseOrderRepo = {
       hasOpenOrders: jest.fn(async () => opts.hasOpenPOs),
@@ -189,7 +195,7 @@ describe('UpdatePurchaseSettingsUseCase — workflow transition guards', () => {
       goodsReceiptRepo as any
     );
 
-    return { useCase, settingsRepo, purchaseOrderRepo, goodsReceiptRepo };
+    return { useCase, settingsRepo, purchaseOrderRepo, goodsReceiptRepo, getSavedSettings: () => savedSettings };
   };
 
   it('blocks OPERATIONAL → SIMPLE transition when open POs exist', async () => {
@@ -249,5 +255,65 @@ describe('UpdatePurchaseSettingsUseCase — workflow transition guards', () => {
 
     const result = await useCase.execute({ companyId: COMPANY_ID, workflowMode: 'SIMPLE' });
     expect(result.workflowMode).toBe('SIMPLE');
+  });
+
+  it('turns OPERATIONAL allowDirectInvoicing into an explicit company governance allow rule', async () => {
+    const { useCase, getSavedSettings } = buildUseCase({
+      existingWorkflow: 'OPERATIONAL',
+      hasOpenPOs: false,
+      hasUnpostedGRNs: false,
+    });
+
+    await useCase.execute({
+      companyId: COMPANY_ID,
+      workflowMode: 'OPERATIONAL',
+      allowDirectInvoicing: true,
+    });
+
+    expect(getSavedSettings()?.governanceRules).toContainEqual({
+      id: 'purchase-direct-invoicing-company-policy',
+      scope: 'company',
+      action: 'allow',
+      persona: 'direct',
+    });
+  });
+
+  it('removes company-scope direct invoice rules when OPERATIONAL direct invoicing is disabled', async () => {
+    const { useCase, getSavedSettings } = buildUseCase({
+      existingWorkflow: 'OPERATIONAL',
+      hasOpenPOs: false,
+      hasUnpostedGRNs: false,
+      existingGovernanceRules: [
+        {
+          id: 'manual-direct-allow',
+          scope: 'company',
+          action: 'allow',
+          persona: 'direct',
+        },
+        {
+          id: 'form-direct-allow',
+          scope: 'form',
+          action: 'allow',
+          persona: 'direct',
+          formType: 'purchase_invoice_direct',
+        },
+      ],
+    });
+
+    await useCase.execute({
+      companyId: COMPANY_ID,
+      workflowMode: 'OPERATIONAL',
+      allowDirectInvoicing: false,
+    });
+
+    expect(getSavedSettings()?.governanceRules).toEqual([
+      {
+        id: 'form-direct-allow',
+        scope: 'form',
+        action: 'allow',
+        persona: 'direct',
+        formType: 'purchase_invoice_direct',
+      },
+    ]);
   });
 });
