@@ -34,7 +34,9 @@ import {
   Info,
   Calendar,
   Lock,
-  Globe
+  Globe,
+  Download,
+  ChevronDown
 } from 'lucide-react';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -163,6 +165,11 @@ export default function SalesInvoiceV2LayoutPage() {
     discountAccount: '4130001',
     vatAccount: '2060001'
   });
+
+  // Context Menu and Highlight State matching GVR
+  const [lineContextMenu, setLineContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
+  const [highlightedRows, setHighlightedRows] = useState<Set<number>>(new Set());
+  const [copiedLineData, setCopiedLineData] = useState<EditableLine | null>(null);
 
   // Fetch reference data
   const loadReferenceData = async () => {
@@ -371,6 +378,92 @@ export default function SalesInvoiceV2LayoutPage() {
     });
   };
 
+  // Line context menu handlers matching GVR
+  const handleLineContextMenu = (e: React.MouseEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLineContextMenu({ x: e.clientX, y: e.clientY, index });
+  };
+
+  const closeLineContextMenu = () => setLineContextMenu(null);
+
+  const handleDeleteLine = (index: number) => {
+    removeRow(index);
+    closeLineContextMenu();
+  };
+
+  const handleCopyLine = (index: number) => {
+    const row = form.lines[index];
+    if (row) {
+      setCopiedLineData(row);
+      navigator.clipboard.writeText(JSON.stringify(row, null, 2))
+        .then(() => {
+          errorHandler.showSuccess(`Row ${index + 1} copied to clipboard.`);
+        })
+        .catch(() => {
+          errorHandler.showSuccess(`Row ${index + 1} copied internally.`);
+        });
+    }
+    closeLineContextMenu();
+  };
+
+  const handlePasteLine = async (index: number) => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const data = JSON.parse(clipboardText);
+      if (data && typeof data === 'object') {
+        updateRow(index, data);
+        errorHandler.showSuccess(`Pasted clipboard data into row ${index + 1}.`);
+      }
+    } catch (err) {
+      if (copiedLineData) {
+        updateRow(index, copiedLineData);
+        errorHandler.showSuccess(`Pasted copied row data into row ${index + 1}.`);
+      } else {
+        errorHandler.showError('No valid row data on clipboard or copied.');
+      }
+    }
+    closeLineContextMenu();
+  };
+
+  const handleInsertLine = (index: number) => {
+    setForm(prev => {
+      const nextLines = [...prev.lines];
+      const newRow: EditableLine = {
+        itemId: '',
+        qty: 0,
+        uom: 'PCS',
+        unitPrice: 0,
+        discountType: 'NONE',
+        discountValue: 0,
+        notes: '',
+        warehouseId: prev.warehouseId || 'WH-MAIN',
+        taxCodeId: ''
+      };
+      nextLines.splice(index + 1, 0, newRow);
+      // Remove last line if it is empty to maintain layout height cleanly
+      if (nextLines.length > 10 && nextLines[nextLines.length - 1].itemId === '') {
+        nextLines.pop();
+      }
+      return { ...prev, lines: nextLines };
+    });
+    errorHandler.showSuccess(`Inserted new empty row below row ${index + 1}.`);
+    closeLineContextMenu();
+  };
+
+  const handleHighlightLine = (index: number) => {
+    setHighlightedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+    closeLineContextMenu();
+  };
+
   // State action handlers (Simulated saves / confirmations)
   const triggerSaveDraft = () => {
     errorHandler.showSuccess('Sales Voucher Draft saved successfully (Simulated).');
@@ -421,7 +514,7 @@ export default function SalesInvoiceV2LayoutPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#f1f5f9] dark:bg-slate-950 font-sans text-xs text-slate-800 dark:text-slate-200 overflow-hidden select-none">
+    <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 font-sans text-xs text-slate-800 dark:text-slate-200 overflow-hidden select-none">
       
       {/* V2 Header Bar */}
       <div className="flex-none bg-slate-900 text-slate-100 px-4 py-1.5 flex items-center justify-between shadow border-b border-slate-850 h-[38px]">
@@ -609,8 +702,8 @@ export default function SalesInvoiceV2LayoutPage() {
           </div>
         </div>
 
-        {/* Card 3: Line Items - Full width, scrollable, flex-grow */}
-        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-2 rounded-lg shadow-sm flex flex-col gap-1">
+        {/* Card 3: Line Items — 60% of flexible remaining space */}
+        <div className="flex-[3] min-h-0 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-2 rounded-lg shadow-sm flex flex-col gap-1">
             {simulatedStatus !== 'posted' && (
               <div className="flex-none flex justify-end">
                 <button 
@@ -644,9 +737,18 @@ export default function SalesInvoiceV2LayoutPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                   {form.lines.map((line, index) => (
-                    <tr key={index} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/15 align-middle">
+                    <tr 
+                      key={index} 
+                      className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/15 align-middle ${
+                        highlightedRows.has(index) ? 'bg-amber-100/50 dark:bg-amber-900/30' : ''
+                      }`}
+                    >
                       {/* # Index */}
-                      <td className="py-1 px-1 text-center font-bold text-slate-400 bg-slate-50/40 dark:bg-slate-950/10 border-r border-slate-200 dark:border-slate-800">
+                      <td 
+                        onContextMenu={(e) => handleLineContextMenu(e, index)}
+                        className="py-1 px-1 text-center font-bold text-slate-400 bg-slate-50/40 dark:bg-slate-950/10 border-r border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 select-none"
+                        title="Right-click for options"
+                      >
                         {index + 1}
                       </td>
 
@@ -794,15 +896,15 @@ export default function SalesInvoiceV2LayoutPage() {
             </div>
         </div>
 
-        {/* Card 4: Actions & Allocation Grid - Full width */}
-        <div className="flex-none bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-2 rounded-lg shadow-sm flex flex-col gap-1.5">
+        {/* Card 4: Actions & Allocation Grid — 40% of flexible remaining space */}
+        <div className="flex-[2] min-h-0 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-2 rounded-lg shadow-sm flex flex-col gap-1">
             
-            {/* Modal actions row */}
-            <div className="grid grid-cols-3 gap-1 flex-none">
+            {/* Modal actions row - auto-width buttons, not full-width grid */}
+            <div className="flex gap-1 flex-none">
               <button
                 type="button"
                 onClick={() => setShowAttachmentsModal(true)}
-                className="py-1 px-1.5 border border-slate-250 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center justify-center gap-1 text-[10px] transition active:scale-[0.98]"
+                className="py-0.5 px-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center gap-1 text-[10px] transition active:scale-[0.98] whitespace-nowrap"
               >
                 <Paperclip className="h-3 w-3 text-slate-500 shrink-0" /> 
                 Files ({mockAttachments.length})
@@ -810,7 +912,7 @@ export default function SalesInvoiceV2LayoutPage() {
               <button
                 type="button"
                 onClick={() => setShowInternalNotesModal(true)}
-                className="py-1 px-1.5 border border-slate-250 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center justify-center gap-1 text-[10px] transition active:scale-[0.98]"
+                className="py-0.5 px-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center gap-1 text-[10px] transition active:scale-[0.98] whitespace-nowrap"
               >
                 <MessageSquare className="h-3 w-3 text-slate-500 shrink-0" /> 
                 Notes {internalNotes.trim() && '🔴'}
@@ -818,15 +920,15 @@ export default function SalesInvoiceV2LayoutPage() {
               <button
                 type="button"
                 onClick={() => setShowSendModal(true)}
-                className="py-1 px-1.5 border border-slate-250 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center justify-center gap-1 text-[10px] transition active:scale-[0.98]"
+                className="py-0.5 px-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center gap-1 text-[10px] transition active:scale-[0.98] whitespace-nowrap"
               >
                 <Send className="h-3 w-3 text-slate-500 shrink-0" /> 
                 Dispatch
               </button>
             </div>
 
-            {/* Allocation Table (Double Entry allocation) - Using real selectors inside cells */}
-            <div className="flex flex-col gap-1">
+            {/* Allocation Table - fills remaining height of Card 4 */}
+            <div className="flex-1 min-h-0 flex flex-col gap-1 overflow-hidden">
               <div className="flex justify-end pb-0.5">
                 <button
                   type="button"
@@ -845,13 +947,13 @@ export default function SalesInvoiceV2LayoutPage() {
               </div>
 
               {/* Allocation spreadsheet table - styled exactly like Card 3 spreadsheet */}
-              <div className="overflow-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              <div className="flex-1 min-h-0 overflow-auto border border-slate-200 dark:border-slate-800 rounded-lg">
                 <table className="min-w-full text-[10px] border-collapse">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
                     <tr className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-left">
-                      <th className="py-1 px-1.5 border-r border-b border-slate-200 dark:border-slate-800">LEDGER ACCOUNT</th>
-                      <th className="py-1 px-1.5 text-right w-[75px] border-r border-b border-slate-200 dark:border-slate-800">DEBIT</th>
-                      <th className="py-1 px-1.5 text-right w-[75px] border-b border-slate-200 dark:border-slate-800">CREDIT</th>
+                      <th className="py-0.5 px-1.5 border-r border-b border-slate-200 dark:border-slate-800">LEDGER ACCOUNT</th>
+                      <th className="py-0.5 px-1.5 text-right w-[75px] border-r border-b border-slate-200 dark:border-slate-800">DEBIT</th>
+                      <th className="py-0.5 px-1.5 text-right w-[75px] border-b border-slate-200 dark:border-slate-800">CREDIT</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
@@ -896,13 +998,13 @@ export default function SalesInvoiceV2LayoutPage() {
                   </tbody>
                   <tfoot className="bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-850 font-bold text-[10px]">
                     <tr className="align-middle">
-                      <td className="py-1 px-1.5 text-right font-black uppercase text-[9px] text-slate-400 border-r border-slate-200 dark:border-slate-800">
+                      <td className="py-0.5 px-1.5 text-right font-black uppercase text-[9px] text-slate-400 border-r border-slate-200 dark:border-slate-800">
                         Total
                       </td>
-                      <td className="py-1 px-1.5 text-right font-mono text-slate-850 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">
+                      <td className="py-0.5 px-1.5 text-right font-mono text-slate-850 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">
                         {ledgerAllocations.reduce((acc, l) => acc + l.debit, 0).toLocaleString()}
                       </td>
-                      <td className="py-1 px-1.5 text-right font-mono text-slate-850 dark:text-slate-100">
+                      <td className="py-0.5 px-1.5 text-right font-mono text-slate-850 dark:text-slate-100">
                         {ledgerAllocations.reduce((acc, l) => acc + l.credit, 0).toLocaleString()}
                       </td>
                     </tr>
@@ -915,13 +1017,13 @@ export default function SalesInvoiceV2LayoutPage() {
       </div>
 
       {/* Footer - direct flex-none child of root, always visible at bottom */}
-      <div className="flex-none bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 px-3 py-1.5 shadow-md flex items-center gap-0">
+      <div className="flex-none bg-white/95 dark:bg-slate-900/95 border-t-2 border-slate-200 dark:border-slate-800 px-5 py-5 shadow-lg flex items-center gap-0">
 
         {/* LEFT: Totals - 35% */}
         <div className="w-[35%] flex items-center gap-4 pr-4 border-r border-slate-200 dark:border-slate-800">
           <div className="flex flex-col">
             <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">SUBTOTAL</span>
-            <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200 leading-none">
+            <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-200 leading-none">
               {totals.subtotal.toLocaleString()} {form.currency}
             </span>
           </div>
@@ -946,8 +1048,8 @@ export default function SalesInvoiceV2LayoutPage() {
 
           <div className="flex flex-col ml-1">
             <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">GRAND TOTAL</span>
-            <span className="font-mono font-black text-sm text-rose-600 dark:text-rose-400 leading-none">
-              {totals.grandTotal.toLocaleString()} <span className="text-xs font-bold">{form.currency}</span>
+            <span className="font-mono font-black text-2xl text-rose-600 dark:text-rose-400 leading-none">
+              {totals.grandTotal.toLocaleString()} <span className="text-sm font-bold">{form.currency}</span>
             </span>
           </div>
         </div>
@@ -1129,6 +1231,80 @@ export default function SalesInvoiceV2LayoutPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* GVR Classic Table Right-Click Context Menu */}
+      {lineContextMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={closeLineContextMenu}
+            onContextMenu={(e) => { e.preventDefault(); closeLineContextMenu(); }}
+          />
+          <div 
+            className="fixed bg-white dark:bg-slate-900 rounded-lg shadow-2xl border border-slate-200 dark:border-slate-800 z-[9999] py-1.5 w-52 transition-colors animate-in fade-in zoom-in duration-200"
+            style={{ left: lineContextMenu.x, top: lineContextMenu.y }}
+          >
+            <button
+              onClick={() => handleDeleteLine(lineContextMenu.index)}
+              className="w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Line
+            </button>
+            <div className="border-t border-slate-100 dark:border-slate-800 my-1.5 opacity-50"></div>
+            <button
+              onClick={() => handleCopyLine(lineContextMenu.index)}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-slate-400" />
+              Copy
+            </button>
+            <button
+              onClick={() => handlePasteLine(lineContextMenu.index)}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-slate-400" />
+              Paste
+            </button>
+            <button
+              onClick={() => handleInsertLine(lineContextMenu.index)}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-slate-400" />
+              Insert Below
+            </button>
+            <div className="border-t border-slate-100 dark:border-slate-800 my-1.5 opacity-50"></div>
+            <button
+              onClick={() => handleHighlightLine(lineContextMenu.index)}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <span className={`w-4 h-4 rounded-sm ${highlightedRows.has(lineContextMenu.index) ? 'bg-amber-500' : 'bg-amber-300'} border border-amber-400`}></span>
+              {highlightedRows.has(lineContextMenu.index) ? 'Remove Highlight' : 'Highlight'}
+            </button>
+            <div className="border-t border-slate-100 dark:border-slate-800 my-1.5 opacity-50"></div>
+            <button
+              onClick={() => {
+                errorHandler.showInfo(`Account statement drill-down is coming soon. Use Accounting → Reports → Account Statement in the meantime.`);
+                closeLineContextMenu();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <Calendar className="w-4 h-4 text-slate-400" />
+              Statement
+            </button>
+            <button
+              onClick={() => {
+                errorHandler.showInfo(`Account balance lookup is coming soon. Use Accounting → Reports → Trial Balance in the meantime.`);
+                closeLineContextMenu();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+              Account Balance
+            </button>
+          </div>
+        </>
       )}
 
       {confirmDialog}

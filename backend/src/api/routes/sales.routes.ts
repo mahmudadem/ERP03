@@ -66,6 +66,7 @@ router.post('/invoices/create-and-post', idempotencyMiddleware, SalesController.
 router.get('/invoices', SalesController.listSIs);
 router.get('/invoices/:id', SalesController.getSI);
 router.put('/invoices/:id', SalesController.updateSI);
+router.delete('/invoices/:id', SalesController.deleteSI);
 router.put('/invoices/:id/update-and-post', idempotencyMiddleware, SalesController.updateAndPostSI);
 router.post('/invoices/:id/post', idempotencyMiddleware, SalesController.postSI);
 router.post('/invoices/:id/payment-status', SalesController.updatePaymentStatus);

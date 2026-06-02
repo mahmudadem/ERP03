@@ -137,6 +137,12 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
     });
   }
 
+  async delete(companyId: string, id: string): Promise<void> {
+    await this.prisma.salesInvoice.delete({
+      where: { id, companyId },
+    });
+  }
+
   async getById(companyId: string, id: string): Promise<SalesInvoice | null> {
     const record = await this.prisma.salesInvoice.findUnique({
       where: { id, companyId },

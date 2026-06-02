@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { ApiError } from '../../../api/errors/ApiError';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
@@ -1148,7 +1149,7 @@ export class PostSalesInvoiceUseCase {
         line.unitCostBase = roundMoney(movement.unitCostBase || 0);
         line.lineCostBase = roundMoney(qtyInBaseUom * line.unitCostBase);
 
-        if (accountingMode === 'PERPETUAL') {
+        if (accountingMode === 'PERPETUAL' && invSettings?.allowDeferredCost !== true) {
           this.assertPositiveTrackedCost(
             qtyInBaseUom,
             line.unitCostBase,
@@ -1162,7 +1163,7 @@ export class PostSalesInvoiceUseCase {
         const operationalQty = roundMoney(line.invoicedQty);
         line.unitCostBase = roundMoney(this.resolveControlledUnitCost(line, soLine, postedDNs));
         line.lineCostBase = roundMoney(operationalQty * line.unitCostBase);
-        if (accountingMode === 'PERPETUAL') {
+        if (accountingMode === 'PERPETUAL' && invSettings?.allowDeferredCost !== true) {
           this.assertPositiveTrackedCost(
             operationalQty,
             line.unitCostBase,
@@ -1230,7 +1231,9 @@ export class PostSalesInvoiceUseCase {
 
       if (!line.trackInventory) {
         cogsStatus = 'SKIPPED_SERVICE_ITEM';
-      } else if (line.lineCostBase === 0) {
+      } else if (!(line.lineCostBase! > 0)) {
+        // Catches undefined, null, NaN, 0, and negative values — all mean
+        // "no settled cost basis available for this line".
         if (shouldPostAccounting && invSettings?.allowDeferredCost !== true) {
           throw new UnsettledCostError({
             companyId,
@@ -1294,6 +1297,7 @@ export class PostSalesInvoiceUseCase {
     const resolvedDiscountAccountId = hasInvoiceDiscount
       ? await resolveAccountCached(this.resolveSalesDiscountAccount(settings))
       : undefined;
+    const settlementVoucherIds: string[] = [];
     const postingLogic = async (transaction: any) => {
       // --- Write inventory movements and stock levels ---
       for (const [lineId, { movement, updatedLevel }] of inventoryMovements) {
@@ -1445,9 +1449,10 @@ export class PostSalesInvoiceUseCase {
 
       // --- Process settlements inside the same transaction (atomic) ---
       if (settlementInput && settlementInput.settlementMode !== 'DEFERRED') {
-        await this.processSettlementsInTransaction(
+        const ids = await this.processSettlementsInTransaction(
           companyId, si, settlementInput, settings, customer, baseCurrency, transaction
         );
+        settlementVoucherIds.push(...ids);
       } else {
         // DEFERRED: ensure payment fields reflect unpaid state
         si.paymentStatus = 'UNPAID';
@@ -1477,7 +1482,7 @@ export class PostSalesInvoiceUseCase {
     // would emit duplicate logs with fresh UUIDs each attempt).
     if (this.postingLogRepo && shouldPostAccounting) {
       try {
-        const voucherIds = [si.voucherId, si.cogsVoucherId].filter((v): v is string => !!v);
+        const voucherIds = [si.voucherId, si.cogsVoucherId, ...settlementVoucherIds].filter((v): v is string => !!v);
         const decisions: LineDecision[] = si.lines.map((ln) => {
           const resolved = lineResolvedAccounts.get(ln.lineId);
           const accounts: LineDecision['accounts'] = {};
@@ -1644,7 +1649,8 @@ export class PostSalesInvoiceUseCase {
     customer: Party,
     baseCurrency: string | null,
     transaction: any
-  ): Promise<void> {
+  ): Promise<string[]> {
+    const receiptVoucherIds: string[] = [];
     const { settlementMode, receivablePayableAccountId, settlements } = settlementInput;
     const now = new Date();
 
@@ -1766,6 +1772,7 @@ export class PostSalesInvoiceUseCase {
 
       await this.ledgerRepo!.recordForVoucher(postedVoucher, transaction);
       await this.voucherRepo!.save(postedVoucher, transaction);
+      receiptVoucherIds.push(voucherId);
 
       const paymentId = `pay_${randomUUID()}`;
       const payment = new PaymentHistory({
@@ -1800,6 +1807,8 @@ export class PostSalesInvoiceUseCase {
         si.paymentStatus = 'UNPAID';
       }
     }
+
+    return receiptVoucherIds;
   }
 
   private addToBucket(bucket: Map<string, VoucherAccumulatedLine>, aid: string, base: number, doc: number): void {
@@ -1885,7 +1894,11 @@ export class PostSalesInvoiceUseCase {
 
   private assertPositiveTrackedCost(qty: number, unitCostBase: number, itemName: string, documentLabel: string): void {
     if (qty > 0 && !(unitCostBase > 0)) {
-      throw new Error(`Missing positive inventory cost for ${itemName} on ${documentLabel}. Perpetual accounting requires immediate cost recognition.`);
+      throw new UnsettledCostError({
+        companyId: '',
+        itemId: itemName,
+        hint: `Missing positive inventory cost for ${itemName} on ${documentLabel}. Receive stock first to establish a cost basis, or enable "Allow Deferred Cost Posting" in Inventory Settings.`,
+      });
     }
   }
 
@@ -1918,12 +1931,13 @@ export class UpdateSalesInvoiceUseCase {
   constructor(
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly recordChangeService?: RecordChangeService,
+    private readonly itemRepo?: IItemRepository
   ) {}
 
   async execute(input: UpdateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<SalesInvoice> {
     const current = await this.salesInvoiceRepo.getById(input.companyId, input.id);
-    if (!current) throw new Error(`Sales invoice not found: ${input.id}`);
+    if (!current) throw ApiError.notFound(`Sales invoice not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
       throw new Error('Only draft sales invoices can be updated');
     }
@@ -1950,12 +1964,31 @@ export class UpdateSalesInvoiceUseCase {
 
     if (input.lines) {
       const existingById = new Map(current.lines.map((line) => [line.lineId, line]));
+
+      // Pre-fetch any items referenced by lines that are NEW (no matching
+      // existing line). Carrying forward existing itemCode/itemName works for
+      // edits of pre-existing lines; new lines need fresh master-data lookup.
+      const newItemIds = Array.from(new Set(
+        input.lines
+          .filter((line) => !line.lineId || !existingById.has(line.lineId!))
+          .map((line) => line.itemId)
+          .filter((id): id is string => !!id)
+      ));
+      const itemById = new Map<string, { code: string; name: string; trackInventory: boolean }>();
+      if (this.itemRepo && newItemIds.length > 0) {
+        await Promise.all(newItemIds.map(async (iid) => {
+          const item = await this.itemRepo!.getItem(iid);
+          if (item) itemById.set(iid, { code: item.code, name: item.name, trackInventory: item.trackInventory });
+        }));
+      }
+
       const mappedLines: SalesInvoiceLine[] = input.lines.map((line, index) => {
         const existing = line.lineId ? existingById.get(line.lineId) : undefined;
         const itemId = line.itemId || existing?.itemId;
         if (!itemId) {
           throw new Error(`Line ${index + 1}: itemId is required`);
         }
+        const lookedUp = itemById.get(itemId);
 
         return {
           lineId: line.lineId || randomUUID(),
@@ -1963,9 +1996,9 @@ export class UpdateSalesInvoiceUseCase {
           soLineId: line.soLineId ?? existing?.soLineId,
           dnLineId: line.dnLineId ?? existing?.dnLineId,
           itemId,
-          itemCode: existing?.itemCode || '',
-          itemName: existing?.itemName || '',
-          trackInventory: existing?.trackInventory ?? false,
+          itemCode: existing?.itemCode || lookedUp?.code || '',
+          itemName: existing?.itemName || lookedUp?.name || '',
+          trackInventory: existing?.trackInventory ?? lookedUp?.trackInventory ?? false,
           invoicedQty: line.invoicedQty,
           uomId: line.uomId ?? existing?.uomId,
           uom: line.uom || existing?.uom || 'EA',
@@ -2047,7 +2080,7 @@ export class GetSalesInvoiceUseCase {
 
   async execute(companyId: string, id: string): Promise<SalesInvoice> {
     const si = await this.salesInvoiceRepo.getById(companyId, id);
-    if (!si) throw new Error(`Sales invoice not found: ${id}`);
+    if (!si) throw ApiError.notFound(`Sales invoice not found: ${id}`);
     return si;
   }
 }

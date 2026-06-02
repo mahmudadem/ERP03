@@ -13,6 +13,9 @@ import { Card } from '../../../components/ui/Card';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useWindowManager } from '../../../context/WindowManagerContext';
+import { clsx } from 'clsx';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -59,6 +62,9 @@ const formatMoney = (amount: number, currency: string): string => {
 const SalesInvoicesListPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
+  const { uiMode } = useUserPreferences();
+  const { openWindow } = useWindowManager();
+  const isWindowsMode = uiMode === 'windows';
   const [statusFilter, setStatusFilter] = useState<SIStatusFilter>('ALL');
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
@@ -83,6 +89,19 @@ const SalesInvoicesListPage: React.FC = () => {
     setStatusFilter('ALL');
     setPaymentFilter('ALL');
     setCustomerFilter('ALL');
+  };
+
+  const handleOpenInvoice = (id: string, number: string) => {
+    if (isWindowsMode) {
+      openWindow({
+        type: 'sales_invoice',
+        title: `Sales Invoice - ${number}`,
+        data: { invoiceId: id },
+        size: { width: 1100, height: 750 }
+      });
+    } else {
+      navigate(`/sales/invoices/${id}`);
+    }
   };
 
   const load = async () => {
@@ -123,7 +142,7 @@ const SalesInvoicesListPage: React.FC = () => {
   }, [statusFilter, paymentFilter, customerFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="space-y-6 p-4">
+    <div className={clsx("min-h-full bg-slate-50 dark:bg-slate-950", isWindowsMode ? "space-y-3 p-3" : "space-y-6 p-6")}>
       <PageHeader
         title={t('sales.invoicesList.title')}
         subtitle={t('sales.invoicesList.subtitle')}
@@ -139,8 +158,19 @@ const SalesInvoicesListPage: React.FC = () => {
             </button>
             <button
               type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-              onClick={() => navigate('/sales/invoices/new')}
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98]"
+              onClick={() => {
+                if (isWindowsMode) {
+                  openWindow({
+                    type: 'sales_invoice',
+                    title: t('sales.invoicesList.newWindowTitle', { defaultValue: 'New Sales Invoice' }),
+                    data: { invoiceId: 'new' },
+                    size: { width: 1100, height: 750 }
+                  });
+                } else {
+                  navigate('/sales/invoices/new');
+                }
+              }}
             >
               {t('sales.invoicesList.newButton')}
             </button>
@@ -230,52 +260,52 @@ const SalesInvoicesListPage: React.FC = () => {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="py-2 text-left">{t('sales.invoicesList.headers.invoiceNumber')}</th>
-                  <th className="py-2 text-left">{t('sales.invoicesList.headers.customer')}</th>
-                  <th className="py-2 text-left">{t('sales.invoicesList.headers.invoiceDate')}</th>
-                  <th className="py-2 text-right">{t('sales.invoicesList.headers.grandTotal')}</th>
-                  <th className="py-2 text-left">{t('sales.invoicesList.headers.payment')}</th>
-                  <th className="py-2 text-left">{t('sales.invoicesList.headers.status')}</th>
-                  <th className="py-2 text-right">{t('sales.invoicesList.headers.actions')}</th>
+            <table className="min-w-full text-xs divide-y divide-slate-200 dark:divide-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-3 text-left font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('sales.invoicesList.headers.invoiceNumber')}</th>
+                  <th className="px-4 py-3 text-left font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('sales.invoicesList.headers.customer')}</th>
+                  <th className="px-4 py-3 text-left font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('sales.invoicesList.headers.invoiceDate')}</th>
+                  <th className="px-4 py-3 text-right font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('sales.invoicesList.headers.grandTotal')}</th>
+                  <th className="px-4 py-3 text-left font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('sales.invoicesList.headers.payment')}</th>
+                  <th className="px-4 py-3 text-left font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('sales.invoicesList.headers.status')}</th>
+                  <th className="px-4 py-3 text-right font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('sales.invoicesList.headers.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {invoices.map((invoice) => (
                   <tr
                     key={invoice.id}
-                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
-                    onClick={() => navigate(`/sales/invoices/${invoice.id}`)}
+                    className="cursor-pointer border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/80 dark:hover:bg-slate-900/30 transition-colors duration-150"
+                    onClick={() => handleOpenInvoice(invoice.id, invoice.invoiceNumber)}
                   >
-                    <td className="py-2 font-medium">{invoice.invoiceNumber}</td>
-                    <td className="py-2">{customerById[invoice.customerId] || invoice.customerName}</td>
-                    <td className="py-2">{invoice.invoiceDate}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2.5 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">{invoice.invoiceNumber}</td>
+                    <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">{customerById[invoice.customerId] || invoice.customerName}</td>
+                    <td className="py-2.5 px-4 text-slate-500">{invoice.invoiceDate}</td>
+                    <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
                       {formatMoney(invoice.grandTotalDoc, invoice.currency)}
                     </td>
-                    <td className="py-2">
+                    <td className="py-2.5 px-4">
                       <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${paymentChipClasses(invoice.paymentStatus)}`}
+                        className={`rounded px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${paymentChipClasses(invoice.paymentStatus)}`}
                       >
                         {t(`sales.invoicesList.payment.${invoice.paymentStatus}`, invoice.paymentStatus)}
                       </span>
                     </td>
-                    <td className="py-2">
+                    <td className="py-2.5 px-4">
                       <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${statusChipClasses(invoice.status)}`}
+                        className={`rounded px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${statusChipClasses(invoice.status)}`}
                       >
                         {t(`sales.invoicesList.status.${invoice.status}`, invoice.status)}
                       </span>
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="py-2.5 px-4 text-right">
                       <button
                         type="button"
-                        className="text-sm font-medium text-primary-600 hover:underline"
+                        className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline uppercase tracking-wider"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/sales/invoices/${invoice.id}`);
+                          handleOpenInvoice(invoice.id, invoice.invoiceNumber);
                         }}
                       >
                         {t('sales.invoicesList.open')}

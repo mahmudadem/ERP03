@@ -762,8 +762,11 @@ export const salesApi = {
   updateSI: (id: string, payload: UpdateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
     client.put(`/tenant/sales/invoices/${id}`, payload),
 
-  createAndPostSI: (payload: CreateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
-    client.post('/tenant/sales/invoices/create-and-post', payload),
+  deleteSI: (id: string): Promise<{ success: true }> =>
+    client.delete(`/tenant/sales/invoices/${id}`),
+
+  createAndPostSI: (payload: CreateSalesInvoicePayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
+    client.post('/tenant/sales/invoices/create-and-post', { ...payload, periodLockOverrideReason }),
 
   updateAndPostSI: (id: string, payload: UpdateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
     client.put(`/tenant/sales/invoices/${id}/update-and-post`, payload),

@@ -11,6 +11,7 @@ export interface SalesInvoiceListOptions {
 export interface ISalesInvoiceRepository {
   create(si: SalesInvoice, transaction?: unknown): Promise<void>;
   update(si: SalesInvoice, transaction?: unknown): Promise<void>;
+  delete(companyId: string, id: string): Promise<void>;
   getById(companyId: string, id: string): Promise<SalesInvoice | null>;
   getByNumber(companyId: string, number: string): Promise<SalesInvoice | null>;
   list(companyId: string, opts?: SalesInvoiceListOptions): Promise<SalesInvoice[]>;

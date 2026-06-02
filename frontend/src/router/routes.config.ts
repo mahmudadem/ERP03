@@ -64,6 +64,7 @@ const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
+const CommunicationsSettingsPage = lazy(() => import('../modules/settings/pages/CommunicationsSettingsPage'));
 const AppearanceSettingsPage = lazy(() => import('../modules/settings/pages/AppearanceSettingsPage'));
 const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/SidebarSettingsPage'));
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
@@ -162,6 +163,7 @@ const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDoc
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
 const TailwindPlayDemoPage = lazy(() => import('../pages/dev/TailwindPlayDemoPage').then(m => ({ default: m.TailwindPlayDemoPage })));
 const UiLabDashboard = lazy(() => import('../pages/dev/UiLabDashboard').then(m => ({ default: m.UiLabDashboard })));
+const SalesInvoiceV2LayoutPage = lazy(() => import('../pages/dev/SalesInvoiceV2LayoutPage'));
 
 
 export interface AppRoute {
@@ -255,6 +257,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/widgets', label: 'Topbar Widgets', component: lazy(() => import('../modules/settings/pages/TopbarWidgetDesignerPage')), section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/sidebar', label: 'Menu Config', component: SidebarSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
+  { path: '/settings/communications', label: 'Communications', component: CommunicationsSettingsPage, section: 'SETTINGS' },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
   { path: '/settings/tax-codes', label: 'Tax Codes', component: TaxCodesPage, section: 'SETTINGS' },
   { path: '/system/currencies', label: 'Currencies', component: CompanyCurrencySettings, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
@@ -401,6 +404,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
   { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: false },
   { path: '/dev/ui-lab', label: 'UI Lab 🎨', component: UiLabDashboard, section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/sales-invoice-v2', label: 'Sales Invoice V2 🎨', component: SalesInvoiceV2LayoutPage, section: 'TOOLS', hideInMenu: false },
 
 
   // AI ASSISTANT

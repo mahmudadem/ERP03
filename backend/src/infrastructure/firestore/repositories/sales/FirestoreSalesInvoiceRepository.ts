@@ -41,6 +41,10 @@ export class FirestoreSalesInvoiceRepository implements ISalesInvoiceRepository 
     await ref.set(data, { merge: true });
   }
 
+  async delete(companyId: string, id: string): Promise<void> {
+    await this.collection(companyId).doc(id).delete();
+  }
+
   async getById(companyId: string, id: string): Promise<SalesInvoice | null> {
     const doc = await this.collection(companyId).doc(id).get();
     if (!doc.exists) return null;
