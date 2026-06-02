@@ -2,6 +2,35 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Posting-authority architecture spec + fix plan (Stage 0)
+
+**Task:** After a long design review with Mahmud on the "one guard at the ledger door" model,
+write the target architecture + a staged fix plan so another agent can execute it, and start Stage 0.
+**Agent:** Claude (Opus 4.8) · **Branch:** `main` (in `ERP03-posting-authority` worktree)
+
+**Context / why:** The Sales+Purchases approval slices (133/134) added approval as *per-module*
+document gates — useful machinery, wrong *layer*. Design review established: one accounting guard
+at the ledger door, module guards composed in front by effect, each guard owns its policy + its
+override rule, guards compose by AND (only tighten), overrides are an *override reason* (no
+"ticket"), and the root bug is that source modules **forge an APPROVED stamp** that defeats the
+approval policy.
+
+**Delivered (Stage 0 — no behaviour change):**
+- [docs/architecture/posting-authority.md](../docs/architecture/posting-authority.md) — the laws,
+  the ownership test ("does it apply to any posting from any module?"), worked examples, and a
+  current-conformance table.
+- [briefs/20260603-posting-authority-fix-plan.md](./briefs/20260603-posting-authority-fix-plan.md)
+  — verified current state + Stages 1–7 (each independently mergeable) + a "next agent starts here".
+- `backend/src/tests/architecture/PostingAuthority.test.ts` — guardrails: **2 passing** (accounting
+  is ignorant of credit-limit; subledger consults the policy registry) + **4 `it.todo`** targets
+  for Stages 1–4. Suite green.
+
+**Verification:** `npx jest PostingAuthority.test.ts` → 2 passed, 4 todo.
+
+**Handoff:** Next = **Stage 1, kill the forged stamp** in `SubledgerVoucherPostingService` (run
+`erp-reviewer` first). Sales/Purchases per-module approval stays live until Stage 2 migrates it;
+Inventory approval intentionally not built.
+
 ## 2026-06-02 (Tue) — Approval before posting: Purchases slice (134)
 
 **Task:** Extend the approval-before-posting system to Purchases (mirror of the Sales slice).
