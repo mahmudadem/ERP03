@@ -1,10 +1,33 @@
 # 🎯 Current Focus
 
-**Task:** Phase F — Purchases parity. Purchase Price Lists now built and ready for QA (2026-05-28).
-**Status:** In progress on `codex/phase-f-vendor-groups`. Remaining parity gaps: RFQ.
-**Latest completion reports:** [127-tailwind-play-theme-and-styling.md](./done/127-tailwind-play-theme-and-styling.md), [128-coa-template-defaults-and-comprehensive-coa.md](./done/128-coa-template-defaults-and-comprehensive-coa.md), [129-phase-f-pi-attachments.md](./done/129-phase-f-pi-attachments.md), [130-phase-f-vendor-groups.md](./done/130-phase-f-vendor-groups.md), [131-purchase-price-lists.md](./done/131-purchase-price-lists.md), [132-posting-authority-policy-guard.md](./done/132-posting-authority-policy-guard.md).
+**Task:** **Posting-authority architecture rollout (2026-06-03).** Spec + staged fix plan agreed
+with Mahmud after a long design review. Stages 0, 1, 2a are **done** on `main` (all safe-by-default,
+no behaviour change to existing flows). **Stage 2b is the next behavioural step and is gated on
+`erp-reviewer` per the plan.**
+
+- **Spec:** [docs/architecture/posting-authority.md](../docs/architecture/posting-authority.md)
+- **Plan:** [briefs/20260603-posting-authority-fix-plan.md](./briefs/20260603-posting-authority-fix-plan.md)
+- **Guardrails:** `backend/src/tests/architecture/PostingAuthority.test.ts` (Stages 0/1 active; 2/3/4 as `it.todo` checklist)
 
 ## 👉 Next agent — start here
+
+**Stage 2b — wire each source module to the central approval policy.** The helper
+`AccountingPolicyRegistry.isApprovalRequiredForVoucherType(companyId, voucherType)` is the
+single read point (added 2026-06-03, tested). In each module's posting flow:
+
+1. Replace the `settings.requireApprovalBeforePosting` read with `policyRegistry.isApprovalRequiredForVoucherType(companyId, voucherType)`.
+2. When required AND the document isn't approved → park as `PENDING_APPROVAL` (existing 133/134 machinery).
+3. Pass `approved: <real state>` into `SubledgerVoucherPostingService.postInTransaction(...)` (Stage-1 hook).
+4. Add tests (exempt-type posts; non-exempt parks; approve posts).
+5. Flip `it.todo('Stage 2 …')` in `PostingAuthority.test.ts` → active.
+6. **Then Stage 2c** retires `requireApprovalBeforePosting` from Sales/Purchases settings + DTOs + UI.
+
+**Run `erp-reviewer` first** — 2b is the first behavioural change to the live approval path.
+
+**Prior in-flight work (unchanged):**
+- Phase F — Purchases parity (RFQ remaining). Lock owners: see PRIORITIES.md.
+
+## 👉 Previous focus — start here
 
 Piece A and Piece B are complete:
 

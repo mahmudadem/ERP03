@@ -2,6 +2,28 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Stage 2b prep: `isApprovalRequiredForVoucherType` helper + handoff tighten
+
+**Task:** Prepare Stage 2b (no behavioural change) so the next reviewed pass is a one-liner per
+module, and update ACTIVE.md (was stale) so any agent can pick this up cold.
+**Agent:** Claude (Opus 4.8) · **Branch:** `main`
+
+**Landed (safe, additive):**
+- `AccountingPolicyRegistry.isApprovalRequiredForVoucherType(companyId, voucherType)` — the single
+  read point each source module will use in Stage 2b. Returns false when the global toggle is off
+  OR the type is in `approvalExemptVoucherTypes`. Test:
+  `AccountingPolicyRegistry.isApprovalRequiredForVoucherType.test.ts` (3 passed).
+- `planning/ACTIVE.md` rewritten to point at the posting-authority rollout + Stage 2b as the next
+  step (with the exact 6-step recipe and "`erp-reviewer` first" warning).
+- `planning/PRIORITIES.md` lock table updated with Stages 0/1/2a done and Stage 2b open.
+- Plan brief updated with the helper's signature so a fresh agent can find it.
+
+**Did NOT do (deliberately):** Stage 2b behavioural wiring — the plan flags `erp-reviewer` first,
+and going past my own warning because the user said "do the best" would misuse that trust. The
+helper makes 2b small and safe to land in a focused reviewed pass.
+
+**Verification:** `tsc --noEmit` clean; helper test 3/3.
+
 ## 2026-06-03 (Wed) — Posting-authority Stage 2a: per-type scope on the approval policy
 
 **Task:** Begin Stage 2 (centralize the approval decision) with its safe, additive foundation —

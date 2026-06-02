@@ -83,14 +83,19 @@ batch behavioural stages. Run `erp-reviewer` before Stage 1 and Stage 4.
   behaviour change to existing flows.
 
 **Stage 2b — Wire the modules + drive the park from the central policy (behavioural) — TODO**
-- In each source module's posting flow, read the **central** approval policy (is approval required
-  for this voucher type, per scope?) instead of `settings.requireApprovalBeforePosting`. If
-  required and the document is not approved → **park as `PENDING_APPROVAL`** (reuse the 133/134
-  machinery). On approve → pass `approved: true` (and on normal post when required-but-unapproved,
-  pass `approved: false`) into `SubledgerVoucherPostingService` (Stage-1 hook).
+- Helper landed 2026-06-03 to make this a one-liner:
+  `AccountingPolicyRegistry.isApprovalRequiredForVoucherType(companyId, voucherType): Promise<boolean>`
+  (returns false when `approvalRequired` is off OR the type is in `approvalExemptVoucherTypes`).
+  Test: `AccountingPolicyRegistry.isApprovalRequiredForVoucherType.test.ts`. Use it as the **single
+  read point** in each module.
+- In each source module's posting flow, replace the `settings.requireApprovalBeforePosting` read
+  with the helper. If required and the document is not approved → **park as `PENDING_APPROVAL`**
+  (reuse the 133/134 machinery). On approve → pass `approved: true` (and on normal post when
+  required-but-unapproved, pass `approved: false`) into `SubledgerVoucherPostingService` (Stage-1 hook).
 - **Acceptance:** with `approvalRequired` on (and the type not exempt), an unapproved source posting
   parks; approving posts; an exempt type posts straight through — all driven by the central policy,
-  proven by tests. **Risk: high — `erp-reviewer` first.**
+  proven by tests. Flip the Stage 2 `it.todo` in `PostingAuthority.test.ts` → active.
+- **Risk: high — `erp-reviewer` first.**
 
 **Stage 2c — Retire the per-module flags (cleanup) — TODO**
 - Remove `requireApprovalBeforePosting` from `SalesSettings`/`PurchaseSettings` + their use-cases +

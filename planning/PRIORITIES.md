@@ -41,6 +41,10 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Posting authority policy guard (132) | 2026-06-01 | ✅ Done |
 | Claude (Opus 4.8) | Approval before posting — Sales slice (133) | 2026-06-02 | ✅ Done |
 | Claude (Opus 4.8) | Approval before posting — Purchases slice (134) | 2026-06-02 | ✅ Done |
+| Claude (Opus 4.8) | Posting-authority spec + fix plan (Stage 0) | 2026-06-03 | ✅ Done (`287f1f72`) |
+| Claude (Opus 4.8) | Posting-authority Stage 1 — kill forged stamp | 2026-06-03 | ✅ Done (`3fdbdeb4`) |
+| Claude (Opus 4.8) | Posting-authority Stage 2a — per-type scope + 2b helper | 2026-06-03 | ✅ Done (`d69ef96d` + 2b helper) |
+| _open_ | Posting-authority Stage 2b — wire modules to central policy | — | 🟡 next (run `erp-reviewer` first) |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
