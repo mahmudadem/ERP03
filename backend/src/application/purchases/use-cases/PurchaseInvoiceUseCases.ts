@@ -172,7 +172,7 @@ export interface UpdatePurchaseInvoiceInput {
 export interface ListPurchaseInvoicesFilters {
   vendorId?: string;
   purchaseOrderId?: string;
-  status?: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  status?: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   paymentStatus?: PaymentStatus;
   limit?: number;
 }
@@ -444,7 +444,8 @@ export class PostPurchaseInvoiceUseCase {
     companyId: string,
     id: string,
     createAccountingEffect: boolean = true,
-    settlementInput?: SettlementInput
+    settlementInput?: SettlementInput,
+    approvalContext?: { approvedBy: string }
   ): Promise<PurchaseInvoice> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
@@ -468,6 +469,20 @@ export class PostPurchaseInvoiceUseCase {
 
     const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
     if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
+
+    // ── Approval gate (safe-by-default) — see SalesInvoice for rationale ──
+    // Flag on: a DRAFT invoice posted by a user is parked as PENDING_APPROVAL
+    // with NO financial effect; ApprovePurchaseInvoiceUseCase re-enters with
+    // approvalContext to run the real post. Flag off: block is skipped.
+    if (settings.requireApprovalBeforePosting === true && !approvalContext) {
+      if (pi.status !== 'DRAFT') throw new Error('Only DRAFT purchase invoices can be posted');
+      pi.status = 'PENDING_APPROVAL';
+      await this.purchaseInvoiceRepo.update(pi);
+      return pi;
+    }
+    if (approvalContext && pi.status === 'PENDING_APPROVAL') {
+      pi.status = 'DRAFT';
+    }
     if (pi.status !== 'DRAFT') throw new Error('Only DRAFT purchase invoices can be posted');
 
     const vendor = await this.partyRepo.getById(companyId, pi.vendorId);
@@ -1222,6 +1237,28 @@ export class UnpostPurchaseInvoiceUseCase {
   private async isAccountingEngineReady(companyId: string): Promise<boolean> {
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
+  }
+}
+
+export class ApprovePurchaseInvoiceUseCase {
+  constructor(
+    private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
+    private readonly postUseCase: PostPurchaseInvoiceUseCase
+  ) {}
+
+  async execute(
+    companyId: string,
+    id: string,
+    actor: { userId: string; userEmail?: string },
+    settlementInput?: SettlementInput
+  ): Promise<PurchaseInvoice> {
+    const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
+    if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
+    if (pi.status !== 'PENDING_APPROVAL') {
+      throw new Error('Only purchase invoices pending approval can be approved');
+    }
+    // Re-enter the real post with approvalContext set (bypasses the gate).
+    return this.postUseCase.execute(companyId, id, true, settlementInput, { approvedBy: actor.userId });
   }
 }
 

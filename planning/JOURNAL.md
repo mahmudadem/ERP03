@@ -2,6 +2,23 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-02 (Tue) — Approval before posting: Purchases slice (134)
+
+**Task:** Extend the approval-before-posting system to Purchases (mirror of the Sales slice).
+**Agent:** Claude (Opus 4.8) · **Branch:** `feat/approval-system` (off `main`)
+**Completion report:** [planning/done/134-purchases-approval-before-posting.md](./done/134-purchases-approval-before-posting.md)
+
+**What I did:** Replicated the exact gate pattern for Purchase Invoices —
+`PurchaseSettings.requireApprovalBeforePosting`, `PENDING_APPROVAL` PI status, gate in
+`PostPurchaseInvoiceUseCase.execute`, `ApprovePurchaseInvoiceUseCase`, `approvePI` controller +
+`POST /invoices/:id/approve` route, DTO/settings threading, and frontend (toggle, Approve & Post
+action, amber badge, list filter).
+
+**Verification:** backend `tsc` clean; `PurchasePostingUseCases.test.ts` → **14/14** (incl. 2 new
+park/approve tests); frontend `tsc` clean.
+
+**Next:** Inventory (Stock Adjustments + Opening Stock) — same pattern, two document types.
+
 ## 2026-06-02 (Tue) — Approval before posting: Sales slice (133)
 
 **Task:** Add a per-module "require approval before posting" system — on = invoice waits for

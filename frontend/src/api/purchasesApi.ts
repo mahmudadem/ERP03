@@ -9,7 +9,7 @@ export type POStatus =
   | 'CLOSED'
   | 'CANCELLED';
 export type GRNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
-export type PIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
@@ -20,6 +20,7 @@ export interface PurchaseSettingsDTO {
   workflowMode: WorkflowMode;
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
+  requireApprovalBeforePosting: boolean;
   defaultAPAccountId?: string;
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -323,6 +324,7 @@ export interface InitializePurchasesPayload {
   partyAccountCodeFormat?: string;
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
+  requireApprovalBeforePosting?: boolean;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;
@@ -799,6 +801,9 @@ export const purchasesApi = {
 
   postPI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/post`, { settlementInput }),
+
+  approvePI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
+    client.post(`/tenant/purchase/invoices/${id}/approve`, { settlementInput }),
 
   unpostPI: (id: string): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/unpost`, {}),

@@ -1,4 +1,4 @@
-export type PIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
 
@@ -88,7 +88,7 @@ export interface PurchaseInvoiceProps {
   postedAt?: Date;
 }
 
-const PI_STATUSES: PIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
+const PI_STATUSES: PIStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
 

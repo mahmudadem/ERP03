@@ -18,6 +18,7 @@ export interface PurchaseSettingsDTO {
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
+  requireApprovalBeforePosting: boolean;
   defaultAPAccountId?: string;
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -197,7 +198,7 @@ export interface PurchaseInvoiceDTO {
   paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
   paidAmountBase: number;
   outstandingAmountBase: number;
-  status: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   voucherId?: string | null;
   attachments?: PurchaseInvoiceAttachmentDTO[];
   notes?: string;
@@ -286,6 +287,7 @@ export class PurchaseDTOMapper {
       workflowMode: settings.workflowMode,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requirePOForStockItems: settings.requirePOForStockItems,
+      requireApprovalBeforePosting: settings.requireApprovalBeforePosting,
       defaultAPAccountId: settings.defaultAPAccountId,
       apParentAccountId: settings.apParentAccountId,
       partyAccountCodeFormat: settings.partyAccountCodeFormat,

@@ -58,6 +58,7 @@ router.get('/invoices/:id', PurchaseController.getPI);
 router.put('/invoices/:id', PurchaseController.updatePI);
 router.put('/invoices/:id/update-and-post', idempotencyMiddleware, PurchaseController.updateAndPostPI);
 router.post('/invoices/:id/post', idempotencyMiddleware, PurchaseController.postPI);
+router.post('/invoices/:id/approve', idempotencyMiddleware, PurchaseController.approvePI);
 router.post('/invoices/:id/unpost', PurchaseController.unpostPI);
 router.post('/invoices/:id/payment-update', PurchaseController.updatePaymentStatus);
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, PurchaseController.recordPayment);

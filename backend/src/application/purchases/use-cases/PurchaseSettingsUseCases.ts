@@ -168,6 +168,7 @@ export interface InitializePurchasesInput {
   partyAccountCodeFormat?: string;
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
+  requireApprovalBeforePosting?: boolean;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;
@@ -191,6 +192,7 @@ export interface UpdatePurchasesSettingsInput {
   workflowMode?: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
+  requireApprovalBeforePosting?: boolean;
   defaultAPAccountId?: string;
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -288,6 +290,7 @@ export class InitializePurchasesUseCase {
       workflowMode,
       allowDirectInvoicing: workflowDefaults.allowDirectInvoicing,
       requirePOForStockItems: workflowDefaults.requirePOForStockItems,
+      requireApprovalBeforePosting: input.requireApprovalBeforePosting ?? false,
       defaultAPAccountId: input.defaultAPAccountId,
       apParentAccountId: input.apParentAccountId,
       partyAccountCodeFormat: input.partyAccountCodeFormat,
@@ -450,6 +453,10 @@ export class UpdatePurchaseSettingsUseCase {
       workflowMode,
       allowDirectInvoicing: nextAllowDirectInvoicing,
       requirePOForStockItems: workflowDefaults.requirePOForStockItems,
+      requireApprovalBeforePosting:
+        input.requireApprovalBeforePosting !== undefined
+          ? input.requireApprovalBeforePosting === true
+          : existing.requireApprovalBeforePosting,
       defaultAPAccountId: nextAPAccountId,
       apParentAccountId: nextAPParentAccountId,
       partyAccountCodeFormat: nextPartyAccountCodeFormat,

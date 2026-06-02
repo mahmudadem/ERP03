@@ -178,6 +178,15 @@ Vendor-specific overrides:
 
 The Vendors list at `/purchases/vendors` is a filtered view of the Party API.
 
+## Approval before posting (2026-06-02)
+
+`PurchaseSettings.requireApprovalBeforePosting` (default `false`) gates Purchase Invoice posting,
+identical to the Sales implementation — see [sales.md](./sales.md#approval-before-posting-2026-06-02)
+for the full rationale. When on, posting a DRAFT PI parks it as `PENDING_APPROVAL` with no
+financial effect; `ApprovePurchaseInvoiceUseCase` re-enters `PostPurchaseInvoiceUseCase.execute`
+with an `approvalContext` to run the real post. Endpoint: `POST /tenant/purchase/invoices/:id/approve`.
+Safe-by-default (flag off → unchanged). See [134-purchases-approval-before-posting.md](../../planning/done/134-purchases-approval-before-posting.md).
+
 ## Accounting Integration
 
 Purchases never writes to the ledger directly. It builds vouchers and submits them to Accounting's `PostVoucherUseCase` with the `PurchaseInvoiceStrategy` (or return strategy).
