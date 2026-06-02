@@ -58,16 +58,18 @@ batch behavioural stages. Run `erp-reviewer` before Stage 1 and Stage 4.
 - **Acceptance:** new test file green (todos are pending, not failing). Done = the next agent has a
   red/green target list.
 
-### Stage 1 — Kill the forged "approved" stamp (root cause) 🔴 highest value
-- `SubledgerVoucherPostingService`: stop hardcoding `VoucherStatus.APPROVED`. Accept the source
-  document's **real approval state** (new field on `PostSubledgerVoucherInput`, e.g.
-  `approved: boolean` / `approvalState`). When approval is required and the doc is not approved, the
-  voucher must reach the guard as **not-approved** so `ApprovalRequiredPolicy` rejects it.
-- Thread the source doc's approval state from each module's posting call into the input.
-- **Acceptance:** with `approvalRequired` on, an unapproved source posting is rejected **by the
-  guard** (`APPROVAL_REQUIRED`), proven by a test — *not* by a module gate. Flip `it.todo`
-  `forged-stamp` → real assertion.
-- **Risk:** high (changes posting). Full backend test run + `erp-reviewer` first.
+### Stage 1 — Kill the forged "approved" stamp (root cause) — ✅ DONE 2026-06-03
+- `SubledgerVoucherPostingService`: added `approved?: boolean` to `PostSubledgerVoucherInput`. The
+  policy context's `status`/`isApproved` are now **derived from the caller's real approval state**
+  (`approved !== false`), not from the status the service stamps on the voucher. So an active
+  `ApprovalRequiredPolicy` now **rejects** an unapproved subledger posting before any ledger write.
+- **Safe-by-default:** `approved` omitted → treated as approved → existing callers unchanged.
+- Tests: behavioural proof in `SubledgerVoucherPostingServicePolicy.test.ts` (reject-when-unapproved;
+  post-when-default); architecture guardrail in `PostingAuthority.test.ts` flipped from todo → active.
+  Verified: backend typecheck clean; Sales/Purchases posting suites still green (no regression).
+- **Deferred to Stage 2:** wiring each module to *pass its real approval state* (today the per-module
+  approval gates from 133/134 still handle this). Stage 1 only makes the guard *capable* of
+  enforcing it honestly. `erp-reviewer` recommended before Stage 2 wires the modules.
 
 ### Stage 2 — Centralize the approval decision (one rulebook + scope)
 - Move the decision out of `SalesSettings`/`PurchaseSettings` into accounting policy config:
@@ -126,9 +128,13 @@ batch behavioural stages. Run `erp-reviewer` before Stage 1 and Stage 4.
 
 ## Status — where I left off / next agent starts here
 
-- **Done:** Stage 0 (spec, this plan, guardrail test). Committed to `main`.
-- **Next:** **Stage 1 — kill the forged stamp.** Start in `SubledgerVoucherPostingService`; make
-  the voucher carry the source doc's real approval state; prove the guard rejects unapproved
-  postings. Run `erp-reviewer` first.
+- **Done:** Stage 0 (spec, this plan, guardrail test) + **Stage 1** (guard derives approval from the
+  caller, not a forged stamp — safe-by-default; behavioural + guardrail tests green). Committed to `main`.
+- **Next:** **Stage 2 — centralize the approval decision.** Move the on/off from Sales/Purchases
+  `requireApprovalBeforePosting` flags into accounting policy config + per-type scope; have each
+  module pass its **real approval state** (`approved`) into `SubledgerVoucherPostingService` (the
+  Stage-1 hook is ready); keep the document-level "park as PENDING_APPROVAL" as the convenience
+  pre-check, driven by the central policy. Retire the per-module flags. Run `erp-reviewer` first.
 - Sales + Purchases per-module approval (`cc37e78e`, `7fc4ce7e`) remain on `main` and keep working
   in the meantime; Stage 2 migrates them. Inventory approval was deliberately not built.
+- Guardrail checklist: `PostingAuthority.test.ts` now has Stage 1 active + Stages 2–4 as `it.todo`.

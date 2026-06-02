@@ -50,10 +50,17 @@ describe('Architecture guard: posting authority', () => {
     expect(content).toMatch(/validatePolicies|validatePostingPolicies/);
   });
 
-  // ── Fix-plan targets (convert each to a real assertion as the stage lands) ──────────────────
-  // Stage 1 — Law 7: the subledger guard must NOT forge VoucherStatus.APPROVED unconditionally;
-  // the voucher must carry the source document's real approval state so the guard can reject.
-  it.todo('Stage 1: subledger posting does not forge VoucherStatus.APPROVED (carries real approval state)');
+  // Stage 1 — Law 7 (DONE): the subledger guard derives approval from the source document's real
+  // state (the `approved` input), not from a status the posting path stamps on the voucher itself.
+  // Behavioural proof: application/accounting/services/__tests__/SubledgerVoucherPostingServicePolicy.test.ts
+  it('the subledger guard derives approval from the caller, not a self-stamped voucher status', () => {
+    const file = path.resolve(SRC, 'application/accounting/services/SubledgerVoucherPostingService.ts');
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).toMatch(/approved\?: boolean/);   // input carries the real approval state
+    expect(content).toMatch(/isApproved: approved/);  // policy context derived from it, not forged
+  });
+
+  // ── Remaining fix-plan targets (convert each to a real assertion as the stage lands) ─────────
 
   // Stage 2 — Law/policy scope: the approval decision lives in accounting policy config (with
   // per-type scope/exemptions), NOT as per-module `requireApprovalBeforePosting` settings flags.

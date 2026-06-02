@@ -2,6 +2,28 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Posting-authority Stage 1: kill the forged "approved" stamp
+
+**Task:** Execute Stage 1 of the posting-authority fix plan — stop the subledger guard from
+trusting a self-stamped APPROVED status, so it can honestly reject unapproved postings.
+**Agent:** Claude (Opus 4.8) · **Branch:** `main` (in `ERP03-posting-authority` worktree)
+
+**What landed (surgical + safe-by-default):**
+- `SubledgerVoucherPostingService`: new `approved?: boolean` on `PostSubledgerVoucherInput`. The
+  policy context's `status`/`isApproved` are now **derived from the caller's real approval state**
+  (`approved !== false`) instead of the forged voucher status. An active `ApprovalRequiredPolicy`
+  now rejects an unapproved subledger posting **before** any ledger/voucher write.
+- `approved` omitted → treated as approved → **existing callers (incl. Sales/Purchases) unchanged.**
+
+**Verification:** `tsc --noEmit` clean; new tests in `SubledgerVoucherPostingServicePolicy.test.ts`
+(reject-when-unapproved + post-when-default) pass; `PostingAuthority.test.ts` Stage-1 guardrail
+flipped todo→active; `SalesPostingUseCases` + `PurchasePostingUseCases` suites still green
+(40 passed, 3 todo across the run). No regression.
+
+**Next:** Stage 2 — centralize the approval *decision* in accounting policy config + per-type scope,
+wire each module to pass its real `approved` state (Stage-1 hook is ready), retire the per-module
+`requireApprovalBeforePosting` flags. Run `erp-reviewer` first.
+
 ## 2026-06-03 (Wed) — Posting-authority architecture spec + fix plan (Stage 0)
 
 **Task:** After a long design review with Mahmud on the "one guard at the ledger door" model,

@@ -24,6 +24,13 @@ export interface PostSubledgerVoucherInput {
   metadata?: Record<string, any>;
   reference?: string | null;
   createdBy: string;
+  /**
+   * The source document's REAL approval state. When `false`, the posting is presented to the
+   * guard as NOT approved, so an active ApprovalRequiredPolicy rejects it before any ledger write.
+   * Omitted/`true` → treated as approved, so existing callers are unaffected (safe-by-default).
+   * The posting path must NOT forge approval; approval is earned by clearing the guard (Law 7).
+   */
+  approved?: boolean;
   postingLockPolicy?: PostingLockPolicy;
   strategyPayload?: Record<string, any>;
   baseCurrencyOverride?: string;
@@ -135,14 +142,14 @@ export class SubledgerVoucherPostingService {
       await this.validationService.validateAccounts(postedVoucher, this.accountRepo);
     }
 
-    await this.validatePostingPolicies(postedVoucher, input.createdBy);
+    await this.validatePostingPolicies(postedVoucher, input.createdBy, input.approved !== false);
 
     await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
     await this.voucherRepo.save(postedVoucher, transaction);
     return postedVoucher;
   }
 
-  private async validatePostingPolicies(voucher: VoucherEntity, userId: string): Promise<void> {
+  private async validatePostingPolicies(voucher: VoucherEntity, userId: string, approved: boolean): Promise<void> {
     if (!this.policyRegistry) {
       return;
     }
@@ -163,8 +170,10 @@ export class SubledgerVoucherPostingService {
       baseCurrency: voucher.baseCurrency,
       totalDebit: voucher.totalDebit,
       totalCredit: voucher.totalCredit,
-      status: voucher.status,
-      isApproved: voucher.isApproved,
+      // The guard decides approval from the source document's REAL approval state — never from a
+      // status the posting path stamped on the voucher itself (no forged credentials, Law 7).
+      status: approved ? voucher.status : VoucherStatus.DRAFT,
+      isApproved: approved && voucher.isApproved,
       lines: voucher.lines,
       metadata: voucher.metadata,
       postingPeriodNo: voucher.postingPeriodNo,
