@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Bot, User, Trash2, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X, Mic, Shield } from 'lucide-react';
+import { Send, Bot, User, Trash2, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, Database, FileText, Wrench, Menu, ArrowUp, PanelLeftClose, PanelLeftOpen, PanelRight, Maximize2, X, Mic, Shield, BrainCircuit } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import {
   aiAssistantApi,
@@ -10,6 +10,7 @@ import {
   ChatRuntimeMetadataDTO,
   ChatRuntimeModelProfileDTO,
   ChatMessageMetadata,
+  AiWidgetPreferencesDTO,
   streamMessage,
   AiStreamEvent,
 } from '../../../api/aiAssistantApi';
@@ -68,9 +69,11 @@ export const GlobalAiWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(() => localStorage.getItem('ai_widget_open') === 'true');
   const [toolResults, setToolResults] = useState<AiToolCallResultDTO[]>([]);
   const [actualRounds, setActualRounds] = useState(0);
+  const [widgetPreferences, setWidgetPreferences] = useState<AiWidgetPreferencesDTO | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const initialConversationLoadedRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem('ai_widget_open', String(isOpen));
@@ -78,6 +81,40 @@ export const GlobalAiWidget: React.FC = () => {
 
   const canChat = hasPermission('ai-assistant.chat.use');
   const isAiPage = location.pathname.startsWith('/ai-assistant');
+  const canUseAssistant = canChat || isOwner || isSuperAdmin;
+  const shouldFetchWidgetPreferences = permissionsLoaded && canUseAssistant && !isAiPage;
+  const shouldRenderWidget = shouldFetchWidgetPreferences
+    && widgetPreferences !== null
+    && widgetPreferences.isEnabled !== false
+    && widgetPreferences.showFloatingAssistant !== false;
+
+  useEffect(() => {
+    if (!shouldFetchWidgetPreferences) {
+      setWidgetPreferences(null);
+      return;
+    }
+
+    let cancelled = false;
+    aiAssistantApi.getWidgetPreferences()
+      .then(({ preferences }) => {
+        if (!cancelled) {
+          setWidgetPreferences({
+            isEnabled: preferences.isEnabled !== false,
+            showFloatingAssistant: preferences.showFloatingAssistant !== false,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load AI widget preferences', err);
+        if (!cancelled) {
+          setWidgetPreferences({ isEnabled: true, showFloatingAssistant: true });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldFetchWidgetPreferences]);
 
   // Load latest conversation on mount or when ID changes
   const loadConversation = useCallback(async (id: string) => {
@@ -105,15 +142,21 @@ export const GlobalAiWidget: React.FC = () => {
 
   // Fetch initial state and conversations
   useEffect(() => {
-    if (canChat || isOwner || isSuperAdmin) {
-      aiAssistantApi.getRecentConversations(20).then(({ conversations: convs }) => {
-        setConversations(convs);
-        if (convs.length > 0 && messages.length === 0) {
-          loadConversation(convs[0].conversationId);
-        }
-      }).catch(console.error);
+    if (!shouldRenderWidget) {
+      initialConversationLoadedRef.current = false;
+      return;
     }
-  }, [canChat, isOwner, isSuperAdmin, loadConversation]);
+
+    if (initialConversationLoadedRef.current) return;
+    initialConversationLoadedRef.current = true;
+
+    aiAssistantApi.getRecentConversations(20).then(({ conversations: convs }) => {
+      setConversations(convs);
+      if (convs.length > 0 && messages.length === 0) {
+        loadConversation(convs[0].conversationId);
+      }
+    }).catch(console.error);
+  }, [shouldRenderWidget, loadConversation]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -280,18 +323,23 @@ export const GlobalAiWidget: React.FC = () => {
     setError(null);
   };
 
-  if ((!canChat && !isOwner && !isSuperAdmin) || isAiPage) {
+  if (!shouldRenderWidget) {
     return null;
   }
 
   if (!isOpen) {
     return (
       <button
+        type="button"
+        aria-label={t('chat.openFloatingAssistant', 'Open AI Assistant')}
+        title={t('chat.openFloatingAssistant', 'Open AI Assistant')}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-[99999] w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl hover:bg-indigo-700 transition-colors flex items-center justify-center group"
+        className="fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-[99999] w-16 h-16 rounded-full bg-slate-950 text-white shadow-2xl shadow-sky-900/30 ring-1 ring-white/20 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 transition-colors flex items-center justify-center group"
       >
-        <MessageSquare className="w-7 h-7" />
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
+        <BrainCircuit className="w-7 h-7 text-sky-200 transition-colors group-hover:text-white" />
+        <span className="absolute -top-1 -right-1 w-6 h-6 bg-sky-500 border-2 border-white rounded-full flex items-center justify-center">
+          <Sparkles className="w-3 h-3 text-white" />
+        </span>
       </button>
     );
   }

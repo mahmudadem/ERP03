@@ -186,12 +186,15 @@ Settings:
 
 - `conversationContextMode`: `minimal`, `balanced`, or `deep`
 - `includePreviousToolResults`: boolean
+- `showFloatingAssistant`: boolean
 
 Default behavior:
 
 - existing saved configs default to `balanced`;
 - previous tool-result reuse is enabled by default;
+- the global floating AI launcher is visible by default for existing tenants;
 - admins can turn previous tool-result context off to reduce token use.
+- admins can hide the global floating launcher without disabling AI chat access.
 
 Runtime behavior:
 
@@ -225,6 +228,38 @@ Verification:
 - `frontend`: `npm run typecheck` passed.
 - `frontend`: `npm run build` passed.
 - `backend`: `npm run build` passed.
+
+## 2026-06-02 Floating Launcher Visibility
+
+Company AI settings now include `showFloatingAssistant`, a tenant-scoped shell preference that controls whether the global floating AI launcher appears across ERP pages.
+
+Behavior:
+
+- `AiProviderConfig.showFloatingAssistant` defaults to `true` during `create()`, `defaultForCompany()`, and `fromJSON()` hydration, so old tenant configs keep the previous launcher behavior.
+- `PUT /tenant/ai-assistant/settings` accepts `showFloatingAssistant` for users with `ai-assistant.settings.manage`.
+- `GET /tenant/ai-assistant/settings/widget-preferences` returns only `{ isEnabled, showFloatingAssistant }` and is guarded by `ai-assistant.chat.use`, because normal chat users may not be allowed to read full provider settings.
+- `GlobalAiWidget` renders only when the user can use AI chat, the current route is not an AI Assistant page, `isEnabled !== false`, and `showFloatingAssistant !== false`.
+- Hiding the launcher does not disable AI Assistant chat, change provider configuration, affect model certification, or bypass permissions. Disabling AI remains controlled by `isEnabled` and is still enforced server-side in chat use cases.
+
+Key files:
+
+- `backend/src/domain/ai-assistant/entities/AiProviderConfig.ts`
+- `backend/src/application/ai-assistant/use-cases/AiSettingsUseCase.ts`
+- `backend/src/api/controllers/ai-assistant/AiAssistantController.ts`
+- `backend/src/api/routes/ai-assistant.routes.ts`
+- `frontend/src/api/aiAssistantApi.ts`
+- `frontend/src/modules/ai-assistant/components/GlobalAiWidget.tsx`
+- `frontend/src/modules/ai-assistant/hooks/useAiSettings.ts`
+- `frontend/src/modules/ai-assistant/pages/AiAssistantSettingsPage.tsx`
+
+Verification:
+
+- `backend`: `npm --prefix backend test -- --runInBand src/tests/domain/ai-assistant/AiProviderConfig.test.ts src/tests/application/ai-assistant/AiSettingsUseCase.test.ts` passed, 36 tests.
+- `backend`: `npm --prefix backend run build` passed.
+- `frontend`: `npm --prefix frontend run typecheck` passed.
+- `frontend`: `npm --prefix frontend run build` passed.
+- `graph`: `npm run graph:update` passed.
+- `browser`: `http://127.0.0.1:5173/` loaded to `/#/auth` without a new runtime error; authenticated toggle QA still required.
 
 ## 2026-05-09 Editable Model Profile Catalog
 

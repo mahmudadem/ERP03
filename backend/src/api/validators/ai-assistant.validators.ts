@@ -87,6 +87,10 @@ export function validateUpdateAiSettingsInput(body: any): void {
     throw ApiError.badRequest('isEnabled must be a boolean');
   }
 
+  if (body.showFloatingAssistant !== undefined && typeof body.showFloatingAssistant !== 'boolean') {
+    throw ApiError.badRequest('showFloatingAssistant must be a boolean');
+  }
+
   if (body.mode !== undefined) {
     const validModes = ['certified_profile', 'custom_uncertified', 'legacy_unverified'];
     if (!validModes.includes(body.mode)) {

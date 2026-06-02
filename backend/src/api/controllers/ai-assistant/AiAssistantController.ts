@@ -290,11 +290,40 @@ const useCase = new SendChatMessageUseCase(
         runtimeMode: req.body.runtimeMode,
         allowedRuntimeModes: req.body.allowedRuntimeModes,
         allowUnverifiedModels: req.body.allowUnverifiedModels,
+        showFloatingAssistant: req.body.showFloatingAssistant,
       });
 
       (res as any).status(200).json({
         success: true,
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /ai-assistant/settings/widget-preferences
+   * Return only the shell-level AI widget visibility flags.
+   *
+   * Chat users may not be allowed to read full provider settings, but still need
+   * this tenant-scoped flag so the admin's launcher preference is respected.
+   */
+  static async getWidgetPreferences(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = AiAssistantController.getCompanyId(req);
+
+      const config = await diContainer.aiSettingsRepository.getConfig(companyId);
+      const effectiveConfig = config || AiProviderConfig.defaultForCompany(companyId);
+
+      (res as any).status(200).json({
+        success: true,
+        data: {
+          preferences: {
+            isEnabled: effectiveConfig.isEnabled,
+            showFloatingAssistant: effectiveConfig.showFloatingAssistant !== false,
+          },
+        },
       });
     } catch (error) {
       next(error);

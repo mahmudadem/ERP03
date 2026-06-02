@@ -136,6 +136,24 @@ describe('AiSettingsUseCase', () => {
       expect(JSON.stringify(result.config)).not.toContain('sk-secret-key');
     });
 
+    it('should save the floating launcher preference without disabling AI chat', async () => {
+      const existingConfig = AiProviderConfig.defaultForCompany('company-1');
+      const settingsRepo = createMockSettingsRepo(existingConfig);
+      const useCase = new AiSettingsUseCase(settingsRepo, encryptionService);
+
+      const result = await useCase.updateSettings({
+        companyId: 'company-1',
+        showFloatingAssistant: false,
+      });
+
+      expect(settingsRepo.saveConfig).toHaveBeenCalled();
+      const savedConfig = (settingsRepo.saveConfig as jest.Mock).mock.calls[0][0] as AiProviderConfig;
+      expect(savedConfig.showFloatingAssistant).toBe(false);
+      expect(savedConfig.isEnabled).toBe(true);
+      expect(result.config.showFloatingAssistant).toBe(false);
+      expect(result.config.isEnabled).toBe(true);
+    });
+
     it('should reject invalid provider types with ApiError 400', async () => {
       const settingsRepo = createMockSettingsRepo(null);
       const useCase = new AiSettingsUseCase(settingsRepo, encryptionService);

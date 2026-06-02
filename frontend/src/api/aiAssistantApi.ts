@@ -151,7 +151,13 @@ export interface AiSettingsDTO {
   runtimeMode: string;
   allowedRuntimeModes: string[];
   allowUnverifiedModels: boolean;
+  showFloatingAssistant: boolean;
   updatedAt: string;
+}
+
+export interface AiWidgetPreferencesDTO {
+  isEnabled: boolean;
+  showFloatingAssistant: boolean;
 }
 
 export type TenantAiProviderType = 'openai' | 'openai_compatible' | 'google_gemini' | 'anthropic' | 'ollama' | 'custom';
@@ -271,6 +277,7 @@ export interface UpdateAiSettingsPayload {
   runtimeMode?: 'BYOK' | 'CREDITS' | 'DISABLED';
   allowedRuntimeModes?: Array<'BYOK' | 'CREDITS' | 'DISABLED'>;
   allowUnverifiedModels?: boolean;
+  showFloatingAssistant?: boolean;
 }
 
 // Proposal Sandbox Types
@@ -441,6 +448,13 @@ export const aiAssistantApi = {
   updateSettings: async (payload: UpdateAiSettingsPayload): Promise<{ config: AiSettingsDTO }> => {
     const response = await client.put('/tenant/ai-assistant/settings', payload);
     return response as unknown as { config: AiSettingsDTO };
+  },
+
+  getWidgetPreferences: async (): Promise<{ preferences: AiWidgetPreferencesDTO }> => {
+    const response = await client.get('/tenant/ai-assistant/settings/widget-preferences', {
+      headers: { 'X-Silent-Error': 'true' },
+    });
+    return response as unknown as { preferences: AiWidgetPreferencesDTO };
   },
 
   listAvailableProviders: async (): Promise<TenantAiProviderOption[]> => {

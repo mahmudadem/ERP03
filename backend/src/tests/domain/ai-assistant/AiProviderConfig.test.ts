@@ -88,6 +88,7 @@ describe('AiProviderConfig', () => {
       expect(json.conversationContextMode).toBe('balanced');
       expect(json.includePreviousToolResults).toBe(true);
       expect(json.isEnabled).toBe(true);
+      expect(json.showFloatingAssistant).toBe(true);
       expect(json.updatedAt).toBe('2026-01-01T00:00:00.000Z');
     });
 
@@ -140,6 +141,7 @@ describe('AiProviderConfig', () => {
       // Should include rate limit tracking fields
       expect(json.dailyRequestCount).toBe(5);
       expect(json.dailyRequestDate).toBe('2026-05-05');
+      expect(json.showFloatingAssistant).toBe(true);
     });
 
     it('should store null for missing apiKey in toPersistenceJSON', () => {
@@ -213,6 +215,7 @@ describe('AiProviderConfig', () => {
       expect(restored.conversationContextMode).toBe(original.conversationContextMode);
       expect(restored.includePreviousToolResults).toBe(original.includePreviousToolResults);
       expect(restored.isEnabled).toBe(original.isEnabled);
+      expect(restored.showFloatingAssistant).toBe(original.showFloatingAssistant);
       expect(restored.dailyRequestCount).toBe(original.dailyRequestCount);
       expect(restored.dailyRequestDate).toBe(original.dailyRequestDate);
     });
@@ -250,6 +253,7 @@ describe('AiProviderConfig', () => {
 
       expect(config.provider).toBe('mock');
       expect(config.isEnabled).toBe(true);
+      expect(config.showFloatingAssistant).toBe(true);
     });
 
     it('should default dailyRequestCount to 0 when not provided', () => {
@@ -280,6 +284,7 @@ describe('AiProviderConfig', () => {
       expect(config.dailyRequestCount).toBe(0);
       expect(config.dailyRequestDate).toBeUndefined();
       expect(config.isEnabled).toBe(true);
+      expect(config.showFloatingAssistant).toBe(true);
       expect(config.apiKey).toBeUndefined();
     });
 
@@ -296,6 +301,7 @@ describe('AiProviderConfig', () => {
       expect(config.dailyRequestCount).toBe(0);
       expect(config.dailyRequestDate).toBeUndefined();
       expect(config.isEnabled).toBe(true);
+      expect(config.showFloatingAssistant).toBe(true);
     });
 
     it('should update conversation context settings', () => {
@@ -353,6 +359,15 @@ describe('AiProviderConfig', () => {
       config.updateConfig({ isEnabled: false });
 
       expect(config.isEnabled).toBe(false);
+    });
+
+    it('should update showFloatingAssistant without disabling chat', () => {
+      const config = AiProviderConfig.defaultForCompany(companyId);
+
+      config.updateConfig({ showFloatingAssistant: false });
+
+      expect(config.showFloatingAssistant).toBe(false);
+      expect(config.isEnabled).toBe(true);
     });
 
     it('should always update updatedAt timestamp', () => {

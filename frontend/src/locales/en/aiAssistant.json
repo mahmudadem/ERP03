@@ -65,6 +65,7 @@
     "quickPnlPrompt": "Generate a profit and loss report",
     "quickBs": "Balance Sheet",
     "quickBsPrompt": "What is the current balance sheet?",
+    "openFloatingAssistant": "Open AI Assistant",
     "feedback": {
       "positive": "Helpful",
       "negative": "Not helpful"
@@ -146,6 +147,8 @@
     "endpointPresetLocked": "Switch to \"Custom\" to edit the endpoint URL.",
     "enableAssistant": "Enable AI Assistant",
     "enableAssistantDesc": "When disabled, users cannot access the AI Assistant chat.",
+    "showFloatingAssistant": "Show Floating AI Launcher",
+    "showFloatingAssistantDesc": "Show the AI shortcut button across ERP pages. Users can still open AI Assistant from the menu when this is off.",
     "runtimeMode": "Connection Mode",
     "runtimeModeDesc": "Choose how your company connects to AI services.",
     "runtimeModeBYOK": "Bring Your Own Key",

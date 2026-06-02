@@ -17,6 +17,22 @@ If a conversation has no title yet (rare), it falls back to showing "New convers
 
 ---
 
+## Floating AI Launcher
+
+The floating AI button is a shortcut to open the assistant from normal ERP pages.
+
+Company admins can control this shortcut from **AI Assistant -> Settings -> Provider**:
+
+1. Turn **Show Floating AI Launcher** on to show the shortcut across ERP pages.
+2. Turn it off to hide the floating shortcut.
+3. Save the settings.
+
+When the shortcut is hidden, users can still open AI Assistant from the normal menu if they have permission. This option only controls the floating button. It does not disable AI chat, change the provider, or change permissions.
+
+The launcher icon uses the AI brain/sparkles visual style so it is visually distinct from normal chat or support buttons.
+
+---
+
 ## How to Use
 
 1. Click the **☰ menu icon** in the top-left of the AI chat widget (or the sidebar toggle on the full page)

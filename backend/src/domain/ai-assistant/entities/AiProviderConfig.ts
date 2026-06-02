@@ -58,6 +58,7 @@ export interface AiProviderConfigProps {
   allowedRuntimeModes?: AiTenantRuntimeMode[]; // Super Admin restriction: which modes tenant may select
   allowUnverifiedModels?: boolean; // HYBRID LOGIC: Allow models without full certification (Warn but Allow)
   aiReportMode?: AiReportMode; // 'standard' = old summary tools, 'authoritative' = registry-based full-context tools
+  showFloatingAssistant?: boolean; // Whether the global floating AI launcher is shown in the ERP shell
   updatedAt: Date;
 }
 
@@ -87,6 +88,8 @@ export class AiProviderConfig implements AiProviderConfigProps {
     /** HYBRID LOGIC: Allow models without full certification (Warn but Allow) */
     public allowUnverifiedModels: boolean = false,
     public aiReportMode: AiReportMode = 'standard',
+    /** Whether the global floating AI launcher is shown in the ERP shell */
+    public showFloatingAssistant: boolean = true,
   ) {}
 
   static create(input: {
@@ -116,7 +119,9 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       'BYOK',
       ['BYOK', 'CREDITS'],
-      false                 // allowUnverifiedModels
+      false,                // allowUnverifiedModels
+      'standard',
+      true                  // showFloatingAssistant
     );
   }
 
@@ -142,7 +147,9 @@ export class AiProviderConfig implements AiProviderConfigProps {
       undefined,
       'BYOK',
       ['BYOK', 'CREDITS'],
-      false         // allowUnverifiedModels
+      false,        // allowUnverifiedModels
+      'standard',
+      true          // showFloatingAssistant
     );
   }
 
@@ -163,6 +170,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
     if (updates.runtimeMode !== undefined) this.runtimeMode = updates.runtimeMode;
     if (updates.allowedRuntimeModes !== undefined) this.allowedRuntimeModes = updates.allowedRuntimeModes;
     if (updates.allowUnverifiedModels !== undefined) this.allowUnverifiedModels = updates.allowUnverifiedModels;
+    if (updates.showFloatingAssistant !== undefined) this.showFloatingAssistant = updates.showFloatingAssistant;
     // Note: dailyRequestCount and dailyRequestDate are NOT updated via updateConfig
     // They are managed exclusively by AiRateLimiterService
     this.updatedAt = new Date();
@@ -233,6 +241,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
       allowedRuntimeModes: this.allowedRuntimeModes,
       allowUnverifiedModels: this.allowUnverifiedModels, // HYBRID logic
       aiReportMode: this.aiReportMode,
+      showFloatingAssistant: this.showFloatingAssistant,
       updatedAt: this.updatedAt.toISOString(),
       hasApiKey: !!this.apiKey, // Indicate presence without revealing value
     };
@@ -265,6 +274,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
       allowedRuntimeModes: this.allowedRuntimeModes,
       allowUnverifiedModels: this.allowUnverifiedModels, // HYBRID logic
       aiReportMode: this.aiReportMode,
+      showFloatingAssistant: this.showFloatingAssistant,
       updatedAt: this.updatedAt.toISOString(),
     };
   }
@@ -320,6 +330,7 @@ export class AiProviderConfig implements AiProviderConfigProps {
       allowedRuntimeModes,
       data.allowUnverifiedModels !== undefined ? Boolean(data.allowUnverifiedModels) : false,
       ['standard', 'authoritative'].includes(data.aiReportMode) ? data.aiReportMode : 'standard',
+      data.showFloatingAssistant !== undefined ? Boolean(data.showFloatingAssistant) : true,
     );
   }
 }
