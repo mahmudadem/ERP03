@@ -49,9 +49,6 @@ export interface SalesSettingsProps {
   allowCreditOverride?: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  /** When true, posting a Sales Invoice parks it as PENDING_APPROVAL with no
-   *  financial effect until it is explicitly approved. Default false. */
-  requireApprovalBeforePosting?: boolean;
   defaultARAccountId?: string;
   /** Parent account under which per-customer AR sub-accounts are auto-created. */
   arParentAccountId?: string;
@@ -92,7 +89,6 @@ export class SalesSettings {
   allowCreditOverride: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  requireApprovalBeforePosting: boolean;
   defaultARAccountId?: string;
   arParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -133,7 +129,6 @@ export class SalesSettings {
     this.allowCreditOverride = props.allowCreditOverride !== false;
     this.allowDirectInvoicing = props.allowDirectInvoicing;
     this.requireSOForStockItems = props.requireSOForStockItems;
-    this.requireApprovalBeforePosting = props.requireApprovalBeforePosting === true;
     this.defaultARAccountId = props.defaultARAccountId?.trim() || undefined;
     this.arParentAccountId = props.arParentAccountId?.trim() || undefined;
     this.partyAccountCodeFormat = props.partyAccountCodeFormat?.trim() || undefined;
@@ -225,7 +220,6 @@ export class SalesSettings {
       allowCreditOverride: true,
       allowDirectInvoicing: true,
       requireSOForStockItems: false,
-      requireApprovalBeforePosting: false,
       defaultARAccountId,
       defaultRevenueAccountId,
       allowOverDelivery: false,
@@ -257,7 +251,6 @@ export class SalesSettings {
       allowCreditOverride: this.allowCreditOverride,
       allowDirectInvoicing: this.allowDirectInvoicing,
       requireSOForStockItems: this.requireSOForStockItems,
-      requireApprovalBeforePosting: this.requireApprovalBeforePosting,
       defaultARAccountId: this.defaultARAccountId,
       arParentAccountId: this.arParentAccountId,
       partyAccountCodeFormat: this.partyAccountCodeFormat,
@@ -298,7 +291,6 @@ export class SalesSettings {
       allowCreditOverride: data.allowCreditOverride !== false,
       allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requireSOForStockItems: data.requireSOForStockItems ?? false,
-      requireApprovalBeforePosting: data.requireApprovalBeforePosting === true,
       defaultARAccountId: data.defaultARAccountId,
       arParentAccountId: data.arParentAccountId,
       partyAccountCodeFormat: data.partyAccountCodeFormat,

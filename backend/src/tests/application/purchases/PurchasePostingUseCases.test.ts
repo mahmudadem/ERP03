@@ -666,7 +666,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
   });
 
-  it('A1) PostPI with requireApprovalBeforePosting parks as PENDING_APPROVAL (no financial effect)', async () => {
+  it('A1) PostPI parks as PENDING_APPROVAL when central approval policy rejects unapproved post (no financial effect)', async () => {
     const settings = makeSettings('SIMPLE');
     const vendor = makeVendor();
     const stockItem = makeItem('stock-appr', { trackInventory: true, inventoryAssetAccountId: 'INV-700' });

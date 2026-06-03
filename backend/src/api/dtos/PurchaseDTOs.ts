@@ -18,7 +18,6 @@ export interface PurchaseSettingsDTO {
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  requireApprovalBeforePosting: boolean;
   defaultAPAccountId?: string;
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -287,7 +286,6 @@ export class PurchaseDTOMapper {
       workflowMode: settings.workflowMode,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requirePOForStockItems: settings.requirePOForStockItems,
-      requireApprovalBeforePosting: settings.requireApprovalBeforePosting,
       defaultAPAccountId: settings.defaultAPAccountId,
       apParentAccountId: settings.apParentAccountId,
       partyAccountCodeFormat: settings.partyAccountCodeFormat,

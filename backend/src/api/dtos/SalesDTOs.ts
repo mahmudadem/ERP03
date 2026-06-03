@@ -41,7 +41,6 @@ export interface SalesSettingsDTO {
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  requireApprovalBeforePosting: boolean;
   defaultARAccountId?: string;
   arParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -391,7 +390,6 @@ export class SalesDTOMapper {
       workflowMode: settings.workflowMode,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
-      requireApprovalBeforePosting: settings.requireApprovalBeforePosting,
       defaultARAccountId: settings.defaultARAccountId,
       arParentAccountId: settings.arParentAccountId,
       partyAccountCodeFormat: settings.partyAccountCodeFormat,

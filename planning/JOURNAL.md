@@ -2,6 +2,32 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Stage 2c: Retire Per-Module `requireApprovalBeforePosting` Flag
+
+**Task:** Finish Stage 2c of the Posting-Authority fix plan — remove the per-module approval flag now that Stage 2b drives parking from the central `AccountingPolicyRegistry`.
+**Agent:** Claude (Opus 4.7) — continuation of a prior session that ran out of limits mid-WIP.
+**Branch:** `main` (in `d:\DEV2026\ERP03-posting-authority` worktree)
+**Time spent:** ~0.5h (audit + frontend cleanup + report + commit)
+
+**What changed:**
+- Removed `requireApprovalBeforePosting` field from `SalesSettings`/`PurchaseSettings` (entity, constructor, `toFirestore`/`fromFirestore`, defaults).
+- Removed from `SalesSettingsDTO`/`PurchaseSettingsDTO` and the DTO mappers.
+- Removed from `InitializeSalesInput`/`UpdateSalesSettingsInput` and the purchase equivalents, and the corresponding use-case bodies.
+- Removed from frontend `salesApi.ts`/`purchasesApi.ts` types and the Sales/Purchase Settings page UI (toggle + payload mapping).
+- Renamed the two A1 posting test cases to describe the central-policy driver instead of the retired flag.
+
+**Reverted from prior WIP:**
+- Stage 4 in-repo enforcement (`policyRegistry` injection into `FirestoreLedgerRepository`/`PrismaLedgerRepository`) — the prior agent's WIP would have double-run policies and re-introduced the forged-stamp problem Stage 1 fixed by reading `voucher.isApproved` instead of caller-passed `approved`. Stage 4 needs the `PostingGateway` design (plan's Option B). Filed in the brief as the next staged task.
+
+**Verification:**
+- `cd backend && npx tsc --noEmit` — clean.
+- `cd frontend && npx tsc --noEmit` — clean.
+- `npx jest --testPathPatterns="(SalesPostingUseCases|PurchasePostingUseCases|PostingAuthority|SalesSettingsUseCases|PurchaseSettingsUseCases)"` — 5 suites, 47 passed, 1 todo (Stage 4 placeholder).
+
+**Report:** [done/158-stage-2c-retire-per-module-approval-flag.md](./done/158-stage-2c-retire-per-module-approval-flag.md).
+
+---
+
 ## 2026-06-03 (Wed) — Decouple Reporting from Voucher & Ledger Repository (Stage 4 / F8)
 
 **Task:** Decouple Sales/Purchases reporting from direct imports of `ILedgerRepository` and dependency on `IVoucherRepository` (F8).

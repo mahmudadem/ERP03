@@ -20,7 +20,6 @@ export interface PurchaseSettingsDTO {
   workflowMode: WorkflowMode;
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  requireApprovalBeforePosting: boolean;
   defaultAPAccountId?: string;
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -324,7 +323,6 @@ export interface InitializePurchasesPayload {
   partyAccountCodeFormat?: string;
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
-  requireApprovalBeforePosting?: boolean;
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;

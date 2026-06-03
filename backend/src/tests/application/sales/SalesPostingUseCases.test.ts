@@ -719,7 +719,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(2);
   });
 
-  it('A1) PostSI with requireApprovalBeforePosting parks as PENDING_APPROVAL (no financial effect)', async () => {
+  it('A1) PostSI parks as PENDING_APPROVAL when central approval policy rejects unapproved post (no financial effect)', async () => {
     const settings = makeSettings('SIMPLE');
     const customer = makeCustomer();
     const stockItem = makeItem('stock-appr', {

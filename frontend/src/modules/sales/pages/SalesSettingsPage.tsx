@@ -209,7 +209,6 @@ const SalesSettingsPage: React.FC = () => {
         workflowMode: settings.workflowMode,
         allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
         requireSOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requireSOForStockItems,
-        requireApprovalBeforePosting: settings.requireApprovalBeforePosting,
         arParentAccountId: settings.arParentAccountId || undefined,
         partyAccountCodeFormat: (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim(),
         defaultRevenueAccountId: settings.defaultRevenueAccountId,
@@ -417,18 +416,6 @@ const SalesSettingsPage: React.FC = () => {
                   </div>
                 )}
 
-                <label className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-indigo-200 transition shadow-sm mt-3">
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">Require Approval Before Posting</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-tight">Invoices park as &ldquo;Pending approval&rdquo; and post only after an approver approves them.</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.requireApprovalBeforePosting}
-                    onChange={(e) => updateSetting('requireApprovalBeforePosting', e.target.checked)}
-                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                </label>
               </div>
 
               <div className="space-y-6">

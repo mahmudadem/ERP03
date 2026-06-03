@@ -59,7 +59,6 @@ export interface SalesSettingsDTO {
   allowCreditOverride?: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  requireApprovalBeforePosting: boolean;
   defaultARAccountId?: string;
   arParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -377,7 +376,6 @@ export interface InitializeSalesPayload {
   defaultRevenueAccountId?: string;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
-  requireApprovalBeforePosting?: boolean;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;

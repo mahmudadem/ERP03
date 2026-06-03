@@ -17,9 +17,6 @@ export interface PurchaseSettingsProps {
   workflowMode?: WorkflowMode;
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  /** When true, posting a Purchase Invoice parks it as PENDING_APPROVAL with no
-   *  financial effect until it is explicitly approved. Default false. */
-  requireApprovalBeforePosting?: boolean;
   defaultAPAccountId?: string;
   /** Parent account under which per-vendor AP sub-accounts are auto-created. */
   apParentAccountId?: string;
@@ -51,7 +48,6 @@ export class PurchaseSettings {
   workflowMode: WorkflowMode;
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  requireApprovalBeforePosting: boolean;
   defaultAPAccountId?: string;
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
@@ -82,7 +78,6 @@ export class PurchaseSettings {
     this.workflowMode = props.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL';
     this.allowDirectInvoicing = props.allowDirectInvoicing;
     this.requirePOForStockItems = props.requirePOForStockItems;
-    this.requireApprovalBeforePosting = props.requireApprovalBeforePosting === true;
     this.defaultAPAccountId = props.defaultAPAccountId?.trim() || undefined;
     this.apParentAccountId = props.apParentAccountId?.trim() || undefined;
     this.partyAccountCodeFormat = props.partyAccountCodeFormat?.trim() || undefined;
@@ -113,7 +108,6 @@ export class PurchaseSettings {
       workflowMode: 'OPERATIONAL',
       allowDirectInvoicing: true,
       requirePOForStockItems: false,
-      requireApprovalBeforePosting: false,
       defaultAPAccountId,
       allowOverDelivery: false,
       overDeliveryTolerancePct: 0,
@@ -136,7 +130,6 @@ export class PurchaseSettings {
       workflowMode: this.workflowMode,
       allowDirectInvoicing: this.allowDirectInvoicing,
       requirePOForStockItems: this.requirePOForStockItems,
-      requireApprovalBeforePosting: this.requireApprovalBeforePosting,
       defaultAPAccountId: this.defaultAPAccountId,
       apParentAccountId: this.apParentAccountId,
       partyAccountCodeFormat: this.partyAccountCodeFormat,
@@ -168,7 +161,6 @@ export class PurchaseSettings {
       workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
       allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requirePOForStockItems: data.requirePOForStockItems ?? false,
-      requireApprovalBeforePosting: data.requireApprovalBeforePosting === true,
       defaultAPAccountId: data.defaultAPAccountId,
       apParentAccountId: data.apParentAccountId,
       partyAccountCodeFormat: data.partyAccountCodeFormat,
