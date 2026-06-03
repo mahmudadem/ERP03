@@ -36,6 +36,8 @@ export class PersonaNotAllowedError extends PostingError {
       code: 'PERSONA_NOT_ALLOWED',
       message,
       category: ErrorCategory.POLICY,
+      // Persona governance is owned by the originating module's guard, not accounting.
+      guard: details.module,
       details: { violations },
     });
     this.name = 'PersonaNotAllowedError';

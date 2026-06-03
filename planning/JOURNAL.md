@@ -2,6 +2,32 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Stage 5: Uniform Rejection Contract
+
+**Task:** Law 5 — every guard signs its refusal with a uniform `{ guard, code, message, fieldHints }`.
+**Agent:** Claude (Opus 4.7).
+**Branch:** `main` (worktree `d:\DEV2026\ERP03-posting-authority`).
+**Time spent:** ~1h.
+
+**What changed:**
+- New `RejectionContract` type + `toRejectionContract(err)` mapper (`domain/shared/errors`). Maps
+  PeriodLockedError→accounting, PersonaNotAllowedError→its module, PostingError policy violations→
+  accounting, CreditLimitExceededError→sales, BusinessError/AppError→inferred from ErrorCode prefix;
+  null for infrastructure/unknown.
+- Added `GuardName` + optional `guard` to the shared `AppError`; tagged `guard` on PeriodLockedError
+  and PersonaNotAllowedError; `createPostingError` takes an optional guard (default accounting).
+- Wired the active `errors/errorHandler.ts` to surface `guard` + `code` on PeriodLocked/Posting/
+  Business responses, and **added a CreditLimitExceededError 422 branch** (it previously fell through
+  to the 500 unknown handler).
+- New `RejectionContract.test.ts` (6 tests).
+
+**Verification:** `tsc` clean; full backend suite **139 suites, 1307 passed, 0 failed** (one AI-cert
+test flaky under parallel load — green in isolation and on re-run; unrelated).
+
+**Report:** [done/160-stage-5-uniform-rejection-contract.md](./done/160-stage-5-uniform-rejection-contract.md).
+
+---
+
 ## 2026-06-03 (Wed) — Stage 4: PostingGateway (Guard at the Door)
 
 **Task:** Build the single mandatory choke point in front of every ledger write.

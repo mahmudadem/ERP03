@@ -5,6 +5,8 @@ import { ProviderError } from './ProviderErrors';
 import { ApiError as HttpApiError } from '../api/errors/ApiError';
 import { PeriodLockedError } from '../domain/accounting/errors/PeriodLockedError';
 import { PostingError } from '../domain/shared/errors/AppError';
+import { CreditLimitExceededError } from '../domain/sales/errors/CreditLimitExceededError';
+import { toRejectionContract } from '../domain/shared/errors/RejectionContract';
 
 function isFirestoreTransactionError(err: Error): boolean {
   const msg = err.message || '';
@@ -29,6 +31,10 @@ export function errorHandler(
     url: req.url,
     method: req.method,
   });
+
+  // Law 5: every guard rejection carries a uniform { guard, code, message, fieldHints } contract,
+  // surfaced consistently on the response so the caller always sees which guard refused and why.
+  const rejection = toRejectionContract(err);
 
   const maybeApiError = err as Error & { statusCode?: number; code?: string };
   if (
@@ -65,9 +71,37 @@ export function errorHandler(
       success: false,
       error: err.toJSON(),
     };
-    
+    // Attach the uniform guard attribution (Law 5).
+    if (rejection) {
+      (response.error as any).guard = rejection.guard;
+    }
+
     const statusCode = getStatusCode(err.severity);
     return res.status(statusCode).json(response);
+  }
+
+  // Credit limit (Sales guard) → 422 with the uniform contract.
+  if (err instanceof CreditLimitExceededError) {
+    return res.status(422).json({
+      success: false,
+      error: {
+        guard: rejection?.guard,
+        code: err.code,
+        message: err.message,
+        fieldHints: rejection?.fieldHints,
+        severity: ErrorSeverity.ERROR,
+        timestamp: new Date().toISOString(),
+        details: {
+          companyId: err.companyId,
+          customerId: err.customerId,
+          customerName: err.customerName,
+          creditLimit: err.creditLimit,
+          currentExposure: err.currentExposure,
+          orderAmount: err.orderAmount,
+          projectedExposure: err.projectedExposure,
+        },
+      },
+    });
   }
 
   // Period-locked posting errors → 422
@@ -75,8 +109,10 @@ export function errorHandler(
     const response = {
       success: false,
       error: {
+        guard: rejection?.guard,
         code: 'PERIOD_LOCKED',
         message: err.message,
+        fieldHints: rejection?.fieldHints,
         severity: ErrorSeverity.ERROR,
         timestamp: new Date().toISOString(),
         tier: err.tier,
@@ -88,7 +124,12 @@ export function errorHandler(
   }
 
   if (err instanceof PostingError || err.name === 'PostingError') {
-    return res.status(400).json((err as PostingError).toJSON());
+    const json = (err as PostingError).toJSON();
+    // Attach the uniform guard attribution alongside the structured posting error.
+    if (rejection) {
+      (json.error as any).guard = rejection.guard;
+    }
+    return res.status(400).json(json);
   }
 
   // Detect Firestore transaction read-after-write violations

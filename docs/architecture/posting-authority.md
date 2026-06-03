@@ -152,7 +152,7 @@ Which paths enforce vs. exempt today:
 | No forged "approved" stamp | ✅ **Stage 1 + 4** — approval is derived from the caller's *real* state inside the gateway, for every path |
 | Approval owned in Accounting (one rulebook + scope) | ✅ solved (Stage 2b/2c — per-module flag retired) |
 | Period lock has one implementation | ✅ holds — `PeriodLockService` is a thin adapter delegating to `PeriodLockPolicy` |
-| Each guard signs its refusal (uniform contract) | ⚠️ partial — typed errors exist but no uniform `{ guard, code }` contract yet (Stage 5) |
+| Each guard signs its refusal (uniform contract) | ✅ **Stage 5** — `toRejectionContract(err)` maps every guard error onto `{ guard, code, message, fieldHints }`; the error handler surfaces `guard` + `code` consistently |
 | All-or-nothing transaction | ✅ holds for postings |
 
 **Remaining (post-Stage-5):** Stage 4b — fold the system-voucher exemptions into the policy set so
