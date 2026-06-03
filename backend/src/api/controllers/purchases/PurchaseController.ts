@@ -19,6 +19,7 @@ import {
 import {
   CreatePurchaseInvoiceUseCase,
   CreateAndPostPurchaseInvoiceUseCase,
+  ApprovePurchaseInvoiceUseCase,
   GetPurchaseInvoiceUseCase,
   ListPurchaseInvoicesUseCase,
   PostPurchaseInvoiceUseCase,
@@ -55,6 +56,7 @@ import {
   GetPurchasesByItemUseCase,
 } from '../../../application/purchases/use-cases/PurchasesAnalyticsUseCases';
 import { GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
+import { GetVoucherUseCase } from '../../../application/accounting/use-cases/VoucherUseCases';
 import { PurchasesInventoryService } from '../../../application/inventory/services/PurchasesInventoryService';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
 import { GRNStatus } from '../../../domain/purchases/entities/GoodsReceipt';
@@ -172,14 +174,20 @@ export class PurchaseController {
         diContainer.ledgerRepository,
         diContainer.companyCurrencyRepository,
         diContainer.accountRepository,
-        new VoucherValidationService()
+        new VoucherValidationService(),
+        undefined,
+        diContainer.policyRegistry as any
       );
     }
 
     return new SubledgerVoucherPostingService(
       diContainer.voucherRepository,
       diContainer.ledgerRepository,
-      diContainer.companyCurrencyRepository
+      diContainer.companyCurrencyRepository,
+      undefined,
+      undefined,
+      undefined,
+      diContainer.policyRegistry as any
     );
   }
 
@@ -739,6 +747,29 @@ export class PurchaseController {
     }
   }
 
+  static async approvePI(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const userId = PurchaseController.getUserId(req);
+
+      const postUseCase = PurchaseController.buildPostPurchaseInvoiceUseCase();
+      const approveUseCase = new ApprovePurchaseInvoiceUseCase(
+        diContainer.purchaseInvoiceRepository,
+        postUseCase
+      );
+
+      const settlementInput = (req as any).body?.settlementInput;
+      const pi = await approveUseCase.execute(companyId, id, { userId }, settlementInput);
+      (res as any).json({
+        success: true,
+        data: PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async createAndPostPI(req: Request, res: Response, next: NextFunction) {
     try {
       validateCreatePurchaseInvoiceInput((req as any).body);
@@ -975,12 +1006,16 @@ export class PurchaseController {
         diContainer.accountRepository,
         diContainer.companyRepository,
       );
+      const getVoucherUseCase = new GetVoucherUseCase(
+        diContainer.voucherRepository,
+        diContainer.permissionChecker,
+      );
       const useCase = new GetLedgerBackedVendorStatementUseCase(
         diContainer.partyRepository,
         diContainer.purchaseInvoiceRepository,
         diContainer.purchaseOrderRepository,
         accountStatementUseCase,
-        diContainer.voucherRepository,
+        getVoucherUseCase,
       );
 
       const result = await useCase.execute({

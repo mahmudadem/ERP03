@@ -3,6 +3,7 @@ import { IAccountRepository } from '../../../repository/interfaces/accounting/IA
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
 import { getDefaultBalanceNature } from '../../../domain/accounting/entities/Account';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
+export { AccountStatementEntry } from '../../../repository/interfaces/accounting/ILedgerRepository';
 
 const toMillis = (value: any): number => {
   if (!value) return 0;

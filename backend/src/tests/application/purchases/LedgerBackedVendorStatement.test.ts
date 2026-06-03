@@ -5,10 +5,10 @@ import {
   VendorStatementMissingAccountError,
 } from '../../../application/purchases/use-cases/PurchasesReportingUseCases';
 import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { IPurchaseInvoiceRepository } from '../../../repository/interfaces/purchases/IPurchaseInvoiceRepository';
 import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchases/IPurchaseOrderRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
+import { GetVoucherUseCase } from '../../../application/accounting/use-cases/VoucherUseCases';
 
 const companyId = 'cmp-vendor-statement';
 const vendorId = 'vendor-1';
@@ -29,10 +29,14 @@ const orderRepo = (orders: any[] = []): jest.Mocked<IPurchaseOrderRepository> =>
     list: jest.fn(async () => orders),
   } as unknown as jest.Mocked<IPurchaseOrderRepository>);
 
-const voucherRepo = (vouchers: Record<string, any>): jest.Mocked<IVoucherRepository> =>
+const getVoucherUseCase = (vouchers: Record<string, any>): GetVoucherUseCase =>
   ({
-    findById: jest.fn(async (_companyId: string, voucherId: string) => vouchers[voucherId] ?? null),
-  } as unknown as jest.Mocked<IVoucherRepository>);
+    execute: jest.fn(async (_companyId: string, _userId: string, voucherId: string) => {
+      const v = vouchers[voucherId];
+      if (!v) throw new Error('Voucher not found');
+      return v;
+    }),
+  } as unknown as GetVoucherUseCase);
 
 const accountStatement = (data: any): GetAccountStatementUseCase =>
   ({
@@ -46,7 +50,7 @@ describe('GetLedgerBackedVendorStatementUseCase', () => {
       invoiceRepo(),
       orderRepo(),
       accountStatement({ entries: [] }),
-      voucherRepo({}),
+      getVoucherUseCase({}),
     );
 
     await expect(useCase.execute({
@@ -96,7 +100,7 @@ describe('GetLedgerBackedVendorStatementUseCase', () => {
       invoiceRepo([{ id: 'pi-1', invoiceNumber: 'PI-1001', vendorInvoiceNumber: 'SUP-9', invoiceDate: '2026-05-05', dueDate: undefined, grandTotalBase: 800, outstandingAmountBase: 550 }]),
       orderRepo([{ id: 'po-1', orderNumber: 'PO-1', orderDate: '2026-05-01', expectedDeliveryDate: '2026-05-20', status: 'CONFIRMED', grandTotalBase: 300, notes: '', lines: [{ orderedQty: 3, invoicedQty: 1, lineTotalBase: 300, taxAmountBase: 0 }] }]),
       statementUseCase,
-      voucherRepo({
+      getVoucherUseCase({
         'v-pi': {
           id: 'v-pi',
           voucherNo: 'PI-1001',

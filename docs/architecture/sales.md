@@ -151,6 +151,21 @@ Customer-specific overrides on the Party:
 
 The Customers list page at `/sales/customers` is a filtered view of the Party API.
 
+## Approval before posting (2026-06-03)
+
+In Stage 2b, the Sales module is decoupled entirely from settings-based approval flags.
+
+- **Decoupled Posting Flow:** `PostSalesInvoiceUseCase` does NOT read local settings or check approval flags. It simply attempts to post the document, passing the real approval state (`approved: !!approvalContext`) directly to the `SubledgerVoucherPostingService`.
+- **Reactive Guard Rejection & Parking:** If the central accounting policy requires approval and the document is not approved, the posting service throws a `PostingError` with the code `APPROVAL_REQUIRED`.
+- **Safe Transactional Status Parking:** The use case catches `APPROVAL_REQUIRED`, rolls back any database writes (via the transaction boundary), and executes a mini serializable transaction to safely park the document status to `PENDING_APPROVAL` without race conditions.
+- **Approve Re-entry:** `ApproveSalesInvoiceUseCase` re-enters `PostSalesInvoiceUseCase.execute` with `approvalContext` set, which sets the document status to `DRAFT` in-memory and passes `approved: true` to succeed.
+- Status `PENDING_APPROVAL` is added to `SIStatus`. Frontend shows an amber badge, an
+  "Approve & Post" action on the detail page, and a "Pending Approval" list filter.
+- Authority is currently "anyone who can post" (product decision: payload-only, no separate role
+  gate). Purchases and Inventory replicate this pattern in later slices.
+
+See [133-sales-approval-before-posting.md](../../planning/done/133-sales-approval-before-posting.md).
+
 ## Accounting Integration
 
 Every posted SI / SR / Receipt calls into Accounting's `PostVoucherUseCase` (Accounting module is the single gate). Sales does not write to the ledger directly — it constructs the voucher and submits.

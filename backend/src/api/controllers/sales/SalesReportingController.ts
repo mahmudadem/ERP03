@@ -7,6 +7,7 @@ import {
   CustomerStatementMissingAccountError,
 } from '../../../application/sales/use-cases/ReceivablesReportingUseCases';
 import { GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
+import { GetVoucherUseCase } from '../../../application/accounting/use-cases/VoucherUseCases';
 import {
   GetSalesByCustomerUseCase,
   GetSalesByItemUseCase,
@@ -87,12 +88,16 @@ export class SalesReportingController {
         diContainer.accountRepository,
         diContainer.companyRepository,
       );
+      const getVoucherUseCase = new GetVoucherUseCase(
+        diContainer.voucherRepository,
+        diContainer.permissionChecker,
+      );
       const useCase = new GetLedgerBackedCustomerStatementUseCase(
         diContainer.partyRepository,
         diContainer.salesInvoiceRepository,
         diContainer.salesOrderRepository,
         accountStatementUseCase,
-        diContainer.voucherRepository,
+        getVoucherUseCase,
       );
       const result = await useCase.execute({
         companyId,

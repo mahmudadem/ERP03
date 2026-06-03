@@ -10,7 +10,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import {
   PostGoodsReceiptUseCase,
 } from '../../../application/purchases/use-cases/GoodsReceiptUseCases';
-import { PostPurchaseInvoiceUseCase } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
+import { PostPurchaseInvoiceUseCase, ApprovePurchaseInvoiceUseCase } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 
 const COMPANY_ID = 'cmp-1';
@@ -662,6 +662,151 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const posted = await useCase.execute(COMPANY_ID, pi.id);
     expect(posted.status).toBe('POSTED');
     expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    expect(voucherRepo.save).toHaveBeenCalledTimes(1);
+    expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
+  });
+
+  it('A1) PostPI parks as PENDING_APPROVAL when central approval policy rejects unapproved post (no financial effect)', async () => {
+    const settings = makeSettings('SIMPLE');
+    const vendor = makeVendor();
+    const stockItem = makeItem('stock-appr', { trackInventory: true, inventoryAssetAccountId: 'INV-700' });
+    const pi = makePI({ id: 'pi-appr', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
+
+    const inventoryService = makeInventoryService();
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+    const invoiceStore = new Map([[pi.id, pi]]);
+    const invoiceRepo = {
+      getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+      update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
+    };
+
+    const mockTxManager = {
+      runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => {
+        try {
+          return await operation({ id: 'txn-1' });
+        } catch (err) {
+          inventoryService.writeStockMovement.mockClear();
+          voucherRepo.save.mockClear();
+          ledgerRepo.recordForVoucher.mockClear();
+          throw err;
+        }
+      }),
+    };
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      invoiceRepo as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
+      ),
+      undefined,
+      mockTxManager as any
+    );
+
+    const result = await useCase.execute(COMPANY_ID, pi.id);
+    expect(result.status).toBe('PENDING_APPROVAL');
+    expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+  });
+
+  it('A2) ApprovePurchaseInvoiceUseCase runs the real post on a PENDING_APPROVAL invoice', async () => {
+    const settings = makeSettings('SIMPLE');
+    const vendor = makeVendor();
+    const stockItem = makeItem('stock-appr2', { trackInventory: true, inventoryAssetAccountId: 'INV-700' });
+    const pi = makePI({ id: 'pi-appr2', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
+    pi.status = 'PENDING_APPROVAL';
+
+    const inventoryService = makeInventoryService();
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+    const invoiceStore = new Map([[pi.id, pi]]);
+    const invoiceRepo = {
+      getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+      update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
+    };
+
+    const postUseCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      invoiceRepo as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const approveUseCase = new ApprovePurchaseInvoiceUseCase(invoiceRepo as any, postUseCase);
+    const posted = await approveUseCase.execute(COMPANY_ID, pi.id, { userId: 'u-1' });
+
+    expect(posted.status).toBe('POSTED');
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
   });

@@ -119,6 +119,14 @@ export interface AccountingPolicyConfig {
   
   // Legacy field (maps to financialApprovalEnabled for backward compatibility)
   approvalRequired: boolean;
+
+  /**
+   * Per-document-type scope for the approval policy (posting-authority architecture).
+   * Voucher types listed here are EXEMPT from the approval requirement even when
+   * `approvalRequired` is on. Empty/undefined -> no exemptions (all types subject to approval).
+   * Owned in Accounting (the one rulebook); changes should be change-logged.
+   */
+  approvalExemptVoucherTypes?: string[];
   
   // ========== Mode A Controls (Solo/Flexible Mode) ==========
   

@@ -35,6 +35,8 @@ import { IVoucherRepository } from '../../../domain/accounting/repositories/IVou
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
@@ -44,6 +46,7 @@ import {
 } from '../../inventory/services/UomResolutionService';
 import { addDaysToISODate, roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
+import { PostingError } from '../../../domain/shared/errors/AppError';
 
 export type PurchaseInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -172,7 +175,7 @@ export interface UpdatePurchaseInvoiceInput {
 export interface ListPurchaseInvoicesFilters {
   vendorId?: string;
   purchaseOrderId?: string;
-  status?: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  status?: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   paymentStatus?: PaymentStatus;
   limit?: number;
 }
@@ -444,7 +447,8 @@ export class PostPurchaseInvoiceUseCase {
     companyId: string,
     id: string,
     createAccountingEffect: boolean = true,
-    settlementInput?: SettlementInput
+    settlementInput?: SettlementInput,
+    approvalContext?: { approvedBy: string }
   ): Promise<PurchaseInvoice> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
@@ -468,6 +472,10 @@ export class PostPurchaseInvoiceUseCase {
 
     const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
     if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
+
+    if (approvalContext && pi.status === 'PENDING_APPROVAL') {
+      pi.status = 'DRAFT';
+    }
     if (pi.status !== 'DRAFT') throw new Error('Only DRAFT purchase invoices can be posted');
 
     const vendor = await this.partyRepo.getById(companyId, pi.vendorId);
@@ -695,101 +703,121 @@ export class PostPurchaseInvoiceUseCase {
     const resolvedAPId = await resolveAccountCached(apAccountId);
 
     // PHASE 2: TRANSACTION CALLBACK — WRITES ONLY
-    await this.transactionManager.runTransaction(async (transaction) => {
-      // Write inventory movements and stock levels
-      for (const [lineId, { movement, updatedLevel }] of inventoryMovements) {
-        await this.inventoryService.writeStockMovement(movement, transaction);
-        await this.inventoryService.writeStockLevel(updatedLevel, transaction);
-      }
+    try {
+      await this.transactionManager.runTransaction(async (transaction) => {
+        // Write inventory movements and stock levels
+        for (const [lineId, { movement, updatedLevel }] of inventoryMovements) {
+          await this.inventoryService.writeStockMovement(movement, transaction);
+          await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+        }
 
-      // Accumulate voucher lines using pre-resolved accounts
-      const voucherLines: VoucherAccumulatedLine[] = [];
+        // Accumulate voucher lines using pre-resolved accounts
+        const voucherLines: VoucherAccumulatedLine[] = [];
 
-      for (const line of pi.lines) {
-        const resolvedDebitId = resolvedDebitAccounts.get(line.lineId) || '';
-        voucherLines.push({
-          accountId: resolvedDebitId,
-          side: 'Debit',
-          baseAmount: line.lineTotalBase,
-          docAmount: line.lineTotalDoc,
-          notes: `${line.itemName} x ${line.invoicedQty}`,
-          metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, itemId: line.itemId }
-        });
+        for (const line of pi.lines) {
+          const resolvedDebitId = resolvedDebitAccounts.get(line.lineId) || '';
+          voucherLines.push({
+            accountId: resolvedDebitId,
+            side: 'Debit',
+            baseAmount: line.lineTotalBase,
+            docAmount: line.lineTotalDoc,
+            notes: `${line.itemName} x ${line.invoicedQty}`,
+            metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, itemId: line.itemId }
+          });
 
-        if (line.taxAmountBase > 0 && line.taxCodeId) {
-          const resolvedTaxId = resolvedTaxAccounts.get(line.lineId);
-          if (resolvedTaxId) {
-            voucherLines.push({
-              accountId: resolvedTaxId,
-              side: 'Debit',
-              baseAmount: line.taxAmountBase,
-              docAmount: line.taxAmountDoc,
-              notes: `Tax: ${line.taxCode || line.taxCodeId} on ${line.itemName}`,
-              metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, taxCodeId: line.taxCodeId }
-            });
+          if (line.taxAmountBase > 0 && line.taxCodeId) {
+            const resolvedTaxId = resolvedTaxAccounts.get(line.lineId);
+            if (resolvedTaxId) {
+              voucherLines.push({
+                accountId: resolvedTaxId,
+                side: 'Debit',
+                baseAmount: line.taxAmountBase,
+                docAmount: line.taxAmountDoc,
+                notes: `Tax: ${line.taxCode || line.taxCodeId} on ${line.itemName}`,
+                metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, taxCodeId: line.taxCodeId }
+              });
+            }
           }
         }
-      }
 
-      voucherLines.push({
-        accountId: resolvedAPId,
-        side: 'Credit',
-        baseAmount: pi.grandTotalBase,
-        docAmount: pi.grandTotalDoc,
-        notes: `AP - ${pi.vendorName} - ${pi.invoiceNumber}`,
-        metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, vendorId: pi.vendorId }
-      });
+        voucherLines.push({
+          accountId: resolvedAPId,
+          side: 'Credit',
+          baseAmount: pi.grandTotalBase,
+          docAmount: pi.grandTotalDoc,
+          notes: `AP - ${pi.vendorName} - ${pi.invoiceNumber}`,
+          metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, vendorId: pi.vendorId }
+        });
 
-      if (shouldPostAccounting) {
-        const voucher = await this.accountingPostingService.postInTransaction(
-          {
-            companyId,
-            voucherType: VoucherType.PURCHASE_INVOICE,
-            voucherNo: `PI-${pi.invoiceNumber}`,
-            date: pi.invoiceDate,
-            description: `PI ${pi.invoiceNumber} - ${pi.vendorName}`,
-            currency: pi.currency,
-            exchangeRate: pi.exchangeRate,
-            lines: voucherLines,
-            metadata: {
-              sourceModule: 'purchases',
-              sourceType: 'PURCHASE_INVOICE',
-              sourceId: pi.id,
+        if (shouldPostAccounting) {
+          const voucher = await this.accountingPostingService.postInTransaction(
+            {
+              companyId,
+              voucherType: VoucherType.PURCHASE_INVOICE,
+              voucherNo: `PI-${pi.invoiceNumber}`,
+              date: pi.invoiceDate,
+              description: `PI ${pi.invoiceNumber} - ${pi.vendorName}`,
+              currency: pi.currency,
+              exchangeRate: pi.exchangeRate,
+              lines: voucherLines,
+              metadata: {
+                sourceModule: 'purchases',
+                sourceType: 'PURCHASE_INVOICE',
+                sourceId: pi.id,
+              },
+              createdBy: pi.createdBy,
+              postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+              reference: pi.invoiceNumber,
+              baseCurrencyOverride: baseCurrency,
+              approved: !!approvalContext,
             },
-            createdBy: pi.createdBy,
-            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
-            reference: pi.invoiceNumber,
-            baseCurrencyOverride: baseCurrency,
-          },
-          transaction
-        );
+            transaction
+          );
 
-        pi.voucherId = voucher.id;
+          pi.voucherId = voucher.id;
+        }
+
+        // --- Process settlements inside the same transaction (atomic) ---
+        if (settlementInput && settlementInput.settlementMode !== 'DEFERRED') {
+          await this.processSettlementsInTransaction(
+            companyId, pi, settlementInput, baseCurrency, transaction
+          );
+        } else {
+          // DEFERRED: ensure payment fields reflect unpaid state
+          pi.paymentStatus = 'UNPAID';
+          pi.paidAmountBase = 0;
+          pi.outstandingAmountBase = pi.grandTotalBase;
+        }
+
+        pi.status = 'POSTED';
+        pi.postedAt = new Date();
+        pi.updatedAt = new Date();
+        await this.purchaseInvoiceRepo.update(pi, transaction);
+
+        if (po) {
+          po.status = updatePOStatus(po);
+          po.updatedAt = new Date();
+          await this.purchaseOrderRepo.update(po, transaction);
+        }
+      });
+    } catch (err: any) {
+      if (err instanceof PostingError && err.appError.code === 'APPROVAL_REQUIRED') {
+        await this.transactionManager.runTransaction(async (tx) => {
+          const latestPi = await this.purchaseInvoiceRepo.getById(companyId, pi.id);
+          if (!latestPi) throw new Error('Purchase invoice not found during parking');
+          if (latestPi.status !== 'DRAFT') {
+            throw new Error(`Cannot park purchase invoice. Expected DRAFT, but current status is ${latestPi.status}`);
+          }
+          latestPi.status = 'PENDING_APPROVAL';
+          latestPi.updatedAt = new Date();
+          await this.purchaseInvoiceRepo.update(latestPi, tx);
+        });
+        pi.status = 'PENDING_APPROVAL';
+        pi.updatedAt = new Date();
+        return pi;
       }
-
-      // --- Process settlements inside the same transaction (atomic) ---
-      if (settlementInput && settlementInput.settlementMode !== 'DEFERRED') {
-        await this.processSettlementsInTransaction(
-          companyId, pi, settlementInput, baseCurrency, transaction
-        );
-      } else {
-        // DEFERRED: ensure payment fields reflect unpaid state
-        pi.paymentStatus = 'UNPAID';
-        pi.paidAmountBase = 0;
-        pi.outstandingAmountBase = pi.grandTotalBase;
-      }
-
-      pi.status = 'POSTED';
-      pi.postedAt = new Date();
-      pi.updatedAt = new Date();
-      await this.purchaseInvoiceRepo.update(pi, transaction);
-
-      if (po) {
-        po.status = updatePOStatus(po);
-        po.updatedAt = new Date();
-        await this.purchaseOrderRepo.update(po, transaction);
-      }
-    });
+      throw err;
+    }
 
     return (await this.purchaseInvoiceRepo.getById(companyId, id))!;
   }
@@ -986,7 +1014,18 @@ export class PostPurchaseInvoiceUseCase {
 
       const postedVoucher = approvedVoucher.post(pi.createdBy, now, PostingLockPolicy.FLEXIBLE_LOCKED);
 
-      await this.ledgerRepo!.recordForVoucher(postedVoucher, transaction);
+      // Single sanctioned ledger door. This system-generated settlement payment is policy-exempt
+      // (Stage 4b will fold settlement postings into the policy set).
+      const gateway = new PostingGateway(this.ledgerRepo!, new VoucherValidationService());
+      await gateway.record(
+        postedVoucher,
+        {
+          userId: pi.createdBy,
+          enforcePolicies: false,
+          exemptionReason: 'system-generated settlement payment for Purchase Invoice (Stage 4b)',
+        },
+        transaction
+      );
       await this.voucherRepo!.save(postedVoucher, transaction);
 
       const paymentId = `pay_${randomUUID()}`;
@@ -1222,6 +1261,28 @@ export class UnpostPurchaseInvoiceUseCase {
   private async isAccountingEngineReady(companyId: string): Promise<boolean> {
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
+  }
+}
+
+export class ApprovePurchaseInvoiceUseCase {
+  constructor(
+    private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
+    private readonly postUseCase: PostPurchaseInvoiceUseCase
+  ) {}
+
+  async execute(
+    companyId: string,
+    id: string,
+    actor: { userId: string; userEmail?: string },
+    settlementInput?: SettlementInput
+  ): Promise<PurchaseInvoice> {
+    const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
+    if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
+    if (pi.status !== 'PENDING_APPROVAL') {
+      throw new Error('Only purchase invoices pending approval can be approved');
+    }
+    // Re-enter the real post with approvalContext set (bypasses the gate).
+    return this.postUseCase.execute(companyId, id, true, settlementInput, { approvedBy: actor.userId });
   }
 }
 

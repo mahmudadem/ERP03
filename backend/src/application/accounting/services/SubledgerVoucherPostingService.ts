@@ -4,11 +4,14 @@ import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntit
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { VoucherPostingStrategyFactory } from '../../../domain/accounting/factories/VoucherPostingStrategyFactory';
+import { IPostingPolicy } from '../../../domain/accounting/policies/IPostingPolicy';
+import { AccountingPolicyConfig } from '../../../domain/accounting/policies/PostingPolicyTypes';
 import { PostingLockPolicy, VoucherStatus, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { PeriodLockService } from './PeriodLockService';
+import { PostingGateway } from './PostingGateway';
 
 export interface PostSubledgerVoucherInput {
   companyId: string;
@@ -22,9 +25,21 @@ export interface PostSubledgerVoucherInput {
   metadata?: Record<string, any>;
   reference?: string | null;
   createdBy: string;
+  /**
+   * The source document's REAL approval state. When `false`, the posting is presented to the
+   * guard as NOT approved, so an active ApprovalRequiredPolicy rejects it before any ledger write.
+   * Omitted/`true` → treated as approved, so existing callers are unaffected (safe-by-default).
+   * The posting path must NOT forge approval; approval is earned by clearing the guard (Law 7).
+   */
+  approved?: boolean;
   postingLockPolicy?: PostingLockPolicy;
   strategyPayload?: Record<string, any>;
   baseCurrencyOverride?: string;
+}
+
+export interface SubledgerAccountingPolicyRegistry {
+  getConfig(companyId: string): Promise<AccountingPolicyConfig>;
+  getEnabledPolicies(companyId: string): Promise<IPostingPolicy[]>;
 }
 
 export class SubledgerVoucherPostingService {
@@ -36,7 +51,8 @@ export class SubledgerVoucherPostingService {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly accountRepo?: IAccountRepository,
     validationService?: VoucherValidationService,
-    private readonly periodLockService?: PeriodLockService
+    private readonly periodLockService?: PeriodLockService,
+    private readonly policyRegistry?: SubledgerAccountingPolicyRegistry
   ) {
     this.validationService = validationService || new VoucherValidationService();
   }
@@ -122,12 +138,26 @@ export class SubledgerVoucherPostingService {
       input.postingLockPolicy || PostingLockPolicy.FLEXIBLE_LOCKED
     );
 
-    this.validationService.validateCore(postedVoucher);
-    if (this.accountRepo) {
-      await this.validationService.validateAccounts(postedVoucher, this.accountRepo);
-    }
+    // The full rulebook + the ledger write go through the single sanctioned choke point. The guard
+    // derives approval from the caller's REAL state (`input.approved`), never the voucher's own
+    // stamp (Law 7), so an active ApprovalRequiredPolicy rejects an unapproved subledger posting
+    // before any ledger row is written.
+    const gateway = new PostingGateway(
+      this.ledgerRepo,
+      this.validationService,
+      this.policyRegistry,
+      this.accountRepo
+    );
+    await gateway.record(
+      postedVoucher,
+      {
+        userId: input.createdBy,
+        approved: input.approved !== false,
+        enforcePolicies: true,
+      },
+      transaction
+    );
 
-    await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
     await this.voucherRepo.save(postedVoucher, transaction);
     return postedVoucher;
   }

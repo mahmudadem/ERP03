@@ -18,6 +18,7 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const STATUS_OPTIONS: Array<{ label: string; value: PIStatus | 'ALL' }> = [
   { label: 'All', value: 'ALL' },
   { label: 'Draft', value: 'DRAFT' },
+  { label: 'Pending Approval', value: 'PENDING_APPROVAL' },
   { label: 'Posted', value: 'POSTED' },
   { label: 'Cancelled', value: 'CANCELLED' },
 ];
@@ -43,6 +44,8 @@ const statusChipClass = (status: PIStatus): string => {
       return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
     case 'CANCELLED':
       return 'bg-rose-50 text-rose-700 ring-rose-200';
+    case 'PENDING_APPROVAL':
+      return 'bg-amber-50 text-amber-700 ring-amber-200';
     case 'DRAFT':
     default:
       return 'bg-slate-100 text-slate-700 ring-slate-200';

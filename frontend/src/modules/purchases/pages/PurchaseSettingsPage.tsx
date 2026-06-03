@@ -398,6 +398,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     Simple workflow automatically enables direct invoicing and hides Purchase Orders and Goods Receipts from end users.
                   </div>
                 )}
+
               </div>
 
               <div className="space-y-6">

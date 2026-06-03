@@ -18,6 +18,12 @@ export enum ErrorCategory {
 }
 
 /**
+ * The guards that can refuse a transaction (Law 5: every guard signs its refusal). A rejection is
+ * always attributable to exactly one owning guard. See docs/architecture/posting-authority.md.
+ */
+export type GuardName = 'accounting' | 'sales' | 'purchases' | 'inventory' | 'system';
+
+/**
  * Individual violation within an error
  */
 export interface ErrorViolation {
@@ -62,6 +68,12 @@ export interface AppError {
    * Error category for classification
    */
   category: ErrorCategory;
+
+  /**
+   * The guard that refused (Law 5). Optional for backward compatibility; `toRejectionContract`
+   * infers a sensible default when absent.
+   */
+  guard?: GuardName;
 
   /**
    * Detailed violation information
@@ -110,12 +122,14 @@ export function createPostingError(
   category: ErrorCategory,
   fieldHints?: string[],
   policyId?: string,
-  correlationId?: string
+  correlationId?: string,
+  guard: GuardName = 'accounting'
 ): PostingError {
   return new PostingError({
     code,
     message,
     category,
+    guard,
     details: {
       violations: [
         {

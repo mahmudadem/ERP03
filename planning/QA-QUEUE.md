@@ -8,6 +8,18 @@
 
 ## 🧪 Ready to Test
 
+### Accounting — Stage 2b Posting-Authority Decoupling & Reactive Approvals
+**Added by:** Antigravity (report 155)
+**What to test:**
+- Note: This is a backend-only structural change that decouples the posting use cases from local module settings. The user-facing behavior remains functionally identical to before but is now driven by central accounting policies.
+- Ensure central approval policies are active (configured in Accounting settings).
+- Create a new Sales Invoice and click **Post**.
+- Expected: The invoice status changes to **Pending Approval** (amber badge) with no stock or ledger impact.
+- Repeat the same for a Purchase Invoice and confirm it also transitions to **Pending Approval**.
+- Log in as an authorized approver, open the document, and click **Approve & Post**.
+- Expected: The status transitions to **Posted** and the ledger entries and stock levels are finalized.
+
+
 ### AI Assistant — Floating Launcher Toggle
 **Added by:** Codex (report 153)
 **What to test:**
@@ -305,5 +317,5 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-06-03 by Antigravity (MDI windows unified and drag/resize fixed)_
+_Last updated: 2026-06-04 — Stage 2b Posting-Authority QA carried in; MDI windows unified earlier._
 

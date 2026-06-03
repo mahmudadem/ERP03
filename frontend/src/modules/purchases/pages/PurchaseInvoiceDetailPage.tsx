@@ -658,7 +658,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         })),
       } : undefined;
 
-      const posted = await purchasesApi.postPI(invoice.id, settlementInput);
+      const action = invoice.status === 'PENDING_APPROVAL' ? purchasesApi.approvePI : purchasesApi.postPI;
+      const posted = await action(invoice.id, settlementInput);
       setInvoice(unwrap<PurchaseInvoiceDTO>(posted));
       setShowSettlement(false);
     } catch (err: any) {
@@ -1383,8 +1384,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             {invoice.vendorInvoiceNumber ? ` • Vendor Ref: ${invoice.vendorInvoiceNumber}` : ''}
           </p>
         </div>
-        <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
-          {invoice.status}
+        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${invoice.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100'}`}>
+          {invoice.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : invoice.status}
         </span>
       </div>
 
@@ -1735,6 +1736,16 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             disabled={busy}
           >
             {busy ? 'Posting...' : 'Post Invoice'}
+          </button>
+        )}
+        {invoice.status === 'PENDING_APPROVAL' && !showSettlement && (
+          <button
+            type="button"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50"
+            onClick={handlePostClick}
+            disabled={busy}
+          >
+            {busy ? 'Approving...' : 'Approve & Post'}
           </button>
         )}
         {invoice.status === 'POSTED' && (

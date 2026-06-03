@@ -1016,7 +1016,8 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           paymentDate: r.paymentDate || undefined,
         })),
       } : undefined;
-      const posted = await salesApi.postSI(invoice.id, settlementInput, periodLockOverrideReason);
+      const action = invoice.status === 'PENDING_APPROVAL' ? salesApi.approveSI : salesApi.postSI;
+      const posted = await action(invoice.id, settlementInput, periodLockOverrideReason);
       const dto = unwrap<SalesInvoiceDTO>(posted);
       setInvoice(dto);
       populateFormFromInvoice(dto);

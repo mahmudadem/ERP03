@@ -69,6 +69,7 @@ router.put('/invoices/:id', SalesController.updateSI);
 router.delete('/invoices/:id', SalesController.deleteSI);
 router.put('/invoices/:id/update-and-post', idempotencyMiddleware, SalesController.updateAndPostSI);
 router.post('/invoices/:id/post', idempotencyMiddleware, SalesController.postSI);
+router.post('/invoices/:id/approve', idempotencyMiddleware, SalesController.approveSI);
 router.post('/invoices/:id/payment-status', SalesController.updatePaymentStatus);
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, SalesController.recordPayment);
 router.get('/invoices/:id/payments', SalesController.getPaymentHistory);

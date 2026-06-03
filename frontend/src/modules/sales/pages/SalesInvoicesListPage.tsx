@@ -22,13 +22,15 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 type SIStatusFilter = SIStatus | 'ALL';
 type PaymentFilter = PaymentStatus | 'ALL';
 
-const STATUS_VALUES: SIStatusFilter[] = ['ALL', 'DRAFT', 'POSTED', 'CANCELLED'];
+const STATUS_VALUES: SIStatusFilter[] = ['ALL', 'DRAFT', 'PENDING_APPROVAL', 'POSTED', 'CANCELLED'];
 const PAYMENT_VALUES: PaymentFilter[] = ['ALL', 'UNPAID', 'PARTIALLY_PAID', 'PAID'];
 
 const statusChipClasses = (status: SIStatus): string => {
   switch (status) {
     case 'DRAFT':
       return 'bg-slate-100 text-slate-700';
+    case 'PENDING_APPROVAL':
+      return 'bg-amber-100 text-amber-800';
     case 'POSTED':
       return 'bg-emerald-100 text-emerald-700';
     case 'CANCELLED':

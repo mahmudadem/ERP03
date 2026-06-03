@@ -44,6 +44,7 @@ import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILe
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { PersonaNotAllowedError } from '../../../domain/accounting/errors/PersonaNotAllowedError';
@@ -68,6 +69,7 @@ import { PromotionApplicationService, PromotionEvalLine } from '../services/Prom
 import { CreditCheckService, CreditCheckResult } from '../services/CreditCheckService';
 import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
+import { PostingError } from '../../../domain/shared/errors/AppError';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -177,7 +179,7 @@ export interface UpdateSalesInvoiceInput {
 export interface ListSalesInvoicesFilters {
   customerId?: string;
   salesOrderId?: string;
-  status?: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  status?: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   paymentStatus?: PaymentStatus;
   limit?: number;
 }
@@ -926,7 +928,8 @@ export class PostSalesInvoiceUseCase {
     externalTransaction?: any,
     settlementInput?: SettlementInput,
     periodLockOverride?: { reason: string; overriddenBy: string },
-    actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }
+    actor?: { userId: string; userEmail?: string; lockedThroughDate?: string },
+    approvalContext?: { approvedBy: string }
   ): Promise<SalesInvoice> {
     // ===================================================================
     // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
@@ -949,11 +952,16 @@ export class PostSalesInvoiceUseCase {
       });
     }
 
-    const si = typeof idOrSI === 'string' 
+    const si = typeof idOrSI === 'string'
       ? await this.salesInvoiceRepo.getById(companyId, idOrSI)
       : idOrSI;
 
-    if (!si || si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
+    if (!si) throw new Error('Invalid sales invoice state');
+
+    if (approvalContext && si.status === 'PENDING_APPROVAL') {
+      si.status = 'DRAFT';
+    }
+    if (si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
     const id = si.id;
 
     const customer = await this.partyRepo.getById(companyId, si.customerId);
@@ -1387,6 +1395,7 @@ export class PostSalesInvoiceUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: si.invoiceNumber,
             baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
+            approved: !!approvalContext,
           },
           transaction
         );
@@ -1434,6 +1443,7 @@ export class PostSalesInvoiceUseCase {
                 postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
                 reference: si.invoiceNumber,
                 baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
+                approved: !!approvalContext,
               },
               transaction
             );
@@ -1471,10 +1481,32 @@ export class PostSalesInvoiceUseCase {
       await this.salesInvoiceRepo.update(si, transaction);
     };
 
-    if (externalTransaction) {
-      await postingLogic(externalTransaction);
-    } else {
-      await this.transactionManager.runTransaction(postingLogic);
+    try {
+      if (externalTransaction) {
+        await postingLogic(externalTransaction);
+      } else {
+        await this.transactionManager.runTransaction(postingLogic);
+      }
+    } catch (err: any) {
+      if (err instanceof PostingError && err.appError.code === 'APPROVAL_REQUIRED') {
+        if (externalTransaction) {
+          throw err;
+        }
+        await this.transactionManager.runTransaction(async (tx) => {
+          const latestSi = await this.salesInvoiceRepo.getById(companyId, si.id);
+          if (!latestSi) throw new Error('Sales invoice not found during parking');
+          if (latestSi.status !== 'DRAFT') {
+            throw new Error(`Cannot park sales invoice. Expected DRAFT, but current status is ${latestSi.status}`);
+          }
+          latestSi.status = 'PENDING_APPROVAL';
+          latestSi.updatedAt = new Date();
+          await this.salesInvoiceRepo.update(latestSi, tx);
+        });
+        si.status = 'PENDING_APPROVAL';
+        si.updatedAt = new Date();
+        return si;
+      }
+      throw err;
     }
 
     // PostingLog write runs AFTER the transaction commits — best-effort, must not
@@ -1765,12 +1797,22 @@ export class PostSalesInvoiceUseCase {
 
       const postedVoucher = approvedVoucher.post(si.createdBy, now, PostingLockPolicy.FLEXIBLE_LOCKED);
 
-      this.voucherValidationService.validateCore(postedVoucher);
       if (this.accountRepo) {
         await this.voucherValidationService.validateAccounts(postedVoucher, this.accountRepo);
       }
 
-      await this.ledgerRepo!.recordForVoucher(postedVoucher, transaction);
+      // Single sanctioned ledger door. This system-generated settlement receipt is policy-exempt
+      // (Stage 4b will fold settlement postings into the policy set).
+      const gateway = new PostingGateway(this.ledgerRepo!, this.voucherValidationService);
+      await gateway.record(
+        postedVoucher,
+        {
+          userId: si.createdBy,
+          enforcePolicies: false,
+          exemptionReason: 'system-generated settlement receipt for Sales Invoice (Stage 4b)',
+        },
+        transaction
+      );
       await this.voucherRepo!.save(postedVoucher, transaction);
       receiptVoucherIds.push(voucherId);
 
@@ -1924,6 +1966,40 @@ export class UpdateAndPostSalesInvoiceUseCase {
   async execute(input: UpdateSalesInvoiceInput, settlementInput?: SettlementInput, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesInvoice> {
     const si = await this.updateUseCase.execute(input, undefined, actor);
     return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput, periodLockOverride, actor);
+  }
+}
+
+export class ApproveSalesInvoiceUseCase {
+  constructor(
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository,
+    private readonly postUseCase: PostSalesInvoiceUseCase
+  ) {}
+
+  async execute(
+    companyId: string,
+    id: string,
+    actor: { userId: string; userEmail?: string; lockedThroughDate?: string },
+    settlementInput?: SettlementInput,
+    periodLockOverride?: { reason: string; overriddenBy: string }
+  ): Promise<SalesInvoice> {
+    const si = await this.salesInvoiceRepo.getById(companyId, id);
+    if (!si) throw new Error(`Sales invoice not found: ${id}`);
+    if (si.status !== 'PENDING_APPROVAL') {
+      throw new Error('Only sales invoices pending approval can be approved');
+    }
+    // Re-enter the post flow with approvalContext set. This bypasses the
+    // approval gate and runs the full, real post (ledger + stock + settlement)
+    // exactly as a normal post would — nothing about posting is duplicated.
+    return this.postUseCase.execute(
+      companyId,
+      si,
+      true,
+      undefined,
+      settlementInput,
+      periodLockOverride,
+      actor,
+      { approvedBy: actor.userId }
+    );
   }
 }
 

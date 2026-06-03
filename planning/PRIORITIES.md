@@ -64,6 +64,8 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Purchase direct invoicing governance fix | 2026-06-01 | ✅ Done |
 | Codex | AI floating launcher settings toggle | 2026-06-02 | ✅ Done |
 | Antigravity | Unify Windows UI MDI window wrappers & drag/resize | 2026-06-03 | ✅ Done |
+| Antigravity | Stage 2b Posting-Authority decoupling & reactive approvals | 2026-06-03 | ✅ Done |
+| Claude (Opus 4.7) | Posting-Authority Stages 2c / 3 / 4 / 5 / 6 / 7 (F8 reporting decoupling) | 2026-06-03 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -85,4 +87,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-06-03 by Antigravity (MDI window wrappers unified; Task 132 remains current priority)_
+_Last updated: 2026-06-04 — Posting-Authority epic Stages 0–7 complete on main, merged into feat/init-wizard-forms-selection. Task 132 remains current priority._

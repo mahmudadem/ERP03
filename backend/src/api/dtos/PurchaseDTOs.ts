@@ -197,7 +197,7 @@ export interface PurchaseInvoiceDTO {
   paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
   paidAmountBase: number;
   outstandingAmountBase: number;
-  status: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   voucherId?: string | null;
   attachments?: PurchaseInvoiceAttachmentDTO[];
   notes?: string;

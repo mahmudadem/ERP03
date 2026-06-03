@@ -423,6 +423,7 @@ const SalesSettingsPage: React.FC = () => {
                     Simple workflow enables direct invoicing by default. Sales Orders and Delivery Notes are hidden from end users.
                   </div>
                 )}
+
               </div>
 
               <div className="space-y-6">

@@ -45,7 +45,7 @@ export class AccountingPolicyRegistry {
 
     // Wire policies based on config
     if (config.approvalRequired) {
-      policies.push(new ApprovalRequiredPolicy());
+      policies.push(new ApprovalRequiredPolicy(config.approvalExemptVoucherTypes));
     }
 
     if (config.periodLockEnabled) {
@@ -56,7 +56,11 @@ export class AccountingPolicyRegistry {
             return period?.status ?? null;
           }
         : undefined;
-      policies.push(new PeriodLockPolicy(config.lockedThroughDate, fiscalResolver));
+      policies.push(new PeriodLockPolicy(
+        config.lockedThroughDate,
+        fiscalResolver,
+        config.allowPeriodLockOverride !== false
+      ));
     }
 
     if (config.accountAccessEnabled && this.userScopeProvider && this.accountLookup) {
@@ -72,6 +76,19 @@ export class AccountingPolicyRegistry {
     }
 
     return policies;
+  }
+
+  /**
+   * Stage 2b helper (posting-authority): is approval required for THIS voucher type, under the
+   * current central accounting policy + per-type scope? Source modules should call this to drive
+   * their "park as PENDING_APPROVAL" decision instead of reading a local settings flag.
+   * Safe-by-default: returns false when the global toggle is off OR the type is exempt.
+   */
+  async isApprovalRequiredForVoucherType(companyId: string, voucherType: string): Promise<boolean> {
+    const config = await this.configProvider.getConfig(companyId);
+    if (!config.approvalRequired) return false;
+    const exempt = config.approvalExemptVoucherTypes ?? [];
+    return !exempt.includes(voucherType);
   }
 
   /**

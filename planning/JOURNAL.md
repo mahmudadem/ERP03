@@ -2,6 +2,151 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Stages 6 & 7: Vocabulary + Future Hooks (docs)
+
+**Task:** Stage 6 (purge "ticket" metaphor; standardize override reason) + Stage 7 (document future
+hooks, do not build).
+**Agent:** Claude (Opus 4.7).
+**Branch:** `main` (worktree `d:\DEV2026\ERP03-posting-authority`).
+
+**What changed:**
+- **Stage 6** was already satisfied in code (no `ticket` identifiers; override shape uniformly
+  `{ reason, overriddenBy }` enforced by `PeriodLockOverride`/`CreditOverride`). Documented it in
+  Law 3 + conformance table. No code change warranted.
+- **Stage 7** — expanded `posting-authority.md` §6 with the two designed-for-but-unbuilt hooks
+  (module request-gating; account-level caps), AND-gating notes, and a "do not build" marker.
+- Updated the fix-plan brief status: **all stages 0–7 complete**; only optional **Stage 4b** remains.
+
+**Report:** [done/161-stage-6-7-vocabulary-and-future-hooks.md](./done/161-stage-6-7-vocabulary-and-future-hooks.md).
+
+---
+
+## 2026-06-03 (Wed) — Stage 5: Uniform Rejection Contract
+
+**Task:** Law 5 — every guard signs its refusal with a uniform `{ guard, code, message, fieldHints }`.
+**Agent:** Claude (Opus 4.7).
+**Branch:** `main` (worktree `d:\DEV2026\ERP03-posting-authority`).
+**Time spent:** ~1h.
+
+**What changed:**
+- New `RejectionContract` type + `toRejectionContract(err)` mapper (`domain/shared/errors`). Maps
+  PeriodLockedError→accounting, PersonaNotAllowedError→its module, PostingError policy violations→
+  accounting, CreditLimitExceededError→sales, BusinessError/AppError→inferred from ErrorCode prefix;
+  null for infrastructure/unknown.
+- Added `GuardName` + optional `guard` to the shared `AppError`; tagged `guard` on PeriodLockedError
+  and PersonaNotAllowedError; `createPostingError` takes an optional guard (default accounting).
+- Wired the active `errors/errorHandler.ts` to surface `guard` + `code` on PeriodLocked/Posting/
+  Business responses, and **added a CreditLimitExceededError 422 branch** (it previously fell through
+  to the 500 unknown handler).
+- New `RejectionContract.test.ts` (6 tests).
+
+**Verification:** `tsc` clean; full backend suite **139 suites, 1307 passed, 0 failed** (one AI-cert
+test flaky under parallel load — green in isolation and on re-run; unrelated).
+
+**Report:** [done/160-stage-5-uniform-rejection-contract.md](./done/160-stage-5-uniform-rejection-contract.md).
+
+---
+
+## 2026-06-03 (Wed) — Stage 4: PostingGateway (Guard at the Door)
+
+**Task:** Build the single mandatory choke point in front of every ledger write.
+**Agent:** Claude (Opus 4.7).
+**Branch:** `main` (worktree `d:\DEV2026\ERP03-posting-authority`).
+**Time spent:** ~2h.
+
+**What changed:**
+- New `PostingGateway` — the only code permitted to call `ILedgerRepository.recordForVoucher`.
+- Migrated all 11 production posting paths to route through it. Subledger path runs the full policy
+  set **through** the gateway (enforce mode, approval from caller). The other 10 sites (manual
+  voucher ×3, sales/purchase settlement, payment-sync ×2, bank-rec, year-end closing ×2) pass an
+  explicit `enforcePolicies: false` + mandatory `exemptionReason` — preserving current behaviour
+  with zero change while making every policy-skip greppable.
+- Architecture test: Stage 4 `it.todo` → two active assertions (no direct `recordForVoucher` callers
+  anywhere in production; gateway requires an exemption reason). Stage 1 + Law 1 assertions updated to
+  the new gateway location.
+- New `PostingGateway.test.ts` (6 tests, incl. the Law-7 "not-approved derived from caller" proof).
+- Docs: `posting-authority.md` §7 documents the door + exemption table; conformance table updated.
+
+**Verification:**
+- `npx tsc --noEmit` clean.
+- Full backend suite: **138 suites, 1301 passed, 18 skipped, 0 failed** (was 137/1293/1-todo). No
+  regressions.
+
+**Follow-up filed:** **Stage 4b** — fold the system-voucher exemptions (settlements, closings) into
+the policy set so even those run the full rulebook.
+
+**Report:** [done/159-stage-4-posting-gateway.md](./done/159-stage-4-posting-gateway.md).
+
+---
+
+## 2026-06-03 (Wed) — Stage 2c: Retire Per-Module `requireApprovalBeforePosting` Flag
+
+**Task:** Finish Stage 2c of the Posting-Authority fix plan — remove the per-module approval flag now that Stage 2b drives parking from the central `AccountingPolicyRegistry`.
+**Agent:** Claude (Opus 4.7) — continuation of a prior session that ran out of limits mid-WIP.
+**Branch:** `main` (in `d:\DEV2026\ERP03-posting-authority` worktree)
+**Time spent:** ~0.5h (audit + frontend cleanup + report + commit)
+
+**What changed:**
+- Removed `requireApprovalBeforePosting` field from `SalesSettings`/`PurchaseSettings` (entity, constructor, `toFirestore`/`fromFirestore`, defaults).
+- Removed from `SalesSettingsDTO`/`PurchaseSettingsDTO` and the DTO mappers.
+- Removed from `InitializeSalesInput`/`UpdateSalesSettingsInput` and the purchase equivalents, and the corresponding use-case bodies.
+- Removed from frontend `salesApi.ts`/`purchasesApi.ts` types and the Sales/Purchase Settings page UI (toggle + payload mapping).
+- Renamed the two A1 posting test cases to describe the central-policy driver instead of the retired flag.
+
+**Reverted from prior WIP:**
+- Stage 4 in-repo enforcement (`policyRegistry` injection into `FirestoreLedgerRepository`/`PrismaLedgerRepository`) — the prior agent's WIP would have double-run policies and re-introduced the forged-stamp problem Stage 1 fixed by reading `voucher.isApproved` instead of caller-passed `approved`. Stage 4 needs the `PostingGateway` design (plan's Option B). Filed in the brief as the next staged task.
+
+**Verification:**
+- `cd backend && npx tsc --noEmit` — clean.
+- `cd frontend && npx tsc --noEmit` — clean.
+- `npx jest --testPathPatterns="(SalesPostingUseCases|PurchasePostingUseCases|PostingAuthority|SalesSettingsUseCases|PurchaseSettingsUseCases)"` — 5 suites, 47 passed, 1 todo (Stage 4 placeholder).
+
+**Report:** [done/158-stage-2c-retire-per-module-approval-flag.md](./done/158-stage-2c-retire-per-module-approval-flag.md).
+
+---
+
+## 2026-06-03 (Wed) — Decouple Reporting from Voucher & Ledger Repository (Stage 4 / F8)
+
+**Task:** Decouple Sales/Purchases reporting from direct imports of `ILedgerRepository` and dependency on `IVoucherRepository` (F8).
+**Agent:** Antigravity (Gemini 1.5 Pro)
+**Branch:** `main` (in `d:\DEV2026\ERP03-posting-authority` worktree)
+**Time spent:** ~1.5h
+
+**What changed:**
+- Re-exported `AccountStatementEntry` interface from `LedgerUseCases.ts` so Sales and Purchases reporting use cases do not reference `ILedgerRepository` directly.
+- Injected `GetVoucherUseCase` (from Accounting use cases) into `GetLedgerBackedCustomerStatementUseCase` (Sales) and `GetLedgerBackedVendorStatementUseCase` (Purchases), replacing the direct dependency on `IVoucherRepository`.
+- Updated `SalesReportingController.ts` and `PurchaseController.ts` to construct and inject `GetVoucherUseCase`.
+- Refactored `LedgerBackedCustomerStatement.test.ts` and `LedgerBackedVendorStatement.test.ts` unit tests to mock `GetVoucherUseCase.execute()` instead of `IVoucherRepository.findById()`.
+- Verified that `AccountingBoundary.test.ts` and the entire backend test suite compiles and passes cleanly with 0 violations.
+
+**Accounting/control impact:** Code structure compliance. Strict separation of Sales and Purchases modules from low-level Accounting repositories at the application level.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm test` -> all 137 test suites passed.
+
+## 2026-06-03 (Wed) — Decouple Sales/Purchases Posting & Wire Reactive Approval Guard
+
+**Task:** Decouple Sales/Purchases document posting from local settings approval flags and implement reactive parking under the Posting-Authority architecture (Stage 2b).
+**Agent:** Antigravity (Gemini 1.5 Pro)
+**Branch:** `main` (in `d:\DEV2026\ERP03-posting-authority` worktree) / `feat/init-wizard-forms-selection` (in `d:\DEV2026\ERP03`)
+**Actual time spent:** ~3.5h
+
+**What changed:**
+- Removed local module settings reads (e.g. `settings.requireApprovalBeforePosting`) from `PostSalesInvoiceUseCase` and `PostPurchaseInvoiceUseCase`.
+- Passed the caller's real approval context (`approved: !!approvalContext`) directly to `SubledgerVoucherPostingService.postInTransaction()`.
+- Implemented reactive `PostingError` catching for the centralized accounting guard rejection code `APPROVAL_REQUIRED`.
+- Added serializable transaction status transitions to safely park unapproved documents as `PENDING_APPROVAL` in the database without race conditions or lost updates.
+- Mocked the policy registry in `SalesPostingUseCases.test.ts` and `PurchasePostingUseCases.test.ts` to assert parking and approval post re-entry.
+- Enabled Stage 2 architecture checks in `PostingAuthority.test.ts` to assert that Sales and Purchases use cases contain no policy registry references or local settings approval flags.
+- Updated technical docs `docs/architecture/posting-authority.md`, `sales.md`, and `purchases.md` (removing redundant Approval Workflow rows from unimplemented list).
+- Created end-user user guide `docs/user-guide/accounting/posting-approvals.md` and completion report `planning/done/155-posting-authority-decoupling.md`.
+
+**Accounting/control impact:** Centralized posting compliance. Sales and Purchases no longer evaluate posting approvals locally. Documents are evaluated by the central Accounting policy registry at post time and are parked as `PENDING_APPROVAL` with zero GL or stock impact until approved.
+
+**Verification:**
+- `npm test` inside `backend/` -> passed for all posting/authority/use-case suites (135 passed). Known pre-existing failures (`AiModelCertificationUseCase` and `AccountingBoundary` violations) remain tracked in ACTIVE.md.
+
 ## 2026-06-03 (Wed) — Unify MDI window wrappers & drag/resize hardening
 
 **Task:** Unify all window wrapper containers in Windows UI mode under `MdiWindowFrame.tsx` and fix text selection/dragging lag.
@@ -1655,3 +1800,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** `npm --prefix backend test -- --runInBand backend/src/tests/architecture/AccountingBoundary.test.ts` failed with six known/confirmed Sales/Purchases reporting boundary violations.
 - **Time spent:** ~1.2h.
 - **Next:** Send the brief to a read-only second-check agent (`erp-backend-architect`, `erp-frontend-architect`, `erp-api-contract`, then `erp-reviewer`) before any builder starts.
+
+### Session: 2026-06-03 (Unify Period Lock — Stage 3)
+
+- **Goal:** Consolidate duplicated period lock verification logic in `PeriodLockService` and `PeriodLockPolicy` to a single authoritative implementation in Accounting (`PeriodLockPolicy`).
+- **What was done:**
+  - Refactored `PeriodLockService.ts` to be a thin adapter delegating all checks directly to `PeriodLockPolicy` via a simulated `PostingPolicyContext` and mapping error results back to `PeriodLockedError` instances.
+  - Activated the Stage 3 architectural test in `PostingAuthority.test.ts` to prevent duplication regression.
+- **Verification:**
+  - `npm test backend/src/application/accounting/services/__tests__/PeriodLockService.test.ts` -> ✅
+  - `npm test backend/src/tests/architecture/PostingAuthority.test.ts` -> ✅
+  - Full backend test suite (`npm test`) passed except pre-existing F8 boundary test.
+- **Time spent:** ~1.0h.
+- **Next:** Stage 4 — Put the guard at the door (ensure `recordForVoucher` is only reached through the posting guard).

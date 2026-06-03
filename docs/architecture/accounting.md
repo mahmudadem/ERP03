@@ -1,6 +1,6 @@
 # Architecture: Accounting Module
 
-**Last updated:** 2026-05-18
+**Last updated:** 2026-06-01
 **Status:** Implemented (core), with explicitly deferred features listed below.
 **Code-near docs:** [`backend/src/domain/accounting/ARCHITECTURE.md`](../../backend/src/domain/accounting/ARCHITECTURE.md), [`backend/src/domain/accounting/CORRECTIONS.md`](../../backend/src/domain/accounting/CORRECTIONS.md)
 
@@ -58,7 +58,7 @@ Notes:
 2. **Ledger always in base currency.** A voucher can be in any currency, but ledger entries are converted to the company base currency at posting time. FX amounts are tracked per line. The frontend cannot override this.
 3. **Immutable posted entries.** Once a voucher is posted, its ledger lines are immutable. Mistakes are corrected via the **Reverse & Replace** flow ([CORRECTIONS.md](../../backend/src/domain/accounting/CORRECTIONS.md)), which creates a paired reversal voucher and (optionally) a replacement DRAFT.
 4. **Repository pattern.** All persistence is behind interfaces (`IVoucherRepository`, `ILedgerRepository`, `IAccountRepository`, etc.) so the system can migrate from Firestore to SQL without touching domain or application code.
-5. **Policy enforcement at the normal posting gate.** `PostVoucherUseCase` applies posting policies (`ApprovalRequiredPolicy`, `PeriodLockPolicy`, account access, etc.). Modules that originate vouchers (Sales, Purchases, Inventory) should call into this gate through the accounting posting service.
+5. **Policy enforcement at every posting gate.** `PostVoucherUseCase` applies posting policies for manual Accounting vouchers. `SubledgerVoucherPostingService` applies the same policy registry for automatic vouchers originating in Sales, Purchases, and Inventory. Core invariants, account validity, company policies, and override checks must run before ledger rows are written.
 6. **Final ledger boundary is also guarded.** Because a cross-module caller once bypassed the normal posting gate, `ILedgerRepository.recordForVoucher()` now also invokes `VoucherValidationService.validateCore()` and `validateAccounts()` before any ledger rows are persisted. This is the non-negotiable last line of backend defense.
 
 ## Key Use Cases
@@ -67,6 +67,7 @@ Notes:
 |---|---|
 | `CreateVoucherUseCase` / `UpdateVoucherUseCase` | Draft voucher CRUD; runs validation; does NOT post. |
 | `PostVoucherUseCase` | Single posting gate. Resolves strategy, applies policies, writes ledger lines. |
+| `SubledgerVoucherPostingService` | Shared automatic posting gate for Sales, Purchases, and Inventory. Generates voucher lines, validates core/account rules, applies `AccountingPolicyRegistry`, then writes ledger/voucher records. |
 | `ApproveVoucherUseCase` | DRAFT → APPROVED transition (if `ApprovalRequiredPolicy` is active). |
 | `ReverseAndReplaceVoucherUseCase` | Correction flow. Creates reversal voucher, optionally a replacement DRAFT. Links via `correctionGroupId`. |
 | `GetTrialBalanceUseCase` | Hierarchical ledger-sourced report by account classification. |
@@ -105,6 +106,13 @@ The intended accounting path is:
    - account has not been replaced
    - account has no children
 5. Posting policies run, then ledger rows are written.
+
+There are two entry points into this boundary:
+
+- Manual Accounting vouchers use `PostVoucherUseCase`.
+- Source-module postings use `SubledgerVoucherPostingService`.
+
+Both must use `AccountingPolicyRegistry` before ledger persistence. This keeps future controls, such as cost-center rules, account access, period locks, and approval-related posting guards, from becoming Sales-only or manual-voucher-only behavior.
 
 ### Discovered bypass and fix
 
@@ -145,8 +153,10 @@ Summary:
 
 ## Period Lock & Fiscal Year
 
-- `PeriodLockPolicy` enforces a `lockedThrough` date — posting to any date ≤ this date is blocked.
-- Fiscal periods can be `LOCKED` (post via override) or `CLOSED` (no override). Status is resolved by `resolveFiscalPeriodStatus`.
+- `PeriodLockPolicy` enforces a `lockedThrough` date — posting to any date <= this date is blocked unless a soft-lock override is explicitly allowed.
+- A soft-lock override is not a separate ticket record. It is an override payload on the posting request: a reason plus the user who performed the override. The policy accepts it only when `allowPeriodLockOverride !== false`.
+- The API layer remains responsible for role/permission authorization before it creates that override payload. The current Sales posting endpoints check owner/permission access before sending `periodLockOverride` into the posting service.
+- Fiscal periods with `LOCKED` or `CLOSED` status are hard stops in the shared policy path. They are not bypassed by soft-lock override metadata.
 - Reversal vouchers default to the original voucher's date so reversing a closed-period entry does not silently move the impact into a new period.
 
 ## Multi-Currency
@@ -165,9 +175,9 @@ Summary:
 
 ## Cross-Module Touchpoints
 
-- **Sales** → posts AR + Revenue + (conditionally) COGS via `PostVoucherUseCase` with the `SalesInvoiceStrategy`.
-- **Purchases** → posts Inventory/Expense + AP via the `PurchaseInvoiceStrategy`.
-- **Inventory** → Opening Stock can post an inventory-valuation voucher when Accounting is enabled. COGS auto-posting from sales delivery is **not yet implemented** — Sales posts COGS directly today.
+- **Sales** → posts AR + Revenue + (conditionally) COGS through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write.
+- **Purchases** → posts Inventory/Expense + AP through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write.
+- **Inventory** → Opening Stock can post an inventory-valuation voucher through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write. COGS auto-posting from sales delivery is **not yet implemented** — Sales posts COGS directly today.
 - **Multi-company** → consolidated reports reach across companies via `GetConsolidatedTrialBalanceUseCase`.
 
 ## What Is NOT Implemented

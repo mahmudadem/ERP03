@@ -33,6 +33,7 @@ export class PeriodLockedError extends PostingError {
       code: 'PERIOD_LOCKED',
       message,
       category: ErrorCategory.POLICY,
+      guard: 'accounting',
       details: { violations },
     });
 

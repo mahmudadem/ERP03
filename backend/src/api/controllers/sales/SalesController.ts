@@ -11,6 +11,7 @@ import {
 import {
   CreateSalesInvoiceUseCase,
   CreateAndPostSalesInvoiceUseCase,
+  ApproveSalesInvoiceUseCase,
   GetSalesInvoiceUseCase,
   GetInvoiceableLinkedSalesSourceUseCase,
   ListSalesInvoicesUseCase,
@@ -222,7 +223,8 @@ export class SalesController {
         diContainer.companyCurrencyRepository,
         diContainer.accountRepository,
         new VoucherValidationService(),
-        diContainer.periodLockService
+        diContainer.periodLockService,
+        diContainer.policyRegistry as any
       );
     }
 
@@ -232,7 +234,8 @@ export class SalesController {
       diContainer.companyCurrencyRepository,
       undefined,
       undefined,
-      diContainer.periodLockService
+      diContainer.periodLockService,
+      diContainer.policyRegistry as any
     );
   }
 
@@ -1159,6 +1162,59 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         } catch (auditErr) {
           console.error('[SalesController] period-lock override audit write failed (non-fatal):', auditErr);
         }
+      }
+
+      (res as any).json({
+        success: true,
+        data: SalesDTOMapper.toSalesInvoiceDTO(si),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async approveSI(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
+      const userEmail = SalesController.getUserEmail(req);
+
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(recordChangeService);
+      const approveUseCase = new ApproveSalesInvoiceUseCase(
+        diContainer.salesInvoiceRepository,
+        postUseCase
+      );
+
+      const settlementInput = (req as any).body?.settlementInput;
+      const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
+      const periodLockOverride = periodLockOverrideReason
+        ? { reason: periodLockOverrideReason, overriddenBy: userId }
+        : undefined;
+      if (periodLockOverride) {
+        await assertCanOverridePeriodLock(companyId, (req as any).user);
+      }
+      const lockedThroughDate = periodLockOverride ? await SalesController.resolveLockedThroughDate(companyId) : undefined;
+
+      const si = await approveUseCase.execute(
+        companyId,
+        id,
+        { userId, userEmail, lockedThroughDate },
+        settlementInput,
+        periodLockOverride
+      );
+
+      // Approval is the real post — accrue commission just like postSI (non-fatal).
+      try {
+        const accrueCommission = new AccrueCommissionForInvoiceUseCase(
+          diContainer.salesInvoiceRepository,
+          diContainer.salespersonRepository,
+          diContainer.commissionEntryRepository,
+        );
+        await accrueCommission.execute({ companyId, invoiceId: id, createdBy: userId });
+      } catch (commissionError) {
+        console.error('[SalesController] commission accrual failed (non-fatal):', commissionError);
       }
 
       (res as any).json({
