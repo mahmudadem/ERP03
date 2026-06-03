@@ -1,8 +1,9 @@
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
 import { IFiscalYearRepository } from '../../../repository/interfaces/accounting/IFiscalYearRepository';
-import { normalizeAccountingDate } from '../../../domain/accounting/utils/DateNormalization';
-import { PeriodStatus } from '../../../domain/accounting/entities/FiscalYear';
 import { PeriodLockedError } from '../../../domain/accounting/errors/PeriodLockedError';
+import { PeriodLockPolicy } from '../../../domain/accounting/policies/implementations/PeriodLockPolicy';
+import { PostingPolicyContext } from '../../../domain/accounting/policies/PostingPolicyTypes';
+import { VoucherStatus, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 
 export class PeriodLockService {
   constructor(
@@ -20,29 +21,47 @@ export class PeriodLockService {
       return;
     }
 
-    const date = normalizeAccountingDate(documentDate);
+    const fiscalResolver = async (cId: string, date: string, postingPeriodNo?: number) => {
+      const fy = await this.fiscalYearRepo.findActiveForDate(cId, date);
+      const period = fy?.getPeriodForDate(date, postingPeriodNo);
+      return period?.status ?? null;
+    };
 
-    // HARD check: fiscal period CLOSED or LOCKED
-    const fy = await this.fiscalYearRepo.findActiveForDate(companyId, date);
-    if (fy) {
-      const period = fy.getPeriodForDate(date);
-      if (period && (period.status === PeriodStatus.CLOSED || period.status === PeriodStatus.LOCKED)) {
-        throw new PeriodLockedError({ tier: 'HARD', documentDate: date });
-      }
-    }
+    const policy = new PeriodLockPolicy(
+      config.lockedThroughDate,
+      fiscalResolver,
+      config.allowPeriodLockOverride !== false
+    );
 
-    // SOFT check: lockedThroughDate
-    if (config.lockedThroughDate) {
-      const lockedDate = normalizeAccountingDate(config.lockedThroughDate);
-      if (date <= lockedDate) {
-        if (override?.reason?.trim()) {
-          if (config.allowPeriodLockOverride === false) {
-            throw new PeriodLockedError({ tier: 'SOFT', documentDate: date, lockedThroughDate: config.lockedThroughDate });
-          }
-          return;
-        }
-        throw new PeriodLockedError({ tier: 'SOFT', documentDate: date, lockedThroughDate: config.lockedThroughDate });
+    const context: PostingPolicyContext = {
+      companyId,
+      voucherId: '',
+      userId: override?.overriddenBy || 'system',
+      voucherType: VoucherType.JOURNAL_ENTRY,
+      voucherDate: documentDate,
+      voucherNo: '',
+      baseCurrency: 'USD',
+      totalDebit: 0,
+      totalCredit: 0,
+      status: VoucherStatus.APPROVED,
+      isApproved: true,
+      lines: [],
+      metadata: override ? { periodLockOverride: override } : undefined,
+    };
+
+    const result = await policy.validate(context);
+    if (!result.ok) {
+      const error = (result as { ok: false; error: any }).error;
+      if (error.code === 'PERIOD_CLOSED') {
+        throw new PeriodLockedError({ tier: 'HARD', documentDate });
+      } else {
+        throw new PeriodLockedError({
+          tier: 'SOFT',
+          documentDate,
+          lockedThroughDate: config.lockedThroughDate,
+        });
       }
     }
   }
 }
+

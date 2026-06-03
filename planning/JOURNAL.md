@@ -1677,3 +1677,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** `npm --prefix backend test -- --runInBand backend/src/tests/architecture/AccountingBoundary.test.ts` failed with six known/confirmed Sales/Purchases reporting boundary violations.
 - **Time spent:** ~1.2h.
 - **Next:** Send the brief to a read-only second-check agent (`erp-backend-architect`, `erp-frontend-architect`, `erp-api-contract`, then `erp-reviewer`) before any builder starts.
+
+### Session: 2026-06-03 (Unify Period Lock — Stage 3)
+
+- **Goal:** Consolidate duplicated period lock verification logic in `PeriodLockService` and `PeriodLockPolicy` to a single authoritative implementation in Accounting (`PeriodLockPolicy`).
+- **What was done:**
+  - Refactored `PeriodLockService.ts` to be a thin adapter delegating all checks directly to `PeriodLockPolicy` via a simulated `PostingPolicyContext` and mapping error results back to `PeriodLockedError` instances.
+  - Activated the Stage 3 architectural test in `PostingAuthority.test.ts` to prevent duplication regression.
+- **Verification:**
+  - `npm test backend/src/application/accounting/services/__tests__/PeriodLockService.test.ts` -> ✅
+  - `npm test backend/src/tests/architecture/PostingAuthority.test.ts` -> ✅
+  - Full backend test suite (`npm test`) passed except pre-existing F8 boundary test.
+- **Time spent:** ~1.0h.
+- **Next:** Stage 4 — Put the guard at the door (ensure `recordForVoucher` is only reached through the posting guard).

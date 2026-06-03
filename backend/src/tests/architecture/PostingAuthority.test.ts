@@ -80,7 +80,19 @@ describe('Architecture guard: posting authority', () => {
 
   // Stage 3: a single period-lock implementation is the authority (no PeriodLockService vs
   // PeriodLockPolicy divergence).
-  it.todo('Stage 3: period lock has one authoritative implementation');
+  it('Stage 3: period lock has one authoritative implementation', () => {
+    const file = path.resolve(SRC, 'application/accounting/services/PeriodLockService.ts');
+    const content = fs.readFileSync(file, 'utf8');
+
+    // Must import and use PeriodLockPolicy
+    expect(content).toContain('PeriodLockPolicy');
+    expect(content).toContain('new PeriodLockPolicy');
+
+    // Must NOT have local implementation logic (delegated to policy)
+    expect(content).not.toContain('fy.getPeriodForDate');
+    expect(content).not.toContain('PeriodStatus.CLOSED');
+    expect(content).not.toContain('PeriodStatus.LOCKED');
+  });
 
   // Stage 4 — Law 1/7: recordForVoucher is reachable only through the posting guard (no bypass).
   it.todo('Stage 4: ledger recordForVoucher is only reached through the posting guard');
