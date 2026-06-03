@@ -8,7 +8,7 @@ import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
-import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
+import { GetVoucherUseCase } from '../../../application/accounting/use-cases/VoucherUseCases';
 
 const companyId = 'cmp-ledger-statement';
 const customerId = 'cust-1';
@@ -29,10 +29,14 @@ const orderRepo = (orders: any[] = []): jest.Mocked<ISalesOrderRepository> =>
     list: jest.fn(async () => orders),
   } as unknown as jest.Mocked<ISalesOrderRepository>);
 
-const voucherRepo = (vouchers: Record<string, any>): jest.Mocked<IVoucherRepository> =>
+const getVoucherUseCase = (vouchers: Record<string, any>): GetVoucherUseCase =>
   ({
-    findById: jest.fn(async (_companyId: string, voucherId: string) => vouchers[voucherId] ?? null),
-  } as unknown as jest.Mocked<IVoucherRepository>);
+    execute: jest.fn(async (_companyId: string, _userId: string, voucherId: string) => {
+      const v = vouchers[voucherId];
+      if (!v) throw new Error('Voucher not found');
+      return v;
+    }),
+  } as unknown as GetVoucherUseCase);
 
 const accountStatement = (data: any): GetAccountStatementUseCase =>
   ({
@@ -46,7 +50,7 @@ describe('GetLedgerBackedCustomerStatementUseCase', () => {
       invoiceRepo(),
       orderRepo(),
       accountStatement({ entries: [] }),
-      voucherRepo({}),
+      getVoucherUseCase({}),
     );
 
     await expect(useCase.execute({
@@ -98,7 +102,7 @@ describe('GetLedgerBackedCustomerStatementUseCase', () => {
       invoiceRepo([{ id: 'si-1', invoiceNumber: 'SI-1001', invoiceDate: '2026-05-05', dueDate: undefined, grandTotalBase: 1000, outstandingAmountBase: 750 }]),
       orderRepo([{ id: 'so-1', orderNumber: 'SO-1', orderDate: '2026-05-01', expectedDeliveryDate: '2026-05-20', status: 'CONFIRMED', grandTotalBase: 300, notes: '', lines: [{ orderedQty: 3, invoicedQty: 1, lineTotalBase: 300, taxAmountBase: 0 }] }]),
       statementUseCase,
-      voucherRepo({
+      getVoucherUseCase({
         'v-inv': {
           id: 'v-inv',
           voucherNo: 'SI-1001',

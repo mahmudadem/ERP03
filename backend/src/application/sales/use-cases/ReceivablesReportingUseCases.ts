@@ -9,11 +9,10 @@ import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/IS
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
-import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { GetAccountStatementUseCase } from '../../accounting/use-cases/LedgerUseCases';
-import { AccountStatementEntry } from '../../../repository/interfaces/accounting/ILedgerRepository';
+import { GetAccountStatementUseCase, AccountStatementEntry } from '../../accounting/use-cases/LedgerUseCases';
+import { GetVoucherUseCase } from '../../accounting/use-cases/VoucherUseCases';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -364,7 +363,7 @@ export class GetLedgerBackedCustomerStatementUseCase {
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly accountStatementUseCase: GetAccountStatementUseCase,
-    private readonly voucherRepo: IVoucherRepository,
+    private readonly getVoucherUseCase: GetVoucherUseCase,
   ) {}
 
   async execute(input: CustomerStatementInput): Promise<CustomerStatement> {
@@ -388,7 +387,7 @@ export class GetLedgerBackedCustomerStatementUseCase {
       { includeUnposted: false },
     );
 
-    const vouchers = await this.loadVouchers(companyId, statement.entries || []);
+    const vouchers = await this.loadVouchers(companyId, statement.entries || [], userId);
     const lines = (statement.entries || []).map((entry) =>
       this.decorateEntry(entry, vouchers.get(entry.voucherId)),
     );
@@ -421,11 +420,12 @@ export class GetLedgerBackedCustomerStatementUseCase {
   private async loadVouchers(
     companyId: string,
     entries: AccountStatementEntry[],
+    userId: string,
   ): Promise<Map<string, VoucherEntity>> {
     const voucherIds = [...new Set(entries.map((entry) => entry.voucherId).filter(Boolean))];
     const pairs = await Promise.all(
       voucherIds.map(async (voucherId) => {
-        const voucher = await this.voucherRepo.findById(companyId, voucherId);
+        const voucher = await this.getVoucherUseCase.execute(companyId, userId, voucherId).catch(() => null);
         return [voucherId, voucher] as const;
       }),
     );

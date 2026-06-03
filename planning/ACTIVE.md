@@ -14,6 +14,8 @@
 
 ## 👉 Next agent — start here
 
+**Posting-Authority Reporting Decoupling (2026-06-03, Stage 4 / F8):** Decoupled Sales (`ReceivablesReportingUseCases`) and Purchases (`PurchasesReportingUseCases`) reporting from direct imports of `ILedgerRepository` and dependency on `IVoucherRepository` by re-exporting `AccountStatementEntry` from `LedgerUseCases` and injecting `GetVoucherUseCase` instead. Updated controllers and unit tests accordingly. Cleaned up the `AccountingBoundary.test.ts` violations completely. Report: [done/157-decouple-reporting-boundary.md](./done/157-decouple-reporting-boundary.md).
+
 **Posting-Authority Period-Lock Unification (2026-06-03, Stage 3):** Consolidated period locking logic by refactoring `PeriodLockService` to be a thin adapter delegating all checks directly to `PeriodLockPolicy` under the hood. Added architecture test assertion checking that `PeriodLockService` contains no duplicate checks. Report: [done/156-period-lock-unification.md](./done/156-period-lock-unification.md). All backend tests passed cleanly.
 
 **Posting-Authority Decoupling & Reactive Approvals (2026-06-03, Stage 2b):** Decoupled `PostSalesInvoiceUseCase` and `PostPurchaseInvoiceUseCase` from local settings-based approval flags. They now pass the real approval context to `SubledgerVoucherPostingService`. Unapproved postings are rejected by the centralized accounting guard with code `APPROVAL_REQUIRED`, which the use cases catch and handle by transactionally parking the document status as `PENDING_APPROVAL`. Added mock registry unit tests and Stage 2 architecture rules. Documented in `docs/architecture/posting-authority.md`, `purchases.md`, `sales.md` and added user guide `docs/user-guide/accounting/posting-approvals.md`. Report: [done/155-posting-authority-decoupling.md](./done/155-posting-authority-decoupling.md). All Stage 2b tests passed cleanly.
@@ -195,7 +197,7 @@ Commits on `feat/phase-a-sales-master-data`:
 
 ## Rabbit Holes
 
-- Architecture boundary test failure (`AccountingBoundary.test.ts`): `PurchasesReportingUseCases` and `ReceivablesReportingUseCases` violate dependency rules by importing accounting repository interfaces directly. Needs decoupling via clean use-cases or services.
+*(None)*
 
 ## Next action
 

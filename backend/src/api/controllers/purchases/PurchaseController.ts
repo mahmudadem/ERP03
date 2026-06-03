@@ -56,6 +56,7 @@ import {
   GetPurchasesByItemUseCase,
 } from '../../../application/purchases/use-cases/PurchasesAnalyticsUseCases';
 import { GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
+import { GetVoucherUseCase } from '../../../application/accounting/use-cases/VoucherUseCases';
 import { PurchasesInventoryService } from '../../../application/inventory/services/PurchasesInventoryService';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
 import { GRNStatus } from '../../../domain/purchases/entities/GoodsReceipt';
@@ -1005,12 +1006,16 @@ export class PurchaseController {
         diContainer.accountRepository,
         diContainer.companyRepository,
       );
+      const getVoucherUseCase = new GetVoucherUseCase(
+        diContainer.voucherRepository,
+        diContainer.permissionChecker,
+      );
       const useCase = new GetLedgerBackedVendorStatementUseCase(
         diContainer.partyRepository,
         diContainer.purchaseInvoiceRepository,
         diContainer.purchaseOrderRepository,
         accountStatementUseCase,
-        diContainer.voucherRepository,
+        getVoucherUseCase,
       );
 
       const result = await useCase.execute({

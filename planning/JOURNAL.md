@@ -2,6 +2,26 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Decouple Reporting from Voucher & Ledger Repository (Stage 4 / F8)
+
+**Task:** Decouple Sales/Purchases reporting from direct imports of `ILedgerRepository` and dependency on `IVoucherRepository` (F8).
+**Agent:** Antigravity (Gemini 1.5 Pro)
+**Branch:** `main` (in `d:\DEV2026\ERP03-posting-authority` worktree)
+**Time spent:** ~1.5h
+
+**What changed:**
+- Re-exported `AccountStatementEntry` interface from `LedgerUseCases.ts` so Sales and Purchases reporting use cases do not reference `ILedgerRepository` directly.
+- Injected `GetVoucherUseCase` (from Accounting use cases) into `GetLedgerBackedCustomerStatementUseCase` (Sales) and `GetLedgerBackedVendorStatementUseCase` (Purchases), replacing the direct dependency on `IVoucherRepository`.
+- Updated `SalesReportingController.ts` and `PurchaseController.ts` to construct and inject `GetVoucherUseCase`.
+- Refactored `LedgerBackedCustomerStatement.test.ts` and `LedgerBackedVendorStatement.test.ts` unit tests to mock `GetVoucherUseCase.execute()` instead of `IVoucherRepository.findById()`.
+- Verified that `AccountingBoundary.test.ts` and the entire backend test suite compiles and passes cleanly with 0 violations.
+
+**Accounting/control impact:** Code structure compliance. Strict separation of Sales and Purchases modules from low-level Accounting repositories at the application level.
+
+**Verification:**
+- `npm run typecheck` -> passed.
+- `npm test` -> all 137 test suites passed.
+
 ## 2026-06-03 (Wed) — Decouple Sales/Purchases Posting & Wire Reactive Approval Guard
 
 **Task:** Decouple Sales/Purchases document posting from local settings approval flags and implement reactive parking under the Posting-Authority architecture (Stage 2b).

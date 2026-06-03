@@ -1,8 +1,7 @@
-import { GetAccountStatementUseCase } from '../../accounting/use-cases/LedgerUseCases';
+import { GetAccountStatementUseCase, AccountStatementEntry } from '../../accounting/use-cases/LedgerUseCases';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
-import { AccountStatementEntry } from '../../../repository/interfaces/accounting/ILedgerRepository';
+import { GetVoucherUseCase } from '../../accounting/use-cases/VoucherUseCases';
 import { IPurchaseInvoiceRepository } from '../../../repository/interfaces/purchases/IPurchaseInvoiceRepository';
 import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchases/IPurchaseOrderRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
@@ -270,7 +269,7 @@ export class GetLedgerBackedVendorStatementUseCase {
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly accountStatementUseCase: GetAccountStatementUseCase,
-    private readonly voucherRepo: IVoucherRepository,
+    private readonly getVoucherUseCase: GetVoucherUseCase,
   ) {}
 
   async execute(input: VendorStatementInput): Promise<VendorStatement> {
@@ -294,7 +293,7 @@ export class GetLedgerBackedVendorStatementUseCase {
       { includeUnposted: false },
     );
 
-    const vouchers = await this.loadVouchers(companyId, statement.entries || []);
+    const vouchers = await this.loadVouchers(companyId, statement.entries || [], userId);
     const lines = (statement.entries || []).map((entry) =>
       this.decorateEntry(entry, vouchers.get(entry.voucherId)),
     );
@@ -322,10 +321,10 @@ export class GetLedgerBackedVendorStatementUseCase {
     };
   }
 
-  private async loadVouchers(companyId: string, entries: AccountStatementEntry[]): Promise<Map<string, VoucherEntity>> {
+  private async loadVouchers(companyId: string, entries: AccountStatementEntry[], userId: string): Promise<Map<string, VoucherEntity>> {
     const voucherIds = [...new Set(entries.map((entry) => entry.voucherId).filter(Boolean))];
     const pairs = await Promise.all(
-      voucherIds.map(async (voucherId) => [voucherId, await this.voucherRepo.findById(companyId, voucherId)] as const),
+      voucherIds.map(async (voucherId) => [voucherId, await this.getVoucherUseCase.execute(companyId, userId, voucherId).catch(() => null)] as const),
     );
 
     const byId = new Map<string, VoucherEntity>();
