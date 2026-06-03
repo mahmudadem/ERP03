@@ -146,14 +146,27 @@ batch behavioural stages. Run `erp-reviewer` before Stage 1 and Stage 4.
 
 ## Status — where I left off / next agent starts here
 
-- **Done:** Stage 0 (spec, plan, guardrails) + **Stage 1** (guard derives approval from the caller,
-  not a forged stamp) + **Stage 2a** (accounting approval policy has per-type scope/exemptions).
-  All committed to `main`, all safe-by-default, all verified.
-- **Next:** **Stage 2b — wire the modules.** Drive the per-module park from the **central** approval
-  policy (not the `requireApprovalBeforePosting` flags) and pass the real `approved` state into
-  `SubledgerVoucherPostingService` (Stage-1 + Stage-2a hooks are both ready). Then **Stage 2c**
-  retires the per-module flags. **Run `erp-reviewer` first — 2b is the first behavioural change to
-  the live Sales/Purchases approval path.**
-- Sales + Purchases per-module approval (`cc37e78e`, `7fc4ce7e`) remain on `main` and keep working
-  in the meantime; Stage 2 migrates them. Inventory approval was deliberately not built.
-- Guardrail checklist: `PostingAuthority.test.ts` now has Stage 1 active + Stages 2–4 as `it.todo`.
+**ALL STAGES 0–7 COMPLETE (2026-06-03).** Reports: 155 (2b), 156 (3), 157 (F8), 158 (2c), 159 (4),
+160 (5). Stages 6 & 7 were already satisfied by prior work + documented (see `posting-authority.md`
+§6, Law 3, and the conformance table). Guardrail checklist `PostingAuthority.test.ts`: Stages 1, 2,
+3, 4 are all **active and green**.
+
+- **Stage 0** ✅ spec, plan, guardrails.
+- **Stage 1** ✅ guard derives approval from the caller, not a forged stamp.
+- **Stage 2a** ✅ per-type approval scope/exemptions.
+- **Stage 2b** ✅ modules wired to the central approval policy; reactive parking. (report 155)
+- **Stage 2c** ✅ per-module `requireApprovalBeforePosting` flag retired. (report 158)
+- **Stage 3** ✅ period lock unified under `PeriodLockPolicy`. (report 156)
+- **Stage 4** ✅ `PostingGateway` is the single ledger door; arch test forbids any other
+  `recordForVoucher` caller. (report 159)
+- **F8** ✅ reporting decoupled from ledger/voucher repos. (report 157)
+- **Stage 5** ✅ uniform `{ guard, code, message, fieldHints }` rejection contract. (report 160)
+- **Stage 6** ✅ override vocabulary standardized (`{ reason, overriddenBy }`); no "ticket" identifier
+  exists in code; docs aligned.
+- **Stage 7** ✅ future hooks documented (request-gating, account-level caps) — **not built**.
+
+**Only remaining follow-up — Stage 4b (new, optional):** fold the system-voucher exemptions
+(settlements, payment-sync, bank-rec, year-end closing & reversal) into the policy set so even those
+run the full rulebook. Today they pass the gateway door + iron laws but carry an explicit
+`enforcePolicies: false` + `exemptionReason`. `grep "enforcePolicies: false" backend/src` lists them.
+**Run `erp-reviewer` first — 4b is a behavioural change to system-voucher posting.**

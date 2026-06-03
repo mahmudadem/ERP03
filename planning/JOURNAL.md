@@ -2,6 +2,25 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Stages 6 & 7: Vocabulary + Future Hooks (docs)
+
+**Task:** Stage 6 (purge "ticket" metaphor; standardize override reason) + Stage 7 (document future
+hooks, do not build).
+**Agent:** Claude (Opus 4.7).
+**Branch:** `main` (worktree `d:\DEV2026\ERP03-posting-authority`).
+
+**What changed:**
+- **Stage 6** was already satisfied in code (no `ticket` identifiers; override shape uniformly
+  `{ reason, overriddenBy }` enforced by `PeriodLockOverride`/`CreditOverride`). Documented it in
+  Law 3 + conformance table. No code change warranted.
+- **Stage 7** — expanded `posting-authority.md` §6 with the two designed-for-but-unbuilt hooks
+  (module request-gating; account-level caps), AND-gating notes, and a "do not build" marker.
+- Updated the fix-plan brief status: **all stages 0–7 complete**; only optional **Stage 4b** remains.
+
+**Report:** [done/161-stage-6-7-vocabulary-and-future-hooks.md](./done/161-stage-6-7-vocabulary-and-future-hooks.md).
+
+---
+
 ## 2026-06-03 (Wed) — Stage 5: Uniform Rejection Contract
 
 **Task:** Law 5 — every guard signs its refusal with a uniform `{ guard, code, message, fieldHints }`.

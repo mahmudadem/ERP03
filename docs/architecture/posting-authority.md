@@ -41,7 +41,9 @@ These are invariants. New code must not violate them.
    cross-ownership.
 3. **An override is an *override reason* carried with the transaction** — `{ reason, overriddenBy }`.
    There is no "ticket" object; that was only ever a metaphor. The guard sees the violation, then
-   checks the override reason against its own rule.
+   checks the override reason against its own rule. *(Stage 6: this vocabulary is now standard
+   throughout — `PeriodLockOverride` and `CreditOverride` both persist exactly `{ reason,
+   overriddenBy }`, and no "ticket"-named type exists in the codebase.)*
 4. **Guards compose by AND.** Each guard can only *restrict*, never *force*. A permission in one
    guard grants only the right to *ask* the next guard — never the right to overrule it.
    **Adding a guard can only ever tighten, never loosen.** The most restrictive concern wins.
@@ -100,12 +102,28 @@ the Sales guard. **Reading another domain's data ≠ the rule belonging to that 
   (projected exposure incl. open orders, vs. posted account balance). The stricter wins; they can
   never contradict. *(Law 4.)*
 
-## 6. Future hooks (designed-for, not yet built)
+## 6. Future hooks (designed-for, NOT yet built — Stage 7)
 
-- **Request-gating in a module guard:** a module may gate *which forms/users* can even *request*
-  an override of an accounting policy — AND-gated with the owning guard (the module grants the
-  right to *ask*; accounting still decides). Maps onto the existing forms + permissions system.
-- **Account-level caps** at the Accounting guard (per-COA-account exposure ceilings).
+> **Do not build these without an explicit go-ahead.** They are recorded here so the design intent
+> is not lost and so new code leaves room for them. Each is purely additive and AND-gated (Law 4) —
+> neither can ever *loosen* an existing guard.
+
+- **Request-gating in a module guard.** A module may gate *which forms/users* can even *request* an
+  override of an accounting policy. This is **AND-gated** with the owning guard: the module grants the
+  right to *ask*, the accounting guard still independently decides whether to *accept*. It maps onto
+  the existing forms + permissions system (a permission like `accounting.period-lock.request-override`
+  on a form/role), and it never overrules the accounting guard — a user who is allowed to ask can
+  still be refused. Worked example: a "Backdated Invoice" form grants the right to *submit* an
+  override reason; accounting accepts it only when `allowPeriodLockOverride !== false`.
+- **Account-level caps at the Accounting guard.** Per-COA-account exposure ceilings (e.g. a hard cap
+  on a specific control account's balance), enforced as a new accounting policy at the ledger door.
+  This is a *different* control from the Sales credit limit (per-account ledger balance vs.
+  per-customer projected commercial exposure) and is owned by a *different* guard; the two are
+  AND-gated and the stricter wins (see §5, third worked example).
+
+When either lands, it becomes a new policy in the `AccountingPolicyRegistry` (account-level caps) or a
+new module-guard permission check (request-gating) — both flow through the existing `PostingGateway`
+door and the uniform rejection contract (§7, Stage 5). No new bypass is introduced.
 
 ## 7. The ledger door — `PostingGateway` (Stage 4)
 
@@ -155,6 +173,10 @@ Which paths enforce vs. exempt today:
 | Each guard signs its refusal (uniform contract) | ✅ **Stage 5** — `toRejectionContract(err)` maps every guard error onto `{ guard, code, message, fieldHints }`; the error handler surfaces `guard` + `code` consistently |
 | All-or-nothing transaction | ✅ holds for postings |
 
-**Remaining (post-Stage-5):** Stage 4b — fold the system-voucher exemptions into the policy set so
-even settlements/closings run the full rulebook (today they pass the door + iron laws only). Tracked
-in the fix plan.
+| Override vocabulary standard (`{ reason, overriddenBy }`, no "ticket") | ✅ **Stage 6** — uniform in code + docs |
+| Future hooks documented (request-gating, account caps) | ✅ **Stage 7** — see §6 (designed-for, not built) |
+
+**Remaining:** **Stage 4b** — fold the system-voucher exemptions (settlements, payment-sync, bank-rec,
+year-end closing) into the policy set so even those run the full rulebook (today they pass the door +
+iron laws only, flagged with an `exemptionReason`). Tracked in the fix plan. All other staged work
+(0–7) is complete.
