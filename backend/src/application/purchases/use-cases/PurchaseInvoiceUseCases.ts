@@ -35,6 +35,8 @@ import { IVoucherRepository } from '../../../domain/accounting/repositories/IVou
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
@@ -1012,7 +1014,18 @@ export class PostPurchaseInvoiceUseCase {
 
       const postedVoucher = approvedVoucher.post(pi.createdBy, now, PostingLockPolicy.FLEXIBLE_LOCKED);
 
-      await this.ledgerRepo!.recordForVoucher(postedVoucher, transaction);
+      // Single sanctioned ledger door. This system-generated settlement payment is policy-exempt
+      // (Stage 4b will fold settlement postings into the policy set).
+      const gateway = new PostingGateway(this.ledgerRepo!, new VoucherValidationService());
+      await gateway.record(
+        postedVoucher,
+        {
+          userId: pi.createdBy,
+          enforcePolicies: false,
+          exemptionReason: 'system-generated settlement payment for Purchase Invoice (Stage 4b)',
+        },
+        transaction
+      );
       await this.voucherRepo!.save(postedVoucher, transaction);
 
       const paymentId = `pay_${randomUUID()}`;

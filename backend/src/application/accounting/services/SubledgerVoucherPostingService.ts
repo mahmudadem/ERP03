@@ -5,12 +5,13 @@ import { IVoucherRepository } from '../../../domain/accounting/repositories/IVou
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { VoucherPostingStrategyFactory } from '../../../domain/accounting/factories/VoucherPostingStrategyFactory';
 import { IPostingPolicy } from '../../../domain/accounting/policies/IPostingPolicy';
-import { AccountingPolicyConfig, PostingPolicyContext } from '../../../domain/accounting/policies/PostingPolicyTypes';
+import { AccountingPolicyConfig } from '../../../domain/accounting/policies/PostingPolicyTypes';
 import { PostingLockPolicy, VoucherStatus, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { PeriodLockService } from './PeriodLockService';
+import { PostingGateway } from './PostingGateway';
 
 export interface PostSubledgerVoucherInput {
   companyId: string;
@@ -137,53 +138,28 @@ export class SubledgerVoucherPostingService {
       input.postingLockPolicy || PostingLockPolicy.FLEXIBLE_LOCKED
     );
 
-    this.validationService.validateCore(postedVoucher);
-    if (this.accountRepo) {
-      await this.validationService.validateAccounts(postedVoucher, this.accountRepo);
-    }
+    // The full rulebook + the ledger write go through the single sanctioned choke point. The guard
+    // derives approval from the caller's REAL state (`input.approved`), never the voucher's own
+    // stamp (Law 7), so an active ApprovalRequiredPolicy rejects an unapproved subledger posting
+    // before any ledger row is written.
+    const gateway = new PostingGateway(
+      this.ledgerRepo,
+      this.validationService,
+      this.policyRegistry,
+      this.accountRepo
+    );
+    await gateway.record(
+      postedVoucher,
+      {
+        userId: input.createdBy,
+        approved: input.approved !== false,
+        enforcePolicies: true,
+      },
+      transaction
+    );
 
-    await this.validatePostingPolicies(postedVoucher, input.createdBy, input.approved !== false);
-
-    await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
     await this.voucherRepo.save(postedVoucher, transaction);
     return postedVoucher;
-  }
-
-  private async validatePostingPolicies(voucher: VoucherEntity, userId: string, approved: boolean): Promise<void> {
-    if (!this.policyRegistry) {
-      return;
-    }
-
-    const config = await this.policyRegistry.getConfig(voucher.companyId);
-    const policies = await this.policyRegistry.getEnabledPolicies(voucher.companyId);
-    if (policies.length === 0) {
-      return;
-    }
-
-    const context: PostingPolicyContext = {
-      companyId: voucher.companyId,
-      voucherId: voucher.id,
-      userId,
-      voucherType: voucher.type,
-      voucherDate: voucher.date,
-      voucherNo: voucher.voucherNo,
-      baseCurrency: voucher.baseCurrency,
-      totalDebit: voucher.totalDebit,
-      totalCredit: voucher.totalCredit,
-      // The guard decides approval from the source document's REAL approval state — never from a
-      // status the posting path stamped on the voucher itself (no forged credentials, Law 7).
-      status: approved ? voucher.status : VoucherStatus.DRAFT,
-      isApproved: approved && voucher.isApproved,
-      lines: voucher.lines,
-      metadata: voucher.metadata,
-      postingPeriodNo: voucher.postingPeriodNo,
-    };
-
-    await this.validationService.validatePolicies(
-      context,
-      policies,
-      config.policyErrorMode || 'FAIL_FAST'
-    );
   }
 
   async deleteVoucherInTransaction(

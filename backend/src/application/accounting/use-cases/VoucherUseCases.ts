@@ -11,6 +11,7 @@ import { PostingFieldExtractor } from '../../../domain/accounting/services/Posti
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { VoucherStatus, VoucherType, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../services/PostingGateway';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
@@ -569,12 +570,22 @@ export class CreateVoucherUseCase {
            }
         }
 
-        // 4. Record to ledger using captured repo
-        await ledgerRepo.recordForVoucher(postedVoucher, transaction);
-        
+        // 4. Record to ledger through the single sanctioned choke point. Policies were already run
+        //    inline above (step 3.5); the gateway re-asserts the iron laws and owns the ledger write.
+        const gateway = new PostingGateway(ledgerRepo, this.validationService);
+        await gateway.record(
+          postedVoucher,
+          {
+            userId,
+            enforcePolicies: false,
+            exemptionReason: 'policies validated inline by CreateVoucherUseCase auto-post (pre-gateway; Stage 4b folds them in)',
+          },
+          transaction
+        );
+
         // 5. Persist the posted voucher
         await this.voucherRepo.save(postedVoucher, transaction);
-        
+
         return postedVoucher;
       }
 
@@ -868,9 +879,23 @@ export class UpdateVoucherUseCase {
         
         // 2. Save updated voucher
         await this.voucherRepo.save(updatedVoucher, transaction);
-        
-        // 3. Re-record to ledger
-        await this.ledgerRepo.recordForVoucher(updatedVoucher, transaction);
+
+        // 3. Re-record to ledger through the single sanctioned choke point. Policy re-validation on
+        //    the DRAFT→APPROVED transition already ran above; this re-record of an already-posted,
+        //    edited voucher carries that exemption explicitly.
+        const gateway = new PostingGateway(
+          this.ledgerRepo,
+          this.validationService || new VoucherValidationService()
+        );
+        await gateway.record(
+          updatedVoucher,
+          {
+            userId,
+            enforcePolicies: false,
+            exemptionReason: 'edited posted voucher re-record; policies validated on approval transition by UpdateVoucherUseCase (pre-gateway; Stage 4b folds them in)',
+          },
+          transaction
+        );
       } else {
         // Standard save
         await this.voucherRepo.save(updatedVoucher, transaction);
@@ -1199,9 +1224,21 @@ export class PostVoucherUseCase {
         }
 
         const postedVoucher = voucher.post(userId, new Date(), lockPolicy);
-        
-        // 4. Single Source of Truth: Record to Ledger
-        await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
+
+        // 4. Single Source of Truth: Record to Ledger through the sanctioned choke point. The full
+        //    policy set already ran inline above (step 2) with structured rejection logging; the
+        //    gateway re-asserts the iron laws and owns the ledger write.
+        const gateway = new PostingGateway(this.ledgerRepo, this.validationService);
+        await gateway.record(
+          postedVoucher,
+          {
+            userId,
+            correlationId: corrId,
+            enforcePolicies: false,
+            exemptionReason: 'policies validated inline by PostVoucherUseCase (pre-gateway; Stage 4b folds them in)',
+          },
+          transaction
+        );
 
         // 5. Finalizing persistence
         await this.voucherRepo.save(postedVoucher, transaction);

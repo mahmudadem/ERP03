@@ -8,6 +8,8 @@ import { IAccountRepository } from '../../../repository/interfaces/accounting/IA
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../services/PostingGateway';
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { BusinessError } from '../../../errors/AppError';
@@ -385,7 +387,18 @@ export class CommitYearCloseUseCase {
 
     await this.transactionManager.runTransaction(async (tx) => {
       await this.voucherRepo.save(posted, tx);
-      await this.ledgerRepo.recordForVoucher(posted, tx as any);
+      // Single sanctioned ledger door. The year-end closing voucher is a system event posted under
+      // a strict lock; it is policy-exempt (Stage 4b will fold closing postings into the policy set).
+      const gateway = new PostingGateway(this.ledgerRepo, new VoucherValidationService());
+      await gateway.record(
+        posted,
+        {
+          userId,
+          enforcePolicies: false,
+          exemptionReason: 'system-generated year-end closing voucher (Stage 4b)',
+        },
+        tx as any
+      );
       await this.fiscalYearRepo.update(closedFy);
     });
 
@@ -443,7 +456,18 @@ export class ReopenYearUseCase {
       if (reversalVoucher && originalVoucher) {
         await this.voucherRepo.save(originalVoucher, tx); // Save with isReversed flag from createReversal
         await this.voucherRepo.save(reversalVoucher, tx);
-        await this.ledgerRepo.recordForVoucher(reversalVoucher, tx as any);
+        // Single sanctioned ledger door. The closing reversal is a system audit event; policy-exempt
+        // (Stage 4b will fold closing/reversal postings into the policy set).
+        const gateway = new PostingGateway(this.ledgerRepo, new VoucherValidationService());
+        await gateway.record(
+          reversalVoucher,
+          {
+            userId,
+            enforcePolicies: false,
+            exemptionReason: 'system-generated year-end closing reversal voucher (Stage 4b)',
+          },
+          tx as any
+        );
       }
       await this.fiscalYearRepo.update(updated);
     });

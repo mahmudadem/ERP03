@@ -6,6 +6,8 @@ import { IReconciliationRepository } from '../../../repository/interfaces/accoun
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../services/PostingGateway';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherStatus, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
@@ -333,7 +335,14 @@ export class BankReconciliationUseCases {
       );
 
       await this.voucherRepo.save(voucher);
-      await this.ledgerRepo.recordForVoucher(voucher);
+      // Single sanctioned ledger door. System-generated bank-rec adjustment is policy-exempt
+      // (Stage 4b will fold these into the policy set).
+      const gateway = new PostingGateway(this.ledgerRepo, new VoucherValidationService());
+      await gateway.record(voucher, {
+        userId,
+        enforcePolicies: false,
+        exemptionReason: 'system-generated bank reconciliation adjustment voucher (Stage 4b)',
+      });
       return voucher.id;
     } catch (e) {
       console.warn('[BankReconciliation] Failed to create adjustment voucher', e);

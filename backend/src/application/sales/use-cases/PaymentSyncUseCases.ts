@@ -14,6 +14,7 @@ import { ITransactionManager } from '../../../repository/interfaces/shared/ITran
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity, roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney as roundSalesMoney } from './SalesPostingHelpers';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
@@ -319,12 +320,22 @@ export class PostSalesInvoiceWithSettlementUseCase {
 
         const postedVoucher = approvedVoucher.post(userId, now, PostingLockPolicy.FLEXIBLE_LOCKED);
 
-        this.voucherValidationService.validateCore(postedVoucher);
         if (this.accountRepo) {
           await this.voucherValidationService.validateAccounts(postedVoucher, this.accountRepo);
         }
 
-        await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
+        // Single sanctioned ledger door. System-generated settlement receipt is policy-exempt
+        // (Stage 4b will fold settlement postings into the policy set).
+        const gateway = new PostingGateway(this.ledgerRepo, this.voucherValidationService);
+        await gateway.record(
+          postedVoucher,
+          {
+            userId,
+            enforcePolicies: false,
+            exemptionReason: 'system-generated settlement receipt during payment sync (Stage 4b)',
+          },
+          transaction
+        );
         await this.voucherRepo.save(postedVoucher, transaction);
         createdVoucherIds.push(voucherId);
 

@@ -43,6 +43,7 @@ import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILe
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { PersonaNotAllowedError } from '../../../domain/accounting/errors/PersonaNotAllowedError';
@@ -1790,12 +1791,22 @@ export class PostSalesInvoiceUseCase {
 
       const postedVoucher = approvedVoucher.post(si.createdBy, now, PostingLockPolicy.FLEXIBLE_LOCKED);
 
-      this.voucherValidationService.validateCore(postedVoucher);
       if (this.accountRepo) {
         await this.voucherValidationService.validateAccounts(postedVoucher, this.accountRepo);
       }
 
-      await this.ledgerRepo!.recordForVoucher(postedVoucher, transaction);
+      // Single sanctioned ledger door. This system-generated settlement receipt is policy-exempt
+      // (Stage 4b will fold settlement postings into the policy set).
+      const gateway = new PostingGateway(this.ledgerRepo!, this.voucherValidationService);
+      await gateway.record(
+        postedVoucher,
+        {
+          userId: si.createdBy,
+          enforcePolicies: false,
+          exemptionReason: 'system-generated settlement receipt for Sales Invoice (Stage 4b)',
+        },
+        transaction
+      );
       await this.voucherRepo!.save(postedVoucher, transaction);
 
       const paymentId = `pay_${randomUUID()}`;

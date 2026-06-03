@@ -107,18 +107,54 @@ the Sales guard. **Reading another domain's data ≠ the rule belonging to that 
   right to *ask*; accounting still decides). Maps onto the existing forms + permissions system.
 - **Account-level caps** at the Accounting guard (per-COA-account exposure ceilings).
 
-## 7. Current conformance (2026-06-03)
+## 7. The ledger door — `PostingGateway` (Stage 4)
+
+The literal door is one class: **`PostingGateway`**
+(`backend/src/application/accounting/services/PostingGateway.ts`). It is the **only** code permitted
+to call `ILedgerRepository.recordForVoucher`. An architecture test
+(`backend/src/tests/architecture/PostingAuthority.test.ts`) scans all production source and fails the
+build if any other file calls `.recordForVoucher(` — so the door cannot be bypassed by a new caller.
+
+`PostingGateway.record(voucher, ctx, transaction)` does, in order:
+
+1. **Iron laws, always** — `validateCore` (and `validateAccounts` when an account repo is supplied).
+   No exemption.
+2. **The policy set** — when `ctx.enforcePolicies !== false` and a registry is present, it runs the
+   full enabled policy set. **Approval is derived from `ctx.approved` (the caller's real state), never
+   from the voucher's own status** — this is where Law 7 is enforced for every path.
+3. **The ledger write** — `recordForVoucher`.
+
+**Explicit, auditable exemptions.** A few system-generated postings legitimately skip the policy set
+today (settlements, payment-sync receipts/payments, bank-rec adjustments, year-end closing &
+reversal). They pass `enforcePolicies: false` **with a mandatory `exemptionReason`** — the gateway
+throws if a reason is missing, so no skip is silent. Every exemption is greppable
+(`grep "enforcePolicies: false"`). Folding these exemptions into the policy set is tracked as
+**Stage 4b**.
+
+Which paths enforce vs. exempt today:
+
+| Posting path | Gateway mode |
+|---|---|
+| Sales/Purchase subledger (`SubledgerVoucherPostingService`) | **enforce** (full policy set, approval from caller) |
+| Manual voucher (`PostVoucherUseCase`, auto-post, edit re-record) | exempt — policies validated inline by the caller (pre-gateway; Stage 4b folds in) |
+| Sales/Purchase invoice settlement; payment-sync | exempt — system-generated settlement (Stage 4b) |
+| Bank-reconciliation adjustment | exempt — system-generated adjustment (Stage 4b) |
+| Year-end closing & closing reversal | exempt — system event under strict lock (Stage 4b) |
+
+## 8. Current conformance (2026-06-03)
 
 | Law / piece | State |
 |---|---|
 | Credit limit owned by Sales, accounting ignorant of it | ✅ holds (verified: zero `creditLimit` refs in accounting) |
-| Subledger postings run the accounting policy registry | ✅ holds (post-`ac963d32`) |
+| Subledger postings run the accounting policy registry | ✅ holds (post-`ac963d32`; now via the gateway) |
 | `allowPeriodLockOverride` is an accounting concern | ✅ holds (accounting config) |
-| One accounting guard, literally at the ledger write | ⚠️ partial — the ledger write only enforces iron laws; policy enforcement is upstream, so a direct call could bypass |
-| No forged "approved" stamp | ✅ **Stage 1** — the guard now derives approval from the caller's *real* state, not a self-stamped status (per-module wiring lands in Stage 2) |
-| Approval owned in Accounting (one rulebook + scope) | ✅ solved (decoupled in Stage 2b) |
+| One accounting guard, literally at the ledger write | ✅ **Stage 4** — `PostingGateway` is the sole caller of `recordForVoucher`, enforced by an architecture test. Some system postings are explicitly policy-exempt (Stage 4b) but still pass through the door + iron laws |
+| No forged "approved" stamp | ✅ **Stage 1 + 4** — approval is derived from the caller's *real* state inside the gateway, for every path |
+| Approval owned in Accounting (one rulebook + scope) | ✅ solved (Stage 2b/2c — per-module flag retired) |
 | Period lock has one implementation | ✅ holds — `PeriodLockService` is a thin adapter delegating to `PeriodLockPolicy` |
-| Each guard signs its refusal (uniform contract) | ⚠️ partial — typed errors exist but no uniform `{ guard, code }` contract |
+| Each guard signs its refusal (uniform contract) | ⚠️ partial — typed errors exist but no uniform `{ guard, code }` contract yet (Stage 5) |
 | All-or-nothing transaction | ✅ holds for postings |
 
-The migration to close the ❌/⚠️ rows is in the fix plan.
+**Remaining (post-Stage-5):** Stage 4b — fold the system-voucher exemptions into the policy set so
+even settlements/closings run the full rulebook (today they pass the door + iron laws only). Tracked
+in the fix plan.

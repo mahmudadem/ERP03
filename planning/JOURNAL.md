@@ -2,6 +2,38 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-03 (Wed) — Stage 4: PostingGateway (Guard at the Door)
+
+**Task:** Build the single mandatory choke point in front of every ledger write.
+**Agent:** Claude (Opus 4.7).
+**Branch:** `main` (worktree `d:\DEV2026\ERP03-posting-authority`).
+**Time spent:** ~2h.
+
+**What changed:**
+- New `PostingGateway` — the only code permitted to call `ILedgerRepository.recordForVoucher`.
+- Migrated all 11 production posting paths to route through it. Subledger path runs the full policy
+  set **through** the gateway (enforce mode, approval from caller). The other 10 sites (manual
+  voucher ×3, sales/purchase settlement, payment-sync ×2, bank-rec, year-end closing ×2) pass an
+  explicit `enforcePolicies: false` + mandatory `exemptionReason` — preserving current behaviour
+  with zero change while making every policy-skip greppable.
+- Architecture test: Stage 4 `it.todo` → two active assertions (no direct `recordForVoucher` callers
+  anywhere in production; gateway requires an exemption reason). Stage 1 + Law 1 assertions updated to
+  the new gateway location.
+- New `PostingGateway.test.ts` (6 tests, incl. the Law-7 "not-approved derived from caller" proof).
+- Docs: `posting-authority.md` §7 documents the door + exemption table; conformance table updated.
+
+**Verification:**
+- `npx tsc --noEmit` clean.
+- Full backend suite: **138 suites, 1301 passed, 18 skipped, 0 failed** (was 137/1293/1-todo). No
+  regressions.
+
+**Follow-up filed:** **Stage 4b** — fold the system-voucher exemptions (settlements, closings) into
+the policy set so even those run the full rulebook.
+
+**Report:** [done/159-stage-4-posting-gateway.md](./done/159-stage-4-posting-gateway.md).
+
+---
+
 ## 2026-06-03 (Wed) — Stage 2c: Retire Per-Module `requireApprovalBeforePosting` Flag
 
 **Task:** Finish Stage 2c of the Posting-Authority fix plan — remove the per-module approval flag now that Stage 2b drives parking from the central `AccountingPolicyRegistry`.

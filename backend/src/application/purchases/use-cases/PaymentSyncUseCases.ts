@@ -10,6 +10,8 @@ import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILe
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherLineEntity, roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney as roundPurchMoney } from './PurchasePostingHelpers';
@@ -211,7 +213,18 @@ export class PostPurchaseInvoiceWithSettlementUseCase {
 
         const postedVoucher = approvedVoucher.post(userId, now, PostingLockPolicy.FLEXIBLE_LOCKED);
 
-        await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
+        // Single sanctioned ledger door. System-generated settlement payment is policy-exempt
+        // (Stage 4b will fold settlement postings into the policy set).
+        const gateway = new PostingGateway(this.ledgerRepo, new VoucherValidationService());
+        await gateway.record(
+          postedVoucher,
+          {
+            userId,
+            enforcePolicies: false,
+            exemptionReason: 'system-generated settlement payment during payment sync (Stage 4b)',
+          },
+          transaction
+        );
         await this.voucherRepo.save(postedVoucher, transaction);
         createdVoucherIds.push(voucherId);
 
