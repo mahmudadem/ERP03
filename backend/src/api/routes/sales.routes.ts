@@ -10,6 +10,7 @@ import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeI
 import { VoucherFormController } from '../controllers/accounting/VoucherFormController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
+import { permissionGuard } from '../middlewares/guards/permissionGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
 import multer from 'multer';
 
@@ -69,7 +70,10 @@ router.put('/invoices/:id', SalesController.updateSI);
 router.delete('/invoices/:id', SalesController.deleteSI);
 router.put('/invoices/:id/update-and-post', idempotencyMiddleware, SalesController.updateAndPostSI);
 router.post('/invoices/:id/post', idempotencyMiddleware, SalesController.postSI);
-router.post('/invoices/:id/approve', idempotencyMiddleware, SalesController.approveSI);
+// SoD: approving a parked Sales Invoice is an Accounting authority (the ledger effect is what is
+// being approved). Guarded by `accounting.approve.finance`. See
+// docs/architecture/posting-authority.md §4.1.
+router.post('/invoices/:id/approve', permissionGuard('accounting.approve.finance'), idempotencyMiddleware, SalesController.approveSI);
 router.post('/invoices/:id/payment-status', SalesController.updatePaymentStatus);
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, SalesController.recordPayment);
 router.get('/invoices/:id/payments', SalesController.getPaymentHistory);
