@@ -368,7 +368,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         : roundMoney(lineTotalDoc * taxRate);
       const taxAmountBase = roundMoney(taxAmountDoc * (form.exchangeRate || 0));
 
-      return { grossLineTotalDoc, discountAmountDoc, lineTotalDoc, lineTotalBase, taxAmountDoc, taxAmountBase };
+      // `lineGrossDoc` is what the user is paying for this line — qty × unit price
+      // minus discount, with tax embedded if the line is inclusive. It equals
+      // `lineTotalDoc + taxAmountDoc` either way and is what the LINE TOTAL
+      // column shows. `lineTotalDoc` (net) is shown separately in the NET column.
+      const lineGrossDoc = roundMoney(lineTotalDoc + taxAmountDoc);
+      return { grossLineTotalDoc, discountAmountDoc, lineGrossDoc, lineTotalDoc, lineTotalBase, taxAmountDoc, taxAmountBase };
     });
   }, [form.exchangeRate, form.lines, taxById]);
 
@@ -1485,8 +1490,9 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
               <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.warehouse', 'Warehouse')}</th>
               <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discountAmt', 'Discount Amt')}</th>
               <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.lineTotal', 'Line Total')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.net', 'Net')}</th>
               <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.tax', 'Tax')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.lineBase', 'Line Base')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.netBase', 'Net Base')}</th>
               {!isReadOnly && <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500" />}
             </tr>
           </thead>
@@ -1625,7 +1631,8 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                   )}
                 </td>
                 <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.discountAmountDoc.toFixed(2)}</td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{computedLines[index]?.lineTotalDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{computedLines[index]?.lineGrossDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.lineTotalDoc.toFixed(2)}</td>
                 <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.taxAmountDoc.toFixed(2)}</td>
                 <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
                 {!isReadOnly && (
