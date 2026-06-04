@@ -89,6 +89,50 @@ the Sales guard. **Reading another domain's data ≠ the rule belonging to that 
   - **Per-transaction override reason** (runtime, audited): "skip this lock for *this* posting
     because *[reason]*, by *[user]*." Travels with the transaction.
 
+### 4.1 Who holds the approval right (segregation of duties)
+
+The approval right belongs to **Accounting**, not the source module that originated the document.
+This is a direct application of Law 2 (each domain owns its rules) plus the principle stated in §3:
+**"reading another domain's data ≠ the rule belonging to that domain."** Run that principle the
+other way around — a posting *touches* a sales document, but the rule *"don't let this ledger
+effect happen without authorization"* is an Accounting concern. The trigger does not move the
+right.
+
+This is also the standard accounting **segregation of duties (SoD)** control codified by COSO and
+SOX 404. The person who *initiates* a transaction must not be the person who *approves* its
+financial effect. A salesperson approving the ledger impact of their own commissionable invoice is
+the textbook fraud-risk pattern auditors are trained to flag.
+
+**Concrete bindings:**
+
+| Concern | Owner |
+|---|---|
+| Decision *whether* approval is required (config) | Accounting (the Approval Workflow tab in Accounting Settings) |
+| Holding the document in a pending state | Source module (mechanical — the SI/PI carries `PENDING_APPROVAL`) |
+| Authority to **approve** the ledger effect | Accounting (`accounting.financialApproval.approve` permission) |
+| Authority to **reject** the ledger effect | Accounting (same permission) |
+| Visibility / queue of what is pending | Accounting (Approval Center — aggregates pending source docs across modules) |
+| Notification when a document parks | Routed to accounting roles (configurable) |
+
+**Source-module pages must not render an Approve action.** A Sales Invoice in `PENDING_APPROVAL`
+shows a read-only form plus a "Awaiting accounting approval" banner. The post handler in the source
+module exists only because the source module is what *triggers* the post (which then parks via the
+gateway) — it must never be the one that *clears* the parked state.
+
+**On rejection,** the source document transitions back to a workable state (typically `DRAFT`)
+with the rejection reason recorded in its audit log. The salesperson sees the rejection on the
+source document page; they re-submit by re-posting.
+
+**Future delegation (configurable, not built):** a company may choose to grant approval rights to
+non-accounting roles under bounded conditions — e.g. "Sales Manager may approve SIs they did not
+themselves create, up to $X." This is a standing delegation of the Accounting right, configured in
+Accounting, audited like any other exemption. The default is undelegated: Accounting only.
+
+**What this means for routes and permissions:** approve endpoints for source documents
+(`/sales/invoices/:id/approve`, `/purchases/invoices/:id/approve`) MUST be guarded by
+`accounting.financialApproval.approve`. Sales-side or purchases-side permissions like
+`sales.invoices.approve` MUST NOT exist — they would split the right and violate SoD.
+
 ## 5. Worked examples
 
 - **Admin posts an SI into a locked period, with an override reason; accounting forbids the
