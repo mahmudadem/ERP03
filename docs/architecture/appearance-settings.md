@@ -129,3 +129,13 @@ To match the exact glossy 3D icons from the Tailwind Play design:
 * This delivers identical high-fidelity 3D aesthetics across all operating systems and browsers, bypassing default, flat 2D OS emoji font rendering (like standard Segoe UI Emoji on Windows).
 * **Border & Shadow styling:** In collapsed mode (`!isOpen`), active icons under the `tailwind-play` theme render inside a white card with a border (`bg-white border border-slate-200 shadow-sm`) that stands out on the slate-50 background, while inactive icons render on `bg-[var(--color-bg-tertiary)]` (slate-100) and animate to the active card style on hover.
 
+### 11. Compact Layout Mode (Zero-Duplication App Shell)
+To provide a high-density, premium interface inspired by the Apex Ledger layout without introducing codebase duplication or component drift, the system integrates a global `layoutMode: 'legacy' | 'compact'` user preference:
+* **Context & Persistence:** `layoutMode` is managed via `UserPreferencesContext.tsx` and the `useLayoutMode` helper hook. It is persisted locally in `localStorage` under `erp_layout_mode` and serialized dynamically within the JSON settings of the backend DB.
+* **Ambient CSS Injection:** When compact layout mode is active, the AppShell adds a `data-layout="compact"` attribute to the document root and injects `.compact-content-area` styles.
+* **CSS Custom Variables Scoping:** Scoped overrides defined in `compact-layout.css` override backgrounds (`#FAFAFB` in light mode, `#0F172A` in dark mode), tighten margins/paddings, and enforce a clean card border/shadow design.
+* **Component Adaptation:**
+  * **AppShell & TopBar:** The AppShell constrains content max-width to `80rem` and centers it, while the TopBar uses clean backgrounds and a border.
+  * **Sidebar navigation:** The sidebar background shifts to match the page, and section headings display styled divider lines (`.compact-section-separator`). Active sidebar links use a clean left-border indicator instead of background overlays, preventing design conflicts.
+
+

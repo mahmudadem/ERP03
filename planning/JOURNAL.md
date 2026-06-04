@@ -2,6 +2,26 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-04 (Thu) — Compact Layout Mode Integration Complete
+
+**Task:** Complete Phase 4 and Verification of the Compact Layout Mode Integration (Task 166). Integrate layout switches, add en/ar/tr localizations, fix duplicate imports context bug, and run full compiler and production bundling checks.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~1.5h.
+
+**What changed:**
+- **AppearanceSettingsPage.tsx** — Replaced all hardcoded labels/dropdowns in the Layout & Behavior section with `useTranslation` i18n hook calls (`t(...)`).
+- **UserPreferencesContext.tsx** — Fixed syntax compilation error caused by duplicate imports blocks.
+- **common.json** (English, Arabic, Turkish) — Added translations for all Layout & Behavior controls, including `layoutMode`, `themeMode`, `uiDensity`, `sidebarNav`, `sidebarSurface`, `widgetStyle`, and their respective standard/compact options.
+- **appearance-settings.md** (Architecture doc) — Appended Technical Section 11 detailing the Compact Layout Mode (Zero-Duplication App Shell) design.
+- **appearance-settings.md** (User guide) — Documented Layout Mode options and selection steps.
+- **Build & Verification checks:** Verified both typecheck and production bundling are clean (`npm run typecheck` and `npm run build` succeeded with 0 errors/warnings).
+- **Completion Report:** Created [planning/done/166-compact-layout-mode.md](./done/166-compact-layout-mode.md).
+
+**Next recommended step:** Proceed with priority Task 132 polish backlog (Phase 5: audit action checks and selector integrations).
+
+---
+
 ## 2026-06-04 (Thu) — Apex Accounting: All 12 Report Pages Completed
 
 **Task:** Build all 12 functional Apex-styled accounting report pages to replace the ReportsSection index stubs. Sub-agents hit quota (429) before finishing, so all 5 missing pages were built directly.
