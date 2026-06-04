@@ -136,6 +136,9 @@ export interface PurchaseInvoiceLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
+   *  net + tax during construction so totals match the user's input. */
+  priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -289,6 +292,10 @@ export class CreatePurchaseInvoiceUseCase {
         taxRate = taxCode.rate;
       }
 
+      // Pre-totals here are illustrative; the PurchaseInvoice constructor
+      // recomputes via normalizeLine, which is the source of truth for the
+      // inclusive/exclusive tax split. We forward `priceIsInclusive` so the
+      // entity sees it.
       lines.push({
         lineId: sourceLine.lineId || randomUUID(),
         lineNo: sourceLine.lineNo ?? i + 1,
@@ -308,6 +315,7 @@ export class CreatePurchaseInvoiceUseCase {
         taxCodeId,
         taxCode: undefined,
         taxRate,
+        priceIsInclusive: sourceLine.priceIsInclusive === true,
         taxAmountDoc: roundMoney(lineTotalDoc * taxRate),
         taxAmountBase: roundMoney(lineTotalBase * taxRate),
         warehouseId: sourceLine.warehouseId || poLine?.warehouseId || settings.defaultWarehouseId,
@@ -849,13 +857,19 @@ export class PostPurchaseInvoiceUseCase {
   }
 
   private freezeTaxSnapshotSync(line: PurchaseInvoiceLine, rate: number, tax?: TaxCode): void {
-    line.lineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    line.unitPriceBase = roundMoney(line.unitPriceDoc * rate);
-    line.lineTotalBase = roundMoney(line.lineTotalDoc * rate);
     line.taxCode = tax?.code;
     line.taxRate = tax?.rate || 0;
-    line.taxAmountDoc = roundMoney(line.lineTotalDoc * line.taxRate);
-    line.taxAmountBase = roundMoney(line.lineTotalBase * line.taxRate);
+    // Honour priceIsInclusive: when set, unitPriceDoc IS the gross — split it.
+    const inclusive = line.priceIsInclusive === true;
+    const divisor = inclusive ? 1 + line.taxRate : 1;
+    const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
+    line.lineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
+    line.unitPriceBase = roundMoney(line.unitPriceDoc * rate);
+    line.lineTotalBase = roundMoney(line.lineTotalDoc * rate);
+    line.taxAmountDoc = inclusive
+      ? roundMoney(grossLineTotalDoc - line.lineTotalDoc)
+      : roundMoney(line.lineTotalDoc * line.taxRate);
+    line.taxAmountBase = roundMoney(line.taxAmountDoc * rate);
   }
 
   private recalcInvoiceTotals(pi: PurchaseInvoice): void {
@@ -1147,6 +1161,10 @@ export class UpdatePurchaseInvoiceUseCase {
           taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
           taxCode: existing?.taxCode,
           taxRate: existing?.taxRate ?? 0,
+          priceIsInclusive:
+            line.priceIsInclusive !== undefined
+              ? line.priceIsInclusive === true
+              : existing?.priceIsInclusive === true,
           taxAmountDoc: existing?.taxAmountDoc ?? 0,
           taxAmountBase: existing?.taxAmountBase ?? 0,
           warehouseId: line.warehouseId ?? existing?.warehouseId,

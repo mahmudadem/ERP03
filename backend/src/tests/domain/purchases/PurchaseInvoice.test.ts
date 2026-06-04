@@ -1,0 +1,94 @@
+import { PurchaseInvoice } from '../../../domain/purchases/entities/PurchaseInvoice';
+
+describe('PurchaseInvoice', () => {
+  // Task 170A regression. Mirrors the SI fix from Task 168 and the SO fix
+  // from Task 170B: pre-fix, PurchaseInvoice had no concept of priceIsInclusive
+  // at all, so vendor invoices with tax-inclusive prices silently stacked tax
+  // on top during entity construction, breaking AP totals against what the
+  // vendor printed on their bill.
+  it('respects priceIsInclusive when recomputing line totals during construction', () => {
+    const pi = PurchaseInvoice.fromJSON({
+      id: 'pi_inclusive',
+      companyId: 'co_1',
+      invoiceNumber: 'PI-INC-1',
+      formType: 'purchase_invoice_direct',
+      voucherType: 'purchase_invoice',
+      persona: 'direct',
+      vendorId: 'ven_1',
+      vendorName: 'Vendor One',
+      invoiceDate: '2026-06-04',
+      currency: 'USD',
+      exchangeRate: 1,
+      lines: [
+        {
+          lineId: 'line_inc_1',
+          lineNo: 1,
+          itemId: 'item_1',
+          itemCode: '0001',
+          itemName: 'Test Item',
+          trackInventory: false,
+          invoicedQty: 2,
+          uom: 'PCS',
+          unitPriceDoc: 10,
+          taxRate: 0.1,
+          priceIsInclusive: true,
+          accountId: 'acc_1',
+        },
+      ],
+      paymentTermsDays: 0,
+      outstandingAmountBase: 0,
+      createdBy: 'user_1',
+      createdAt: new Date('2026-06-04T00:00:00Z'),
+      updatedAt: new Date('2026-06-04T00:00:00Z'),
+    });
+
+    // 2 × 10 = 20 inclusive. Net = 20 / 1.1 ≈ 18.18, tax = 20 − 18.18 ≈ 1.82.
+    expect(pi.lines[0].lineTotalDoc).toBe(18.18);
+    expect(pi.lines[0].taxAmountDoc).toBe(1.82);
+    expect(pi.subtotalDoc).toBe(18.18);
+    expect(pi.taxTotalDoc).toBe(1.82);
+    expect(pi.grandTotalDoc).toBe(20);
+    expect(pi.lines[0].priceIsInclusive).toBe(true);
+  });
+
+  it('treats priceIsInclusive=false (default) as exclusive', () => {
+    const pi = PurchaseInvoice.fromJSON({
+      id: 'pi_exclusive',
+      companyId: 'co_1',
+      invoiceNumber: 'PI-EXC-1',
+      formType: 'purchase_invoice_direct',
+      voucherType: 'purchase_invoice',
+      persona: 'direct',
+      vendorId: 'ven_1',
+      vendorName: 'Vendor One',
+      invoiceDate: '2026-06-04',
+      currency: 'USD',
+      exchangeRate: 1,
+      lines: [
+        {
+          lineId: 'line_exc_1',
+          lineNo: 1,
+          itemId: 'item_1',
+          itemCode: '0001',
+          itemName: 'Test Item',
+          trackInventory: false,
+          invoicedQty: 2,
+          uom: 'PCS',
+          unitPriceDoc: 10,
+          taxRate: 0.1,
+          accountId: 'acc_1',
+        },
+      ],
+      paymentTermsDays: 0,
+      outstandingAmountBase: 0,
+      createdBy: 'user_1',
+      createdAt: new Date('2026-06-04T00:00:00Z'),
+      updatedAt: new Date('2026-06-04T00:00:00Z'),
+    });
+
+    // 2 × 10 = 20 net. Tax = 2.00. Grand = 22.
+    expect(pi.lines[0].lineTotalDoc).toBe(20);
+    expect(pi.lines[0].taxAmountDoc).toBe(2);
+    expect(pi.grandTotalDoc).toBe(22);
+  });
+});
