@@ -165,13 +165,29 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
-      const taxRate = line.taxCodeId ? taxById[line.taxCodeId]?.rate ?? 0 : 0;
-      const lineTotalDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
-      const lineTotalBase = roundMoney(lineTotalDoc * (form.exchangeRate || 0));
-      const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
-      const taxAmountBase = roundMoney(lineTotalBase * taxRate);
+      const taxCode = line.taxCodeId ? taxById[line.taxCodeId] : undefined;
+      const taxRate = taxCode?.rate ?? 0;
+      // Honour the inclusive flag — line-level override (set via API) wins,
+      // otherwise inherit from the tax code's default. Same shape as the SI
+      // detail page and the entity's normalizeLine.
+      const effectiveInclusive =
+        (line as any).priceIsInclusive !== undefined
+          ? (line as any).priceIsInclusive === true
+          : taxCode?.priceIsInclusive === true;
+      const divisor = effectiveInclusive ? 1 + taxRate : 1;
+      const lineGrossDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
+      const lineGrossBase = roundMoney(lineGrossDoc * (form.exchangeRate || 0));
+      const lineTotalDoc = roundMoney(lineGrossDoc / divisor);
+      const lineTotalBase = roundMoney(lineGrossBase / divisor);
+      const taxAmountDoc = effectiveInclusive
+        ? roundMoney(lineGrossDoc - lineTotalDoc)
+        : roundMoney(lineTotalDoc * taxRate);
+      const taxAmountBase = effectiveInclusive
+        ? roundMoney(lineGrossBase - lineTotalBase)
+        : roundMoney(lineTotalBase * taxRate);
 
       return {
+        lineGrossDoc,
         lineTotalDoc,
         lineTotalBase,
         taxAmountDoc,
@@ -943,8 +959,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                   <th className="py-2 text-left">Tax Code</th>
                   <th className="py-2 text-left">Warehouse</th>
                   <th className="py-2 text-right">Line Total</th>
+                  <th className="py-2 text-right">Net</th>
                   <th className="py-2 text-right">Tax</th>
-                  <th className="py-2 text-right">Line Base</th>
+                  <th className="py-2 text-right">Net Base</th>
                   <th className="py-2 text-right" />
                 </tr>
               </thead>
@@ -1042,6 +1059,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="py-2 pr-2 text-right">
+                      {form.currency} {computedLines[index]?.lineGrossDoc.toFixed(2)}
                     </td>
                     <td className="py-2 pr-2 text-right">
                       {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
