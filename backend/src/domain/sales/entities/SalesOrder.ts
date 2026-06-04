@@ -30,6 +30,10 @@ export interface SalesOrderLine {
   lineTotalBase: number;
   taxCodeId?: string;
   taxRate: number;
+  // When true, `unitPriceDoc` already includes tax. The entity derives net
+  // (lineTotalDoc) and tax (taxAmountDoc) by splitting the gross — same shape
+  // as the SI fix (Task 168).
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -177,11 +181,16 @@ export class SalesOrder {
     }
 
     const normalizedTaxRate = line.taxRate ?? 0;
-    const lineTotalDoc = roundMoney(line.orderedQty * line.unitPriceDoc);
+    const priceIsInclusive = line.priceIsInclusive === true;
+    const divisor = priceIsInclusive ? 1 + normalizedTaxRate : 1;
+    const grossLineTotalDoc = roundMoney(line.orderedQty * line.unitPriceDoc);
+    const lineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
     const unitPriceBase = roundMoney(line.unitPriceDoc * this.exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
-    const taxAmountDoc = roundMoney(lineTotalDoc * normalizedTaxRate);
-    const taxAmountBase = roundMoney(lineTotalBase * normalizedTaxRate);
+    const taxAmountDoc = priceIsInclusive
+      ? roundMoney(grossLineTotalDoc - lineTotalDoc)
+      : roundMoney(lineTotalDoc * normalizedTaxRate);
+    const taxAmountBase = roundMoney(taxAmountDoc * this.exchangeRate);
 
     return {
       lineId: line.lineId,
@@ -203,6 +212,7 @@ export class SalesOrder {
       lineTotalBase,
       taxCodeId: line.taxCodeId,
       taxRate: normalizedTaxRate,
+      priceIsInclusive,
       taxAmountDoc,
       taxAmountBase,
       warehouseId: line.warehouseId,
