@@ -1330,9 +1330,18 @@ export class PostSalesInvoiceUseCase {
 
         const accounts = lineResolvedAccounts.get(line.lineId);
         if (accounts) {
-          this.addToBucket(revenueCredits, accounts.revenueId, line.grossLineTotalBase, line.grossLineTotalDoc);
+          // Strip tax from gross when the line is inclusive — both for revenue
+          // and discount postings. Otherwise AR debit (grand) ≠ revenue credit
+          // (gross) + tax credit, since gross already embeds tax. Exclusive
+          // lines have divisor=1 so this is a no-op for them.
+          const inclusiveDivisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
+          const revenueCreditDoc = roundMoney(line.grossLineTotalDoc / inclusiveDivisor);
+          const revenueCreditBase = roundMoney(line.grossLineTotalBase / inclusiveDivisor);
+          this.addToBucket(revenueCredits, accounts.revenueId, revenueCreditBase, revenueCreditDoc);
           if ((line.discountAmountBase || 0) > 0 && resolvedDiscountAccountId) {
-            this.addToBucket(discountDebits, resolvedDiscountAccountId, line.discountAmountBase || 0, line.discountAmountDoc || 0);
+            const discountDebitDoc = roundMoney((line.discountAmountDoc || 0) / inclusiveDivisor);
+            const discountDebitBase = roundMoney((line.discountAmountBase || 0) / inclusiveDivisor);
+            this.addToBucket(discountDebits, resolvedDiscountAccountId, discountDebitBase, discountDebitDoc);
           }
           if (line.taxAmountBase > 0 && accounts.taxId) {
             this.addToBucket(taxCredits, accounts.taxId, line.taxAmountBase, line.taxAmountDoc);
