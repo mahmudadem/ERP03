@@ -405,18 +405,33 @@ export class SalesInvoice {
 
     const taxRateValue = Number(line.taxRate);
     const taxRate = Number.isNaN(taxRateValue) ? 0 : taxRateValue;
-    const grossLineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
     const discountType = normalizeDiscountType(line.discountType);
     const discountValueRaw = Number(line.discountValue);
     const discountValue = Number.isNaN(discountValueRaw) ? 0 : discountValueRaw;
     const explicitDiscountDoc = line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
+
+    // Honour `priceIsInclusive`. Earlier versions of this method ignored the flag and always
+    // applied exclusive math (tax = net * rate), which silently overwrote the use case's
+    // inclusive-aware values during entity construction — the source of Task 168 (UI/ledger
+    // total mismatch). Math here must stay in lockstep with
+    // application/sales/services/SalesInvoiceCalculationService.calculateSalesInvoiceLineAmounts.
+    const priceIsInclusive = line.priceIsInclusive === true;
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+
+    const grossLineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
     const discountAmountDoc = calculateDiscountAmountDoc(grossLineTotalDoc, discountType, discountValue, explicitDiscountDoc);
-    const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+    const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+    // lineTotalDoc is the NET (ex-tax) amount in both inclusive and exclusive cases.
+    const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
+
     const unitPriceBase = roundMoney(unitPriceDoc * this.exchangeRate);
     const grossLineTotalBase = roundMoney(grossLineTotalDoc * this.exchangeRate);
     const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
-    const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
+    // Inclusive: tax back-calculated. Exclusive: tax = net * rate.
+    const taxAmountDoc = priceIsInclusive
+      ? roundMoney(postDiscountDoc - lineTotalDoc)
+      : roundMoney(lineTotalDoc * taxRate);
     const taxAmountBase = roundMoney(lineTotalBase * taxRate);
 
     return {
@@ -444,6 +459,10 @@ export class SalesInvoice {
       taxCodeId: toOptionalStringRef(line.taxCodeId),
       taxCode: toOptionalDisplayText(line.taxCode),
       taxRate,
+      // Persist priceIsInclusive so downstream loads recompute consistently. Defaults to undefined
+      // (no override) when not set, matching the existing field semantics — callers should set this
+      // explicitly to the effective value when constructing lines.
+      priceIsInclusive: line.priceIsInclusive === true ? true : (line.priceIsInclusive === false ? false : undefined),
       taxAmountDoc,
       taxAmountBase,
       warehouseId: toOptionalStringRef(line.warehouseId),

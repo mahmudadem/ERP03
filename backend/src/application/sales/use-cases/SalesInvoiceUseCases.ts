@@ -479,8 +479,12 @@ export class CreateSalesInvoiceUseCase {
         taxCodeId,
         taxCode,
         taxRate,
-        priceIsInclusive:
-          sourceLine.priceIsInclusive !== undefined ? sourceLine.priceIsInclusive === true : undefined,
+        // Set the EFFECTIVE inclusive value so the entity's normalizeLine (which now respects this
+        // flag — Task 168) recomputes line totals consistently. Before this fix the use case sent
+        // `undefined` whenever the line itself didn't override, and the entity then silently
+        // re-applied exclusive math on top of the (correct) inclusive amounts, producing a
+        // grand-total double-count on inclusive-tax invoices.
+        priceIsInclusive: effectiveInclusive,
         taxAmountDoc: lineAmounts.taxAmountDoc,
         taxAmountBase: lineAmounts.taxAmountBase,
         warehouseId: sourceLine.warehouseId || soLine?.warehouseId || settings.defaultWarehouseId,
