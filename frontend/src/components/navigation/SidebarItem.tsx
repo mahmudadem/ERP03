@@ -7,6 +7,7 @@ import { Portal } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
 import { resolveSidebarIcon } from './sidebarIcons';
 
+
 interface SidebarItemProps {
   path?: string;
   label: string;
@@ -18,6 +19,7 @@ interface SidebarItemProps {
   isFlyout?: boolean;
   isChild?: boolean;
   badge?: string;
+  isCompact?: boolean;
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({ 
@@ -30,7 +32,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   children,
   isFlyout = false,
   isChild = false,
-  badge
+  badge,
+  isCompact = false
 }) => {
   const location = useLocation();
   const { sidebarMode, appearanceSettings } = useUserPreferences();
@@ -121,9 +124,17 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
     <div className={clsx(
       "flex items-center rounded-[var(--radius-md)] w-full transition-all duration-300 ease-out group relative outline-none",
       // Layout switching: Row when open/flyout, Col when shrunk
-      (isOpen || isFlyout) ? "flex-row gap-3 px-3 py-2" : "flex-col gap-1.5 px-2 py-3 justify-center items-center",
+      (isOpen || isFlyout) 
+        ? isCompact 
+          ? "flex-row gap-2 px-2.5 py-1"
+          : "flex-row gap-3 px-3 py-2" 
+        : "flex-col gap-1.5 px-2 py-3 justify-center items-center",
       
-      isChild ? "text-xs font-normal py-1.5" : "text-sm font-medium",
+      isCompact
+        ? "compact-sidebar-item"
+        : isChild 
+          ? "text-xs font-normal py-1.5" 
+          : "text-sm font-medium",
       // Three active states:
       //   1. This item is the direct active route → solid blue fill.
       //   2. A child is active AND parent is collapsed → solid blue fill so the collapsed parent still signals it.
@@ -131,16 +142,20 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       active || (isAnyChildActive && !isExpanded && !isSubmenusMode)
         ? (use3DStyle && isChild && !isFlyout)
           ? "bg-transparent text-primary-600 font-bold"
-          : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
+          : isCompact
+            ? "sidebar-item-active text-primary-600 dark:text-primary-400 font-semibold"
+            : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
         : isAnyChildActive
-          ? "text-primary-700 dark:text-primary-300 hover:bg-[var(--color-bg-tertiary)]"
+          ? isCompact
+            ? "text-primary-600 dark:text-primary-400 hover:bg-[var(--color-bg-tertiary)]"
+            : "text-primary-700 dark:text-primary-300 hover:bg-[var(--color-bg-tertiary)]"
           : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).
           Inverted active state fills the row with primary, so the indicator is
           white to stay visible against the blue background. */}
-      {!isFlyout && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
+      {!isFlyout && !isCompact && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
         <span
           className={clsx(
             "absolute top-1/2 -translate-y-1/2 w-1 h-6 bg-white/80",
@@ -156,7 +171,9 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         <div className={clsx(
           "rounded-[var(--radius-md)] flex items-center justify-center shrink-0 transition-all duration-300",
           (isOpen || isFlyout) 
-            ? "w-6 h-6" 
+            ? isCompact 
+              ? "w-5 h-5"
+              : "w-6 h-6" 
             : "w-10 h-10 mb-1",
           // Icon pill state matches the row state:
           //   - row solid blue (direct active OR collapsed-parent-with-active-child) → pill is bg-white/20
@@ -177,7 +194,11 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               return React.cloneElement(finalIcon as React.ReactElement, {
                 className: clsx(
                   (finalIcon as React.ReactElement).props.className,
-                  (isOpen || isFlyout) ? "w-4 h-4" : "w-6 h-6",
+                  (isOpen || isFlyout) 
+                    ? isCompact 
+                      ? "w-3.5 h-3.5"
+                      : "w-4 h-4" 
+                    : "w-6 h-6",
                   "transition-colors duration-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
                 )
               });
@@ -275,6 +296,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
                     isFlyout={true}
                     iconName={child.icon}
                     isChild={true}
+                    isCompact={isCompact}
                   />
                 ))}
               </div>
@@ -334,6 +356,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               children={child.children}
               iconName={child.icon}
               isChild={true}
+              isCompact={isCompact}
             />
           ))}
         </div>

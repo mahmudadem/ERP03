@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PRStatus, PurchaseReturnDTO, ReturnContext, purchasesApi } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
+import { formatMoney } from '../../../utils/formatMoney';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -17,14 +18,6 @@ const CONTEXT_OPTIONS: Array<{ label: string; value: ReturnContext | 'ALL' }> = 
   { label: 'After Invoice', value: 'AFTER_INVOICE' },
   { label: 'Before Invoice', value: 'BEFORE_INVOICE' },
 ];
-
-const formatMoney = (amount: number, currency: string): string => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-};
 
 const PurchaseReturnsListPage: React.FC = () => {
   const navigate = useNavigate();

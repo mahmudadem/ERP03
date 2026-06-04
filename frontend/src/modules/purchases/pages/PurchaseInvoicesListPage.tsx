@@ -12,6 +12,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { PartySelector } from '../../../components/shared/selectors';
 import { FileText, Plus, RefreshCw } from 'lucide-react';
+import { formatMoney } from '../../../utils/formatMoney';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -29,14 +30,6 @@ const PAYMENT_OPTIONS: Array<{ label: string; value: PaymentStatus | 'ALL' }> = 
   { label: 'Partially Paid', value: 'PARTIALLY_PAID' },
   { label: 'Paid', value: 'PAID' },
 ];
-
-const formatMoney = (amount: number, currency: string): string => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-};
 
 const statusChipClass = (status: PIStatus): string => {
   switch (status) {

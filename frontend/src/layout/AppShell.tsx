@@ -24,7 +24,7 @@ const DESKTOP_SIDEBAR_WIDTH = {
 export const AppShell: React.FC = () => {
   const location = useLocation();
   const isApexMockupPath = location.pathname.startsWith('/dev/apex-ledger');
-  const { uiMode, sidebarPinned, sidebarMode } = useUserPreferences();
+  const { uiMode, sidebarPinned, sidebarMode, layoutMode } = useUserPreferences();
 
   if (isApexMockupPath) {
     return (
@@ -125,7 +125,8 @@ export const AppShell: React.FC = () => {
     <AccountsProvider>
       <CostCentersProvider>
         <div
-          className="h-screen flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans overflow-hidden"
+          data-layout={layoutMode}
+          className="app-shell-container h-screen flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans overflow-hidden"
         >
           <PageTitleManager />
 
@@ -160,8 +161,8 @@ export const AppShell: React.FC = () => {
               )}
               style={desktopMarginStyle}
             >
-              <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
-                <div className="h-full overflow-y-auto custom-scroll print:!h-auto print:!overflow-visible">
+              <main className="app-main-content flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
+                <div className="h-full overflow-y-auto custom-scroll print:!h-auto print:!overflow-visible page-container">
                   <Outlet />
                 </div>
               </main>

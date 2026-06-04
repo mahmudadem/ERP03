@@ -17,7 +17,8 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }) => {
   const sections = useSidebarConfig();
-  const { sidebarMode, sidebarPinned, toggleSidebarPinned, appearanceSettings } = useUserPreferences();
+  const { sidebarMode, sidebarPinned, toggleSidebarPinned, appearanceSettings, layoutMode } = useUserPreferences();
+  const isCompact = layoutMode === 'compact';
   const { t, i18n } = useTranslation('common');
   const isRtl = i18n.dir() === 'rtl';
   const isDesktop = useBreakpoint('lg');
@@ -206,6 +207,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
                 onClick={onNavigate}
                 children={(data as any).items}
                 iconName={(data as any).icon}
+                isCompact={isCompact}
               />
             ))}
           </div>
@@ -219,6 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
               onNavigate={onNavigate}
               iconName={(data as any).icon}
               path={(data as any).path}
+              isCompact={isCompact}
             />
           ))
         )}
@@ -231,6 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
           iconName="Settings"
           isOpen={isOpen}
           onClick={onNavigate}
+          isCompact={isCompact}
           children={[
             { label: t('sidebar.overview'), path: '/company-admin/overview', icon: 'Layout' },
             { label: t('sidebar.users'), path: '/company-admin/users', icon: 'User' },

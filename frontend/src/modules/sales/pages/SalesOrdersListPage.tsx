@@ -8,6 +8,7 @@ import { Card } from '../../../components/ui/Card';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
+import { formatMoney } from '../../../utils/formatMoney';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -48,14 +49,6 @@ const statusChipClasses = (status: SOStatus): string => {
       return 'bg-rose-100 text-rose-700';
     default:
       return 'bg-slate-100 text-slate-700';
-  }
-};
-
-const formatMoney = (amount: number, currency: string): string => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
   }
 };
 

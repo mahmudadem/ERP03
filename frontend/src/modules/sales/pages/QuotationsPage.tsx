@@ -12,6 +12,7 @@ import {
   QuoteStatus,
   salesOperationalApi,
 } from '../../../api/salesOperationalApi';
+import { formatMoney } from '../../../utils/formatMoney';
 
 // ─── Status chip ──────────────────────────────────────────────────────────────
 
@@ -32,17 +33,6 @@ const ALL_STATUSES: QuoteStatus[] = [
   'EXPIRED',
   'CONVERTED',
 ];
-
-const formatMoney = (amount: number, currency: string): string => {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-};
 
 const formatDate = (dateStr?: string): string => {
   if (!dateStr) return '—';

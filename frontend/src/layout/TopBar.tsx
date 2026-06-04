@@ -93,7 +93,8 @@ function renderRealWidget(type: string) {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
-  const { uiMode, setUiMode, theme, toggleTheme, appearanceSettings } = useUserPreferences();
+  const { uiMode, setUiMode, theme, toggleTheme, appearanceSettings, layoutMode } = useUserPreferences();
+  const isCompact = layoutMode === "compact";
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation("common");
@@ -104,8 +105,16 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
 
   // Widget bar visual style (1,2,3,5,10,11,16,17,18)
   const [widgetStyle, setWidgetStyle] = React.useState<string>(() =>
-    localStorage.getItem("erp_topbar_widget_style") || "1"
+    localStorage.getItem("erp_topbar_widget_style") || (layoutMode === "compact" ? "5" : "1")
   );
+
+  React.useEffect(() => {
+    if (layoutMode === "compact" && !localStorage.getItem("erp_topbar_widget_style")) {
+      setWidgetStyle("5");
+    } else if (layoutMode === "legacy" && !localStorage.getItem("erp_topbar_widget_style")) {
+      setWidgetStyle("1");
+    }
+  }, [layoutMode]);
 
   // Listen for style changes from AppearanceSettingsPage or UiLabDashboard
   React.useEffect(() => {
@@ -393,9 +402,11 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
     <header
       className={clsx(
         "h-12 flex items-center justify-between px-3 sticky top-0 z-40 shrink-0 print:hidden",
-        isTailwindPlayTheme
-          ? "bg-[var(--app-topbar-surface)] backdrop-blur-md border-b-0"
-          : "bg-[var(--app-topbar-surface)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm",
+        isCompact
+          ? "bg-[var(--color-bg-primary)] border-b border-[var(--color-border)]"
+          : isTailwindPlayTheme
+            ? "bg-[var(--app-topbar-surface)] backdrop-blur-md border-b-0"
+            : "bg-[var(--app-topbar-surface)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm",
       )}
     >
       {/* Hamburger menu toggle button */}

@@ -12,6 +12,7 @@ const mapDto = (prefs: any) => ({
   appearanceSettings: prefs?.appearanceSettings || {},
   disabledNotificationCategories: prefs?.disabledNotificationCategories || [],
   notificationCategoryOverrides: prefs?.notificationCategoryOverrides || {},
+  layoutMode: prefs?.layoutMode || 'legacy',
   updatedAt: prefs?.updatedAt,
   createdAt: prefs?.createdAt,
 });
@@ -41,7 +42,8 @@ export class UserPreferencesController {
         sidebarPinned,
         appearanceSettings,
         disabledNotificationCategories,
-        notificationCategoryOverrides
+        notificationCategoryOverrides,
+        layoutMode
       } = req.body || {};
       const useCase = new UpsertUserPreferencesUseCase(diContainer.userPreferencesRepository);
       const prefs = await useCase.execute(userId, {
@@ -52,7 +54,8 @@ export class UserPreferencesController {
         sidebarPinned,
         appearanceSettings,
         disabledNotificationCategories,
-        notificationCategoryOverrides
+        notificationCategoryOverrides,
+        layoutMode
       });
       res.status(200).json({ success: true, preferences: mapDto(prefs) });
     } catch (error) {
@@ -60,3 +63,4 @@ export class UserPreferencesController {
     }
   }
 }
+

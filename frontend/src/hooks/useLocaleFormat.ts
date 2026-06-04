@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatMoney } from '../utils/formatMoney';
 
 export const useLocaleFormat = () => {
   const { i18n } = useTranslation();
@@ -7,8 +8,10 @@ export const useLocaleFormat = () => {
   const formatNumber = (value: number) =>
     new Intl.NumberFormat(locale).format(value);
 
-  const formatCurrency = (value: number, currency: string) =>
-    new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value);
+  // Delegates to the shared util so currency precision is consistent
+  // and CLDR's 0-decimal default for SYP/JPY/KRW/etc. doesn't silently truncate.
+  const formatCurrency = (value: number, currency: string, decimalPlaces?: number) =>
+    formatMoney(value, currency, decimalPlaces);
 
   const formatDate = (date: Date) =>
     new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);

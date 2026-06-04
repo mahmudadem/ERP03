@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { POStatus, PurchaseOrderDTO, purchasesApi } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
+import { formatMoney } from '../../../utils/formatMoney';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -14,14 +15,6 @@ const STATUS_OPTIONS: Array<{ label: string; value: POStatus | 'ALL' }> = [
   { label: 'Closed', value: 'CLOSED' },
   { label: 'Cancelled', value: 'CANCELLED' },
 ];
-
-const formatMoney = (amount: number, currency: string): string => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-};
 
 const PurchaseOrdersListPage: React.FC = () => {
   const navigate = useNavigate();

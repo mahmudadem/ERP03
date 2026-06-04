@@ -20,7 +20,8 @@ export class FirestoreUserPreferencesRepository
       data.disabledNotificationCategories || [],
       data.notificationCategoryOverrides || {},
       data.createdAt ? data.createdAt.toDate?.() || data.createdAt : new Date(),
-      data.updatedAt ? data.updatedAt.toDate?.() || data.updatedAt : new Date()
+      data.updatedAt ? data.updatedAt.toDate?.() || data.updatedAt : new Date(),
+      data.layoutMode || 'legacy'
     );
   }
 
@@ -36,7 +37,8 @@ export class FirestoreUserPreferencesRepository
       disabledNotificationCategories: entity.disabledNotificationCategories,
       notificationCategoryOverrides: entity.notificationCategoryOverrides,
       createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt
+      updatedAt: entity.updatedAt,
+      layoutMode: entity.layoutMode
     };
   }
 
@@ -66,7 +68,9 @@ export class FirestoreUserPreferencesRepository
         'disabledNotificationCategories',
         'notificationCategoryOverrides',
         'createdAt',
+        'layoutMode',
       ];
+
 
       for (const key of allowedKeys) {
         const value = (prefs as any)?.[key];

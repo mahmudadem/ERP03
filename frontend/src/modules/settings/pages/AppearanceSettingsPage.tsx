@@ -61,6 +61,8 @@ const AppearanceSettingsPage: React.FC = () => {
     setSidebarMode,
     theme,
     setTheme,
+    layoutMode,
+    setLayoutMode,
   } = useUserPreferences();
   
   const [draft, setDraft] = useState<UserAppearanceSettings>(() => normalizeUserAppearance(appearanceSettings));
@@ -289,6 +291,13 @@ const AppearanceSettingsPage: React.FC = () => {
                 <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">Layout & Behavior</h2>
               </div>
               <div className="space-y-4">
+                <label>
+                  <span className={labelClass}>Layout Mode</span>
+                  <select className={fieldClass} value={layoutMode} onChange={event => setLayoutMode(event.target.value as any)}>
+                    <option value="legacy">Standard Layout</option>
+                    <option value="compact">Compact Layout (Apex)</option>
+                  </select>
+                </label>
                 <label>
                   <span className={labelClass}>Theme Mode</span>
                   <select className={fieldClass} value={theme} onChange={event => setTheme(event.target.value as any)}>

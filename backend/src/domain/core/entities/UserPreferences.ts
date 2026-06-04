@@ -1,6 +1,7 @@
 export type UiMode = 'classic' | 'windows';
 export type Theme = 'light' | 'dark';
 export type SidebarMode = 'classic' | 'submenus';
+export type LayoutMode = 'legacy' | 'compact';
 
 export class UserPreferences {
   constructor(
@@ -15,5 +16,7 @@ export class UserPreferences {
     public notificationCategoryOverrides: Record<string, boolean> = {},
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
+    public layoutMode: LayoutMode = 'legacy',
   ) {}
 }
+

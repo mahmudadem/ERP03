@@ -23,6 +23,7 @@ interface SidebarSectionProps {
   onNavigate?: () => void;
   defaultExpanded?: boolean;
   path?: string; // Optional path for top-level direct links
+  isCompact?: boolean;
 }
 
 export const SidebarSection: React.FC<SidebarSectionProps> = ({ 
@@ -32,7 +33,8 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   iconName,
   onNavigate,
   defaultExpanded = false,
-  path
+  path,
+  isCompact = false
 }) => {
   const { appearanceSettings } = useUserPreferences();
   const { i18n } = useTranslation();
@@ -77,8 +79,14 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
 
   const headerClass = clsx(
     "w-full flex transition-all duration-300 ease-out",
-    isOpen ? "flex-row items-center gap-3 px-4 py-2" : "flex-col items-center gap-1.5 px-2 py-3 justify-center",
-    "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
+    isOpen 
+      ? isCompact 
+        ? "flex-row items-center gap-2 px-3 py-1.5"
+        : "flex-row items-center gap-3 px-4 py-2"
+      : "flex-col items-center gap-1.5 px-2 py-3 justify-center",
+    isCompact
+      ? "text-[10px] font-semibold text-[var(--app-sidebar-muted)] uppercase tracking-wider"
+      : "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
     "hover:text-[var(--app-sidebar-text)] hover:bg-[var(--color-bg-tertiary)]/50 group"
   );
 
@@ -92,25 +100,39 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
             "rounded-[var(--radius-md)] transition-all duration-300 flex items-center justify-center shrink-0",
             isOpen
               ? isActiveLink
-                ? "p-1.5 bg-white/20 text-white"           // direct active route → row is blue, pill is translucent white
+                ? isCompact
+                  ? "p-1 bg-white/20 text-primary-600"
+                  : "p-1.5 bg-white/20 text-white"           // direct active route → row is blue, pill is translucent white
                 : isSectionActive
                   ? "p-1.5 bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"  // child is active → soft brand tint
-                  : "p-1.5 bg-[var(--color-bg-tertiary)]"
+                  : isCompact
+                    ? "p-1 bg-[var(--color-bg-tertiary)]"
+                    : "p-1.5 bg-[var(--color-bg-tertiary)]"
               : use3DStyle
                 ? isActive
                   ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
                   : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
                 : isActiveLink
-                  ? "w-10 h-10 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                  ? isCompact
+                    ? "w-8 h-8 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                    : "w-10 h-10 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
                   : isSectionActive
-                    ? "w-10 h-10 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
-                    : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
+                    ? isCompact
+                      ? "w-8 h-8 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
+                      : "w-10 h-10 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
+                    : isCompact
+                      ? "w-8 h-8 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm"
+                      : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
 
             !use3DStyle && !isActive && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600"
           )}>
             <ResolvedIcon
               className={clsx(
-                isOpen ? "w-5 h-5" : "w-6 h-6",
+                isOpen 
+                  ? isCompact 
+                    ? "w-4 h-4" 
+                    : "w-5 h-5" 
+                  : "w-6 h-6",
                 "transition-colors duration-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
               )}
             />
@@ -134,8 +156,15 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
     );
   };
 
+  const showSeparator = isCompact && ['Reports', 'Tools', 'Settings'].includes(title);
+
   return (
     <div className="mb-2">
+      {showSeparator && (
+        <div className="px-3 py-1">
+          <div className="h-px bg-[var(--color-border)] opacity-60" />
+        </div>
+      )}
       {/* Section Header */}
       {path ? (
         <NavLink
@@ -146,7 +175,9 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
             isActive && (
               use3DStyle
                 ? "bg-transparent text-primary-600 font-bold"
-                : "bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                : isCompact
+                  ? "sidebar-item-active text-primary-600 dark:text-primary-400 font-semibold"
+                  : "bg-primary-600 text-white shadow-sm dark:bg-primary-500"
             )
           )}
         >
@@ -187,6 +218,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
               children={item.children}
               iconName={item.icon}
               badge={item.badge}
+              isCompact={isCompact}
             />
           ))}
         </div>

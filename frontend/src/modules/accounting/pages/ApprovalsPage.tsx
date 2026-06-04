@@ -21,6 +21,7 @@ import { errorHandler } from '../../../services/errorHandler';
 import { AccountsProvider } from '../../../context/AccountsContext';
 import { Tab } from '@headlessui/react';
 import { clsx } from 'clsx';
+import { formatMoney } from '../../../utils/formatMoney';
 
 import { RejectionModal } from '../components/RejectionModal';
 
@@ -92,13 +93,7 @@ const ApprovalsPage: React.FC = () => {
     }
   };
 
-  const fmtMoney = (amount: number, currency: string): string => {
-    try {
-      return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
-    } catch {
-      return `${currency} ${amount.toFixed(2)}`;
-    }
-  };
+  const fmtMoney = (amount: number, currency: string): string => formatMoney(amount, currency);
 
   const handleRowClick = async (id: string) => {
     try {
