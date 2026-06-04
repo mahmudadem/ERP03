@@ -25,6 +25,25 @@ export interface VoucherDetailDTO extends VoucherListItem {
   postedByEmail?: string;
 }
 
+/**
+ * One row in the SoD Approval Center feed. Returned by
+ * GET /tenant/accounting/pending-approvals/source-documents.
+ * Each row is a source document (currently SI or PI) parked in PENDING_APPROVAL.
+ */
+export interface PendingApprovalSourceDoc {
+  source: 'SALES_INVOICE' | 'PURCHASE_INVOICE';
+  id: string;
+  number: string;
+  partyId: string;
+  partyName: string;
+  totalBase: number;
+  totalDoc: number;
+  currency: string;
+  date: string;
+  createdBy: string;
+  parkedAt: string;
+}
+
 export interface TrialBalanceLine {
   accountId: string;
   code: string;
@@ -356,6 +375,12 @@ export const accountingApi = {
 
   getPendingApprovals: (): Promise<VoucherDetailDTO[]> => {
     return client.get('/tenant/accounting/vouchers/pending/approvals');
+  },
+
+  // SoD Approval Center feed: source documents (SI / PI) in PENDING_APPROVAL across modules.
+  // See docs/architecture/posting-authority.md §4.1.
+  getPendingApprovalSourceDocuments: (): Promise<PendingApprovalSourceDoc[]> => {
+    return client.get('/tenant/accounting/pending-approvals/source-documents');
   },
 
   getPendingCustody: (): Promise<VoucherDetailDTO[]> => {

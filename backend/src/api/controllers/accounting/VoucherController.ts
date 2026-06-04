@@ -490,6 +490,63 @@ export class VoucherController {
   }
 
   /**
+   * List source documents (Sales Invoices, Purchase Invoices) currently in PENDING_APPROVAL.
+   *
+   * After Stage 2b, source documents park BEFORE any voucher is created. The voucher-based query
+   * above (getPendingApprovals) is therefore always empty under the new flow. This endpoint is
+   * the canonical Approval Center feed for source-document approvals — per the SoD model in
+   * docs/architecture/posting-authority.md §4.1 and planning/tasks/165.
+   *
+   * Returns a unified shape so the frontend can render a single list regardless of source module.
+   */
+  static async getPendingApprovalSourceDocuments(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+
+      const [sis, pis] = await Promise.all([
+        diContainer.salesInvoiceRepository.list(companyId, { status: 'PENDING_APPROVAL' as const }),
+        diContainer.purchaseInvoiceRepository.list(companyId, { status: 'PENDING_APPROVAL' as const }),
+      ]);
+
+      const items = [
+        ...sis.map((si) => ({
+          source: 'SALES_INVOICE' as const,
+          id: si.id,
+          number: si.invoiceNumber,
+          partyId: si.customerId,
+          partyName: si.customerName,
+          totalBase: si.grandTotalBase,
+          totalDoc: si.grandTotalDoc,
+          currency: si.currency,
+          date: si.invoiceDate,
+          createdBy: si.createdBy,
+          parkedAt: si.updatedAt instanceof Date ? si.updatedAt.toISOString() : si.updatedAt,
+        })),
+        ...pis.map((pi) => ({
+          source: 'PURCHASE_INVOICE' as const,
+          id: pi.id,
+          number: pi.invoiceNumber,
+          partyId: pi.vendorId,
+          partyName: pi.vendorName,
+          totalBase: pi.grandTotalBase,
+          totalDoc: pi.grandTotalDoc,
+          currency: pi.currency,
+          date: pi.invoiceDate,
+          createdBy: pi.createdBy,
+          parkedAt: pi.updatedAt instanceof Date ? pi.updatedAt.toISOString() : pi.updatedAt,
+        })),
+      ];
+
+      // Newest first.
+      items.sort((a, b) => String(b.parkedAt || '').localeCompare(String(a.parkedAt || '')));
+
+      res.json({ success: true, data: items });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * List vouchers pending custody confirmation for the current user
    */
   static async getPendingCustody(req: Request, res: Response, next: NextFunction) {

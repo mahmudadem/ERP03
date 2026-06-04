@@ -51,6 +51,9 @@ router.get('/posting-logs/:id', permissionGuard('accounting.vouchers.view'), Pos
 // Vouchers
 router.get('/vouchers', permissionGuard('accounting.vouchers.view'), VoucherController.list);
 router.get('/vouchers/pending/approvals', permissionGuard('accounting.vouchers.approve'), VoucherController.getPendingApprovals);
+// SoD Approval Center feed: source documents (SI/PI) in PENDING_APPROVAL across modules. See
+// docs/architecture/posting-authority.md §4.1.
+router.get('/pending-approvals/source-documents', permissionGuard('accounting.approve.finance'), VoucherController.getPendingApprovalSourceDocuments);
 router.get('/vouchers/pending/custody', permissionGuard('accounting.vouchers.view'), VoucherController.getPendingCustody);
 router.get('/vouchers/:id', permissionGuard('accounting.vouchers.view'), VoucherController.get);
 router.post('/vouchers', 
