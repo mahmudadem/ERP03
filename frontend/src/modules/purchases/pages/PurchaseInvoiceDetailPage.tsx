@@ -1389,6 +1389,21 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         </span>
       </div>
 
+      {/*
+        SoD: a Purchase Invoice in PENDING_APPROVAL is awaiting accounting approval. Purchases-side
+        cannot Approve its own postings. The accountant clears the parked state from the Approval
+        Center. See docs/architecture/posting-authority.md §4.1.
+      */}
+      {invoice.status === 'PENDING_APPROVAL' && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <div className="font-semibold mb-0.5">⏳ Awaiting accounting approval</div>
+          <div className="text-amber-800">
+            This invoice was submitted and is waiting for accounting to approve the ledger effect.
+            You cannot edit it while it is pending. The decision will appear here when it is made.
+          </div>
+        </div>
+      )}
+
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       <Card className="p-5">
@@ -1738,16 +1753,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             {busy ? 'Posting...' : 'Post Invoice'}
           </button>
         )}
-        {invoice.status === 'PENDING_APPROVAL' && !showSettlement && (
-          <button
-            type="button"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50"
-            onClick={handlePostClick}
-            disabled={busy}
-          >
-            {busy ? 'Approving...' : 'Approve & Post'}
-          </button>
-        )}
+        {/*
+          Removed: 'Approve & Post' button on the source-document page violates SoD.
+          Approval of the ledger effect belongs to Accounting (accountant / controller / CFO),
+          not to the buyer who initiated the invoice. Approve happens in the Accounting
+          Approval Center, guarded by accounting.approve.finance.
+          See docs/architecture/posting-authority.md §4.1 and planning/tasks/167.
+        */}
         {invoice.status === 'POSTED' && (
           <button
             type="button"

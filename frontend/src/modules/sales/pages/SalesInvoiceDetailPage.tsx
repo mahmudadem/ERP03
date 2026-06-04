@@ -1774,6 +1774,21 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       </div>
 
       {/* Banners */}
+      {/*
+        SoD: a Sales Invoice in PENDING_APPROVAL is awaiting accounting approval. Sales-side
+        cannot Approve its own postings. The accountant clears the parked state from the
+        Approval Center. See docs/architecture/posting-authority.md §4.1.
+      */}
+      {invoice?.status === 'PENDING_APPROVAL' && (
+        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+          <div className="font-semibold mb-0.5">
+            {t('sales.invoiceDetail.pendingApprovalBanner.title', '⏳ Awaiting accounting approval')}
+          </div>
+          <div className="text-amber-800 dark:text-amber-300">
+            {t('sales.invoiceDetail.pendingApprovalBanner.description', 'This invoice was submitted and is waiting for accounting to approve the ledger effect. You cannot edit it while it is pending. The decision will appear here when it is made.')}
+          </div>
+        </div>
+      )}
       {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
         <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300">
           {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked. Select a Sales Order or ask an admin for an exception.')}
@@ -2025,6 +2040,20 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                 onClick={() => navigate(receiptHref)} disabled={!canCreateReceipt}
               >
                 {t('sales.invoiceDetail.createReceipt', 'Create Receipt')}
+              </button>
+            </>
+          )}
+
+          {/* PENDING_APPROVAL actions: SoD says Sales cannot Approve its own posting.
+              Only History is rendered so the user can see who submitted and when.
+              Approval happens in the Accounting Approval Center. */}
+          {!isCreateMode && invoice?.status === 'PENDING_APPROVAL' && (
+            <>
+              <button type="button"
+                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+                onClick={() => setAuditModalOpen(true)}
+              >
+                {t('sales.invoiceDetail.history', 'History')}
               </button>
             </>
           )}
