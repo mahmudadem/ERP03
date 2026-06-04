@@ -40,10 +40,13 @@ decimals now (e.g. `SYP 1.50`, not `SYP 2`).
 
 ### 3. Inclusive math — happy path (3 min)
 
+**Setup (one time):** Settings → Tax Codes → edit or create a tax code,
+set rate to 10% and check **"Price is tax-inclusive by default"**. Save.
+
 Create a new Sales Invoice:
 - Customer: any
 - One line: 2 units × 0.75
-- Tax code: 10% **inclusive**
+- Tax code: the inclusive one from setup
 
 Expected: Grand Total = **1.50** (because 0.75 already includes tax).
 Old broken behaviour: Grand Total = 1.65 (tax stacked on top).
@@ -86,8 +89,11 @@ are the remaining tasks from the original plan:
    when rejected.
 5. **Task 169** — Audit history shows empty diffs in some cases; the
    "Flexible" badge name is misleading and should be renamed.
-6. **NEW** — Add a "Price includes tax" checkbox on SI/SO/PI/SR/PR
-   forms. Backend supports it, no UI to set it yet.
+6. **NEW** — Add a per-line "Price includes tax" checkbox on SO / PI /
+   SR / PR forms. SI already has it; the others currently only honour
+   the tax-code default. (Setting the flag on the tax code itself
+   already works — Settings → Tax Codes → "Price is tax-inclusive by
+   default".)
 
 ## What's NOT in scope anymore
 
