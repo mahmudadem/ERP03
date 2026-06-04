@@ -66,6 +66,9 @@ If you are starting work on a priority item, record it here so other agents don'
 | Antigravity | Unify Windows UI MDI window wrappers & drag/resize | 2026-06-03 | ✅ Done |
 | Antigravity | Stage 2b Posting-Authority decoupling & reactive approvals | 2026-06-03 | ✅ Done |
 | Claude (Opus 4.7) | Posting-Authority Stages 2c / 3 / 4 / 5 / 6 / 7 (F8 reporting decoupling) | 2026-06-03 | ✅ Done |
+| Antigravity | Register Apex Ledger mockup route /dev/apex-ledger | 2026-06-04 | ✅ Done |
+| Antigravity | Integrate Apex Ledger mockup route with live APIs & AI | 2026-06-04 | ✅ Done |
+| Antigravity | Re-wire Apex Ledger dashboard subrouting and Voucher parity | 2026-06-04 | ✅ Done |
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -22,7 +22,22 @@ const DESKTOP_SIDEBAR_WIDTH = {
 } as const;
 
 export const AppShell: React.FC = () => {
+  const location = useLocation();
+  const isApexMockupPath = location.pathname.startsWith('/dev/apex-ledger');
   const { uiMode, sidebarPinned, sidebarMode } = useUserPreferences();
+
+  if (isApexMockupPath) {
+    return (
+      <AccountsProvider>
+        <CostCentersProvider>
+          <div className="h-screen w-screen bg-[#FAFAFB] overflow-hidden">
+            <Outlet />
+          </div>
+        </CostCentersProvider>
+      </AccountsProvider>
+    );
+  }
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
   const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher, post, cancel, reverse } = useVoucherActions();
   const documentActions = useDocumentActions();

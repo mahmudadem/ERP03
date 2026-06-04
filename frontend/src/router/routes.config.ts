@@ -164,6 +164,7 @@ const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => 
 const TailwindPlayDemoPage = lazy(() => import('../pages/dev/TailwindPlayDemoPage').then(m => ({ default: m.TailwindPlayDemoPage })));
 const UiLabDashboard = lazy(() => import('../pages/dev/UiLabDashboard').then(m => ({ default: m.UiLabDashboard })));
 const SalesInvoiceV2LayoutPage = lazy(() => import('../pages/dev/SalesInvoiceV2LayoutPage'));
+const ApexLedgerDashboard = lazy(() => import('../pages/dev/apex-ledger/ApexLedgerDashboard'));
 
 
 export interface AppRoute {
@@ -405,6 +406,44 @@ export const routesConfig: AppRoute[] = [
   { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: false },
   { path: '/dev/ui-lab', label: 'UI Lab 🎨', component: UiLabDashboard, section: 'TOOLS', hideInMenu: false },
   { path: '/dev/sales-invoice-v2', label: 'Sales Invoice V2 🎨', component: SalesInvoiceV2LayoutPage, section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/apex-ledger', label: 'Apex Ledger Mockup 💻', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: false },
+  // Accounting sub-routes
+  { path: '/dev/apex-ledger/accounting', label: 'Apex Accounting Overview', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/coa', label: 'Apex Chart of Accounts', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/vouchers', label: 'Apex Vouchers List', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/approvals', label: 'Apex Approvals', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/settings', label: 'Apex Settings', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  // Reports hub + all 13 sub-reports
+  { path: '/dev/apex-ledger/reports', label: 'Apex Reports', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/trial-balance', label: 'Apex Trial Balance', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/account-statement', label: 'Apex Account Statement', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/balance-sheet', label: 'Apex Balance Sheet', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/ledger', label: 'Apex General Ledger', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/profit-loss', label: 'Apex Profit & Loss', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/trading-account', label: 'Apex Trading Account', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/cash-flow', label: 'Apex Cash Flow', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/journal', label: 'Apex Journal', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/aging', label: 'Apex Aging', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/bank-reconciliation', label: 'Apex Bank Reconciliation', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/cost-center-summary', label: 'Apex Cost Center Summary', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/budget-vs-actual', label: 'Apex Budget vs Actual', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/consolidated-tb', label: 'Apex Consolidated TB', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  // Tools hub + sub-tools
+  { path: '/dev/apex-ledger/tools', label: 'Apex Tools', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/tools/forms', label: 'Apex Forms Management', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/tools/budgets', label: 'Apex Budgets', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/tools/subgroup-tagging', label: 'Apex Subgroup Tagging', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  // Module routes
+  { path: '/dev/apex-ledger/sales', label: 'Apex Sales', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/purchases', label: 'Apex Purchases', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/inventory', label: 'Apex Inventory', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/ai', label: 'Apex AI Assistant', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/hr', label: 'Apex HR', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/crm', label: 'Apex CRM', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/pos', label: 'Apex POS', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/manufacturing', label: 'Apex Manufacturing', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/projects', label: 'Apex Projects', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/dev', label: 'Apex Dev Panel', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
 
 
   // AI ASSISTANT
