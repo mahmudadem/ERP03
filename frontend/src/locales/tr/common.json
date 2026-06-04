@@ -2083,8 +2083,26 @@
   },
   "settings": {
     "appearance": {
-      "title": "Dış görünüş",
-      "placeholder": "Tema yapılandırma ayarları burada görünecektir."
+      "title": "Görünüm",
+      "placeholder": "Tema yapılandırma ayarları burada görünecektir.",
+      "layoutBehavior": "Düzen ve Davranış",
+      "layoutMode": "Düzen Modu",
+      "layoutStandard": "Standart Düzen",
+      "layoutCompact": "Kompakt Düzen (Apex)",
+      "themeMode": "Tema Modu",
+      "themeLight": "Açık Tema",
+      "themeDark": "Karanlık Tema",
+      "uiDensity": "Arayüz Yoğunluğu",
+      "densityCompact": "Kompakt (Yüksek bilgi yoğunluğu)",
+      "densityComfortable": "Rahat (Dengeli)",
+      "densitySpacious": "Geniş (Dokunmatik dostu)",
+      "sidebarNav": "Kenar Çubuğu Navigasyonu",
+      "sidebarAccordion": "Akordeon (Satır içi genişleme)",
+      "sidebarFlyout": "Açılır Menü (Üzerine gelince)",
+      "sidebarSurface": "Kenar Çubuğu Yüzeyi",
+      "surfaceDefault": "Varsayılan (Arka planla eşleşen)",
+      "surfaceContrast": "Kontrast (Marka renkli)",
+      "widgetStyle": "Üst Çubuk Bileşen Stili"
     },
     "home": {
       "title": "Sistem Ayarları",

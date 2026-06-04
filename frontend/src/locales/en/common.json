@@ -2011,7 +2011,25 @@
   "settings": {
     "appearance": {
       "title": "Appearance",
-      "placeholder": "Theme configuration settings will appear here."
+      "placeholder": "Theme configuration settings will appear here.",
+      "layoutBehavior": "Layout & Behavior",
+      "layoutMode": "Layout Mode",
+      "layoutStandard": "Standard Layout",
+      "layoutCompact": "Compact Layout (Apex)",
+      "themeMode": "Theme Mode",
+      "themeLight": "Light Mode",
+      "themeDark": "Dark Mode",
+      "uiDensity": "UI Density",
+      "densityCompact": "Compact (High info density)",
+      "densityComfortable": "Comfortable (Balanced)",
+      "densitySpacious": "Spacious (Touch-friendly)",
+      "sidebarNav": "Sidebar Navigation",
+      "sidebarAccordion": "Accordion (Expand inline)",
+      "sidebarFlyout": "Flyout (Hover menus)",
+      "sidebarSurface": "Sidebar Surface",
+      "surfaceDefault": "Default (Matches background)",
+      "surfaceContrast": "Contrast (Brand colored)",
+      "widgetStyle": "TopBar Widget Style"
     },
     "home": {
       "title": "System Settings",

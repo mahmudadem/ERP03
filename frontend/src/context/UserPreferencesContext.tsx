@@ -4,12 +4,6 @@ import { userPreferencesApi } from '../api/userPreferencesApi';
 import { useAuth } from './AuthContext';
 import {
   applyUserAppearanceToDocument,
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import i18n from '../i18n/config';
-import { userPreferencesApi } from '../api/userPreferencesApi';
-import { useAuth } from './AuthContext';
-import {
-  applyUserAppearanceToDocument,
   DEFAULT_USER_APPEARANCE,
   loadLocalUserAppearance,
   normalizeUserAppearance,
