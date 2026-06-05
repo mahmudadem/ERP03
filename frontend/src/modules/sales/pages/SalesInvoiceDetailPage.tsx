@@ -1021,8 +1021,21 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           paymentDate: r.paymentDate || undefined,
         })),
       } : undefined;
-      const action = invoice.status === 'PENDING_APPROVAL' ? salesApi.approveSI : salesApi.postSI;
-      const posted = await action(invoice.id, settlementInput, periodLockOverrideReason);
+      // SoD: Sales never approves. If the SI is already PENDING_APPROVAL,
+      // direct the user to Accounting → Approval Center. Routing approval
+      // through the source module violates the "one approval authority"
+      // architecture (see docs/architecture/posting-authority.md §4.1).
+      if (invoice.status === 'PENDING_APPROVAL') {
+        setError(
+          t(
+            'sales.invoiceDetail.approveFromAccounting',
+            'This invoice is waiting for accounting approval. Approve it from Accounting → Approval Center.',
+          ),
+        );
+        setShowSettlement(false);
+        return;
+      }
+      const posted = await salesApi.postSI(invoice.id, settlementInput, periodLockOverrideReason);
       const dto = unwrap<SalesInvoiceDTO>(posted);
       setInvoice(dto);
       populateFormFromInvoice(dto);
@@ -1925,8 +1938,10 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         </div>
       </div>
 
-      {/* Settlement section (conditional overlay-style band) */}
-      {showSettlement && (
+      {/* Settlement section (conditional overlay-style band).
+          SoD guard: never render once the SI is PENDING_APPROVAL — the only
+          legitimate next step at that point is approval in Accounting. */}
+      {showSettlement && (isCreateMode || invoice?.status === 'DRAFT') && (
         <div className="flex-none px-4 py-2 bg-blue-50 border-t border-blue-200 max-h-[40vh] overflow-auto">
           {isCreateMode
             ? renderSettlementSection(() => createAndPostDraft(), t('sales.invoiceDetail.confirmSaveAndPost', 'Confirm Save & Post'))

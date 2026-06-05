@@ -684,8 +684,19 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         })),
       } : undefined;
 
-      const action = invoice.status === 'PENDING_APPROVAL' ? purchasesApi.approvePI : purchasesApi.postPI;
-      const posted = await action(invoice.id, settlementInput);
+      // SoD: Purchases never approves. If the PI is already PENDING_APPROVAL,
+      // bail out and direct the user to the Accounting Approval Center. Calling
+      // approvePI from here would route the approval through the source module,
+      // which violates the "one approval authority, one guard" architecture
+      // (see docs/architecture/posting-authority.md §4.1 and Task 167).
+      if (invoice.status === 'PENDING_APPROVAL') {
+        setError(
+          'This invoice is waiting for accounting approval. Approve it from Accounting → Approval Center.',
+        );
+        setShowSettlement(false);
+        return;
+      }
+      const posted = await purchasesApi.postPI(invoice.id, settlementInput);
       setInvoice(unwrap<PurchaseInvoiceDTO>(posted));
       setShowSettlement(false);
     } catch (err: any) {
@@ -1577,7 +1588,16 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         )}
       </Card>
 
-      {showSettlement && invoice && (
+      {/*
+        SoD guard: the Settlement-on-Post panel is a posting action. It must
+        NEVER render once the PI has been parked for approval — at that point
+        the only legitimate next step is approval in Accounting → Approval
+        Center. Without this status guard the previous render of the panel
+        could survive the DRAFT → PENDING_APPROVAL transition, letting a
+        Purchases-side click flip the doc to POSTED without going through the
+        Approval Center.
+      */}
+      {showSettlement && invoice && invoice.status === 'DRAFT' && (
         <Card className="p-5 border-blue-200 bg-blue-50">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Post</h2>
           <div className="space-y-4">
