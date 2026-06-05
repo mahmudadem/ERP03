@@ -19,7 +19,8 @@ import { errorHandler } from '../../../services/errorHandler';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
+import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -936,155 +937,141 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         </Card>
 
         <Card className="p-5">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-              onClick={addLine}
-              disabled={busy}
-            >
-              Add Item
-            </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="py-2 text-left">Item</th>
-                  <th className="py-2 text-right">Qty</th>
-                  <th className="py-2 text-left">UOM</th>
-                  <th className="py-2 text-right">Unit Cost</th>
-                  <th className="py-2 text-left">Tax Code</th>
-                  <th className="py-2 text-left">Warehouse</th>
-                  <th className="py-2 text-right">Line Total</th>
-                  <th className="py-2 text-right">Net</th>
-                  <th className="py-2 text-right">Tax</th>
-                  <th className="py-2 text-right">Net Base</th>
-                  <th className="py-2 text-right" />
-                </tr>
-              </thead>
-              <tbody>
-                {form.lines.map((line, index) => (
-                  <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
-                        value={line.itemId}
-                        onChange={(e) => setLine(index, { itemId: e.target.value })}
-                      >
-                        <option value="">Select item</option>
-                        {items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.code} - {item.name}
-                          </option>
-                        ))}
-                      </select>
-                      {(line.itemCode || line.itemName) && (
-                        <div className="mt-1 text-xs text-slate-500">
-                          {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        min={0.000001}
-                        step={0.000001}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                        value={line.invoicedQty}
-                        onChange={(e) => setLine(index, { invoicedQty: Number(e.target.value) })}
-                      />
-                    </td>
-                  <td className="py-2 pr-2">
+          <ClassicLineItemsTable<EditableLine>
+            rows={form.lines}
+            disabled={busy}
+            onRowChange={(index, patch) => setLine(index, patch)}
+            onRowRemove={(index) => removeLine(index)}
+            onRowAdd={addLine}
+            addLabel="Add Item"
+            columns={[
+              {
+                id: 'item',
+                label: 'Item',
+                kind: 'custom',
+                width: '240px',
+                render: (row, index) => (
+                  <ItemSelector
+                    value={row.itemId}
+                    onChange={(item) => setLine(index, { itemId: item?.id || '' })}
+                    noBorder
+                    disabled={busy}
+                  />
+                ),
+              },
+              {
+                id: 'qty',
+                label: 'Qty',
+                kind: 'number',
+                width: '80px',
+                accessor: (row) => row.invoicedQty,
+                setter: (value) => ({ invoicedQty: Number(value) }),
+              },
+              {
+                id: 'uom',
+                label: 'UOM',
+                kind: 'custom',
+                width: '90px',
+                render: (row, index) => {
+                  const opts = uomOptionsByItemId[row.itemId] || [];
+                  const value =
+                    findItemUomOption(opts, row.uomId, row.uom)?.uomId || row.uomId || row.uom || '';
+                  return (
                     <select
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                      value={
-                        findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                        line.uomId ||
-                        line.uom
-                      }
-                      disabled={!line.itemId}
+                      value={value}
+                      disabled={busy || !row.itemId}
                       onChange={(e) => {
-                        const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                          (option) => (option.uomId || option.code) === e.target.value
+                        const selected = opts.find(
+                          (option) => (option.uomId || option.code) === e.target.value,
                         );
-                        setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                        setLine(index, {
+                          uomId: selected?.uomId,
+                          uom: selected?.code || '',
+                        });
                       }}
+                      className="w-full h-9 px-2 bg-transparent border-0 outline-none text-xs uppercase text-slate-900 dark:text-slate-100 focus:bg-blue-50/40 dark:focus:bg-blue-950/20 appearance-none cursor-pointer"
                     >
-                      <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                      {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                      <option value="">{row.itemId ? 'Select' : 'No item'}</option>
+                      {opts.map((option) => (
                         <option key={option.uomId || option.code} value={option.uomId || option.code}>
                           {option.code}
                         </option>
                       ))}
                     </select>
-                  </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                        value={line.unitPriceDoc}
-                        onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
-                        value={line.taxCodeId || ''}
-                        onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
-                      >
-                        <option value="">No Tax</option>
-                        {purchaseTaxCodes.map((taxCode) => (
-                          <option key={taxCode.id} value={taxCode.id}>
-                            {taxCode.code} ({Math.round(taxCode.rate * 100)}%)
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
-                        value={line.warehouseId || ''}
-                        disabled={busy}
-                        onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
-                      >
-                        <option value="">Select Warehouse</option>
-                        {warehouses.map((warehouse) => (
-                          <option key={warehouse.id} value={warehouse.id}>
-                            {warehouse.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 pr-2 text-right">
-                      {form.currency} {computedLines[index]?.lineGrossDoc.toFixed(2)}
-                    </td>
-                    <td className="py-2 pr-2 text-right">
-                      {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
-                    </td>
-                    <td className="py-2 pr-2 text-right">
-                      {form.currency} {computedLines[index]?.taxAmountDoc.toFixed(2)}
-                    </td>
-                    <td className="py-2 pr-2 text-right">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
-                    <td className="py-2 text-right">
-                      <button
-                        type="button"
-                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
-                        onClick={() => removeLine(index)}
-                        disabled={busy || form.lines.length <= 1}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  );
+                },
+              },
+              {
+                id: 'unitCost',
+                label: 'Unit Cost',
+                kind: 'number',
+                width: '110px',
+                accessor: (row) => row.unitPriceDoc,
+                setter: (value) => ({ unitPriceDoc: Number(value) }),
+              },
+              {
+                id: 'taxCode',
+                label: 'Tax Code',
+                kind: 'select',
+                width: '140px',
+                accessor: (row) => row.taxCodeId || '',
+                setter: (value) => ({ taxCodeId: value || undefined }),
+                options: [
+                  { value: '', label: 'No Tax' },
+                  ...purchaseTaxCodes.map((tc) => ({
+                    value: tc.id,
+                    label: `${tc.code} (${Math.round(tc.rate * 100)}%)`,
+                  })),
+                ],
+              },
+              {
+                id: 'warehouse',
+                label: 'Warehouse',
+                kind: 'custom',
+                width: '180px',
+                render: (row, index) => (
+                  <WarehouseSelector
+                    value={row.warehouseId}
+                    onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })}
+                    noBorder
+                    disabled={busy}
+                  />
+                ),
+              },
+              {
+                id: 'lineTotal',
+                label: 'Line Total',
+                kind: 'computed',
+                width: '110px',
+                compute: (_row, index) => computedLines[index]?.lineGrossDoc ?? 0,
+              },
+              {
+                id: 'net',
+                label: 'Net',
+                kind: 'computed',
+                width: '100px',
+                compute: (_row, index) => computedLines[index]?.lineTotalDoc ?? 0,
+              },
+              {
+                id: 'tax',
+                label: 'Tax',
+                kind: 'computed',
+                width: '90px',
+                compute: (_row, index) => computedLines[index]?.taxAmountDoc ?? 0,
+              },
+              {
+                id: 'netBase',
+                label: 'Net Base',
+                kind: 'computed',
+                width: '110px',
+                compute: (_row, index) => computedLines[index]?.lineTotalBase ?? 0,
+              },
+            ]}
+          />
         </Card>
 
         <Card className="p-5">
