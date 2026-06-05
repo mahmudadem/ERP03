@@ -42,6 +42,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
   
   const use3DStyle = appearanceSettings?.id === 'tailwind-play';
+  const isContrastSidebar = appearanceSettings?.sidebarSurface === 'contrast';
 
   // Phosphor Duotone across the whole sidebar (single icon set everywhere).
   // resolveSidebarIcon falls back to Lucide for any name without a Phosphor
@@ -78,7 +79,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   const toggleExpand = () => setIsExpanded((prev) => !prev);
 
   const headerClass = clsx(
-    "w-full flex transition-all duration-300 ease-out",
+    "w-full flex transition-colors duration-300 ease-out",
     isOpen 
       ? isCompact 
         ? "flex-row items-center gap-2 px-3 py-1.5"
@@ -87,7 +88,9 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
     isCompact
       ? "text-[10px] font-semibold text-[var(--app-sidebar-muted)] uppercase tracking-wider"
       : "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
-    "hover:text-[var(--app-sidebar-text)] hover:bg-[var(--color-bg-tertiary)]/50 group"
+    isContrastSidebar
+      ? "hover:text-[var(--app-sidebar-text)] hover:bg-white/10 group"
+      : "hover:text-[var(--app-sidebar-text)] hover:bg-[var(--color-bg-tertiary)]/50 group"
   );
 
   const renderHeaderContent = (isActiveLink = false) => {
@@ -97,34 +100,52 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
       <>
         {ResolvedIcon && (
           <div className={clsx(
-            "rounded-[var(--radius-md)] transition-all duration-300 flex items-center justify-center shrink-0",
+            "pointer-events-none rounded-[var(--radius-md)] transition-colors duration-300 flex items-center justify-center shrink-0",
             isOpen
               ? isActiveLink
                 ? isCompact
                   ? "p-1 bg-white/20 text-primary-600"
                   : "p-1.5 bg-white/20 text-white"           // direct active route → row is blue, pill is translucent white
                 : isSectionActive
-                  ? "p-1.5 bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"  // child is active → soft brand tint
+                  ? isContrastSidebar
+                    ? "p-1.5 bg-white/20 text-white"
+                    : "p-1.5 bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"  // child is active → soft brand tint
                   : isCompact
-                    ? "p-1 bg-[var(--color-bg-tertiary)]"
-                    : "p-1.5 bg-[var(--color-bg-tertiary)]"
+                    ? isContrastSidebar
+                      ? "p-1 bg-white/10 text-[var(--app-sidebar-muted)]"
+                      : "p-1 bg-[var(--color-bg-tertiary)]"
+                    : isContrastSidebar
+                      ? "p-1.5 bg-white/10 text-[var(--app-sidebar-muted)]"
+                      : "p-1.5 bg-[var(--color-bg-tertiary)]"
               : use3DStyle
                 ? isActive
                   ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
-                  : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
+                  : isContrastSidebar
+                    ? "w-10 h-10 bg-white/10 text-[var(--app-sidebar-muted)] hover:bg-white/15"
+                    : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
                 : isActiveLink
                   ? isCompact
-                    ? "w-8 h-8 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
-                    : "w-10 h-10 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                    ? isContrastSidebar
+                      ? "w-8 h-8 bg-white/25 text-white shadow-sm"
+                      : "w-8 h-8 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                    : isContrastSidebar
+                      ? "w-10 h-10 bg-white/25 text-white shadow-sm"
+                      : "w-10 h-10 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
                   : isSectionActive
                     ? isCompact
-                      ? "w-8 h-8 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
-                      : "w-10 h-10 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
+                      ? isContrastSidebar
+                        ? "w-8 h-8 bg-white/20 text-white shadow-sm"
+                        : "w-8 h-8 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
+                      : isContrastSidebar
+                        ? "w-10 h-10 bg-white/20 text-white shadow-sm"
+                        : "w-10 h-10 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
                     : isCompact
-                      ? "w-8 h-8 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm"
-                      : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
-
-            !use3DStyle && !isActive && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600"
+                      ? isContrastSidebar
+                        ? "w-8 h-8 bg-white/10 text-[var(--app-sidebar-muted)] shadow-sm"
+                        : "w-8 h-8 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm"
+                      : isContrastSidebar
+                        ? "w-10 h-10 bg-white/10 text-[var(--app-sidebar-muted)] shadow-sm"
+                        : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm"
           )}>
             <ResolvedIcon
               className={clsx(
@@ -133,7 +154,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
                     ? "w-4 h-4" 
                     : "w-5 h-5" 
                   : "w-6 h-6",
-                "transition-colors duration-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                "transition-colors duration-200"
               )}
             />
           </div>
@@ -141,14 +162,14 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
       
         {isOpen ? (
           <>
-            <span className={clsx("truncate flex-1", isRtl ? "text-right" : "text-left")}>{title}</span>
+            <span className={clsx("pointer-events-none truncate flex-1", isRtl ? "text-right" : "text-left")}>{title}</span>
             {!path && (isExpanded 
-              ? <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" /> 
-              : <InlineChevron className="w-3 h-3 text-gray-400 shrink-0" />
+              ? <ChevronDown className="pointer-events-none w-3 h-3 text-gray-400 shrink-0" /> 
+              : <InlineChevron className="pointer-events-none w-3 h-3 text-gray-400 shrink-0" />
             )}
           </>
         ) : (
-          <span className="text-[9px] font-black uppercase tracking-tighter text-center w-full truncate px-1">
+          <span className="pointer-events-none text-[9px] font-black uppercase tracking-tighter text-center w-full truncate px-1">
             {title}
           </span>
         )}

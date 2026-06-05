@@ -2,6 +2,124 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-05 (Fri) - Apex Prototype Typography Restoration
+
+**Task:** Restore Apex candidate typography to match the downloaded prototype source.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- Compared `D:\DEV2026\apex-ledger-erp.zip` typography source with ERP03 globals.
+- Confirmed the prototype uses `Inter` plus `JetBrains Mono` and normal 100% root font sizing, while ERP03 globally applies `font-size: 90%`.
+- Updated `frontend/index.html` to load `Inter` 400-900 and `JetBrains Mono` 400-800.
+- Added `.apex-ledger-shell` scoped font rules in `frontend/src/styles/globals.css`.
+- Updated `ApexLedgerDashboard.tsx` to set root font size to `100%` while Apex is mounted, then restore the prior inline value on unmount.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, and created [planning/done/176-apex-prototype-typography-restoration.md](./done/176-apex-prototype-typography-restoration.md).
+
+**Accounting/ERP impact:** None. This is visual shell typography only and does not alter permissions, settings behavior, posting, tax, balances, inventory, reports, or data contracts.
+
+**Verification:** `npm --prefix frontend run typecheck` passed before docs. Production build pending after final docs.
+
+**Next recommended step:** Manual visual QA comparing Apex typography against the downloaded prototype, then continue Task 167 Slice 3C-Purchases/Inventory native page mounting.
+
+---
+
+## 2026-06-05 (Fri) — RTL Flyout Submenu Positioning & Contrast Sidebar Preset Visual Hardening
+
+**Task:** Fix coordinate positioning, background style discrepancies, and contrast sidebar element overlays in RTL/contrast presets under hover/accordion navigation.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.4h.
+
+**What changed:**
+- **RTL Flyout Coordinate Alignment:** Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to store both `left` and `right` coordinates from `getBoundingClientRect()`.
+- Updated Portal overlay positioning styling to swap from LTR `left` alignment (`coords.right + gap`) to RTL `right` alignment (`(window.innerWidth - coords.left) + gap`), placing the submenu flyout cleanly to the left of the right-positioned sidebar.
+- **Themed Background Color Cohesion:** Swapped the hardcoded `bg-white dark:bg-slate-900` spawned popover container background with `bg-[var(--app-sidebar-surface)]` so submenus match the main sidebar exactly across all themes and dark/light modes. This also resolves the invisible white-on-white text bug in contrast sidebar modes.
+- **Contrast Sidebar Preset Visual Hardening:** Configured `SidebarItem.tsx` and [SidebarSection.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarSection.tsx) to detect contrast (brand colored) sidebars. Updated active item rows, row hover backgrounds, section headers, and category icon containers to use translucent white overlays (like `bg-white/10` and `bg-white/20`) when rendered inside brand colored sidebars. This fixes invisible text (white-on-white) and invisible active row highlights.
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run build` passed.
+- Report check, no-confirm validation, and SoD approval scripts all passed.
+
+## 2026-06-05 (Fri) - Apex Company Settings Sidebar Parity
+
+**Task:** Restore Company Settings visibility in the Apex sidebar and remove the Apex-specific bottom profile/user section.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.7h.
+
+**What changed:**
+- Confirmed the main sidebar appends Company Settings in `frontend/src/layout/Sidebar.tsx`, outside `useSidebarConfig()`. Apex only adapted `useSidebarConfig()`, so it was dropping that footer block.
+- Updated `frontend/src/pages/dev/apex-ledger/components/Sidebar.tsx` to replace the old bottom user/profile card with a Company Settings footer that matches the main sidebar child links.
+- Added `frontend/src/pages/dev/apex-ledger/components/NativeCompanySettingsRouteMount.tsx` so Company Admin, currencies, tax-code, notification, and communication settings pages render inside Apex using the existing native route components and guards.
+- Updated `ApexLedgerDashboard.tsx` to route those settings paths to the native Company Settings mount.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, and created [planning/done/174-apex-company-settings-sidebar-parity.md](./done/174-apex-company-settings-sidebar-parity.md).
+
+**Accounting/ERP impact:** None. This is sidebar/routing shell work only. Existing settings page permissions and route guards remain the enforcement layer.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+
+**Next recommended step:** Manual visual QA for the Company Settings footer in English and Arabic RTL, then continue Task 167 Slice 3C-Purchases/Inventory native page mounting.
+
+---
+
+## 2026-06-05 (Fri) — Sidebar Active Indicators & Mode-Width Reversal
+
+**Task:** Fix active indicator white contrast line rendering on light highlights, and reverse the sidebar widths and collapsed behaviors for Flyout vs. Accordion modes.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.7h.
+
+**What changed:**
+- **Active Indicators Contrast:** Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to unify row highlights, icon container backgrounds, and indicator line colors behind `isSolidActive = active || (isAnyChildActive && !isExpanded && !isSubmenusMode && isOpen)`. Collapsed parent rows now get soft highlights and primary theme-colored lines (`bg-primary-600` / `dark:bg-primary-400`) instead of harsh solid blue blocks with white lines.
+- **Reversed Sidebar Layout Widths & Behaviors:**
+  - **Flyout (Hover menus) Mode:** Reduced open width to `14rem` (`w-56`) since child items display outside the sidebar. Changed closed behavior to remain visible on desktop as a narrow `5rem` (`w-20`) icon strip, allowing users to hover over icons to trigger flyout submenus.
+  - **Accordion (Expand inline) Mode:** Increased open width to `18rem` (`w-72`) to accommodate nested multi-level items without text truncation. Changed closed behavior to slide completely off-screen (`0px` margin and `translate-x` translation on desktop/mobile).
+- **Unified Backdrop & Flyout Desktop Bugfix:** Refactored overlay backdrop rendering in [AppShell.tsx](file:///d:/DEV2026/ERP03/frontend/src/layout/AppShell.tsx). In Flyout Mode, because the sidebar expands in place on desktop (shifting the workspace rather than overlaying it), we now disable the backdrop overlay on desktop in Flyout Mode (`isSidebarOpen && (!isDesktop || (!isFlyoutMode && !sidebarPinned))`). This fixes the bug where expanding the unpinned Flyout sidebar dimmed the screen and blocked user clicks on the main workspace.
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run build` passed.
+
+## 2026-06-05 (Fri) - Apex Prototype Scale Restoration
+
+**Task:** Restore Apex candidate shell sizing toward the downloaded prototype and make the Apex sidebar cover the full vertical viewport.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.6h.
+
+**What changed:**
+- Inspected `D:\DEV2026\apex-ledger-erp.zip` and used its shell sizing as the visual baseline.
+- Updated `ApexLedgerDashboard.tsx` so the candidate shell is viewport-bound (`h-screen min-h-screen flex overflow-hidden`) and the main workspace scrolls internally with `p-6` content spacing.
+- Updated `components/Sidebar.tsx` to `w-64`, `h-screen`, `min-h-screen`, fixed header/footer, scrolling menu body, and larger prototype-matched row, icon, footer, and label sizing.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, and created [planning/done/173-apex-shell-prototype-scale-restoration.md](./done/173-apex-shell-prototype-scale-restoration.md).
+
+**Accounting/ERP impact:** None. This is visual shell chrome only. It does not change posting, ledger writes, approvals, taxes, balances, permissions, route guards, or data contracts.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+
+**Next recommended step:** Manual visual QA on `/#/dev/apex-ledger` in English and Arabic RTL, then continue Task 167 Slice 3C-Purchases/Inventory native page mounting.
+
+---
+
+## 2026-06-05 (Fri) — Sidebar Active Indicator Contrast Polish
+
+**Task:** Fix active indicator white contrast line rendering on light active highlights when parent groups are active in collapsed or flyout navigation modes.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.3h.
+
+**What changed:**
+- Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to unify row highlights, icon container backgrounds, and indicator line colors behind a single `isSolidActive` flag.
+- Added `&& isOpen` to the active-collapsed parent check: `const isSolidActive = active || (isAnyChildActive && !isExpanded && !isSubmenusMode && isOpen)`.
+- This ensures that when the sidebar is collapsed/shrunk (`isOpen === false`), parent groups get a soft highlight background (`bg-primary-50/50`) and a primary theme-colored indicator line (`bg-primary-600` / `dark:bg-primary-400`) instead of a harsh solid blue block with a high-contrast white line.
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run build` passed.
+
 ## 2026-06-05 (Fri) — `priceIsInclusive` sweep + SoD structural hardening
 
 **Task:** Close the inclusive-tax math discrepancy that started as Task 168 (SI only) and

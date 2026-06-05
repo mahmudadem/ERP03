@@ -42,6 +42,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
   
   const use3DStyle = appearanceSettings?.id === 'tailwind-play';
+  const isContrastSidebar = appearanceSettings?.sidebarSurface === 'contrast';
 
   // Phosphor Duotone icons across the whole sidebar. resolveSidebarIcon
   // returns a Phosphor component for known names, falling back to Lucide for
@@ -64,6 +65,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   
   const active = path ? isActive(path) : false;
   const isAnyChildActive = hasChildren && children.some(child => child.path && isActive(child.path));
+  const isSolidActive = active || (isAnyChildActive && !isExpanded && !isSubmenusMode && isOpen);
 
   // Auto-expand for classic mode
   React.useEffect(() => {
@@ -73,7 +75,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   }, [isAnyChildActive, isSubmenusMode]);
 
   const itemRef = React.useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = React.useState({ top: 0, left: 0, bottom: 0 });
+  const [coords, setCoords] = React.useState({ top: 0, left: 0, right: 0, bottom: 0 });
   const [showFlyout, setShowFlyout] = React.useState(false);
   const [opensUpward, setOpensUpward] = React.useState(false);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -83,7 +85,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       const rect = itemRef.current.getBoundingClientRect();
       setCoords({
         top: rect.top,
-        left: rect.right,
+        left: rect.left,
+        right: rect.right,
         bottom: rect.bottom
       });
       
@@ -116,13 +119,13 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       return () => {
         window.removeEventListener('scroll', updateCoords, true);
         if (timerRef.current) clearTimeout(timerRef.current);
-      }
+      };
     }
   }, [showFlyout, isSubmenusMode]);
 
   const itemContent = (
     <div className={clsx(
-      "flex items-center rounded-[var(--radius-md)] w-full transition-all duration-300 ease-out group relative outline-none",
+      "flex items-center rounded-[var(--radius-md)] w-full transition-colors duration-300 ease-out group relative outline-none",
       // Layout switching: Row when open/flyout, Col when shrunk
       (isOpen || isFlyout) 
         ? isCompact 
@@ -139,17 +142,27 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       //   1. This item is the direct active route → solid blue fill.
       //   2. A child is active AND parent is collapsed → solid blue fill so the collapsed parent still signals it.
       //   3. A child is active AND parent is expanded → soft brand-tinted text (the child carries the strong fill).
-      active || (isAnyChildActive && !isExpanded && !isSubmenusMode)
+      isSolidActive
         ? (use3DStyle && isChild && !isFlyout)
           ? "bg-transparent text-primary-600 font-bold"
           : isCompact
-            ? "sidebar-item-active text-primary-600 dark:text-primary-400 font-semibold"
-            : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
+            ? isContrastSidebar
+              ? "bg-white/20 text-white font-semibold"
+              : "sidebar-item-active text-primary-600 dark:text-primary-400 font-semibold"
+            : isContrastSidebar
+              ? "bg-white/20 text-white font-semibold shadow-sm"
+              : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
         : isAnyChildActive
           ? isCompact
-            ? "text-primary-600 dark:text-primary-400 hover:bg-[var(--color-bg-tertiary)]"
-            : "text-primary-700 dark:text-primary-300 hover:bg-[var(--color-bg-tertiary)]"
-          : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
+            ? isContrastSidebar
+              ? "bg-white/10 text-white font-medium hover:bg-white/15"
+              : "bg-primary-50/50 text-primary-600 dark:bg-primary-950/20 dark:text-primary-400 hover:bg-[var(--color-bg-tertiary)]"
+            : isContrastSidebar
+              ? "bg-white/10 text-white font-medium hover:bg-white/15"
+              : "bg-primary-50/50 text-primary-700 dark:bg-primary-950/20 dark:text-primary-300 hover:bg-[var(--color-bg-tertiary)]"
+          : isContrastSidebar
+            ? "text-[var(--app-sidebar-muted)] hover:bg-white/10 hover:text-[var(--app-sidebar-text)]"
+            : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).
@@ -158,18 +171,28 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       {!isFlyout && !isCompact && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
         <span
           className={clsx(
-            "absolute top-1/2 -translate-y-1/2 w-1 h-6 bg-white/80",
+            "absolute top-1/2 -translate-y-1/2 w-1 h-6",
+            isSolidActive
+              ? "bg-white/80"
+              : "bg-primary-600 dark:bg-primary-400",
             isRtl ? "right-0 rounded-l-full" : "left-0 rounded-r-full"
           )}
         />
       ) : (
-        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-white/80 rounded-t-full" />
+        <span
+          className={clsx(
+            "absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-t-full",
+            isSolidActive
+              ? "bg-white/80"
+              : "bg-primary-600 dark:bg-primary-400"
+          )}
+        />
       ))}
 
       {/* Icon or First Letter */}
       {(!isChild || isFlyout) && (
         <div className={clsx(
-          "rounded-[var(--radius-md)] flex items-center justify-center shrink-0 transition-all duration-300",
+          "pointer-events-none rounded-[var(--radius-md)] flex items-center justify-center shrink-0 transition-colors duration-300",
           (isOpen || isFlyout) 
             ? isCompact 
               ? "w-5 h-5"
@@ -179,15 +202,19 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           //   - row solid blue (direct active OR collapsed-parent-with-active-child) → pill is bg-white/20
           //   - row tinted (expanded parent with active child) → pill is bg-primary-100 / text-primary-700
           //   - inactive → muted
-          active || (isAnyChildActive && !isExpanded && !isSubmenusMode)
+          isSolidActive
             ? use3DStyle && !isOpen && !isFlyout
               ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
               : "bg-white/20 text-white"
             : isAnyChildActive
-              ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+              ? isContrastSidebar
+                ? "bg-white/20 text-white"
+                : "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
               : use3DStyle && !isOpen && !isFlyout
                 ? "bg-transparent text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
-                : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"
+                : isContrastSidebar
+                  ? "bg-white/10 text-[var(--app-sidebar-muted)]"
+                  : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)]"
         )}>
           {(() => {
             if (finalIcon) {
@@ -199,7 +226,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
                       ? "w-3.5 h-3.5"
                       : "w-4 h-4" 
                     : "w-6 h-6",
-                  "transition-colors duration-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                  "transition-colors duration-200"
                 )
               });
             }
@@ -215,7 +242,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       
       {/* Label */}
       <span className={clsx(
-        "whitespace-nowrap truncate",
+        "pointer-events-none whitespace-nowrap truncate",
         (isOpen || isFlyout) ? "flex-1 text-sm" : "text-[9px] font-black uppercase tracking-tighter text-center w-full px-1"
       )}>
         {label}
@@ -230,7 +257,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 
       {/* Chevron for children (hide in shrunk mode to save space) */}
       {hasChildren && (isOpen || isFlyout) && (
-        <div className="shrink-0">
+        <div className="shrink-0 pointer-events-none">
           {(!isSubmenusMode && isExpanded) ? (
             <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />
           ) : (
@@ -264,14 +291,14 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
             <div 
               className={clsx(
                 "fixed z-[100] rounded-[var(--radius-lg)] shadow-lg py-2 min-w-[240px] border transition-colors duration-300",
-                "bg-white dark:bg-slate-900 border-[var(--color-border)]",
+                "bg-[var(--app-sidebar-surface)] border-[var(--color-border)]",
                 "animate-in fade-in duration-200"
               )}
               style={{ 
                 ...(opensUpward ? { bottom: (window.innerHeight - coords.bottom) - 4 } : { top: coords.top - 4 }),
                 ...(isRtl
                   ? { right: (window.innerWidth - coords.left) + (isFlyout ? 1 : 11) }
-                  : { left: coords.left + (isFlyout ? 1 : 11) })
+                  : { left: coords.right + (isFlyout ? 1 : 11) })
               }}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
