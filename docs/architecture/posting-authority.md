@@ -133,6 +133,39 @@ Accounting, audited like any other exemption. The default is undelegated: Accoun
 `accounting.financialApproval.approve`. Sales-side or purchases-side permissions like
 `sales.invoices.approve` MUST NOT exist — they would split the right and violate SoD.
 
+### 4.2 Enforcement layers (how the SoD rule is structurally guaranteed)
+
+The principles in §4.1 are not enforced by developer discipline alone — that pattern failed
+twice (commits `83b8d187` and `e3b71e4f` removed UI buttons that called the approve endpoint
+from source modules; both leaks went unnoticed until manual QA). The rule is now defended in
+three independent layers, each capable of standing alone:
+
+| # | Layer | Mechanism | Failure mode it catches |
+|---|---|---|---|
+| 1 | **Backend permission guard** | Express middleware `permissionGuard('accounting.financialApproval.approve')` on `/sales/invoices/:id/approve` and `/purchases/invoices/:id/approve` | A user without approval rights calling the endpoint directly via any client (UI, script, future SDK). Returns 403. |
+| 2 | **Frontend UI render gate** | `SI/PI detail pages render the Settlement-on-Post card only while `status === 'DRAFT'` (or `isCreateMode`). `postDraft()` refuses to call any approve endpoint and instead redirects the user to Accounting → Approval Center. | A `PENDING_APPROVAL` document acquiring a "Confirm & Post" button through stale UI state. The button no longer renders and the handler is wired to the wrong action. |
+| 3 | **Build-time SoD check** | `frontend/scripts/check-sod-approve.mjs`, wired into `npm run build`. Bans references to the symbols `approveSI` / `approvePI` and the route fragments `/sales/invoices/:id/approve` / `/purchases/invoices/:id/approve` anywhere outside `src/api/accountingApi.ts` and `src/modules/accounting/**`. | A new developer copy-pasting an existing pattern, or a refactor accidentally re-introducing the method on `salesApi` / `purchasesApi`. Fails the build with a pointed error message linking to this section. |
+
+**API surface move (the structural complement to layer 3).** `approveSI` and `approvePI` were
+moved out of `frontend/src/api/salesApi.ts` / `purchasesApi.ts` and into
+`frontend/src/api/accountingApi.ts`. Source-module code that tries to call them gets a
+TypeScript error — the symbols literally do not exist on the API clients those modules import.
+The backend routes stay under `/tenant/sales/...` and `/tenant/purchase/...` (their REST
+identity), but the frontend client lives where the architectural authority lives (Accounting).
+
+**Why three layers and not one.** Each defends against a different failure mode:
+- Layer 1 alone leaves the UI free to surface the button (which we did, twice).
+- Layer 2 alone leaves runtime code free to call the endpoint (a refactor or a new page can
+  re-introduce it without the render gate ever showing up in review).
+- Layer 3 alone runs only at build time — if a hot-path PR bypasses CI, layer 1 and 2 still
+  catch the runtime case.
+
+**To intentionally relax the rule** (e.g. when implementing the "Future delegation" carve-out
+above): add the new approver module's path to the allowlist in `check-sod-approve.mjs`,
+expose a method on the corresponding API client, and add a permission separate from
+`accounting.financialApproval.approve` for the delegated authority. Each step is visible in
+code review.
+
 ## 5. Worked examples
 
 - **Admin posts an SI into a locked period, with an override reason; accounting forbids the
@@ -213,6 +246,7 @@ Which paths enforce vs. exempt today:
 | One accounting guard, literally at the ledger write | ✅ **Stage 4** — `PostingGateway` is the sole caller of `recordForVoucher`, enforced by an architecture test. Some system postings are explicitly policy-exempt (Stage 4b) but still pass through the door + iron laws |
 | No forged "approved" stamp | ✅ **Stage 1 + 4** — approval is derived from the caller's *real* state inside the gateway, for every path |
 | Approval owned in Accounting (one rulebook + scope) | ✅ solved (Stage 2b/2c — per-module flag retired) |
+| SoD structurally enforced on the frontend (no source-module approve calls possible) | ✅ **2026-06-05** — three layers per §4.2: backend permission guard + frontend UI render gate + build-time `check-sod-approve.mjs`. API symbols `approveSI` / `approvePI` moved to `accountingApi` |
 | Period lock has one implementation | ✅ holds — `PeriodLockService` is a thin adapter delegating to `PeriodLockPolicy` |
 | Each guard signs its refusal (uniform contract) | ✅ **Stage 5** — `toRejectionContract(err)` maps every guard error onto `{ guard, code, message, fieldHints }`; the error handler surfaces `guard` + `code` consistently |
 | All-or-nothing transaction | ✅ holds for postings |
