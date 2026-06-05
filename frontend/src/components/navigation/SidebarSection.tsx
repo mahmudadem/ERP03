@@ -90,7 +90,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
       : "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
     isContrastSidebar
       ? "hover:text-[var(--app-sidebar-text)] hover:bg-white/10 group"
-      : "hover:text-[var(--app-sidebar-text)] hover:bg-[var(--color-bg-tertiary)]/50 group"
+      : "hover:text-[var(--app-sidebar-text)] hover:bg-black/5 dark:hover:bg-white/5 group"
   );
 
   const renderHeaderContent = (isActiveLink = false) => {

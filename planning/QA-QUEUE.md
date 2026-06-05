@@ -10,6 +10,30 @@
 
 ## 🧪 Ready to Test
 
+### Navigation - Apex Purchases And Inventory Native Page Mounting
+**Added by:** Codex (report 177)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger/purchases`.
+- Click Purchases sidebar links for Vendors, Vendor Groups, Price Lists, Purchase Orders, Goods Receipts, Purchase Invoices, Purchase Returns, Vendor Statement, AP Aging, Purchases Analytics, and Purchase Settings.
+  - Expected: concrete Purchases subpages render the native production Purchases pages inside the Apex shell, with the Apex sidebar and topbar still visible.
+- Open `/#/dev/apex-ledger/purchases/invoices/new`.
+  - Expected: the real Purchase Invoice detail page opens inside Apex.
+- From a Purchases page inside Apex, use open row, create new, back to list, or linked-document actions.
+  - Expected: the URL stays under `/#/dev/apex-ledger/purchases/...`, not `/#/purchases/...`.
+- Open `/#/dev/apex-ledger/inventory`.
+- Click Inventory sidebar links for Items, Categories, Warehouses, Stock Levels, Stock Movements, Stock Adjustments, Stock Transfers, Opening Stock, Low Stock Alerts, Inventory Valuation, UOM Master, and Inventory Settings.
+  - Expected: concrete Inventory subpages render the native production Inventory pages inside the Apex shell, with the Apex sidebar and topbar still visible.
+- From an Inventory page inside Apex, use open row, create new, back to list, or linked-record actions.
+  - Expected: the URL stays under `/#/dev/apex-ledger/inventory/...`, not `/#/inventory/...`.
+- Test restricted roles and disabled modules.
+  - Expected: protected Purchases and Inventory pages remain blocked exactly as they are in the main shell.
+
+**Known limitations:**
+- This mounts the existing native pages inside Apex. It does not yet redesign those native pages with Apex view styling.
+- Settings/RBAC and AI native page mounting remain pending.
+
+---
+
 ### Navigation - Apex Prototype Typography Restoration
 **Added by:** Codex (report 176)
 **What to test:**

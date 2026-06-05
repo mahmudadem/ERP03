@@ -156,13 +156,13 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           ? isCompact
             ? isContrastSidebar
               ? "bg-white/10 text-white font-medium hover:bg-white/15"
-              : "bg-primary-50/50 text-primary-600 dark:bg-primary-950/20 dark:text-primary-400 hover:bg-[var(--color-bg-tertiary)]"
+              : "bg-primary-50/50 text-primary-600 dark:bg-primary-950/20 dark:text-primary-400 hover:bg-black/5 dark:hover:bg-white/5"
             : isContrastSidebar
               ? "bg-white/10 text-white font-medium hover:bg-white/15"
-              : "bg-primary-50/50 text-primary-700 dark:bg-primary-950/20 dark:text-primary-300 hover:bg-[var(--color-bg-tertiary)]"
+              : "bg-primary-50/50 text-primary-700 dark:bg-primary-950/20 dark:text-primary-300 hover:bg-black/5 dark:hover:bg-white/5"
           : isContrastSidebar
             ? "text-[var(--app-sidebar-muted)] hover:bg-white/10 hover:text-[var(--app-sidebar-text)]"
-            : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
+            : "text-[var(--app-sidebar-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--app-sidebar-text)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).

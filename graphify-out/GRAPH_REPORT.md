@@ -1,16 +1,16 @@
 # Graph Report - ERP03  (2026-06-05)
 
 ## Corpus Check
-- 2331 files · ~1,633,516 words
+- 2333 files · ~1,635,304 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 21056 nodes · 32804 edges · 1225 communities (953 shown, 272 thin omitted)
+- 21078 nodes · 32831 edges · 1172 communities (959 shown, 213 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 1087 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `49305188`
+- Built from commit: `dfc364e1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -58,6 +58,7 @@
 - [[_COMMUNITY_Community 40|Community 40]]
 - [[_COMMUNITY_Community 41|Community 41]]
 - [[_COMMUNITY_Community 42|Community 42]]
+- [[_COMMUNITY_Community 43|Community 43]]
 - [[_COMMUNITY_Community 44|Community 44]]
 - [[_COMMUNITY_Community 45|Community 45]]
 - [[_COMMUNITY_Community 46|Community 46]]
@@ -264,7 +265,6 @@
 - [[_COMMUNITY_Community 247|Community 247]]
 - [[_COMMUNITY_Community 248|Community 248]]
 - [[_COMMUNITY_Community 249|Community 249]]
-- [[_COMMUNITY_Community 250|Community 250]]
 - [[_COMMUNITY_Community 251|Community 251]]
 - [[_COMMUNITY_Community 252|Community 252]]
 - [[_COMMUNITY_Community 253|Community 253]]
@@ -434,7 +434,6 @@
 - [[_COMMUNITY_Community 417|Community 417]]
 - [[_COMMUNITY_Community 418|Community 418]]
 - [[_COMMUNITY_Community 419|Community 419]]
-- [[_COMMUNITY_Community 420|Community 420]]
 - [[_COMMUNITY_Community 421|Community 421]]
 - [[_COMMUNITY_Community 422|Community 422]]
 - [[_COMMUNITY_Community 423|Community 423]]
@@ -520,7 +519,6 @@
 - [[_COMMUNITY_Community 503|Community 503]]
 - [[_COMMUNITY_Community 504|Community 504]]
 - [[_COMMUNITY_Community 505|Community 505]]
-- [[_COMMUNITY_Community 506|Community 506]]
 - [[_COMMUNITY_Community 507|Community 507]]
 - [[_COMMUNITY_Community 508|Community 508]]
 - [[_COMMUNITY_Community 509|Community 509]]
@@ -823,8 +821,6 @@
 - [[_COMMUNITY_Community 806|Community 806]]
 - [[_COMMUNITY_Community 807|Community 807]]
 - [[_COMMUNITY_Community 808|Community 808]]
-- [[_COMMUNITY_Community 809|Community 809]]
-- [[_COMMUNITY_Community 810|Community 810]]
 - [[_COMMUNITY_Community 811|Community 811]]
 - [[_COMMUNITY_Community 812|Community 812]]
 - [[_COMMUNITY_Community 813|Community 813]]
@@ -842,6 +838,7 @@
 - [[_COMMUNITY_Community 825|Community 825]]
 - [[_COMMUNITY_Community 826|Community 826]]
 - [[_COMMUNITY_Community 827|Community 827]]
+- [[_COMMUNITY_Community 828|Community 828]]
 - [[_COMMUNITY_Community 829|Community 829]]
 - [[_COMMUNITY_Community 830|Community 830]]
 - [[_COMMUNITY_Community 831|Community 831]]
@@ -870,13 +867,11 @@
 - [[_COMMUNITY_Community 854|Community 854]]
 - [[_COMMUNITY_Community 855|Community 855]]
 - [[_COMMUNITY_Community 856|Community 856]]
-- [[_COMMUNITY_Community 857|Community 857]]
 - [[_COMMUNITY_Community 858|Community 858]]
 - [[_COMMUNITY_Community 859|Community 859]]
 - [[_COMMUNITY_Community 860|Community 860]]
 - [[_COMMUNITY_Community 861|Community 861]]
 - [[_COMMUNITY_Community 862|Community 862]]
-- [[_COMMUNITY_Community 863|Community 863]]
 - [[_COMMUNITY_Community 864|Community 864]]
 - [[_COMMUNITY_Community 865|Community 865]]
 - [[_COMMUNITY_Community 866|Community 866]]
@@ -940,9 +935,7 @@
 - [[_COMMUNITY_Community 924|Community 924]]
 - [[_COMMUNITY_Community 925|Community 925]]
 - [[_COMMUNITY_Community 926|Community 926]]
-- [[_COMMUNITY_Community 927|Community 927]]
 - [[_COMMUNITY_Community 928|Community 928]]
-- [[_COMMUNITY_Community 929|Community 929]]
 - [[_COMMUNITY_Community 930|Community 930]]
 - [[_COMMUNITY_Community 931|Community 931]]
 - [[_COMMUNITY_Community 932|Community 932]]
@@ -968,7 +961,9 @@
 - [[_COMMUNITY_Community 952|Community 952]]
 - [[_COMMUNITY_Community 953|Community 953]]
 - [[_COMMUNITY_Community 954|Community 954]]
+- [[_COMMUNITY_Community 955|Community 955]]
 - [[_COMMUNITY_Community 956|Community 956]]
+- [[_COMMUNITY_Community 957|Community 957]]
 - [[_COMMUNITY_Community 958|Community 958]]
 - [[_COMMUNITY_Community 959|Community 959]]
 - [[_COMMUNITY_Community 960|Community 960]]
@@ -989,10 +984,7 @@
 - [[_COMMUNITY_Community 975|Community 975]]
 - [[_COMMUNITY_Community 976|Community 976]]
 - [[_COMMUNITY_Community 977|Community 977]]
-- [[_COMMUNITY_Community 978|Community 978]]
 - [[_COMMUNITY_Community 979|Community 979]]
-- [[_COMMUNITY_Community 980|Community 980]]
-- [[_COMMUNITY_Community 981|Community 981]]
 - [[_COMMUNITY_Community 982|Community 982]]
 - [[_COMMUNITY_Community 983|Community 983]]
 - [[_COMMUNITY_Community 984|Community 984]]
@@ -1018,6 +1010,7 @@
 - [[_COMMUNITY_Community 1004|Community 1004]]
 - [[_COMMUNITY_Community 1005|Community 1005]]
 - [[_COMMUNITY_Community 1006|Community 1006]]
+- [[_COMMUNITY_Community 1007|Community 1007]]
 - [[_COMMUNITY_Community 1008|Community 1008]]
 - [[_COMMUNITY_Community 1009|Community 1009]]
 - [[_COMMUNITY_Community 1010|Community 1010]]
@@ -1032,7 +1025,6 @@
 - [[_COMMUNITY_Community 1019|Community 1019]]
 - [[_COMMUNITY_Community 1020|Community 1020]]
 - [[_COMMUNITY_Community 1021|Community 1021]]
-- [[_COMMUNITY_Community 1022|Community 1022]]
 - [[_COMMUNITY_Community 1023|Community 1023]]
 - [[_COMMUNITY_Community 1024|Community 1024]]
 - [[_COMMUNITY_Community 1025|Community 1025]]
@@ -1064,9 +1056,6 @@
 - [[_COMMUNITY_Community 1051|Community 1051]]
 - [[_COMMUNITY_Community 1052|Community 1052]]
 - [[_COMMUNITY_Community 1053|Community 1053]]
-- [[_COMMUNITY_Community 1054|Community 1054]]
-- [[_COMMUNITY_Community 1055|Community 1055]]
-- [[_COMMUNITY_Community 1056|Community 1056]]
 - [[_COMMUNITY_Community 1058|Community 1058]]
 - [[_COMMUNITY_Community 1059|Community 1059]]
 - [[_COMMUNITY_Community 1060|Community 1060]]
@@ -1089,68 +1078,19 @@
 - [[_COMMUNITY_Community 1077|Community 1077]]
 - [[_COMMUNITY_Community 1078|Community 1078]]
 - [[_COMMUNITY_Community 1079|Community 1079]]
-- [[_COMMUNITY_Community 1080|Community 1080]]
-- [[_COMMUNITY_Community 1081|Community 1081]]
-- [[_COMMUNITY_Community 1082|Community 1082]]
-- [[_COMMUNITY_Community 1083|Community 1083]]
-- [[_COMMUNITY_Community 1084|Community 1084]]
-- [[_COMMUNITY_Community 1085|Community 1085]]
-- [[_COMMUNITY_Community 1086|Community 1086]]
-- [[_COMMUNITY_Community 1087|Community 1087]]
-- [[_COMMUNITY_Community 1088|Community 1088]]
-- [[_COMMUNITY_Community 1089|Community 1089]]
-- [[_COMMUNITY_Community 1090|Community 1090]]
-- [[_COMMUNITY_Community 1091|Community 1091]]
-- [[_COMMUNITY_Community 1092|Community 1092]]
-- [[_COMMUNITY_Community 1093|Community 1093]]
-- [[_COMMUNITY_Community 1094|Community 1094]]
-- [[_COMMUNITY_Community 1095|Community 1095]]
-- [[_COMMUNITY_Community 1096|Community 1096]]
-- [[_COMMUNITY_Community 1097|Community 1097]]
-- [[_COMMUNITY_Community 1098|Community 1098]]
-- [[_COMMUNITY_Community 1099|Community 1099]]
-- [[_COMMUNITY_Community 1100|Community 1100]]
-- [[_COMMUNITY_Community 1101|Community 1101]]
-- [[_COMMUNITY_Community 1102|Community 1102]]
-- [[_COMMUNITY_Community 1103|Community 1103]]
-- [[_COMMUNITY_Community 1104|Community 1104]]
+- [[_COMMUNITY_Community 1107|Community 1107]]
+- [[_COMMUNITY_Community 1108|Community 1108]]
 - [[_COMMUNITY_Community 1109|Community 1109]]
 - [[_COMMUNITY_Community 1110|Community 1110]]
 - [[_COMMUNITY_Community 1111|Community 1111]]
 - [[_COMMUNITY_Community 1112|Community 1112]]
-- [[_COMMUNITY_Community 1113|Community 1113]]
-- [[_COMMUNITY_Community 1114|Community 1114]]
-- [[_COMMUNITY_Community 1115|Community 1115]]
-- [[_COMMUNITY_Community 1116|Community 1116]]
-- [[_COMMUNITY_Community 1117|Community 1117]]
-- [[_COMMUNITY_Community 1118|Community 1118]]
-- [[_COMMUNITY_Community 1119|Community 1119]]
-- [[_COMMUNITY_Community 1120|Community 1120]]
-- [[_COMMUNITY_Community 1121|Community 1121]]
-- [[_COMMUNITY_Community 1122|Community 1122]]
-- [[_COMMUNITY_Community 1123|Community 1123]]
-- [[_COMMUNITY_Community 1124|Community 1124]]
-- [[_COMMUNITY_Community 1125|Community 1125]]
-- [[_COMMUNITY_Community 1126|Community 1126]]
-- [[_COMMUNITY_Community 1127|Community 1127]]
-- [[_COMMUNITY_Community 1128|Community 1128]]
-- [[_COMMUNITY_Community 1129|Community 1129]]
-- [[_COMMUNITY_Community 1130|Community 1130]]
-- [[_COMMUNITY_Community 1131|Community 1131]]
-- [[_COMMUNITY_Community 1132|Community 1132]]
-- [[_COMMUNITY_Community 1160|Community 1160]]
-- [[_COMMUNITY_Community 1161|Community 1161]]
-- [[_COMMUNITY_Community 1162|Community 1162]]
-- [[_COMMUNITY_Community 1163|Community 1163]]
-- [[_COMMUNITY_Community 1164|Community 1164]]
-- [[_COMMUNITY_Community 1165|Community 1165]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `Next` - 540 edges
 2. `Development Journal` - 320 edges
 3. `useCompanyAccess()` - 107 edges
 4. `ApiError` - 97 edges
-5. `Development Journal` - 92 edges
+5. `Development Journal` - 94 edges
 6. `Button()` - 88 edges
 7. `Card()` - 83 edges
 8. `PermissionChecker` - 77 edges
@@ -1169,7 +1109,7 @@
 - `impersonationMiddleware()` --calls--> `Next`  [INFERRED]
   backend/src/api/middlewares/impersonationMiddleware.ts → planning/done/102-pr1-accounting-engine-guard.md
 
-## Communities (1225 total, 272 thin omitted)
+## Communities (1172 total, 213 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.01
@@ -1177,515 +1117,515 @@ Nodes (316): 2026-04-26 (Sat) — 2h, 2026-04-26 (Sat) — Session 0: Process Se
 
 ### Community 1 - "Community 1"
 Cohesion: 0.02
-Nodes (37): TrialBalanceTool, MockSuccessTool, MockHttpClient, SequenceHttpClient, AiAssistantDTOMapper, AiModelCertificationResult, AiModelProfile, AiProviderConfig (+29 more)
+Nodes (78): DeactivateAccountUseCase, GetAccountUseCase, ListAccountsUseCase, PermissionChecker, MockPermissionChecker, GetAccountBalanceTool, round2(), GetAccountStatementSummaryTool (+70 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.02
-Nodes (70): PermissionChecker, GetAccountBalanceTool, round2(), GetAccountStatementSummaryTool, round2(), GetAgingPayablesTool, round2(), GetAgingReceivablesTool (+62 more)
+Cohesion: 0.01
+Nodes (93): PurchaseDTOMapper, GoodsReceipt, roundMoney(), toDate(), normalizeDocumentSource(), PurchaseInvoice, roundMoney(), toDate() (+85 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.02
-Nodes (60): buildDraftVoucher(), buildLines(), VoucherEntity, moneyEquals(), roundMoney(), VoucherLineEntity, AuthError, BusinessError (+52 more)
+Nodes (77): InventorySettings, Item, toDate(), ItemCategory, OpeningStockDocument, toDate(), StockAdjustment, toDate() (+69 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.02
-Nodes (27): AccountController, AccountingDesignerController, BankReconciliationController, BudgetController, ConsolidationController, CostCenterController, FiscalYearController, FXRevaluationController (+19 more)
+Cohesion: 0.01
+Nodes (39): AccountController, AccountingDesignerController, AccountingReportsController, BankReconciliationController, BudgetController, ConsolidationController, CostCenterController, FiscalYearController (+31 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.02
-Nodes (93): ProtectedRoute(), RequireModule(), RequirePermission(), ItemMasterCard(), ModuleStatusBanner(), WarehouseMasterCard(), AccountsProvider(), useAccounts() (+85 more)
+Nodes (84): setAuthTokenGetter(), setCompanyIdGetter(), ProtectedRoute(), RequireAuth(), RequireModule(), RequireOnboarding(), RequirePermission(), SuperAdminRedirect() (+76 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.02
-Nodes (70): formatCompanyDate(), loadHistory(), addRow(), applyAIData(), copyToClipboard(), handleAIAutoFill(), handleImageImport(), handleInputChange() (+62 more)
+Nodes (109): loadOptions(), WizardNavigation(), handleExpireCertification(), handleRecordManualCert(), handleResetCertHistory(), handleRunAllCategories(), handleRunShellCert(), loadCertifications() (+101 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.02
-Nodes (28): PrismaAiSettingsRepository, FirebaseTokenVerifier, FirestoreChartOfAccountsTemplateRepository, FirestoreInventoryTemplateRepository, PrismaChartOfAccountsTemplateRepository, PrismaCompanyWizardTemplateRepository, PrismaCurrencyRepository, PrismaInventoryTemplateRepository (+20 more)
+Nodes (48): FirestoreUserAccessScopeProvider, compareAccountStatementRows(), compareVoucherNo(), dateToIso(), FirestoreLedgerRepository, serverTimestamp(), toTimestamp(), toTimestampBoundary() (+40 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.02
-Nodes (66): CreditOverride, DeliveryNote, roundMoney(), toDate(), roundMoney(), SalesOrder, toDate(), roundMoney() (+58 more)
+Nodes (58): SalesInvoiceV2LayoutPage(), useCompanyBundles(), useCompanyFeatures(), useCompanyModules(), useCompanyProfile(), useCompanyRoles(), useCompanyUsers(), useLocaleFormat() (+50 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.03
-Nodes (52): NewCompanyCard(), loadOptions(), WizardNavigation(), clsx(), useWizardSession(), useCompanyBundles(), useCompanyFeatures(), useCompanyModules() (+44 more)
+Cohesion: 0.02
+Nodes (96): handleClose(), handleRunDiagnostics(), useAccounts(), useCompanyModules(), handleSaveWeb(), load(), load(), fetchReport() (+88 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.03
-Nodes (59): Item, toDate(), Party, toDate(), PurchaseOrder, roundMoney(), toDate(), PurchaseSettings (+51 more)
+Cohesion: 0.02
+Nodes (76): Action, code:bash (git add -A), ItemCardWindow(), PartyCardWindow(), ReportWindow(), WarehouseCardWindow(), handleAction(), handleSave() (+68 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.02
-Nodes (89): fetchData(), handleAutoGenerateCode(), handleSave(), loadParty(), renderPartyAccountCode(), zeroPad(), fetchLogs(), handleClose() (+81 more)
+Nodes (70): ManageCategoriesUseCase, GetCurrentCostUseCase, GetInventoryDashboardUseCase, GetLowStockAlertsUseCase, GetUnsettledCostReportUseCase, CreateItemUseCase, DeleteItemUseCase, GetItemUseCase (+62 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.02
-Nodes (74): Action, code:bash (git add -A), SalesInvoiceV2LayoutPage(), handleAction(), handleSave(), createEmptyForm(), createEmptyLine(), todayIso() (+66 more)
+Cohesion: 0.03
+Nodes (51): CreditOverride, Party, toDate(), roundMoney(), SalesOrder, toDate(), TaxCode, toDate() (+43 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.02
-Nodes (29): CoreDTOMapper, Company, CompanyUser, User, CompanyMapper, CompanyUserMapper, UserMapper, CompanyPgMapper (+21 more)
+Cohesion: 0.03
+Nodes (61): DeliveryNote, roundMoney(), toDate(), calculateDiscountAmountDoc(), normalizeDiscountType(), normalizeDocumentSource(), roundMoney(), SalesInvoice (+53 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.03
-Nodes (38): InventoryPeriodSnapshot, toDate(), InventorySettings, ItemCategory, StockAdjustment, toDate(), StockTransfer, toDate() (+30 more)
+Nodes (51): formatCompanyDate(), loadHistory(), handleSubmit(), handleSubmit(), formatCompanyDate(), useCompanySettings(), load(), handleExportExcel() (+43 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.02
-Nodes (36): PurchasesInventoryService, CreateGoodsReceiptUseCase, findPOLine(), GetGoodsReceiptUseCase, ListGoodsReceiptsUseCase, PostGoodsReceiptUseCase, UnpostGoodsReceiptUseCase, UpdateGoodsReceiptUseCase (+28 more)
+Cohesion: 0.04
+Nodes (60): assertCanOverrideCreditLimit(), assertCanOverridePeriodLock(), SalesController, toOptionalDNStatus(), toOptionalNumber(), toOptionalPaymentStatus(), toOptionalSIStatus(), toOptionalSRStatus() (+52 more)
 
 ### Community 16 - "Community 16"
 Cohesion: 0.03
-Nodes (48): setAuthTokenGetter(), setCompanyIdGetter(), FirebaseAuthProvider, getFirebaseAuthProvider(), mapFirebaseUser(), RequireAuth(), RequireOnboarding(), SuperAdminRedirect() (+40 more)
+Nodes (52): FirebaseAuthProvider, getFirebaseAuthProvider(), mapFirebaseUser(), handleLogout(), NewCompanyCard(), ModuleStatusBanner(), clsx(), AuthProvider() (+44 more)
 
 ### Community 17 - "Community 17"
 Cohesion: 0.03
-Nodes (36): PromotionRule, Quote, toDate(), makeCustomer(), makeItem(), nowDate(), makeAcceptedQuote(), makeDefaultSalesSettings() (+28 more)
+Nodes (34): FiscalYear, AuthError, BusinessError, InfrastructureError, ValidationError, PeriodLockedError, PeriodLockPolicy, buildUseCase() (+26 more)
 
 ### Community 18 - "Community 18"
 Cohesion: 0.03
-Nodes (39): ItemCardWindow(), PartyCardWindow(), ReportWindow(), WarehouseCardWindow(), handleClearDemoData(), handleCreateCustomItem(), handleSeedDemoData(), loadData() (+31 more)
+Nodes (68): downloadAttachment(), refreshAttachments(), removeAttachment(), unwrap(), uploadAttachment(), fetchData(), fetchLogs(), handleClose() (+60 more)
 
 ### Community 19 - "Community 19"
 Cohesion: 0.03
-Nodes (22): AiCreditController, AiMaintenanceController, AiPlatformApiKeyController, AiRuntimeProfileController, CompanyModulesController, CompanyController, CompanySettingsController, DesignerController (+14 more)
+Nodes (30): AccountingDTOMapper, expect(), buildDraftVoucher(), buildLines(), roundMoney(), VoucherLineEntity, JournalEntryHandler, OpeningBalanceHandler (+22 more)
 
 ### Community 20 - "Community 20"
-Cohesion: 0.03
-Nodes (50): useAccountingSettings(), useCompanyCurrencies(), CustomerAccountSelector(), VendorAccountSelector(), isPurchaseDocumentDefinition(), resolvePurchaseLinePrice(), isSalesDocumentDefinition(), resolveSalesLinePrice() (+42 more)
+Cohesion: 0.04
+Nodes (23): AiCreditController, AiMaintenanceController, CompanyModulesController, CompanyModuleSettingsController, CompanySettingsController, mapDto(), UserPreferencesController, FieldLibraryController (+15 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.03
-Nodes (23): FirestoreFiscalYearRepository, toDomain(), toPersistence(), FiscalYear, PeriodLockedError, PeriodLockPolicy, MockPermissionChecker, verifyProductionHardening() (+15 more)
+Nodes (16): FirebaseTokenVerifier, FirestoreChartOfAccountsTemplateRepository, FirestoreCurrencyRepository, FirestoreInventoryTemplateRepository, PrismaChartOfAccountsTemplateRepository, PrismaCurrencyRepository, PrismaInventoryTemplateRepository, FirestoreUserPreferencesRepository (+8 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.05
-Nodes (21): StockLevel, toDate(), StockMovement, toDate(), NegativeStockError, addDefaultContext(), createCompany(), createItem() (+13 more)
+Cohesion: 0.02
+Nodes (91): 2026-05-20 (Wed) — Phase C (sales finance & reporting), 2026-05-22 (Fri) — Phase D.5 sales-return enhancements, 2026-05-22 (Fri) — Phase D.7 invoice templates (controlled model), 2026-05-22 (Fri) — Phase D.8 outbound messaging (WhatsApp-first), 2026-05-22 (Fri) — Phase D hardening audit (D.3 + D.4), 2026-05-23 (Sat) — D.8 follow-up: Telegram outbound execution, 2026-05-23 (Sat) — D.8 hardening: true multi-tenant messaging accounts, 2026-05-23 (Sat) — Phase D.6 invoice attachments (+83 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.03
-Nodes (38): handleNew(), handleRateDeviationConfirm(), handleRateDeviationSync(), handleSaveVoucher(), normalizeSemanticPayload(), performSave(), handleRateDeviationConfirm(), handleRateDeviationSync() (+30 more)
+Cohesion: 0.04
+Nodes (31): addRow(), applyAIData(), copyToClipboard(), handleAIAutoFill(), handleImageImport(), handleInputChange(), addRow(), applyAIData() (+23 more)
 
 ### Community 24 - "Community 24"
-Cohesion: 0.02
-Nodes (89): 2026-05-20 (Wed) — Phase C (sales finance & reporting), 2026-05-22 (Fri) — Phase D.5 sales-return enhancements, 2026-05-22 (Fri) — Phase D.7 invoice templates (controlled model), 2026-05-22 (Fri) — Phase D.8 outbound messaging (WhatsApp-first), 2026-05-22 (Fri) — Phase D hardening audit (D.3 + D.4), 2026-05-23 (Sat) — D.8 follow-up: Telegram outbound execution, 2026-05-23 (Sat) — D.8 hardening: true multi-tenant messaging accounts, 2026-05-23 (Sat) — Phase D.6 invoice attachments (+81 more)
+Cohesion: 0.04
+Nodes (11): MockTool, MockSuccessTool, PrismaAiSettingsRepository, MockHttpClient, SequenceHttpClient, AiProviderConfig, ProviderAuthError, ProviderError (+3 more)
 
 ### Community 25 - "Community 25"
-Cohesion: 0.04
-Nodes (33): expect(), AccountingEngineUnavailableError, formatMessage(), AccountMappingError, AppError, PostingError, CreditLimitExceededError, errorHandler() (+25 more)
-
-### Community 26 - "Community 26"
 Cohesion: 0.07
 Nodes (39): PurchaseController, toOptionalGRNStatus(), toOptionalNumber(), toOptionalPaymentStatus(), toOptionalPIStatus(), toOptionalPRStatus(), toOptionalStatus(), ensureBoolean() (+31 more)
 
+### Community 26 - "Community 26"
+Cohesion: 0.04
+Nodes (21): makeInvoice(), makeLine(), GetAccountStatementUseCase, agingBucket(), daysDiff(), GetLedgerBackedApAgingUseCase, GetLedgerBackedVendorStatementUseCase, round2() (+13 more)
+
 ### Community 27 - "Community 27"
-Cohesion: 0.03
-Nodes (18): handleEnable(), loadMatrix(), fetchInverseRateSuggestion(), getDeviationColor(), handleCancelSave(), handleConfirmSave(), handleSubmit(), performSave() (+10 more)
+Cohesion: 0.05
+Nodes (22): AuthPermissionsController, CompanyCapabilityEntity, tenantContextMiddleware(), ModuleAvailabilityService, buildRegistryIndexes(), getCapabilityBlockedReason(), isCapabilityEntitled(), normalize() (+14 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.04
-Nodes (8): FirestoreAiModelToolPolicyRepository, FirestoreAiToolEnablementRepository, getCatalogDefinition(), AiModelToolPolicy, AiToolDefinition, modeToOperationType(), AiToolEnablementPolicy, AiToolCatalogUseCase
+Cohesion: 0.06
+Nodes (16): TrialBalanceTool, ProviderProviderError, AiAuditService, AiModelCapabilityCatalog, AiModelRoutingGuard, reasonFor(), AiResponsePersister, AiResponseSanitizer (+8 more)
 
 ### Community 29 - "Community 29"
-Cohesion: 0.05
-Nodes (24): GoodsReceipt, roundMoney(), toDate(), normalizeDocumentSource(), PurchaseInvoice, roundMoney(), toDate(), PurchaseReturn (+16 more)
+Cohesion: 0.04
+Nodes (11): FirestoreCompanyAdminRepository, Company, CompanyPgMapper, FirestoreCompanyRoleRepository, EnableModuleForCompanyUseCase, GetCompanyDetailsUseCase, UpdateCompanySettingsUseCase, CreateCompanyUseCase (+3 more)
 
 ### Community 30 - "Community 30"
-Cohesion: 0.04
-Nodes (13): PermissionCatalogSyncService, deriveModuleBundlesFromPermissions(), FirestorePermissionRegistryRepository, PrismaPermissionRegistryRepository, CreateCompanyRoleUseCase, CreatePermissionUseCase, DeleteCompanyRoleUseCase, DeletePermissionUseCase (+5 more)
+Cohesion: 0.05
+Nodes (13): AccountingModule, AiAssistantModule, InventoryModule, registerAllModules(), runCapabilityStartupValidation(), runModuleStartupValidation(), runPermissionStartupValidation(), EntitlementService (+5 more)
 
 ### Community 31 - "Community 31"
 Cohesion: 0.05
-Nodes (28): calculateDiscountAmountDoc(), normalizeDiscountType(), normalizeDocumentSource(), roundMoney(), SalesInvoice, toDate(), toDisplayText(), toOptionalDisplayText() (+20 more)
+Nodes (7): FirestoreAiModelToolPolicyRepository, getCatalogDefinition(), AiModelToolPolicy, AiToolDefinition, modeToOperationType(), AiToolEnablementPolicy, AiToolCatalogUseCase
 
 ### Community 32 - "Community 32"
-Cohesion: 0.05
-Nodes (30): SalesSettings, buildUseCase(), makeExistingSettings(), FirestoreSalesSettingsRepository, makeDefaultSalesSettings(), makeMockSettingsRepo(), getSalesSettingsRef(), makeSystemVoucherForm() (+22 more)
+Cohesion: 0.04
+Nodes (13): ApiError, GetAiCreditBalanceUseCase, GrantAiCreditsUseCase, buildDefaultMessage(), normalizeE164(), normalizeTelegramRecipient(), SendSalesInvoiceTelegramUseCase, SendSalesInvoiceWhatsappUseCase (+5 more)
 
 ### Community 33 - "Community 33"
-Cohesion: 0.04
-Nodes (14): setupErrorInterceptor(), downloadAttachment(), refreshAttachments(), removeAttachment(), unwrap(), uploadAttachment(), clearEditQueryParam(), closeEditModal() (+6 more)
+Cohesion: 0.05
+Nodes (11): FeatureFlagService, CompanyRolePermissionResolver, CreateBundleUseCase, CreateCompanyUseCase, DeleteBundleUseCase, GetCompanyBundleUseCase, GetOnboardingStatusUseCase, ListAvailableBundlesUseCase (+3 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.05
-Nodes (17): SalesDTOMapper, computeNextDate(), isValidDateOnly(), RecurringInvoiceTemplate, toDate(), toDisplayText(), toOptionalStringRef(), toStringRef() (+9 more)
+Cohesion: 0.07
+Nodes (12): isAiCertificationCategory(), AiModelCertificationResult, AiModelProfile, AiAutoSeedCertification, AiCertificationEngine, evaluateResponse(), evaluateShouldAnswerFromData(), evaluateShouldRefuse() (+4 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.05
-Nodes (13): HrDTOMapper, AttendanceRecord, Employee, FirestoreAttendanceRepository, FirestoreEmployeeRepository, PrismaAttendanceRepository, PrismaEmployeeRepository, AttendanceMapper (+5 more)
+Cohesion: 0.06
+Nodes (13): deriveModuleBundlesFromPermissions(), AssignRoleToCompanyUserUseCase, CreateCompanyRoleUseCase, DeleteCompanyRoleUseCase, DeleteCompanyUserUseCase, DisableCompanyUserUseCase, EnableCompanyUserUseCase, GetCompanyRoleUseCase (+5 more)
 
 ### Community 36 - "Community 36"
 Cohesion: 0.05
 Nodes (13): PosDTOMapper, POSOrder, POSOrderItem, POSShift, POSOrderMapper, POSShiftMapper, FirestorePosOrderRepository, FirestorePosShiftRepository (+5 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.07
-Nodes (13): VoucherFormController, RecordAuditController, moduleInitializedGuard(), permissionGuard(), hashBody(), idempotencyMiddleware(), getBucket(), PurchaseInvoiceAttachmentController (+5 more)
-
-### Community 38 - "Community 38"
-Cohesion: 0.06
-Nodes (38): useLocaleFormat(), deepMergeObjects(), dispatchUpdate(), firstDisplayText(), firstEntityRef(), isPlainObject(), resolveDocumentSource(), sanitizeMetadata() (+30 more)
+Cohesion: 0.05
+Nodes (13): HrDTOMapper, AttendanceRecord, Employee, FirestoreAttendanceRepository, FirestoreEmployeeRepository, PrismaAttendanceRepository, PrismaEmployeeRepository, AttendanceMapper (+5 more)
 
 ### Community 39 - "Community 39"
-Cohesion: 0.06
-Nodes (9): EntitlementService, FeatureFlagService, CreateBundleUseCase, DeleteBundleUseCase, GetCompanyBundleUseCase, ListAvailableBundlesUseCase, ListBundlesUseCase, UpdateBundleUseCase (+1 more)
+Cohesion: 0.05
+Nodes (9): FirestoreUserRepository, User, BackfillPartyAccountsUseCase, DemoteSuperAdminUseCase, GetSystemOverviewUseCase, ListAllCompaniesUseCase, ListAllUsersUseCase, PromoteUserToSuperAdminUseCase (+1 more)
 
 ### Community 40 - "Community 40"
+Cohesion: 0.06
+Nodes (9): PrismaCompanyCreationSessionRepository, PrismaCompanyWizardTemplateRepository, CompleteCompanyCreationUseCase, GetAvailableCompanyModelsUseCase, GetNextWizardStepUseCase, GetOptionsForFieldUseCase, GetWizardStepsForModelUseCase, StartCompanyCreationWizardUseCase (+1 more)
+
+### Community 41 - "Community 41"
+Cohesion: 0.05
+Nodes (15): DocumentDesigner(), handleDelete(), handleEdit(), isProtected(), handleClickOutside(), handleDelete(), handleEdit(), isProtected() (+7 more)
+
+### Community 42 - "Community 42"
 Cohesion: 0.04
 Nodes (54): 2026-05-09 Operational Detour — Tailscale Local Dev Access, 2026-05-09 Result — AI Model Management Backend Trust Foundation, 2026-05-09 Result — Responsiveness Fix Plan, 2026-05-10 Result — Canvas Dev 96-Cell Widget Layout Sandbox, 2026-05-10 Result — Emulator Data Restore and Export-Path Guardrail, 2026-05-10 Result — Graphify CLI Usability Fix, 2026-05-10 Result — Increment 2.5 Branch and Worktree Reconciliation, 2026-05-10 Result — Increment 3: Frontend AI Certification UI (+46 more)
 
-### Community 41 - "Community 41"
-Cohesion: 0.1
-Nodes (10): assertCanOverrideCreditLimit(), assertCanOverridePeriodLock(), SalesController, toOptionalDNStatus(), toOptionalNumber(), toOptionalPaymentStatus(), toOptionalSIStatus(), toOptionalSRStatus() (+2 more)
-
-### Community 42 - "Community 42"
-Cohesion: 0.06
-Nodes (12): ExchangeRate, DetectRateDeviationService, GetSuggestedRateUseCase, SaveReferenceRateUseCase, DisableCurrencyForCompanyUseCase, EnableCurrencyForCompanyUseCase, IsCurrencyEnabledUseCase, ListCompanyCurrenciesUseCase (+4 more)
+### Community 43 - "Community 43"
+Cohesion: 0.07
+Nodes (15): VoucherFormController, RecordAuditController, moduleInitializedGuard(), permissionGuard(), hashBody(), idempotencyMiddleware(), getBucket(), PurchaseInvoiceAttachmentController (+7 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.04
-Nodes (46): Action, After This Task, code:typescript (const toolMappings = getExecutableDefinitions()), code:block2 (// 4. Run Behavioral Tests (if provider available and deep p), code:typescript (const mockModelProfileUseCase = {), code:typescript (if (runtimeMode === 'CREDITS') {), code:bash (git add -A), Current state (+38 more)
+Cohesion: 0.06
+Nodes (16): CreateAccountUseCase, DeleteAccountUseCase, UpdateAccountUseCase, renderPartyAccountCode(), templateUsesSequence(), ZERO_PAD(), CreatePartyUseCase, GetPartyUseCase (+8 more)
 
 ### Community 45 - "Community 45"
+Cohesion: 0.06
+Nodes (15): SalesDTOMapper, computeNextDate(), isValidDateOnly(), RecurringInvoiceTemplate, toDate(), toDisplayText(), toOptionalStringRef(), toStringRef() (+7 more)
+
+### Community 46 - "Community 46"
+Cohesion: 0.06
+Nodes (5): PrismaCurrencyRepository, Currency, PrismaCurrencyRepository, SettingsResolver, GetCurrencyDecimalPlacesUseCase
+
+### Community 47 - "Community 47"
+Cohesion: 0.05
+Nodes (7): AccountingBootstrapService, ModuleSettingsValidator, RolePermissionResolver, FirestoreModuleSettingsDefinitionRepository, PermissionSyncService, PrismaModulePermissionsDefinitionRepository, PrismaModuleSettingsDefinitionRepository
+
+### Community 48 - "Community 48"
+Cohesion: 0.06
+Nodes (6): PermissionCatalogSyncService, FirestorePermissionRegistryRepository, CreatePermissionUseCase, DeletePermissionUseCase, ListPermissionsUseCase, UpdatePermissionUseCase
+
+### Community 49 - "Community 49"
+Cohesion: 0.05
+Nodes (22): main(), resolveCollection(), wipeCollection(), ensureDirectPersonaAllowed(), ensureDirectPurchasePersonaAllowed(), loadAccounts(), main(), parseArgs() (+14 more)
+
+### Community 50 - "Community 50"
 Cohesion: 0.04
 Nodes (48): 1. Approval Required Policy, 2. Period Lock Policy, 3. Account Access Control Policy, Account Access Control Setup, Account Ownership Configuration, Approval Required Not Working, Architecture Notes, Automated Test (+40 more)
 
-### Community 46 - "Community 46"
-Cohesion: 0.07
-Nodes (9): GetAccountStatementUseCase, agingBucket(), CustomerStatementMissingAccountError, daysDiff(), GetArAgingReportUseCase, GetLedgerBackedArAgingUseCase, GetLedgerBackedCustomerStatementUseCase, round2() (+1 more)
-
-### Community 47 - "Community 47"
-Cohesion: 0.08
-Nodes (15): cn(), clearLogo(), handleFileChange(), handleSubmit(), validate(), handleNext(), handleSelect(), handleSubmit() (+7 more)
-
-### Community 48 - "Community 48"
-Cohesion: 0.04
-Nodes (47): 10. Recommended Final Architecture, 11. Recommended Setup Flow (from Company Creation Onward), 12. Recommended COA Strategy, 13. Recommended Mode + Policy + Closing Model, 14. Migration / Backward Compatibility Risks, 15. Final Verdict, 1. Executive Summary, 2. Current State Confirmed from Code (+39 more)
-
-### Community 49 - "Community 49"
-Cohesion: 0.04
-Nodes (46): 10. Cross-Reference Summary, 1. PO Status Machine, 2. GRN Posting, 3. Purchase Invoice Posting, 4. Purchase Return Posting, 5. Helper Functions, 6. Document Number Generation, 7. Payment Integration (+38 more)
-
-### Community 50 - "Community 50"
-Cohesion: 0.07
-Nodes (9): FirestoreAiPlatformApiKeyRepository, stripUndefined(), AiPlatformApiKey, ProviderAuthError, ProviderError, ProviderRateLimitError, ProviderUnavailableError, AxiosHttpClient (+1 more)
-
 ### Community 51 - "Community 51"
-Cohesion: 0.04
-Nodes (46): 2026-05-08 Settings Diagnostics Update, 2026-05-08 Update, 2026-05-09 Context Budget and Cost Controls, 2026-05-09 Conversation Context Update, 2026-05-09 Editable Model Profile Catalog, 2026-05-17 Proactive Certification Diagnostics, 2026-05-18 Certification, Routing, and Response Hardening, 2026-06-02 Floating Launcher Visibility (+38 more)
+Cohesion: 0.08
+Nodes (16): cn(), clearLogo(), handleFileChange(), handleSubmit(), validate(), handleNext(), handleSelect(), handleSubmit() (+8 more)
 
 ### Community 52 - "Community 52"
 Cohesion: 0.04
-Nodes (45): 0.1 Domain Entities, 0.2 Repository Interfaces, 0.3 Firestore Implementations, 0.4 Use Cases, 0.5 API Endpoints, 0.6 Frontend Pages, 0.7 Item Entity Extension, 0.8 Acceptance Criteria (+37 more)
+Nodes (47): 10. Recommended Final Architecture, 11. Recommended Setup Flow (from Company Creation Onward), 12. Recommended COA Strategy, 13. Recommended Mode + Policy + Closing Model, 14. Migration / Backward Compatibility Risks, 15. Final Verdict, 1. Executive Summary, 2. Current State Confirmed from Code (+39 more)
 
 ### Community 53 - "Community 53"
 Cohesion: 0.04
-Nodes (45): Acceptance Criteria, Automated Tests, Business Context, code:typescript (const retainedLine: BalanceSheetLine = {), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap), code:typescript ({), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap) (+37 more)
+Nodes (46): 10. Cross-Reference Summary, 1. PO Status Machine, 2. GRN Posting, 3. Purchase Invoice Posting, 4. Purchase Return Posting, 5. Helper Functions, 6. Document Number Generation, 7. Payment Integration (+38 more)
 
 ### Community 54 - "Community 54"
 Cohesion: 0.04
-Nodes (45): Acceptance Criteria, Automated Tests, Business Context, code:typescript (const retainedLine: BalanceSheetLine = {), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap), code:typescript ({), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap) (+37 more)
+Nodes (46): 2026-05-08 Settings Diagnostics Update, 2026-05-08 Update, 2026-05-09 Context Budget and Cost Controls, 2026-05-09 Conversation Context Update, 2026-05-09 Editable Model Profile Catalog, 2026-05-17 Proactive Certification Diagnostics, 2026-05-18 Certification, Routing, and Response Hardening, 2026-06-02 Floating Launcher Visibility (+38 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.04
-Nodes (44): After This Task, code:typescript (const toolMappings = getExecutableDefinitions()), code:block2 (// 4. Run Behavioral Tests (if provider available and deep p), code:typescript (const mockModelProfileUseCase = {), code:typescript (if (runtimeMode === 'CREDITS') {), Current state, D1. `CheckProviderHealthUseCase.test.ts` — Constructor needs 4 args (3 files), D2. `AiModelCertificationUseCase.test.ts` — Constructor needs 6 args (+36 more)
+Nodes (45): 0.1 Domain Entities, 0.2 Repository Interfaces, 0.3 Firestore Implementations, 0.4 Use Cases, 0.5 API Endpoints, 0.6 Frontend Pages, 0.7 Item Entity Extension, 0.8 Acceptance Criteria (+37 more)
 
 ### Community 56 - "Community 56"
-Cohesion: 0.06
-Nodes (12): CommunicationsSettings, GetCommunicationsSettingsUseCase, UpdateCommunicationsSettingsUseCase, FirestoreCommunicationsSettingsRepository, getRef(), CommunicationsSettingsMessagingResolver, SalesSettingsMessagingResolver, buildDefaultMessage() (+4 more)
+Cohesion: 0.04
+Nodes (45): Acceptance Criteria, Automated Tests, Business Context, code:typescript (const retainedLine: BalanceSheetLine = {), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap), code:typescript ({), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap) (+37 more)
 
 ### Community 57 - "Community 57"
 Cohesion: 0.04
-Nodes (43): API Client, Audit Report, code:typescript (revenueAccountId?: string;    // Override default revenue ac), code:bash (cd d:\DEV2026\ERP03\backend && npx tsc --noEmit), code:bash (npx tsc --noEmit), code:block4 (InitializeSalesUseCase:), code:block5 (CreateSalesOrderUseCase:), code:typescript (// Settings) (+35 more)
+Nodes (44): After This Task, code:typescript (const toolMappings = getExecutableDefinitions()), code:block2 (// 4. Run Behavioral Tests (if provider available and deep p), code:typescript (const mockModelProfileUseCase = {), code:typescript (if (runtimeMode === 'CREDITS') {), Current state, D1. `CheckProviderHealthUseCase.test.ts` — Constructor needs 4 args (3 files), D2. `AiModelCertificationUseCase.test.ts` — Constructor needs 6 args (+36 more)
 
 ### Community 58 - "Community 58"
-Cohesion: 0.07
-Nodes (5): AccountingBootstrapService, RolePermissionResolver, FirestoreModulePermissionsDefinitionRepository, PermissionSyncService, PrismaModulePermissionsDefinitionRepository
+Cohesion: 0.04
+Nodes (45): Acceptance Criteria, Automated Tests, Business Context, code:typescript (const retainedLine: BalanceSheetLine = {), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap), code:typescript ({), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && grep -oP "permissionGuard\('([^']+)'\)" src/ap) (+37 more)
 
 ### Community 59 - "Community 59"
-Cohesion: 0.05
-Nodes (41): API Client, Audit Report, code:bash (npx tsc --noEmit), code:block2 (- Load PurchaseSettings), code:block3 (- ASSERT grn.status === 'DRAFT'), code:block4 (- Load PurchaseSettings), code:block5 (Step 1: Quantity Validation), code:typescript (// GRN) (+33 more)
+Cohesion: 0.04
+Nodes (44): After This Task, code:typescript (const toolMappings = getExecutableDefinitions()), code:block2 (// 4. Run Behavioral Tests (if provider available and deep p), code:typescript (const mockModelProfileUseCase = {), code:typescript (if (runtimeMode === 'CREDITS') {), Current state, D1. `CheckProviderHealthUseCase.test.ts` — Constructor needs 4 args (3 files), D2. `AiModelCertificationUseCase.test.ts` — Constructor needs 6 args (+36 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.05
-Nodes (42): AI Assistant — Comprehensive Fixing Plan, code:typescript (export interface AiCreditLedgerProps {), code:typescript (const totalPromptChars = activeMessages.reduce((sum, m) => s), code:typescript (const sortedAccounts = [...result.data]), code:block12 (17. Always respond in the SAME LANGUAGE that the user writes), code:typescript (// English (broader intent)), code:typescript (if (matches.length === 0 && message.trim().length > 10) {), code:typescript (const isLikelySimpleChat = message.trim().length < 60) (+34 more)
+Cohesion: 0.06
+Nodes (4): FirestoreCompanyModuleRepository, PrismaCompanyModuleRepository, CompanyModuleEntity, ModuleActivationService
 
 ### Community 61 - "Community 61"
-Cohesion: 0.05
-Nodes (41): Audit Round 1 — Findings & Required Fixes, code:json ({ "success": false, "error": { "code": "PERIOD_LOCKED", "tie), code:ts (async recordUpdate(params: {), code:block4 ({ "collectionGroup": "record_change_logs", "queryScope": "CO), CRITICAL — D.2 does nothing without these, D.1 — GL Impact modal — STATUS: BUILT (audit pending), D.2-1 — `PeriodLockedError` domain error, D.2-2 — `PeriodLockService` (application service) (+33 more)
+Cohesion: 0.07
+Nodes (9): FirestoreRecurringVoucherTemplateRepository, toTimestamp(), PrismaRecurringVoucherTemplateRepository, RecurringVoucherTemplate, CreateRecurringTemplateUseCase, GenerateRecurringVouchersUseCase, PauseRecurringTemplateUseCase, ResumeRecurringTemplateUseCase (+1 more)
 
 ### Community 62 - "Community 62"
 Cohesion: 0.05
-Nodes (42): AI Assistant — Comprehensive Fixing Plan, code:typescript (export interface AiCreditLedgerProps {), code:typescript (const totalPromptChars = activeMessages.reduce((sum, m) => s), code:typescript (const sortedAccounts = [...result.data]), code:block12 (17. Always respond in the SAME LANGUAGE that the user writes), code:typescript (// English (broader intent)), code:typescript (if (matches.length === 0 && message.trim().length > 10) {), code:typescript (const isLikelySimpleChat = message.trim().length < 60) (+34 more)
+Nodes (12): CurrencyDropdown(), cleanFieldLabel(), closeLineContextMenu(), getAliasedFieldLabel(), getFieldDisplayLabel(), handleAccountBalance(), handleCopyLine(), handleDeleteLine() (+4 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.07
-Nodes (8): FirestoreRecurringVoucherTemplateRepository, toTimestamp(), PrismaRecurringVoucherTemplateRepository, RecurringVoucherTemplate, CreateRecurringTemplateUseCase, GenerateRecurringVouchersUseCase, ResumeRecurringTemplateUseCase, UpdateRecurringTemplateUseCase
+Cohesion: 0.04
+Nodes (43): API Client, Audit Report, code:typescript (revenueAccountId?: string;    // Override default revenue ac), code:bash (cd d:\DEV2026\ERP03\backend && npx tsc --noEmit), code:bash (npx tsc --noEmit), code:block4 (InitializeSalesUseCase:), code:block5 (CreateSalesOrderUseCase:), code:typescript (// Settings) (+35 more)
 
 ### Community 64 - "Community 64"
-Cohesion: 0.07
-Nodes (27): handleSave(), handleSaved(), load(), unwrap(), buildPayload(), createEmptyForm(), createEmptyLine(), fromQuoteDTO() (+19 more)
+Cohesion: 0.05
+Nodes (41): API Client, Audit Report, code:bash (npx tsc --noEmit), code:block2 (- Load PurchaseSettings), code:block3 (- ASSERT grn.status === 'DRAFT'), code:block4 (- Load PurchaseSettings), code:block5 (Step 1: Quantity Validation), code:typescript (// GRN) (+33 more)
 
 ### Community 65 - "Community 65"
 Cohesion: 0.05
-Nodes (40): code:typescript (// ADD to existing ItemProps (in addition to existing purcha), code:typescript (type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';), code:typescript (interface SalesReturnLine {), code:block12 (Dr  COGS Account              lineCostBase      (item → cate), code:block13 (Dr  Accounts Receivable        grandTotalBase    (customer →), code:block14 (Dr  Accounts Receivable        grandTotalBase), code:block15 (Dr  Revenue Account            lineTotalBase     (reverse re), code:block16 (Dr  Inventory Asset Account    lineCostBase      (reverse DN) (+32 more)
+Nodes (42): AI Assistant — Comprehensive Fixing Plan, code:typescript (export interface AiCreditLedgerProps {), code:typescript (const totalPromptChars = activeMessages.reduce((sum, m) => s), code:typescript (const sortedAccounts = [...result.data]), code:block12 (17. Always respond in the SAME LANGUAGE that the user writes), code:typescript (// English (broader intent)), code:typescript (if (matches.length === 0 && message.trim().length > 10) {), code:typescript (const isLikelySimpleChat = message.trim().length < 60) (+34 more)
 
 ### Community 66 - "Community 66"
 Cohesion: 0.05
-Nodes (40): A1. New invoice page loads cleanly, A2. Save a minimal draft, A3. Edit the draft (NEW verb), A4. Add a second line + a charge, A5. Validation messages are translated, B1. Discard a draft, C1. Post a DRAFT invoice (deferred settlement), C2. Posted invoice exposes the right actions (+32 more)
+Nodes (41): Audit Round 1 — Findings & Required Fixes, code:json ({ "success": false, "error": { "code": "PERIOD_LOCKED", "tie), code:ts (async recordUpdate(params: {), code:block4 ({ "collectionGroup": "record_change_logs", "queryScope": "CO), CRITICAL — D.2 does nothing without these, D.1 — GL Impact modal — STATUS: BUILT (audit pending), D.2-1 — `PeriodLockedError` domain error, D.2-2 — `PeriodLockService` (application service) (+33 more)
 
 ### Community 67 - "Community 67"
 Cohesion: 0.05
-Nodes (40): Acceptance Criteria, Automated Tests, Business Context, code:typescript (export class GetProfitAndLossUseCase {), code:typescript (const isStrictNow = config.financialApprovalEnabled || confi), code:bash (cd backend && npx jest --testPathPattern="GetProfitAndLossUs), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && npx jest --testPathPattern="AccountUseCases" -) (+32 more)
+Nodes (42): AI Assistant — Comprehensive Fixing Plan, code:typescript (export interface AiCreditLedgerProps {), code:typescript (const totalPromptChars = activeMessages.reduce((sum, m) => s), code:typescript (const sortedAccounts = [...result.data]), code:block12 (17. Always respond in the SAME LANGUAGE that the user writes), code:typescript (// English (broader intent)), code:typescript (if (matches.length === 0 && message.trim().length > 10) {), code:typescript (const isLikelySimpleChat = message.trim().length < 60) (+34 more)
 
 ### Community 68 - "Community 68"
 Cohesion: 0.05
-Nodes (40): Acceptance Criteria, Automated Tests, Business Context, code:typescript (export class GetProfitAndLossUseCase {), code:typescript (const isStrictNow = config.financialApprovalEnabled || confi), code:bash (cd backend && npx jest --testPathPattern="GetProfitAndLossUs), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && npx jest --testPathPattern="AccountUseCases" -) (+32 more)
+Nodes (40): code:typescript (// ADD to existing ItemProps (in addition to existing purcha), code:typescript (type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';), code:typescript (interface SalesReturnLine {), code:block12 (Dr  COGS Account              lineCostBase      (item → cate), code:block13 (Dr  Accounts Receivable        grandTotalBase    (customer →), code:block14 (Dr  Accounts Receivable        grandTotalBase), code:block15 (Dr  Revenue Account            lineTotalBase     (reverse re), code:block16 (Dr  Inventory Asset Account    lineCostBase      (reverse DN) (+32 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.05
-Nodes (7): CompanyBundleController, CompanyFeaturesController, CompanyModulesController, CompanyProfileController, CompanyRolesController, CompanyUsersController, UpdateCompanyProfileUseCase
+Cohesion: 0.07
+Nodes (28): handleSave(), handleSaved(), load(), unwrap(), buildPayload(), createEmptyForm(), createEmptyLine(), fromQuoteDTO() (+20 more)
 
 ### Community 70 - "Community 70"
-Cohesion: 0.08
-Nodes (15): TaxCode, toDate(), PartyMapper, stripUndefinedDeep(), TaxCodeMapper, toDate(), toTimestamp(), makeCustomer() (+7 more)
+Cohesion: 0.06
+Nodes (13): Initiator(), today(), Initiator(), today(), firstOfYear(), Initiator(), today(), buildCreateSeed() (+5 more)
 
 ### Community 71 - "Community 71"
-Cohesion: 0.09
-Nodes (11): Account, getDefaultBalanceNature(), normalizeClassification(), normalizeUserCode(), validateBalanceNature(), validateCurrencyPolicy(), validateUserCodeFormat(), AccountMapper (+3 more)
+Cohesion: 0.05
+Nodes (40): A1. New invoice page loads cleanly, A2. Save a minimal draft, A3. Edit the draft (NEW verb), A4. Add a second line + a charge, A5. Validation messages are translated, B1. Discard a draft, C1. Post a DRAFT invoice (deferred settlement), C2. Posted invoice exposes the right actions (+32 more)
 
 ### Community 72 - "Community 72"
-Cohesion: 0.06
-Nodes (3): PrismaBundleItemRepository, PrismaBundleRegistryRepository, PrismaCompanyEntitlementRepository
+Cohesion: 0.05
+Nodes (40): Acceptance Criteria, Automated Tests, Business Context, code:typescript (export class GetProfitAndLossUseCase {), code:typescript (const isStrictNow = config.financialApprovalEnabled || confi), code:bash (cd backend && npx jest --testPathPattern="GetProfitAndLossUs), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && npx jest --testPathPattern="AccountUseCases" -) (+32 more)
 
 ### Community 73 - "Community 73"
-Cohesion: 0.07
-Nodes (11): AuditLog, AuditLogMapper, ModuleMapper, NotificationMapper, PermissionMapper, RoleMapper, FirestoreAuditLogRepository, FirestorePermissionRepository (+3 more)
+Cohesion: 0.05
+Nodes (40): Acceptance Criteria, Automated Tests, Business Context, code:typescript (export class GetProfitAndLossUseCase {), code:typescript (const isStrictNow = config.financialApprovalEnabled || confi), code:bash (cd backend && npx jest --testPathPattern="GetProfitAndLossUs), code:bash (cd backend && npx jest --testPathPattern="GetBalanceSheet|Ge), code:bash (cd backend && npx jest --testPathPattern="AccountUseCases" -) (+32 more)
 
 ### Community 74 - "Community 74"
 Cohesion: 0.07
-Nodes (11): DocumentDesigner(), handleDelete(), handleEdit(), isProtected(), handleClickOutside(), useWizard(), useFormUsageCheck(), buildInitialLayout() (+3 more)
+Nodes (7): FirestoreRoleTemplateRegistryRepository, PrismaRoleTemplateRegistryRepository, CreateRoleTemplateUseCase, DeleteRoleTemplateUseCase, GetRoleTemplateByIdUseCase, ListRoleTemplatesUseCase, UpdateRoleTemplateUseCase
 
 ### Community 75 - "Community 75"
+Cohesion: 0.07
+Nodes (8): toDate(), Uom, FirestoreUomRepository, PrismaUomRepository, CreateUomUseCase, GetUomUseCase, ListUomsUseCase, UpdateUomUseCase
+
+### Community 76 - "Community 76"
+Cohesion: 0.06
+Nodes (3): PrismaBundleItemRepository, PrismaBundleRegistryRepository, PrismaCompanyEntitlementRepository
+
+### Community 77 - "Community 77"
 Cohesion: 0.05
 Nodes (38): Audit Report, Backend, CODEBASE PATTERNS (MUST FOLLOW), code:bash (cd d:\DEV2026\ERP03\backend), code:bash (npx tsc --noEmit), code:block3 (CreatePartyUseCase:), code:block4 (CreateTaxCodeUseCase:), code:block5 (// Parties) (+30 more)
 
-### Community 76 - "Community 76"
+### Community 78 - "Community 78"
 Cohesion: 0.05
 Nodes (38): API Client + Routes + Sidebar, Audit Report, code:bash (npx tsc --noEmit), code:block2 (- Load SalesSettings), code:block3 (1. ASSERT dn.status === 'DRAFT'), code:block4 (resolveCogsAccount(item, itemCategory, settings):), code:block5 (- Load SalesSettings), code:block6 (Step 1: Quantity Validation) (+30 more)
 
-### Community 77 - "Community 77"
-Cohesion: 0.16
-Nodes (38): ensureBoolean(), ensureIsoDate(), ensureNonNegativeNumber(), ensureNumber(), ensureOptionalNumber(), ensureOptionalString(), ensureOptionalUuid(), ensurePositiveNumber() (+30 more)
-
-### Community 78 - "Community 78"
+### Community 79 - "Community 79"
 Cohesion: 0.08
 Nodes (8): FirestoreImpersonationRepository, ImpersonationSession, PrismaImpersonationRepository, ImpersonationMapper, impersonationMiddleware(), StartImpersonationUseCase, StopImpersonationUseCase, ValidateImpersonationSessionUseCase
 
-### Community 79 - "Community 79"
-Cohesion: 0.08
-Nodes (11): VoucherTypeDefinition, inferFieldClass(), lineField(), normalizeField(), PostingFieldExtractor, AdoptTemplateUseCase, CreateFormDefinitionUseCase, CreateVoucherTypeDefinitionUseCase (+3 more)
-
 ### Community 80 - "Community 80"
-Cohesion: 0.05
-Nodes (37): Audit Report, Audit Report, Audit Report, Audit Report, Audit Report, CODEBASE PATTERNS (MUST FOLLOW), code:bash (npx tsc --noEmit), code:markdown (# Phase 1E Audit Report — Frontend) (+29 more)
+Cohesion: 0.09
+Nodes (26): deepMergeObjects(), dispatchUpdate(), firstDisplayText(), firstEntityRef(), isPlainObject(), resolveDocumentSource(), sanitizeMetadata(), sanitizeSourceSnapshot() (+18 more)
 
 ### Community 81 - "Community 81"
 Cohesion: 0.05
-Nodes (38): Acceptance Criteria, Automated Tests, Business Context, code:typescript (async save(voucher: VoucherEntity): Promise<VoucherEntity> {), code:typescript (await this.ledgerRepo.deleteForVoucher(companyId, voucherId,), code:typescript (await this.voucherRepo.save(updatedVoucher);), code:typescript (await this.voucherRepo.save(updatedVoucher, transaction);), code:typescript (await this.voucherRepo.save(updatedVoucher);) (+30 more)
+Nodes (37): Audit Report, Audit Report, Audit Report, Audit Report, Audit Report, CODEBASE PATTERNS (MUST FOLLOW), code:bash (npx tsc --noEmit), code:markdown (# Phase 1E Audit Report — Frontend) (+29 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.05
 Nodes (38): Acceptance Criteria, Automated Tests, Business Context, code:typescript (async save(voucher: VoucherEntity): Promise<VoucherEntity> {), code:typescript (await this.ledgerRepo.deleteForVoucher(companyId, voucherId,), code:typescript (await this.voucherRepo.save(updatedVoucher);), code:typescript (await this.voucherRepo.save(updatedVoucher, transaction);), code:typescript (await this.voucherRepo.save(updatedVoucher);) (+30 more)
 
 ### Community 83 - "Community 83"
-Cohesion: 0.09
-Nodes (15): SuperAdminTable(), useSuperAdminTable(), handleDelete(), handleSubmit(), loadData(), handleDelete(), handleSubmit(), loadDomains() (+7 more)
+Cohesion: 0.05
+Nodes (38): Acceptance Criteria, Automated Tests, Business Context, code:typescript (async save(voucher: VoucherEntity): Promise<VoucherEntity> {), code:typescript (await this.ledgerRepo.deleteForVoucher(companyId, voucherId,), code:typescript (await this.voucherRepo.save(updatedVoucher);), code:typescript (await this.voucherRepo.save(updatedVoucher, transaction);), code:typescript (await this.voucherRepo.save(updatedVoucher);) (+30 more)
 
 ### Community 84 - "Community 84"
-Cohesion: 0.05
-Nodes (37): 10. Key Design Principles, 1. Problem Statement, 2. Architecture Overview, 3. Core Design: `DocumentTypeDefinition`, 4.1 Warnings, 4.2 Enforcement Rules, 4.3 Posting Behavior, 4.4 Visibility Rules (+29 more)
+Cohesion: 0.07
+Nodes (9): CommunicationsSettings, GetCommunicationsSettingsUseCase, UpdateCommunicationsSettingsUseCase, FirestoreCommunicationsSettingsRepository, getRef(), CommunicationsController, getCompanyId(), CommunicationsSettingsMessagingResolver (+1 more)
 
 ### Community 85 - "Community 85"
 Cohesion: 0.05
-Nodes (37): 10. Super-admin and tenant shells are visually and behaviorally divergent, 1. The top bar needs widget governance, not widget removal, 2. The sidebar is overloaded and includes non-production routes, 3. The app has duplicate React Query providers, 4. The login/auth flow is visually presentable but not ERP-complete, 5. Settings are not yet a unified ERP system, 6. Operational lists and tables are too inconsistent, 6A. ReportContainer must become the full report contract, not just a wrapper (+29 more)
+Nodes (37): 10. Key Design Principles, 1. Problem Statement, 2. Architecture Overview, 3. Core Design: `DocumentTypeDefinition`, 4.1 Warnings, 4.2 Enforcement Rules, 4.3 Posting Behavior, 4.4 Visibility Rules (+29 more)
 
 ### Community 86 - "Community 86"
 Cohesion: 0.05
-Nodes (37): Audit Proof, code:bash ($env:FIRESTORE_EMULATOR_HOST="127.0.0.1:8080"), code:block2 (=== Production Hardening Verification ===), code:bash (grep -r "recordForVoucher" backend/src/application), code:bash (# No files in frontend/ were touched), Date Normalization Guarantees:, Files Changed:, Files Changed: (+29 more)
+Nodes (37): 10. Super-admin and tenant shells are visually and behaviorally divergent, 1. The top bar needs widget governance, not widget removal, 2. The sidebar is overloaded and includes non-production routes, 3. The app has duplicate React Query providers, 4. The login/auth flow is visually presentable but not ERP-complete, 5. Settings are not yet a unified ERP system, 6. Operational lists and tables are too inconsistent, 6A. ReportContainer must become the full report contract, not just a wrapper (+29 more)
 
 ### Community 87 - "Community 87"
-Cohesion: 0.06
-Nodes (38): 2026-05-13 Result — Frontend Conversation History Sidebar, 2026-05-13 Result — Phase 6.6 Simplified Tenant AI Setup Wizard, 2026-05-13 Result — Phase 6.6B Setup Wizard Integration, 2026-05-13 Result — Phase 7.1 Per-User AI Rate Limiting, Changes, Changes, Changes, Changes (+30 more)
+Cohesion: 0.05
+Nodes (37): Audit Proof, code:bash ($env:FIRESTORE_EMULATOR_HOST="127.0.0.1:8080"), code:block2 (=== Production Hardening Verification ===), code:bash (grep -r "recordForVoucher" backend/src/application), code:bash (# No files in frontend/ were touched), Date Normalization Guarantees:, Files Changed:, Files Changed: (+29 more)
 
 ### Community 88 - "Community 88"
 Cohesion: 0.05
 Nodes (37): Audit Proof, code:bash ($env:FIRESTORE_EMULATOR_HOST="127.0.0.1:8080"), code:block2 (=== Production Hardening Verification ===), code:bash (grep -r "recordForVoucher" backend/src/application), code:bash (# No files in frontend/ were touched), Date Normalization Guarantees:, Files Changed:, Files Changed: (+29 more)
 
 ### Community 89 - "Community 89"
-Cohesion: 0.1
-Nodes (27): buildPayload(), deleteDraft(), formatShortRef(), getDocumentLabel(), getErrorMessage(), getOpeningStockDocumentRef(), getVoucherLabel(), handleConfirmDialogConfirm() (+19 more)
+Cohesion: 0.09
+Nodes (10): InventoryPeriodSnapshot, toDate(), FirestoreInventoryPeriodSnapshotRepository, PrismaInventoryPeriodSnapshotRepository, buildLevelKey(), CreatePeriodSnapshotUseCase, GetAsOfValuationUseCase, getPeriodEndDate() (+2 more)
 
 ### Community 90 - "Community 90"
-Cohesion: 0.1
-Nodes (12): SuperAdminHeader(), SuperAdminPage(), SuperAdminPanel(), SuperAdminStatCard(), handleSave(), update(), handleDelete(), loadTemplates() (+4 more)
+Cohesion: 0.08
+Nodes (5): PrismaModuleRegistryRepository, CreateModuleUseCase, DeleteModuleUseCase, ListModulesUseCase, UpdateModuleUseCase
 
 ### Community 91 - "Community 91"
-Cohesion: 0.05
-Nodes (36): 1. Session Start Protocol, 2. Single Task Discipline, 3. Discovered Issues — YOU Decide, Not the Developer, 4. Continuous Memory Updates, 5. Architecture Rules, 6. Plan Files, 7. Completion Reports, 8. Mandatory Documentation (+28 more)
+Cohesion: 0.09
+Nodes (19): handleEnter(), load(), savePreferences(), setAppearanceSettings(), setFallbackAppearance(), setUiMode(), applyDraft(), handleMagicGenerate() (+11 more)
 
 ### Community 92 - "Community 92"
 Cohesion: 0.05
-Nodes (36): Additional Tools (Always Available), AI Assistant Tools & Report Modes (2026-05-18), Architecture, Authoritative Mode (reports.balanceSheet), Authoritative Mode Tools (reports.*), Checklist for Adding a New Report Tool, code:typescript (const reportMode = options?.providerConfig?.aiReportMode || ), code:typescript (const config = await settingsRepository.getConfig(companyId)) (+28 more)
+Nodes (36): 1. Session Start Protocol, 2. Single Task Discipline, 3. Discovered Issues — YOU Decide, Not the Developer, 4. Continuous Memory Updates, 5. Architecture Rules, 6. Plan Files, 7. Completion Reports, 8. Mandatory Documentation (+28 more)
 
 ### Community 93 - "Community 93"
 Cohesion: 0.05
-Nodes (35): API Client, Audit Report, code:bash (npx tsc --noEmit), code:block2 (InitializePurchasesUseCase:), code:block3 (CreatePurchaseOrderUseCase:), code:typescript (// Settings), code:bash (# Backend compile), code:markdown (# Phase 1 Audit Report — Purchase Orders + Settings) (+27 more)
+Nodes (36): Additional Tools (Always Available), AI Assistant Tools & Report Modes (2026-05-18), Architecture, Authoritative Mode (reports.balanceSheet), Authoritative Mode Tools (reports.*), Checklist for Adding a New Report Tool, code:typescript (const reportMode = options?.providerConfig?.aiReportMode || ), code:typescript (const config = await settingsRepository.getConfig(companyId)) (+28 more)
 
 ### Community 94 - "Community 94"
 Cohesion: 0.05
-Nodes (35): Customer, Evidence to Capture, Exit Criteria, Manual Test - Sales Module, Opening Stock for `SAL-STK-001`, Optional Zero-Cost Test Item, Recommended Test Data, Result Table (+27 more)
+Nodes (35): API Client, Audit Report, code:bash (npx tsc --noEmit), code:block2 (InitializePurchasesUseCase:), code:block3 (CreatePurchaseOrderUseCase:), code:typescript (// Settings), code:bash (# Backend compile), code:markdown (# Phase 1 Audit Report — Purchase Orders + Settings) (+27 more)
 
 ### Community 95 - "Community 95"
 Cohesion: 0.05
-Nodes (36): Acceptance Criteria Status, Availability States, Controllers, Controllers/Guards, Core Services, Deferred/Legacy Items, Domain Layer, Domain Models (+28 more)
+Nodes (35): Customer, Evidence to Capture, Exit Criteria, Manual Test - Sales Module, Opening Stock for `SAL-STK-001`, Optional Zero-Cost Test Item, Recommended Test Data, Result Table (+27 more)
 
 ### Community 96 - "Community 96"
 Cohesion: 0.05
-Nodes (34): 1.1 Type Definition, 1.2 Context State, 1.3 Convenience Hook, 2.1 Compact Layout CSS, 2.2 Import the CSS, 3.1 AppShell.tsx, 3.2 Sidebar.tsx, 3.3 SidebarSection.tsx (+26 more)
+Nodes (36): Acceptance Criteria Status, Availability States, Controllers, Controllers/Guards, Core Services, Deferred/Legacy Items, Domain Layer, Domain Models (+28 more)
 
 ### Community 97 - "Community 97"
 Cohesion: 0.05
-Nodes (36): 36 — Report Enhancements: Trading Account, Structured P&L, Equity Subgroup, A1. Backend Entity — `backend/src/domain/accounting/entities/Account.ts`, A2. Backend Infrastructure — Same files as Plan 35 touched for `plSubgroup`, A3. Frontend Types — `frontend/src/api/accounting/index.ts`, A4. Frontend Form — `frontend/src/modules/accounting/components/AccountForm.tsx`, Acceptance Criteria, Automated Tests, Business Context (+28 more)
+Nodes (34): 1.1 Type Definition, 1.2 Context State, 1.3 Convenience Hook, 2.1 Compact Layout CSS, 2.2 Import the CSS, 3.1 AppShell.tsx, 3.2 Sidebar.tsx, 3.3 SidebarSection.tsx (+26 more)
 
 ### Community 98 - "Community 98"
 Cohesion: 0.05
-Nodes (36): 2a. `TradingAccountParams` interface, 2b. `TradingAccountData` interface (matches backend `TradingAccountOutput`), 2c. `TradingAccountInitiator` component, 2d. `TradingAccountReportContent` component, 2e. `TradingAccountPage` wrapper, 2f. `handleExportExcel`, 37 — Frontend Report Pages: Trading Account + Enhanced P&L, 3a. Update `ProfitAndLossData` interface to include optional `structured`: (+28 more)
+Nodes (36): 36 — Report Enhancements: Trading Account, Structured P&L, Equity Subgroup, A1. Backend Entity — `backend/src/domain/accounting/entities/Account.ts`, A2. Backend Infrastructure — Same files as Plan 35 touched for `plSubgroup`, A3. Frontend Types — `frontend/src/api/accounting/index.ts`, A4. Frontend Form — `frontend/src/modules/accounting/components/AccountForm.tsx`, Acceptance Criteria, Automated Tests, Business Context (+28 more)
 
 ### Community 99 - "Community 99"
 Cohesion: 0.05
-Nodes (36): 36 — Report Enhancements: Trading Account, Structured P&L, Equity Subgroup, A1. Backend Entity — `backend/src/domain/accounting/entities/Account.ts`, A2. Backend Infrastructure — Same files as Plan 35 touched for `plSubgroup`, A3. Frontend Types — `frontend/src/api/accounting/index.ts`, A4. Frontend Form — `frontend/src/modules/accounting/components/AccountForm.tsx`, Acceptance Criteria, Automated Tests, Business Context (+28 more)
+Nodes (36): 2a. `TradingAccountParams` interface, 2b. `TradingAccountData` interface (matches backend `TradingAccountOutput`), 2c. `TradingAccountInitiator` component, 2d. `TradingAccountReportContent` component, 2e. `TradingAccountPage` wrapper, 2f. `handleExportExcel`, 37 — Frontend Report Pages: Trading Account + Enhanced P&L, 3a. Update `ProfitAndLossData` interface to include optional `structured`: (+28 more)
 
 ### Community 100 - "Community 100"
 Cohesion: 0.05
-Nodes (36): 2a. `TradingAccountParams` interface, 2b. `TradingAccountData` interface (matches backend `TradingAccountOutput`), 2c. `TradingAccountInitiator` component, 2d. `TradingAccountReportContent` component, 2e. `TradingAccountPage` wrapper, 2f. `handleExportExcel`, 37 — Frontend Report Pages: Trading Account + Enhanced P&L, 3a. Update `ProfitAndLossData` interface to include optional `structured`: (+28 more)
+Nodes (36): 36 — Report Enhancements: Trading Account, Structured P&L, Equity Subgroup, A1. Backend Entity — `backend/src/domain/accounting/entities/Account.ts`, A2. Backend Infrastructure — Same files as Plan 35 touched for `plSubgroup`, A3. Frontend Types — `frontend/src/api/accounting/index.ts`, A4. Frontend Form — `frontend/src/modules/accounting/components/AccountForm.tsx`, Acceptance Criteria, Automated Tests, Business Context (+28 more)
 
 ### Community 101 - "Community 101"
 Cohesion: 0.05
-Nodes (36): Acceptance Criteria Status, Availability States, Controllers, Controllers/Guards, Core Services, Deferred/Legacy Items, Domain Layer, Domain Models (+28 more)
+Nodes (36): 2a. `TradingAccountParams` interface, 2b. `TradingAccountData` interface (matches backend `TradingAccountOutput`), 2c. `TradingAccountInitiator` component, 2d. `TradingAccountReportContent` component, 2e. `TradingAccountPage` wrapper, 2f. `handleExportExcel`, 37 — Frontend Report Pages: Trading Account + Enhanced P&L, 3a. Update `ProfitAndLossData` interface to include optional `structured`: (+28 more)
 
 ### Community 102 - "Community 102"
-Cohesion: 0.08
-Nodes (5): FirestoreAiChatRepository, stripUndefinedDeep(), PrismaAiChatRepository, AiChatMessage, AiConversationCleanupService
+Cohesion: 0.05
+Nodes (36): Acceptance Criteria Status, Availability States, Controllers, Controllers/Guards, Core Services, Deferred/Legacy Items, Domain Layer, Domain Models (+28 more)
 
 ### Community 103 - "Community 103"
-Cohesion: 0.08
-Nodes (6): FirestorePlanRegistryRepository, PrismaPlanRegistryRepository, CreatePlanUseCase, DeletePlanUseCase, ListPlansUseCase, UpdatePlanUseCase
-
-### Community 104 - "Community 104"
 Cohesion: 0.07
 Nodes (6): FirestoreBusinessDomainRepository, PrismaBusinessDomainRepository, CreateBusinessDomainUseCase, DeleteBusinessDomainUseCase, ListBusinessDomainsUseCase, UpdateBusinessDomainUseCase
 
+### Community 104 - "Community 104"
+Cohesion: 0.08
+Nodes (5): FirestoreAiChatRepository, stripUndefinedDeep(), PrismaAiChatRepository, AiChatMessage, AiConversationCleanupService
+
 ### Community 105 - "Community 105"
-Cohesion: 0.15
-Nodes (6): FirestoreUserAccessScopeProvider, FirestoreAccountingPolicyConfigProvider, FirestoreAccountLookupService, FirestoreTransactionManager, CreateVoucherUseCase, PostVoucherUseCase
+Cohesion: 0.08
+Nodes (6): FirestorePlanRegistryRepository, PrismaPlanRegistryRepository, CreatePlanUseCase, DeletePlanUseCase, ListPlansUseCase, UpdatePlanUseCase
 
 ### Community 106 - "Community 106"
-Cohesion: 0.09
-Nodes (24): useConfirm(), handleCreate(), handleDelete(), handleUpdate(), handleValidate(), refresh(), unwrap(), handleUpgrade() (+16 more)
-
-### Community 107 - "Community 107"
 Cohesion: 0.06
 Nodes (34): API Client, API Endpoint, Audit Report, code:block1 (- Determine returnContext:), code:block2 (CRITICAL: Two completely different paths based on returnCont), code:block3 (- Called by Accounting module when a payment voucher is post), code:block4 (POST /api/purchases/invoices/:id/payment-update   → updatePa), code:block5 (Purchases module:) (+26 more)
 
-### Community 108 - "Community 108"
+### Community 107 - "Community 107"
 Cohesion: 0.06
 Nodes (35): 10. Key Design Principles, 1. Problem Statement, 2. Architecture Overview, 3. Core Design: `DocumentTypeDefinition`, 4.1 Warnings, 4.2 Enforcement Rules, 4.3 Posting Behavior, 4.4 Visibility Rules (+27 more)
 
+### Community 108 - "Community 108"
+Cohesion: 0.06
+Nodes (7): clearEditQueryParam(), closeEditModal(), handleDeactivate(), executeSave(), handleApplyBulk(), handleSaveChanges(), loadAccounts()
+
 ### Community 109 - "Community 109"
-Cohesion: 0.18
-Nodes (32): ensureAccountingMode(), ensureBoolean(), ensureInventoryAccountingMethod(), ensureIsoDate(), ensureOptionalString(), ensurePositiveNumber(), ensureRequiredString(), ensureUomDimension() (+24 more)
-
-### Community 110 - "Community 110"
-Cohesion: 0.1
-Nodes (15): PaymentHistory, roundMoney(), toDate(), toStr(), buildUseCase(), makeInvoice(), makeSettings(), FirestorePaymentHistoryRepository (+7 more)
-
-### Community 111 - "Community 111"
-Cohesion: 0.07
-Nodes (10): Initiator(), today(), Initiator(), today(), buildCreateSeed(), handleCreateParty(), handleInputBlur(), handleInputKeyDown() (+2 more)
-
-### Community 112 - "Community 112"
 Cohesion: 0.06
 Nodes (33): API Client + Routes + Sidebar, Audit Report, code:block1 (- Determine returnContext from input:), code:block2 (CRITICAL: Sales returns have TWO vouchers (Revenue reversal ), code:block3 (- Accept: companyId, siId, paidAmountBase), code:typescript (// Returns), code:block5 (11. PostSR (AFTER_INVOICE): creates RETURN_IN + Revenue reve), code:bash (cd d:\DEV2026\ERP03\backend && npx tsc --noEmit) (+25 more)
 
+### Community 110 - "Community 110"
+Cohesion: 0.06
+Nodes (34): 1. CreateCompanyUseCase (`src/application/onboarding/use-cases/CreateCompanyUseCase.ts`), 2. UpgradeCompanyBundleUseCase (`src/application/company-admin/use-cases/UpgradeCompanyBundleUseCase.ts`), Build Status, code:prisma (model BundleRegistry {), code:typescript (export type EntitlementSourceType = 'bundle' | 'superadmin_o), code:typescript (export interface ICompanyEntitlementRepository {), code:typescript (export interface IEntitlementService {), code:typescript ({) (+26 more)
+
+### Community 111 - "Community 111"
+Cohesion: 0.06
+Nodes (34): 1. CreateCompanyUseCase (`src/application/onboarding/use-cases/CreateCompanyUseCase.ts`), 2. UpgradeCompanyBundleUseCase (`src/application/company-admin/use-cases/UpgradeCompanyBundleUseCase.ts`), Build Status, code:prisma (model BundleRegistry {), code:typescript (export type EntitlementSourceType = 'bundle' | 'superadmin_o), code:typescript (export interface ICompanyEntitlementRepository {), code:typescript (export interface IEntitlementService {), code:typescript ({) (+26 more)
+
+### Community 112 - "Community 112"
+Cohesion: 0.06
+Nodes (11): CreatePromotionRuleUseCase, DeletePromotionRuleUseCase, GetPromotionRuleUseCase, ListPromotionRulesUseCase, UpdatePromotionRuleUseCase, ConvertQuoteToSalesInvoiceUseCase, ConvertQuoteToSalesOrderUseCase, DeleteQuoteUseCase (+3 more)
+
 ### Community 113 - "Community 113"
-Cohesion: 0.06
-Nodes (34): 1. CreateCompanyUseCase (`src/application/onboarding/use-cases/CreateCompanyUseCase.ts`), 2. UpgradeCompanyBundleUseCase (`src/application/company-admin/use-cases/UpgradeCompanyBundleUseCase.ts`), Build Status, code:prisma (model BundleRegistry {), code:typescript (export type EntitlementSourceType = 'bundle' | 'superadmin_o), code:typescript (export interface ICompanyEntitlementRepository {), code:typescript (export interface IEntitlementService {), code:typescript ({) (+26 more)
-
-### Community 114 - "Community 114"
-Cohesion: 0.06
-Nodes (34): 1. CreateCompanyUseCase (`src/application/onboarding/use-cases/CreateCompanyUseCase.ts`), 2. UpgradeCompanyBundleUseCase (`src/application/company-admin/use-cases/UpgradeCompanyBundleUseCase.ts`), Build Status, code:prisma (model BundleRegistry {), code:typescript (export type EntitlementSourceType = 'bundle' | 'superadmin_o), code:typescript (export interface ICompanyEntitlementRepository {), code:typescript (export interface IEntitlementService {), code:typescript ({) (+26 more)
-
-### Community 115 - "Community 115"
 Cohesion: 0.06
 Nodes (32): 1.1  Domain Entities, 1.2  Repository Interfaces, 1.3  Firestore Implementations, 1.4  Use Cases, 1.5  API Endpoints, 1.6  Frontend Pages, 1.7  Tests Required, 1.8  Risks & Mitigations (+24 more)
 
+### Community 114 - "Community 114"
+Cohesion: 0.06
+Nodes (33): Accounting/Inventory — Task 132 Voucher and Item List Standardization, Accounting — Stage 2b Posting-Authority Decoupling & Reactive Approvals, AI Assistant — Floating Launcher Toggle, code:markdown (### [Module] — [Feature Name]), ERP03 — QA Queue, ❌ Failed — Needs Fix, Forms Management — Field Library Phase C1, 📝 How agents add items (+25 more)
+
+### Community 115 - "Community 115"
+Cohesion: 0.13
+Nodes (7): DesignerDTOMapper, FieldDefinition, FormDefinition, VoucherTypeDefinition, FormDefinitionMapper, VoucherTypeDefinitionMapper, FieldDefinitionValidator
+
 ### Community 116 - "Community 116"
-Cohesion: 0.1
-Nodes (16): load(), savePreferences(), setAppearanceSettings(), setFallbackAppearance(), applyDraft(), handleMagicGenerate(), reset(), save() (+8 more)
+Cohesion: 0.09
+Nodes (5): InMemoryProviderRepo, FirestoreAiProviderRepository, stripUndefined(), AiProvider, AiProviderRegistryUseCase
 
 ### Community 117 - "Community 117"
-Cohesion: 0.11
-Nodes (6): CreateAccountUseCase, DeactivateAccountUseCase, DeleteAccountUseCase, GetAccountUseCase, ListAccountsUseCase, UpdateAccountUseCase
+Cohesion: 0.1
+Nodes (4): FirestoreAiPlatformRuntimeProfileRepository, stripUndefined(), AiPlatformRuntimeProfile, AiPlatformRuntimeProfileUseCase
 
 ### Community 118 - "Community 118"
-Cohesion: 0.1
-Nodes (9): renderPartyAccountCode(), templateUsesSequence(), ZERO_PAD(), BackfillPartyAccountsUseCase, CreatePartyUseCase, GetPartyUseCase, ListPartiesUseCase, UpdatePartyUseCase (+1 more)
-
-### Community 119 - "Community 119"
-Cohesion: 0.09
-Nodes (5): AccountingModule, AiAssistantModule, InventoryModule, PurchaseModule, SalesModule
-
-### Community 120 - "Community 120"
 Cohesion: 0.12
 Nodes (5): clsx(), renderRealWidget(), ClockWidget(), DateWidget(), SearchWidget()
 
-### Community 121 - "Community 121"
+### Community 119 - "Community 119"
 Cohesion: 0.06
 Nodes (31): 10  Integration Hooks for Future Sales/Purchases, 1  System Overview, 2  Data Model Summary, 3.1  postingSeq vs date, 3.2  Backdating Detection, 3.3  Immutability, 3  Key Invariants & Ordering Rules, 4  Negative Stock Rules (+23 more)
 
-### Community 122 - "Community 122"
+### Community 120 - "Community 120"
 Cohesion: 0.06
 Nodes (32): API Changes, Architecture, Breaking Changes, code:typescript (console.log('[VALIDATION] Parallel run:', {), Core Validation, Data Migration, Enabled Form Types, Feature Flags (+24 more)
 
-### Community 123 - "Community 123"
+### Community 121 - "Community 121"
 Cohesion: 0.06
-Nodes (32): Accounting/Inventory — Task 132 Voucher and Item List Standardization, Accounting — Stage 2b Posting-Authority Decoupling & Reactive Approvals, AI Assistant — Floating Launcher Toggle, code:markdown (### [Module] — [Feature Name]), ERP03 — QA Queue, ❌ Failed — Needs Fix, Forms Management — Field Library Phase C1, 📝 How agents add items (+24 more)
+Nodes (31): Acceptance Criteria, Automated Tests, Business Context, code:typescript (/**), code:typescript (export interface AccountValidationContext {), code:typescript (export interface AccountValidationContext {), code:typescript (async validate(ctx: AccountValidationContext): Promise<Valid), code:typescript (const account = await accountValidationService.validateAccou) (+23 more)
+
+### Community 122 - "Community 122"
+Cohesion: 0.06
+Nodes (31): Acceptance Criteria, Automated Tests, Business Context, code:typescript (/**), code:typescript (export interface AccountValidationContext {), code:typescript (export interface AccountValidationContext {), code:typescript (async validate(ctx: AccountValidationContext): Promise<Valid), code:typescript (const account = await accountValidationService.validateAccou) (+23 more)
+
+### Community 123 - "Community 123"
+Cohesion: 0.09
+Nodes (7): CostCenter, ActivateCostCenterUseCase, CreateCostCenterUseCase, DeactivateCostCenterUseCase, DeleteCostCenterUseCase, ListCostCentersUseCase, UpdateCostCenterUseCase
 
 ### Community 124 - "Community 124"
-Cohesion: 0.11
-Nodes (17): OpeningStockDocument, toDate(), ensureDirectPersonaAllowed(), ensureDirectPurchasePersonaAllowed(), loadAccounts(), main(), parseArgs(), pickAccount() (+9 more)
+Cohesion: 0.1
+Nodes (8): AiAssistantDTOMapper, handleStream(), certificationCategoryForModule(), AiToolRegistry, AiSettingsUseCase, ExecuteAiToolUseCase, validateSendChatMessageInput(), validateUpdateAiSettingsInput()
 
 ### Community 125 - "Community 125"
 Cohesion: 0.09
-Nodes (10): apexPathToTenantPath(), normalizePathname(), splitPath(), tenantPathToApexPath(), getActiveModuleFromPath(), handleModuleClick(), inferModuleFromApexPath(), inferModuleFromSection() (+2 more)
+Nodes (6): FirestoreCompanyUserRepository, PrismaCompanyUserRepository, CompanyUser, CompanyMapper, CompanyUserMapper, UserMapper
 
 ### Community 126 - "Community 126"
 Cohesion: 0.06
-Nodes (31): Acceptance Criteria, Automated Tests, Business Context, code:typescript (/**), code:typescript (export interface AccountValidationContext {), code:typescript (export interface AccountValidationContext {), code:typescript (async validate(ctx: AccountValidationContext): Promise<Valid), code:typescript (const account = await accountValidationService.validateAccou) (+23 more)
-
-### Community 127 - "Community 127"
-Cohesion: 0.06
-Nodes (31): Acceptance Criteria, Automated Tests, Business Context, code:typescript (/**), code:typescript (export interface AccountValidationContext {), code:typescript (export interface AccountValidationContext {), code:typescript (async validate(ctx: AccountValidationContext): Promise<Valid), code:typescript (const account = await accountValidationService.validateAccou) (+23 more)
-
-### Community 128 - "Community 128"
-Cohesion: 0.06
 Nodes (30): Accounting Module Architecture, Change Log, code:block1 (User creates custom form "JV-Depreciation"), code:block2 (Test/Seeder calls SaveJournalEntryUseCase), code:typescript (// In CreateVoucherUseCase (PRODUCTION)), code:typescript (// WRONG - Frontend can override base currency!), code:block5 (Frontend (Custom Form)), code:typescript (// WRONG) (+22 more)
 
+### Community 128 - "Community 128"
+Cohesion: 0.09
+Nodes (10): Quote, toDate(), makeAcceptedQuote(), makeDefaultSalesSettings(), makeMockSettingsRepo(), makeQuoteLine(), makeDefaultSalesSettings(), makeMockSettingsRepo() (+2 more)
+
+### Community 129 - "Community 129"
+Cohesion: 0.09
+Nodes (8): DetectRateDeviationService, GetSuggestedRateUseCase, SaveReferenceRateUseCase, DisableCurrencyForCompanyUseCase, EnableCurrencyForCompanyUseCase, ListCompanyCurrenciesUseCase, GetCurrencyUseCase, ListCurrenciesUseCase
+
 ### Community 130 - "Community 130"
-Cohesion: 0.07
-Nodes (3): main(), resolveCollection(), wipeCollection()
+Cohesion: 0.1
+Nodes (16): format(), formatCompact(), buildVoucherPayload(), getLineNumber(), handleConfirmClose(), handleConfirmSubmit(), handleNew(), handleRateDeviationConfirm() (+8 more)
 
 ### Community 131 - "Community 131"
 Cohesion: 0.07
@@ -1699,17 +1639,21 @@ Nodes (29): Accounting and Control Risk, Business Reason, code:powershell (npm -
 Cohesion: 0.07
 Nodes (29): Current Gaps To Fix, Delivery Note, Discounts, Document Contract, Executive Decision, Extra Charges / Additions, Gifts / Free Goods / Promotions, Governance clarification added on 2026-05-18 (+21 more)
 
+### Community 134 - "Community 134"
+Cohesion: 0.1
+Nodes (4): FirestoreAiUsageLogRepository, PrismaAiUsageLogRepository, AiUsageLog, GetUsageAnalyticsUseCase
+
 ### Community 135 - "Community 135"
 Cohesion: 0.12
-Nodes (19): confirmAddSpecialPeriod(), confirmClosePeriod(), confirmCloseYear(), confirmDeleteYear(), confirmReopenPeriod(), confirmReopenYear(), handleAutoCreateRetainedEarnings(), handleClosePeriod() (+11 more)
+Nodes (4): FirestoreBudgetRepository, toTimestamp(), PrismaBudgetRepository, Budget
 
 ### Community 136 - "Community 136"
-Cohesion: 0.13
-Nodes (18): ActionMenu(), applyProviderToForm(), closeModal(), handleDelete(), handleExpireCertification(), handleRecordManualCert(), handleRunDiagnostics(), handleRunShellCert() (+10 more)
+Cohesion: 0.1
+Nodes (14): addFieldIds(), addLayoutFieldIds(), buildDesignerFieldCatalog(), buildTypeTree(), categoryForFieldClass(), hydrateField(), isDirectSalesInvoiceForm(), legacyDesignerFieldCatalog() (+6 more)
 
 ### Community 137 - "Community 137"
-Cohesion: 0.11
-Nodes (4): transformLayout(), uiToCanonical(), evaluateVisibility(), validateForm()
+Cohesion: 0.13
+Nodes (18): ActionMenu(), applyProviderToForm(), closeModal(), handleDelete(), handleExpireCertification(), handleRecordManualCert(), handleRunDiagnostics(), handleRunShellCert() (+10 more)
 
 ### Community 138 - "Community 138"
 Cohesion: 0.07
@@ -1739,13 +1683,17 @@ Nodes (29): 2026-05-13 Result — Phase 4.2 Broader Intent Keywords, 2026-05-13 
 Cohesion: 0.07
 Nodes (26): Architecture, code:block1 (Sales Invoice Templates (Form Layer)          Accounting Lay), Completion Criteria, DocumentPolicyResolver.ts, Known Out-of-Scope, Objective, Phase 10: E2E Test Preparation, Phase 1: Seeder Refactor (+18 more)
 
-### Community 146 - "Community 146"
-Cohesion: 0.09
-Nodes (6): PriceList, CreatePriceListUseCase, DeletePriceListUseCase, GetEffectivePriceUseCase, GetPriceListUseCase, ListPriceListsUseCase
+### Community 145 - "Community 145"
+Cohesion: 0.12
+Nodes (5): ArchiveAiProposalUseCase, CreateAiProposalUseCase, GetAiProposalUseCase, ListAiProposalsUseCase, UpdateAiProposalStatusUseCase
 
-### Community 147 - "Community 147"
+### Community 146 - "Community 146"
 Cohesion: 0.1
 Nodes (5): PurchasePriceList, CreatePurchasePriceListUseCase, DeletePurchasePriceListUseCase, GetEffectivePurchasePriceUseCase, UpdatePurchasePriceListUseCase
+
+### Community 147 - "Community 147"
+Cohesion: 0.11
+Nodes (7): useAiSettings(), loadSettings(), resolvePresetId(), getDiagnosticStatusClasses(), getDiagnosticStatusIcon(), resolvePresetId(), resolveProviderChange()
 
 ### Community 148 - "Community 148"
 Cohesion: 0.07
@@ -1771,41 +1719,45 @@ Nodes (27): 04 — Cost Center (Full Implementation), Acceptance Criteria, Autom
 Cohesion: 0.07
 Nodes (27): 1. i18n Partially Started, 2. Realtime Infrastructure Exists But Unused, 3. Multiple Reporting Controllers, 4. Large Files Need Refactoring, 5. HR / Inventory / POS / CRM are Shells, After the 22 plans (if all executed): Score 8.5/10, Before the first 22 plans: Score 5/10, code:block1 (allow read, write: if request.time < timestamp.date(2026, 6,) (+19 more)
 
-### Community 155 - "Community 155"
+### Community 154 - "Community 154"
 Cohesion: 0.1
-Nodes (5): PrismaAiUsageLogRepository, AiUsageLog, GetBalanceSheetTool, GetProfitAndLossTool, GetUsageAnalyticsUseCase
-
-### Community 156 - "Community 156"
-Cohesion: 0.15
-Nodes (10): AuthPermissionsController, tenantContextMiddleware(), resolveEnabledCompanyCapabilityCodes(), filterRuntimeAvailableModules(), normalizeList(), resolveCompanyEnabledModules(), resolveCompanyModuleAccess(), roleHasModuleWildcard() (+2 more)
-
-### Community 157 - "Community 157"
-Cohesion: 0.11
 Nodes (11): useCostCenters(), closeModal(), handleSave(), findExactMatch(), getCCByCode(), getCCById(), getFilteredCenters(), handleInputBlur() (+3 more)
 
-### Community 158 - "Community 158"
-Cohesion: 0.11
-Nodes (13): canonicalToUi(), transformCanonicalLayout(), validateUiConfig(), checkFormDeletable(), cloneVoucherForm(), ensureUIModeOverrides(), getVoucherFormById(), loadCompanyForms() (+5 more)
-
-### Community 159 - "Community 159"
+### Community 155 - "Community 155"
 Cohesion: 0.07
 Nodes (26): Absolute Safety Rules, AI Proposal Sandbox, API Endpoints, Architecture, Backend — Modified Files, Backend — New Files, Chat Integration, code:block1 (draft → pending_review → accepted → archived) (+18 more)
 
-### Community 160 - "Community 160"
+### Community 156 - "Community 156"
 Cohesion: 0.07
 Nodes (26): Active Read-Only Tools (17 with Real Execution), AI Assistant State Document, AI Tool System Architecture, Architecture Overview, Backend Endpoints (Platform-level), Catalog & Config (2 new), Catalog Definitions (100+ entries, not all executable), code:block1 (┌───────────────────────────────────────────────────────────) (+18 more)
 
-### Community 161 - "Community 161"
+### Community 157 - "Community 157"
 Cohesion: 0.07
 Nodes (26): AI Assistant Stability, Credit Check on Direct Invoices, Documentation Updated, E.1 — Quote Sequence Numbering, E.2 — AI-Assistant Test Stabilization, E.3 — Promotion Evaluator Auto-Invocation, E.4 — Credit Check on Direct Sales Invoices, E.5 — Backorder / Partial-Fulfillment Frontend UX (+18 more)
 
-### Community 162 - "Community 162"
+### Community 158 - "Community 158"
 Cohesion: 0.07
 Nodes (26): 03 — Fiscal Year / Period Management, Acceptance Criteria, Automated, Business Context, code:typescript (export enum FiscalYearStatus {), code:typescript (export interface IFiscalYearRepository {), code:block3 (CreateFiscalYearUseCase     — Define a new fiscal year with ), code:typescript (validate(ctx: PostingPolicyContext): PolicyResult {) (+18 more)
 
-### Community 163 - "Community 163"
+### Community 159 - "Community 159"
 Cohesion: 0.07
 Nodes (26): Batch 1 — Voucher list pages (2026-05-31, code audit), Batch 2 — Sales Invoice Detail (2026-05-31, code audit), Batch 3 — Quotation Detail (2026-05-31, code audit), Batch 4 — Sales Order Detail (2026-05-31, partial read + grep), Batch 5 — Delivery Note Detail (grep-based), Batch 6 — Sales Return Detail (grep-based), Bugs filed (🔴), Bugs filed (🔴) — running (+18 more)
+
+### Community 160 - "Community 160"
+Cohesion: 0.07
+Nodes (26): 22 — Notifications System, Acceptance Criteria, Business-Driven Notification Requirements, code:typescript (interface Notification {), code:typescript (interface NotificationSettings {), code:typescript (class NotificationService {), code:block4 (GET    /notifications                  — List user's notific), Current State (+18 more)
+
+### Community 161 - "Community 161"
+Cohesion: 0.07
+Nodes (26): 1. Check backend routes, 2. Check backend controller, 3. Check backend use cases, 4. Check frontend API client, A. `DeliveryNoteUseCases.ts`, Acceptance Criteria, B. `SalesReturnUseCases.ts`, Backend (+18 more)
+
+### Community 162 - "Community 162"
+Cohesion: 0.07
+Nodes (26): Acceptance Criteria, AI Assistant Real Report Tooling Plan, Clarification Rules, code:ts (reports.list()), code:ts (reports.runProfitAndLoss(params)), code:ts (interface ReportDefinition {), code:ts (interface ReportOutputContext {), code:ts (interface ReportMoneyContext {) (+18 more)
+
+### Community 163 - "Community 163"
+Cohesion: 0.07
+Nodes (26): 03 — Fiscal Year / Period Management, Acceptance Criteria, Automated, Business Context, code:typescript (export enum FiscalYearStatus {), code:typescript (export interface IFiscalYearRepository {), code:block3 (CreateFiscalYearUseCase     — Define a new fiscal year with ), code:typescript (validate(ctx: PostingPolicyContext): PolicyResult {) (+18 more)
 
 ### Community 164 - "Community 164"
 Cohesion: 0.07
@@ -1821,67 +1773,63 @@ Nodes (26): Acceptance Criteria, AI Assistant Real Report Tooling Plan, Clarific
 
 ### Community 167 - "Community 167"
 Cohesion: 0.07
-Nodes (26): 03 — Fiscal Year / Period Management, Acceptance Criteria, Automated, Business Context, code:typescript (export enum FiscalYearStatus {), code:typescript (export interface IFiscalYearRepository {), code:block3 (CreateFiscalYearUseCase     — Define a new fiscal year with ), code:typescript (validate(ctx: PostingPolicyContext): PolicyResult {) (+18 more)
+Nodes (26): Active Read-Only Tools (17 with Real Execution), AI Assistant State Document, AI Tool System Architecture, Architecture Overview, Backend Endpoints (Platform-level), Catalog & Config (2 new), Catalog Definitions (100+ entries, not all executable), code:block1 (┌───────────────────────────────────────────────────────────) (+18 more)
 
 ### Community 168 - "Community 168"
 Cohesion: 0.07
-Nodes (26): 22 — Notifications System, Acceptance Criteria, Business-Driven Notification Requirements, code:typescript (interface Notification {), code:typescript (interface NotificationSettings {), code:typescript (class NotificationService {), code:block4 (GET    /notifications                  — List user's notific), Current State (+18 more)
-
-### Community 169 - "Community 169"
-Cohesion: 0.07
-Nodes (26): 1. Check backend routes, 2. Check backend controller, 3. Check backend use cases, 4. Check frontend API client, A. `DeliveryNoteUseCases.ts`, Acceptance Criteria, B. `SalesReturnUseCases.ts`, Backend (+18 more)
-
-### Community 170 - "Community 170"
-Cohesion: 0.07
-Nodes (26): Acceptance Criteria, AI Assistant Real Report Tooling Plan, Clarification Rules, code:ts (reports.list()), code:ts (reports.runProfitAndLoss(params)), code:ts (interface ReportDefinition {), code:ts (interface ReportOutputContext {), code:ts (interface ReportMoneyContext {) (+18 more)
-
-### Community 171 - "Community 171"
-Cohesion: 0.07
-Nodes (26): Active Read-Only Tools (17 with Real Execution), AI Assistant State Document, AI Tool System Architecture, Architecture Overview, Backend Endpoints (Platform-level), Catalog & Config (2 new), Catalog Definitions (100+ entries, not all executable), code:block1 (┌───────────────────────────────────────────────────────────) (+18 more)
-
-### Community 172 - "Community 172"
-Cohesion: 0.07
 Nodes (26): Absolute Safety Rules, AI Proposal Sandbox, API Endpoints, Architecture, Backend — Modified Files, Backend — New Files, Chat Integration, code:block1 (draft → pending_review → accepted → archived) (+18 more)
 
-### Community 174 - "Community 174"
-Cohesion: 0.12
-Nodes (9): isAiCertificationCategory(), AiCertificationEngine, evaluateResponse(), evaluateShouldAnswerFromData(), evaluateShouldRefuse(), evaluateShouldRefuseOrProposeDraft(), evaluateShouldRequestTool(), runAllTests() (+1 more)
+### Community 171 - "Community 171"
+Cohesion: 0.1
+Nodes (7): CommissionEntry, roundMoney(), AccrueCommissionForInvoiceUseCase, CancelCommissionUseCase, GetCommissionEntryUseCase, GetSalespersonCommissionTotalsUseCase, ListCommissionsUseCase
 
-### Community 175 - "Community 175"
+### Community 172 - "Community 172"
 Cohesion: 0.11
 Nodes (5): CustomerGroup, AssignCustomerToGroupUseCase, CreateCustomerGroupUseCase, DeleteCustomerGroupUseCase, UpdateCustomerGroupUseCase
 
-### Community 176 - "Community 176"
+### Community 173 - "Community 173"
 Cohesion: 0.14
-Nodes (7): registerAllModules(), runCapabilityStartupValidation(), runModuleStartupValidation(), runPermissionStartupValidation(), ModuleRegistry, initServer(), CheckModuleImplementationUseCase
+Nodes (18): confirmAddSpecialPeriod(), confirmClosePeriod(), confirmCloseYear(), confirmDeleteYear(), confirmReopenPeriod(), confirmReopenYear(), handleAutoCreateRetainedEarnings(), handleClosePeriod() (+10 more)
 
-### Community 177 - "Community 177"
+### Community 174 - "Community 174"
 Cohesion: 0.08
 Nodes (25): AI Setup Wizard & API Key Vault — Architecture, Backend, Cascade delete & cert reset, code:ts (interface AiPlatformApiKeyProps {), code:ts (interface WizardState {), code:ts (const completedSteps = useMemo(() => {), code:block4 (aiPlatformApiKeyRepository (new)), DI wiring summary (+17 more)
 
-### Community 178 - "Community 178"
+### Community 175 - "Community 175"
 Cohesion: 0.08
 Nodes (25): 10. RBAC-gate the credit override, 11. i18n everywhere, 12. Rationalize the action button palette, 13. Use shared loading / not-found states, 14. Reset modal state on `params.id` change, 15. Surface silent failures, 1. Have a `viewModel` mode flag, 2. Wire the Edit verb (+17 more)
 
-### Community 179 - "Community 179"
+### Community 176 - "Community 176"
 Cohesion: 0.08
 Nodes (25): API surface, Architecture: Promotions Engine, BuyXGetYConfig, code:ts (interface BuyXGetYConfig {), code:ts (interface ThresholdDiscountConfig {), code:ts (interface PromotionEvalLine {), code:ts (interface FreeGoodsSuggestion {), code:block5 (1. Sort active rules by priority ascending (lower number fir) (+17 more)
 
-### Community 180 - "Community 180"
+### Community 177 - "Community 177"
 Cohesion: 0.08
 Nodes (23): Audit Report, code:block1 (CreateStockTransferUseCase:), code:block10 (GET    /api/inventory/dashboard              → getDashboard), code:bash (# Backend compile), code:markdown (# Phase 2 Audit Report — Enhanced Inventory), code:block2 (POST   /api/inventory/transfers              → createTransfe), code:typescript (createTransfer(payload): Promise<StockTransferDTO>), code:block4 (ProcessReturnUseCase:) (+15 more)
 
-### Community 181 - "Community 181"
+### Community 178 - "Community 178"
 Cohesion: 0.08
 Nodes (25): Brief: Architecture Control Layer Diagnosis, code:powershell (npm --prefix backend test -- --runInBand backend/src/tests/a), code:powershell (git status --short --branch), Confirmed Findings, Context, Current Repo State Noted, Executive Diagnosis, F10. Warning concepts are fragmented (+17 more)
 
-### Community 182 - "Community 182"
+### Community 179 - "Community 179"
 Cohesion: 0.08
 Nodes (25): AI Assistant — Fixing Plan Part 2 (Phases 6-9), Audit Protocol, code:typescript (chatStream?(request: AiProviderRequest): AsyncGenerator<{ ty), code:typescript (async *chatStream(request: AiProviderRequest) {), code:typescript (const QUICK_ACTIONS = [), code:json ({), code:typescript (describe('AI Provider Integration Smoke Tests', () => {), code:block6 (Phase 1 (Business Model) — Can start immediately) (+17 more)
 
-### Community 183 - "Community 183"
+### Community 180 - "Community 180"
 Cohesion: 0.08
 Nodes (24): Feature Overview, Manual Test — 16: Trial Balance Report, Prerequisites, TC-16.10 — "As of Date" Filtering, TC-16.11 — Include Zero Balances Toggle, TC-16.12 — Sticky Header and Footer, TC-16.13 — Parameters Toolbar Collapse, TC-16.14 — Export to Excel (+16 more)
+
+### Community 181 - "Community 181"
+Cohesion: 0.08
+Nodes (24): 02 — Account Statement Report, Acceptance Criteria, Automated, Business Context, code:typescript (interface AccountStatementData {), code:typescript (export class GetAccountStatementUseCase {), code:typescript (static async getAccountStatement(req: Request, res: Response), code:typescript (router.get('/reports/account-statement', permissionGuard('ac) (+16 more)
+
+### Community 182 - "Community 182"
+Cohesion: 0.08
+Nodes (24): 1. Expand `Item` Entity, 1. Items List Page, 2. Item Form / Detail Page, 2. New `ItemCategory` Entity, 3. Categories Management, 3. Expand Repository Interface, 4. API Client, 4. New `IItemCategoryRepository` (+16 more)
+
+### Community 183 - "Community 183"
+Cohesion: 0.08
+Nodes (26): Changes — Subtask A: Backend Model Profile Runtime Config (3 files), Changes — Subtask B: Provider Default API Key (4 files), Changes — Subtask C: Chat Runtime API Key Fallback (1 file), Changes — Subtask D: Frontend Updates (5+ files), How to test:, Previous Focus — Fix Certification Failures + Add Provider API Key Management, Problem, Problem (+18 more)
 
 ### Community 184 - "Community 184"
 Cohesion: 0.08
@@ -1889,27 +1837,27 @@ Nodes (24): 02 — Account Statement Report, Acceptance Criteria, Automated, Bus
 
 ### Community 185 - "Community 185"
 Cohesion: 0.08
-Nodes (24): 1. Expand `Item` Entity, 1. Items List Page, 2. Item Form / Detail Page, 2. New `ItemCategory` Entity, 3. Categories Management, 3. Expand Repository Interface, 4. API Client, 4. New `IItemCategoryRepository` (+16 more)
+Nodes (25): AI Assistant — Fixing Plan Part 2 (Phases 6-9), Audit Protocol, code:typescript (chatStream?(request: AiProviderRequest): AsyncGenerator<{ ty), code:typescript (async *chatStream(request: AiProviderRequest) {), code:typescript (const QUICK_ACTIONS = [), code:json ({), code:typescript (describe('AI Provider Integration Smoke Tests', () => {), code:block6 (Phase 1 (Business Model) — Can start immediately) (+17 more)
 
 ### Community 186 - "Community 186"
-Cohesion: 0.08
-Nodes (26): Changes — Subtask A: Backend Model Profile Runtime Config (3 files), Changes — Subtask B: Provider Default API Key (4 files), Changes — Subtask C: Chat Runtime API Key Fallback (1 file), Changes — Subtask D: Frontend Updates (5+ files), How to test:, Previous Focus — Fix Certification Failures + Add Provider API Key Management, Problem, Problem (+18 more)
+Cohesion: 0.11
+Nodes (7): callerId(), SuperAdminFieldLibraryController, CreateFieldLibraryEntryUseCase, DeprecateFieldLibraryEntryUseCase, HardDeleteFieldLibraryEntryUseCase, UpdateFieldLibraryEntryUseCase, validateInput()
 
 ### Community 187 - "Community 187"
-Cohesion: 0.08
-Nodes (24): 02 — Account Statement Report, Acceptance Criteria, Automated, Business Context, code:typescript (interface AccountStatementData {), code:typescript (export class GetAccountStatementUseCase {), code:typescript (static async getAccountStatement(req: Request, res: Response), code:typescript (router.get('/reports/account-statement', permissionGuard('ac) (+16 more)
+Cohesion: 0.11
+Nodes (5): PriceList, CreatePriceListUseCase, DeletePriceListUseCase, GetEffectivePriceUseCase, ListPriceListsUseCase
 
 ### Community 188 - "Community 188"
 Cohesion: 0.08
-Nodes (25): AI Assistant — Fixing Plan Part 2 (Phases 6-9), Audit Protocol, code:typescript (chatStream?(request: AiProviderRequest): AsyncGenerator<{ ty), code:typescript (async *chatStream(request: AiProviderRequest) {), code:typescript (const QUICK_ACTIONS = [), code:json ({), code:typescript (describe('AI Provider Integration Smoke Tests', () => {), code:block6 (Phase 1 (Business Model) — Can start immediately) (+17 more)
+Nodes (8): MarkCommissionPaidUseCase, GetCustomerGroupUseCase, ListCustomerGroupsUseCase, GetPriceListUseCase, UpdatePriceListUseCase, GetSalespersonUseCase, ListSalespersonsUseCase, UpdateSalespersonUseCase
 
 ### Community 189 - "Community 189"
-Cohesion: 0.08
-Nodes (8): AccrueCommissionForInvoiceUseCase, GetCommissionEntryUseCase, GetCustomerGroupUseCase, ListCustomerGroupsUseCase, UpdatePriceListUseCase, GetSalespersonUseCase, ListSalespersonsUseCase, UpdateSalespersonUseCase
+Cohesion: 0.13
+Nodes (4): FirestoreReconciliationRepository, toTimestamp(), PrismaReconciliationRepository, Reconciliation
 
 ### Community 190 - "Community 190"
 Cohesion: 0.12
-Nodes (5): CreateRoleTemplateUseCase, DeleteRoleTemplateUseCase, GetRoleTemplateByIdUseCase, ListRoleTemplatesUseCase, UpdateRoleTemplateUseCase
+Nodes (7): Permission, AuditLogMapper, ModuleMapper, NotificationMapper, PermissionMapper, RoleMapper, FirestoreAuditLogRepository
 
 ### Community 192 - "Community 192"
 Cohesion: 0.09
@@ -1940,32 +1888,32 @@ Cohesion: 0.08
 Nodes (24): 38 — Bulk Subgroup Tagging Tool, Acceptance Criteria, Automated Tests, Business Context, code:typescript (// POST /tenant/accounting/accounts/batch-update-subgroups), code:typescript (batchUpdateSubgroups: (updates: Array<{ accountId: string; p), code:block3 (┌───────────────────────────────────────────────────────────), code:typescript (const SubgroupTaggingPage = lazy(() => import('../modules/ac) (+16 more)
 
 ### Community 199 - "Community 199"
-Cohesion: 0.08
-Nodes (25): 2026-05-12 Progress — Fix AI chat tool call pipeline and UX issues, 2026-05-12 Progress — Super Admin Diagnostics Modal + UX Refactor, Changes, Changes, Changes, Changes, Changes, Changes (+17 more)
+Cohesion: 0.1
+Nodes (25): 2026-05-12 Result — AI Assistant Fixing Plan Phase 2 Security Hardening, 2026-05-13 Result — Phase 6.6 Simplified Tenant AI Setup Wizard, 2026-05-13 Result — Phase 6.6B Setup Wizard Integration, 2026-05-13 Result — Phase 7.1 Per-User AI Rate Limiting, Changes, Changes, Changes, Changes (+17 more)
 
 ### Community 200 - "Community 200"
 Cohesion: 0.08
-Nodes (24): 1. Accounting, 2. Inventory, 3. Sales, 4. Purchases, Approval System, Architecture Rules (Non-Negotiable), Bundles & Plans, Business Model (+16 more)
+Nodes (25): 2026-05-12 Progress — Fix AI chat tool call pipeline and UX issues, 2026-05-12 Progress — Super Admin Diagnostics Modal + UX Refactor, Changes, Changes, Changes, Changes, Changes, Changes (+17 more)
 
 ### Community 201 - "Community 201"
 Cohesion: 0.08
-Nodes (24): 38 — Bulk Subgroup Tagging Tool, Acceptance Criteria, Automated Tests, Business Context, code:typescript (// POST /tenant/accounting/accounts/batch-update-subgroups), code:typescript (batchUpdateSubgroups: (updates: Array<{ accountId: string; p), code:block3 (┌───────────────────────────────────────────────────────────), code:typescript (const SubgroupTaggingPage = lazy(() => import('../modules/ac) (+16 more)
+Nodes (24): 1. Accounting, 2. Inventory, 3. Sales, 4. Purchases, Approval System, Architecture Rules (Non-Negotiable), Bundles & Plans, Business Model (+16 more)
 
 ### Community 202 - "Community 202"
-Cohesion: 0.14
-Nodes (4): AccountMappingProposalGenerator, JournalEntryProposalGenerator, ManagementInsightProposalGenerator, ReorderProposalGenerator
+Cohesion: 0.08
+Nodes (24): 38 — Bulk Subgroup Tagging Tool, Acceptance Criteria, Automated Tests, Business Context, code:typescript (// POST /tenant/accounting/accounts/batch-update-subgroups), code:typescript (batchUpdateSubgroups: (updates: Array<{ accountId: string; p), code:block3 (┌───────────────────────────────────────────────────────────), code:typescript (const SubgroupTaggingPage = lazy(() => import('../modules/ac) (+16 more)
 
 ### Community 203 - "Community 203"
-Cohesion: 0.15
-Nodes (4): ArchiveAiProposalUseCase, GetAiProposalUseCase, ListAiProposalsUseCase, UpdateAiProposalStatusUseCase
+Cohesion: 0.17
+Nodes (13): cloneValue(), cloneVoucherFormForCompany(), cloneVoucherTypeForCompany(), normalizeCode(), normalizeModule(), syncCompanyVoucherTemplatesFromSystem(), canonicalizeVoucherCode(), dedupeVoucherForms() (+5 more)
 
 ### Community 206 - "Community 206"
-Cohesion: 0.15
-Nodes (17): run(), runSystemSeeder(), buildUnion(), inferFieldClass(), seedFieldLibrary(), toEntry(), seedBundles(), seedBusinessDomains() (+9 more)
-
-### Community 207 - "Community 207"
 Cohesion: 0.11
 Nodes (3): ComponentPropertiesPanel(), handleAddNewComponent(), handleDropToGrid()
+
+### Community 207 - "Community 207"
+Cohesion: 0.17
+Nodes (17): buildPayload(), deleteDraft(), formatShortRef(), getDocumentLabel(), getErrorMessage(), getOpeningStockDocumentRef(), getVoucherLabel(), handleConfirmDialogConfirm() (+9 more)
 
 ### Community 208 - "Community 208"
 Cohesion: 0.08
@@ -1996,188 +1944,176 @@ Cohesion: 0.08
 Nodes (22): 24 — Audit Trail / Activity Log, Acceptance Criteria, Architecture: SQL Migration Ready, Business Context, code:typescript (interface AuditLogEntry {), code:block2 (companies/{companyId}/audit-logs/{logId}), code:typescript (export interface IAuditLogRepository {), code:typescript (class AuditService {) (+14 more)
 
 ### Community 215 - "Community 215"
-Cohesion: 0.16
-Nodes (3): ExchangeRateMapper, FirestoreCostCenterRepository, FirestoreExchangeRateRepository
+Cohesion: 0.1
+Nodes (7): AdoptTemplateUseCase, CreateFormDefinitionUseCase, CreateVoucherTypeDefinitionUseCase, UpdateFormDefinitionUseCase, UpdateVoucherTypeDefinitionUseCase, ValidateDynamicFieldRulesUseCase, VoucherTypeDefinitionValidator
 
 ### Community 216 - "Community 216"
-Cohesion: 0.13
-Nodes (3): FirestoreVoucherSequenceRepository, PrismaVoucherSequenceRepository, MemorySequenceRepo
-
-### Community 217 - "Community 217"
 Cohesion: 0.12
 Nodes (3): Salesperson, CreateSalespersonUseCase, DeleteSalespersonUseCase
 
+### Community 217 - "Community 217"
+Cohesion: 0.16
+Nodes (3): ExchangeRateMapper, FirestoreCostCenterRepository, FirestoreExchangeRateRepository
+
 ### Community 218 - "Community 218"
-Cohesion: 0.11
-Nodes (6): CommissionEntry, roundMoney(), CancelCommissionUseCase, GetSalespersonCommissionTotalsUseCase, ListCommissionsUseCase, MarkCommissionPaidUseCase
+Cohesion: 0.14
+Nodes (4): FirestoreBankStatementRepository, toTimestamp(), PrismaBankStatementRepository, BankStatement
 
 ### Community 219 - "Community 219"
-Cohesion: 0.16
-Nodes (7): compareAccountStatementRows(), compareVoucherNo(), dateToIso(), FirestoreLedgerRepository, serverTimestamp(), toTimestamp(), toTimestampBoundary()
+Cohesion: 0.15
+Nodes (4): FirestoreCompanyGroupRepository, toTimestamp(), PrismaCompanyGroupRepository, CompanyGroup
 
 ### Community 220 - "Community 220"
-Cohesion: 0.14
-Nodes (6): FirestoreUserPreferencesRepository, mapDto(), UserPreferencesController, UserPreferences, GetUserPreferencesUseCase, UpsertUserPreferencesUseCase
+Cohesion: 0.13
+Nodes (3): FirestoreVoucherSequenceRepository, PrismaVoucherSequenceRepository, MemorySequenceRepo
 
 ### Community 221 - "Community 221"
-Cohesion: 0.18
-Nodes (13): cloneValue(), cloneVoucherFormForCompany(), cloneVoucherTypeForCompany(), normalizeCode(), normalizeModule(), syncCompanyVoucherTemplatesFromSystem(), canonicalizeVoucherCode(), dedupeVoucherForms() (+5 more)
+Cohesion: 0.13
+Nodes (4): FirestoreCompanySettingsRepository, PrismaCompanySettingsRepository, CompanySettingsDTOMapper, CompanySettings
 
 ### Community 222 - "Community 222"
 Cohesion: 0.09
-Nodes (3): QuickActionButtons(), handleKeyDown(), handleNewConversation()
+Nodes (22): 1. Run the seeder, 2. Confirm idempotency, 3. Inspect via Firebase console, 4. Hit the read API, 5. Confirm the wizard is unaffected, code:block1 (system_metadata/field_library/items/{fieldId}        ← seede), code:bash (npx ts-node src/seeder/runSystemSeeder.ts), code:block3 (--- Step 4: Seeding Field Library ---) (+14 more)
 
 ### Community 223 - "Community 223"
 Cohesion: 0.09
-Nodes (22): 1. Run the seeder, 2. Confirm idempotency, 3. Inspect via Firebase console, 4. Hit the read API, 5. Confirm the wizard is unaffected, code:block1 (system_metadata/field_library/items/{fieldId}        ← seede), code:bash (npx ts-node src/seeder/runSystemSeeder.ts), code:block3 (--- Step 4: Seeding Field Library ---) (+14 more)
+Nodes (22): 1. Accounting Module, 2. Sales Module, 3. Purchase Module, 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked) (+14 more)
 
 ### Community 224 - "Community 224"
 Cohesion: 0.09
-Nodes (22): 1. Accounting Module, 2. Sales Module, 3. Purchase Module, 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked) (+14 more)
+Nodes (22): 25 — CI/CD Pipeline & Test Runner, Acceptance Criteria, Architecture: SQL Migration Ready, Automated, code:bash (# Check if jest or vitest is already in dependencies), code:typescript (export default {), code:json ({), code:bash (cd backend && npm test) (+14 more)
 
 ### Community 225 - "Community 225"
 Cohesion: 0.09
-Nodes (22): 25 — CI/CD Pipeline & Test Runner, Acceptance Criteria, Architecture: SQL Migration Ready, Automated, code:bash (# Check if jest or vitest is already in dependencies), code:typescript (export default {), code:json ({), code:bash (cd backend && npm test) (+14 more)
+Nodes (21): AD-1: Firestore Save Paths, AD-2: Document Flow, AD-3: Invoice → Voucher Strategy, AD-4: Supplier as a Simple Entity, Agent Instructions, Architectural Decisions, Business Context, code:block1 (companies/{companyId}/purchases/Settings           → Module ) (+13 more)
 
 ### Community 226 - "Community 226"
 Cohesion: 0.09
-Nodes (21): AD-1: Firestore Save Paths, AD-2: Document Flow, AD-3: Invoice → Voucher Strategy, AD-4: Supplier as a Simple Entity, Agent Instructions, Architectural Decisions, Business Context, code:block1 (companies/{companyId}/purchases/Settings           → Module ) (+13 more)
+Nodes (21): AD-1: Firestore Save Paths, AD-2: Document Flow, AD-3: Invoice → Voucher Strategy, AD-4: Customer → AR Sub-Account, Agent Instructions, Architectural Decisions, Business Context, code:block1 (companies/{companyId}/sales/Settings               → Module ) (+13 more)
 
 ### Community 227 - "Community 227"
 Cohesion: 0.09
-Nodes (21): AD-1: Firestore Save Paths, AD-2: Document Flow, AD-3: Invoice → Voucher Strategy, AD-4: Customer → AR Sub-Account, Agent Instructions, Architectural Decisions, Business Context, code:block1 (companies/{companyId}/sales/Settings               → Module ) (+13 more)
+Nodes (22): 1. Accounting Module, 2. Sales Module, 3. Purchase Module, 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked) (+14 more)
 
 ### Community 228 - "Community 228"
 Cohesion: 0.09
-Nodes (22): 1. Accounting Module, 2. Sales Module, 3. Purchase Module, 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked), 🟢 Core Fields (Mandatory & System Locked) (+14 more)
-
-### Community 229 - "Community 229"
-Cohesion: 0.09
 Nodes (22): 25 — CI/CD Pipeline & Test Runner, Acceptance Criteria, Architecture: SQL Migration Ready, Automated, code:bash (# Check if jest or vitest is already in dependencies), code:typescript (export default {), code:json ({), code:bash (cd backend && npm test) (+14 more)
 
+### Community 230 - "Community 230"
+Cohesion: 0.16
+Nodes (4): PromotionRule, PromotionApplicationService, EvaluatePromotionsUseCase, todayISO()
+
 ### Community 231 - "Community 231"
-Cohesion: 0.13
-Nodes (3): Currency, PrismaCurrencyRepository, GetCurrencyDecimalPlacesUseCase
+Cohesion: 0.14
+Nodes (4): ExchangeRate, IsCurrencyEnabledUseCase, GetExchangeRateUseCase, SetExchangeRateUseCase
 
 ### Community 232 - "Community 232"
-Cohesion: 0.13
-Nodes (4): getExecutableDefinitions(), MockProvider, certificationCategoryForModule(), AiToolCallingOrchestrator
+Cohesion: 0.14
+Nodes (3): getExecutableDefinitions(), MockProvider, AiToolCallingOrchestrator
 
 ### Community 233 - "Community 233"
 Cohesion: 0.14
-Nodes (3): FirestoreAiPlatformRuntimeProfileRepository, stripUndefined(), AiPlatformRuntimeProfile
-
-### Community 234 - "Community 234"
-Cohesion: 0.15
-Nodes (3): CreateModuleUseCase, DeleteModuleUseCase, ListModulesUseCase
-
-### Community 235 - "Community 235"
-Cohesion: 0.14
 Nodes (4): VendorGroup, AssignVendorToGroupUseCase, CreateVendorGroupUseCase, DeleteVendorGroupUseCase
 
-### Community 236 - "Community 236"
-Cohesion: 0.16
-Nodes (6): handleMouseDown(), handleMouseMove(), handleMouseUp(), handleResizeStart(), useLanguage(), useVouchers()
-
-### Community 237 - "Community 237"
+### Community 234 - "Community 234"
 Cohesion: 0.09
 Nodes (21): API surface, Architecture: Quotations, code:block1 (┌────────────┐), code:ts (isExpired(today: string): boolean), code:block3 (Quote Q-1 (v1, REJECTED)  ─── originQuoteId = Q-1.id ──► (se), Conversion paths, Convert to Sales Invoice, Convert to Sales Order (+13 more)
 
-### Community 238 - "Community 238"
+### Community 235 - "Community 235"
 Cohesion: 0.09
 Nodes (20): Feature Overview, Manual Test — 02: Account Statement Report, Prerequisites, TC-02.10 — Foreign Currency Account, TC-02.11 — Include Unposted Option (If Available), TC-02.12 — Print Layout, TC-02.14 — Cross-Validation with General Ledger, TC-02.15 — Permission Check (+12 more)
 
-### Community 239 - "Community 239"
+### Community 236 - "Community 236"
 Cohesion: 0.09
 Nodes (21): 01 — Balance Sheet Report, Acceptance Criteria, Automated, Business Context, code:typescript (export class GetBalanceSheetUseCase {), code:typescript (interface BalanceSheetData {), code:typescript (static async getBalanceSheet(req: Request, res: Response, ne), code:typescript (router.get('/reports/balance-sheet', permissionGuard('accoun) (+13 more)
 
-### Community 240 - "Community 240"
+### Community 237 - "Community 237"
 Cohesion: 0.09
 Nodes (21): 09 — Bank Reconciliation, Acceptance Criteria, BankStatement, Business Context, code:typescript (interface BankStatement {), code:typescript (interface Reconciliation {), code:block3 (POST   /accounting/bank-statements/import         — Upload C), Current State (+13 more)
 
-### Community 241 - "Community 241"
+### Community 238 - "Community 238"
 Cohesion: 0.09
 Nodes (20): 1. `PurchaseInvoice` Entity, 2. New Voucher Strategy: `PurchaseInvoiceStrategy`, 3. Register Strategy in Factory, 4. Add VoucherType, 5. Use Cases, 6. API Routes, Backend, code:typescript (export class PurchaseInvoice {) (+12 more)
 
-### Community 242 - "Community 242"
+### Community 239 - "Community 239"
 Cohesion: 0.09
 Nodes (22): ✅ 2026-05-08 Result, Detour: AI Chat 30s Timeout, Detour: Frontend Ngrok Host Allowlist, Files Changed By This Task, Follow-up: AI Settings Model Diagnostics, Follow-up: Conversation Context Cost Settings, Follow-up: Conversation Context First Rules, Follow-up: Editable AI Model Profiles (+14 more)
 
-### Community 243 - "Community 243"
+### Community 240 - "Community 240"
 Cohesion: 0.09
 Nodes (21): 01 — Balance Sheet Report, Acceptance Criteria, Automated, Business Context, code:typescript (export class GetBalanceSheetUseCase {), code:typescript (interface BalanceSheetData {), code:typescript (static async getBalanceSheet(req: Request, res: Response, ne), code:typescript (router.get('/reports/balance-sheet', permissionGuard('accoun) (+13 more)
 
-### Community 244 - "Community 244"
+### Community 241 - "Community 241"
 Cohesion: 0.09
 Nodes (21): 09 — Bank Reconciliation, Acceptance Criteria, BankStatement, Business Context, code:typescript (interface BankStatement {), code:typescript (interface Reconciliation {), code:block3 (POST   /accounting/bank-statements/import         — Upload C), Current State (+13 more)
+
+### Community 242 - "Community 242"
+Cohesion: 0.15
+Nodes (9): PaymentHistory, roundMoney(), toDate(), toStr(), buildUseCase(), makeInvoice(), makeSettings(), PostSalesInvoiceWithSettlementUseCase (+1 more)
+
+### Community 243 - "Community 243"
+Cohesion: 0.18
+Nodes (15): runSystemSeeder(), buildUnion(), inferFieldClass(), seedFieldLibrary(), toEntry(), seedBundles(), seedBusinessDomains(), seedCompanyRoles() (+7 more)
+
+### Community 245 - "Community 245"
+Cohesion: 0.12
+Nodes (5): AuditLog, PrismaAuditLogRepository, LogAuditActionUseCase, MarkNotificationAsReadUseCase, SendNotificationUseCase
 
 ### Community 247 - "Community 247"
 Cohesion: 0.16
 Nodes (16): applyAnnualDistribution(), approveBudget(), distributeAnnualEvenly(), emptyLine(), getNextVersion(), normalizeLine(), normalizeMonthlyAmounts(), refreshBudgets() (+8 more)
 
-### Community 248 - "Community 248"
+### Community 249 - "Community 249"
 Cohesion: 0.17
 Nodes (15): documentUiToCanonical(), transformLayout(), fetchData(), handleSaveForm(), handleSyncCatalog(), handleToggleEnabled(), handleUpdateSidebarGroup(), inferFormModule() (+7 more)
 
-### Community 249 - "Community 249"
+### Community 251 - "Community 251"
 Cohesion: 0.1
 Nodes (20): Acceptance Criteria Check, Architecture and contracts, Documentation updates, End-User View, Known Follow-ups, Manual QA Script — Operator View (run sequentially), Results, Security and tenancy controls (+12 more)
 
-### Community 250 - "Community 250"
+### Community 252 - "Community 252"
 Cohesion: 0.1
 Nodes (20): Acceptance Criteria Check, API changes, Backend architecture, Documentation updates, End-User View, Frontend changes, Known Follow-ups, Manual QA Script — Operator View (run sequentially) (+12 more)
 
-### Community 251 - "Community 251"
+### Community 253 - "Community 253"
 Cohesion: 0.1
 Nodes (20): 1. List + stats, 2. Edit an existing entry, 3. Soft-deprecate, 4. Create a new entry, 5. Hard-delete (blocked path), 6. Hard-delete (allowed path), 7. Re-run the seeder is still safe, Completion Report: 135b — Field Library (Phase B: super-admin editor) (+12 more)
 
-### Community 252 - "Community 252"
+### Community 254 - "Community 254"
 Cohesion: 0.1
 Nodes (19): 45 — Module lifecycleStatus Availability Cache Fix, Acceptance Criteria Met, Cache behavior:, code:block1 (if (info.state !== AVAILABLE && info.state !== SUSPENDED) re), Documentation, End-User View, Files Changed, Fix 1 — tenantContextMiddleware.ts (line 97) (+11 more)
 
-### Community 253 - "Community 253"
+### Community 255 - "Community 255"
 Cohesion: 0.1
 Nodes (19): Feature Overview, Manual Test — 04: Cost Center (Full Implementation), Prerequisites, TC-04.10 — Cost Center Without Assignment (Optional), TC-04.11 — CostCenterRequiredPolicy Enforcement, TC-04.12 — Deactivate Cost Center Used in Vouchers, TC-04.13 — Parent Deactivation, TC-04.14 — Permission Check (+11 more)
 
-### Community 254 - "Community 254"
+### Community 256 - "Community 256"
 Cohesion: 0.1
 Nodes (19): Assisted Verification Notes (2026-02-25), Feature Overview, Manual Test — 10: Budget Module, Prerequisites, Retest Focus (2026-02-24), TC-10.10 — Empty Budget (No Actuals), TC-10.11 — Cost Center Budgeting (If Enabled), TC-10.12 — Permission Check (+11 more)
 
-### Community 255 - "Community 255"
-Cohesion: 0.1
-Nodes (20): 06 — Cash Flow Statement, Acceptance Criteria, Business Context, code:typescript (cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' |), code:typescript (export class GetCashFlowStatementUseCase {), code:typescript (interface CashFlowData {), code:typescript (router.get('/reports/cash-flow', permissionGuard('accounting), code:block5 (Cash Flow Statement) (+12 more)
-
-### Community 256 - "Community 256"
-Cohesion: 0.1
-Nodes (20): 07 — Voucher Numbering Sequences, Acceptance Criteria, Automated, Business Context, code:typescript (export interface VoucherSequence {), code:typescript (export interface IVoucherSequenceRepository {), code:typescript (async getNextNumber(companyId: string, prefix: string, year?), code:typescript (const voucherNo = await this.sequenceRepo.getNextNumber(comp) (+12 more)
-
 ### Community 257 - "Community 257"
 Cohesion: 0.1
-Nodes (21): Changes:, Changes:, Changes:, Changes:, Changes:, Changes:, Changes:, Changes: (+13 more)
+Nodes (20): 06 — Cash Flow Statement, Acceptance Criteria, Business Context, code:typescript (cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' |), code:typescript (export class GetCashFlowStatementUseCase {), code:typescript (interface CashFlowData {), code:typescript (router.get('/reports/cash-flow', permissionGuard('accounting), code:block5 (Cash Flow Statement) (+12 more)
 
 ### Community 258 - "Community 258"
 Cohesion: 0.1
-Nodes (20): 06 — Cash Flow Statement, Acceptance Criteria, Business Context, code:typescript (cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' |), code:typescript (export class GetCashFlowStatementUseCase {), code:typescript (interface CashFlowData {), code:typescript (router.get('/reports/cash-flow', permissionGuard('accounting), code:block5 (Cash Flow Statement) (+12 more)
+Nodes (20): 07 — Voucher Numbering Sequences, Acceptance Criteria, Automated, Business Context, code:typescript (export interface VoucherSequence {), code:typescript (export interface IVoucherSequenceRepository {), code:typescript (async getNextNumber(companyId: string, prefix: string, year?), code:typescript (const voucherNo = await this.sequenceRepo.getNextNumber(comp) (+12 more)
 
 ### Community 259 - "Community 259"
 Cohesion: 0.1
-Nodes (20): 07 — Voucher Numbering Sequences, Acceptance Criteria, Automated, Business Context, code:typescript (export interface VoucherSequence {), code:typescript (export interface IVoucherSequenceRepository {), code:typescript (async getNextNumber(companyId: string, prefix: string, year?), code:typescript (const voucherNo = await this.sequenceRepo.getNextNumber(comp) (+12 more)
+Nodes (21): Changes:, Changes:, Changes:, Changes:, Changes:, Changes:, Changes:, Changes: (+13 more)
 
 ### Community 260 - "Community 260"
-Cohesion: 0.13
-Nodes (9): CreateItemUseCase, DeleteItemUseCase, GetItemUseCase, ListItemsUseCase, resolveItemUomFields(), resolveManagedUom(), stripUndefined(), trimOrUndefined() (+1 more)
+Cohesion: 0.1
+Nodes (20): 06 — Cash Flow Statement, Acceptance Criteria, Business Context, code:typescript (cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' |), code:typescript (export class GetCashFlowStatementUseCase {), code:typescript (interface CashFlowData {), code:typescript (router.get('/reports/cash-flow', permissionGuard('accounting), code:block5 (Cash Flow Statement) (+12 more)
 
-### Community 262 - "Community 262"
-Cohesion: 0.15
-Nodes (3): hasGRNForThisLine(), PostPurchaseInvoiceUseCase, UnpostPurchaseInvoiceUseCase
-
-### Community 266 - "Community 266"
-Cohesion: 0.18
-Nodes (8): CompanyCapabilityEntity, buildRegistryIndexes(), getCapabilityBlockedReason(), isCapabilityEntitled(), normalize(), normalizeList(), resolveCapabilityForState(), resolveCompanyCapabilityAccess()
+### Community 261 - "Community 261"
+Cohesion: 0.1
+Nodes (20): 07 — Voucher Numbering Sequences, Acceptance Criteria, Automated, Business Context, code:typescript (export interface VoucherSequence {), code:typescript (export interface IVoucherSequenceRepository {), code:typescript (async getNextNumber(companyId: string, prefix: string, year?), code:typescript (const voucherNo = await this.sequenceRepo.getNextNumber(comp) (+12 more)
 
 ### Community 268 - "Community 268"
-Cohesion: 0.13
-Nodes (7): AiErrorDisplay(), FeedbackButtons(), handleNewConversation(), startNewChat(), extractErrorCode(), extractStatus(), mapAiError()
+Cohesion: 0.23
+Nodes (15): buildKeyMap(), getLines(), isPresent(), normalizeHeader(), normalizeKey(), normalizeLine(), normalizePurchaseDocument(), readNumber() (+7 more)
 
 ### Community 269 - "Community 269"
 Cohesion: 0.1
@@ -2189,377 +2125,377 @@ Nodes (20): 10. Final Business Rules, R10 — GRN Lives in the Domain Model, R11
 
 ### Community 271 - "Community 271"
 Cohesion: 0.1
-Nodes (19): 2026-05-24 — E.1 Quote sequence numbering, 2026-05-24 — E.2 AI-assistant test stabilization, 2026-05-24 — E.3 Promotion evaluator auto-invocation, 2026-05-24 — E.4 Credit check on direct Sales Invoices, 2026-05-24 — E.5 Backorder / partial-fulfillment frontend UX, Brief: Phase E — Sales cross-cutting cleanup, code:block1 (cd D:\DEV2026\workTrees\ERP03-phase-e\backend), Context (+11 more)
+Nodes (19): Acceptance Criteria, code:text (backend implementation exists), code:text (platform_only), code:text (platform_only: only SuperAdmin can grant/enable for a compan), code:text (1. Capability exists in DB.), code:text (Entitled = company is allowed to use something.), code:text (Is company entitled to crm.ai-scoring?), code:text (ListCompanyModulesUseCase reads ModuleRegistry code directly) (+11 more)
 
 ### Community 272 - "Community 272"
 Cohesion: 0.1
-Nodes (19): Acceptance Criteria, Architecture Notes, Audit Round 1 — 14 Fixes, D.2 — Period Lock, D.2 — Period Lock Date, D.3 — Audit Log, D.3 — Per-record Audit Log, Deployment note (+11 more)
+Nodes (19): 2026-05-24 — E.1 Quote sequence numbering, 2026-05-24 — E.2 AI-assistant test stabilization, 2026-05-24 — E.3 Promotion evaluator auto-invocation, 2026-05-24 — E.4 Credit check on direct Sales Invoices, 2026-05-24 — E.5 Backorder / partial-fulfillment frontend UX, Brief: Phase E — Sales cross-cutting cleanup, code:block1 (cd D:\DEV2026\workTrees\ERP03-phase-e\backend), Context (+11 more)
 
 ### Community 273 - "Community 273"
 Cohesion: 0.1
-Nodes (19): Acceptance Criteria Check, API changes, Architecture and contracts, Documentation updates, End-User View, Frontend changes, Known Follow-ups, Manual QA Script — Operator View (run sequentially) (+11 more)
+Nodes (19): Acceptance Criteria, Architecture Notes, Audit Round 1 — 14 Fixes, D.2 — Period Lock, D.2 — Period Lock Date, D.3 — Audit Log, D.3 — Per-record Audit Log, Deployment note (+11 more)
 
 ### Community 274 - "Community 274"
 Cohesion: 0.1
-Nodes (18): 1) Fix F — Trading Account documented as future feature (no implementation), 2) Fix H — Extend account validation context + currency rule + voucher call sites, 3) Fix K — Prisma SQL migration status documentation (comments only), Acceptance Criteria Mapping, Added future plan document, Added TODO marker in Ledger use-cases, code:bash (cd backend && npx tsc --noEmit), code:bash (cd backend && npx jest --testPathPatterns="AccountUseCases|V) (+10 more)
+Nodes (19): Acceptance Criteria Check, API changes, Architecture and contracts, Documentation updates, End-User View, Frontend changes, Known Follow-ups, Manual QA Script — Operator View (run sequentially) (+11 more)
 
 ### Community 275 - "Community 275"
 Cohesion: 0.1
-Nodes (18): 1. Module Status Detection (Frontend), 2. Module Status Banner Component, 3. System Catalog Integration, 4. Three-Layer UI in DocumentFormDesigner, 5. Backend Sync Endpoint, 6. Legacy Accounting Forms Designer Deprecated, Acceptance Criteria Met, Architecture (+10 more)
+Nodes (18): 1) Fix F — Trading Account documented as future feature (no implementation), 2) Fix H — Extend account validation context + currency rule + voucher call sites, 3) Fix K — Prisma SQL migration status documentation (comments only), Acceptance Criteria Mapping, Added future plan document, Added TODO marker in Ledger use-cases, code:bash (cd backend && npx tsc --noEmit), code:bash (cd backend && npx jest --testPathPatterns="AccountUseCases|V) (+10 more)
 
 ### Community 276 - "Community 276"
 Cohesion: 0.1
-Nodes (18): AI Assistant — HTTP Client + Provider Presets + Timeout Fix, code:block1 (User sends message → AiAssistantController.sendMessage()), code:block2 (Provider returns 401 → AxiosHttpClient classifies → Provider), Created (4), Dependencies Added (1), End-User View, Files Changed, How Provider Errors Reach the User (+10 more)
+Nodes (18): 1. Module Status Detection (Frontend), 2. Module Status Banner Component, 3. System Catalog Integration, 4. Three-Layer UI in DocumentFormDesigner, 5. Backend Sync Endpoint, 6. Legacy Accounting Forms Designer Deprecated, Acceptance Criteria Met, Architecture (+10 more)
 
 ### Community 277 - "Community 277"
 Cohesion: 0.1
-Nodes (19): 05 — Dashboard with Real Data, Acceptance Criteria, Business Context, code:typescript (static async getDashboardSummary(req: Request, res: Response), code:typescript (router.get('/reports/dashboard-summary', permissionGuard('ac), code:typescript (getVoucherCounts(companyId: string): Promise<{), code:typescript (getDashboardSummary(): Promise<DashboardSummary>;), code:tsx (const AccountingDashboard: React.FC = () => {) (+11 more)
+Nodes (18): AI Assistant — HTTP Client + Provider Presets + Timeout Fix, code:block1 (User sends message → AiAssistantController.sendMessage()), code:block2 (Provider returns 401 → AxiosHttpClient classifies → Provider), Created (4), Dependencies Added (1), End-User View, Files Changed, How Provider Errors Reach the User (+10 more)
 
 ### Community 278 - "Community 278"
 Cohesion: 0.1
-Nodes (19): 137 — Sales Invoice (Direct) capability audit (native vs default), Capabilities (inventoried from grep + spot reads), Capability matrix (filled in), Component shopping list (prioritized), Default form surface (today), Files, Native surface (today's senior implementation), Next concrete step (+11 more)
+Nodes (19): 05 — Dashboard with Real Data, Acceptance Criteria, Business Context, code:typescript (static async getDashboardSummary(req: Request, res: Response), code:typescript (router.get('/reports/dashboard-summary', permissionGuard('ac), code:typescript (getVoucherCounts(companyId: string): Promise<{), code:typescript (getDashboardSummary(): Promise<DashboardSummary>;), code:tsx (const AccountingDashboard: React.FC = () => {) (+11 more)
 
 ### Community 279 - "Community 279"
 Cohesion: 0.1
-Nodes (18): 1. New `StockLevel` Entity (Materialized View), 1. Stock Levels Page, 2. Expand `StockMovement` Entity, 2. Movement History, 3. Repository Interfaces, 4. Firestore Paths, 5. Use Cases, 6. API Routes (+10 more)
+Nodes (19): 137 — Sales Invoice (Direct) capability audit (native vs default), Capabilities (inventoried from grep + spot reads), Capability matrix (filled in), Component shopping list (prioritized), Default form surface (today), Files, Native surface (today's senior implementation), Next concrete step (+11 more)
 
 ### Community 280 - "Community 280"
 Cohesion: 0.1
-Nodes (19): 05 — Dashboard with Real Data, Acceptance Criteria, Business Context, code:typescript (static async getDashboardSummary(req: Request, res: Response), code:typescript (router.get('/reports/dashboard-summary', permissionGuard('ac), code:typescript (getVoucherCounts(companyId: string): Promise<{), code:typescript (getDashboardSummary(): Promise<DashboardSummary>;), code:tsx (const AccountingDashboard: React.FC = () => {) (+11 more)
+Nodes (18): 1. New `StockLevel` Entity (Materialized View), 1. Stock Levels Page, 2. Expand `StockMovement` Entity, 2. Movement History, 3. Repository Interfaces, 4. Firestore Paths, 5. Use Cases, 6. API Routes (+10 more)
 
 ### Community 281 - "Community 281"
+Cohesion: 0.1
+Nodes (19): 05 — Dashboard with Real Data, Acceptance Criteria, Business Context, code:typescript (static async getDashboardSummary(req: Request, res: Response), code:typescript (router.get('/reports/dashboard-summary', permissionGuard('ac), code:typescript (getVoucherCounts(companyId: string): Promise<{), code:typescript (getDashboardSummary(): Promise<DashboardSummary>;), code:tsx (const AccountingDashboard: React.FC = () => {) (+11 more)
+
+### Community 282 - "Community 282"
+Cohesion: 0.18
+Nodes (3): JournalEntryProposalGenerator, ManagementInsightProposalGenerator, ReorderProposalGenerator
+
+### Community 283 - "Community 283"
+Cohesion: 0.13
+Nodes (5): CompanyProfileController, CompanyController, CoreDTOMapper, UpdateCompanyProfileUseCase, validateCreateCompanyInput()
+
+### Community 284 - "Community 284"
 Cohesion: 0.13
 Nodes (3): EntitlementServiceAdapter, GrantModuleToCompanyUseCase, RevokeModuleFromCompanyUseCase
 
-### Community 282 - "Community 282"
+### Community 285 - "Community 285"
+Cohesion: 0.16
+Nodes (8): calculateSalesInvoiceChargeAmounts(), calculateSalesInvoiceLineAmounts(), calculateSalesInvoiceTotals(), roundMoney(), buildQuoteLine(), CreateQuoteUseCase, GetQuoteUseCase, UpdateQuoteUseCase
+
+### Community 286 - "Community 286"
+Cohesion: 0.16
+Nodes (3): FirestoreAiPlatformApiKeyRepository, stripUndefined(), AiPlatformApiKey
+
+### Community 287 - "Community 287"
 Cohesion: 0.2
 Nodes (16): calculateTotal(), checkBusinessRule(), checkDynamicRule(), checkEnforceCreditLimit(), checkMinLineCount(), checkPreventBelowCost(), checkRequirePositiveTotal(), checkRequireWarehouse() (+8 more)
 
-### Community 283 - "Community 283"
-Cohesion: 0.11
-Nodes (18): Accounting Engine vs Accounting App/UI, Architectural Principles, Architecture: Accounting Module, COA Template Baseline (Perpetual-Ready Defaults), Cross-Module Touchpoints, Discovered bypass and fix, File Map (highest-leverage), Frontend (+10 more)
-
-### Community 284 - "Community 284"
-Cohesion: 0.11
-Nodes (18): Architecture: Credit Control, BLOCK policy and the override flow, code:block1 (currentExposure  = Σ outstandingAmountBase  (across all POST), code:ts ({), code:ts (ConfirmSalesOrderResult {), code:ts ({), code:ts (options.override = {), code:block6 (Frontend                      API Controller           Confi) (+10 more)
-
-### Community 285 - "Community 285"
-Cohesion: 0.11
-Nodes (18): 1. Create a Purchase Order, 2. Receive the goods (Goods Receipt), 3. Record the bill (Purchase Invoice), 4. Pay the bill, Common questions, Daily workflow (OPERATIONAL mode), First things to set up, Multi-currency (+10 more)
-
-### Community 286 - "Community 286"
-Cohesion: 0.11
-Nodes (18): 1. Create a Sales Order, 2. Deliver the goods (Delivery Note), 3. Invoice the customer, 4. Record the payment, Common questions, Customer-level overrides, Customer returns goods after you invoiced them (AFTER_INVOICE), Customer returns goods before you invoiced them (BEFORE_INVOICE) (+10 more)
-
-### Community 287 - "Community 287"
-Cohesion: 0.11
-Nodes (18): 1. The problem (stated bluntly), 2. Today's entities (the moving parts), 3. The two flows (what we're building), 4. The five concrete deliverables, 5. What I'm NOT doing, 6. Order of execution (recommended), 7. What I need from you before I start, 8. Open questions I noticed during exploration (+10 more)
-
 ### Community 288 - "Community 288"
-Cohesion: 0.11
-Nodes (18): 1A: Fix Known Bugs First, 1B: Test Accounting Module End-to-End, 1C: Test Inventory Module End-to-End, 1D: Test Sales Module End-to-End, 1E: Test Purchases Module End-to-End, 1F: Test Platform & Admin, ERP03 — Development Roadmap, Future (After Launch) (+10 more)
+Cohesion: 0.13
+Nodes (5): useVoucherTypeDefinition(), canonicalToUi(), transformCanonicalLayout(), cloneVoucherForm(), getVoucherFormById()
 
 ### Community 289 - "Community 289"
-Cohesion: 0.11
-Nodes (18): 119 — Phase D.6 Invoice Attachments, Acceptance Criteria, Accounting and architecture rationale, Attachment policy and control model, End-User View, Known Follow-ups, Manual QA Script — Operator View (run sequentially), Results (+10 more)
+Cohesion: 0.15
+Nodes (4): apexPathToTenantPath(), normalizePathname(), splitPath(), tenantPathToApexPath()
 
 ### Community 290 - "Community 290"
 Cohesion: 0.11
-Nodes (17): 1) Repository contract updated for transactional save, 2) Firestore voucher repository now respects transaction object, 3) IVoucherRepository implementations aligned to new signature, 4) Transaction passed through all `voucherRepo.save()` calls inside `runTransaction` callbacks, 5) Checked `delete()` transaction need, Acceptance Criteria Mapping, Changes Implemented, code:bash (cd backend && npx tsc --noEmit) (+9 more)
+Nodes (18): Accounting Engine vs Accounting App/UI, Architectural Principles, Architecture: Accounting Module, COA Template Baseline (Perpetual-Ready Defaults), Cross-Module Touchpoints, Discovered bypass and fix, File Map (highest-leverage), Frontend (+10 more)
 
 ### Community 291 - "Community 291"
 Cohesion: 0.11
-Nodes (17): 1. Phase 7.1 — Per-User AI Rate Limiting, 2. Phase 4.1 — Respond in User's Language, 3. Phase 4.2 — Broader Intent Keywords, 4. Frontend Conversation History Sidebar, 91 — AI Assistant Remaining Polish: Rate Limiting, Keywords, Sidebar, Better Skill Matching, Burst Limit Details, Changes (+9 more)
+Nodes (18): Architecture: Credit Control, BLOCK policy and the override flow, code:block1 (currentExposure  = Σ outstandingAmountBase  (across all POST), code:ts ({), code:ts (ConfirmSalesOrderResult {), code:ts ({), code:ts (options.override = {), code:block6 (Frontend                      API Controller           Confi) (+10 more)
 
 ### Community 292 - "Community 292"
 Cohesion: 0.11
-Nodes (17): Feature Overview, Manual Test — 06: Cash Flow Statement, Prerequisites, TC-06.10 — `cashFlowCategory` Override (Critical), TC-06.11 — Empty/Low-Activity Period, TC-06.12 — Permission Guard, TC-06.1 — Sidebar Navigation and Route Access, TC-06.2 — Basic Page Layout and Defaults (+9 more)
+Nodes (18): 1. Create a Purchase Order, 2. Receive the goods (Goods Receipt), 3. Record the bill (Purchase Invoice), 4. Pay the bill, Common questions, Daily workflow (OPERATIONAL mode), First things to set up, Multi-currency (+10 more)
 
 ### Community 293 - "Community 293"
 Cohesion: 0.11
-Nodes (17): Feature Overview, Manual Test — 14: Voucher Attachments, Prerequisites, TC-14.10 — Cannot Delete Attachment on Posted Voucher, TC-14.11 — Attachments Persist After Reload, TC-14.12 — Security — Cross-Company Access, TC-14.1 — Upload a Single Attachment, TC-14.2 — Upload Multiple Attachments (+9 more)
+Nodes (18): 1. Create a Sales Order, 2. Deliver the goods (Delivery Note), 3. Invoice the customer, 4. Record the payment, Common questions, Customer-level overrides, Customer returns goods after you invoiced them (AFTER_INVOICE), Customer returns goods before you invoiced them (BEFORE_INVOICE) (+10 more)
 
 ### Community 294 - "Community 294"
 Cohesion: 0.11
+Nodes (18): 1. The problem (stated bluntly), 2. Today's entities (the moving parts), 3. The two flows (what we're building), 4. The five concrete deliverables, 5. What I'm NOT doing, 6. Order of execution (recommended), 7. What I need from you before I start, 8. Open questions I noticed during exploration (+10 more)
+
+### Community 295 - "Community 295"
+Cohesion: 0.11
 Nodes (18): 1A: Fix Known Bugs First, 1B: Test Accounting Module End-to-End, 1C: Test Inventory Module End-to-End, 1D: Test Sales Module End-to-End, 1E: Test Purchases Module End-to-End, 1F: Test Platform & Admin, ERP03 — Development Roadmap, Future (After Launch) (+10 more)
 
-### Community 301 - "Community 301"
-Cohesion: 0.25
-Nodes (15): buildKeyMap(), getLines(), isPresent(), normalizeHeader(), normalizeKey(), normalizeLine(), normalizePurchaseDocument(), readNumber() (+7 more)
+### Community 296 - "Community 296"
+Cohesion: 0.11
+Nodes (18): 119 — Phase D.6 Invoice Attachments, Acceptance Criteria, Accounting and architecture rationale, Attachment policy and control model, End-User View, Known Follow-ups, Manual QA Script — Operator View (run sequentially), Results (+10 more)
 
-### Community 302 - "Community 302"
+### Community 297 - "Community 297"
+Cohesion: 0.11
+Nodes (17): 1) Repository contract updated for transactional save, 2) Firestore voucher repository now respects transaction object, 3) IVoucherRepository implementations aligned to new signature, 4) Transaction passed through all `voucherRepo.save()` calls inside `runTransaction` callbacks, 5) Checked `delete()` transaction need, Acceptance Criteria Mapping, Changes Implemented, code:bash (cd backend && npx tsc --noEmit) (+9 more)
+
+### Community 298 - "Community 298"
+Cohesion: 0.11
+Nodes (17): 1. Phase 7.1 — Per-User AI Rate Limiting, 2. Phase 4.1 — Respond in User's Language, 3. Phase 4.2 — Broader Intent Keywords, 4. Frontend Conversation History Sidebar, 91 — AI Assistant Remaining Polish: Rate Limiting, Keywords, Sidebar, Better Skill Matching, Burst Limit Details, Changes (+9 more)
+
+### Community 299 - "Community 299"
+Cohesion: 0.11
+Nodes (17): Feature Overview, Manual Test — 06: Cash Flow Statement, Prerequisites, TC-06.10 — `cashFlowCategory` Override (Critical), TC-06.11 — Empty/Low-Activity Period, TC-06.12 — Permission Guard, TC-06.1 — Sidebar Navigation and Route Access, TC-06.2 — Basic Page Layout and Defaults (+9 more)
+
+### Community 300 - "Community 300"
+Cohesion: 0.11
+Nodes (17): Feature Overview, Manual Test — 14: Voucher Attachments, Prerequisites, TC-14.10 — Cannot Delete Attachment on Posted Voucher, TC-14.11 — Attachments Persist After Reload, TC-14.12 — Security — Cross-Company Access, TC-14.1 — Upload a Single Attachment, TC-14.2 — Upload Multiple Attachments (+9 more)
+
+### Community 301 - "Community 301"
+Cohesion: 0.11
+Nodes (18): 1A: Fix Known Bugs First, 1B: Test Accounting Module End-to-End, 1C: Test Inventory Module End-to-End, 1D: Test Sales Module End-to-End, 1E: Test Purchases Module End-to-End, 1F: Test Platform & Admin, ERP03 — Development Roadmap, Future (After Launch) (+10 more)
+
+### Community 306 - "Community 306"
+Cohesion: 0.12
+Nodes (14): isPurchaseDocumentDefinition(), resolvePurchaseLinePrice(), isSalesDocumentDefinition(), resolveSalesLinePrice(), evaluateMathExpression(), getCellKey(), getRowItemId(), handleAmountBlur() (+6 more)
+
+### Community 308 - "Community 308"
 Cohesion: 0.25
 Nodes (15): buildKeyMap(), getLines(), isPresent(), normalizeHeader(), normalizeKey(), normalizeLine(), normalizeSalesDocument(), readNumber() (+7 more)
 
-### Community 303 - "Community 303"
-Cohesion: 0.12
-Nodes (5): handleSave(), libraryEntryToField(), libraryTypeToDesignerType(), loadPageData(), loadTemplate()
-
-### Community 304 - "Community 304"
+### Community 309 - "Community 309"
 Cohesion: 0.2
 Nodes (14): getCoreFieldIds(), handleBack(), handleDragStartField(), handleDropField(), handleNext(), handleStepClick(), handleTemplateSelect(), moveSelectedFieldSection() (+6 more)
 
-### Community 305 - "Community 305"
+### Community 310 - "Community 310"
 Cohesion: 0.11
 Nodes (17): Accrual formula, Accrual is controller-invoked, not part of the posting transaction, AccrueCommissionForInvoiceUseCase, All commission use cases, API endpoints, Architecture: Salespersons and Commission Ledger, code:block1 (commissionAmountBase = roundMoney(baseAmount × commissionPct), code:block2 (ACCRUED  ──markPaid()──►  PAID) (+9 more)
 
-### Community 306 - "Community 306"
-Cohesion: 0.11
-Nodes (17): Approval before posting (2026-06-03), Architecture: Sales Module, code:block1 (Sales Order (SO) → Delivery Note (DN) → Sales Invoice (SI) →), Customer Statement engine reuse (Piece B — 2026-05-27, complete), Customers, Document Model, File Map, Key Use Cases (+9 more)
-
-### Community 307 - "Community 307"
-Cohesion: 0.11
-Nodes (18): 7. Business Rules, S10 — Partial Operations, S11 — Tax Snapshot, S12 — Multi-Currency, S13 — Payment Ownership, S14 — GL Account Resolution, S15 — Sales Return After Invoice, S16 — Sales Return Before Invoice (CONTROLLED) (+10 more)
-
-### Community 308 - "Community 308"
-Cohesion: 0.11
-Nodes (16): Architecture Notes, Backend, Backend, Backend, Frontend, Frontend, Frontend, Phase 0 — Shared Services (COMPLETE ✅) (+8 more)
-
-### Community 309 - "Community 309"
-Cohesion: 0.11
-Nodes (17): Account Balance Tool Results, AI Assistant Runtime v2 — User Guide, AI Proposals, Certification Pre-Flight Diagnostics, Certification Workflows, Certified Model Safety, code:text (Show me the balance for account 1010101), Controlling Context Cost (+9 more)
-
-### Community 310 - "Community 310"
-Cohesion: 0.11
-Nodes (17): Activate or deactivate a form, Add a custom form from scratch, Available Types, Clone a locked default to customise it, Common tasks, Concepts in one paragraph, Export a form as JSON, Forms Management (+9 more)
-
 ### Community 311 - "Community 311"
 Cohesion: 0.11
-Nodes (17): 1. Direct invoice, 2. Operational linked invoice, 3. Discounts and charges, 4. Payments, 5. When to use each mode, 6. Common mistakes, Allowing a direct invoice form in Operational workflow, Charges / additions (+9 more)
+Nodes (17): Approval before posting (2026-06-03), Architecture: Sales Module, Cost enforcement by accounting mode, Customer Statement engine reuse (Piece B — 2026-05-27, complete), Customers, File Map, Inventory Integration, Key Use Cases (+9 more)
 
 ### Community 312 - "Community 312"
 Cohesion: 0.11
-Nodes (18): BundleItem, BundleRegistry, code:ts (ModuleRegistry {), code:ts (ModuleCapabilityRegistry {), code:ts (BundleRegistry {), code:ts (BundleItem {), code:ts (CompanyEntitlement {), code:ts (CompanyEntitlementItem {) (+10 more)
+Nodes (18): 7. Business Rules, S10 — Partial Operations, S11 — Tax Snapshot, S12 — Multi-Currency, S13 — Payment Ownership, S14 — GL Account Resolution, S15 — Sales Return After Invoice, S16 — Sales Return Before Invoice (CONTROLLED) (+10 more)
 
 ### Community 313 - "Community 313"
 Cohesion: 0.11
-Nodes (17): Acceptance Criteria Check, Architecture/contract changes, Behavior details, End-User View, Known Follow-ups, Main files changed, Manual QA Script — Operator View (run sequentially), Results (+9 more)
+Nodes (16): Architecture Notes, Backend, Backend, Backend, Frontend, Frontend, Frontend, Phase 0 — Shared Services (COMPLETE ✅) (+8 more)
 
 ### Community 314 - "Community 314"
 Cohesion: 0.11
-Nodes (16): 1) Fix D — P&L source-of-truth moved to ledger, 2) Fix L — Account `isUsed()` correctness, 3) Fix A — CC-only approval bypass, 4) Test updates for P&L migration, 5) Verification compatibility fix, Acceptance Criteria Mapping, Changes Implemented, code:bash (cd backend && npx tsc --noEmit) (+8 more)
+Nodes (17): Account Balance Tool Results, AI Assistant Runtime v2 — User Guide, AI Proposals, Certification Pre-Flight Diagnostics, Certification Workflows, Certified Model Safety, code:text (Show me the balance for account 1010101), Controlling Context Cost (+9 more)
 
 ### Community 315 - "Community 315"
 Cohesion: 0.11
-Nodes (16): 10. Verification Results, 1. Module Code Consistency — ✅ PASS, 2. Permission Naming — ✅ PASS, 3. Backend Security — ✅ PASS, 4. Advisory-Only Behavior — ✅ PASS, 5. Provider Behavior — ✅ PASS, 6. Firestore + Prisma — ✅ PASS, 7. Frontend Behavior — ✅ PASS (with fix) (+8 more)
+Nodes (17): Activate or deactivate a form, Add a custom form from scratch, Available Types, Clone a locked default to customise it, Common tasks, Concepts in one paragraph, Export a form as JSON, Forms Management (+9 more)
 
 ### Community 316 - "Community 316"
 Cohesion: 0.11
-Nodes (16): aiAssistantApi (new), API Client Functions Added, Backend (2 files), Build Results, Frontend — Modified Files (10), Frontend — New Files (2), How Each UI Works, Increment 3 Completion Report: Frontend AI Certification UI (+8 more)
+Nodes (17): 1. Direct invoice, 2. Operational linked invoice, 3. Discounts and charges, 4. Payments, 5. When to use each mode, 6. Common mistakes, Allowing a direct invoice form in Operational workflow, Charges / additions (+9 more)
 
 ### Community 317 - "Community 317"
 Cohesion: 0.11
-Nodes (16): Feature Overview, Manual Test — 03: Fiscal Year & Period Management, Prerequisites, TC-03.10 — Backward Compatibility, TC-03.11 — Year-End Closing Wizard & Audit Trail, TC-03.1 — Access Fiscal Year Management, TC-03.2 — Create a Standard Monthly Fiscal Year, TC-03.3 — Create a Quarterly Fiscal Year (+8 more)
+Nodes (18): BundleItem, BundleRegistry, code:ts (ModuleRegistry {), code:ts (ModuleCapabilityRegistry {), code:ts (BundleRegistry {), code:ts (BundleItem {), code:ts (CompanyEntitlement {), code:ts (CompanyEntitlementItem {) (+10 more)
 
 ### Community 318 - "Community 318"
 Cohesion: 0.11
-Nodes (16): Feature Overview, Manual Test — 08: Journal / Day Book Report, Prerequisites, TC-08.10 — Print Layout, TC-08.11 — Consistency with General Ledger, TC-08.1 — Basic Page Load, TC-08.2 — Voucher Block Display, TC-08.3 — Chronological Order (+8 more)
+Nodes (17): Acceptance Criteria Check, Architecture/contract changes, Behavior details, End-User View, Known Follow-ups, Main files changed, Manual QA Script — Operator View (run sequentially), Results (+9 more)
 
 ### Community 319 - "Community 319"
 Cohesion: 0.11
-Nodes (16): Feature Overview, Manual Test — 09: Bank Reconciliation, Prerequisites, TC-09.10 — Historical Reconciliations, TC-09.11 — Permission Check, TC-09.1 — Access Reconciliation Page, TC-09.2 — Import CSV Bank Statement, TC-09.3 — Import OFX Bank Statement (+8 more)
+Nodes (16): 1) Fix D — P&L source-of-truth moved to ledger, 2) Fix L — Account `isUsed()` correctness, 3) Fix A — CC-only approval bypass, 4) Test updates for P&L migration, 5) Verification compatibility fix, Acceptance Criteria Mapping, Changes Implemented, code:bash (cd backend && npx tsc --noEmit) (+8 more)
 
 ### Community 320 - "Community 320"
 Cohesion: 0.11
-Nodes (17): 10 — Budget Module, Acceptance Criteria, Business Context, code:typescript (interface Budget {), code:block2 (CreateBudgetUseCase), code:block3 (GET    /accounting/budgets             — List budgets), Current State, Data Model (+9 more)
+Nodes (16): 10. Verification Results, 1. Module Code Consistency — ✅ PASS, 2. Permission Naming — ✅ PASS, 3. Backend Security — ✅ PASS, 4. Advisory-Only Behavior — ✅ PASS, 5. Provider Behavior — ✅ PASS, 6. Firestore + Prisma — ✅ PASS, 7. Frontend Behavior — ✅ PASS (with fix) (+8 more)
 
 ### Community 321 - "Community 321"
 Cohesion: 0.11
-Nodes (17): 21 — User & Role Management Testing, Acceptance Criteria, Current State, Implementation Plan, Manual (with two browsers/accounts), Problem Statement (from TODO), Requirements, Step 1: Review Existing User Management Code (+9 more)
+Nodes (16): aiAssistantApi (new), API Client Functions Added, Backend (2 files), Build Results, Frontend — Modified Files (10), Frontend — New Files (2), How Each UI Works, Increment 3 Completion Report: Frontend AI Certification UI (+8 more)
 
 ### Community 322 - "Community 322"
 Cohesion: 0.11
-Nodes (17): 23 — Firestore Security Rules (Production-Ready), Acceptance Criteria, code:block1 (allow read, write: if request.time < timestamp.date(2026, 6,), code:javascript (rules_version = '2';), code:javascript (rules_version = '2';), code:bash (firebase emulators:start --only firestore), Current Architecture Context, Functional (+9 more)
+Nodes (16): Feature Overview, Manual Test — 03: Fiscal Year & Period Management, Prerequisites, TC-03.10 — Backward Compatibility, TC-03.11 — Year-End Closing Wizard & Audit Trail, TC-03.1 — Access Fiscal Year Management, TC-03.2 — Create a Standard Monthly Fiscal Year, TC-03.3 — Create a Quarterly Fiscal Year (+8 more)
 
 ### Community 323 - "Community 323"
 Cohesion: 0.11
-Nodes (17): Decisions locked (2026-05-20), Goal, How this plan stays honest, How to use this doc, PHASE A — Sales master data & pricing engine, PHASE B — Sales operational features, PHASE C — Sales finance & reporting, PHASE D — Sales auditability & control (+9 more)
+Nodes (16): Feature Overview, Manual Test — 08: Journal / Day Book Report, Prerequisites, TC-08.10 — Print Layout, TC-08.11 — Consistency with General Ledger, TC-08.1 — Basic Page Load, TC-08.2 — Voucher Block Display, TC-08.3 — Chronological Order (+8 more)
 
 ### Community 324 - "Community 324"
 Cohesion: 0.11
-Nodes (16): 1. New `StockAdjustment` Entity, 1. Stock Adjustment Page, 2. New `StockTransfer` Entity, 2. Stock Transfer Page, 3. Repository Interfaces, 4. Use Cases, 5. API Routes, Accounting Integration (Stock Adjustment → Voucher) (+8 more)
+Nodes (16): Feature Overview, Manual Test — 09: Bank Reconciliation, Prerequisites, TC-09.10 — Historical Reconciliations, TC-09.11 — Permission Check, TC-09.1 — Access Reconciliation Page, TC-09.2 — Import CSV Bank Statement, TC-09.3 — Import OFX Bank Statement (+8 more)
 
 ### Community 325 - "Community 325"
 Cohesion: 0.11
-Nodes (16): 1. `SalesInvoice` Entity, 2. New Voucher Strategy: `SalesInvoiceStrategy`, 3. Register Strategy, 4. Use Cases, 5. API Routes, Backend, code:typescript (export class SalesInvoice {), code:typescript (/**) (+8 more)
+Nodes (17): 10 — Budget Module, Acceptance Criteria, Business Context, code:typescript (interface Budget {), code:block2 (CreateBudgetUseCase), code:block3 (GET    /accounting/budgets             — List budgets), Current State, Data Model (+9 more)
 
 ### Community 326 - "Community 326"
 Cohesion: 0.11
-Nodes (18): BundleItem, BundleRegistry, code:ts (ModuleRegistry {), code:ts (ModuleCapabilityRegistry {), code:ts (BundleRegistry {), code:ts (BundleItem {), code:ts (CompanyEntitlement {), code:ts (CompanyEntitlementItem {) (+10 more)
+Nodes (17): Acceptance Criteria, Goal, Risks, Scope, Slice 1 - completed 2026-06-04, Slice 2 - completed 2026-06-04, Slice 3A - route/page coverage matrix - completed 2026-06-05, Slice 3B - route/sidebar adapter - completed 2026-06-05 (+9 more)
 
 ### Community 327 - "Community 327"
 Cohesion: 0.11
-Nodes (17): 10 — Budget Module, Acceptance Criteria, Business Context, code:typescript (interface Budget {), code:block2 (CreateBudgetUseCase), code:block3 (GET    /accounting/budgets             — List budgets), Current State, Data Model (+9 more)
+Nodes (17): 21 — User & Role Management Testing, Acceptance Criteria, Current State, Implementation Plan, Manual (with two browsers/accounts), Problem Statement (from TODO), Requirements, Step 1: Review Existing User Management Code (+9 more)
 
 ### Community 328 - "Community 328"
 Cohesion: 0.11
-Nodes (17): 21 — User & Role Management Testing, Acceptance Criteria, Current State, Implementation Plan, Manual (with two browsers/accounts), Problem Statement (from TODO), Requirements, Step 1: Review Existing User Management Code (+9 more)
+Nodes (17): 23 — Firestore Security Rules (Production-Ready), Acceptance Criteria, code:block1 (allow read, write: if request.time < timestamp.date(2026, 6,), code:javascript (rules_version = '2';), code:javascript (rules_version = '2';), code:bash (firebase emulators:start --only firestore), Current Architecture Context, Functional (+9 more)
 
 ### Community 329 - "Community 329"
 Cohesion: 0.11
-Nodes (17): 23 — Firestore Security Rules (Production-Ready), Acceptance Criteria, code:block1 (allow read, write: if request.time < timestamp.date(2026, 6,), code:javascript (rules_version = '2';), code:javascript (rules_version = '2';), code:bash (firebase emulators:start --only firestore), Current Architecture Context, Functional (+9 more)
+Nodes (17): Decisions locked (2026-05-20), Goal, How this plan stays honest, How to use this doc, PHASE A — Sales master data & pricing engine, PHASE B — Sales operational features, PHASE C — Sales finance & reporting, PHASE D — Sales auditability & control (+9 more)
+
+### Community 330 - "Community 330"
+Cohesion: 0.11
+Nodes (16): 1. New `StockAdjustment` Entity, 1. Stock Adjustment Page, 2. New `StockTransfer` Entity, 2. Stock Transfer Page, 3. Repository Interfaces, 4. Use Cases, 5. API Routes, Accounting Integration (Stock Adjustment → Voucher) (+8 more)
 
 ### Community 331 - "Community 331"
+Cohesion: 0.11
+Nodes (16): 1. `SalesInvoice` Entity, 2. New Voucher Strategy: `SalesInvoiceStrategy`, 3. Register Strategy, 4. Use Cases, 5. API Routes, Backend, code:typescript (export class SalesInvoice {), code:typescript (/**) (+8 more)
+
+### Community 332 - "Community 332"
+Cohesion: 0.11
+Nodes (18): BundleItem, BundleRegistry, code:ts (ModuleRegistry {), code:ts (ModuleCapabilityRegistry {), code:ts (BundleRegistry {), code:ts (BundleItem {), code:ts (CompanyEntitlement {), code:ts (CompanyEntitlementItem {) (+10 more)
+
+### Community 333 - "Community 333"
+Cohesion: 0.11
+Nodes (17): 10 — Budget Module, Acceptance Criteria, Business Context, code:typescript (interface Budget {), code:block2 (CreateBudgetUseCase), code:block3 (GET    /accounting/budgets             — List budgets), Current State, Data Model (+9 more)
+
+### Community 334 - "Community 334"
+Cohesion: 0.11
+Nodes (17): 21 — User & Role Management Testing, Acceptance Criteria, Current State, Implementation Plan, Manual (with two browsers/accounts), Problem Statement (from TODO), Requirements, Step 1: Review Existing User Management Code (+9 more)
+
+### Community 335 - "Community 335"
+Cohesion: 0.11
+Nodes (17): 23 — Firestore Security Rules (Production-Ready), Acceptance Criteria, code:block1 (allow read, write: if request.time < timestamp.date(2026, 6,), code:javascript (rules_version = '2';), code:javascript (rules_version = '2';), code:bash (firebase emulators:start --only firestore), Current Architecture Context, Functional (+9 more)
+
+### Community 336 - "Community 336"
 Cohesion: 0.26
 Nodes (4): currentMonthStart(), ReportRunner, round2(), today()
 
-### Community 332 - "Community 332"
-Cohesion: 0.17
-Nodes (6): makeInvoice(), makeLine(), GetSalesByCustomerUseCase, GetSalesByItemUseCase, GetSalesBySalespersonUseCase, round2()
-
-### Community 333 - "Community 333"
-Cohesion: 0.2
-Nodes (4): FirestorePostingLogRepository, fromTimestamp(), toTimestamp(), PostingLog
-
 ### Community 337 - "Community 337"
-Cohesion: 0.15
-Nodes (5): CreateFieldLibraryEntryUseCase, DeprecateFieldLibraryEntryUseCase, HardDeleteFieldLibraryEntryUseCase, UpdateFieldLibraryEntryUseCase, validateInput()
-
-### Community 338 - "Community 338"
-Cohesion: 0.14
-Nodes (4): FirestoreFormDefinitionRepository, FormDefinitionMapper, VoucherTypeDefinitionMapper, VoucherTypeDefinitionValidator
-
-### Community 340 - "Community 340"
-Cohesion: 0.21
-Nodes (14): useVouchers(), backupLegacyData(), buildHeaderFieldsFromLegacy(), buildTableColumnsFromLegacy(), generateId(), generateSafeCode(), isMigrationCompleted(), loadCanonicalDefinitions() (+6 more)
-
-### Community 341 - "Community 341"
-Cohesion: 0.12
-Nodes (16): Accounting Integration, Architecture: Inventory Module, Atomic updates, Backdating, Core Concepts, Costing — Phase 1 (Implemented), Documents (User-facing workflows), Dual-track cost storage (+8 more)
-
-### Community 342 - "Community 342"
-Cohesion: 0.12
-Nodes (16): AI Assistant, Architecture at a glance, Auth, Backend, code:bash (# Prerequisites: Node 20+, Firebase CLI, Java (for Firestore), code:block2 (START → read planning/ACTIVE.md → do work → BEFORE marking d), Database, Engineer Handoff Guide (+8 more)
-
-### Community 343 - "Community 343"
-Cohesion: 0.12
-Nodes (15): 1  Currency Conversion, 2  processIN, 3  processOUT, 4  processTRANSFER, 5  Helper: deriveCostSource, 6  Helper: getOrCreateStockLevel, 7  Bug Fix Verification Checklist, code:block1 (function convertCosts(unitCostInMoveCurrency, moveCurrency,) (+7 more)
-
-### Community 344 - "Community 344"
-Cohesion: 0.12
-Nodes (16): code:block1 (1. Provider     →  who hosts the model?            e.g. Open), Common failure patterns, Quick reference — what each step writes to the database, Resetting / starting over, Resetting / starting over (revisited), "Run all categories" — Step 5, Setting up AI — Super Admin guide, Step 1 — Provider (+8 more)
-
-### Community 345 - "Community 345"
-Cohesion: 0.12
-Nodes (16): Backdating, Common questions, Daily activities, First things to set up, How costing works, Inventory — User Guide, Low stock alerts, Moving stock between warehouses — Stock Transfer (+8 more)
-
-### Community 346 - "Community 346"
-Cohesion: 0.12
-Nodes (16): 1. Validation of Assumptions, 2. Best Architecture for Online Customers, 3. Best Architecture for Offline Customers, 4. What You Can Reuse from Your Current Stack, 5. What You Must Add/Change, 6. Final Recommendation, Answer to Question G — Yes, Biggest Risks (Answer to Question H) (+8 more)
-
-### Community 347 - "Community 347"
-Cohesion: 0.12
-Nodes (16): Acceptance Criteria, code:text (backend implementation exists), code:text (platform_only), code:text (platform_only: only SuperAdmin can grant/enable for a compan), code:text (1. Capability exists in DB.), code:text (ListCompanyModulesUseCase reads ModuleRegistry code directly), code:text (1. Do not break existing companies.), code:text (companyAdmin) (+8 more)
-
-### Community 348 - "Community 348"
-Cohesion: 0.12
-Nodes (16): 108 — Phase A: Sales Master Data & Pricing Engine, A.1 — Price Lists, A.2 — Customer Groups, A.3 — Customer credit settings, A.4 — Salesperson + commission ledger, A.5 — Tax codes refinement, A.6 — Frontend + API wiring, A.7 — Tests & docs (+8 more)
-
-### Community 349 - "Community 349"
-Cohesion: 0.12
-Nodes (16): 138 — Task 132 Phase 0.5: Chrome inventory & mode-awareness baseline, 1. Mode-awareness state, 2. Action safety violations, 3. Raw date inputs, 4. Page-local selectors (`accountId`, `partyId`, `itemId`, `warehouseId`), 5. Duplicate React Query providers, 6. Dev routes visible to tenants, 7. Report contract — fully on `ReportContainer` ✅ (+8 more)
-
-### Community 350 - "Community 350"
-Cohesion: 0.12
-Nodes (15): 1) Technical Developer View, 2) End-User View, Acceptance Criteria Met, Backend Files, Completion Report: Audit Blockers — Settlement Workflow, Frontend Files, How It Works, Prisma Transaction Parity (+7 more)
-
-### Community 351 - "Community 351"
-Cohesion: 0.12
-Nodes (15): 70 — AI Assistant Runtime v2: Guarded Tool Calls + Proposal Sandbox Integration, Access, Backend Highlights, End-User View, Frontend Highlights, Known Follow-ups, Manual-Test Detour: Firestore Metadata Serialization, Review Notes (+7 more)
-
-### Community 352 - "Community 352"
-Cohesion: 0.12
-Nodes (16): 1. Direct invoice commercial terms foundation, 2. Sales payment abstraction, 3. Direct invoice UI pass, 4. Operational linked invoice alignment, 5. DTO cleanup, 6. Manual QA blocker fixes, Acceptance Criteria Met, End-User View (+8 more)
-
-### Community 353 - "Community 353"
-Cohesion: 0.12
-Nodes (15): Feature Overview, Manual Test — 11: Aging Reports (AR / AP), Prerequisites, TC-11.10 — Print / Export, TC-11.1 — Access Aging Report, TC-11.2 — AR Aging Report, TC-11.3 — AP Aging Report, TC-11.4 — Aging Bucket Accuracy (+7 more)
-
-### Community 354 - "Community 354"
-Cohesion: 0.12
-Nodes (15): Feature Overview, Manual Test — 12: Multi-Company Consolidation, Prerequisites, TC-12.10 — Permission Check, TC-12.1 — Access Consolidation Page, TC-12.2 — Create a Company Group, TC-12.3 — View Consolidated Trial Balance, TC-12.4 — FX Conversion Accuracy (+7 more)
-
-### Community 355 - "Community 355"
-Cohesion: 0.12
-Nodes (15): Feature Overview, Manual Test — 13: Recurring Vouchers, Prerequisites, TC-13.10 — Empty State, TC-13.1 — Access Recurring Vouchers Page, TC-13.2 — Create a Recurring Template, TC-13.3 — Generate Vouchers (Manual Trigger), TC-13.4 — Generated Voucher Follows Normal Workflow (+7 more)
-
-### Community 356 - "Community 356"
-Cohesion: 0.12
-Nodes (15): Feature Overview, Manual Test — 15: Export to Excel / PDF, Prerequisites, TC-15.10 — Export Multiple Reports, TC-15.1 — Balance Sheet — Export Excel, TC-15.2 — Balance Sheet — Export PDF, TC-15.3 — Trial Balance — Export Excel, TC-15.4 — P&L / Income Statement — Export Excel (+7 more)
-
-### Community 357 - "Community 357"
-Cohesion: 0.12
-Nodes (16): 08 — Journal / Day Book Report, Acceptance Criteria, Business Context, code:block1 (═══════════════════════════════════════════════════════════), code:typescript (getJournal(companyId: string, filters: JournalFilters): Prom), Current State, Functional, Implementation Plan (+8 more)
-
-### Community 358 - "Community 358"
-Cohesion: 0.12
-Nodes (16): Delivery Note, Document Types to Design, Field Classification Rules, Fields Per Document Type, Forms Designer — Default Designs & Seeding, Goods Receipt Note, How To Do It, Known Bugs to Fix First (+8 more)
-
-### Community 359 - "Community 359"
-Cohesion: 0.12
-Nodes (16): Acceptance Criteria, Goal, Risks, Scope, Slice 1 - completed 2026-06-04, Slice 2 - completed 2026-06-04, Slice 3A - route/page coverage matrix - completed 2026-06-05, Slice 3B - route/sidebar adapter - completed 2026-06-05 (+8 more)
-
-### Community 360 - "Community 360"
-Cohesion: 0.12
-Nodes (16): 26 — Production Logging & Observability, Acceptance Criteria, Architecture: SQL Migration Ready, code:typescript (const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };), code:typescript (import { v4 as uuid } from 'uuid';), code:typescript (res.setHeader('x-response-time', `${duration}ms`);), Current State, Implementation Plan (+8 more)
-
-### Community 361 - "Community 361"
-Cohesion: 0.12
-Nodes (16): 27 — API Security Hardening, Acceptance Criteria, Architecture: SQL Migration Ready, code:bash (cd backend && npm install helmet cors express-rate-limit com), code:typescript (import helmet from 'helmet';), code:block3 (ALLOWED_ORIGINS=http://localhost:5173,https://your-productio), code:bash (curl -I https://your-api-url/api/health), Current State (+8 more)
-
-### Community 362 - "Community 362"
-Cohesion: 0.12
-Nodes (17): 1a. Add the type (after line 17, near other type declarations):, 1b. Add to `AccountProps` (after `cashFlowCategory` on line 154):, 1c. Add to `Account` class fields (after `cashFlowCategory` on line 199):, 1d. Add to constructor (after `cashFlowCategory` assignment on line 245):, 1e. Add to `toJSON()` (after `cashFlowCategory` on line 423):, 1f. Add to `fromJSON()` (after `cashFlowCategory` on line 451):, 1g. Add to `getMutableFields()` (after `custodianUserId` on line 359):, 1h. Add validation in `validate()` method (after currency validation, around line 384): (+9 more)
-
-### Community 363 - "Community 363"
-Cohesion: 0.12
-Nodes (15): 1. Module Settings: Default Account Mappings, 2. Setup Wizard / Account Auto-Creation, 3. Account Validation Service, Account Mapping Settings Page, Backend, code:typescript (export interface InventoryModuleSettings {), Feature 06: COA Alignment & Accounting Integration, For Inventory Module (+7 more)
-
-### Community 364 - "Community 364"
-Cohesion: 0.12
-Nodes (17): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1A, Changes, Changes, Changes, Changes, Changes, Rabbit Holes Logged, Rabbit Holes Logged (+9 more)
-
-### Community 365 - "Community 365"
-Cohesion: 0.12
-Nodes (17): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 2A, 2026-05-13 Progress — AI Assistant Fixing Plan Phase 3A, Changes, Changes, Changes, Changes, Changes, Changes (+9 more)
-
-### Community 366 - "Community 366"
-Cohesion: 0.12
-Nodes (17): 2026-05-12 Result — AI Assistant Fixing Plan Phase 1 Business Model Fix, Completed Subtasks, Completed Subtasks, Completed Subtasks, Completed Subtasks, Completed Subtasks, Detours, Documentation (+9 more)
-
-### Community 367 - "Community 367"
-Cohesion: 0.12
-Nodes (16): 1. Validation of Assumptions, 2. Best Architecture for Online Customers, 3. Best Architecture for Offline Customers, 4. What You Can Reuse from Your Current Stack, 5. What You Must Add/Change, 6. Final Recommendation, Answer to Question G — Yes, Biggest Risks (Answer to Question H) (+8 more)
-
-### Community 368 - "Community 368"
-Cohesion: 0.12
-Nodes (16): 08 — Journal / Day Book Report, Acceptance Criteria, Business Context, code:block1 (═══════════════════════════════════════════════════════════), code:typescript (getJournal(companyId: string, filters: JournalFilters): Prom), Current State, Functional, Implementation Plan (+8 more)
-
-### Community 369 - "Community 369"
-Cohesion: 0.12
-Nodes (16): Delivery Note, Document Types to Design, Field Classification Rules, Fields Per Document Type, Forms Designer — Default Designs & Seeding, Goods Receipt Note, How To Do It, Known Bugs to Fix First (+8 more)
-
-### Community 370 - "Community 370"
-Cohesion: 0.12
-Nodes (16): 26 — Production Logging & Observability, Acceptance Criteria, Architecture: SQL Migration Ready, code:typescript (const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };), code:typescript (import { v4 as uuid } from 'uuid';), code:typescript (res.setHeader('x-response-time', `${duration}ms`);), Current State, Implementation Plan (+8 more)
-
-### Community 371 - "Community 371"
-Cohesion: 0.12
-Nodes (16): 27 — API Security Hardening, Acceptance Criteria, Architecture: SQL Migration Ready, code:bash (cd backend && npm install helmet cors express-rate-limit com), code:typescript (import helmet from 'helmet';), code:block3 (ALLOWED_ORIGINS=http://localhost:5173,https://your-productio), code:bash (curl -I https://your-api-url/api/health), Current State (+8 more)
-
-### Community 372 - "Community 372"
-Cohesion: 0.12
-Nodes (17): 1a. Add the type (after line 17, near other type declarations):, 1b. Add to `AccountProps` (after `cashFlowCategory` on line 154):, 1c. Add to `Account` class fields (after `cashFlowCategory` on line 199):, 1d. Add to constructor (after `cashFlowCategory` assignment on line 245):, 1e. Add to `toJSON()` (after `cashFlowCategory` on line 423):, 1f. Add to `fromJSON()` (after `cashFlowCategory` on line 451):, 1g. Add to `getMutableFields()` (after `custodianUserId` on line 359):, 1h. Add validation in `validate()` method (after currency validation, around line 384): (+9 more)
-
-### Community 373 - "Community 373"
-Cohesion: 0.15
-Nodes (6): CreateWarehouseUseCase, GetWarehouseUseCase, ListWarehousesUseCase, normalizeParentId(), resolveValidatedParent(), UpdateWarehouseUseCase
-
-### Community 376 - "Community 376"
 Cohesion: 0.15
 Nodes (3): FirestoreAiCreditLedgerRepository, stripUndefinedDeep(), AiCreditLedger
 
-### Community 378 - "Community 378"
+### Community 339 - "Community 339"
+Cohesion: 0.2
+Nodes (4): FirestorePostingLogRepository, fromTimestamp(), toTimestamp(), PostingLog
+
+### Community 344 - "Community 344"
+Cohesion: 0.12
+Nodes (16): Accounting Integration, Architecture: Inventory Module, Atomic updates, Backdating, Core Concepts, Costing — Phase 1 (Implemented), Documents (User-facing workflows), Dual-track cost storage (+8 more)
+
+### Community 345 - "Community 345"
+Cohesion: 0.12
+Nodes (16): AI Assistant, Architecture at a glance, Auth, Backend, code:bash (# Prerequisites: Node 20+, Firebase CLI, Java (for Firestore), code:block2 (START → read planning/ACTIVE.md → do work → BEFORE marking d), Database, Engineer Handoff Guide (+8 more)
+
+### Community 346 - "Community 346"
+Cohesion: 0.12
+Nodes (15): 1  Currency Conversion, 2  processIN, 3  processOUT, 4  processTRANSFER, 5  Helper: deriveCostSource, 6  Helper: getOrCreateStockLevel, 7  Bug Fix Verification Checklist, code:block1 (function convertCosts(unitCostInMoveCurrency, moveCurrency,) (+7 more)
+
+### Community 347 - "Community 347"
+Cohesion: 0.12
+Nodes (16): code:block1 (1. Provider     →  who hosts the model?            e.g. Open), Common failure patterns, Quick reference — what each step writes to the database, Resetting / starting over, Resetting / starting over (revisited), "Run all categories" — Step 5, Setting up AI — Super Admin guide, Step 1 — Provider (+8 more)
+
+### Community 348 - "Community 348"
+Cohesion: 0.12
+Nodes (16): Backdating, Common questions, Daily activities, First things to set up, How costing works, Inventory — User Guide, Low stock alerts, Moving stock between warehouses — Stock Transfer (+8 more)
+
+### Community 349 - "Community 349"
+Cohesion: 0.12
+Nodes (16): 1. Validation of Assumptions, 2. Best Architecture for Online Customers, 3. Best Architecture for Offline Customers, 4. What You Can Reuse from Your Current Stack, 5. What You Must Add/Change, 6. Final Recommendation, Answer to Question G — Yes, Biggest Risks (Answer to Question H) (+8 more)
+
+### Community 350 - "Community 350"
+Cohesion: 0.12
+Nodes (16): 108 — Phase A: Sales Master Data & Pricing Engine, A.1 — Price Lists, A.2 — Customer Groups, A.3 — Customer credit settings, A.4 — Salesperson + commission ledger, A.5 — Tax codes refinement, A.6 — Frontend + API wiring, A.7 — Tests & docs (+8 more)
+
+### Community 351 - "Community 351"
+Cohesion: 0.12
+Nodes (16): 138 — Task 132 Phase 0.5: Chrome inventory & mode-awareness baseline, 1. Mode-awareness state, 2. Action safety violations, 3. Raw date inputs, 4. Page-local selectors (`accountId`, `partyId`, `itemId`, `warehouseId`), 5. Duplicate React Query providers, 6. Dev routes visible to tenants, 7. Report contract — fully on `ReportContainer` ✅ (+8 more)
+
+### Community 352 - "Community 352"
+Cohesion: 0.12
+Nodes (15): 1) Technical Developer View, 2) End-User View, Acceptance Criteria Met, Backend Files, Completion Report: Audit Blockers — Settlement Workflow, Frontend Files, How It Works, Prisma Transaction Parity (+7 more)
+
+### Community 353 - "Community 353"
+Cohesion: 0.12
+Nodes (15): 70 — AI Assistant Runtime v2: Guarded Tool Calls + Proposal Sandbox Integration, Access, Backend Highlights, End-User View, Frontend Highlights, Known Follow-ups, Manual-Test Detour: Firestore Metadata Serialization, Review Notes (+7 more)
+
+### Community 354 - "Community 354"
+Cohesion: 0.12
+Nodes (16): 1. Direct invoice commercial terms foundation, 2. Sales payment abstraction, 3. Direct invoice UI pass, 4. Operational linked invoice alignment, 5. DTO cleanup, 6. Manual QA blocker fixes, Acceptance Criteria Met, End-User View (+8 more)
+
+### Community 355 - "Community 355"
+Cohesion: 0.12
+Nodes (15): Feature Overview, Manual Test — 11: Aging Reports (AR / AP), Prerequisites, TC-11.10 — Print / Export, TC-11.1 — Access Aging Report, TC-11.2 — AR Aging Report, TC-11.3 — AP Aging Report, TC-11.4 — Aging Bucket Accuracy (+7 more)
+
+### Community 356 - "Community 356"
+Cohesion: 0.12
+Nodes (15): Feature Overview, Manual Test — 12: Multi-Company Consolidation, Prerequisites, TC-12.10 — Permission Check, TC-12.1 — Access Consolidation Page, TC-12.2 — Create a Company Group, TC-12.3 — View Consolidated Trial Balance, TC-12.4 — FX Conversion Accuracy (+7 more)
+
+### Community 357 - "Community 357"
+Cohesion: 0.12
+Nodes (15): Feature Overview, Manual Test — 13: Recurring Vouchers, Prerequisites, TC-13.10 — Empty State, TC-13.1 — Access Recurring Vouchers Page, TC-13.2 — Create a Recurring Template, TC-13.3 — Generate Vouchers (Manual Trigger), TC-13.4 — Generated Voucher Follows Normal Workflow (+7 more)
+
+### Community 358 - "Community 358"
+Cohesion: 0.12
+Nodes (15): Feature Overview, Manual Test — 15: Export to Excel / PDF, Prerequisites, TC-15.10 — Export Multiple Reports, TC-15.1 — Balance Sheet — Export Excel, TC-15.2 — Balance Sheet — Export PDF, TC-15.3 — Trial Balance — Export Excel, TC-15.4 — P&L / Income Statement — Export Excel (+7 more)
+
+### Community 359 - "Community 359"
+Cohesion: 0.12
+Nodes (16): 08 — Journal / Day Book Report, Acceptance Criteria, Business Context, code:block1 (═══════════════════════════════════════════════════════════), code:typescript (getJournal(companyId: string, filters: JournalFilters): Prom), Current State, Functional, Implementation Plan (+8 more)
+
+### Community 360 - "Community 360"
+Cohesion: 0.12
+Nodes (16): Delivery Note, Document Types to Design, Field Classification Rules, Fields Per Document Type, Forms Designer — Default Designs & Seeding, Goods Receipt Note, How To Do It, Known Bugs to Fix First (+8 more)
+
+### Community 361 - "Community 361"
+Cohesion: 0.12
+Nodes (16): 26 — Production Logging & Observability, Acceptance Criteria, Architecture: SQL Migration Ready, code:typescript (const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };), code:typescript (import { v4 as uuid } from 'uuid';), code:typescript (res.setHeader('x-response-time', `${duration}ms`);), Current State, Implementation Plan (+8 more)
+
+### Community 362 - "Community 362"
+Cohesion: 0.12
+Nodes (16): 27 — API Security Hardening, Acceptance Criteria, Architecture: SQL Migration Ready, code:bash (cd backend && npm install helmet cors express-rate-limit com), code:typescript (import helmet from 'helmet';), code:block3 (ALLOWED_ORIGINS=http://localhost:5173,https://your-productio), code:bash (curl -I https://your-api-url/api/health), Current State (+8 more)
+
+### Community 363 - "Community 363"
+Cohesion: 0.12
+Nodes (17): 1a. Add the type (after line 17, near other type declarations):, 1b. Add to `AccountProps` (after `cashFlowCategory` on line 154):, 1c. Add to `Account` class fields (after `cashFlowCategory` on line 199):, 1d. Add to constructor (after `cashFlowCategory` assignment on line 245):, 1e. Add to `toJSON()` (after `cashFlowCategory` on line 423):, 1f. Add to `fromJSON()` (after `cashFlowCategory` on line 451):, 1g. Add to `getMutableFields()` (after `custodianUserId` on line 359):, 1h. Add validation in `validate()` method (after currency validation, around line 384): (+9 more)
+
+### Community 364 - "Community 364"
+Cohesion: 0.12
+Nodes (15): 1. Module Settings: Default Account Mappings, 2. Setup Wizard / Account Auto-Creation, 3. Account Validation Service, Account Mapping Settings Page, Backend, code:typescript (export interface InventoryModuleSettings {), Feature 06: COA Alignment & Accounting Integration, For Inventory Module (+7 more)
+
+### Community 365 - "Community 365"
+Cohesion: 0.12
+Nodes (17): 2026-05-12 Result — AI Assistant Fixing Plan Phase 1 Business Model Fix, Completed Subtasks, Completed Subtasks, Completed Subtasks, Completed Subtasks, Completed Subtasks, Detours, Documentation (+9 more)
+
+### Community 366 - "Community 366"
+Cohesion: 0.12
+Nodes (17): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 2A, 2026-05-13 Progress — AI Assistant Fixing Plan Phase 3A, Changes, Changes, Changes, Changes, Changes, Changes (+9 more)
+
+### Community 367 - "Community 367"
+Cohesion: 0.12
+Nodes (17): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1A, Changes, Changes, Changes, Changes, Changes, Rabbit Holes Logged, Rabbit Holes Logged (+9 more)
+
+### Community 368 - "Community 368"
+Cohesion: 0.12
+Nodes (16): 1. Validation of Assumptions, 2. Best Architecture for Online Customers, 3. Best Architecture for Offline Customers, 4. What You Can Reuse from Your Current Stack, 5. What You Must Add/Change, 6. Final Recommendation, Answer to Question G — Yes, Biggest Risks (Answer to Question H) (+8 more)
+
+### Community 369 - "Community 369"
+Cohesion: 0.12
+Nodes (16): 08 — Journal / Day Book Report, Acceptance Criteria, Business Context, code:block1 (═══════════════════════════════════════════════════════════), code:typescript (getJournal(companyId: string, filters: JournalFilters): Prom), Current State, Functional, Implementation Plan (+8 more)
+
+### Community 370 - "Community 370"
+Cohesion: 0.12
+Nodes (16): Delivery Note, Document Types to Design, Field Classification Rules, Fields Per Document Type, Forms Designer — Default Designs & Seeding, Goods Receipt Note, How To Do It, Known Bugs to Fix First (+8 more)
+
+### Community 371 - "Community 371"
+Cohesion: 0.12
+Nodes (16): 26 — Production Logging & Observability, Acceptance Criteria, Architecture: SQL Migration Ready, code:typescript (const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };), code:typescript (import { v4 as uuid } from 'uuid';), code:typescript (res.setHeader('x-response-time', `${duration}ms`);), Current State, Implementation Plan (+8 more)
+
+### Community 372 - "Community 372"
+Cohesion: 0.12
+Nodes (16): 27 — API Security Hardening, Acceptance Criteria, Architecture: SQL Migration Ready, code:bash (cd backend && npm install helmet cors express-rate-limit com), code:typescript (import helmet from 'helmet';), code:block3 (ALLOWED_ORIGINS=http://localhost:5173,https://your-productio), code:bash (curl -I https://your-api-url/api/health), Current State (+8 more)
+
+### Community 373 - "Community 373"
+Cohesion: 0.12
+Nodes (17): 1a. Add the type (after line 17, near other type declarations):, 1b. Add to `AccountProps` (after `cashFlowCategory` on line 154):, 1c. Add to `Account` class fields (after `cashFlowCategory` on line 199):, 1d. Add to constructor (after `cashFlowCategory` assignment on line 245):, 1e. Add to `toJSON()` (after `cashFlowCategory` on line 423):, 1f. Add to `fromJSON()` (after `cashFlowCategory` on line 451):, 1g. Add to `getMutableFields()` (after `custodianUserId` on line 359):, 1h. Add validation in `validate()` method (after currency validation, around line 384): (+9 more)
+
+### Community 376 - "Community 376"
 Cohesion: 0.19
 Nodes (3): FirestorePeriodLockOverrideRepository, PeriodLockOverrideMapper, PeriodLockOverride
 
@@ -2567,33 +2503,41 @@ Nodes (3): FirestorePeriodLockOverrideRepository, PeriodLockOverrideMapper, Peri
 Cohesion: 0.19
 Nodes (3): RecordChangeLog, FirestoreRecordChangeLogRepository, RecordChangeLogMapper
 
-### Community 381 - "Community 381"
+### Community 382 - "Community 382"
 Cohesion: 0.16
 Nodes (3): SystemDTOMapper, Module, PrismaModuleRepository
 
-### Community 384 - "Community 384"
-Cohesion: 0.2
-Nodes (4): DesignerDTOMapper, FieldDefinition, FormDefinition, FieldDefinitionValidator
-
-### Community 385 - "Community 385"
+### Community 383 - "Community 383"
 Cohesion: 0.12
 Nodes (5): GetPurchasePriceListUseCase, ListPurchasePriceListsUseCase, GetVendorGroupUseCase, ListVendorGroupsUseCase, UpdateVendorGroupUseCase
 
-### Community 387 - "Community 387"
-Cohesion: 0.22
-Nodes (12): applyState(), buildRows(), getModuleKey(), handleCheckImplementation(), handleDelete(), handleRegisterCodeModule(), handleSubmit(), isPlatformModule() (+4 more)
+### Community 384 - "Community 384"
+Cohesion: 0.23
+Nodes (13): backupLegacyData(), buildHeaderFieldsFromLegacy(), buildTableColumnsFromLegacy(), generateId(), generateSafeCode(), isMigrationCompleted(), loadCanonicalDefinitions(), markMigrationComplete() (+5 more)
 
-### Community 388 - "Community 388"
+### Community 385 - "Community 385"
+Cohesion: 0.14
+Nodes (4): FeedbackButtons(), handleNewConversation(), startNewChat(), QuickActionButtons()
+
+### Community 386 - "Community 386"
 Cohesion: 0.12
 Nodes (15): Architecture docs (`docs/architecture/`), code:block1 (docs/), Definition of Done — every feature produces docs, Directory Layout, Doc Index by Module, ERP03 Documentation, Gap analysis (what's missing — Phase 5 backfill), "I just joined the team" (+7 more)
 
-### Community 389 - "Community 389"
+### Community 387 - "Community 387"
 Cohesion: 0.12
 Nodes (15): ADR: Multi-Agent Coordination Strategy, Agent-to-Agent Invocation via MCP, Consequences, Context, Decision, Decision Rationale, MCP Coordination Server, Rejected Alternatives (+7 more)
 
-### Community 390 - "Community 390"
+### Community 388 - "Community 388"
+Cohesion: 0.12
+Nodes (15): Accounting Impact, Action Safety, Apex Shell Candidate Architecture, Company Settings Footer Parity, Current Design, Cutover Rule, Data Safety, Dev Navigation (+7 more)
+
+### Community 389 - "Community 389"
 Cohesion: 0.12
 Nodes (14): Audit Report, code:block1 (POST /api/inventory/stock-levels/reserve       → reserveStoc), code:block2 (GET /api/inventory/costs/current     → getCurrentCost (?item), code:block3 (GET /api/inventory/movements/by-reference    → getMovementBy), code:bash (# Backend compile), code:markdown (# Phase 3 Audit Report — Integration Hooks), Context, Phase 3 — Sales/Purchases Integration Hooks — Execution Prompt (+6 more)
+
+### Community 390 - "Community 390"
+Cohesion: 0.12
+Nodes (14): 1. Final Recommendation, 4. Line-Level Quantity Model, 7.1 Company-Level Purchase Settings, 7.2 Setting Behavior by Mode, 7. Settings Design, 9. V1 Scope Recommendation, Assumptions (flagged for review), code:block5 (┌─────────────────────────────────────────────────────────┐) (+6 more)
 
 ### Community 391 - "Community 391"
 Cohesion: 0.12
@@ -2645,59 +2589,51 @@ Nodes (15): A. Forms Designer Smoke Check, B. Sales Invoice - Save Draft, Before
 
 ### Community 403 - "Community 403"
 Cohesion: 0.12
-Nodes (15): 4a. Add DIRECT branch to source validation (after line 404), 4b. Phase 1D — handle DIRECT lines (inside the loop starting line 515), 4c. Replace `assertPositiveTrackedCost` call (line 621-626), 4d. Fix `costSettled` flag (line 678), 4e. Update `resolveReturnUnitCostBase` (line 979-987), 4f. Revenue reversal for DIRECT returns (line 844), 4g. AR account for DIRECT returns, code:typescript (// BEFORE (line 621-626):) (+7 more)
+Nodes (14): 1. `Supplier` Entity, 2. Repository Interface, 3. Firestore Repository, 4. Use Cases, 5. API Routes, Backend, code:typescript (export class Supplier {), code:typescript (export interface ISupplierRepository {) (+6 more)
 
 ### Community 404 - "Community 404"
 Cohesion: 0.12
-Nodes (14): 1. `Supplier` Entity, 2. Repository Interface, 3. Firestore Repository, 4. Use Cases, 5. API Routes, Backend, code:typescript (export class Supplier {), code:typescript (export interface ISupplierRepository {) (+6 more)
+Nodes (14): API Routes, API Routes, Backend, `CreditNote` Entity, Dashboard, Feature 06: Credit Notes & Sales Reports, Frontend, Frontend (+6 more)
 
 ### Community 405 - "Community 405"
 Cohesion: 0.12
-Nodes (14): API Routes, API Routes, Backend, `CreditNote` Entity, Dashboard, Feature 06: Credit Notes & Sales Reports, Frontend, Frontend (+6 more)
+Nodes (15): Acceptance Criteria, code:text (backend implementation exists), code:text (Entitled = company is allowed to use something.), code:text (Is company entitled to crm.ai-scoring?), code:text (label), code:ts (PermissionCatalog {), code:text (1. Company Admin opens role editor.), code:text (Company Admin module list does not read raw code registry.) (+7 more)
 
 ### Community 406 - "Community 406"
 Cohesion: 0.12
-Nodes (15): Acceptance Criteria, code:text (backend implementation exists), code:text (Entitled = company is allowed to use something.), code:text (Is company entitled to crm.ai-scoring?), code:text (ListCompanyModulesUseCase reads ModuleRegistry code directly), code:text (1. Do not break existing companies.), code:text (companyAdmin), code:text (Company Admin module list does not read raw code registry.) (+7 more)
+Nodes (16): Availability Rules, code:text (DB registered + code installed), code:text (Visible to SuperAdmin as "implementation installed but not r), code:text (Visible to SuperAdmin as "registered but implementation miss), code:text (lifecycleStatus = ready), code:text (1. Module exists in DB.), code:text (Deactivate/inactive = product catalog decision.), code:text (1. Blocks new companies from enabling the module/feature.) (+8 more)
 
 ### Community 407 - "Community 407"
 Cohesion: 0.12
-Nodes (16): Availability Rules, code:text (DB registered + code installed), code:text (Visible to SuperAdmin as "implementation installed but not r), code:text (Visible to SuperAdmin as "registered but implementation miss), code:text (lifecycleStatus = ready), code:text (1. Module exists in DB.), code:text (Deactivate/inactive = product catalog decision.), code:text (1. Blocks new companies from enabling the module/feature.) (+8 more)
+Nodes (15): 15 — Export to Excel/PDF, Acceptance Criteria, Business Context, code:bash (cd frontend && npm install xlsx file-saver), code:typescript (export function exportToExcel(data: any[], columns: Column[]), Current State, Functional, Implementation Plan (+7 more)
 
 ### Community 408 - "Community 408"
 Cohesion: 0.12
-Nodes (15): 15 — Export to Excel/PDF, Acceptance Criteria, Business Context, code:bash (cd frontend && npm install xlsx file-saver), code:typescript (export function exportToExcel(data: any[], columns: Column[]), Current State, Functional, Implementation Plan (+7 more)
+Nodes (15): 19 — Settings Page UX Fix, Acceptance Criteria, code:block1 (frontend/src/modules/accounting/components/settings/), Current State, Functional, Implementation Plan, Manual, Non-Functional (+7 more)
 
 ### Community 409 - "Community 409"
 Cohesion: 0.12
-Nodes (15): 19 — Settings Page UX Fix, Acceptance Criteria, code:block1 (frontend/src/modules/accounting/components/settings/), Current State, Functional, Implementation Plan, Manual, Non-Functional (+7 more)
+Nodes (15): A. Forms Designer Smoke Check, B. Sales Invoice - Save Draft, Before You Start, C. Sales Invoice - Save & Post Deferred, D. Sales Invoice - Save & Post Cash Full, E. Sales Invoice - Multi Settlement, F. Purchase Invoice - Save Draft, G. Purchase Invoice - Save & Post Deferred (+7 more)
 
 ### Community 410 - "Community 410"
 Cohesion: 0.12
-Nodes (15): A. Forms Designer Smoke Check, B. Sales Invoice - Save Draft, Before You Start, C. Sales Invoice - Save & Post Deferred, D. Sales Invoice - Save & Post Cash Full, E. Sales Invoice - Multi Settlement, F. Purchase Invoice - Save Draft, G. Purchase Invoice - Save & Post Deferred (+7 more)
+Nodes (15): 4a. Add DIRECT branch to source validation (after line 404), 4b. Phase 1D — handle DIRECT lines (inside the loop starting line 515), 4c. Replace `assertPositiveTrackedCost` call (line 621-626), 4d. Fix `costSettled` flag (line 678), 4e. Update `resolveReturnUnitCostBase` (line 979-987), 4f. Revenue reversal for DIRECT returns (line 844), 4g. AR account for DIRECT returns, code:typescript (// BEFORE (line 621-626):) (+7 more)
 
-### Community 411 - "Community 411"
+### Community 412 - "Community 412"
 Cohesion: 0.26
 Nodes (8): buildSystemTemplate(), buildSystemTemplateUpdates(), findSystemTemplate(), inferLineFieldsFromTableColumns(), normalizeFields(), normalizeLayout(), normalizeTemplateForResponse(), SuperAdminVoucherTypeController
 
-### Community 412 - "Community 412"
-Cohesion: 0.14
-Nodes (3): CompanyModuleSettingsController, ModuleSettingsValidator, ModuleSettingsDefinitionsController
-
 ### Community 413 - "Community 413"
-Cohesion: 0.19
-Nodes (3): FirestoreAiProviderRepository, stripUndefined(), AiProvider
+Cohesion: 0.17
+Nodes (5): CreateGoodsReceiptUseCase, findPOLine(), PostGoodsReceiptUseCase, UnpostGoodsReceiptUseCase, validatePOLinkedForReceipt()
 
-### Community 417 - "Community 417"
-Cohesion: 0.15
-Nodes (6): AiStreamError, parseSSEEvent(), streamMessage(), getAuthToken(), getCompanyId(), fetchBalance()
+### Community 415 - "Community 415"
+Cohesion: 0.31
+Nodes (6): getDefaultBalanceNature(), normalizeClassification(), normalizeUserCode(), validateBalanceNature(), validateCurrencyPolicy(), validateUserCodeFormat()
 
-### Community 419 - "Community 419"
-Cohesion: 0.16
-Nodes (4): handleDelete(), handleEdit(), isProtected(), useWizard()
-
-### Community 420 - "Community 420"
-Cohesion: 0.13
-Nodes (14): Accounting Impact, Action Safety, Apex Shell Candidate Architecture, Company Settings Footer Parity, Current Design, Cutover Rule, Data Safety, Dev Navigation (+6 more)
+### Community 416 - "Community 416"
+Cohesion: 0.21
+Nodes (9): assertValidSalesTaxCode(), CreateSalesInvoiceUseCase, findSOLine(), hasNativeLinkedSalesSource(), normalizeSalesInvoiceToken(), resolveDocumentSource(), resolveSalesInvoiceFormType(), resolveSalesInvoicePersona() (+1 more)
 
 ### Community 421 - "Community 421"
 Cohesion: 0.13
@@ -2769,267 +2705,279 @@ Nodes (13): 1. `GoodsReceipt` Entity, 2. Repository, 3. Use Cases, 4. API Routes
 
 ### Community 438 - "Community 438"
 Cohesion: 0.13
-Nodes (14): 13 — Recurring Vouchers, Acceptance Criteria, Business Context, code:typescript (interface RecurringVoucherTemplate {), code:block2 (GET    /accounting/recurring-vouchers          — List templa), Current State, Functional, Implementation Plan (+6 more)
+Nodes (15): Changes, Changes, Changes, Changes, Changes, Changes, Current Focus — Correct Credential/Provider Design (runtimeMode + platformRuntimeCredential), Design Rules Enforced: (+7 more)
 
 ### Community 439 - "Community 439"
 Cohesion: 0.13
+Nodes (14): 13 — Recurring Vouchers, Acceptance Criteria, Business Context, code:typescript (interface RecurringVoucherTemplate {), code:block2 (GET    /accounting/recurring-vouchers          — List templa), Current State, Functional, Implementation Plan (+6 more)
+
+### Community 440 - "Community 440"
+Cohesion: 0.13
 Nodes (15): 6. Troubleshooting Guide, code:block14 (PrismaClientKnownRequestError: The table `main.accounts` doe), code:bash (cd backend), code:block16 (Null constraint violation on the fields: (`createdBy`)), code:block17 (Foreign key constraint failed on the field: `accountId_forei), code:block18 (PrismaClientKnownRequestError: Record to update not found.), code:typescript (// In prismaClient.ts), code:bash (npx prisma db push) (+7 more)
 
-### Community 441 - "Community 441"
+### Community 442 - "Community 442"
 Cohesion: 0.15
 Nodes (3): formatUserDisplayName(), getUserAuditSnapshot(), VoucherController
 
 ### Community 444 - "Community 444"
-Cohesion: 0.22
-Nodes (3): toTimestamp(), CompanyGroup, GetConsolidatedTrialBalanceUseCase
+Cohesion: 0.16
+Nodes (3): FirestoreSystemMetadataRepository, GetSystemMetadataUseCase, SystemMetadataController
 
-### Community 445 - "Community 445"
+### Community 446 - "Community 446"
 Cohesion: 0.27
 Nodes (13): buildAccountingUseCases(), computeExpectedBalances(), ensureDirectPersonaAllowed(), loadAccounts(), loadEntities(), main(), parseArgs(), pickAccount() (+5 more)
 
-### Community 446 - "Community 446"
+### Community 447 - "Community 447"
 Cohesion: 0.19
 Nodes (4): ActiveAccountOnlyRule, CurrencyPolicyRule, NoParentAccountRule, PostingAccountRule
 
-### Community 454 - "Community 454"
+### Community 451 - "Community 451"
+Cohesion: 0.25
+Nodes (3): FirestoreFiscalYearRepository, toDomain(), toPersistence()
+
+### Community 455 - "Community 455"
 Cohesion: 0.34
 Nodes (12): clamp(), clampSpan(), findFirstAvailableSpace(), getBorderClass(), getWidgetColStart(), getWidgetSpan(), handleDragEnd(), hasCollision() (+4 more)
 
-### Community 456 - "Community 456"
-Cohesion: 0.14
-Nodes (13): AI Assistant Tooling + Analytics (2026-05-06), Backend Changes, Chat Metadata Pipeline, DI Registration, Frontend Changes, i18n, Intent Detection, Structured Tool Data in Chat (+5 more)
-
 ### Community 457 - "Community 457"
-Cohesion: 0.14
-Nodes (13): AI Assistant — "Why does my model show fake numbers?", code:block1 (<tool_code>), Story 1: Stale certifications, Story 2: Fake tool calls, What different modes mean, What this page is for, What to do when you see the new warnings, What used to happen (+5 more)
+Cohesion: 0.16
+Nodes (6): AiStreamError, parseSSEEvent(), streamMessage(), getAuthToken(), getCompanyId(), fetchBalance()
 
 ### Community 458 - "Community 458"
 Cohesion: 0.14
-Nodes (13): 1. Choosing a Theme Preset, 2. Dynamic Settings & Fine-tuning, 3. Creating a Custom Theme (Magic Generator), 4. Saving Preferences, Accessing the Appearance Settings, Glossy 3D Fluent Icons (Icon Parity), Layout Mode, Navigation Sidebar Style (+5 more)
+Nodes (13): AI Assistant Tooling + Analytics (2026-05-06), Backend Changes, Chat Metadata Pipeline, DI Registration, Frontend Changes, i18n, Intent Detection, Structured Tool Data in Chat (+5 more)
 
 ### Community 459 - "Community 459"
 Cohesion: 0.14
-Nodes (13): Activity lines, Closing balance, code:block1 (Closing balance = Opening balance + posted debits − posted c), Common questions, Customer Statement and Ledger, Open commitments, Open invoices, Opening balance (+5 more)
+Nodes (13): AI Assistant — "Why does my model show fake numbers?", code:block1 (<tool_code>), Story 1: Stale certifications, Story 2: Fake tool calls, What different modes mean, What this page is for, What to do when you see the new warnings, What used to happen (+5 more)
 
 ### Community 460 - "Community 460"
 Cohesion: 0.14
-Nodes (13): Cancel a Template, Edit a Template, Frequently Asked Questions, How to Create a Recurring Invoice Template, How to Generate Invoices, How to Manage Templates, Method 1: Create from Scratch, Method 2: Clone from Existing Invoice (+5 more)
+Nodes (13): 1. Choosing a Theme Preset, 2. Dynamic Settings & Fine-tuning, 3. Creating a Custom Theme (Magic Generator), 4. Saving Preferences, Accessing the Appearance Settings, Glossy 3D Fluent Icons (Icon Parity), Layout Mode, Navigation Sidebar Style (+5 more)
 
 ### Community 461 - "Community 461"
 Cohesion: 0.14
-Nodes (13): 105 — PR2: PostingLog Auditability Foundation, Context, Docs, Entity, repository, infrastructure, Files changed, Line-entity additions, Next PR, Out of scope (P1 follow-up) (+5 more)
+Nodes (13): Activity lines, Closing balance, code:block1 (Closing balance = Opening balance + posted debits − posted c), Common questions, Customer Statement and Ledger, Open commitments, Open invoices, Opening balance (+5 more)
 
 ### Community 462 - "Community 462"
 Cohesion: 0.14
-Nodes (13): 107 — PR5: Realized FX Gain/Loss on Settlement, Alpha-readiness status, Context, Files changed, FX line emitted when rates differ, Out of scope (follow-ups), SalesSettings, Settlement input shape (+5 more)
+Nodes (13): Cancel a Template, Edit a Template, Frequently Asked Questions, How to Create a Recurring Invoice Template, How to Generate Invoices, How to Manage Templates, Method 1: Create from Scratch, Method 2: Clone from Existing Invoice (+5 more)
 
 ### Community 463 - "Community 463"
 Cohesion: 0.14
-Nodes (13): B1. Stage 2c — the per-module approval toggle is GONE from module settings, B2. Stages 2b + 4 — approval is enforced at the gateway (reactive parking), B3. Stage 3 — period lock behaves identically everywhere, B4. Stage 5 — every refusal says WHICH guard refused and WHY, B5. Regression sweep — the system-generated postings still work, code:bash (cd D:/DEV2026/ERP03-posting-authority/backend), code:bash (cd D:/DEV2026/ERP03-posting-authority/frontend), code:bash (cd D:/DEV2026/ERP03-posting-authority) (+5 more)
+Nodes (13): 105 — PR2: PostingLog Auditability Foundation, Context, Docs, Entity, repository, infrastructure, Files changed, Line-entity additions, Next PR, Out of scope (P1 follow-up) (+5 more)
 
 ### Community 464 - "Community 464"
 Cohesion: 0.14
-Nodes (12): Acceptance Criteria Met, Architecture Change, End-User View, Files Changed, Known Follow-ups, Root Cause, Task, Task 57 Completion Report: Sales Voucher Runtime Validation (+4 more)
+Nodes (13): 107 — PR5: Realized FX Gain/Loss on Settlement, Alpha-readiness status, Context, Files changed, FX line emitted when rates differ, Out of scope (follow-ups), SalesSettings, Settlement input shape (+5 more)
 
 ### Community 465 - "Community 465"
 Cohesion: 0.14
-Nodes (12): 69 — AI Assistant Tools + Structured Chat + Analytics, Backend Files, Documentation, End-User View, Frontend Files, Important Note, New Admin Capability, Risks / Follow-ups (+4 more)
+Nodes (13): B1. Stage 2c — the per-module approval toggle is GONE from module settings, B2. Stages 2b + 4 — approval is enforced at the gateway (reactive parking), B3. Stage 3 — period lock behaves identically everywhere, B4. Stage 5 — every refusal says WHICH guard refused and WHY, B5. Regression sweep — the system-generated postings still work, code:bash (cd D:/DEV2026/ERP03-posting-authority/backend), code:bash (cd D:/DEV2026/ERP03-posting-authority/frontend), code:bash (cd D:/DEV2026/ERP03-posting-authority) (+5 more)
 
 ### Community 466 - "Community 466"
 Cohesion: 0.14
-Nodes (12): AI Model Management Certification Workflows and APIs, API Surface Added, code:bash (npx ts-node src/scripts/seedAiCertifiedProfileDev.ts), Company Admin TENANT Certification, Dev Seed Helper, End-User View, Files Touched, Known Follow-Ups (+4 more)
+Nodes (12): Acceptance Criteria Met, Architecture Change, End-User View, Files Changed, Known Follow-ups, Root Cause, Task, Task 57 Completion Report: Sales Voucher Runtime Validation (+4 more)
 
 ### Community 467 - "Community 467"
 Cohesion: 0.14
-Nodes (12): AI Provider-driven Settings UX, Backend changes, code:txt (Super Admin defines provider metadata), code:txt (GET /tenant/ai-assistant/providers), code:txt (GET /tenant/ai-assistant/providers/:providerId/models), End-User View, Files changed, Frontend changes (+4 more)
+Nodes (12): 69 — AI Assistant Tools + Structured Chat + Analytics, Backend Files, Documentation, End-User View, Frontend Files, Important Note, New Admin Capability, Risks / Follow-ups (+4 more)
 
 ### Community 468 - "Community 468"
 Cohesion: 0.14
-Nodes (13): Architecture Validation, code:block1 (=== Phase 2: Policy Verification ===), code:block2 (=== Phase 3: Account Access Control Verification ===), code:bash (grep -r "recordForVoucher" backend/src/application), Final Summary, Phase 1: Architecture Audit ✅, Phase 2: Policy Registry System ✅, Phase 3: Account Access Control ✅ (+5 more)
+Nodes (12): AI Model Management Certification Workflows and APIs, API Surface Added, code:bash (npx ts-node src/scripts/seedAiCertifiedProfileDev.ts), Company Admin TENANT Certification, Dev Seed Helper, End-User View, Files Touched, Known Follow-Ups (+4 more)
 
 ### Community 469 - "Community 469"
 Cohesion: 0.14
-Nodes (13): 16 — Localization / i18n, Acceptance Criteria, Business Context, code:bash (cd frontend && npm install i18next react-i18next i18next-bro), code:block2 (frontend/src/locales/), Current State, Implementation Plan, Requirements (+5 more)
+Nodes (12): AI Provider-driven Settings UX, Backend changes, code:txt (Super Admin defines provider metadata), code:txt (GET /tenant/ai-assistant/providers), code:txt (GET /tenant/ai-assistant/providers/:providerId/models), End-User View, Files changed, Frontend changes (+4 more)
 
 ### Community 470 - "Community 470"
 Cohesion: 0.14
-Nodes (13): 20 — Web ↔ Windows UI Parity, Acceptance Criteria, Current State, Functional, Implementation Plan, Manual, Problem Statement (from TODO), Requirements (+5 more)
+Nodes (13): Architecture Validation, code:block1 (=== Phase 2: Policy Verification ===), code:block2 (=== Phase 3: Account Access Control Verification ===), code:bash (grep -r "recordForVoucher" backend/src/application), Final Summary, Phase 1: Architecture Audit ✅, Phase 2: Policy Registry System ✅, Phase 3: Account Access Control ✅ (+5 more)
 
 ### Community 471 - "Community 471"
 Cohesion: 0.14
-Nodes (13): 28 — Strict-Mode Reversal for Flex-Created Vouchers, Acceptance Criteria, Business Context, Current State, Functional, Implementation Plan, Non-Functional, Requirements (+5 more)
+Nodes (13): 16 — Localization / i18n, Acceptance Criteria, Business Context, code:bash (cd frontend && npm install i18next react-i18next i18next-bro), code:block2 (frontend/src/locales/), Current State, Implementation Plan, Requirements (+5 more)
 
 ### Community 472 - "Community 472"
 Cohesion: 0.14
-Nodes (12): API Routes, code:typescript ({), code:typescript ({), Entities, Feature 01.5: Purchase Requisitions (Added from Gap Analysis), Firestore Path, Frontend Pages, Overview (+4 more)
+Nodes (13): 20 — Web ↔ Windows UI Parity, Acceptance Criteria, Current State, Functional, Implementation Plan, Manual, Problem Statement (from TODO), Requirements (+5 more)
 
 ### Community 473 - "Community 473"
 Cohesion: 0.14
-Nodes (12): 1. `PurchaseOrder` Entity, 2. Repository & Firestore, 3. Use Cases, 4. API Routes, Backend, code:typescript (export class PurchaseOrder {), Feature 02: Purchase Orders, Frontend (+4 more)
+Nodes (13): 28 — Strict-Mode Reversal for Flex-Created Vouchers, Acceptance Criteria, Business Context, Current State, Functional, Implementation Plan, Non-Functional, Requirements (+5 more)
 
 ### Community 474 - "Community 474"
 Cohesion: 0.14
-Nodes (12): API Routes, code:typescript ({), code:typescript ({), Entities, Feature 01.5: Price Lists (Added from Gap Analysis), Firestore Paths, Frontend Pages, Overview (+4 more)
+Nodes (12): API Routes, code:typescript ({), code:typescript ({), Entities, Feature 01.5: Purchase Requisitions (Added from Gap Analysis), Firestore Path, Frontend Pages, Overview (+4 more)
 
 ### Community 475 - "Community 475"
 Cohesion: 0.14
-Nodes (12): Agent Instructions for Execution, Architectural Decisions, Business Context, code:block1 (shared.tax.view, .manage), Cross-Cutting Concerns, DI Bindings, Feature Index & Execution Order, Integration Points (+4 more)
+Nodes (12): 1. `PurchaseOrder` Entity, 2. Repository & Firestore, 3. Use Cases, 4. API Routes, Backend, code:typescript (export class PurchaseOrder {), Feature 02: Purchase Orders, Frontend (+4 more)
 
 ### Community 476 - "Community 476"
 Cohesion: 0.14
-Nodes (12): API Routes (Shared Module), code:typescript ({), code:typescript ({), Entities, Feature 01: Tax Engine, Firestore Paths, Frontend Pages, Overview (+4 more)
+Nodes (12): API Routes, code:typescript ({), code:typescript ({), Entities, Feature 01.5: Price Lists (Added from Gap Analysis), Firestore Paths, Frontend Pages, Overview (+4 more)
 
 ### Community 477 - "Community 477"
 Cohesion: 0.14
-Nodes (12): API Routes, code:typescript ({), code:typescript ({), Entities, Feature 02: Unit of Measure (UoM) Conversion, Firestore Paths, Frontend Pages, Overview (+4 more)
+Nodes (12): Agent Instructions for Execution, Architectural Decisions, Business Context, code:block1 (shared.tax.view, .manage), Cross-Cutting Concerns, DI Bindings, Feature Index & Execution Order, Integration Points (+4 more)
 
 ### Community 478 - "Community 478"
 Cohesion: 0.14
-Nodes (14): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1B, Changes, Changes, Changes, Changes, Changes, Changes, Review / Verification (+6 more)
+Nodes (12): API Routes (Shared Module), code:typescript ({), code:typescript ({), Entities, Feature 01: Tax Engine, Firestore Paths, Frontend Pages, Overview (+4 more)
 
 ### Community 479 - "Community 479"
 Cohesion: 0.14
-Nodes (13): 16 — Localization / i18n, Acceptance Criteria, Business Context, code:bash (cd frontend && npm install i18next react-i18next i18next-bro), code:block2 (frontend/src/locales/), Current State, Implementation Plan, Requirements (+5 more)
+Nodes (12): API Routes, code:typescript ({), code:typescript ({), Entities, Feature 02: Unit of Measure (UoM) Conversion, Firestore Paths, Frontend Pages, Overview (+4 more)
 
 ### Community 480 - "Community 480"
 Cohesion: 0.14
-Nodes (13): 20 — Web ↔ Windows UI Parity, Acceptance Criteria, Current State, Functional, Implementation Plan, Manual, Problem Statement (from TODO), Requirements (+5 more)
+Nodes (14): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1B, Changes, Changes, Changes, Changes, Changes, Changes, Review / Verification (+6 more)
 
 ### Community 481 - "Community 481"
 Cohesion: 0.14
-Nodes (13): 28 — Strict-Mode Reversal for Flex-Created Vouchers, Acceptance Criteria, Business Context, Current State, Functional, Implementation Plan, Non-Functional, Requirements (+5 more)
+Nodes (13): 16 — Localization / i18n, Acceptance Criteria, Business Context, code:bash (cd frontend && npm install i18next react-i18next i18next-bro), code:block2 (frontend/src/locales/), Current State, Implementation Plan, Requirements (+5 more)
 
 ### Community 482 - "Community 482"
+Cohesion: 0.14
+Nodes (13): 20 — Web ↔ Windows UI Parity, Acceptance Criteria, Current State, Functional, Implementation Plan, Manual, Problem Statement (from TODO), Requirements (+5 more)
+
+### Community 483 - "Community 483"
+Cohesion: 0.14
+Nodes (13): 28 — Strict-Mode Reversal for Flex-Created Vouchers, Acceptance Criteria, Business Context, Current State, Functional, Implementation Plan, Non-Functional, Requirements (+5 more)
+
+### Community 484 - "Community 484"
 Cohesion: 0.14
 Nodes (13): Architecture Validation, code:block1 (=== Phase 2: Policy Verification ===), code:block2 (=== Phase 3: Account Access Control Verification ===), code:bash (grep -r "recordForVoucher" backend/src/application), Final Summary, Phase 1: Architecture Audit ✅, Phase 2: Policy Registry System ✅, Phase 3: Account Access Control ✅ (+5 more)
 
 ### Community 500 - "Community 500"
+Cohesion: 0.21
+Nodes (3): Role, CreateRoleUseCase, UpdateRolePermissionsUseCase
+
+### Community 502 - "Community 502"
+Cohesion: 0.23
+Nodes (10): buildCreateSeed(), fetchWarehouses(), findExactMatch(), getCreateErrorMessage(), handleCreateWarehouse(), handleInputBlur(), handleInputKeyDown(), handleOpenCreateModal() (+2 more)
+
+### Community 503 - "Community 503"
 Cohesion: 0.22
 Nodes (7): buildCreateSeed(), getCreateErrorMessage(), handleCreateItem(), handleInputBlur(), handleInputKeyDown(), handleOpenCreateModal(), handleSelect()
 
-### Community 501 - "Community 501"
+### Community 504 - "Community 504"
+Cohesion: 0.18
+Nodes (3): getMonthIndexesInRange(), loadLedgerEntries(), loadReport()
+
+### Community 505 - "Community 505"
 Cohesion: 0.24
 Nodes (8): add(), markDirty(), newId(), remove(), setCredential(), toggleDefault(), update(), ToggleSwitch()
 
-### Community 502 - "Community 502"
+### Community 507 - "Community 507"
 Cohesion: 0.15
 Nodes (12): Account resolution, code:block1 (Dr  Cash / Bank        ← settlementAmountBase  (= amountDoc ), code:ts ({), Frontend impact, Journal logic, Realized FX Gain / Loss on Settlement, See also, Tests (+4 more)
 
-### Community 503 - "Community 503"
-Cohesion: 0.15
-Nodes (11): 1. Final Recommendation, 8.1 SIMPLE mode user experience, 8.2 CONTROLLED mode user experience, 8.3 Common UI patterns, 8. UI / Workflow Implications, 9. V1 Scope Recommendation, Assumptions (flagged for review), ❌ Deferred to V2+ (+3 more)
-
-### Community 504 - "Community 504"
+### Community 508 - "Community 508"
 Cohesion: 0.15
 Nodes (12): 1. Restart everything cold, 2. Currency display sanity (30 sec), 3. Inclusive math — happy path (3 min), 4. Approval flow — happy path (5 min), 5. Repeat for Purchase Invoice (3 min), code:powershell (# Stop backend + frontend dev servers (Ctrl+C in each termin), Do these in order (15 min total), QA — pick up here (+4 more)
 
-### Community 505 - "Community 505"
+### Community 509 - "Community 509"
 Cohesion: 0.15
 Nodes (11): 1. Infrastructure & Core, 2. User Preferences, 3. TopBar Optimization, 4. Layout Fixes, Completion Report — Responsiveness Fix Plan, Dual Documentation, End-User View, Next Recommendations (+3 more)
 
-### Community 506 - "Community 506"
+### Community 510 - "Community 510"
 Cohesion: 0.15
 Nodes (12): Acceptance criteria, Audience-specific summary, Backend, Docs, End user (for the launch user guide compilation), Frontend, Known follow-ups (NOT done in this task), Task 101 — AI Routing, Stale Cert UX, and Fake Tool-Call Defense (+4 more)
 
-### Community 507 - "Community 507"
+### Community 511 - "Community 511"
 Cohesion: 0.15
 Nodes (12): 102 — PR1: Accounting Engine Guard with Auto-Init, Context, Design decision (no schema change), Documentation, Files changed, Init-time wiring, New error class, New use case (+4 more)
 
-### Community 508 - "Community 508"
+### Community 512 - "Community 512"
 Cohesion: 0.15
 Nodes (12): 122 — Per-customer / Per-vendor AR/AP Sub-account — Backend (Piece A.1), Backend, Decisions captured (locked), End-user view (so far), Piece B — Customer Statement uses Account Statement engine (~3-4 h), Subtask A.2 — Frontend forms (~2 h), Subtask A.3 — Backfill (~1.5 h), Tests (+4 more)
 
-### Community 509 - "Community 509"
+### Community 513 - "Community 513"
 Cohesion: 0.15
 Nodes (12): 142 — Task 132 Phase 1 P0: confirms, dates, feedback taxonomy, Admin / security confirms (P0), Decisions, Follow-ups, Gates, Posting-reversal hardening (P0 control), QA script, Raw date input → shared `DatePicker` (P0) (+4 more)
 
-### Community 510 - "Community 510"
+### Community 514 - "Community 514"
 Cohesion: 0.15
 Nodes (12): 1. Technical Developer View, 2. End-User View, Architecture / Behavior, Definition of Done — Checklist, Files Changed, How to Use It, Known Issues / Follow-ups, Task 166 — Compact Layout Mode (+4 more)
 
-### Community 511 - "Community 511"
+### Community 515 - "Community 515"
 Cohesion: 0.15
 Nodes (11): Acceptance Criteria Met, Amount Column Editable in New/Cloned Vouchers, code:tsx (normalizedColId === 'lineTotal'), End-User View, Files Changed, Fix, Known Issues / Follow-Ups, Problem (+3 more)
 
-### Community 512 - "Community 512"
-Cohesion: 0.15
-Nodes (12): 11 — Aging Reports (Accounts Receivable / Payable), Acceptance Criteria, Business Context, code:typescript (interface AgingReportData {), code:typescript (router.get('/reports/aging', permissionGuard('accounting.rep), Current State, Functional, Implementation Plan (+4 more)
-
-### Community 513 - "Community 513"
-Cohesion: 0.15
-Nodes (12): 14 — Voucher Attachments, Acceptance Criteria, Business Context, code:block1 (POST   /accounting/vouchers/:id/attachments     — Upload (mu), Current State, Functional, Implementation Plan, Non-Functional (+4 more)
-
-### Community 514 - "Community 514"
-Cohesion: 0.15
-Nodes (12): Acceptance criteria, Audit on approval action, code:json ({), Default role grants, Effort estimate, Frontend gating, Permission definition, Problem (+4 more)
-
-### Community 515 - "Community 515"
-Cohesion: 0.15
-Nodes (13): 3a. Import `PlSubgroup` (add to import on line 11):, 3b. Add options array (after `CASH_FLOW_CATEGORIES` on line 63):, 3c. Add state (after `cashFlowCategory` state on line 95):, 3d. Add to payload in `handleSubmit` (after `cashFlowCategory` on line 164):, 3e. Add dropdown to the form (after the Cash Flow Category dropdown, after line 310):, 3f. Reset `plSubgroup` when classification changes to non-P&L type, code:typescript (import {), code:typescript (const PL_SUBGROUPS: { value: PlSubgroup | ''; label: string;) (+5 more)
-
 ### Community 516 - "Community 516"
 Cohesion: 0.15
-Nodes (13): code:block10 (1. Create a party (customer)), code:block11 (1. Create a party (vendor)), code:block6 (1. Create a company), code:block7 (1. Create a parent account (e.g., "Assets")), code:block8 (1. Create a draft voucher with 2 lines (debit + credit)), code:block9 (1. Create an item), Smoke Test 1: Company + User, Smoke Test 2: Accounting — Accounts (+5 more)
+Nodes (12): 11 — Aging Reports (Accounts Receivable / Payable), Acceptance Criteria, Business Context, code:typescript (interface AgingReportData {), code:typescript (router.get('/reports/aging', permissionGuard('accounting.rep), Current State, Functional, Implementation Plan (+4 more)
 
 ### Community 517 - "Community 517"
 Cohesion: 0.15
-Nodes (11): Manual Test — Inventory Module, Prerequisites, TC-INV.1 — Item CRUD, TC-INV.2 — Categories & Account Inheritance, TC-INV.3 — Warehouse Management, TC-INV.4 — Stock Movements & Levels, TC-INV.5 — Stock Adjustment (with Accounting), TC-INV.6 — Stock Transfer (+3 more)
+Nodes (12): 14 — Voucher Attachments, Acceptance Criteria, Business Context, code:block1 (POST   /accounting/vouchers/:id/attachments     — Upload (mu), Current State, Functional, Implementation Plan, Non-Functional (+4 more)
 
 ### Community 518 - "Community 518"
 Cohesion: 0.15
-Nodes (11): Manual Test — Purchases Module, Prerequisites, TC-PUR.1 — Supplier CRUD, TC-PUR.2 — Purchase Order Lifecycle, TC-PUR.3 — Goods Receipt from PO, TC-PUR.4 — Purchase Invoice → Accounting Voucher, TC-PUR.5 — Multi-Currency Invoice, TC-PUR.6 — Debit Note (Return) (+3 more)
+Nodes (12): Acceptance criteria, Audit on approval action, code:json ({), Default role grants, Effort estimate, Frontend gating, Permission definition, Problem (+4 more)
 
 ### Community 519 - "Community 519"
 Cohesion: 0.15
-Nodes (11): API Routes, Architecture Note, code:typescript ({), `DocumentSequence`, Entities, Feature 03: Document Sequences, Firestore Paths, Frontend Pages (+3 more)
+Nodes (13): 3a. Import `PlSubgroup` (add to import on line 11):, 3b. Add options array (after `CASH_FLOW_CATEGORIES` on line 63):, 3c. Add state (after `cashFlowCategory` state on line 95):, 3d. Add to payload in `handleSubmit` (after `cashFlowCategory` on line 164):, 3e. Add dropdown to the form (after the Cash Flow Category dropdown, after line 310):, 3f. Reset `plSubgroup` when classification changes to non-P&L type, code:typescript (import {), code:typescript (const PL_SUBGROUPS: { value: PlSubgroup | ''; label: string;) (+5 more)
 
 ### Community 520 - "Community 520"
 Cohesion: 0.15
-Nodes (11): API Routes, `AuditLogEntry`, code:typescript ({), Entities, Feature 04: Audit Logs, Firestore Paths, Frontend Pages, Immutability Enforcement (+3 more)
+Nodes (12): 4a. Add DIRECT branch to source validation (after line 404), 4b. Phase 1D — handle DIRECT lines (inside the loop starting line 515), 4c. Replace `assertPositiveTrackedCost` call (line 621-626), 4d. Fix `costSettled` flag (line 678), 4e. Update `resolveReturnUnitCostBase` (line 979-987), 4g. AR account for DIRECT returns, code:typescript (// BEFORE (line 621-626):), code:typescript (// BEFORE:) (+4 more)
 
 ### Community 521 - "Community 521"
 Cohesion: 0.15
-Nodes (13): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1C, Changes, Changes, Changes, Changes, Changes, Changes, Review / Verification (+5 more)
+Nodes (13): code:block10 (1. Create a party (customer)), code:block11 (1. Create a party (vendor)), code:block6 (1. Create a company), code:block7 (1. Create a parent account (e.g., "Assets")), code:block8 (1. Create a draft voucher with 2 lines (debit + credit)), code:block9 (1. Create an item), Smoke Test 1: Company + User, Smoke Test 2: Accounting — Accounts (+5 more)
 
 ### Community 522 - "Community 522"
 Cohesion: 0.15
-Nodes (12): 11 — Aging Reports (Accounts Receivable / Payable), Acceptance Criteria, Business Context, code:typescript (interface AgingReportData {), code:typescript (router.get('/reports/aging', permissionGuard('accounting.rep), Current State, Functional, Implementation Plan (+4 more)
+Nodes (11): Manual Test — Inventory Module, Prerequisites, TC-INV.1 — Item CRUD, TC-INV.2 — Categories & Account Inheritance, TC-INV.3 — Warehouse Management, TC-INV.4 — Stock Movements & Levels, TC-INV.5 — Stock Adjustment (with Accounting), TC-INV.6 — Stock Transfer (+3 more)
 
 ### Community 523 - "Community 523"
 Cohesion: 0.15
-Nodes (12): 14 — Voucher Attachments, Acceptance Criteria, Business Context, code:block1 (POST   /accounting/vouchers/:id/attachments     — Upload (mu), Current State, Functional, Implementation Plan, Non-Functional (+4 more)
+Nodes (11): Manual Test — Purchases Module, Prerequisites, TC-PUR.1 — Supplier CRUD, TC-PUR.2 — Purchase Order Lifecycle, TC-PUR.3 — Goods Receipt from PO, TC-PUR.4 — Purchase Invoice → Accounting Voucher, TC-PUR.5 — Multi-Currency Invoice, TC-PUR.6 — Debit Note (Return) (+3 more)
 
 ### Community 524 - "Community 524"
 Cohesion: 0.15
-Nodes (13): 3a. Import `PlSubgroup` (add to import on line 11):, 3b. Add options array (after `CASH_FLOW_CATEGORIES` on line 63):, 3c. Add state (after `cashFlowCategory` state on line 95):, 3d. Add to payload in `handleSubmit` (after `cashFlowCategory` on line 164):, 3e. Add dropdown to the form (after the Cash Flow Category dropdown, after line 310):, 3f. Reset `plSubgroup` when classification changes to non-P&L type, code:typescript (import {), code:typescript (const PL_SUBGROUPS: { value: PlSubgroup | ''; label: string;) (+5 more)
+Nodes (11): API Routes, Architecture Note, code:typescript ({), `DocumentSequence`, Entities, Feature 03: Document Sequences, Firestore Paths, Frontend Pages (+3 more)
 
 ### Community 525 - "Community 525"
 Cohesion: 0.15
-Nodes (12): 4a. Add DIRECT branch to source validation (after line 404), 4b. Phase 1D — handle DIRECT lines (inside the loop starting line 515), 4c. Replace `assertPositiveTrackedCost` call (line 621-626), 4d. Fix `costSettled` flag (line 678), 4e. Update `resolveReturnUnitCostBase` (line 979-987), 4g. AR account for DIRECT returns, code:typescript (// BEFORE (line 621-626):), code:typescript (// BEFORE:) (+4 more)
+Nodes (11): API Routes, `AuditLogEntry`, code:typescript ({), Entities, Feature 04: Audit Logs, Firestore Paths, Frontend Pages, Immutability Enforcement (+3 more)
 
 ### Community 526 - "Community 526"
 Cohesion: 0.15
-Nodes (13): code:block10 (1. Create a party (customer)), code:block11 (1. Create a party (vendor)), code:block6 (1. Create a company), code:block7 (1. Create a parent account (e.g., "Assets")), code:block8 (1. Create a draft voucher with 2 lines (debit + credit)), code:block9 (1. Create an item), Smoke Test 1: Company + User, Smoke Test 2: Accounting — Accounts (+5 more)
+Nodes (13): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1C, Changes, Changes, Changes, Changes, Changes, Changes, Review / Verification (+5 more)
 
 ### Community 527 - "Community 527"
+Cohesion: 0.15
+Nodes (12): 11 — Aging Reports (Accounts Receivable / Payable), Acceptance Criteria, Business Context, code:typescript (interface AgingReportData {), code:typescript (router.get('/reports/aging', permissionGuard('accounting.rep), Current State, Functional, Implementation Plan (+4 more)
+
+### Community 528 - "Community 528"
+Cohesion: 0.15
+Nodes (12): 14 — Voucher Attachments, Acceptance Criteria, Business Context, code:block1 (POST   /accounting/vouchers/:id/attachments     — Upload (mu), Current State, Functional, Implementation Plan, Non-Functional (+4 more)
+
+### Community 529 - "Community 529"
+Cohesion: 0.15
+Nodes (13): 3a. Import `PlSubgroup` (add to import on line 11):, 3b. Add options array (after `CASH_FLOW_CATEGORIES` on line 63):, 3c. Add state (after `cashFlowCategory` state on line 95):, 3d. Add to payload in `handleSubmit` (after `cashFlowCategory` on line 164):, 3e. Add dropdown to the form (after the Cash Flow Category dropdown, after line 310):, 3f. Reset `plSubgroup` when classification changes to non-P&L type, code:typescript (import {), code:typescript (const PL_SUBGROUPS: { value: PlSubgroup | ''; label: string;) (+5 more)
+
+### Community 530 - "Community 530"
+Cohesion: 0.15
+Nodes (13): code:block10 (1. Create a party (customer)), code:block11 (1. Create a party (vendor)), code:block6 (1. Create a company), code:block7 (1. Create a parent account (e.g., "Assets")), code:block8 (1. Create a draft voucher with 2 lines (debit + credit)), code:block9 (1. Create an item), Smoke Test 1: Company + User, Smoke Test 2: Accounting — Accounts (+5 more)
+
+### Community 531 - "Community 531"
 Cohesion: 0.29
 Nodes (8): calculateBaseAmount(), formatByCurrency(), getMoneyEpsilon(), isProperlyRounded(), moneyEqualsByCurrency(), roundByCurrency(), getCurrencyByCode(), getDecimalPlaces()
 
-### Community 531 - "Community 531"
-Cohesion: 0.21
-Nodes (3): ListActiveCompanyFeaturesUseCase, ListCompanyFeaturesUseCase, ToggleFeatureFlagUseCase
+### Community 533 - "Community 533"
+Cohesion: 0.26
+Nodes (7): run(), seedDemoCompany(), run(), inferFieldClass(), lineField(), normalizeField(), seedSystemVoucherTypes()
 
-### Community 537 - "Community 537"
+### Community 546 - "Community 546"
 Cohesion: 0.29
 Nodes (10): run(), seedAuthUser(), seedChartOfAccountsTemplate(), seedCompany(), seedCompanyRole(), seedCompanyUser(), seedCurrencies(), seedUserProfile() (+2 more)
-
-### Community 544 - "Community 544"
-Cohesion: 0.23
-Nodes (3): Role, CreateRoleUseCase, UpdateRolePermissionsUseCase
-
-### Community 548 - "Community 548"
-Cohesion: 0.26
-Nodes (7): handleDisable(), handleEnable(), handleSave(), if(), loadProviders(), resetForm(), unwrap()
 
 ### Community 549 - "Community 549"
 Cohesion: 0.17
@@ -3157,11 +3105,11 @@ Nodes (10): API Routes, code:typescript ({), Entities, Feature 05: Print Templat
 
 ### Community 580 - "Community 580"
 Cohesion: 0.17
-Nodes (12): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1D, Changes, Changes, Changes, Changes, Changes, Rabbit Holes Logged, Review / Verification (+4 more)
+Nodes (12): 2026-05-13 Result — AI Assistant Fixing Plan Phase 3B/3C Tool Truncation Signals, Changes, Changes, Changes, Changes, Documentation, Documentation, Documentation (+4 more)
 
 ### Community 581 - "Community 581"
 Cohesion: 0.17
-Nodes (12): 2026-05-13 Result — AI Assistant Fixing Plan Phase 3B/3C Tool Truncation Signals, Changes, Changes, Changes, Changes, Documentation, Documentation, Documentation (+4 more)
+Nodes (12): 2026-05-12 Progress — AI Assistant Fixing Plan Phase 1D, Changes, Changes, Changes, Changes, Changes, Rabbit Holes Logged, Review / Verification (+4 more)
 
 ### Community 582 - "Community 582"
 Cohesion: 0.17
@@ -3183,437 +3131,441 @@ Nodes (12): 3. Step-by-Step Switch Procedure, code:bash (cd backend), code:bash 
 Cohesion: 0.35
 Nodes (10): loadAccounts(), main(), parseArgs(), pickAccount(), resolveAccounts(), seedItems(), seedOpeningStockDraft(), seedParties() (+2 more)
 
-### Community 599 - "Community 599"
-Cohesion: 0.29
-Nodes (5): useAiSettings(), getDiagnosticStatusClasses(), getDiagnosticStatusIcon(), resolvePresetId(), resolveProviderChange()
+### Community 587 - "Community 587"
+Cohesion: 0.2
+Nodes (3): CreateAndPostSalesInvoiceUseCase, ListSalesInvoicesUseCase, UpdateAndPostSalesInvoiceUseCase
 
-### Community 600 - "Community 600"
+### Community 588 - "Community 588"
+Cohesion: 0.25
+Nodes (3): CreateDeliveryNoteUseCase, findSOLine(), PostDeliveryNoteUseCase
+
+### Community 589 - "Community 589"
 Cohesion: 0.27
-Nodes (6): handleExpireCertification(), handleRecordManualCert(), handleResetCertHistory(), handleRunAllCategories(), handleRunShellCert(), loadCertifications()
-
-### Community 601 - "Community 601"
-Cohesion: 0.24
-Nodes (4): handleSaveKeywords(), handleToggle(), loadTool(), unwrap()
+Nodes (4): assertValidSalesTaxCode(), CreateSalesOrderUseCase, roundMoney(), UpdateSalesOrderUseCase
 
 ### Community 602 - "Community 602"
-Cohesion: 0.18
-Nodes (10): code:bash (# Start Firebase emulators (Firestore, Auth, Storage)), code:block2 (ERP03/), Documentation, ERP03, License, Prerequisites, Project Layout, Quick Start (+2 more)
+Cohesion: 0.22
+Nodes (7): validateUiConfig(), checkFormDeletable(), ensureUIModeOverrides(), loadCompanyForms(), removeUndefined(), saveVoucherForm(), toggleFormEnabled()
 
 ### Community 603 - "Community 603"
-Cohesion: 0.18
-Nodes (11): code:json ({), code:json ({), code:json ({), code:json ({), code:json ({), Configuration Examples, Disable All Policies (Core Invariants Only), Enable Account Access Control (+3 more)
+Cohesion: 0.24
+Nodes (6): getActiveModuleFromPath(), handleModuleClick(), inferModuleFromApexPath(), inferModuleFromSection(), inferModuleFromTenantPath(), toggleModule()
 
 ### Community 604 - "Community 604"
 Cohesion: 0.18
-Nodes (10): 1. Chart of Accounts (COA) & Vouchers, 2. Customers & Vendors, 3. Inventory Items, 4. Sales Orders & Invoices, 5. Purchase Bills, 6. CFO AI Advisor, Apex Ledger Mockup Integration Architecture, API Integration Detail (+2 more)
+Nodes (10): code:bash (# Start Firebase emulators (Firestore, Auth, Storage)), code:block2 (ERP03/), Documentation, ERP03, License, Prerequisites, Project Layout, Quick Start (+2 more)
 
 ### Community 605 - "Community 605"
 Cohesion: 0.18
-Nodes (10): Architectural context, Deployment, Firestore Security Rules, Known limitations, Membership lookup, Posture, Pre-deploy checklist, Test suite (+2 more)
+Nodes (11): code:json ({), code:json ({), code:json ({), code:json ({), code:json ({), Configuration Examples, Disable All Policies (Core Invariants Only), Enable Account Access Control (+3 more)
 
 ### Community 606 - "Community 606"
 Cohesion: 0.18
-Nodes (9): Compile & Test, Date: 2026-03-07 23:23, Deviations from Spec, New Test Cases Added, Phase 2 Audit Report — Enhanced Inventory, Task 2A: Stock Transfers, Task 2B: Returns, Task 2C: Period Snapshots (+1 more)
+Nodes (10): 1. Chart of Accounts (COA) & Vouchers, 2. Customers & Vendors, 3. Inventory Items, 4. Sales Orders & Invoices, 5. Purchase Bills, 6. CFO AI Advisor, Apex Ledger Mockup Integration Architecture, API Integration Detail (+2 more)
 
 ### Community 607 - "Community 607"
 Cohesion: 0.18
-Nodes (9): API Endpoints, Compile & Build, Date: 2026-04-01 10:03, Deviations from Spec, Domain Entities, Frontend, Phase 1 Audit Report — Purchase Orders + Settings, Repositories (+1 more)
+Nodes (10): Architectural context, Deployment, Firestore Security Rules, Known limitations, Membership lookup, Posture, Pre-deploy checklist, Test suite (+2 more)
 
 ### Community 608 - "Community 608"
 Cohesion: 0.18
-Nodes (11): 5.10 Purchase Return — after invoice, 5.1 Invoice before receipt (CONTROLLED, stock items), 5.2 Partial receipt, 5.3 Partial invoice, 5.4 Invoice qty > received qty (CONTROLLED, stock items), 5.5 Invoice qty > ordered qty (PO-linked invoices), 5.6 Cancel remaining PO quantities, 5.7 Editing PO after partial receipt (+3 more)
+Nodes (9): Compile & Test, Date: 2026-03-07 23:23, Deviations from Spec, New Test Cases Added, Phase 2 Audit Report — Enhanced Inventory, Task 2A: Stock Transfers, Task 2B: Returns, Task 2C: Period Snapshots (+1 more)
 
 ### Community 609 - "Community 609"
 Cohesion: 0.18
-Nodes (11): code:typescript (type PartyRole = 'VENDOR' | 'CUSTOMER';), code:typescript (type TaxType = 'VAT' | 'GST' | 'EXEMPT' | 'ZERO_RATED';), code:typescript (// ADD to existing ItemProps:), Constraints, Constraints, Indexes, Indexes, S1  Party (+3 more)
+Nodes (9): API Endpoints, Compile & Build, Date: 2026-04-01 10:03, Deviations from Spec, Domain Entities, Frontend, Phase 1 Audit Report — Purchase Orders + Settings, Repositories (+1 more)
 
 ### Community 610 - "Community 610"
 Cohesion: 0.18
-Nodes (9): 10. Item Extension for Sales Accounts, 4. Line-Level Quantity Model, 6.1 Company-Level Sales Settings, 6. Settings Design, 8. Shared Services Reuse, code:block5 (┌─────────────────────────────────────────────────────────┐), code:typescript (// ADD to existing ItemProps:), `openInvoiceQty` calculation rules (+1 more)
+Nodes (11): 5.10 Purchase Return — after invoice, 5.1 Invoice before receipt (CONTROLLED, stock items), 5.2 Partial receipt, 5.3 Partial invoice, 5.4 Invoice qty > received qty (CONTROLLED, stock items), 5.5 Invoice qty > ordered qty (PO-linked invoices), 5.6 Cancel remaining PO quantities, 5.7 Editing PO after partial receipt (+3 more)
 
 ### Community 611 - "Community 611"
 Cohesion: 0.18
-Nodes (10): Critical Acceptance Rules, Evidence Checklist (per case), Required Setup (before execution), Scope, Sign-off, Suggested FX rates, Test Cases, UAT Checklist - Purchase/Sales Posting and Returns (+2 more)
+Nodes (11): code:typescript (type PartyRole = 'VENDOR' | 'CUSTOMER';), code:typescript (type TaxType = 'VAT' | 'GST' | 'EXEMPT' | 'ZERO_RATED';), code:typescript (// ADD to existing ItemProps:), Constraints, Constraints, Indexes, Indexes, S1  Party (+3 more)
 
 ### Community 612 - "Community 612"
 Cohesion: 0.18
-Nodes (10): Buy X Get Y free, Common questions, Creating a promotion rule, Deactivating or pausing a promotion, How manual discounts interact with promotions, How promotions auto-apply on orders and invoices, Promotions, The two promotion types (+2 more)
+Nodes (9): 10. Item Extension for Sales Accounts, 4. Line-Level Quantity Model, 6.1 Company-Level Sales Settings, 6. Settings Design, 8. Shared Services Reuse, code:block5 (┌─────────────────────────────────────────────────────────┐), code:typescript (// ADD to existing ItemProps:), `openInvoiceQty` calculation rules (+1 more)
 
 ### Community 613 - "Community 613"
 Cohesion: 0.18
-Nodes (11): code:text (1. Define module/capability manifest contract in code.), code:text (1. Add CompanyEntitlement and CompanyEntitlementItem.), code:text (1. Add ModuleCapabilityRegistry.), code:text (1. Define permission manifest format.), code:text (1. SuperAdmin shows DB/code implementation mismatch states.), Implementation Phases, Phase 1: Availability Contract And Enforcement, Phase 2: Entitlements And Bundles (+3 more)
+Nodes (10): Critical Acceptance Rules, Evidence Checklist (per case), Required Setup (before execution), Scope, Sign-off, Suggested FX rates, Test Cases, UAT Checklist - Purchase/Sales Posting and Returns (+2 more)
 
 ### Community 614 - "Community 614"
 Cohesion: 0.18
-Nodes (10): 104 — PR6: Firestore Production Security Rules, Context, Documentation, Files changed, Next PR, Notes / next steps, Rules file, Test suite scaffold (+2 more)
+Nodes (10): Buy X Get Y free, Common questions, Creating a promotion rule, Deactivating or pausing a promotion, How manual discounts interact with promotions, How promotions auto-apply on orders and invoices, Promotions, The two promotion types (+2 more)
 
 ### Community 615 - "Community 615"
 Cohesion: 0.18
-Nodes (10): 113 — Phase D Audit Hardening (D.3 + D.4), Acceptance Criteria Covered, Backend, Documentation, End-User View, Frontend, Next Recommendation, Technical Developer View (+2 more)
+Nodes (11): code:text (1. Define module/capability manifest contract in code.), code:text (1. Add CompanyEntitlement and CompanyEntitlementItem.), code:text (1. Add ModuleCapabilityRegistry.), code:text (1. Define permission manifest format.), code:text (1. SuperAdmin shows DB/code implementation mismatch states.), Implementation Phases, Phase 1: Availability Contract And Enforcement, Phase 2: Entitlements And Bundles (+3 more)
 
 ### Community 616 - "Community 616"
 Cohesion: 0.18
-Nodes (10): 124 — Customer Statement Engine Reuse (Piece B), Acceptance criteria met, Backend, Documentation, End-User View, Frontend, Remaining follow-up, Scope delivered (+2 more)
+Nodes (10): 104 — PR6: Firestore Production Security Rules, Context, Documentation, Files changed, Next PR, Notes / next steps, Rules file, Test suite scaffold (+2 more)
 
 ### Community 617 - "Community 617"
 Cohesion: 0.18
-Nodes (10): 125 — Vendor Statement Ledger-Backed AP Report, Acceptance criteria met, Backend, Documentation, End-User View, Frontend, Remaining follow-up, Scope delivered (+2 more)
+Nodes (10): 113 — Phase D Audit Hardening (D.3 + D.4), Acceptance Criteria Covered, Backend, Documentation, End-User View, Frontend, Next Recommendation, Technical Developer View (+2 more)
 
 ### Community 618 - "Community 618"
 Cohesion: 0.18
-Nodes (10): 129 - Phase F PI Attachments, Accounting and controls impact, End-User View, Files changed, Follow-ups, Manual QA Script, Summary, Technical Developer View (+2 more)
+Nodes (10): 124 — Customer Statement Engine Reuse (Piece B), Acceptance criteria met, Backend, Documentation, End-User View, Frontend, Remaining follow-up, Scope delivered (+2 more)
 
 ### Community 619 - "Community 619"
 Cohesion: 0.18
-Nodes (10): 130 - Phase F Vendor Groups, Accounting and controls impact, End-User View, Files changed, Follow-ups, Manual QA Script, Summary, Technical Developer View (+2 more)
+Nodes (10): 125 — Vendor Statement Ledger-Backed AP Report, Acceptance criteria met, Backend, Documentation, End-User View, Frontend, Remaining follow-up, Scope delivered (+2 more)
 
 ### Community 620 - "Community 620"
 Cohesion: 0.18
-Nodes (10): 131 - Phase F Purchase Price Lists, Accounting and controls impact, End-User View, Files changed, Follow-ups, Manual QA Script, Summary, Technical Developer View (+2 more)
+Nodes (10): 129 - Phase F PI Attachments, Accounting and controls impact, End-User View, Files changed, Follow-ups, Manual QA Script, Summary, Technical Developer View (+2 more)
 
 ### Community 621 - "Community 621"
 Cohesion: 0.18
-Nodes (10): Completion Report: 135c — Field Library Phase C1, End-User View, Files added, Files changed, Guardrails kept, Known limits / next step, Technical Developer View, Time spent (+2 more)
+Nodes (10): 130 - Phase F Vendor Groups, Accounting and controls impact, End-User View, Files changed, Follow-ups, Manual QA Script, Summary, Technical Developer View (+2 more)
 
 ### Community 622 - "Community 622"
 Cohesion: 0.18
-Nodes (10): 136 — Sidebar form grouping policy, Change, code:block1 ([Overview, master data]            — unchanged), Context, Decision log, Files changed, Manual QA (after commit), Out of scope (+2 more)
+Nodes (10): 131 - Phase F Purchase Price Lists, Accounting and controls impact, End-User View, Files changed, Follow-ups, Manual QA Script, Summary, Technical Developer View (+2 more)
 
 ### Community 623 - "Community 623"
 Cohesion: 0.18
-Nodes (10): Automated Tests, Completion Report - Unify MDI Windows, Deleted Files:, Documentation, End-User View, Manual Verification Path, Modified Files:, Technical Developer View (+2 more)
+Nodes (10): Completion Report: 135c — Field Library Phase C1, End-User View, Files added, Files changed, Guardrails kept, Known limits / next step, Technical Developer View, Time spent (+2 more)
 
 ### Community 624 - "Community 624"
 Cohesion: 0.18
-Nodes (10): 1. Technical Developer View, 2. End-User View, Architecture / Behavior, Definition of Done — Checklist, Files Changed, Guard attribution map, Known Issues / Follow-ups, Task 160 — Posting Authority Stage 5: Uniform Rejection Contract (+2 more)
+Nodes (10): 136 — Sidebar form grouping policy, Change, code:block1 ([Overview, master data]            — unchanged), Context, Decision log, Files changed, Manual QA (after commit), Out of scope (+2 more)
 
 ### Community 625 - "Community 625"
-Cohesion: 0.24
-Nodes (9): 1) API client: Trading Account endpoint, 2) New Trading Account page, 3) Enhanced Profit & Loss (backward compatible), 4) Route registration, 5) Sidebar/navigation updates, Changes Implemented, Notes, Scope Completed (+1 more)
+Cohesion: 0.18
+Nodes (10): Automated Tests, Completion Report - Unify MDI Windows, Deleted Files:, Documentation, End-User View, Manual Verification Path, Modified Files:, Technical Developer View (+2 more)
 
 ### Community 626 - "Community 626"
 Cohesion: 0.18
-Nodes (9): 1) Backend batch endpoint, 2) Frontend API method, 38 - Bulk Subgroup Tagging Completion Report, 3) New Subgroup Tagging page, 4) Route + navigation, Changes Implemented, Notes, Scope Completed (+1 more)
+Nodes (10): 1. Technical Developer View, 2. End-User View, Architecture / Behavior, Definition of Done — Checklist, Files Changed, Guard attribution map, Known Issues / Follow-ups, Task 160 — Posting Authority Stage 5: Uniform Rejection Contract (+2 more)
 
 ### Community 627 - "Community 627"
-Cohesion: 0.18
-Nodes (9): Acceptance Criteria Met, Backend (`command-center/server.js`), Changes Made, Completion Report: Command Center Workflow Upgrades, 📚 Documentation, End-User View, Frontend (`command-center/public/`), Overview (+1 more)
+Cohesion: 0.24
+Nodes (9): 1) API client: Trading Account endpoint, 2) New Trading Account page, 3) Enhanced Profit & Loss (backward compatible), 4) Route registration, 5) Sidebar/navigation updates, Changes Implemented, Notes, Scope Completed (+1 more)
 
 ### Community 628 - "Community 628"
 Cohesion: 0.18
-Nodes (9): ✅ Acceptance Criteria Met, Architecture Alignment, 👤 End-User View, Features, Key Changes, Summary, Task 51: Governance Rules UI in Sales Settings — Completion Report, 🛠 Technical Developer View (+1 more)
+Nodes (9): 1) Backend batch endpoint, 2) Frontend API method, 38 - Bulk Subgroup Tagging Completion Report, 3) New Subgroup Tagging page, 4) Route + navigation, Changes Implemented, Notes, Scope Completed (+1 more)
 
 ### Community 629 - "Community 629"
 Cohesion: 0.18
-Nodes (9): Completion Report — Generic Table SELECT Options, End-User View, Files Changed, Known Follow-Up, Root Cause, Task, Technical Developer View, Verification (+1 more)
+Nodes (9): Acceptance Criteria Met, Backend (`command-center/server.js`), Changes Made, Completion Report: Command Center Workflow Upgrades, 📚 Documentation, End-User View, Frontend (`command-center/public/`), Overview (+1 more)
 
 ### Community 630 - "Community 630"
 Cohesion: 0.18
-Nodes (9): Completion Report: Saved Voucher SELECT Choices Reopen Population, End-User View, Files Changed, Implementation, Known Follow-Ups, Root Cause, Task, Technical Developer View (+1 more)
+Nodes (9): ✅ Acceptance Criteria Met, Architecture Alignment, 👤 End-User View, Features, Key Changes, Summary, Task 51: Governance Rules UI in Sales Settings — Completion Report, 🛠 Technical Developer View (+1 more)
 
 ### Community 631 - "Community 631"
 Cohesion: 0.18
-Nodes (9): Acceptance Criteria Met, End-User View, Files Changed, Root Cause, Task, Task 58 Completion Report: Dynamic Document List Visibility, Technical Developer View, Verification (+1 more)
+Nodes (9): Completion Report — Generic Table SELECT Options, End-User View, Files Changed, Known Follow-Up, Root Cause, Task, Technical Developer View, Verification (+1 more)
 
 ### Community 632 - "Community 632"
 Cohesion: 0.18
-Nodes (9): 71 — AI Assistant: AI-Led Tool Planning + Keyword Hint Context, Architecture Decision, End-User View, Known Follow-ups, Scope Completed, Technical Developer View, Verification, Verification Limitation (+1 more)
+Nodes (9): Completion Report: Saved Voucher SELECT Choices Reopen Population, End-User View, Files Changed, Implementation, Known Follow-Ups, Root Cause, Task, Technical Developer View (+1 more)
 
 ### Community 633 - "Community 633"
 Cohesion: 0.18
-Nodes (9): Current Worktree Note, End-User View, Files Changed During This Reconciliation, Findings, Increment 2.5 — Branch and Worktree Reconciliation, Recommended Next Step, Task, Technical Developer View (+1 more)
+Nodes (9): Acceptance Criteria Met, End-User View, Files Changed, Root Cause, Task, Task 58 Completion Report: Dynamic Document List Visibility, Technical Developer View, Verification (+1 more)
 
 ### Community 634 - "Community 634"
 Cohesion: 0.18
-Nodes (9): Acceptance Criteria Met, End-User View, Files Modified (12 tools + 1 detour fix), Known Issues / Follow-ups, Phase 3B/3C — Tool Truncation Signals — Completion Report, Technical Developer View, Tools NOT Modified (no truncation), What Was Changed (+1 more)
+Nodes (9): 71 — AI Assistant: AI-Led Tool Planning + Keyword Hint Context, Architecture Decision, End-User View, Known Follow-ups, Scope Completed, Technical Developer View, Verification, Verification Limitation (+1 more)
 
 ### Community 635 - "Community 635"
 Cohesion: 0.18
-Nodes (9): End-User View, Files Changed, Fix, Follow-Ups, Module Access 403 Trace Completion Report, Root Cause, Task, Technical Developer View (+1 more)
+Nodes (9): Current Worktree Note, End-User View, Files Changed During This Reconciliation, Findings, Increment 2.5 — Branch and Worktree Reconciliation, Recommended Next Step, Task, Technical Developer View (+1 more)
 
 ### Community 636 - "Community 636"
 Cohesion: 0.18
-Nodes (9): Acceptance Criteria Met, End-User View, Files Changed, Implementation Details, Known Follow-Ups, Phase 6.6B — AI Setup Wizard Integration, Task, Technical Developer View (+1 more)
+Nodes (9): Acceptance Criteria Met, End-User View, Files Modified (12 tools + 1 detour fix), Known Issues / Follow-ups, Phase 3B/3C — Tool Truncation Signals — Completion Report, Technical Developer View, Tools NOT Modified (no truncation), What Was Changed (+1 more)
 
 ### Community 637 - "Community 637"
 Cohesion: 0.18
-Nodes (9): Completion Report: AI Certified Models Visibility & Seeding, End-User View, Feature Summary, Files Changed, How to Use, Problem, Solution, Technical Developer View (+1 more)
+Nodes (9): End-User View, Files Changed, Fix, Follow-Ups, Module Access 403 Trace Completion Report, Root Cause, Task, Technical Developer View (+1 more)
 
 ### Community 638 - "Community 638"
 Cohesion: 0.18
-Nodes (9): AI Assistant Stream Tool Result Reliability, End-User View, Files Changed, Known Follow-Ups, Root Cause, Task, Technical Developer View, Verification (+1 more)
+Nodes (9): Acceptance Criteria Met, End-User View, Files Changed, Implementation Details, Known Follow-Ups, Phase 6.6B — AI Setup Wizard Integration, Task, Technical Developer View (+1 more)
 
 ### Community 639 - "Community 639"
 Cohesion: 0.18
-Nodes (10): 1. SalesSettingsUseCases (2 tests), 2. SettingsArchitecture Integration Tests (2 tests), Architecture Audit Summary, Build Verification, Decision, Known Unrelated Remaining Failures, Next Step, Phase 1-5 Regressions Fixed (+2 more)
+Nodes (9): Completion Report: AI Certified Models Visibility & Seeding, End-User View, Feature Summary, Files Changed, How to Use, Problem, Solution, Technical Developer View (+1 more)
 
 ### Community 640 - "Community 640"
 Cohesion: 0.18
-Nodes (10): ✅ Check 1 — Approval is required for posting (Sales), ✅ Check 2 — Approver can complete the post, ✅ Check 3 — Same flow on Purchase Invoice, ✅ Check 4 — Period lock blocks back-dated posting, ✅ Check 5 — Period lock override (if your role allows), ✅ Check 6 — Error response shape (Stage 5 contract), How to report findings, Results (+2 more)
+Nodes (9): AI Assistant Stream Tool Result Reliability, End-User View, Files Changed, Known Follow-Ups, Root Cause, Task, Technical Developer View, Verification (+1 more)
 
 ### Community 641 - "Community 641"
 Cohesion: 0.18
-Nodes (10): Acceptance criteria, Backend, Effort estimate, Frontend, Goal, Notes for the implementer, Notifications (deferred), Problem (+2 more)
+Nodes (10): 1. SalesSettingsUseCases (2 tests), 2. SettingsArchitecture Integration Tests (2 tests), Architecture Audit Summary, Build Verification, Decision, Known Unrelated Remaining Failures, Next Step, Phase 1-5 Regressions Fixed (+2 more)
 
 ### Community 642 - "Community 642"
 Cohesion: 0.18
-Nodes (10): Acceptance criteria, Deferred (separate follow-ups), Effort estimate, Files to touch, Goal, Problem, Rejected status (cosmetic — back-end work is in Task 165), Scope (+2 more)
+Nodes (10): ✅ Check 1 — Approval is required for posting (Sales), ✅ Check 2 — Approver can complete the post, ✅ Check 3 — Same flow on Purchase Invoice, ✅ Check 4 — Period lock blocks back-dated posting, ✅ Check 5 — Period lock override (if your role allows), ✅ Check 6 — Error response shape (Stage 5 contract), How to report findings, Results (+2 more)
 
 ### Community 643 - "Community 643"
 Cohesion: 0.18
-Nodes (10): 18 — Balance Enforcement at Posting, Acceptance Criteria, Business Context, code:typescript (export class BalanceEnforcementPolicy implements IPostingPol), Current State, Implementation Plan, Requirements, Step 1: Add Balance Enforcement Policy (+2 more)
+Nodes (10): Acceptance criteria, Backend, Effort estimate, Frontend, Goal, Notes for the implementer, Notifications (deferred), Problem (+2 more)
 
 ### Community 644 - "Community 644"
 Cohesion: 0.18
-Nodes (10): Acceptance Criteria, Current Behavior, Phase 1 — Stabilize Access Flow, Phase 2 — Rename Concepts, Phase 3 — Move Subscription Ownership, Phase 4 — Data Migration, Plan 39 — Plan/Bundle Ownership Cleanup, Problem (+2 more)
+Nodes (10): Acceptance criteria, Deferred (separate follow-ups), Effort estimate, Files to touch, Goal, Problem, Rejected status (cosmetic — back-end work is in Task 165), Scope (+2 more)
 
 ### Community 645 - "Community 645"
 Cohesion: 0.18
-Nodes (10): Acceptance Criteria, Architecture Decision (Pre-Approved by Product Owner), code:bash (cd backend && npm run build), Execution Checklist, Files to check and fix if blocking:, Layer 1: Entity — SalesReturn.ts, Layer 7: Frontend Verification & Fixes, Problem Statement (+2 more)
+Nodes (10): 18 — Balance Enforcement at Posting, Acceptance Criteria, Business Context, code:typescript (export class BalanceEnforcementPolicy implements IPostingPol), Current State, Implementation Plan, Requirements, Step 1: Add Balance Enforcement Policy (+2 more)
 
 ### Community 646 - "Community 646"
 Cohesion: 0.18
-Nodes (10): Architecture sketch, code:block1 (backend/src/scheduling/), code:ts (// backend/src/application/sales/SalesModule.ts), Definition of Done, Goal, Migration impact, Open questions for the user, Problem (+2 more)
+Nodes (10): Acceptance Criteria, Current Behavior, Phase 1 — Stabilize Access Flow, Phase 2 — Rename Concepts, Phase 3 — Move Subscription Ownership, Phase 4 — Data Migration, Plan 39 — Plan/Bundle Ownership Cleanup, Problem (+2 more)
 
 ### Community 647 - "Community 647"
 Cohesion: 0.18
-Nodes (9): 1. `Customer` Entity, 2. Repository, Firestore, Use Cases, API Routes, Backend, code:typescript (export class Customer {), Customer Pages, Feature 01: Customer Management, Frontend, Goal (+1 more)
+Nodes (10): Acceptance Criteria, Architecture Decision (Pre-Approved by Product Owner), code:bash (cd backend && npm run build), Execution Checklist, Files to check and fix if blocking:, Layer 1: Entity — SalesReturn.ts, Layer 7: Frontend Verification & Fixes, Problem Statement (+2 more)
 
 ### Community 648 - "Community 648"
 Cohesion: 0.18
-Nodes (9): 1. `Quotation` Entity, 2. Repository, Use Cases, API, Backend, code:typescript (export class Quotation {), Feature 02: Quotations, Frontend, Goal, Pages (+1 more)
+Nodes (10): Architecture sketch, code:block1 (backend/src/scheduling/), code:ts (// backend/src/application/sales/SalesModule.ts), Definition of Done, Goal, Migration impact, Open questions for the user, Problem (+2 more)
 
 ### Community 649 - "Community 649"
 Cohesion: 0.18
-Nodes (9): 1. `SalesOrder` Entity, 2. Repository, Use Cases, API, Backend, code:typescript (export class SalesOrder {), Feature 03: Sales Orders, Frontend, Goal, Pages (+1 more)
+Nodes (9): 1. `Customer` Entity, 2. Repository, Firestore, Use Cases, API Routes, Backend, code:typescript (export class Customer {), Customer Pages, Feature 01: Customer Management, Frontend, Goal (+1 more)
 
 ### Community 650 - "Community 650"
 Cohesion: 0.18
-Nodes (11): 2026-05-12 Result — AI Assistant Fixing Plan Phase 2 Security Hardening, Completed Subtasks, Documentation, Documentation, Documentation, Documentation, Notes, Verification (+3 more)
+Nodes (9): 1. `Quotation` Entity, 2. Repository, Use Cases, API, Backend, code:typescript (export class Quotation {), Feature 02: Quotations, Frontend, Goal, Pages (+1 more)
 
 ### Community 651 - "Community 651"
 Cohesion: 0.18
-Nodes (11): 2026-05-13 Urgent Detour Result — Module Access 403 Trace, Changes, Changes, Changes, Changes, Next Step, Root Cause, Verification (+3 more)
+Nodes (9): 1. `SalesOrder` Entity, 2. Repository, Use Cases, API, Backend, code:typescript (export class SalesOrder {), Feature 03: Sales Orders, Frontend, Goal, Pages (+1 more)
 
 ### Community 652 - "Community 652"
 Cohesion: 0.18
-Nodes (11): code:text (1. Define module/capability manifest contract in code.), code:text (1. Add CompanyEntitlement and CompanyEntitlementItem.), code:text (1. Add ModuleCapabilityRegistry.), code:text (1. Define permission manifest format.), code:text (1. SuperAdmin shows DB/code implementation mismatch states.), Implementation Phases, Phase 1: Availability Contract And Enforcement, Phase 2: Entitlements And Bundles (+3 more)
+Nodes (11): 2026-05-13 Urgent Detour Result — Module Access 403 Trace, Changes, Changes, Changes, Changes, Next Step, Root Cause, Verification (+3 more)
 
 ### Community 653 - "Community 653"
 Cohesion: 0.18
-Nodes (10): 18 — Balance Enforcement at Posting, Acceptance Criteria, Business Context, code:typescript (export class BalanceEnforcementPolicy implements IPostingPol), Current State, Implementation Plan, Requirements, Step 1: Add Balance Enforcement Policy (+2 more)
+Nodes (11): code:text (1. Define module/capability manifest contract in code.), code:text (1. Add CompanyEntitlement and CompanyEntitlementItem.), code:text (1. Add ModuleCapabilityRegistry.), code:text (1. Define permission manifest format.), code:text (1. SuperAdmin shows DB/code implementation mismatch states.), Implementation Phases, Phase 1: Availability Contract And Enforcement, Phase 2: Entitlements And Bundles (+3 more)
 
 ### Community 654 - "Community 654"
 Cohesion: 0.18
-Nodes (10): Acceptance Criteria, Current Behavior, Phase 1 — Stabilize Access Flow, Phase 2 — Rename Concepts, Phase 3 — Move Subscription Ownership, Phase 4 — Data Migration, Plan 39 — Plan/Bundle Ownership Cleanup, Problem (+2 more)
+Nodes (10): 18 — Balance Enforcement at Posting, Acceptance Criteria, Business Context, code:typescript (export class BalanceEnforcementPolicy implements IPostingPol), Current State, Implementation Plan, Requirements, Step 1: Add Balance Enforcement Policy (+2 more)
 
 ### Community 655 - "Community 655"
 Cohesion: 0.18
-Nodes (10): Acceptance Criteria, Architecture Decision (Pre-Approved by Product Owner), code:bash (cd backend && npm run build), Execution Checklist, Files to check and fix if blocking:, Layer 1: Entity — SalesReturn.ts, Layer 7: Frontend Verification & Fixes, Problem Statement (+2 more)
+Nodes (10): Acceptance Criteria, Current Behavior, Phase 1 — Stabilize Access Flow, Phase 2 — Rename Concepts, Phase 3 — Move Subscription Ownership, Phase 4 — Data Migration, Plan 39 — Plan/Bundle Ownership Cleanup, Problem (+2 more)
 
 ### Community 656 - "Community 656"
 Cohesion: 0.18
-Nodes (10): 1. SalesSettingsUseCases (2 tests), 2. SettingsArchitecture Integration Tests (2 tests), Architecture Audit Summary, Build Verification, Decision, Known Unrelated Remaining Failures, Next Step, Phase 1-5 Regressions Fixed (+2 more)
+Nodes (10): Acceptance Criteria, Architecture Decision (Pre-Approved by Product Owner), code:bash (cd backend && npm run build), Execution Checklist, Files to check and fix if blocking:, Layer 1: Entity — SalesReturn.ts, Layer 7: Frontend Verification & Fixes, Problem Statement (+2 more)
 
 ### Community 657 - "Community 657"
-Cohesion: 0.4
-Nodes (3): getBucket(), safeFileName(), SalesInvoiceAttachmentController
+Cohesion: 0.18
+Nodes (10): 1. SalesSettingsUseCases (2 tests), 2. SettingsArchitecture Integration Tests (2 tests), Architecture Audit Summary, Build Verification, Decision, Known Unrelated Remaining Failures, Next Step, Phase 1-5 Regressions Fixed (+2 more)
 
-### Community 659 - "Community 659"
+### Community 658 - "Community 658"
+Cohesion: 0.22
+Nodes (3): makeSystemVoucherForm(), nowDate(), GetSalesSettingsUseCase
+
+### Community 661 - "Community 661"
 Cohesion: 0.27
 Nodes (5): mapCostSource(), mapMovementType(), mapReferenceType(), RecordStockMovementUseCase, TransferStockBetweenWarehousesUseCase
 
-### Community 678 - "Community 678"
+### Community 667 - "Community 667"
+Cohesion: 0.31
+Nodes (3): FirestorePaymentHistoryRepository, toDate(), toTimestamp()
+
+### Community 677 - "Community 677"
 Cohesion: 0.31
 Nodes (4): getBreakpointMaxPriority(), useResponsiveColumns(), useActiveBreakpoint(), useBreakpoint()
 
-### Community 679 - "Community 679"
-Cohesion: 0.29
-Nodes (4): handleSync(), handleToggle(), loadTools(), unwrap()
-
 ### Community 680 - "Community 680"
-Cohesion: 0.31
-Nodes (5): handleDelete(), handleSave(), loadData(), resetForm(), unwrap()
-
-### Community 681 - "Community 681"
-Cohesion: 0.31
-Nodes (6): handleCreate(), handleRunAll(), handleRunCert(), refresh(), runOneCategory(), unwrap()
-
-### Community 682 - "Community 682"
-Cohesion: 0.36
-Nodes (5): reset(), loadSuperAdminTheme(), normalizeSuperAdminTheme(), resetSuperAdminTheme(), saveSuperAdminTheme()
-
-### Community 683 - "Community 683"
-Cohesion: 0.29
-Nodes (5): handleBack(), handleCreateNew(), handleDelete(), handleEdit(), handleSave()
-
-### Community 684 - "Community 684"
 Cohesion: 0.2
 Nodes (9): 1. Base Currency MUST Come from Company Settings, 2. Never Trust Frontend for Financial Data, Available Strategies, code:typescript (// ✅ CORRECT), Critical Rules, ⚠️ PRODUCTION CODE - Handle with Care, Purpose, See Also (+1 more)
 
-### Community 685 - "Community 685"
+### Community 681 - "Community 681"
 Cohesion: 0.2
 Nodes (9): Architecture Notes, code:block1 (companies/{companyId}/settings/accounting), code:typescript ({), code:block16 (Policy validation failed [approval-required]: Voucher must b), Configuration Location, Error Handling, Overview, Policy Configuration Guide (Backend Only - NO UI) (+1 more)
 
-### Community 686 - "Community 686"
+### Community 682 - "Community 682"
 Cohesion: 0.2
 Nodes (9): AI Provider-driven Settings Architecture, code:txt (AiProvider), code:txt (GET /tenant/ai-assistant/providers), Data model, Decision, Follow-up architecture work, Runtime safety, Super Admin UX notes (+1 more)
 
-### Community 687 - "Community 687"
+### Community 683 - "Community 683"
 Cohesion: 0.2
 Nodes (9): Banned patterns (enforced), code:tsx (import { useConfirm } from '@/hooks/useConfirm';), Confirmations (separate from feedback), Copy templates, Files & references, Frontend Feedback Taxonomy, The eight categories, Tone selection (+1 more)
 
-### Community 688 - "Community 688"
+### Community 684 - "Community 684"
 Cohesion: 0.2
 Nodes (9): code:bash (npm run graph:update), code:bat (scripts\graphify.bat query "How does AI Assistant connect to), code:powershell (powershell -ExecutionPolicy Bypass -File scripts\graphify.ps), code:bash (git rev-parse HEAD), Commands, Graphify Usage, Maintenance, Purpose (+1 more)
 
-### Community 689 - "Community 689"
+### Community 685 - "Community 685"
 Cohesion: 0.2
 Nodes (9): Accounting, code:block1 (explicit sidebarGroup (not "Documents")  → use it verbatim), Doc cross-references, Follow-ups (not blocking), Implementation (2026-05-30), Sales / Purchases (and any future doc-bearing module), Sidebar Forms Grouping Policy, Target policy — per module (+1 more)
 
-### Community 690 - "Community 690"
+### Community 686 - "Community 686"
 Cohesion: 0.2
 Nodes (8): Algorithm Compliance, Bug Fix Verification (B1–B5), code:text (RUN  v4.0.18 D:/DEV2026/ERP03), Date: 2026-03-07 02:58, Deviations from Spec, Files Created, Phase 1C Audit Report — Core Cost Engine, Test Results
 
-### Community 691 - "Community 691"
+### Community 687 - "Community 687"
 Cohesion: 0.2
 Nodes (8): API Client, Build Test, code:bash (npm run build   # frontend build), Date: 2026-03-07 03:37, Deviations from Spec, Pages Created, Phase 1E Audit Report — Frontend, Routes
 
-### Community 692 - "Community 692"
+### Community 688 - "Community 688"
 Cohesion: 0.2
 Nodes (8): Compile & Test, Date: 2026-03-07 23:37, Phase 3 Audit Report — Integration Hooks, Task 3A: Contracts, Task 3B: Reservations, Task 3C: Cost Query, Task 3D: Reference Query, Task 3E: Comprehensive Reconciliation
 
-### Community 693 - "Community 693"
+### Community 689 - "Community 689"
 Cohesion: 0.2
 Nodes (8): Compile & Build, Date: 2026-04-01 11:33, Deviations from Spec, Frontend, Payment Status Sync, Phase 3 Audit Report — Purchase Returns + Integration + Polish, Purchase Return Posting, Tests
 
-### Community 694 - "Community 694"
+### Community 690 - "Community 690"
 Cohesion: 0.2
 Nodes (8): API Endpoints, Compile & Build, Date: 2026-04-01 14:11, Deviations from Spec, Domain Entities, Frontend, Phase 1 Audit Report — Sales Orders + Settings, Shared Prerequisites
 
-### Community 695 - "Community 695"
+### Community 691 - "Community 691"
 Cohesion: 0.2
 Nodes (8): Compile & Build, Date: 2026-04-01 16:01, Deviations from Spec, Frontend, Payment Status Sync, Phase 3 Audit Report — Sales Returns + Integration + Polish, Sales Return Posting, Tests
 
-### Community 696 - "Community 696"
+### Community 692 - "Community 692"
 Cohesion: 0.2
 Nodes (9): Change History (Audit Log) — User Guide, code:block1 (2026-05-21 14:32 — john@company.com  [UPDATE]), Example, Frequently Asked Questions, How to View Change History, What Gets Recorded, What It Does, What You'll See (+1 more)
 
-### Community 697 - "Community 697"
+### Community 693 - "Community 693"
 Cohesion: 0.2
 Nodes (9): Account Resolution, Frequently Asked Questions, GL Impact — User Guide, How to View GL Impact, Journal Entries, Posting Warnings, What It Does, What You'll See (+1 more)
 
-### Community 698 - "Community 698"
+### Community 694 - "Community 694"
 Cohesion: 0.2
 Nodes (9): Assigning a price list to a specific customer, Common questions, Creating a price list, Date-limited price lists, How quantity-break (tiered) pricing works, How the system auto-fills prices on invoices, Price Lists, Setting a default price list (+1 more)
 
-### Community 699 - "Community 699"
+### Community 695 - "Community 695"
 Cohesion: 0.2
 Nodes (9): Adding a salesperson, Attaching a salesperson to a sale, Cancelling a commission, Common questions, How commissions are calculated, Marking commissions as paid, Salespersons and Commissions, Viewing a salesperson's totals (+1 more)
 
-### Community 700 - "Community 700"
+### Community 696 - "Community 696"
 Cohesion: 0.2
 Nodes (9): Carried-forward follow-ups, 🎯 Current Focus, Earlier focus (archived for context), Earlier Purchases focus (still open after the Field Library arc), Next action, 👉 Next agent — start here, Rabbit Holes, Sequence (remaining) (+1 more)
 
-### Community 701 - "Community 701"
+### Community 697 - "Community 697"
 Cohesion: 0.2
 Nodes (10): code:text (unchecked: SuperAdmin has not run implementation check.), code:text (draft), code:text (draft: SuperAdmin/internal only. Not available for new compa), code:text (available), code:text (available: runtime access allowed.), code:text (unchecked), implementationStatus, lifecycleStatus (+2 more)
 
-### Community 702 - "Community 702"
+### Community 698 - "Community 698"
 Cohesion: 0.2
 Nodes (9): 103 — PR4: API Idempotency + Negative-Stock Enforcement, Context, Files changed, Idempotency middleware, Negative-stock enforcement, Next PR, Notes / next steps, Verification (+1 more)
 
-### Community 703 - "Community 703"
+### Community 699 - "Community 699"
 Cohesion: 0.2
 Nodes (9): 1. Appearance Settings & Presets, 2. Component Adaptations, 3. Navigation structure & Icon parity, 4. Interactive Sidebar Search Filtering, 5. Flat Borderless TopBar Layout, 6. Sandbox Dev Page & Demo Data Seeding, Completion Report: Tailwind Play Theme & Styling Parity, Verification & Testing (+1 more)
 
-### Community 704 - "Community 704"
+### Community 700 - "Community 700"
 Cohesion: 0.2
 Nodes (9): Accounting/controls impact, Completion Report 128 - COA template defaults + comprehensive template, End-User View, Files touched, Follow-ups, Scope, Technical Developer View, Verification (+1 more)
 
-### Community 705 - "Community 705"
+### Community 701 - "Community 701"
 Cohesion: 0.2
 Nodes (9): 132 - Posting Authority Policy Guard, Acceptance criteria met, End-User View, Files changed, Known follow-ups, Problem, Technical Developer View, Verification (+1 more)
 
-### Community 706 - "Community 706"
+### Community 702 - "Community 702"
 Cohesion: 0.2
 Nodes (9): 1. Technical Developer View, 2. End-User View, Files Changed, Files Deleted, How to Use It, Task 132 — TopBar Inline Widget Bar and Settings Integration, Verification, What's New (+1 more)
 
-### Community 707 - "Community 707"
+### Community 703 - "Community 703"
 Cohesion: 0.2
 Nodes (9): code:powershell (npm --prefix frontend run typecheck), code:powershell (npm --prefix frontend run build), Completion Report: [133-fix-designer-wizard-fields.md](file:///d:/DEV2026/ERP03/planning/done/133-fix-designer-wizard-fields.md), End-User View, Features Added, Problem, Solution, Technical Developer View (+1 more)
 
-### Community 708 - "Community 708"
+### Community 704 - "Community 704"
 Cohesion: 0.2
 Nodes (9): Completion Report: 135d — Field Library Phase C2, End-User View, Files changed, Guardrails kept, Known limits / next step, Technical Developer View, Time spent, Verification (+1 more)
 
-### Community 709 - "Community 709"
+### Community 705 - "Community 705"
 Cohesion: 0.2
 Nodes (9): 147 — Sidebar Forms Grouping Rework, Code, Definition of Done, Docs, Follow-ups (non-blocking), Manual QA, Policy (now documented), What changed (+1 more)
 
-### Community 710 - "Community 710"
+### Community 706 - "Community 706"
 Cohesion: 0.2
 Nodes (9): 153 — AI Floating Assistant Launcher Toggle, Accounting / Control Impact, End-User View, Files Changed, Known Follow-Ups, Summary, Technical Developer View, Verification (+1 more)
 
-### Community 711 - "Community 711"
+### Community 707 - "Community 707"
 Cohesion: 0.2
 Nodes (9): 1. Technical Developer View, 2. End-User View, Architecture / Behavior, Definition of Done — Checklist, Files Changed, Known Issues / Follow-ups, Task 159 — Posting Authority Stage 4: PostingGateway (Guard at the Door), Verification (+1 more)
 
-### Community 712 - "Community 712"
+### Community 708 - "Community 708"
 Cohesion: 0.2
 Nodes (9): 1. Technical Developer View, 2. End-User View, Definition of Done — Checklist, Files Changed, Known Issues / Follow-ups, Stage 6 — Vocabulary cleanup (already satisfied; verified + documented), Stage 7 — Future hooks (document only; DO NOT BUILD), Task 161 — Posting Authority Stages 6 & 7: Vocabulary Cleanup + Future Hooks (Docs) (+1 more)
 
-### Community 713 - "Community 713"
+### Community 709 - "Community 709"
 Cohesion: 0.2
 Nodes (9): Acceptance Criteria Met, Accounting / ERP Impact, Architecture Decision, Completion Report 170 - Apex Route and Sidebar Adapter, End-User View, Known Follow-Ups, Technical Developer View, Verification (+1 more)
 
-### Community 714 - "Community 714"
+### Community 710 - "Community 710"
 Cohesion: 0.2
 Nodes (9): Acceptance Criteria Met, Accounting / ERP Impact, Architecture Decision, Completion Report 171 - Apex Sales Native Page Mounting, End-User View, Known Follow-Ups, Technical Developer View, Verification (+1 more)
 
-### Community 715 - "Community 715"
+### Community 711 - "Community 711"
 Cohesion: 0.2
 Nodes (9): Acceptance Criteria Met, Accounting / ERP Impact, Architecture Decision, Completion Report 173 - Apex Shell Prototype Scale Restoration, End-User View, Known Follow-Ups, Technical Developer View, Verification (+1 more)
 
-### Community 716 - "Community 716"
+### Community 712 - "Community 712"
 Cohesion: 0.2
 Nodes (9): Acceptance Criteria Met, Accounting / ERP Impact, Completion Report 174 - Apex Company Settings Sidebar Parity, End-User View, Known Follow-Ups, Technical Developer View, Verification, What Changed (+1 more)
 
-### Community 717 - "Community 717"
+### Community 713 - "Community 713"
 Cohesion: 0.2
 Nodes (9): Acceptance Criteria Met, Accounting / ERP Impact, Completion Report 176 - Apex Prototype Typography Restoration, End-User View, Known Follow-Ups, Technical Developer View, Verification, What Changed (+1 more)
 
-### Community 718 - "Community 718"
+### Community 714 - "Community 714"
+Cohesion: 0.2
+Nodes (9): Acceptance Criteria, Accounting / ERP Impact, Completion Report 177 - Apex Purchases And Inventory Native Page Mounting, End-User View, Known Follow-Ups, Technical Developer View, Verification, What Changed (+1 more)
+
+### Community 715 - "Community 715"
 Cohesion: 0.2
 Nodes (8): 61 — Inventory Transaction Safety (Final Two Use Cases), Acceptance criteria met, End-User View, Files changed, Known issues / follow-ups, Technical Developer View, What was implemented, What was tested
 
-### Community 719 - "Community 719"
+### Community 716 - "Community 716"
 Cohesion: 0.2
 Nodes (8): 72 - AI Settings: Model Diagnostics, End-User View, Safety Notes, Scope Completed, Technical Developer View, Verification, Verification Limitation, What Changed
 
-### Community 720 - "Community 720"
+### Community 717 - "Community 717"
 Cohesion: 0.2
 Nodes (8): 73 - AI Assistant: Conversation Context First Rules, Acceptance Criteria Met, End-User View, Known Follow-Ups, Scope Completed, Technical Developer View, Verification, What Changed
 
-### Community 721 - "Community 721"
+### Community 718 - "Community 718"
 Cohesion: 0.2
 Nodes (8): 74 - AI Assistant: Conversation Context Cost Settings, Acceptance Criteria Met, End-User View, Known Follow-Ups, Scope Completed, Technical Developer View, Verification, What Changed
 
-### Community 722 - "Community 722"
+### Community 719 - "Community 719"
 Cohesion: 0.2
 Nodes (8): 75 — AI Model Profile Management, Acceptance criteria met, End-User View, Files touched, How it works, Technical Developer View, Verification, What changed
 
-### Community 723 - "Community 723"
+### Community 720 - "Community 720"
 Cohesion: 0.2
 Nodes (8): Acceptance Criteria & Status, End-User View, Files Deleted, Files Modified (backed — test/stabilization scope), Known Issues & Follow-ups, Services Already Verified as Complete (Subtasks A-C), Task 94 — AI Module Finalization — Completion Report, What Changed
 
-### Community 724 - "Community 724"
+### Community 721 - "Community 721"
 Cohesion: 0.2
 Nodes (9): 1. Technical Developer View, 2. End-User View, Definition of Done — Checklist, Files Changed, How to Use It, Task 97 — Fix Diagnostics companyId Error, Permanent Profile Deletion, and Inline Action Icons, Verification, What's New (+1 more)
 
+### Community 722 - "Community 722"
+Cohesion: 0.2
+Nodes (9): Feature Requirements, Frontend Components, Goal Description, [MODIFY] [useSidebarConfig.ts](file:///d:/DEV2026/ERP03/frontend/src/hooks/useSidebarConfig.ts), Navigation, [NEW] [LedgerReport.tsx](file:///d:/DEV2026/ERP03/frontend/src/pages/accounting/reports/LedgerReport.tsx), [NEW] [ReportContainer.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/reports/ReportContainer.tsx), Proposed Changes (+1 more)
+
+### Community 723 - "Community 723"
+Cohesion: 0.2
+Nodes (10): 3a. Expand `SalesReturnLineInput` (line 41-52), 3b. Add `customerId` and `customerName` to `CreateSalesReturnInput` (line 54-65), 3c. `determineReturnContext` (line 85-89), 3d. `CreateSalesReturnUseCase.execute()` (line 169-246), code:typescript (// BEFORE:), code:typescript (export interface CreateSalesReturnInput {), code:typescript (const determineReturnContext = (input: CreateSalesReturnInpu), code:typescript (async execute(input: CreateSalesReturnInput): Promise<SalesR) (+2 more)
+
+### Community 724 - "Community 724"
+Cohesion: 0.2
+Nodes (10): 2026-05-06 (Wed) — ~4h, Phase 1: Domain Model, Phase 2: Proposal Policies, Phase 3: Proposal Generation Services, Phase 4: Chat Integration, Phase 5: Frontend Tenant UI, Phase 6: Super Admin UI, Phase 7: API Endpoints (+2 more)
+
 ### Community 725 - "Community 725"
-Cohesion: 0.24
-Nodes (8): Objective, Prerequisites, TC-01: Navigation to Ledger Report, TC-02: Report Container Layout, TC-03: Generate Ledger Report, TC-04: Export/Print, TC-05: Empty State, Test Cases
+Cohesion: 0.2
+Nodes (10): code:text (unchecked: SuperAdmin has not run implementation check.), code:text (draft), code:text (draft: SuperAdmin/internal only. Not available for new compa), code:text (available), code:text (available: runtime access allowed.), code:text (unchecked), implementationStatus, lifecycleStatus (+2 more)
 
 ### Community 726 - "Community 726"
 Cohesion: 0.2
@@ -3624,1000 +3576,984 @@ Cohesion: 0.2
 Nodes (10): 3a. Expand `SalesReturnLineInput` (line 41-52), 3b. Add `customerId` and `customerName` to `CreateSalesReturnInput` (line 54-65), 3c. `determineReturnContext` (line 85-89), 3d. `CreateSalesReturnUseCase.execute()` (line 169-246), code:typescript (// BEFORE:), code:typescript (export interface CreateSalesReturnInput {), code:typescript (const determineReturnContext = (input: CreateSalesReturnInpu), code:typescript (async execute(input: CreateSalesReturnInput): Promise<SalesR) (+2 more)
 
 ### Community 728 - "Community 728"
-Cohesion: 0.2
-Nodes (10): 2026-05-06 (Wed) — ~4h, Phase 1: Domain Model, Phase 2: Proposal Policies, Phase 3: Proposal Generation Services, Phase 4: Chat Integration, Phase 5: Frontend Tenant UI, Phase 6: Super Admin UI, Phase 7: API Endpoints (+2 more)
+Cohesion: 0.24
+Nodes (8): Objective, Prerequisites, TC-01: Navigation to Ledger Report, TC-02: Report Container Layout, TC-03: Generate Ledger Report, TC-04: Export/Print, TC-05: Empty State, Test Cases
 
 ### Community 729 - "Community 729"
 Cohesion: 0.2
-Nodes (10): code:text (unchecked: SuperAdmin has not run implementation check.), code:text (draft), code:text (draft: SuperAdmin/internal only. Not available for new compa), code:text (available), code:text (available: runtime access allowed.), code:text (unchecked), implementationStatus, lifecycleStatus (+2 more)
-
-### Community 730 - "Community 730"
-Cohesion: 0.2
-Nodes (9): Feature Requirements, Frontend Components, Goal Description, [MODIFY] [useSidebarConfig.ts](file:///d:/DEV2026/ERP03/frontend/src/hooks/useSidebarConfig.ts), Navigation, [NEW] [LedgerReport.tsx](file:///d:/DEV2026/ERP03/frontend/src/pages/accounting/reports/LedgerReport.tsx), [NEW] [ReportContainer.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/reports/ReportContainer.tsx), Proposed Changes (+1 more)
-
-### Community 731 - "Community 731"
-Cohesion: 0.2
-Nodes (10): 3a. Expand `SalesReturnLineInput` (line 41-52), 3b. Add `customerId` and `customerName` to `CreateSalesReturnInput` (line 54-65), 3c. `determineReturnContext` (line 85-89), 3d. `CreateSalesReturnUseCase.execute()` (line 169-246), code:typescript (// BEFORE:), code:typescript (export interface CreateSalesReturnInput {), code:typescript (const determineReturnContext = (input: CreateSalesReturnInpu), code:typescript (async execute(input: CreateSalesReturnInput): Promise<SalesR) (+2 more)
-
-### Community 732 - "Community 732"
-Cohesion: 0.2
 Nodes (9): 1. Update `VoucherEntryModal` Props and State, 2. Align Action Buttons in `VoucherEntryModal` Footer, 3. Update `VouchersListPage.tsx` Usage, 4. Verification, Add New Action Buttons, code:tsx (const isReversal = React.useMemo(() => {), Implementation Plan: Web and Windows Voucher UI Consistency, Save Button (+1 more)
 
-### Community 757 - "Community 757"
-Cohesion: 0.33
-Nodes (5): handleCompleteTransfer(), handleCreateTransfer(), load(), todayIso(), unwrap()
+### Community 734 - "Community 734"
+Cohesion: 0.28
+Nodes (4): AccountMapper, fromFirestoreDate(), toFirestoreDate(), VoucherMapper
 
-### Community 758 - "Community 758"
+### Community 753 - "Community 753"
 Cohesion: 0.22
 Nodes (8): code:ts (export interface TradingAccountInput {), Controller Pattern, Data Source / Reconciliation, FUTURE: Trading Account Report, Proposed Use Case Signature, Required COA Additions, Scope, Why This Is Deferred
 
-### Community 759 - "Community 759"
+### Community 754 - "Community 754"
 Cohesion: 0.22
 Nodes (8): AI Assistant Rate Limiting Architecture, Architecture, Burst Limit (Per-User), code:block1 (Request → [Per-User Burst Check] → [Per-Company Daily Check]), Daily Limit (Per-Company), Frontend Error Handling, Overview, Testing
 
-### Community 760 - "Community 760"
+### Community 755 - "Community 755"
 Cohesion: 0.22
 Nodes (8): API Idempotency, Client guidance, code:js (// Good — same key for the same intent, retried as many time), Contract, Endpoints with idempotency middleware applied, Implementation, Purpose, Storage
 
-### Community 761 - "Community 761"
+### Community 756 - "Community 756"
 Cohesion: 0.22
 Nodes (8): Files, Layout Model, Layout & Styling Model, Migration Notes, Purpose, Styling Model, Topbar Precision Widget Layout, Verification
 
-### Community 762 - "Community 762"
+### Community 757 - "Community 757"
 Cohesion: 0.22
 Nodes (7): Audit Fix & Real-World Test Report, Compile & Test, Date: 2026-03-07 09:22, Fix 1: Adjustment GL Voucher, Fix 2: Item.fromJSON costCurrency, Issues Found, Runtime Test
 
-### Community 763 - "Community 763"
+### Community 758 - "Community 758"
 Cohesion: 0.22
 Nodes (7): Date: 2026-03-07 02:42, Deviations from Spec, Files Created/Modified, Phase 1A Audit Report — Domain Entities, Schema Compliance Check, StockMovement Direction-Specific Field Check, TypeScript compilation
 
-### Community 764 - "Community 764"
+### Community 759 - "Community 759"
 Cohesion: 0.22
 Nodes (7): Date: 2026-03-07 02:50, Deviations from Spec, Files Created/Modified, Firestore Compliance, Phase 1B Audit Report — Repositories & Infrastructure, Repository Interface Compliance, TypeScript compilation
 
-### Community 765 - "Community 765"
+### Community 760 - "Community 760"
 Cohesion: 0.22
 Nodes (7): Date: 2026-03-07 03:18, Deviations from Spec, Endpoint Coverage, Files Created/Modified, Integration Test: Full Lifecycle, Phase 1D Audit Report — Use Cases, API, Controller, Server Boot Test
 
-### Community 766 - "Community 766"
+### Community 761 - "Community 761"
 Cohesion: 0.22
 Nodes (9): code:typescript (type ProcurementControlMode = 'SIMPLE' | 'CONTROLLED';), code:typescript (type GRNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';), code:typescript (interface GoodsReceiptLine {), Constraints, Constraints, Indexes, P1  PurchaseSettings, P3  GoodsReceipt (GRN) (+1 more)
 
-### Community 767 - "Community 767"
+### Community 762 - "Community 762"
 Cohesion: 0.22
 Nodes (8): 1. Creating and Saving a Draft, 2. Submitting for Approval (Posting Attempt), 3. Reviewing and Approving, How It Works: Step-by-Step, Posting Approvals and Gatekeeping, Tips & Limitations, Where to Find Document Statuses, Why Posting Approvals?
 
-### Community 768 - "Community 768"
+### Community 763 - "Community 763"
 Cohesion: 0.22
 Nodes (8): Frequently Asked Questions, Hard Lock (Not Overridable), How to Set Up Period Lock, Period Lock — User Guide, Soft Lock (Overridable), What Happens When You Try to Post a Locked Document, What It Does, Who Can See Period Lock Settings
 
-### Community 769 - "Community 769"
+### Community 764 - "Community 764"
 Cohesion: 0.22
 Nodes (8): Brief: Frontend UX Layout Production Hardening, code:powershell (npm --prefix frontend run typecheck), Constraints, Context, Definition Of Done For First Implementation Slice, Files To Inspect First, Suggested Validation, Task
 
-### Community 770 - "Community 770"
+### Community 765 - "Community 765"
 Cohesion: 0.22
 Nodes (8): 126 — Delete dead GetCustomerLedgerUseCase (QA Finding #3 closed), Decision, Files changed, Investigation, Manual QA (smoke), Verification, What QA found, What was removed
 
-### Community 771 - "Community 771"
+### Community 766 - "Community 766"
 Cohesion: 0.31
 Nodes (8): 140 — Visual Layout Editor Overflow and Syntax Fixes, 140 — Visual Layout Editor Polish (Breadcrumbs & Collapsible Properties), 1. Technical View (Future Developers), 2. End-User View (User Guide), Context & Root Cause, Implementation Details, Verification, What Was Fixed
 
-### Community 772 - "Community 772"
+### Community 767 - "Community 767"
 Cohesion: 0.22
 Nodes (8): 143 - Task 132 Phase 3: Settings taxonomy foundation, Accounting and Control Notes, End-User View, Known Follow-Ups, Scope, Technical Developer View, Time Spent, Verification
 
-### Community 773 - "Community 773"
+### Community 768 - "Community 768"
 Cohesion: 0.22
 Nodes (8): 144 - Task 132 Phase 4/5: Invoice list standardization, Accounting and Control Notes, End-User View, Known Follow-Ups, Scope, Technical Developer View, Time Spent, Verification
 
-### Community 774 - "Community 774"
+### Community 769 - "Community 769"
 Cohesion: 0.22
 Nodes (8): 145 - Task 132 Phase 4/5: Voucher and item list standardization, Accounting and Control Notes, End-User View, Known Follow-Ups, Scope, Technical Developer View, Time Spent, Verification
 
-### Community 775 - "Community 775"
+### Community 770 - "Community 770"
 Cohesion: 0.22
 Nodes (8): 146 - Task 132 Phase 5: Raw date input cleanup, Accounting and Control Notes, End-User View, Known Follow-Ups, Scope, Technical Developer View, Time Spent, Verification
 
-### Community 776 - "Community 776"
+### Community 771 - "Community 771"
 Cohesion: 0.22
 Nodes (8): 151 — Purchase Direct Invoicing Governance Fix, Accounting / Control Notes, End-User View, Follow-Ups, Problem, Technical Developer View, Verification, What changed
 
-### Community 777 - "Community 777"
+### Community 772 - "Community 772"
 Cohesion: 0.22
 Nodes (8): Acceptance Criteria Met, Completion Report 167 - Apex Shell Production Candidate Slice 1, End-User View, Known Follow-Ups, Not Verified, Technical Developer View, Verification, What Changed
 
-### Community 778 - "Community 778"
+### Community 773 - "Community 773"
 Cohesion: 0.33
 Nodes (7): Backend, Frontend, Notes, Required Verification Results, Scope Completed, Validation/Acceptance Alignment, What Was Changed
 
-### Community 779 - "Community 779"
+### Community 774 - "Community 774"
 Cohesion: 0.22
 Nodes (7): 43 — Duplicate Accounting Voucher Types Completion Report, Acceptance Criteria Met, Files Changed, Known Follow-Up, Summary, Verification, What Was Fixed
 
-### Community 780 - "Community 780"
+### Community 775 - "Community 775"
 Cohesion: 0.22
 Nodes (7): Acceptance Criteria Met, End-User View, Files Changed, Purchases Module Parity Completion Report, Remaining Follow-Ups, Technical Developer View, Tests and QA
 
-### Community 781 - "Community 781"
+### Community 776 - "Community 776"
 Cohesion: 0.22
 Nodes (7): Acceptance Criteria Met, End-User View, Known Issues / Follow-Ups, Sales Return Cost Fallback — Completion Report, Technical Developer View, What Changed, What Was Tested
 
-### Community 782 - "Community 782"
+### Community 777 - "Community 777"
 Cohesion: 0.22
 Nodes (7): AI Model Management Backend Trust Foundation, End-User View, Files Touched, Known Follow-Ups, Technical Developer View, Verification, What Changed
 
-### Community 783 - "Community 783"
+### Community 778 - "Community 778"
 Cohesion: 0.22
 Nodes (7): AI Assistant Fixing Plan — Phase 2 Security Hardening, End-User View, Follow-Ups, Known Non-Blocking Issue, Technical Developer View, Verification, What Changed
 
-### Community 784 - "Community 784"
+### Community 779 - "Community 779"
 Cohesion: 0.22
 Nodes (7): 1. Prerequisites and Setup, 2. Test Cases, Manual Testing Guide: Enhanced Notifications System, Test Case 1: Account Creation Trigger (Broadened Trigger), Test Case 2: Notification Bell Dropdown & "View All" Link, Test Case 3: Notification Inbox Page Features, Test Case 4: Notification Settings Page (Opting out)
 
-### Community 785 - "Community 785"
+### Community 780 - "Community 780"
 Cohesion: 0.22
 Nodes (8): 176 — Unified Line-Items Table: One Component, Two Skins, Architecture (binding), Definition of done, Goal, Migration plan (one voucher per session, in order), Notes for the next agent, Out of scope, Why
 
-### Community 786 - "Community 786"
+### Community 781 - "Community 781"
 Cohesion: 0.22
 Nodes (9): 2a. Add type export (after `CashFlowCategory` on line 17):, 2b. Add to `Account` interface (after `cashFlowCategory` on line 50):, 2c. Add to `NewAccountInput` (after `cashFlowCategory` on line 90):, 2d. Add to `UpdateAccountInput` (after `cashFlowCategory` on line 120):, code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (export type PlSubgroup = 'SALES' | 'COST_OF_SALES' | 'OPERAT) (+1 more)
+
+### Community 782 - "Community 782"
+Cohesion: 0.22
+Nodes (8): Acceptance Criteria, Background, Goal, Notes, Scope, Suggested Matrix Columns, Task 42 — Sidebar Permission QA Matrix, Test Method
+
+### Community 783 - "Community 783"
+Cohesion: 0.22
+Nodes (8): 10. Quick Reference Commands, 2. Pre-Flight Checklist, 8. Important File Locations, Code Health, code:bash (# Generate Prisma client (run after any schema change)), Database, Environment, SQL Migration Switch Guide
+
+### Community 784 - "Community 784"
+Cohesion: 0.22
+Nodes (9): 4.1 Schema Strictness, 4.2 Complex Operations Most Likely to Fail, 4.3 SettingsResolverSQL Is a Stub, 4.4 No Integration Tests for Prisma Repos, 4.5 Pre-Existing Test Failures, 4.6 ModuleSettingsDefinition & ModulePermissionsDefinition, 4.7 Array Fields, 4. Known Issues & Gotchas (+1 more)
+
+### Community 785 - "Community 785"
+Cohesion: 0.22
+Nodes (9): 5. Module-by-Module Testing Checklist, Accounting, Core, HR, Inventory, POS, Purchases, RBAC (+1 more)
+
+### Community 786 - "Community 786"
+Cohesion: 0.22
+Nodes (9): 2026-05-13 Result — Frontend Conversation History Sidebar, Changes, Changes, Changes, Changes, Verification, Verification, Verification (+1 more)
 
 ### Community 787 - "Community 787"
 Cohesion: 0.22
-Nodes (8): Acceptance Criteria, Background, Goal, Notes, Scope, Suggested Matrix Columns, Task 42 — Sidebar Permission QA Matrix, Test Method
+Nodes (9): 2a. Add type export (after `CashFlowCategory` on line 17):, 2b. Add to `Account` interface (after `cashFlowCategory` on line 50):, 2c. Add to `NewAccountInput` (after `cashFlowCategory` on line 90):, 2d. Add to `UpdateAccountInput` (after `cashFlowCategory` on line 120):, code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (export type PlSubgroup = 'SALES' | 'COST_OF_SALES' | 'OPERAT) (+1 more)
 
 ### Community 788 - "Community 788"
 Cohesion: 0.22
-Nodes (9): 4.1 Schema Strictness, 4.2 Complex Operations Most Likely to Fail, 4.3 SettingsResolverSQL Is a Stub, 4.4 No Integration Tests for Prisma Repos, 4.5 Pre-Existing Test Failures, 4.6 ModuleSettingsDefinition & ModulePermissionsDefinition, 4.7 Array Fields, 4. Known Issues & Gotchas (+1 more)
+Nodes (8): Acceptance Criteria, Background, Goal, Notes, Scope, Suggested Matrix Columns, Task 42 — Sidebar Permission QA Matrix, Test Method
 
 ### Community 789 - "Community 789"
 Cohesion: 0.22
-Nodes (9): 5. Module-by-Module Testing Checklist, Accounting, Core, HR, Inventory, POS, Purchases, RBAC (+1 more)
+Nodes (8): 10. Quick Reference Commands, 2. Pre-Flight Checklist, 8. Important File Locations, Code Health, code:bash (# Generate Prisma client (run after any schema change)), Database, Environment, SQL Migration Switch Guide
 
 ### Community 790 - "Community 790"
 Cohesion: 0.22
-Nodes (8): 10. Quick Reference Commands, 2. Pre-Flight Checklist, 8. Important File Locations, Code Health, code:bash (# Generate Prisma client (run after any schema change)), Database, Environment, SQL Migration Switch Guide
+Nodes (9): 5. Module-by-Module Testing Checklist, Accounting, Core, HR, Inventory, POS, Purchases, RBAC (+1 more)
 
 ### Community 791 - "Community 791"
 Cohesion: 0.22
-Nodes (9): 2a. Add type export (after `CashFlowCategory` on line 17):, 2b. Add to `Account` interface (after `cashFlowCategory` on line 50):, 2c. Add to `NewAccountInput` (after `cashFlowCategory` on line 90):, 2d. Add to `UpdateAccountInput` (after `cashFlowCategory` on line 120):, code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (plSubgroup?: PlSubgroup | null;), code:typescript (export type PlSubgroup = 'SALES' | 'COST_OF_SALES' | 'OPERAT) (+1 more)
-
-### Community 792 - "Community 792"
-Cohesion: 0.22
-Nodes (8): Acceptance Criteria, Background, Goal, Notes, Scope, Suggested Matrix Columns, Task 42 — Sidebar Permission QA Matrix, Test Method
-
-### Community 793 - "Community 793"
-Cohesion: 0.22
-Nodes (8): 10. Quick Reference Commands, 2. Pre-Flight Checklist, 8. Important File Locations, Code Health, code:bash (# Generate Prisma client (run after any schema change)), Database, Environment, SQL Migration Switch Guide
-
-### Community 794 - "Community 794"
-Cohesion: 0.22
 Nodes (9): 4.1 Schema Strictness, 4.2 Complex Operations Most Likely to Fail, 4.3 SettingsResolverSQL Is a Stub, 4.4 No Integration Tests for Prisma Repos, 4.5 Pre-Existing Test Failures, 4.6 ModuleSettingsDefinition & ModulePermissionsDefinition, 4.7 Array Fields, 4. Known Issues & Gotchas (+1 more)
 
-### Community 795 - "Community 795"
-Cohesion: 0.22
-Nodes (9): 5. Module-by-Module Testing Checklist, Accounting, Core, HR, Inventory, POS, Purchases, RBAC (+1 more)
-
-### Community 796 - "Community 796"
-Cohesion: 0.54
-Nodes (7): checkRow(), fmt(), loadAccounts(), main(), parseArgs(), pickAccount(), r2()
-
-### Community 798 - "Community 798"
-Cohesion: 0.29
-Nodes (4): handleEnter(), setUiMode(), handleEnter(), UserCompaniesController
-
-### Community 830 - "Community 830"
+### Community 812 - "Community 812"
 Cohesion: 0.25
 Nodes (8): Account Access Control Setup, Account Ownership Configuration, code:json ({), code:json ({), code:json ({), code:json ({), code:json ({), User Scope Configuration
 
-### Community 831 - "Community 831"
+### Community 813 - "Community 813"
 Cohesion: 0.25
 Nodes (7): AI Assistant Credits Runtime Architecture, APIs, Chat Flow, Credit Ledger, Platform Runtime Profiles, Runtime Modes, Super Admin UI
 
-### Community 832 - "Community 832"
+### Community 814 - "Community 814"
 Cohesion: 0.25
 Nodes (6): 1. Final Supported Behavior, 2. Accounting vs Inventory-Only Rules, 3. Posted Document Immutability Rule, 4. Known Limitations, 5. Future Enhancements, Opening Stock Documents
 
-### Community 833 - "Community 833"
+### Community 815 - "Community 815"
 Cohesion: 0.25
 Nodes (8): 2.1 SIMPLE Mode, 2.2 CONTROLLED Mode, 2.3 Purchase Return (both modes), 2. Business Workflows, code:block1 (┌─────────────────────────┐), code:block2 (Purchase Order ──────► Goods Receipt (GRN) ──────► Purchase ), code:block3 (Purchase Return ──► Stock OUT (PURCHASE_RETURN) ──► GL: Dr A), code:block4 (Purchase Return ──► Stock OUT (PURCHASE_RETURN) ──► No GL ef)
 
-### Community 834 - "Community 834"
+### Community 816 - "Community 816"
 Cohesion: 0.25
 Nodes (8): 2.1 SIMPLE Mode, 2.2 CONTROLLED Mode, 2.3 Sales Return (both modes), 2. Operating Policies, code:block1 (┌─────────────────────────┐), code:block2 (Sales Order ──────► Delivery Note (DN) ──────► Sales Invoice), code:block3 (Sales Return ──► Stock IN (RETURN_IN) ──► GL: Dr Revenue, Cr), code:block4 (Sales Return ──► Stock IN (RETURN_IN) ──► GL: Dr Inventory, )
 
-### Community 835 - "Community 835"
+### Community 817 - "Community 817"
 Cohesion: 0.25
 Nodes (7): AI Provider Settings, Certified models, For Super Admins, How to configure AI, Provider types, Safety notes, What changed
 
-### Community 836 - "Community 836"
+### Community 818 - "Community 818"
 Cohesion: 0.25
 Nodes (7): Add a WhatsApp sender account, Communication Sender Accounts, Multi-account behavior, Security behavior, Supported account types, Where to configure, Why this exists
 
-### Community 837 - "Community 837"
+### Community 819 - "Community 819"
 Cohesion: 0.25
 Nodes (7): Assigning customers to a group, Common questions, Creating a customer group, Customer Groups, Per-customer settings on the Commercial tab, What customer groups are for, What the group defaults do
 
-### Community 838 - "Community 838"
+### Community 820 - "Community 820"
 Cohesion: 0.25
 Nodes (7): Choosing a date range, Common questions, Reading the totals row, Report 1: Sales by Customer, Report 2: Sales by Item, Report 3: Sales by Salesperson, Sales Analytics Reports
 
-### Community 839 - "Community 839"
+### Community 821 - "Community 821"
 Cohesion: 0.25
 Nodes (7): Posting Outcome Summary, Quick Steps, Reason Classification, Restocking Fee, Return Types, Sales Returns (Credit Note vs Refund), Settlement Mode
 
-### Community 840 - "Community 840"
+### Community 822 - "Community 822"
 Cohesion: 0.25
 Nodes (7): 📋 Carry-forward Rabbit Holes, 🔴 Current Priority (work this first), ⏸ Deferred to v2 (preserved, no code removed), 🚫 Do NOT work on (deferred / blocked), ERP03 — Agent Priorities, 🔒 Task Lock (prevent collisions between agents), 🟡 Up Next (v1, in order)
 
-### Community 841 - "Community 841"
+### Community 823 - "Community 823"
 Cohesion: 0.25
 Nodes (6): 09 — Bank Reconciliation (Completed), How to use (happy path), Notes & assumptions, Scope, Verification, What was built
 
-### Community 842 - "Community 842"
+### Community 824 - "Community 824"
 Cohesion: 0.25
 Nodes (6): 10 — Budget Module (Completed), How to use, Notes & assumptions, Scope, Verification, What was built
 
-### Community 843 - "Community 843"
+### Community 825 - "Community 825"
 Cohesion: 0.25
 Nodes (6): 11 — Aging Reports (Completed), How to use, Notes & assumptions, Scope, Verification, What was built
 
-### Community 844 - "Community 844"
+### Community 826 - "Community 826"
 Cohesion: 0.25
 Nodes (6): 12 — Multi-Company Consolidation (Completed), How to use, Notes & assumptions, Scope, Verification, What was built
 
-### Community 845 - "Community 845"
+### Community 827 - "Community 827"
 Cohesion: 0.25
 Nodes (6): 13 — Recurring Vouchers (Completed), How to use, Notes & assumptions, Scope, Verification, What was built
 
-### Community 846 - "Community 846"
+### Community 828 - "Community 828"
 Cohesion: 0.25
 Nodes (7): 138 — Forms visual fixes and layout alignment, 1. Technical View (Future Developers), 2. End-User View (User Guide), Context & Root Cause, Implementation Details, Verification, What Was Fixed
 
-### Community 847 - "Community 847"
+### Community 829 - "Community 829"
 Cohesion: 0.25
 Nodes (7): 139 — Document Wizard Vertical Stepper Layout, 1. Technical View (Future Developers), 2. End-User View (User Guide), Context & Design, Implementation Details, Verification, What Was Changed
 
-### Community 848 - "Community 848"
+### Community 830 - "Community 830"
 Cohesion: 0.25
 Nodes (7): 141 — Visual Layout Editor Polish & Auto Align, 1. Technical View (Future Developers), 2. End-User View (User Guide), Context & Bugs Addressed, Implementation Details, Verification, What Was Polished
 
-### Community 849 - "Community 849"
+### Community 831 - "Community 831"
 Cohesion: 0.25
 Nodes (6): 15 — Export to Excel/PDF (Completed), Notes & limitations, Scope, Usage, Verification, What was built
 
-### Community 850 - "Community 850"
+### Community 832 - "Community 832"
 Cohesion: 0.25
 Nodes (7): 1. Technical Developer View, 2. End-User View, Definition of Done — Checklist, Files Changed, Task 156 — Period-Lock Unification, What's New, What Was Built
 
-### Community 851 - "Community 851"
+### Community 833 - "Community 833"
 Cohesion: 0.25
 Nodes (7): 1. Technical Developer View, 2. End-User View, Definition of Done — Checklist, Files Changed, Task 157 — Decouple Reporting from Voucher Repository (Option A), What's New, What Was Built
 
-### Community 852 - "Community 852"
+### Community 834 - "Community 834"
 Cohesion: 0.25
 Nodes (7): Acceptance Criteria Met, Completion Report 168 - Apex Shell Route Coverage & QA, End-User View, Known Follow-Ups, Technical Developer View, Verification, What Changed
 
-### Community 853 - "Community 853"
+### Community 835 - "Community 835"
 Cohesion: 0.25
 Nodes (7): Acceptance Criteria Met, Completion Report 169 - RTL Support for Apex Shell, End-User View, Reference Links, Technical Developer View, Verification, What Changed
 
-### Community 854 - "Community 854"
+### Community 836 - "Community 836"
 Cohesion: 0.25
 Nodes (7): Acceptance Criteria Met, Completion Report 175 - RTL Flyout positioning and Background Cohesion for Apex Shell, End-User View, Reference Links, Technical Developer View, Verification, What Changed
 
-### Community 855 - "Community 855"
+### Community 837 - "Community 837"
 Cohesion: 0.25
 Nodes (6): Acceptance Criteria Met, Company Role Module Bundle Derivation — Completion Report, Files Changed, Known Follow-Ups, Tested, What Changed
 
-### Community 856 - "Community 856"
+### Community 838 - "Community 838"
 Cohesion: 0.25
 Nodes (6): End-User View, Follow-Ups, Sales Default Form Lookup Fix, Technical Developer View, Verification, What Changed
 
-### Community 857 - "Community 857"
+### Community 839 - "Community 839"
 Cohesion: 0.25
 Nodes (7): AI Assistant Fixing Plan — Agent Execution Prompt, code:block1 (Phase 1: Business Model Fix (remove PLATFORM_MANAGED → credi), How To Start, Important Context, Mandatory Rules, Phase Order, Your Task
 
-### Community 858 - "Community 858"
+### Community 840 - "Community 840"
 Cohesion: 0.25
 Nodes (7): Active Development (Current Priority), ERP03 — Master Plan (Full Audit — 2026-04-27), Full Audit, Future Modules (Not Started), Module Completion, Project Summary, Remaining Infrastructure
 
-### Community 859 - "Community 859"
+### Community 841 - "Community 841"
 Cohesion: 0.25
 Nodes (8): Acceptance criteria, Files modified, Files to inspect/edit, Final test results, Required changes, Status: ✅ COMPLETE, Test results, Total time
 
-### Community 860 - "Community 860"
+### Community 842 - "Community 842"
 Cohesion: 0.25
 Nodes (7): Deferred QA — Sales Invoice Detail · Section E (Credit Override), Done when, E1. Trigger credit-limit BLOCK as an authorized user, E2. Same scenario as a user WITHOUT `sales.creditOverride` permission, E3. Setting-level override disable, What to test (verbatim from parent script), Why this matters
 
-### Community 861 - "Community 861"
+### Community 843 - "Community 843"
 Cohesion: 0.25
 Nodes (7): Acceptance criteria, Effort estimate, First leads to chase, Likely fix paths, Repro (as reported), Task 168 — CRITICAL: Sales Invoice grand-total mismatches posted ledger, What to capture for the fix
 
-### Community 862 - "Community 862"
+### Community 844 - "Community 844"
 Cohesion: 0.25
 Nodes (7): code:ts (const lineTotalDoc = roundMoney(line.orderedQty * line.unitP), Finding A — PurchaseInvoice does not support tax-inclusive prices at all, Finding B — SalesOrder.normalizeLine has the same exclusive-only bug, Finding C — SalesReturn / PurchaseReturn use the "preserve passed value" pattern, Finding D — Charges (additions) on SI never support inclusive, Suggested ordering for the next QA cycle, Task 170 — Related line-math gaps found during Task 168 fix
 
-### Community 863 - "Community 863"
+### Community 845 - "Community 845"
 Cohesion: 0.25
 Nodes (7): 34 — GAP Audit Fixes (Phased Plan), code:block1 (Phase 1 (tx atomicity) ──→ Phase 2 (consistency) ──→ Phase 3), Overview, Phase Dependency Graph, Phase Details, Phase Summary, Workflow
 
-### Community 864 - "Community 864"
+### Community 846 - "Community 846"
 Cohesion: 0.25
 Nodes (7): 35 — Trading Account Readiness (P&L Subgroup Field), Acceptance Criteria, Business Context, Current State, Files Changed, Implementation Plan, Step 4: Backend — Update COA Templates (Optional but Recommended)
 
-### Community 865 - "Community 865"
+### Community 847 - "Community 847"
 Cohesion: 0.25
 Nodes (8): Also update `layout.lineFields` to match:, code:block18 (tableColumns: [), code:typescript (tableColumns: [), code:typescript (lineFields: fieldsFromColumns([), code:bash (cd backend && npx ts-node src/seeder/runSeeders.ts), Current (broken):, Layer 6: Seeder — seedSystemVoucherTypes.ts (FIX REQUIRED), Required (fixed):
 
-### Community 866 - "Community 866"
+### Community 848 - "Community 848"
 Cohesion: 0.43
 Nodes (6): loadSubscriptions(), parseActive(), parseBacklog(), parseJournal(), parsePlans(), readFileSafe()
 
-### Community 867 - "Community 867"
+### Community 849 - "Community 849"
 Cohesion: 0.25
 Nodes (7): Active Development (Current Priority), ERP03 — Master Plan (Full Audit — 2026-04-27), Full Audit, Future Modules (Not Started), Module Completion, Project Summary, Remaining Infrastructure
 
-### Community 868 - "Community 868"
+### Community 850 - "Community 850"
 Cohesion: 0.25
 Nodes (7): 34 — GAP Audit Fixes (Phased Plan), code:block1 (Phase 1 (tx atomicity) ──→ Phase 2 (consistency) ──→ Phase 3), Overview, Phase Dependency Graph, Phase Details, Phase Summary, Workflow
 
-### Community 869 - "Community 869"
+### Community 851 - "Community 851"
 Cohesion: 0.25
 Nodes (7): 35 — Trading Account Readiness (P&L Subgroup Field), Acceptance Criteria, Business Context, Current State, Files Changed, Implementation Plan, Step 4: Backend — Update COA Templates (Optional but Recommended)
 
-### Community 870 - "Community 870"
+### Community 852 - "Community 852"
 Cohesion: 0.25
 Nodes (8): Also update `layout.lineFields` to match:, code:block18 (tableColumns: [), code:typescript (tableColumns: [), code:typescript (lineFields: fieldsFromColumns([), code:bash (cd backend && npx ts-node src/seeder/runSeeders.ts), Current (broken):, Layer 6: Seeder — seedSystemVoucherTypes.ts (FIX REQUIRED), Required (fixed):
 
-### Community 871 - "Community 871"
+### Community 853 - "Community 853"
 Cohesion: 0.25
 Nodes (7): AI Assistant Fixing Plan — Agent Execution Prompt, code:block1 (Phase 1: Business Model Fix (remove PLATFORM_MANAGED → credi), How To Start, Important Context, Mandatory Rules, Phase Order, Your Task
 
-### Community 872 - "Community 872"
+### Community 861 - "Community 861"
 Cohesion: 0.29
-Nodes (3): CreateOpeningStockDocumentUseCase, prepareDraftDocumentState(), UpdateOpeningStockDocumentUseCase
+Nodes (7): formatSummaryFieldValue(), getRowValue(), getTableSelectOptions(), getWebColumnWeight(), normalizeFieldType(), normalizeSelectOptions(), normalizeTableColumnId()
 
-### Community 873 - "Community 873"
-Cohesion: 0.29
-Nodes (3): ReleaseReservedStockUseCase, ReserveStockUseCase, validateReservationInput()
-
-### Community 881 - "Community 881"
-Cohesion: 0.29
-Nodes (3): CreateTaxCodeUseCase, UpdateTaxCodeUseCase, validateRateConsistency()
-
-### Community 891 - "Community 891"
+### Community 864 - "Community 864"
 Cohesion: 0.29
 Nodes (6): Future Enhancements, How It Works, Idempotency, Overview, Reversal Process, Voucher Corrections Guide
 
-### Community 892 - "Community 892"
+### Community 865 - "Community 865"
 Cohesion: 0.29
 Nodes (7): Account Access Denied, Cannot Correct Non-Posted Voucher, code:json ({), code:json ({), code:json ({), Error Handling, Policy Blocks Reversal
 
-### Community 893 - "Community 893"
+### Community 866 - "Community 866"
 Cohesion: 0.29
 Nodes (7): code:json ({), code:json ({), code:json ({), Request Examples, Reverse and Replace, Reverse Only (Default: Original Date), Reverse Only (Override: Today's Date)
 
-### Community 894 - "Community 894"
+### Community 867 - "Community 867"
 Cohesion: 0.29
 Nodes (6): NOT for Production, Purpose, See Also, ⚠️ TESTING ONLY - Not Used in Production, Voucher Handlers, When to Use
 
-### Community 895 - "Community 895"
+### Community 868 - "Community 868"
 Cohesion: 0.29
 Nodes (7): Automated Test, code:bash (cd backend), Manual Testing Steps, Test 1: Approval Required, Test 2: Period Lock, Test 3: Combined Policies, Testing the Policy System
 
-### Community 896 - "Community 896"
+### Community 869 - "Community 869"
 Cohesion: 0.29
 Nodes (6): Access Flow, Fix, Module Access 403 Trace, Operational Note, Root Cause, Summary
 
-### Community 897 - "Community 897"
+### Community 870 - "Community 870"
 Cohesion: 0.29
 Nodes (6): Control Rules, Current Standard, Follow-Up, Operational List Architecture, Purpose, Status Chip Semantics
 
-### Community 898 - "Community 898"
+### Community 871 - "Community 871"
 Cohesion: 0.29
 Nodes (6): code:tsx (import { ReportContainer } from '../../../components/reports), How to add a new report, Reports — UI conventions, Rule 1 — Sidebar registration, Rule 2 — `<ReportContainer>` usage, Temporary allowlist
 
-### Community 899 - "Community 899"
+### Community 872 - "Community 872"
 Cohesion: 0.29
 Nodes (7): Architecture points, Architecture points, Flow, Flow, Invoice attachments (Phase D.6), Key files, Key files
 
-### Community 900 - "Community 900"
+### Community 873 - "Community 873"
 Cohesion: 0.29
 Nodes (6): Accounting and Control Notes, File Map, Purpose, Settings Architecture, Shared Layout, Taxonomy
 
-### Community 901 - "Community 901"
+### Community 874 - "Community 874"
 Cohesion: 0.29
 Nodes (5): code:typescript (// ── Status Enums ──), code:typescript (type ReferenceType =), Enum Reference, Purchase Module — Schema Definitions, ReferenceType Extensions
 
-### Community 902 - "Community 902"
+### Community 875 - "Community 875"
 Cohesion: 0.29
 Nodes (7): code:block16 (Dr  Inventory Asset Account    lineTotalBase     (item → cat), code:block17 (Dr  Expense Account            lineTotalBase     (item → cat), code:block18 (Dr  Accounts Payable           grandTotalBase    (reverse AP), GL Voucher Line Templates, Purchase Invoice Posting (service / non-stock), Purchase Invoice Posting (stock item), Purchase Return Posting (AFTER_INVOICE)
 
-### Community 903 - "Community 903"
-Cohesion: 0.29
-Nodes (7): code:typescript (type PIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';), code:typescript (interface PurchaseInvoiceLine {), Constraints, Indexes, P4  PurchaseInvoice, Posting Effects, Posting Validations
-
-### Community 904 - "Community 904"
+### Community 876 - "Community 876"
 Cohesion: 0.29
 Nodes (7): code:typescript (type POStatus =), code:typescript (interface PurchaseOrderLine {), code:typescript (// Per PO line:), Computed Fields (read-only, derived), Constraints, Indexes, P2  PurchaseOrder
 
-### Community 905 - "Community 905"
+### Community 877 - "Community 877"
+Cohesion: 0.29
+Nodes (7): code:typescript (type PIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';), code:typescript (interface PurchaseInvoiceLine {), Constraints, Indexes, P4  PurchaseInvoice, Posting Effects, Posting Validations
+
+### Community 878 - "Community 878"
 Cohesion: 0.29
 Nodes (6): Always Verify, Notes, Scope, Test Data, UAT Matrix, Workflow and Accounting Modes UAT
 
-### Community 906 - "Community 906"
+### Community 879 - "Community 879"
 Cohesion: 0.29
 Nodes (6): AI Assistant Chat Sidebar, Floating AI Launcher, How to Use, Languages, Technical Notes, What It Does
 
-### Community 907 - "Community 907"
+### Community 880 - "Community 880"
 Cohesion: 0.29
 Nodes (6): AI Assistant Credits, If Credits Run Out, Runtime Options, Typical Setup, What AI Credits Mean, What Super Admin Must Configure
 
-### Community 908 - "Community 908"
+### Community 881 - "Community 881"
 Cohesion: 0.29
 Nodes (6): Apex Shell Candidate, Current Limitations, How To Test, What Did Not Change, What This Is, What To Check
 
-### Community 909 - "Community 909"
+### Community 882 - "Community 882"
 Cohesion: 0.29
 Nodes (6): Assign a vendor to a price list, Create a Purchase Price List, Delete a price list, Purchase Price Lists, What price lists do, What price lists do not do
 
-### Community 910 - "Community 910"
+### Community 883 - "Community 883"
 Cohesion: 0.29
 Nodes (6): Backfill existing vendors, Notes, Setup, Vendor AP Sub-accounts, Vendor creation behavior, Why you should use it
 
-### Community 911 - "Community 911"
+### Community 884 - "Community 884"
 Cohesion: 0.29
 Nodes (6): Assign a vendor to a group, Create a vendor group, Delete a vendor group, Purchase Vendor Groups, What vendor groups do, What vendor groups do not do
 
-### Community 912 - "Community 912"
+### Community 885 - "Community 885"
 Cohesion: 0.29
 Nodes (6): Drill-down, Missing AP account message, Open commitments, Running a vendor statement, Vendor Statement and Ledger, What is included
 
-### Community 913 - "Community 913"
+### Community 886 - "Community 886"
 Cohesion: 0.29
 Nodes (6): Approval Before Posting (Sales), Finding invoices that are waiting, Good to know, How it works day to day, How to turn it on, What it does
 
-### Community 914 - "Community 914"
+### Community 887 - "Community 887"
 Cohesion: 0.29
 Nodes (6): AR Aging Report, Common questions, How the aging buckets are calculated, How to read it for collections, Running the report, What the report shows
 
-### Community 915 - "Community 915"
+### Community 888 - "Community 888"
 Cohesion: 0.29
 Nodes (6): Backfill existing customers, Customer AR Sub-accounts, Customer creation behavior, Notes, Setup, Why you should use it
 
-### Community 916 - "Community 916"
+### Community 889 - "Community 889"
 Cohesion: 0.29
 Nodes (6): Before you start, Notes, Send Sales Invoices via Telegram, Steps, Troubleshooting, Who can use this
 
-### Community 917 - "Community 917"
+### Community 890 - "Community 890"
 Cohesion: 0.29
 Nodes (6): Before you start, Notes, Send Sales Invoices via WhatsApp, Steps, Troubleshooting, Who can use this
 
-### Community 918 - "Community 918"
+### Community 891 - "Community 891"
 Cohesion: 0.29
 Nodes (7): Business Modules, Capabilities, code:text (auth), code:text (accounting), code:text (crm.contacts), Definitions, Platform Services
 
-### Community 919 - "Community 919"
+### Community 892 - "Community 892"
 Cohesion: 0.29
 Nodes (6): 134 — Purchases: Approval Before Posting (Purchases slice), Files changed, Known follow-ups, Manual QA script, Summary, Verification
 
-### Community 920 - "Community 920"
+### Community 893 - "Community 893"
 Cohesion: 0.29
 Nodes (5): 14 — Voucher Attachments (Completed), Notes & assumptions, Scope, Verification, What was built
 
-### Community 921 - "Community 921"
+### Community 894 - "Community 894"
 Cohesion: 0.29
 Nodes (6): Acceptance Criteria Met, Task 132 Phase 5 - Shared Selectors Enforcement Completion Report, Technical Developer View, User Guide (End-User View), What was changed, What was tested
 
-### Community 922 - "Community 922"
+### Community 895 - "Community 895"
 Cohesion: 0.29
 Nodes (5): 16 — Localization / i18n (DONE), Files, Notes, Tests / Checks, What changed
 
-### Community 923 - "Community 923"
+### Community 896 - "Community 896"
 Cohesion: 0.29
 Nodes (5): Acceptance Criteria Met, Known Follow-Ups, Sidebar Permission Filtering Completion Report, What Changed, What Was Tested
 
-### Community 924 - "Community 924"
+### Community 897 - "Community 897"
 Cohesion: 0.29
 Nodes (5): End-User View, Follow-Up, Native Invoice Source Contract Completion Report, Technical Developer View, Verification
 
-### Community 925 - "Community 925"
+### Community 898 - "Community 898"
 Cohesion: 0.29
 Nodes (5): code:bash (firebase emulators:start --import=./emulator-data --export-o), Emulator Data Restore and Export-Path Guardrail Completion Report, End-User View, Known Follow-Ups, Technical Developer View
 
-### Community 926 - "Community 926"
+### Community 899 - "Community 899"
 Cohesion: 0.29
 Nodes (6): Backend reality at time of filing (verified 2026-06-01), Definition of Done, Out of scope, Scope (build, mirroring the Sales Invoice stack), Task 152 — Sales Document Messaging + Attachments Backend (non-invoice docs), Why
 
-### Community 927 - "Community 927"
+### Community 900 - "Community 900"
 Cohesion: 0.29
 Nodes (6): Action, Action, Effort estimate, Finding A — Change History modal: events logged, but Field / Before / After columns are blank, Finding B — "Flexible" badge in Vouchers list looks like an approval claim, Task 169 — Change History modal shows events but no field diffs; "Flexible" badge confuses approval status
 
-### Community 928 - "Community 928"
+### Community 901 - "Community 901"
 Cohesion: 0.29
 Nodes (6): 35 - System Metadata Access Control, Acceptance Criteria, Notes, Problem, Required Work, Target Model
 
-### Community 929 - "Community 929"
+### Community 902 - "Community 902"
 Cohesion: 0.29
 Nodes (7): Automated Tests, code:bash (cd backend && npx jest --testPathPatterns="Account.test" --n), code:bash (cd backend && npx jest --testPathPatterns="AccountUseCases" ), code:bash (cd backend && npx tsc --noEmit), code:bash (cd frontend && npx tsc --noEmit), Manual Verification, Verification Plan
 
-### Community 930 - "Community 930"
+### Community 903 - "Community 903"
 Cohesion: 0.29
 Nodes (7): 7. Rollback Procedure, code:bash (# In backend/.env), code:bash (# Stop the running server), code:bash (# Run tests to confirm everything works), Step 1: Switch Back to Firestore, Step 2: Restart the Backend, Step 3: Verify
 
-### Community 931 - "Community 931"
+### Community 904 - "Community 904"
 Cohesion: 0.29
 Nodes (7): 2026-05-06 (Wed) — ~6h, Module Permission Updates, Phase 1: AI Tool Catalog Domain, Phase 2: Super Admin Backend Endpoints, Phase 3: Full AI Tool Catalog, Phase 4: 14 Real Tool Implementations, Phase 5: Comprehensive Intent Detection
 
-### Community 932 - "Community 932"
+### Community 905 - "Community 905"
 Cohesion: 0.29
 Nodes (7): Business Modules, Capabilities, code:text (auth), code:text (accounting), code:text (crm.contacts), Definitions, Platform Services
 
-### Community 933 - "Community 933"
+### Community 906 - "Community 906"
 Cohesion: 0.29
 Nodes (6): 35 - System Metadata Access Control, Acceptance Criteria, Notes, Problem, Required Work, Target Model
 
-### Community 934 - "Community 934"
+### Community 907 - "Community 907"
 Cohesion: 0.29
 Nodes (7): Automated Tests, code:bash (cd backend && npx jest --testPathPatterns="Account.test" --n), code:bash (cd backend && npx jest --testPathPatterns="AccountUseCases" ), code:bash (cd backend && npx tsc --noEmit), code:bash (cd frontend && npx tsc --noEmit), Manual Verification, Verification Plan
 
-### Community 935 - "Community 935"
+### Community 908 - "Community 908"
 Cohesion: 0.29
 Nodes (7): 7. Rollback Procedure, code:bash (# In backend/.env), code:bash (# Stop the running server), code:bash (# Run tests to confirm everything works), Step 1: Switch Back to Firestore, Step 2: Restart the Backend, Step 3: Verify
 
-### Community 936 - "Community 936"
+### Community 909 - "Community 909"
+Cohesion: 0.29
+Nodes (6): 1. REVERSE_ONLY, 2. REVERSE_AND_REPLACE, Correction Modes, Future Enhancements, Overview, Voucher Corrections Guide
+
+### Community 910 - "Community 910"
 Cohesion: 0.29
 Nodes (7): Account Access Denied, Cannot Correct Non-Posted Voucher, code:json ({), code:json ({), code:json ({), Error Handling, Policy Blocks Reversal
 
-### Community 937 - "Community 937"
-Cohesion: 0.29
-Nodes (6): Core Principles, Correction Flow Rules, Future Enhancements, Non-Negotiables, Overview, Voucher Corrections Guide
-
-### Community 938 - "Community 938"
+### Community 911 - "Community 911"
 Cohesion: 0.29
 Nodes (7): code:json ({), code:json ({), code:json ({), Request Examples, Reverse and Replace, Reverse Only (Default: Original Date), Reverse Only (Override: Today's Date)
 
-### Community 958 - "Community 958"
+### Community 924 - "Community 924"
+Cohesion: 0.4
+Nodes (6): getDerivedLineGrossTotal(), getDerivedLineTaxTotal(), getDerivedLineTotal(), getLineQuantity(), getLineTaxRate(), getLineUnitPrice()
+
+### Community 925 - "Community 925"
+Cohesion: 0.6
+Nodes (5): create(), generate(), load(), pause(), resume()
+
+### Community 928 - "Community 928"
+Cohesion: 0.6
+Nodes (4): AiErrorDisplay(), extractErrorCode(), extractStatus(), mapAiError()
+
+### Community 930 - "Community 930"
 Cohesion: 0.33
 Nodes (5): CLAUDE.md — Claude Code Entry Point, Definition of Done (every feature), Project at a glance, Read these first, in order, Working across agents and devices
 
-### Community 959 - "Community 959"
-Cohesion: 0.33
-Nodes (6): Audit Trail, code:json ({), code:typescript (voucher.isReversal        // true if this voucher reverses a), code:json ({), Helper Properties, Metadata Fields
-
-### Community 960 - "Community 960"
+### Community 931 - "Community 931"
 Cohesion: 0.33
 Nodes (6): API Usage (Backend Only - NO UI), Authentication, code:block1 (POST /api/v1/companies/:companyId/accounting/vouchers/:id/co), code:json ({), Endpoint, Response
 
-### Community 961 - "Community 961"
+### Community 932 - "Community 932"
+Cohesion: 0.33
+Nodes (6): Audit Trail, code:json ({), code:typescript (voucher.isReversal        // true if this voucher reverses a), code:json ({), Helper Properties, Metadata Fields
+
+### Community 933 - "Community 933"
 Cohesion: 0.33
 Nodes (6): code:bash (curl -X PATCH \), code:typescript (import * as admin from 'firebase-admin';), How to Configure (Manual), Option 1: Firebase Console, Option 2: Firestore REST API, Option 3: Admin Script
 
-### Community 962 - "Community 962"
+### Community 934 - "Community 934"
 Cohesion: 0.33
 Nodes (6): API Endpoints:, Architecture, Key files:, Post-implementation hardening (2026-05-22), Sales recurring invoices (Phase D.4), Tests:
 
-### Community 963 - "Community 963"
+### Community 935 - "Community 935"
 Cohesion: 0.33
 Nodes (6): 6.1 Effect Matrix, 6.2 GL Account Resolution (hierarchical), 6.3 Voucher Metadata, 6.4 Accounting Model for CONTROLLED Mode — Design Rationale, 6. Inventory and Accounting Effects, code:block6 (sourceModule  = 'purchases')
 
-### Community 964 - "Community 964"
+### Community 936 - "Community 936"
 Cohesion: 0.33
 Nodes (6): code:typescript (type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';), code:typescript (interface PurchaseReturnLine {), Constraints, Indexes, P5  PurchaseReturn, Posting Effects by Return Context
 
-### Community 965 - "Community 965"
+### Community 937 - "Community 937"
 Cohesion: 0.33
 Nodes (6): 5.1 Effect Matrix, 5.2 GL Account Resolution, 5.3 COGS Calculation, 5.4 Voucher Metadata, 5. Inventory and Accounting Effects, code:block6 (sourceModule  = 'sales')
 
-### Community 966 - "Community 966"
+### Community 938 - "Community 938"
 Cohesion: 0.33
 Nodes (5): Access Requirements, AI Assistant: Tool Data + Analytics, How to Use Structured Financial Responses, How to View AI Usage Analytics (Admin), What’s New
 
-### Community 967 - "Community 967"
+### Community 939 - "Community 939"
 Cohesion: 0.33
 Nodes (5): Company Admin Modules, How Module Access Works, If No Modules Appear, What This Page Does, Who Can Access This
 
-### Community 968 - "Community 968"
+### Community 940 - "Community 940"
 Cohesion: 0.33
 Nodes (5): Current Docs, Guidelines, Naming Convention, Structure, User Guide
 
-### Community 969 - "Community 969"
+### Community 941 - "Community 941"
 Cohesion: 0.33
 Nodes (5): Chart of Accounts, Managing Accounts, Navigating the COA, Quick Filtering, Viewing Account Details (Drilldown)
 
-### Community 970 - "Community 970"
+### Community 942 - "Community 942"
 Cohesion: 0.33
 Nodes (5): How to use, Limits, Purchase Invoice Attachments, What attachments do, Who should use it
 
-### Community 971 - "Community 971"
+### Community 943 - "Community 943"
 Cohesion: 0.33
 Nodes (5): Backorder and Fulfillment Progress, Common questions, Creating a Backorder Delivery Note, Fulfillment Progress on a Sales Order, Partial Fulfillment on a Delivery Note
 
-### Community 972 - "Community 972"
+### Community 944 - "Community 944"
 Cohesion: 0.33
 Nodes (5): Accounting and Audit Notes, How To Attach a File, How To Open or Remove a File, Limits and Rules, Sales Invoice Attachments
 
-### Community 973 - "Community 973"
+### Community 945 - "Community 945"
 Cohesion: 0.33
 Nodes (5): Choose a template while creating an invoice, Important behavior, Invoice Templates, Set a default template for a customer, What this feature does
 
-### Community 974 - "Community 974"
+### Community 946 - "Community 946"
 Cohesion: 0.33
 Nodes (6): 2026-05-30: Deep UI/UX Hardening, Session: 2026-05-31 (Chart of Accounts UI Update), Session: 2026-05-31 (Shared Selector Enforcement), Session: 2026-06-01 (Architecture Control Layer Diagnosis), Session: 2026-06-03 (Unify Period Lock — Stage 3), Session: 2026-06-04 (Apex shell production candidate - Slice 1)
 
-### Community 975 - "Community 975"
-Cohesion: 0.33
-Nodes (6): code:text (POST /super-admin/modules/:id/check-implementation), code:text (1. Code module manifest exists for module ID.), code:text (1. Capability exists in code manifest.), code:text (Cannot set lifecycleStatus = ready unless implementationStat), code:text (Backend runs lightweight startup validation into an in-memor), Implementation Check
-
-### Community 976 - "Community 976"
+### Community 947 - "Community 947"
 Cohesion: 0.33
 Nodes (6): code:text (A DB row cannot provide Express routes, controllers, migrati), code:text (1. Backend implementation exists.), code:text (Return 423 Locked with visible message.), code:text (Return 403 Forbidden.), code:text (Return 503 Service Unavailable or 400 for admin activation a), Route And Guard Rules
 
-### Community 977 - "Community 977"
+### Community 948 - "Community 948"
+Cohesion: 0.33
+Nodes (6): code:text (POST /super-admin/modules/:id/check-implementation), code:text (1. Code module manifest exists for module ID.), code:text (1. Capability exists in code manifest.), code:text (Cannot set lifecycleStatus = ready unless implementationStat), code:text (Backend runs lightweight startup validation into an in-memor), Implementation Check
+
+### Community 949 - "Community 949"
 Cohesion: 0.33
 Nodes (6): code:text (crm), code:text (crm_v1), code:text (crm.contacts), code:text (crm.contacts), code:text (crm.contacts), Versioning And Variants
 
-### Community 978 - "Community 978"
+### Community 950 - "Community 950"
 Cohesion: 0.33
 Nodes (5): Completed, Financial Integration Workflow — Remaining Items, Priority: High, Priority: Low (Polish), Priority: Medium
 
-### Community 979 - "Community 979"
+### Community 951 - "Community 951"
 Cohesion: 0.33
 Nodes (5): Changes Made, Completion Report: 163-apex-ledger-mockup-integration, References & Documentation, Task Description, Verification Results
 
-### Community 980 - "Community 980"
+### Community 952 - "Community 952"
 Cohesion: 0.33
 Nodes (5): Changes Made, Completion Report: 163-apex-ledger-mockup-isolated-preview, References & Documentation, Task Description, Verification Results
 
-### Community 981 - "Community 981"
+### Community 953 - "Community 953"
 Cohesion: 0.33
 Nodes (4): End-User View, Graphify CLI Wrappers Completion Report, Known Follow-Ups, Technical Developer View
 
-### Community 982 - "Community 982"
+### Community 954 - "Community 954"
 Cohesion: 0.33
 Nodes (4): AI Assistant Fixing Plan — Phase 1 Credits Runtime, End-User View, Known Follow-ups, Technical Developer View
 
-### Community 983 - "Community 983"
+### Community 955 - "Community 955"
 Cohesion: 0.33
 Nodes (6): 9. Architecture Reference, code:block24 (┌─────────────────────────────────────────────────┐), code:typescript (get voucherRepository(): IVoucherRepository {), Firestore-Only Components, How the `DB_TYPE` Toggle Works, Repository Pattern
 
-### Community 984 - "Community 984"
+### Community 956 - "Community 956"
 Cohesion: 0.33
 Nodes (6): code:text (A DB row cannot provide Express routes, controllers, migrati), code:text (1. Backend implementation exists.), code:text (Return 423 Locked with visible message.), code:text (Return 403 Forbidden.), code:text (Return 503 Service Unavailable or 400 for admin activation a), Route And Guard Rules
 
-### Community 985 - "Community 985"
+### Community 957 - "Community 957"
 Cohesion: 0.33
 Nodes (6): code:text (POST /super-admin/modules/:id/check-implementation), code:text (1. Code module manifest exists for module ID.), code:text (1. Capability exists in code manifest.), code:text (Cannot set lifecycleStatus = ready unless implementationStat), code:text (Backend runs lightweight startup validation into an in-memor), Implementation Check
 
-### Community 986 - "Community 986"
+### Community 958 - "Community 958"
 Cohesion: 0.33
 Nodes (6): code:text (crm), code:text (crm_v1), code:text (crm.contacts), code:text (crm.contacts), code:text (crm.contacts), Versioning And Variants
 
-### Community 987 - "Community 987"
+### Community 959 - "Community 959"
 Cohesion: 0.33
 Nodes (5): Completed, Financial Integration Workflow — Remaining Items, Priority: High, Priority: Low (Polish), Priority: Medium
 
-### Community 988 - "Community 988"
+### Community 960 - "Community 960"
 Cohesion: 0.33
 Nodes (6): 9. Architecture Reference, code:block24 (┌─────────────────────────────────────────────────┐), code:typescript (get voucherRepository(): IVoucherRepository {), Firestore-Only Components, How the `DB_TYPE` Toggle Works, Repository Pattern
 
-### Community 989 - "Community 989"
+### Community 961 - "Community 961"
 Cohesion: 0.33
 Nodes (6): API Usage (Backend Only - NO UI), Authentication, code:block1 (POST /api/v1/companies/:companyId/accounting/vouchers/:id/co), code:json ({), Endpoint, Response
 
-### Community 990 - "Community 990"
+### Community 962 - "Community 962"
 Cohesion: 0.33
 Nodes (6): Audit Trail, code:json ({), code:typescript (voucher.isReversal        // true if this voucher reverses a), code:json ({), Helper Properties, Metadata Fields
 
-### Community 1004 - "Community 1004"
+### Community 974 - "Community 974"
 Cohesion: 0.6
 Nodes (3): accountingCol(), isoToTimestamp(), main()
 
-### Community 1008 - "Community 1008"
+### Community 979 - "Community 979"
 Cohesion: 0.6
 Nodes (3): equalsIgnoreCase(), isFieldUnique(), validateUniqueness()
 
-### Community 1009 - "Community 1009"
+### Community 982 - "Community 982"
 Cohesion: 0.4
 Nodes (4): AI Assistant Security Hardening, Concurrent Request Deduplication, Limitations, Prompt Injection Sanitization
 
-### Community 1010 - "Community 1010"
+### Community 983 - "Community 983"
 Cohesion: 0.4
 Nodes (4): Architecture Documentation, Current Docs, Naming Convention, Structure
 
-### Community 1011 - "Community 1011"
-Cohesion: 0.4
-Nodes (5): API + validation updates, Frontend updates, New return commercial fields, Posting behavior, Sales-return enhancements (Phase D.5)
-
-### Community 1012 - "Community 1012"
+### Community 984 - "Community 984"
 Cohesion: 0.4
 Nodes (5): Backend/Frontend contract changes, Deferred by design, Invoice templates (Phase D.7), Scope implemented, Why this design
 
-### Community 1013 - "Community 1013"
+### Community 985 - "Community 985"
 Cohesion: 0.4
 Nodes (5): Accounting Integration, code:block2 (Dr  Accounts Receivable       (final invoice total)), code:block3 (Dr  COGS), code:block4 (Dr  Cash / Bank), Commercial Terms Posting
 
-### Community 1014 - "Community 1014"
+### Community 986 - "Community 986"
 Cohesion: 0.4
 Nodes (5): Architecture points, Flow, Key files, Key files, Outbound invoice messaging (Phase D.8 — WhatsApp + Telegram)
 
-### Community 1015 - "Community 1015"
+### Community 987 - "Community 987"
+Cohesion: 0.4
+Nodes (5): API + validation updates, Frontend updates, New return commercial fields, Posting behavior, Sales-return enhancements (Phase D.5)
+
+### Community 988 - "Community 988"
 Cohesion: 0.4
 Nodes (5): Allowed exception model, Canonical Workflow Matrix, Default company rule, Governance precedence, Workflow Modes and Product Modes
 
-### Community 1016 - "Community 1016"
+### Community 989 - "Community 989"
 Cohesion: 0.4
 Nodes (5): 3.1 Purchase Order (PO), 3.2 Goods Receipt Note (GRN), 3.3 Purchase Invoice (PI), 3.4 Purchase Return (PR), 3. Core Documents
 
-### Community 1017 - "Community 1017"
+### Community 990 - "Community 990"
 Cohesion: 0.4
 Nodes (5): Clarification 1 — CONTROLLED Mode Accounting (No GRNI), Clarification 2 — Purchase Return Before vs After Invoice, Clarification 3 — Service vs Stock `openInvoiceQty`, Clarification 4 — Standalone PI vs PO-Linked PI in SIMPLE Mode, Resolved Design Clarifications
 
-### Community 1018 - "Community 1018"
+### Community 991 - "Community 991"
 Cohesion: 0.4
 Nodes (5): 3.1 Sales Order (SO), 3.2 Delivery Note (DN), 3.3 Sales Invoice (SI), 3.4 Sales Return (SR), 3. Core Documents
 
-### Community 1019 - "Community 1019"
+### Community 992 - "Community 992"
 Cohesion: 0.4
 Nodes (4): Accounting Voucher and Item Lists, Accounting Vouchers, Financial Note, Inventory Items
 
-### Community 1020 - "Community 1020"
+### Community 993 - "Community 993"
 Cohesion: 0.4
 Nodes (4): Date Controls, How to use it, Notes, Where this applies
 
-### Community 1021 - "Community 1021"
+### Community 994 - "Community 994"
 Cohesion: 0.4
 Nodes (4): Financial Note, Invoice Lists, Purchase Invoices, Sales Invoices
 
-### Community 1022 - "Community 1022"
+### Community 995 - "Community 995"
 Cohesion: 0.4
 Nodes (4): How To Use It, Important Controls, System Settings, Who Can Use It
 
-### Community 1023 - "Community 1023"
+### Community 996 - "Community 996"
 Cohesion: 0.4
 Nodes (4): Apex Ledger Integrated Dashboard, How to Access, Interface Features & Operational Tabs, Layout & Language Support
 
-### Community 1024 - "Community 1024"
+### Community 997 - "Community 997"
 Cohesion: 0.6
 Nodes (4): Completion Report: Sales Invoice Page Refinement, Completion Report: Sales Invoice Page Refinement (Task 150), End-User View, Technical Developer View
 
-### Community 1025 - "Community 1025"
+### Community 998 - "Community 998"
 Cohesion: 0.4
 Nodes (4): Changes Made, Completion Report: 164-apex-ledger-routing-and-voucher-parity, Task Description, Verification Results
 
-### Community 1026 - "Community 1026"
+### Community 999 - "Community 999"
 Cohesion: 0.4
 Nodes (3): End-User View, Task 48: Modal Z-Index and Toast Visibility Fix, Technical Developer View
 
-### Community 1027 - "Community 1027"
+### Community 1000 - "Community 1000"
 Cohesion: 0.4
 Nodes (3): Completion Report: Task 49 — ItemSelector Performance Optimization, End-User View, Technical Developer View
 
-### Community 1028 - "Community 1028"
+### Community 1001 - "Community 1001"
 Cohesion: 0.4
 Nodes (3): Completion Report: Sales Return Zero-Cost Policy & Standalone Returns (Task 65), End-User View, Technical Developer View
 
-### Community 1029 - "Community 1029"
+### Community 1002 - "Community 1002"
 Cohesion: 0.4
 Nodes (3): 76 — Tailscale Local Development Environment, End-User View, Technical Developer View
 
-### Community 1030 - "Community 1030"
+### Community 1003 - "Community 1003"
 Cohesion: 0.4
 Nodes (3): Canvas Dev 96-Cell Widget Layout Sandbox, End-User View, Technical Developer View
 
-### Community 1031 - "Community 1031"
+### Community 1004 - "Community 1004"
 Cohesion: 0.4
 Nodes (3): End-User View, Technical Developer View, Topbar Precision Widget Layout
 
-### Community 1032 - "Community 1032"
+### Community 1005 - "Community 1005"
 Cohesion: 0.4
 Nodes (4): Expected Final Deliverable From The Implementing Agent, Expected Risks / Blockers, Refined Execution Plan, Task 100 — Sales Governance Enforcement
 
-### Community 1033 - "Community 1033"
+### Community 1006 - "Community 1006"
 Cohesion: 0.4
 Nodes (5): Files changed, Subtask A — Backend policy core ✅ COMPLETE, Tests, Verification, What was changed
 
-### Community 1034 - "Community 1034"
+### Community 1007 - "Community 1007"
 Cohesion: 0.4
 Nodes (5): Current State Audit (2026-05-18), documentPolicy.ts (frontend) — missing governance awareness, DocumentPolicyResolver.ts — what exists vs what's missing, SalesInvoiceUseCases.ts — enforcement exists but incomplete, SalesSettings.ts — entity is ready
 
-### Community 1035 - "Community 1035"
+### Community 1008 - "Community 1008"
 Cohesion: 0.4
 Nodes (5): 5a. Modify Test 18 (line 729-790), 5b. Add new tests after test 19:, code:typescript (it('18) PERPETUAL: zero cost blocks posting', async () => {), code:typescript (const makeDirectReturn = (): SalesReturn =>), Layer 5: Tests
 
-### Community 1036 - "Community 1036"
+### Community 1009 - "Community 1009"
 Cohesion: 0.4
 Nodes (5): 1. Overview, code:env (DB_TYPE=FIRESTORE  # Default — uses Firestore (Google Cloud)), Current State, What Stays Firebase, What This Migration Is
 
-### Community 1037 - "Community 1037"
+### Community 1010 - "Community 1010"
 Cohesion: 0.4
 Nodes (5): Backend Runtime ✅, Frontend Runtime UI ✅, 📋 Remaining Work / Future, Review Fixes ✅, Skill Templates ✅
 
-### Community 1038 - "Community 1038"
+### Community 1011 - "Community 1011"
 Cohesion: 0.4
 Nodes (5): 1. Implemented Flag on AI Tool Catalog, 2. Tool Detail Page Enhancement, 3. Critical: Anti-Hallucination Safety Fix, 4. Firestore Undefined Fix, ✅ What Was Completed
 
-### Community 1039 - "Community 1039"
+### Community 1012 - "Community 1012"
 Cohesion: 0.4
 Nodes (5): 2026-05-07 (Thu) — ~1h finalization, Documentation, Review Fixes Applied, Review / Verification, Runtime/Architecture Final State
 
-### Community 1040 - "Community 1040"
+### Community 1013 - "Community 1013"
 Cohesion: 0.4
 Nodes (5): 5a. Modify Test 18 (line 729-790), 5b. Add new tests after test 19:, code:typescript (it('18) PERPETUAL: zero cost blocks posting', async () => {), code:typescript (const makeDirectReturn = (): SalesReturn =>), Layer 5: Tests
 
-### Community 1041 - "Community 1041"
+### Community 1014 - "Community 1014"
 Cohesion: 0.4
 Nodes (5): 1. Overview, code:env (DB_TYPE=FIRESTORE  # Default — uses Firestore (Google Cloud)), Current State, What Stays Firebase, What This Migration Is
 
-### Community 1058 - "Community 1058"
-Cohesion: 0.5
-Nodes (4): Architecture Notes, Correction Metadata, Immutability Preserved, Single Posting Point Maintained
+### Community 1020 - "Community 1020"
+Cohesion: 1.0
+Nodes (3): getColorInputValue(), getDefaultSectionBackground(), normalizeSectionBackgroundValue()
 
-### Community 1059 - "Community 1059"
+### Community 1023 - "Community 1023"
 Cohesion: 0.5
 Nodes (4): Best Practices, Reason Field, Replacement vs. New Voucher, When to Use Corrections
 
-### Community 1060 - "Community 1060"
+### Community 1024 - "Community 1024"
+Cohesion: 0.5
+Nodes (4): Architecture Notes, Correction Metadata, Immutability Preserved, Single Posting Point Maintained
+
+### Community 1025 - "Community 1025"
 Cohesion: 0.5
 Nodes (4): Account Access Control, Approval Required Policy, Period Lock Policy, Policy Compliance
 
-### Community 1061 - "Community 1061"
-Cohesion: 0.5
-Nodes (4): 1. Approval Required Policy, 2. Period Lock Policy, 3. Account Access Control Policy, Available Policies
-
-### Community 1062 - "Community 1062"
+### Community 1026 - "Community 1026"
 Cohesion: 0.5
 Nodes (4): Approval Required Not Working, Period Lock Not Working, Policy Not Enforcing, Troubleshooting
 
-### Community 1063 - "Community 1063"
+### Community 1027 - "Community 1027"
+Cohesion: 0.5
+Nodes (4): 1. Approval Required Policy, 2. Period Lock Policy, 3. Account Access Control Policy, Available Policies
+
+### Community 1028 - "Community 1028"
 Cohesion: 0.5
 Nodes (4): Backend contract, Current frontend behavior, Linked Invoice Source Contract, Why this exists
 
-### Community 1064 - "Community 1064"
+### Community 1029 - "Community 1029"
 Cohesion: 0.5
-Nodes (4): 4. Line-Level Quantity Model, code:block5 (┌─────────────────────────────────────────────────────────┐), Key invariants, `openInvoiceQty` calculation rules
+Nodes (4): 8.1 SIMPLE mode user experience, 8.2 CONTROLLED mode user experience, 8.3 Common UI patterns, 8. UI / Workflow Implications
 
-### Community 1065 - "Community 1065"
+### Community 1030 - "Community 1030"
 Cohesion: 0.5
 Nodes (3): AI Assistant Safety Improvements, Duplicate Message Protection, Safer ERP Data Handling
 
-### Community 1066 - "Community 1066"
+### Community 1031 - "Community 1031"
 Cohesion: 0.5
 Nodes (4): 2026-05-22 (Fri) — Phase D.4 (Recurring Invoices), Backend, Documentation, Frontend
 
-### Community 1067 - "Community 1067"
+### Community 1032 - "Community 1032"
 Cohesion: 0.5
 Nodes (4): code:text (label), code:ts (PermissionCatalog {), code:text (1. Company Admin opens role editor.), Permissions
 
-### Community 1068 - "Community 1068"
+### Community 1033 - "Community 1033"
 Cohesion: 0.5
 Nodes (3): Completion Report: Chart of Accounts UI Update, End-User View, Technical Developer View
 
-### Community 1069 - "Community 1069"
+### Community 1034 - "Community 1034"
 Cohesion: 0.5
 Nodes (4): Files changed, Subtask D — Cloneable/dynamic form policy alignment ✅ COMPLETE, Verification, What was changed
 
-### Community 1070 - "Community 1070"
-Cohesion: 0.5
-Nodes (4): Acceptance criteria, Files to inspect/edit, Required changes, Subtask D — Cloneable/dynamic form policy alignment
-
-### Community 1071 - "Community 1071"
-Cohesion: 0.5
-Nodes (4): Documentation Required Before Completion, End-user, Planning, Technical
-
-### Community 1072 - "Community 1072"
-Cohesion: 0.5
-Nodes (4): Acceptance criteria, Files to inspect/edit, Required changes, Subtask C — Native Sales invoice enforcement
-
-### Community 1073 - "Community 1073"
+### Community 1035 - "Community 1035"
 Cohesion: 0.5
 Nodes (4): Files changed, Subtask C — Native Sales invoice enforcement ✅ COMPLETE, Verification, What was changed
 
-### Community 1074 - "Community 1074"
-Cohesion: 0.5
-Nodes (4): Do not do, Enforcement principle, Keep, Technical Rules For The Implementing Agent
-
-### Community 1075 - "Community 1075"
+### Community 1036 - "Community 1036"
 Cohesion: 0.5
 Nodes (4): Files changed, Subtask B — Sales settings and initialization UX semantics ✅ COMPLETE, Verification, What was changed
 
-### Community 1076 - "Community 1076"
+### Community 1037 - "Community 1037"
+Cohesion: 0.5
+Nodes (4): Acceptance criteria, Files to inspect/edit, Required changes, Subtask D — Cloneable/dynamic form policy alignment
+
+### Community 1038 - "Community 1038"
 Cohesion: 0.5
 Nodes (4): Dynamic/cloned forms, Manual QA Matrix After Implementation, Native flows, Policy matrix
 
-### Community 1077 - "Community 1077"
+### Community 1039 - "Community 1039"
+Cohesion: 0.5
+Nodes (4): Documentation Required Before Completion, End-user, Planning, Technical
+
+### Community 1040 - "Community 1040"
+Cohesion: 0.5
+Nodes (4): Acceptance criteria, Files to inspect/edit, Required changes, Subtask C — Native Sales invoice enforcement
+
+### Community 1041 - "Community 1041"
+Cohesion: 0.5
+Nodes (4): Do not do, Enforcement principle, Keep, Technical Rules For The Implementing Agent
+
+### Community 1042 - "Community 1042"
 Cohesion: 0.5
 Nodes (4): 2026-05-06 (Wed) — 8h, Phase 6-7: Frontend — Super Admin AI Tool Catalog, Phase 8: Comprehensive Tests (327 total), Phase 9: Full Verification ✅
 
-### Community 1078 - "Community 1078"
+### Community 1043 - "Community 1043"
 Cohesion: 0.5
-Nodes (4): code:text (label), code:ts (PermissionCatalog {), code:text (1. Company Admin opens role editor.), Permissions
+Nodes (4): code:text (ListCompanyModulesUseCase reads ModuleRegistry code directly), code:text (1. Do not break existing companies.), code:text (companyAdmin), Migration From Current System
 
-### Community 1079 - "Community 1079"
+### Community 1044 - "Community 1044"
 Cohesion: 0.5
 Nodes (4): code:text (platform_only), code:text (platform_only: only SuperAdmin can grant/enable for a compan), code:text (1. Capability exists in DB.), Feature/Capability Enablement
 
-### Community 1080 - "Community 1080"
+### Community 1045 - "Community 1045"
 Cohesion: 0.5
 Nodes (4): Architecture Notes, Correction Metadata, Immutability Preserved, Single Posting Point Maintained
 
-### Community 1081 - "Community 1081"
-Cohesion: 0.5
-Nodes (4): Account Access Control, Approval Required Policy, Period Lock Policy, Policy Compliance
-
-### Community 1082 - "Community 1082"
+### Community 1046 - "Community 1046"
 Cohesion: 0.5
 Nodes (4): Best Practices, Reason Field, Replacement vs. New Voucher, When to Use Corrections
 
-### Community 1109 - "Community 1109"
+### Community 1047 - "Community 1047"
+Cohesion: 0.5
+Nodes (4): Account Access Control, Approval Required Policy, Period Lock Policy, Policy Compliance
+
+### Community 1058 - "Community 1058"
+Cohesion: 0.67
+Nodes (3): 1. REVERSE_ONLY, 2. REVERSE_AND_REPLACE, Correction Modes
+
+### Community 1059 - "Community 1059"
 Cohesion: 0.67
 Nodes (3): Core Principles, Correction Flow Rules, Non-Negotiables
 
-### Community 1110 - "Community 1110"
-Cohesion: 0.67
-Nodes (3): 1. REVERSE_ONLY, 2. REVERSE_AND_REPLACE, Correction Modes
-
-### Community 1111 - "Community 1111"
+### Community 1060 - "Community 1060"
 Cohesion: 0.67
 Nodes (3): QA root cause: header account accepted in receipt voucher, Sales Payment Abstraction, Settlement Modes
 
-### Community 1112 - "Community 1112"
+### Community 1061 - "Community 1061"
 Cohesion: 0.67
 Nodes (3): Per-record Audit Log (D.3), Period Lock (D.2), Sales auditability & control (Phase D.2 + D.3)
 
-### Community 1113 - "Community 1113"
-Cohesion: 0.67
-Nodes (3): 7.1 Company-Level Purchase Settings, 7.2 Setting Behavior by Mode, 7. Settings Design
-
-### Community 1114 - "Community 1114"
+### Community 1062 - "Community 1062"
 Cohesion: 0.67
 Nodes (3): 1. Architecture, Key parallel with Purchases, Key Sales-specific concern: **COGS**
 
-### Community 1115 - "Community 1115"
+### Community 1063 - "Community 1063"
 Cohesion: 0.67
 Nodes (3): 9. V1 Scope, ❌ Deferred, ✅ Definitely V1
 
-### Community 1117 - "Community 1117"
+### Community 1065 - "Community 1065"
 Cohesion: 0.67
 Nodes (3): 2026-05-21 (Thu) — Phase D.2 + D.3 (period lock + audit log) + Audit Round 1 fixes, Audit Round 1 — 14 fixes applied, Initial build (D.2 + D.3)
 
-### Community 1118 - "Community 1118"
-Cohesion: 0.67
-Nodes (3): code:text (Entitled = company is allowed to use something.), code:text (Is company entitled to crm.ai-scoring?), Subscription Awareness
-
-### Community 1129 - "Community 1129"
+### Community 1075 - "Community 1075"
 Cohesion: 0.67
 Nodes (3): 4f. Revenue reversal for DIRECT returns (line 844), code:typescript (// BEFORE:), code:typescript (if (isAfterInvoice && salesInvoice) {)
 
-### Community 1131 - "Community 1131"
-Cohesion: 0.67
-Nodes (3): 1. REVERSE_ONLY, 2. REVERSE_AND_REPLACE, Correction Modes
-
-### Community 1132 - "Community 1132"
+### Community 1078 - "Community 1078"
 Cohesion: 0.67
 Nodes (3): How It Works, Idempotency, Reversal Process
 
+### Community 1079 - "Community 1079"
+Cohesion: 0.67
+Nodes (3): Core Principles, Correction Flow Rules, Non-Negotiables
+
 ## Knowledge Gaps
-- **7018 isolated node(s):** `MockHttpClient`, `MANDATORY FIRST STEP — READ BEFORE DOING ANYTHING`, `DEFINITION OF DONE — EVERY FEATURE`, `Your Role: You Are the CTO`, `1. Session Start Protocol` (+7013 more)
+- **7030 isolated node(s):** `MockHttpClient`, `MANDATORY FIRST STEP — READ BEFORE DOING ANYTHING`, `DEFINITION OF DONE — EVERY FEATURE`, `Your Role: You Are the CTO`, `1. Session Start Protocol` (+7025 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **272 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **213 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Account` connect `Community 71` to `Community 2`, `Community 3`, `Community 5`, `Community 117`, `Community 446`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `useCompanyAccess()` connect `Community 5` to `Community 6`, `Community 135`, `Community 9`, `Community 11`, `Community 12`, `Community 268`, `Community 16`, `Community 18`, `Community 20`, `Community 23`, `Community 27`, `Community 157`, `Community 33`, `Community 38`, `Community 43`, `Community 304`, `Community 64`, `Community 74`, `Community 89`, `Community 106`, `Community 120`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `NewVoucherFormsDemo()` connect `Community 5` to `Community 71`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+- **Why does `Account` connect `Community 375` to `Community 1`, `Community 5`, `Community 447`, `Community 44`, `Community 19`, `Community 734`, `Community 415`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **Why does `NewVoucherFormsDemo()` connect `Community 5` to `Community 375`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **Why does `useCompanyAccess()` connect `Community 5` to `Community 385`, `Community 6`, `Community 136`, `Community 9`, `Community 10`, `Community 8`, `Community 14`, `Community 16`, `Community 18`, `Community 420`, `Community 41`, `Community 173`, `Community 309`, `Community 62`, `Community 69`, `Community 207`, `Community 80`, `Community 118`, `Community 250`?**
+  _High betweenness centrality (0.036) - this node is a cross-community bridge._
 - **Are the 539 inferred relationships involving `Next` (e.g. with `.getSettings()` and `.updateSettings()`) actually correct?**
   _`Next` has 539 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 22 inferred relationships involving `useCompanyAccess()` (e.g. with `AxiosInitializer()` and `useRBAC()`) actually correct?**
   _`useCompanyAccess()` has 22 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `MockHttpClient`, `MANDATORY FIRST STEP — READ BEFORE DOING ANYTHING`, `DEFINITION OF DONE — EVERY FEATURE` to the rest of the system?**
-  _7018 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _7030 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.01 - nodes in this community are weakly interconnected._

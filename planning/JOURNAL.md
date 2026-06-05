@@ -2,6 +2,28 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-05 (Fri) - Apex Purchases And Inventory Native Page Mounting
+
+**Task:** Mount Purchases and Inventory native production pages inside the Apex candidate shell.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.9h.
+
+**What changed:**
+- Added `frontend/src/pages/dev/apex-ledger/components/NativeModuleRouteMount.tsx` as a shared route mount for module-native pages inside Apex.
+- Reused `routesConfig` so Purchases and Inventory pages keep the same native components, permissions, module guards, and workflow guards as the main router.
+- Updated `ApexLedgerDashboard.tsx` so concrete Purchases and Inventory subroutes render native pages inside Apex while the module roots keep the Apex workbench sections.
+- Added an Apex-only hash-route bridge for internal `/purchases/...` and `/inventory/...` navigations.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, PRIORITIES, and created [planning/done/177-apex-purchases-inventory-native-page-mounting.md](./done/177-apex-purchases-inventory-native-page-mounting.md).
+
+**Accounting/ERP impact:** No posting, ledger, tax, valuation, approval, period-lock, or data schema behavior changed. The slice preserves existing native Purchases and Inventory controls inside Apex.
+
+**Verification:** `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only.
+
+**Next recommended step:** Run frontend typecheck/build, then continue Task 167 Slice 3C-Settings/RBAC/AI native page mounting.
+
+---
+
 ## 2026-06-05 (Fri) - Apex Prototype Typography Restoration
 
 **Task:** Restore Apex candidate typography to match the downloaded prototype source.
@@ -19,24 +41,25 @@
 
 **Accounting/ERP impact:** None. This is visual shell typography only and does not alter permissions, settings behavior, posting, tax, balances, inventory, reports, or data contracts.
 
-**Verification:** `npm --prefix frontend run typecheck` passed before docs. Production build pending after final docs.
+**Verification:** `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only. `graphify update .` could not run because `graphify` is not available in this PowerShell environment.
 
 **Next recommended step:** Manual visual QA comparing Apex typography against the downloaded prototype, then continue Task 167 Slice 3C-Purchases/Inventory native page mounting.
 
 ---
 
-## 2026-06-05 (Fri) — RTL Flyout Submenu Positioning & Contrast Sidebar Preset Visual Hardening
+## 2026-06-05 (Fri) — RTL Flyout Positioning, Contrast Sidebar Hardening & Theme-Agnostic Hover Highlights
 
-**Task:** Fix coordinate positioning, background style discrepancies, and contrast sidebar element overlays in RTL/contrast presets under hover/accordion navigation.
+**Task:** Fix coordinate positioning, background style discrepancies, contrast sidebar element overlays, and hover highlight contrast in RTL/contrast presets.
 **Agent:** Antigravity.
 **Branch:** `feat/init-wizard-forms-selection`.
-**Time spent:** ~0.4h.
+**Time spent:** ~0.5h.
 
 **What changed:**
 - **RTL Flyout Coordinate Alignment:** Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to store both `left` and `right` coordinates from `getBoundingClientRect()`.
 - Updated Portal overlay positioning styling to swap from LTR `left` alignment (`coords.right + gap`) to RTL `right` alignment (`(window.innerWidth - coords.left) + gap`), placing the submenu flyout cleanly to the left of the right-positioned sidebar.
 - **Themed Background Color Cohesion:** Swapped the hardcoded `bg-white dark:bg-slate-900` spawned popover container background with `bg-[var(--app-sidebar-surface)]` so submenus match the main sidebar exactly across all themes and dark/light modes. This also resolves the invisible white-on-white text bug in contrast sidebar modes.
 - **Contrast Sidebar Preset Visual Hardening:** Configured `SidebarItem.tsx` and [SidebarSection.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarSection.tsx) to detect contrast (brand colored) sidebars. Updated active item rows, row hover backgrounds, section headers, and category icon containers to use translucent white overlays (like `bg-white/10` and `bg-white/20`) when rendered inside brand colored sidebars. This fixes invisible text (white-on-white) and invisible active row highlights.
+- **Theme-Agnostic Hover Highlights:** Replaced the light-blue page-background hover styling (`hover:bg-[var(--color-bg-tertiary)]`) on all normal sidebar items and category section headers with a clean, theme-agnostic translucent overlay `hover:bg-black/5 dark:hover:bg-white/5`. This provides a sharp and noticeable hover highlight on all light and dark theme presets, resolving visual match errors.
 
 **Verification:**
 - `npx tsc --noEmit` passed.
