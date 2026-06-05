@@ -804,8 +804,8 @@ export const purchasesApi = {
   postPI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/post`, { settlementInput }),
 
-  approvePI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
-    client.post(`/tenant/purchase/invoices/${id}/approve`, { settlementInput }),
+  // approvePI has moved to accountingApi (SoD: Purchases never approves). See
+  // docs/architecture/posting-authority.md §4.1.
 
   unpostPI: (id: string): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/unpost`, {}),

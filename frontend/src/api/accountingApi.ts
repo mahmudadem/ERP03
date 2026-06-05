@@ -4,6 +4,8 @@
  */
 import client from './client';
 import { VoucherListFilters, VoucherListResponse, VoucherListItem } from '../types/accounting/VoucherListTypes';
+import type { SalesInvoiceDTO, SettlementInputPayload as SalesSettlementInputPayload } from './salesApi';
+import type { PurchaseInvoiceDTO, SettlementInputPayload as PurchaseSettlementInputPayload } from './purchasesApi';
 
 // Re-export types for convenience
 export type { VoucherListItem };
@@ -747,6 +749,31 @@ export const accountingApi = {
   createAccount: (payload: any): Promise<any> => {
     return client.post('/tenant/accounting/accounts', payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
+
+  // ============================================================
+  // Source-document approval (SoD: Accounting owns approval)
+  // ============================================================
+  // These belong on accountingApi — NOT salesApi / purchasesApi — so that
+  // source-module code physically cannot call them. Only the Approval Center
+  // (modules/accounting/pages/ApprovalsPage.tsx) should import these.
+  // Backend routes live under /tenant/sales and /tenant/purchase because
+  // that's their REST identity, but the API client lives here because that's
+  // their architectural authority.
+  approveSI: (
+    id: string,
+    settlementInput?: SalesSettlementInputPayload,
+    periodLockOverrideReason?: string,
+  ): Promise<SalesInvoiceDTO> =>
+    client.post(`/tenant/sales/invoices/${id}/approve`, {
+      settlementInput,
+      periodLockOverrideReason,
+    }),
+
+  approvePI: (
+    id: string,
+    settlementInput?: PurchaseSettlementInputPayload,
+  ): Promise<PurchaseInvoiceDTO> =>
+    client.post(`/tenant/purchase/invoices/${id}/approve`, { settlementInput }),
 };
 
 // Currency DTOs

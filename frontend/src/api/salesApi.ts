@@ -780,8 +780,8 @@ export const salesApi = {
   postSI: (id: string, settlementInput?: SettlementInputPayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/post`, { settlementInput, periodLockOverrideReason }),
 
-  approveSI: (id: string, settlementInput?: SettlementInputPayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
-    client.post(`/tenant/sales/invoices/${id}/approve`, { settlementInput, periodLockOverrideReason }),
+  // approveSI has moved to accountingApi (SoD: Sales never approves). See
+  // docs/architecture/posting-authority.md §4.1.
 
   updatePaymentStatus: (id: string, payload: UpdateSalesInvoicePaymentStatusPayload): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/payment-status`, payload),

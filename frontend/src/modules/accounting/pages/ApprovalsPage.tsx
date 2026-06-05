@@ -9,8 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { accountingApi, type PendingApprovalSourceDoc } from '../../../api/accountingApi';
-import { salesApi } from '../../../api/salesApi';
-import { purchasesApi } from '../../../api/purchasesApi';
 import { VoucherTable } from '../components/VoucherTable';
 import { useVoucherTypes } from '../../../hooks/useVoucherTypes';
 import { useVoucherActions } from '../../../hooks/useVoucherActions';
@@ -73,9 +71,9 @@ const ApprovalsPage: React.FC = () => {
     setBusySourceId(row.id);
     try {
       if (row.source === 'SALES_INVOICE') {
-        await salesApi.approveSI(row.id);
+        await accountingApi.approveSI(row.id);
       } else {
-        await purchasesApi.approvePI(row.id);
+        await accountingApi.approvePI(row.id);
       }
       await refetchSourceDocs();
     } catch (err) {
