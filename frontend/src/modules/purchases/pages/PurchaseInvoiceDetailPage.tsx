@@ -54,6 +54,8 @@ interface EditableLine {
   uom: string;
   unitPriceDoc: number;
   taxCodeId?: string;
+  /** Per-line inclusive override. When undefined, the tax code's default applies. */
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
 }
@@ -467,6 +469,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const buildLinePayload = (line: EditableLine, index: number): PurchaseInvoiceLineInputDTO => {
     const item = itemById[line.itemId];
+    // Resolve the EFFECTIVE inclusive flag — line override wins, otherwise inherit
+    // from the chosen tax code's default. Without this, the backend defaults to
+    // exclusive math and the posted voucher disagrees with the form's display.
+    const taxCode = line.taxCodeId ? taxById[line.taxCodeId] : undefined;
+    const effectiveInclusive =
+      line.priceIsInclusive !== undefined ? line.priceIsInclusive : taxCode?.priceIsInclusive === true;
     return {
       lineId: line.lineId,
       lineNo: index + 1,
@@ -478,6 +486,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       uom: line.uom || item?.purchaseUom || item?.baseUom || 'EA',
       unitPriceDoc: line.unitPriceDoc,
       taxCodeId: line.taxCodeId || undefined,
+      priceIsInclusive: effectiveInclusive,
       warehouseId: line.warehouseId || undefined,
       description: line.description || undefined,
     };

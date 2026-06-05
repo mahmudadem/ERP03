@@ -435,6 +435,9 @@ export interface PurchaseInvoiceLineInputDTO {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  /** When true, `unitPriceDoc` already includes tax. Mirrors backend
+   *  PurchaseInvoiceLineInput.priceIsInclusive. */
+  priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;

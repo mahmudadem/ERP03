@@ -285,12 +285,22 @@ export class CreatePurchaseInvoiceUseCase {
 
       const taxCodeId = await this.resolveTaxCodeId(input.companyId, sourceLine.taxCodeId, item);
       let taxRate = 0;
+      let taxCodeDefaultInclusive = false;
       if (taxCodeId) {
         const taxCode = await this.taxCodeRepo.getById(input.companyId, taxCodeId);
         if (!taxCode) throw new Error(`Tax code not found: ${taxCodeId}`);
         assertValidPurchaseTaxCode(taxCode, taxCodeId);
         taxRate = taxCode.rate;
+        taxCodeDefaultInclusive = taxCode.priceIsInclusive === true;
       }
+      // Effective inclusive: explicit line flag wins; otherwise inherit the tax
+      // code's default. Without this fallback a form that doesn't set the flag
+      // (e.g. legacy PI clients) silently posts exclusive math even when the
+      // tax code is configured as inclusive.
+      const effectiveInclusive =
+        sourceLine.priceIsInclusive !== undefined
+          ? sourceLine.priceIsInclusive === true
+          : taxCodeDefaultInclusive;
 
       // Pre-totals here are illustrative; the PurchaseInvoice constructor
       // recomputes via normalizeLine, which is the source of truth for the
@@ -315,7 +325,7 @@ export class CreatePurchaseInvoiceUseCase {
         taxCodeId,
         taxCode: undefined,
         taxRate,
-        priceIsInclusive: sourceLine.priceIsInclusive === true,
+        priceIsInclusive: effectiveInclusive,
         taxAmountDoc: roundMoney(lineTotalDoc * taxRate),
         taxAmountBase: roundMoney(lineTotalBase * taxRate),
         warehouseId: sourceLine.warehouseId || poLine?.warehouseId || settings.defaultWarehouseId,
