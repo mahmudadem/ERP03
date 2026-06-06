@@ -1227,13 +1227,14 @@ export class PostSalesInvoiceUseCase {
         if (sTaxCode?.salesTaxAccountId) {
           taxId = await resolveAccountCached(sTaxCode.salesTaxAccountId);
         } else if (shouldPostAccounting) {
+          const taxLabel = sTaxCode?.code || (line as any).taxCode || line.taxCodeId;
           throw new AccountMappingError({
             companyId,
             itemId: item.id,
             accountRole: 'tax',
             fallbackChain: ['taxCode.salesTaxAccountId'],
             lineNo: line.lineNo,
-            hint: `Tax code ${line.taxCodeId} has no salesTaxAccountId configured.`,
+            hint: `Tax code "${taxLabel}" has no Sales Tax Account configured. Set it in Settings → Tax Codes before posting this invoice (line ${line.lineNo}).`,
           });
         }
       }
@@ -1294,6 +1295,16 @@ export class PostSalesInvoiceUseCase {
         const chargeTaxCode = taxCodesMap.get(charge.taxCodeId);
         if (chargeTaxCode?.salesTaxAccountId) {
           taxId = await resolveAccountCached(chargeTaxCode.salesTaxAccountId);
+        } else if (shouldPostAccounting) {
+          const taxLabel = chargeTaxCode?.code || (charge as any).taxCode || charge.taxCodeId;
+          throw new AccountMappingError({
+            companyId,
+            itemId: charge.chargeId,
+            accountRole: 'tax',
+            fallbackChain: ['taxCode.salesTaxAccountId'],
+            lineNo: 0,
+            hint: `Tax code "${taxLabel}" on charge "${charge.description || charge.chargeId}" has no Sales Tax Account configured. Set it in Settings → Tax Codes before posting this invoice.`,
+          });
         }
       }
       chargeResolvedAccounts.set(charge.chargeId, { revenueId, taxId });

@@ -10,6 +10,52 @@
 
 ## 🧪 Ready to Test
 
+### Navigation - Apex Route Coverage Gap Audit
+**Added by:** Codex (report 179)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger`.
+- Open these Accounting/Tools routes directly or through sidebar/actions where available:
+  - `/#/dev/apex-ledger/accounting/setup`
+  - `/#/dev/apex-ledger/accounting/recurring-vouchers`
+  - `/#/dev/apex-ledger/accounting/cost-centers`
+  - `/#/dev/apex-ledger/vouchers/<voucherId>`
+  - `/#/dev/apex-ledger/vouchers/<voucherId>/view`
+  - `/#/dev/apex-ledger/vouchers/demo`
+  - `/#/dev/apex-ledger/accounting/tools/forms`
+  - `/#/dev/apex-ledger/accounting/tools/budgets`
+  - `/#/dev/apex-ledger/accounting/tools/subgroup-tagging`
+  - `/#/dev/apex-ledger/tools/forms`
+- Expected: each page renders inside Apex with the Apex sidebar and topbar still visible.
+- Expected: protected pages keep the same permission/module behavior as the main shell.
+
+**Known limitations:**
+- Super Admin routes are not included in tenant Apex shell cutover. Treat Super Admin as a separate shell decision.
+
+---
+
+### Navigation - Apex Settings/RBAC/AI Native Page Mounting
+**Added by:** Codex (report 178)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger/settings`.
+- Click Settings/RBAC links for General Settings, Appearance, Topbar Widgets, Sidebar/Menu Config, Approval Workflow, Roles, Edit Role, and Assign Users.
+  - Expected: concrete Settings/RBAC pages render inside Apex, with the Apex sidebar and topbar still visible.
+  - Expected: Company Settings footer pages still use the Company Settings footer routes and stay inside Apex.
+- From a Settings/RBAC page inside Apex, use internal navigation such as edit role, back to list, or settings hub links.
+  - Expected: the URL stays under `/#/dev/apex-ledger/settings/...`, not `/#/settings/...`.
+- Open `/#/dev/apex-ledger/ai`.
+- Click AI links for AI Home, AI Settings, AI Usage, AI Proposals, Proposal Detail, and AI Setup where available to the signed-in role.
+  - Expected: concrete AI pages render inside Apex, with the Apex sidebar and topbar still visible.
+- From an AI page inside Apex, use internal AI navigation.
+  - Expected: the URL stays under `/#/dev/apex-ledger/ai/...`, not `/#/ai-assistant/...`.
+- Test restricted roles, disabled AI module, and non-super-admin users.
+  - Expected: protected Settings/RBAC/AI pages remain blocked exactly as they are in the main shell.
+
+**Known limitations:**
+- This mounts the existing native pages inside Apex. It does not yet redesign those native pages with Apex view styling.
+- Full Apex cutover still needs feature flag integration and authenticated cross-role QA.
+
+---
+
 ### Navigation - Apex Purchases And Inventory Native Page Mounting
 **Added by:** Codex (report 177)
 **What to test:**

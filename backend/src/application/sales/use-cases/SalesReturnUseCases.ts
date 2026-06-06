@@ -1,5 +1,6 @@
 
 import { randomUUID } from 'crypto';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
@@ -695,8 +696,18 @@ export class PostSalesReturnUseCase {
 
         if (line.taxAmountBase > 0 && line.taxCodeId) {
           const sTaxCode = taxCodesMap.get(line.taxCodeId);
-          const taxAccountId = sTaxCode?.salesTaxAccountId;
-          addToBucket(taxDebitBucket, taxAccountId || '', line.taxAmountBase, line.taxAmountDoc);
+          if (!sTaxCode?.salesTaxAccountId) {
+            const taxLabel = sTaxCode?.code || (line as any).taxCode || line.taxCodeId;
+            throw new AccountMappingError({
+              companyId,
+              itemId: line.itemId,
+              accountRole: 'tax',
+              fallbackChain: ['taxCode.salesTaxAccountId'],
+              lineNo: line.lineNo,
+              hint: `Tax code "${taxLabel}" has no Sales Tax Account configured. Set it in Settings → Tax Codes before posting this return (line ${line.lineNo}).`,
+            });
+          }
+          addToBucket(taxDebitBucket, sTaxCode.salesTaxAccountId, line.taxAmountBase, line.taxAmountDoc);
         }
       }
 

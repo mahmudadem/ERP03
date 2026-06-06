@@ -178,19 +178,26 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           ? (line as any).priceIsInclusive === true
           : taxCode?.priceIsInclusive === true;
       const divisor = effectiveInclusive ? 1 + taxRate : 1;
-      const lineGrossDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
-      const lineGrossBase = roundMoney(lineGrossDoc * (form.exchangeRate || 0));
-      const lineTotalDoc = roundMoney(lineGrossDoc / divisor);
-      const lineTotalBase = roundMoney(lineGrossBase / divisor);
+      // Raw qty × unit extension — needed only to derive Net (lineTotalDoc) for
+      // inclusive lines. NOT displayed; the LINE TOTAL column is Net + Tax.
+      const lineExtensionDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
+      const lineExtensionBase = roundMoney(lineExtensionDoc * (form.exchangeRate || 0));
+      const lineTotalDoc = roundMoney(lineExtensionDoc / divisor);
+      const lineTotalBase = roundMoney(lineExtensionBase / divisor);
       const taxAmountDoc = effectiveInclusive
-        ? roundMoney(lineGrossDoc - lineTotalDoc)
+        ? roundMoney(lineExtensionDoc - lineTotalDoc)
         : roundMoney(lineTotalDoc * taxRate);
       const taxAmountBase = effectiveInclusive
-        ? roundMoney(lineGrossBase - lineTotalBase)
+        ? roundMoney(lineExtensionBase - lineTotalBase)
         : roundMoney(lineTotalBase * taxRate);
+      // `lineGrossDoc` is what the customer pays for this line — Net + Tax —
+      // matching SI's convention. Always == lineTotalDoc + taxAmountDoc.
+      const lineGrossDoc = roundMoney(lineTotalDoc + taxAmountDoc);
+      const lineGrossBase = roundMoney(lineTotalBase + taxAmountBase);
 
       return {
         lineGrossDoc,
+        lineGrossBase,
         lineTotalDoc,
         lineTotalBase,
         taxAmountDoc,
@@ -1487,7 +1494,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                   <td className="py-2">{line.uom}</td>
                   <td className="py-2 text-right">{line.unitPriceDoc.toFixed(2)}</td>
                   <td className="py-2">{line.taxCode || line.taxCodeId || '-'}</td>
-                  <td className="py-2 text-right">{line.lineTotalDoc.toFixed(2)}</td>
+                  <td className="py-2 text-right">{(line.lineTotalDoc + line.taxAmountDoc).toFixed(2)}</td>
                   <td className="py-2 text-right">{line.taxAmountDoc.toFixed(2)}</td>
                 </tr>
               ))}

@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { roundMoney as roundLedgerMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
@@ -795,7 +796,17 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         if (line.taxAmountBase > 0 && line.taxCodeId) {
           const sTaxCode = taxCodesMap.get(line.taxCodeId);
           const taxAccountId = sTaxCode?.purchaseTaxAccountId;
-          if (!taxAccountId) throw new Error(`Tax code ${line.taxCodeId} has no purchase tax account`);
+          if (!taxAccountId) {
+            const taxLabel = sTaxCode?.code || line.taxCode || line.taxCodeId;
+            throw new AccountMappingError({
+              companyId,
+              itemId: line.itemId,
+              accountRole: 'tax',
+              fallbackChain: ['taxCode.purchaseTaxAccountId'],
+              lineNo: (line as any).lineNo,
+              hint: `Tax code "${taxLabel}" has no Purchase Tax Account configured. Set it in Settings → Tax Codes before posting this return.`,
+            });
+          }
           voucherLines.push({
             accountId: taxAccountId,
             side: 'Credit',

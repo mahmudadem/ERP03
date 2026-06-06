@@ -51,10 +51,42 @@ These do `taxAmountDoc: line.taxAmountDoc ?? lineTotalDoc * taxRate` — they pr
 
 Charges in `SalesInvoiceCharge` have no `priceIsInclusive` field. They're always exclusive. Probably correct for typical "Delivery $5 + 10% tax" charges, but worth confirming the operational requirement before locking in.
 
+## Finding E — "Line Total" column means different things across voucher pages (found 2026-06-05 during PI QA)
+
+Same root pattern as A–C, but a display bug, not an entity bug. During PI QA against an exclusive 10% × 10qty × 10unit line, Mahmud spotted that the **Line Total** column showed `100` (= qty × unit) instead of `110` (= Net + Tax). For inclusive lines the column happened to be right by coincidence (qty × inclusive-unit = gross), masking the bug for inclusive testers.
+
+**The locked convention** (matches SI and standard ERP):
+
+| Column | Always = | Exclusive 10×10 @10% | Inclusive 10×10 @10% |
+|---|---|---|---|
+| Net | line value pre-tax | 100 | 90.91 |
+| Tax | tax on the line | 10 | 9.09 |
+| **Line Total** | **Net + Tax** (customer-facing line gross) | **110** | **100** |
+| Net Base | Net in base currency | 100 | 90.91 |
+
+**Current state (2026-06-05):**
+- **SI** ([SalesInvoiceDetailPage.tsx:375](../../frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx:375)) — correct (`lineGrossDoc = lineTotalDoc + taxAmountDoc`). Has a comment explaining the convention.
+- **PI** ([PurchaseInvoiceDetailPage.tsx](../../frontend/src/modules/purchases/pages/PurchaseInvoiceDetailPage.tsx)) — **FIXED in same session** as Finding E was discovered: `lineExtensionDoc` renamed (raw qty×unit, internal only); `lineGrossDoc` now = `lineTotalDoc + taxAmountDoc`. Read-only Lines table also fixed.
+- **SO** ([SalesOrderDetailPage.tsx:173](../../frontend/src/modules/sales/pages/SalesOrderDetailPage.tsx:173)) — broken. `lineTotalDoc = qty × unit` (which is also wrong-named: that's the gross extension, not Net). The "Line Total" column at line 906 shows this. **Plus** the frontend doesn't honor `priceIsInclusive` at all (Finding B still open).
+- **SR** ([SalesReturnDetailPage.tsx:795,921](../../frontend/src/modules/sales/pages/SalesReturnDetailPage.tsx:795)) — same pattern as SO; two tables (form + read-only).
+- **PR** ([PurchaseReturnDetailPage.tsx:1038](../../frontend/src/modules/purchases/pages/PurchaseReturnDetailPage.tsx:1038)) — same pattern as SO.
+- **GVR** — not audited yet; check once SO/SR/PR migrate to `ClassicLineItemsTable` (Task 176).
+
+**Fix path (per page):** mirror the PI fix —
+1. Introduce `lineExtensionDoc = qty × unit` as an internal intermediate (rename if a similar var already exists).
+2. Compute `Net (lineTotalDoc)` = `lineExtensionDoc / divisor` (divisor depends on inclusive flag from tax code / line override).
+3. Compute `Tax (taxAmountDoc)` from inclusive/exclusive branch.
+4. Compute `lineGrossDoc = lineTotalDoc + taxAmountDoc` and wire it to the "Line Total" column.
+5. Repeat for `Base` columns.
+6. Add a screen-level regression note: a row with exclusive 10% × 10×10 must show **Net=100, Tax=10, Line Total=110**; inclusive must show **Net=90.91, Tax=9.09, Line Total=100**.
+
+This finding is entangled with Findings B + C — fixing the labeling without first wiring frontend inclusive math just gives you the wrong gross faster. Do them together per page.
+
 ## Suggested ordering for the next QA cycle
 
-1. PI inclusive support (Finding A) — biggest gap, parallel of the SI fix that just shipped.
-2. SO inclusive support (Finding B) — needed for SO → SI fidelity.
-3. SR / PR alignment (Finding C) — make the four invoice-shaped entities use one shared calculator.
-4. Charges (Finding D) — only if a real customer request exists.
+1. ✅ ~~PI inclusive support (Finding A)~~ — DONE (`09dfddbd` + `e89611e1`). PI Line Total label also fixed (Finding E).
+2. SO frontend inclusive support + Line Total label (Findings B + E) — needed for SO → SI fidelity.
+3. SR / PR frontend inclusive support + Line Total label (Findings C + E) — last to align all four entities to the shared calculator.
+4. GVR audit (Finding E) — only after SO/SR/PR are clean.
+5. Charges (Finding D) — only if a real customer request exists.
 

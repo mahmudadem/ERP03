@@ -47,6 +47,7 @@ import {
 import { addDaysToISODate, roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
 import { PostingError } from '../../../domain/shared/errors/AppError';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 
 export type PurchaseInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -712,9 +713,24 @@ export class PostPurchaseInvoiceUseCase {
       resolvedDebitAccounts.set(line.lineId, await resolveAccountCached(line.accountId));
       if (line.taxAmountBase > 0 && line.taxCodeId) {
         const pTaxCode = taxCodesMap.get(line.taxCodeId);
-        if (pTaxCode?.purchaseTaxAccountId) {
-          resolvedTaxAccounts.set(line.lineId, await resolveAccountCached(pTaxCode.purchaseTaxAccountId));
+        // Refuse loudly: silently skipping here makes the voucher post unbalanced
+        // (debit = Net, credit = Net + Tax) and surfaces as a generic INFRA_999
+        // "voucher is not balanced" with no clue to the cause. Mirror SI's
+        // structured AccountMappingError so the shared error dialog renders a
+        // proper "missing tax account" message with the tax code label, not the
+        // UUID.
+        if (!pTaxCode?.purchaseTaxAccountId) {
+          const taxLabel = pTaxCode?.code || line.taxCode || line.taxCodeId;
+          throw new AccountMappingError({
+            companyId,
+            itemId: line.itemId,
+            accountRole: 'tax',
+            fallbackChain: ['taxCode.purchaseTaxAccountId'],
+            lineNo: pi.lines.indexOf(line) + 1,
+            hint: `Tax code "${taxLabel}" has no Purchase Tax Account configured. Set it in Settings → Tax Codes before posting this invoice.`,
+          });
         }
+        resolvedTaxAccounts.set(line.lineId, await resolveAccountCached(pTaxCode.purchaseTaxAccountId));
       }
     }
     const apAccountId = this.resolveAPAccount(vendor, settings);
