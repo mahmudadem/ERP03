@@ -1,5 +1,10 @@
 import { randomUUID } from 'crypto';
 import { ApiError } from '../../../api/errors/ApiError';
+import {
+  assertPostedNonFinancialEditOnly,
+  scalarChanged,
+  lineSignaturesEqual,
+} from '../../common/services/PostedDocumentEditGuard';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
@@ -2027,6 +2032,65 @@ export class ApproveSalesInvoiceUseCase {
   }
 }
 
+/**
+ * Returns the list of financial fields that an update payload would actually
+ * change on a posted Sales Invoice. Non-financial fields (notes, salesperson,
+ * customerInvoiceNumber, dueDate) are intentionally excluded — they are allowed
+ * on posted invoices. Used by the edit-policy Phase 0 guard. See
+ * PostedDocumentEditGuard for the rationale.
+ */
+function detectSalesInvoiceFinancialChanges(
+  current: SalesInvoice,
+  input: UpdateSalesInvoiceInput
+): string[] {
+  const changed: string[] = [];
+  if (scalarChanged(input.customerId, current.customerId)) changed.push('customer');
+  if (scalarChanged(input.invoiceDate, current.invoiceDate)) changed.push('invoiceDate');
+  if (scalarChanged(input.currency?.toUpperCase(), current.currency)) changed.push('currency');
+  if (scalarChanged(input.exchangeRate, current.exchangeRate)) changed.push('exchangeRate');
+
+  if (input.lines) {
+    const existingById = new Map(current.lines.map((l) => [l.lineId, l]));
+    const sig = (l: {
+      itemId?: string; invoicedQty?: number; unitPriceDoc?: number; taxCodeId?: string;
+      discountType?: string; discountValue?: number; priceIsInclusive?: boolean;
+    }) =>
+      `${l.itemId ?? ''}|${l.invoicedQty ?? ''}|${l.unitPriceDoc ?? ''}|${l.taxCodeId ?? ''}|` +
+      `${l.discountType ?? ''}|${l.discountValue ?? ''}|${l.priceIsInclusive ?? ''}`;
+    const currentSigs = current.lines.map(sig);
+    const incomingSigs = input.lines.map((line) => {
+      const ex = line.lineId ? existingById.get(line.lineId) : undefined;
+      return sig({
+        itemId: line.itemId ?? ex?.itemId,
+        invoicedQty: line.invoicedQty ?? ex?.invoicedQty,
+        unitPriceDoc: line.unitPriceDoc ?? ex?.unitPriceDoc,
+        taxCodeId: line.taxCodeId ?? ex?.taxCodeId,
+        discountType: line.discountType ?? ex?.discountType,
+        discountValue: line.discountValue ?? ex?.discountValue,
+        priceIsInclusive: line.priceIsInclusive ?? ex?.priceIsInclusive,
+      });
+    });
+    if (!lineSignaturesEqual(currentSigs, incomingSigs)) changed.push('lines');
+  }
+
+  if (input.charges) {
+    const existingById = new Map((current.charges || []).map((c) => [c.chargeId, c]));
+    const sig = (c: { amountDoc?: number; taxCodeId?: string }) =>
+      `${c.amountDoc ?? ''}|${c.taxCodeId ?? ''}`;
+    const currentSigs = (current.charges || []).map(sig);
+    const incomingSigs = input.charges.map((charge) => {
+      const ex = charge.chargeId ? existingById.get(charge.chargeId) : undefined;
+      return sig({
+        amountDoc: charge.amountDoc ?? ex?.amountDoc,
+        taxCodeId: charge.taxCodeId ?? ex?.taxCodeId,
+      });
+    });
+    if (!lineSignaturesEqual(currentSigs, incomingSigs)) changed.push('charges');
+  }
+
+  return changed;
+}
+
 export class UpdateSalesInvoiceUseCase {
   constructor(
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
@@ -2038,13 +2102,29 @@ export class UpdateSalesInvoiceUseCase {
   async execute(input: UpdateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<SalesInvoice> {
     const current = await this.salesInvoiceRepo.getById(input.companyId, input.id);
     if (!current) throw ApiError.notFound(`Sales invoice not found: ${input.id}`);
-    if (current.status !== 'DRAFT') {
+
+    // Edit-policy Phase 0 (Task 179): DRAFT is fully editable. A POSTED invoice
+    // may have only its non-financial fields changed in place; any financial
+    // change is refused and must go through reversal/amendment. Other statuses
+    // (PENDING_APPROVAL, CANCELLED, REVERSED) stay blocked as before.
+    if (current.status === 'POSTED') {
+      assertPostedNonFinancialEditOnly({
+        status: current.status,
+        entityLabel: 'sales invoice',
+        changedFinancialFields: detectSalesInvoiceFinancialChanges(current, input),
+      });
+    } else if (current.status !== 'DRAFT') {
       throw new Error('Only draft sales invoices can be updated');
     }
 
     const before = current.toJSON();
 
-    if (input.customerId) {
+    // On a POSTED invoice only non-financial fields are written (the guard above
+    // already rejected any financial change). Financial apply blocks are gated to
+    // DRAFT so a posted document's amounts/lines are never re-touched here.
+    const isDraft = current.status === 'DRAFT';
+
+    if (isDraft && input.customerId) {
       const customer = await this.partyRepo.getById(input.companyId, input.customerId);
       if (!customer) throw new Error(`Customer not found: ${input.customerId}`);
       if (!customer.roles.includes('CUSTOMER')) {
@@ -2054,15 +2134,18 @@ export class UpdateSalesInvoiceUseCase {
       current.customerName = customer.displayName;
     }
 
+    // Non-financial — always editable, including on POSTED.
     if (input.salespersonId !== undefined) current.salespersonId = input.salespersonId || undefined;
     if (input.customerInvoiceNumber !== undefined) current.customerInvoiceNumber = input.customerInvoiceNumber;
-    if (input.invoiceDate !== undefined) current.invoiceDate = input.invoiceDate;
     if (input.dueDate !== undefined) current.dueDate = input.dueDate;
-    if (input.currency !== undefined) current.currency = input.currency.toUpperCase();
-    if (input.exchangeRate !== undefined) current.exchangeRate = input.exchangeRate;
     if (input.notes !== undefined) current.notes = input.notes;
 
-    if (input.lines) {
+    // Financial — DRAFT only.
+    if (isDraft && input.invoiceDate !== undefined) current.invoiceDate = input.invoiceDate;
+    if (isDraft && input.currency !== undefined) current.currency = input.currency.toUpperCase();
+    if (isDraft && input.exchangeRate !== undefined) current.exchangeRate = input.exchangeRate;
+
+    if (isDraft && input.lines) {
       const existingById = new Map(current.lines.map((line) => [line.lineId, line]));
 
       // Pre-fetch any items referenced by lines that are NEW (no matching
@@ -2132,7 +2215,7 @@ export class UpdateSalesInvoiceUseCase {
       current.lines = mappedLines;
     }
 
-    if (input.charges) {
+    if (isDraft && input.charges) {
       const existingById = new Map((current.charges || []).map((charge) => [charge.chargeId, charge]));
       current.charges = input.charges.map((charge, index) => {
         const existing = charge.chargeId ? existingById.get(charge.chargeId) : undefined;

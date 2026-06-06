@@ -50,6 +50,7 @@ export enum ErrorCode {
   INVALID_SPECIAL_PERIOD_USAGE = 'ACC_008', // Invalid special period request
   FISCAL_YEAR_NOT_FOUND = 'ACC_009',
   ACC_FISCAL_YEAR_DELETE_FORBIDDEN = 'ACC_010',
+  POSTED_FINANCIAL_EDIT_BLOCKED = 'ACC_011', // Financial fields cannot be edited on a posted document (reverse/amend instead)
   
   // ========== INFRASTRUCTURE ==========
   INFRA_DATABASE_ERROR = 'INFRA_001',
