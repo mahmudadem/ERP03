@@ -28,6 +28,7 @@ Concrete next step: **[Task 167](./tasks/167-apex-shell-production-migration.md)
 9. **Phase F — RFQ** (~2–3 hours): Request for Quotation — procure-to-pay parity. Still a v1 must-have for Purchases.
 10. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days). v1 if buyer-critical, else defer.
 11. **[Task 182](./tasks/182-purchases-parity-discounts-landed-costs.md) — Purchases parity: vendor discounts + landed costs.** PI is under-built vs SI (no line discounts, no charges/landed-cost capitalization). The substance behind Phase G's "make Purchases first-class". Rides on Task 178 (new posting entries go through the shared poster). NOTE: COGS stays sale-side — do not add it to PI.
+12. **[Task 183](./tasks/183-fx-correctness-epic.md) — FX correctness epic.** Multi-currency accounting done right: enforce monetary (spot) vs non-monetary (historical) everywhere, scope revaluation to monetary accounts (today it revalues ALL foreign accounts incl. inventory — a real bug risk), reconcile realized (settlement) vs unrealized (period-end), per-flow coverage matrix. Partly built (revaluation + settlement FX exist) — this is verify + close gaps. Large; break into slices.
 
 ---
 
