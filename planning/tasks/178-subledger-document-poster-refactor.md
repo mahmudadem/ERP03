@@ -1,7 +1,7 @@
 # 178 — `SubledgerDocumentPoster` refactor (consolidate the duplicated middle layer of SI / PI / SR / PR posting)
 
-**Status:** Open
-**Owner:** TBD (backend agent)
+**Status:** Stage A ✅ done (2026-06-07, branch `feat/subledger-document-poster`) · Stages B–E open
+**Owner:** Claude (Opus 4.7)
 **Origin:** Mahmud observation, 2026-06-06 — "we are repeating ourselves." During a single QA session, four near-identical bugs were patched in four parallel posting paths.
 **Scope:** Backend only. No API contract change, no frontend code change.
 **Effort:** ~1–2 days (high-churn refactor; all posting tests re-validate behaviour).
@@ -165,7 +165,7 @@ interface SubledgerDocumentPostResult {
 
 One PR, but staged carefully:
 
-1. **Land 178a — the new service** with full unit tests, **but unused**. Tests cover: account-role resolution, tax-side selection, `AccountMappingError` on every role with no account, audit recording, hand-off to a mocked `PostingGateway`.
+1. ✅ **Land 178a — the new service** with full unit tests, **but unused**. DONE 2026-06-07: [`SubledgerDocumentPoster.ts`](../../backend/src/application/accounting/services/SubledgerDocumentPoster.ts) — declares the canonical `SubledgerVoucherLine` (replacing the 3 duplicate `VoucherAccumulatedLine` interfaces), takes a declarative `SubledgerPostingPlan` of `{ role, accountId?, side, amounts }` entries, and: drops zero-amount entries, throws a uniform `AccountMappingError` for any non-zero entry whose role account is missing (the 4× bug, now one place), accumulates by (account, side), asserts balance (base + doc), and hands off to an injected `ISubledgerPostingService`. 11 unit tests green ([`SubledgerDocumentPoster.test.ts`](../../backend/src/tests/application/accounting/SubledgerDocumentPoster.test.ts)). Wired to nothing — zero risk. **Deferred to migration stages:** audit hand-off (folded in per-document at B–D) and the code→id account *resolution* (stays in callers — they own the repos; the poster only validates resolved-or-undefined ids).
 2. **Land 178b — migrate PI** (smallest of the four). Verify all PI posting tests still pass; verify the `INFRA_999` path for missing tax account now surfaces as `ACCOUNT_MAPPING_MISSING`.
 3. **Land 178c — migrate SI** (largest; charges + lines + line-discount + invoice-discount paths).
 4. **Land 178d — migrate SR + PR** together (they share the same shape).
