@@ -68,9 +68,9 @@ Net P&L = −15 + 10 = **−$5** (the margin lost on the return). The inventory 
 
 When the flag is ON and the user creates a standalone perpetual return, show inline: "This item will enter stock at **<resolved cost> (source: entered / average / last-known / zero)**. Returns valued at zero cost will lower the item's average cost." Let them override the cost.
 
-### Related gap — deferred-cost settlement (verify, likely missing)
+### Related gap — deferred-cost settlement: CONFIRMED MISSING → [Task 185](./185-deferred-cost-settlement.md)
 
-A sale with no settled cost posts **COGS = 0** and flags the stock movement `unsettledCostBasis`. There is a `GetUnsettledCostReportUseCase` (a **report**) but **no use case found that posts the deferred COGS once the cost is known** (grep for settle/backfill/recognize-deferred → nothing). If confirmed, the consequence: such sales keep **COGS understated / inventory overstated indefinitely**, and the 0-cost unit pollutes the average. **Verify first**, then file as its own task ("recognize deferred COGS when cost becomes known") — it is a likely missing feature, separate from this return flag. Never tested.
+Verified by code dig (2026-06-08): the deferred-cost mechanism can **defer** and **report** but never **settle**. `settledQty`/`unsettledQty` are set once at creation and never mutated; the `'SETTLEMENT'` movement type is never created (only a `default:` fallback); `GetUnsettledCostReportUseCase` is read-only; no use case recognizes deferred COGS. Consequence: sales made before their cost exists keep **COGS understated / inventory & profit overstated, indefinitely**. Filed as its own High-severity task [185](./185-deferred-cost-settlement.md).
 
 ## Finding 4 — PI date: voucher date vs posted-at (needs clarification) 🟡
 
