@@ -52,6 +52,10 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import {
+  SubledgerDocumentPoster,
+  SubledgerPostingEntry,
+} from '../../accounting/services/SubledgerDocumentPoster';
 import { PersonaNotAllowedError } from '../../../domain/accounting/errors/PersonaNotAllowedError';
 import { UnsettledCostError } from '../../../domain/inventory/errors/UnsettledCostError';
 import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
@@ -1389,21 +1393,20 @@ export class PostSalesInvoiceUseCase {
       this.recalcInvoiceTotals(si);
 
       if (shouldPostAccounting) {
-        // Create main invoice voucher (AR vs Revenue + Tax)
-        const revenueVoucherLines: VoucherAccumulatedLine[] = [
-          {
-            accountId: resolvedARId,
-            side: 'Debit',
-            baseAmount: roundMoney(si.grandTotalBase),
-            docAmount: roundMoney(si.grandTotalDoc),
-          },
-          ...Array.from(discountDebits.values()).map((line) => ({ ...line, side: 'Debit' as const })),
-          ...Array.from(revenueCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
-          ...chargeCredits,
-          ...Array.from(taxCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
+        const poster = new SubledgerDocumentPoster(this.accountingPostingService);
+
+        // Main invoice voucher (AR vs Revenue + Tax). The buckets are already
+        // accumulated upstream, so each entry maps 1:1 to a voucher line — the
+        // poster preserves them and validates accounts / balance.
+        const revenueEntries: SubledgerPostingEntry[] = [
+          { role: 'ar', accountId: resolvedARId || undefined, side: 'Debit', baseAmount: roundMoney(si.grandTotalBase), docAmount: roundMoney(si.grandTotalDoc), notes: `AR - ${si.customerName} - ${si.invoiceNumber}` },
+          ...Array.from(discountDebits.values()).map((l) => ({ role: 'discount' as const, accountId: l.accountId || undefined, side: 'Debit' as const, baseAmount: l.baseAmount, docAmount: l.docAmount })),
+          ...Array.from(revenueCredits.values()).map((l) => ({ role: 'revenue' as const, accountId: l.accountId || undefined, side: 'Credit' as const, baseAmount: l.baseAmount, docAmount: l.docAmount })),
+          ...chargeCredits.map((l) => ({ role: 'revenue' as const, accountId: l.accountId || undefined, side: 'Credit' as const, baseAmount: l.baseAmount, docAmount: l.docAmount })),
+          ...Array.from(taxCredits.values()).map((l) => ({ role: 'tax' as const, accountId: l.accountId || undefined, side: 'Credit' as const, baseAmount: l.baseAmount, docAmount: l.docAmount })),
         ];
 
-        const revVoucher = await this.accountingPostingService.postInTransaction(
+        const revVoucher = await poster.post(
           {
             companyId,
             voucherType: VoucherType.SALES_INVOICE,
@@ -1412,7 +1415,7 @@ export class PostSalesInvoiceUseCase {
             description: `Sales Invoice ${si.invoiceNumber} - ${si.customerName}`,
             currency: si.currency,
             exchangeRate: si.exchangeRate,
-            lines: revenueVoucherLines,
+            entries: revenueEntries,
             metadata: {
               sourceModule: 'sales',
               sourceType: 'SALES_INVOICE',
@@ -1430,28 +1433,19 @@ export class PostSalesInvoiceUseCase {
         );
         si.voucherId = revVoucher.id;
 
-        // Create inventory recognition voucher (COGS vs Inventory)
+        // Inventory recognition voucher (COGS vs Inventory) — one debit/credit
+        // pair per cost bucket.
         if (cogsBucket.size > 0) {
-          const cogsVoucherLines: VoucherAccumulatedLine[] = [];
+          const cogsEntries: SubledgerPostingEntry[] = [];
           for (const line of Array.from(cogsBucket.values())) {
             const amount = roundMoney(line.amountBase);
             if (amount <= 0 && accountingMode === 'PERPETUAL') continue;
-            cogsVoucherLines.push({
-              accountId: line.cogsAccountId,
-              side: 'Debit',
-              baseAmount: amount,
-              docAmount: amount,
-            });
-            cogsVoucherLines.push({
-              accountId: line.inventoryAccountId,
-              side: 'Credit',
-              baseAmount: amount,
-              docAmount: amount,
-            });
+            cogsEntries.push({ role: 'cogs', accountId: line.cogsAccountId || undefined, side: 'Debit', baseAmount: amount, docAmount: amount });
+            cogsEntries.push({ role: 'inventory', accountId: line.inventoryAccountId || undefined, side: 'Credit', baseAmount: amount, docAmount: amount });
           }
 
-          if (cogsVoucherLines.length > 0) {
-            const cogsVoucher = await this.accountingPostingService.postInTransaction(
+          if (cogsEntries.length > 0) {
+            const cogsVoucher = await poster.post(
               {
                 companyId,
                 voucherType: VoucherType.SALES_INVOICE,
@@ -1460,7 +1454,7 @@ export class PostSalesInvoiceUseCase {
                 description: `Sales Invoice ${si.invoiceNumber} COGS`,
                 currency: (baseCurrency || si.currency).toUpperCase(),
                 exchangeRate: 1,
-                lines: cogsVoucherLines,
+                entries: cogsEntries,
                 metadata: {
                   sourceModule: 'sales',
                   sourceType: 'SALES_INVOICE',

@@ -54,6 +54,10 @@ import {
   lineSignaturesEqual,
 } from '../../common/services/PostedDocumentEditGuard';
 import { RecordChangeService } from '../../system/services/RecordChangeService';
+import {
+  SubledgerDocumentPoster,
+  SubledgerPostingEntry,
+} from '../../accounting/services/SubledgerDocumentPoster';
 
 export type PurchaseInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -188,15 +192,6 @@ export interface ListPurchaseInvoicesFilters {
   status?: 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
   paymentStatus?: PaymentStatus;
   limit?: number;
-}
-
-interface VoucherAccumulatedLine {
-  accountId: string;
-  side: 'Debit' | 'Credit';
-  baseAmount: number;
-  docAmount: number;
-  notes: string;
-  metadata?: Record<string, any>;
 }
 
 const findPOLine = (po: PurchaseOrder, poLineId?: string, itemId?: string) => {
@@ -751,46 +746,59 @@ export class PostPurchaseInvoiceUseCase {
           await this.inventoryService.writeStockLevel(updatedLevel, transaction);
         }
 
-        // Accumulate voucher lines using pre-resolved accounts
-        const voucherLines: VoucherAccumulatedLine[] = [];
+        // Build the posting plan — one debit entry per source line (+ its tax),
+        // then the AP credit. The poster preserves this per-line granularity
+        // (no accumulation) so the voucher keeps its per-line drill-down, and
+        // raises a uniform AccountMappingError for any missing account.
+        const postingEntries: SubledgerPostingEntry[] = [];
 
         for (const line of pi.lines) {
-          const resolvedDebitId = resolvedDebitAccounts.get(line.lineId) || '';
-          voucherLines.push({
-            accountId: resolvedDebitId,
+          postingEntries.push({
+            role: line.trackInventory ? 'inventory' : 'expense',
+            accountId: resolvedDebitAccounts.get(line.lineId) || undefined,
             side: 'Debit',
             baseAmount: line.lineTotalBase,
             docAmount: line.lineTotalDoc,
             notes: `${line.itemName} x ${line.invoicedQty}`,
-            metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, itemId: line.itemId }
+            metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, itemId: line.itemId },
+            missingAccountContext: {
+              itemId: line.itemId,
+              fallbackChain: ['line.accountId'],
+              hint: `Configure the purchase/inventory account for "${line.itemName}".`,
+            },
           });
 
           if (line.taxAmountBase > 0 && line.taxCodeId) {
-            const resolvedTaxId = resolvedTaxAccounts.get(line.lineId);
-            if (resolvedTaxId) {
-              voucherLines.push({
-                accountId: resolvedTaxId,
-                side: 'Debit',
-                baseAmount: line.taxAmountBase,
-                docAmount: line.taxAmountDoc,
-                notes: `Tax: ${line.taxCode || line.taxCodeId} on ${line.itemName}`,
-                metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, taxCodeId: line.taxCodeId }
-              });
-            }
+            postingEntries.push({
+              role: 'tax',
+              accountId: resolvedTaxAccounts.get(line.lineId),
+              side: 'Debit',
+              baseAmount: line.taxAmountBase,
+              docAmount: line.taxAmountDoc,
+              notes: `Tax: ${line.taxCode || line.taxCodeId} on ${line.itemName}`,
+              metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, taxCodeId: line.taxCodeId },
+              missingAccountContext: {
+                fallbackChain: ['taxCode.purchaseTaxAccountId'],
+                hint: `Tax code "${line.taxCode || line.taxCodeId}" has no Purchase Tax Account configured.`,
+              },
+            });
           }
         }
 
-        voucherLines.push({
-          accountId: resolvedAPId,
+        postingEntries.push({
+          role: 'ap',
+          accountId: resolvedAPId || undefined,
           side: 'Credit',
           baseAmount: pi.grandTotalBase,
           docAmount: pi.grandTotalDoc,
           notes: `AP - ${pi.vendorName} - ${pi.invoiceNumber}`,
-          metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, vendorId: pi.vendorId }
+          metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, vendorId: pi.vendorId },
+          missingAccountContext: { fallbackChain: ['vendor.defaultAPAccountId', 'settings AP'], hint: 'Configure the vendor or company Accounts Payable account.' },
         });
 
         if (shouldPostAccounting) {
-          const voucher = await this.accountingPostingService.postInTransaction(
+          const poster = new SubledgerDocumentPoster(this.accountingPostingService);
+          const voucher = await poster.post(
             {
               companyId,
               voucherType: VoucherType.PURCHASE_INVOICE,
@@ -799,7 +807,7 @@ export class PostPurchaseInvoiceUseCase {
               description: `PI ${pi.invoiceNumber} - ${pi.vendorName}`,
               currency: pi.currency,
               exchangeRate: pi.exchangeRate,
-              lines: voucherLines,
+              entries: postingEntries,
               metadata: {
                 sourceModule: 'purchases',
                 sourceType: 'PURCHASE_INVOICE',

@@ -453,6 +453,15 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     const cogsVoucher = savedVouchers.find((v: any) => String(v.voucherNo).startsWith('SR-COGS-'));
     expect(revenueVoucher).toBeTruthy();
     expect(cogsVoucher).toBeTruthy();
+
+    // Characterization (Task 178 — SR posts through SubledgerDocumentPoster):
+    // both reversal vouchers are balanced, and the COGS-reversal voucher is a
+    // single inventory-debit / COGS-credit pair (inventory comes back).
+    expect(revenueVoucher.totalDebit).toBeCloseTo(revenueVoucher.totalCredit, 2);
+    expect(cogsVoucher.totalDebit).toBeCloseTo(cogsVoucher.totalCredit, 2);
+    expect(cogsVoucher.lines).toHaveLength(2);
+    expect(cogsVoucher.lines.filter((l: any) => l.side === 'Debit')).toHaveLength(1);
+    expect(cogsVoucher.lines.filter((l: any) => l.side === 'Credit')).toHaveLength(1);
   });
 
   it('12) BEFORE_INVOICE: creates RETURN_IN + COGS reversal only (no revenue reversal)', async () => {
