@@ -1,6 +1,10 @@
 
 import { randomUUID } from 'crypto';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import {
+  SubledgerDocumentPoster,
+  SubledgerPostingEntry,
+} from '../../accounting/services/SubledgerDocumentPoster';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
@@ -906,23 +910,19 @@ export class PostSalesReturnUseCase {
         await this.inventoryService.writeStockLevel(updatedLevel, transaction);
       }
 
+      const poster = new SubledgerDocumentPoster(this.accountingPostingService);
+
       if (shouldPostAccounting && cogsBucket.size > 0) {
-        const cogsVoucherLines: VoucherBucketLine[] = [];
+        // Return reverses the sale's cost: inventory comes back (Debit),
+        // COGS is reversed (Credit).
+        const cogsEntries: SubledgerPostingEntry[] = [];
         for (const cogsLine of Array.from(cogsBucket.values())) {
           const amount = roundMoney(cogsLine.amountBase);
-          cogsVoucherLines.push({
-            accountId: cogsLine.inventoryAccountId,
-            baseAmount: amount,
-            docAmount: amount,
-          });
-          cogsVoucherLines.push({
-            accountId: cogsLine.cogsAccountId,
-            baseAmount: amount,
-            docAmount: amount,
-          });
+          cogsEntries.push({ role: 'inventory', accountId: cogsLine.inventoryAccountId || undefined, side: 'Debit', baseAmount: amount, docAmount: amount });
+          cogsEntries.push({ role: 'cogs', accountId: cogsLine.cogsAccountId || undefined, side: 'Credit', baseAmount: amount, docAmount: amount });
         }
 
-        const cogsVoucher = await this.accountingPostingService.postInTransaction(
+        const cogsVoucher = await poster.post(
           {
             companyId,
             voucherType: VoucherType.SALES_RETURN,
@@ -931,10 +931,7 @@ export class PostSalesReturnUseCase {
             description: `Sales Return ${salesReturn.returnNumber} COGS Reversal`,
             currency: resolvedBaseCurrency,
             exchangeRate: 1,
-            lines: cogsVoucherLines.map((vl, idx) => ({
-              ...vl,
-              side: idx % 2 === 0 ? 'Debit' : 'Credit',
-            })),
+            entries: cogsEntries,
             metadata: {
               sourceModule: 'sales',
               sourceType: 'SALES_RETURN',
@@ -945,6 +942,7 @@ export class PostSalesReturnUseCase {
               ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: salesReturn.createdBy,
+            approved: true,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: salesReturn.returnNumber,
             baseCurrencyOverride: resolvedBaseCurrency,
@@ -977,26 +975,18 @@ export class PostSalesReturnUseCase {
           }
         }
 
-        const revenueVoucherLines = [
-          ...Array.from(revenueDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
-          ...Array.from(taxDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
-          {
-            accountId: resolvedARId,
-            side: 'Credit' as const,
-            baseAmount: settlementAmountBase,
-            docAmount: settlementAmountDoc,
-          },
+        // Reverse revenue + tax (Debit), credit AR for the settlement amount,
+        // credit the restocking fee (income retained) if any.
+        const revenueEntries: SubledgerPostingEntry[] = [
+          ...Array.from(revenueDebitBucket.values()).map((l) => ({ role: 'revenue' as const, accountId: l.accountId || undefined, side: 'Debit' as const, baseAmount: l.baseAmount, docAmount: l.docAmount })),
+          ...Array.from(taxDebitBucket.values()).map((l) => ({ role: 'tax' as const, accountId: l.accountId || undefined, side: 'Debit' as const, baseAmount: l.baseAmount, docAmount: l.docAmount })),
+          { role: 'ar', accountId: resolvedARId || undefined, side: 'Credit', baseAmount: settlementAmountBase, docAmount: settlementAmountDoc },
         ];
         if (restockingFeeAccountId && (restockingFeeBase > 0 || restockingFeeDoc > 0)) {
-          revenueVoucherLines.push({
-            accountId: restockingFeeAccountId,
-            side: 'Credit' as const,
-            baseAmount: restockingFeeBase,
-            docAmount: restockingFeeDoc,
-          });
+          revenueEntries.push({ role: 'revenue', accountId: restockingFeeAccountId || undefined, side: 'Credit', baseAmount: restockingFeeBase, docAmount: restockingFeeDoc });
         }
 
-        const revenueVoucher = await this.accountingPostingService.postInTransaction(
+        const revenueVoucher = await poster.post(
           {
             companyId,
             voucherType: VoucherType.SALES_RETURN,
@@ -1005,7 +995,8 @@ export class PostSalesReturnUseCase {
             description: `Sales Return ${salesReturn.returnNumber} Revenue Reversal`,
             currency: salesReturn.currency,
             exchangeRate: salesReturn.exchangeRate,
-            lines: revenueVoucherLines,
+            entries: revenueEntries,
+            approved: true,
             metadata: {
               sourceModule: 'sales',
               sourceType: 'SALES_RETURN',
@@ -1042,7 +1033,7 @@ export class PostSalesReturnUseCase {
           const refundSettlementAccountRaw = this.resolveRefundSettlementAccount(settings, salesReturn.refundSettlementAccountId);
           const refundSettlementAccountId = await resolveAccountCached(refundSettlementAccountRaw);
 
-          await this.accountingPostingService.postInTransaction(
+          await poster.post(
             {
               companyId,
               voucherType: VoucherType.SALES_RETURN,
@@ -1051,20 +1042,11 @@ export class PostSalesReturnUseCase {
               description: `Sales Return ${salesReturn.returnNumber} Refund`,
               currency: salesReturn.currency,
               exchangeRate: salesReturn.exchangeRate,
-              lines: [
-                {
-                  accountId: resolvedARId,
-                  side: 'Debit',
-                  baseAmount: settlementAmountBase,
-                  docAmount: settlementAmountDoc,
-                },
-                {
-                  accountId: refundSettlementAccountId,
-                  side: 'Credit',
-                  baseAmount: settlementAmountBase,
-                  docAmount: settlementAmountDoc,
-                },
+              entries: [
+                { role: 'ar', accountId: resolvedARId || undefined, side: 'Debit', baseAmount: settlementAmountBase, docAmount: settlementAmountDoc },
+                { role: 'settlement', accountId: refundSettlementAccountId || undefined, side: 'Credit', baseAmount: settlementAmountBase, docAmount: settlementAmountDoc, missingAccountContext: { hint: 'Configure the refund settlement (cash/bank) account in Sales Settings.' } },
               ],
+              approved: true,
               metadata: {
                 sourceModule: 'sales',
                 sourceType: 'SALES_RETURN',

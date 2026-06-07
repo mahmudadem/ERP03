@@ -10,6 +10,7 @@ export type AccountRole =
   | 'discount'
   | 'grni'
   | 'expense'
+  | 'settlement'
   | 'fxGain'
   | 'fxLoss';
 
