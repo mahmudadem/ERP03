@@ -27,13 +27,50 @@ When central approval is required (strict mode), clicking **Post Invoice** corre
 
 Frontend. Overlaps with [Task 167 source-doc-pending-approval-ux](./167-source-doc-pending-approval-ux.md) and [Task 177](./177-si-pi-detail-page-redesign.md). Same issue likely on the SI detail page.
 
-## Finding 3 — Standalone Sales Return blocked in PERPETUAL mode 🟠 (product decision)
+## Finding 3 — Standalone Sales Return blocked in PERPETUAL mode 🟠 → SOLUTION: opt-in flag + cost-resolution chain
 
 [SalesReturnUseCases.ts:519](../../backend/src/application/sales/use-cases/SalesReturnUseCases.ts:519): a DIRECT/standalone return throws *"Standalone returns require a source document in Real-Time Costing mode"* whenever `accountingMode === 'PERPETUAL'`.
 
-The rationale is real — perpetual costing needs a **cost basis** for the returned goods, which a standalone return (no source invoice/DN) doesn't carry. But blocking it outright is over-restrictive: real-world perpetual systems **accept** standalone returns and value the returned inventory at the **current moving-average cost** (or an entered cost).
+**Why the block exists (and why it's defensible):** a perpetual return must value the returned goods to debit Inventory and reverse COGS. A **linked** return inherits the cost from its source line ([SalesReturnUseCases.ts:624,656](../../backend/src/application/sales/use-cases/SalesReturnUseCases.ts:624) — `line.unitCostBase || sourceLine.unitCostBase || 0`, which correctly inherits even a deferred 0). A **standalone** return has no source line, so the code currently has no cost-resolution path → it blocks rather than guess. The block is therefore doing real protective work, not just being annoying. (This corrects an earlier note here that suggested simply allowing it at avg cost — the real need is a *cost-resolution path*, gated behind an explicit opt-in.)
 
-**Decision needed (product):** should perpetual allow standalone returns valued at current average cost? If yes, implement the cost-basis resolution for the standalone-perpetual path (and the COGS-reversal then uses that cost). If no, the error message should at least be clearer about why and what to do.
+**The legitimate need:** returns of goods sold **before the system existed** (or in another system) — there is no source document to link, but the customer is physically returning goods that must enter stock.
+
+### Solution: an optional, off-by-default setting
+
+Add an Inventory setting (next to the existing `allowDeferredCost`):
+
+> **Allow direct sales returns with unknown cost** — *(default OFF)*
+> When ON, a standalone sales return is permitted in perpetual costing even without a source invoice/delivery note. The returned goods are valued using the cost-resolution chain below. When OFF (default), standalone returns in perpetual stay blocked and the user must link a source document.
+
+The setting's help text must explain the behaviour so the user can **predict** it (see "Behaviour to surface in the UI" below) — never a silent cost guess.
+
+### Cost-resolution chain (when the flag is ON, standalone perpetual return)
+
+Resolve the returned-unit cost in priority order:
+1. **User-entered cost** on the return line — most accurate; use when the operator knows it.
+2. **Current moving-average cost** of the item — the sensible default; adding a unit *at* the average leaves the average unchanged.
+3. **Last-known purchase cost** — fallback when avg is 0 but purchase history exists.
+4. **Zero** — only if nothing is known; **warn** the user it will lower the moving average (a 0-cost unit pollutes the average for every future sale).
+
+### Correct journal entry (standalone return, avg cost $10, refund $15)
+
+```
+Dr Sales Returns (contra-revenue)   15     un-record the sale (price given back)
+   Cr Cash / Customer Credit         15     the refund
+Dr Inventory                         10     goods back at resolved cost (avg)
+   Cr COGS                           10     restore the cost
+```
+Net P&L = −15 + 10 = **−$5** (the margin lost on the return). The inventory leg is valued at cost (avg); the credit side is **COGS**, not Accounts Payable (it is a return, not a purchase).
+
+> Reporting nuance (smaller, separate choice): for truly off-system returns there is no matching original sale, so booking the refund to **Sales Returns (contra-revenue)** slightly distorts returns-vs-sales ratios. Some businesses prefer an **Adjustments** account instead. Make the refund-side account configurable or documented.
+
+### Behaviour to surface in the UI (so the user can predict it)
+
+When the flag is ON and the user creates a standalone perpetual return, show inline: "This item will enter stock at **<resolved cost> (source: entered / average / last-known / zero)**. Returns valued at zero cost will lower the item's average cost." Let them override the cost.
+
+### Related gap — deferred-cost settlement (verify, likely missing)
+
+A sale with no settled cost posts **COGS = 0** and flags the stock movement `unsettledCostBasis`. There is a `GetUnsettledCostReportUseCase` (a **report**) but **no use case found that posts the deferred COGS once the cost is known** (grep for settle/backfill/recognize-deferred → nothing). If confirmed, the consequence: such sales keep **COGS understated / inventory overstated indefinitely**, and the 0-cost unit pollutes the average. **Verify first**, then file as its own task ("recognize deferred COGS when cost becomes known") — it is a likely missing feature, separate from this return flag. Never tested.
 
 ## Finding 4 — PI date: voucher date vs posted-at (needs clarification) 🟡
 
