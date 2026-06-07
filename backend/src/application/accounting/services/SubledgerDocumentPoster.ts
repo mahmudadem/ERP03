@@ -135,23 +135,25 @@ export class SubledgerDocumentPoster {
   }
 
   /**
-   * Pure assembly step (exposed for unit tests):
-   *   1. Drop zero-amount entries (a line with no value posts nothing).
-   *   2. Refuse any entry whose account role was not configured — uniform
-   *      AccountMappingError instead of an unbalanced voucher.
-   *   3. Accumulate entries that share the same (account, side) so a voucher
-   *      has one line per account-side, not one per source line.
-   *   4. Assert the assembled lines balance (debit base == credit base, and the
-   *      same for doc) — a clearer failure than the downstream balance check.
+   * Pure assembly step (exposed for unit tests). Maps entries 1:1 to voucher
+   * lines, **preserving caller granularity** (per-line notes + metadata for
+   * drill-down — e.g. a Purchase Invoice keeps one debit line per source line).
+   * Callers that want one line per account (e.g. Sales Invoice revenue/tax
+   * buckets) pre-fold their entries with {@link accumulateByAccount}.
+   *
+   *   1. Drop zero-amount entries (a line with no value posts nothing) — so an
+   *      unconfigured-but-unused role (e.g. tax with 0 tax) never blocks.
+   *   2. Refuse any non-zero entry whose account role was not configured —
+   *      uniform AccountMappingError instead of a silently-unbalanced voucher.
+   *   3. Assert the lines balance (debit == credit in base AND doc) — a clearer
+   *      failure than the downstream balance check.
    */
   assembleLines(plan: SubledgerPostingPlan): SubledgerVoucherLine[] {
-    const buckets = new Map<string, SubledgerVoucherLine>();
+    const lines: SubledgerVoucherLine[] = [];
 
     for (const entry of plan.entries) {
       const base = roundMoney(entry.baseAmount || 0);
       const doc = roundMoney(entry.docAmount || 0);
-      // A zero-value entry contributes nothing — skip before the account check
-      // so an unconfigured-but-unused role (e.g. tax with 0 tax) never blocks.
       if (base === 0 && doc === 0) continue;
 
       if (!entry.accountId) {
@@ -166,24 +168,16 @@ export class SubledgerDocumentPoster {
         });
       }
 
-      const key = `${entry.accountId}|${entry.side}`;
-      const existing = buckets.get(key);
-      if (existing) {
-        existing.baseAmount = roundMoney(existing.baseAmount + base);
-        existing.docAmount = roundMoney(existing.docAmount + doc);
-      } else {
-        buckets.set(key, {
-          accountId: entry.accountId,
-          side: entry.side,
-          baseAmount: base,
-          docAmount: doc,
-          notes: entry.notes,
-          metadata: entry.metadata,
-        });
-      }
+      lines.push({
+        accountId: entry.accountId,
+        side: entry.side,
+        baseAmount: base,
+        docAmount: doc,
+        notes: entry.notes,
+        metadata: entry.metadata,
+      });
     }
 
-    const lines = Array.from(buckets.values());
     if (lines.length < 2) {
       throw new Error(
         `Subledger voucher ${plan.voucherNo} must have at least two lines after assembly (got ${lines.length}).`
@@ -192,6 +186,35 @@ export class SubledgerDocumentPoster {
 
     this.assertBalanced(lines, plan.voucherNo);
     return lines;
+  }
+
+  /**
+   * Optional pre-fold: sum entries that share the same (account, side) into one
+   * entry, for callers that want one voucher line per account rather than per
+   * source line (Sales Invoice revenue/tax/discount buckets, returns). Replaces
+   * the `addToBucket` helper duplicated across the SI/SR use cases. Keeps the
+   * role/notes/metadata of the first entry for each (account, side) group.
+   * Entries with no `accountId` are passed through untouched so
+   * {@link assembleLines} still raises the proper AccountMappingError.
+   */
+  static accumulateByAccount(entries: SubledgerPostingEntry[]): SubledgerPostingEntry[] {
+    const buckets = new Map<string, SubledgerPostingEntry>();
+    const passthrough: SubledgerPostingEntry[] = [];
+    for (const entry of entries) {
+      if (!entry.accountId) {
+        passthrough.push(entry);
+        continue;
+      }
+      const key = `${entry.accountId}|${entry.side}`;
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.baseAmount = roundMoney(existing.baseAmount + (entry.baseAmount || 0));
+        existing.docAmount = roundMoney(existing.docAmount + (entry.docAmount || 0));
+      } else {
+        buckets.set(key, { ...entry });
+      }
+    }
+    return [...buckets.values(), ...passthrough];
   }
 
   private assertBalanced(lines: SubledgerVoucherLine[], voucherNo: string): void {

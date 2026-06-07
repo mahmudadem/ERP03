@@ -1,7 +1,11 @@
 # 178 — `SubledgerDocumentPoster` refactor (consolidate the duplicated middle layer of SI / PI / SR / PR posting)
 
-**Status:** Stage A ✅ done (2026-06-07, branch `feat/subledger-document-poster`) · Stages B–E open
+**Status:** Stages A ✅ + B ✅ done (2026-06-07, branch `feat/subledger-document-poster`) · Stages C–E open
 **Owner:** Claude (Opus 4.7)
+
+**Design note from Stage B:** the poster's `assembleLines` does **not** force accumulation — it preserves caller granularity (PI keeps one debit line per source line for drill-down). Accumulation is an opt-in `SubledgerDocumentPoster.accumulateByAccount(entries)` helper for callers that want one line per account (SI revenue/tax/discount buckets, returns).
+
+**Stage B ✅ (PI migrated, 2026-06-07):** `CreateAndPostPurchaseInvoiceUseCase` now builds a `SubledgerPostingEntry[]` plan (per-line inventory/expense debit + tax debit, then AP credit) and posts via `new SubledgerDocumentPoster(this.accountingPostingService).post(...)`. Removed the local duplicate `VoucherAccumulatedLine` interface. Behaviour preserved — **69 purchases tests + 601 in the accounting/sales/purchases sweep pass, 0 failures**. Missing debit/AP accounts now raise a uniform `AccountMappingError` (was a generic "accountId is required").
 **Origin:** Mahmud observation, 2026-06-06 — "we are repeating ourselves." During a single QA session, four near-identical bugs were patched in four parallel posting paths.
 **Scope:** Backend only. No API contract change, no frontend code change.
 **Effort:** ~1–2 days (high-churn refactor; all posting tests re-validate behaviour).

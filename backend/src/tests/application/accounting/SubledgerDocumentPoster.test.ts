@@ -41,26 +41,16 @@ describe('SubledgerDocumentPoster.assembleLines (Task 178 Stage A)', () => {
     expect(lines.find((l) => l.accountId === 'ap-acct')).toMatchObject({ side: 'Credit', baseAmount: 100 });
   });
 
-  it('accumulates entries that share the same account + side into one line', () => {
+  it('preserves caller granularity — same account + side stays as separate lines', () => {
+    // PI posts one debit line per source line for drill-down; the poster must
+    // NOT silently merge them.
     const lines = poster.assembleLines(makePlan([
       debit('inv-acct', 60),
       debit('inv-acct', 40),
       credit('ap-acct', 100),
     ]));
-    expect(lines).toHaveLength(2);
-    expect(lines.find((l) => l.accountId === 'inv-acct')!.baseAmount).toBe(100);
-  });
-
-  it('keeps the same account on opposite sides as separate lines', () => {
-    // contrived but valid: an account both debited and credited stays split by side
-    const lines = poster.assembleLines(makePlan([
-      debit('x', 30),
-      credit('x', 10),
-      credit('ap', 20),
-    ]));
-    // debit x 30 ; credit x 10 ; credit ap 20  → balanced (30 == 30)
     expect(lines).toHaveLength(3);
-    expect(lines.filter((l) => l.accountId === 'x')).toHaveLength(2);
+    expect(lines.filter((l) => l.accountId === 'inv-acct')).toHaveLength(2);
   });
 
   it('drops zero-amount entries before assembly', () => {
@@ -117,6 +107,31 @@ describe('SubledgerDocumentPoster.assembleLines (Task 178 Stage A)', () => {
     expect(() =>
       poster.assembleLines(makePlan([debit('inv-acct', 0, 0), credit('ap-acct', 0, 0)]))
     ).toThrow(/at least two lines/);
+  });
+});
+
+describe('SubledgerDocumentPoster.accumulateByAccount (Task 178 Stage A)', () => {
+  it('sums entries that share the same account + side into one entry', () => {
+    const folded = SubledgerDocumentPoster.accumulateByAccount([
+      debit('rev', 60), debit('rev', 40), credit('ar', 100),
+    ]);
+    expect(folded).toHaveLength(2);
+    expect(folded.find((e) => e.accountId === 'rev')!.baseAmount).toBe(100);
+  });
+
+  it('keeps opposite sides of the same account separate', () => {
+    const folded = SubledgerDocumentPoster.accumulateByAccount([
+      debit('x', 30), credit('x', 10),
+    ]);
+    expect(folded).toHaveLength(2);
+  });
+
+  it('passes through entries with no account so assembleLines can still raise AccountMappingError', () => {
+    const folded = SubledgerDocumentPoster.accumulateByAccount([
+      { role: 'tax', accountId: undefined, side: 'Debit', baseAmount: 10, docAmount: 10 },
+      debit('inv', 100),
+    ]);
+    expect(folded.some((e) => e.accountId === undefined)).toBe(true);
   });
 });
 
