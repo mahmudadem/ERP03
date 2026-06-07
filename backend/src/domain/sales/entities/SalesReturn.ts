@@ -23,6 +23,10 @@ export interface SalesReturnLine {
   fxRateCCYToBase: number;
   taxCodeId?: string;
   taxRate: number;
+  // When true, `unitPriceDoc` already includes tax. Same shape as the SI fix
+  // (Task 168), SO fix (Task 170B), and PI fix (Task 170A). The entity splits
+  // gross into net + tax so subtotal/tax/grand sum correctly.
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   revenueAccountId?: string;
@@ -229,8 +233,18 @@ export class SalesReturn {
     if (!line.uom?.trim()) throw new Error(`SalesReturn line ${index + 1}: uom is required`);
 
     const taxRate = Number.isNaN(line.taxRate) ? 0 : line.taxRate;
-    const lineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc ?? 0));
-    const lineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase ?? 0));
+    const priceIsInclusive = line.priceIsInclusive === true;
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const grossLineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc ?? 0));
+    const grossLineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase ?? 0));
+    const netLineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
+    const netLineTotalBase = roundMoney(grossLineTotalBase / divisor);
+    const defaultTaxAmountDoc = priceIsInclusive
+      ? roundMoney(grossLineTotalDoc - netLineTotalDoc)
+      : roundMoney(netLineTotalDoc * taxRate);
+    const defaultTaxAmountBase = priceIsInclusive
+      ? roundMoney(grossLineTotalBase - netLineTotalBase)
+      : roundMoney(netLineTotalBase * taxRate);
 
     return {
       lineId: line.lineId,
@@ -251,8 +265,9 @@ export class SalesReturn {
       fxRateCCYToBase: line.fxRateCCYToBase || 1,
       taxCodeId: line.taxCodeId,
       taxRate,
-      taxAmountDoc: roundMoney(line.taxAmountDoc ?? (lineTotalDoc * taxRate)),
-      taxAmountBase: roundMoney(line.taxAmountBase ?? (lineTotalBase * taxRate)),
+      priceIsInclusive,
+      taxAmountDoc: roundMoney(line.taxAmountDoc ?? defaultTaxAmountDoc),
+      taxAmountBase: roundMoney(line.taxAmountBase ?? defaultTaxAmountBase),
       revenueAccountId: line.revenueAccountId,
       cogsAccountId: line.cogsAccountId,
       inventoryAccountId: line.inventoryAccountId,
@@ -262,12 +277,22 @@ export class SalesReturn {
   }
 
   recalculateMonetaryTotals(): void {
-    this.subtotalDoc = roundMoney(
-      this.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * (line.unitPriceDoc ?? 0)), 0)
-    );
-    this.subtotalBase = roundMoney(
-      this.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * (line.unitPriceBase ?? 0)), 0)
-    );
+    // Subtotal is NET. For inclusive lines we strip tax out of (qty * unitPrice)
+    // using the divisor so subtotal + tax = grand stays consistent with how the
+    // user-entered gross was already split inside the line.
+    const netDoc = (line: SalesReturnLine): number => {
+      const gross = roundMoney(line.returnQty * (line.unitPriceDoc ?? 0));
+      const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
+      return roundMoney(gross / divisor);
+    };
+    const netBase = (line: SalesReturnLine): number => {
+      const gross = roundMoney(line.returnQty * (line.unitPriceBase ?? 0));
+      const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
+      return roundMoney(gross / divisor);
+    };
+
+    this.subtotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + netDoc(line), 0));
+    this.subtotalBase = roundMoney(this.lines.reduce((sum, line) => sum + netBase(line), 0));
     this.taxTotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
     this.taxTotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
     this.grandTotalDoc = roundMoney(this.subtotalDoc + this.taxTotalDoc);

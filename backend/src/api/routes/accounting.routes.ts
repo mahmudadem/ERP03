@@ -22,6 +22,7 @@ import { RecurringVoucherController } from '../controllers/accounting/RecurringV
 import { FXRevaluationController } from '../controllers/accounting/FXRevaluationController';
 import { AttachmentController } from '../controllers/accounting/AttachmentController';
 import { PostingLogController } from '../controllers/accounting/PostingLogController';
+import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeInstallController';
 import multer from 'multer';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
@@ -50,6 +51,9 @@ router.get('/posting-logs/:id', permissionGuard('accounting.vouchers.view'), Pos
 // Vouchers
 router.get('/vouchers', permissionGuard('accounting.vouchers.view'), VoucherController.list);
 router.get('/vouchers/pending/approvals', permissionGuard('accounting.vouchers.approve'), VoucherController.getPendingApprovals);
+// SoD Approval Center feed: source documents (SI/PI) in PENDING_APPROVAL across modules. See
+// docs/architecture/posting-authority.md §4.1.
+router.get('/pending-approvals/source-documents', permissionGuard('accounting.approve.finance'), VoucherController.getPendingApprovalSourceDocuments);
 router.get('/vouchers/pending/custody', permissionGuard('accounting.vouchers.view'), VoucherController.getPendingCustody);
 router.get('/vouchers/:id', permissionGuard('accounting.vouchers.view'), VoucherController.get);
 router.post('/vouchers', 
@@ -148,6 +152,21 @@ router.get('/voucher-sequences', permissionGuard('accounting.settings.write'), V
 router.post('/voucher-sequences/next', permissionGuard('accounting.settings.write'), VoucherSequenceController.setNext);
 
 // VoucherForms (UI layouts)
+// Manage Voucher Types — used by the per-module settings page to install
+// additional types after the init wizard. Route param `module` is injected.
+router.get(
+  '/voucher-types/catalog',
+  permissionGuard('accounting.settings.read'),
+  (req, _res, next) => { (req.params as any).module = 'ACCOUNTING'; next(); },
+  VoucherTypeInstallController.catalog,
+);
+router.post(
+  '/voucher-types/install',
+  permissionGuard('accounting.settings.write'),
+  (req, _res, next) => { (req.params as any).module = 'ACCOUNTING'; next(); },
+  VoucherTypeInstallController.install,
+);
+
 router.get('/voucher-forms', permissionGuard('accounting.designer.view'), VoucherFormController.list);
 router.get('/voucher-forms/by-type/:typeId', permissionGuard('accounting.designer.view'), VoucherFormController.getByType);
 router.get('/voucher-forms/:id', permissionGuard('accounting.designer.view'), VoucherFormController.getById);

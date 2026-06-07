@@ -18,6 +18,8 @@ export interface CustomComponentProps {
   currency?: string;
   baseCurrency?: string;  // For CurrencyExchangeWidget
   voucherDate?: string;   // For CurrencyExchangeWidget
+  className?: string;
+  noBorder?: boolean;
 }
 
 export const CustomComponentRegistry: Record<string, React.ComponentType<CustomComponentProps>> = {

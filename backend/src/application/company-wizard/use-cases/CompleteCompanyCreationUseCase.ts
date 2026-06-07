@@ -7,12 +7,10 @@ import { IUserRepository } from '../../../repository/interfaces/core/IUserReposi
 import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { CompanyRolePermissionResolver } from '../../rbac/CompanyRolePermissionResolver';
-import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 import { ISystemMetadataRepository } from '../../../infrastructure/repositories/FirestoreSystemMetadataRepository';
 import { ICurrencyRepository } from '../../../repository/interfaces/company-wizard/ICurrencyRepository';
 import { ModuleActivationService } from '../../system/services/ModuleActivationService';
-import { randomUUID } from 'crypto';
 
 interface Input {
   sessionId: string;
@@ -28,7 +26,6 @@ export class CompleteCompanyCreationUseCase {
     private rbacCompanyUserRepo: IRbacCompanyUserRepository,
     private rbacCompanyRoleRepo: ICompanyRoleRepository,
     private rolePermissionResolver: CompanyRolePermissionResolver,
-    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private companySettingsRepo: ICompanySettingsRepository,
     private systemMetadataRepo: ISystemMetadataRepository,
     private currencyRepo: ICurrencyRepository,
@@ -171,22 +168,11 @@ export class CompleteCompanyCreationUseCase {
     await this.userRepo.updateActiveCompany(session.userId, company.id);
     await this.sessionRepo.delete(session.id);
 
-    // Copy System Voucher Templates
-    try {
-      const systemTemplates = await this.voucherTypeRepo.getSystemTemplates();
-      for (const template of systemTemplates) {
-        // Clone template for new company
-        const newTemplate = {
-          ...template,
-          id: randomUUID(),
-          companyId: company.id
-        };
-        await this.voucherTypeRepo.createVoucherType(newTemplate);
-      }
-    } catch (err) {
-      console.error('Failed to copy system voucher templates', err);
-      // Non-blocking error, proceed
-    }
+    // Voucher types/forms are NOT copied at company creation.
+    // Each module's initialization wizard is responsible for letting the user
+    // pick which voucher types to activate, then copying them via the module's
+    // Initialize use case (e.g. InitializeAccountingUseCase) or via
+    // syncCompanyVoucherTemplatesFromSystem scoped to that module.
 
     return { companyId: company.id, activeCompanyId: company.id };
   }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { StockAdjustmentDTO, inventoryApi } from '../../../api/inventoryApi';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { WarehouseSelector, ItemSelector } from '../../../components/shared/selectors';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -67,8 +68,20 @@ const StockAdjustmentPage: React.FC = () => {
 
       <Card className="p-6">
         <form className="grid gap-3 md:grid-cols-4" onSubmit={handleCreate}>
-          <input className="rounded border border-slate-300 px-3 py-2 text-sm" placeholder="Warehouse ID" value={form.warehouseId} onChange={(e) => setForm((p) => ({ ...p, warehouseId: e.target.value }))} required />
-          <input className="rounded border border-slate-300 px-3 py-2 text-sm" placeholder="Item ID" value={form.itemId} onChange={(e) => setForm((p) => ({ ...p, itemId: e.target.value }))} required />
+          <div className="w-full">
+            <WarehouseSelector 
+              value={form.warehouseId} 
+              onChange={(wh) => setForm((p) => ({ ...p, warehouseId: wh?.id || '' }))} 
+              placeholder="Select Warehouse"
+            />
+          </div>
+          <div className="w-full">
+            <ItemSelector 
+              value={form.itemId} 
+              onChange={(item) => setForm((p) => ({ ...p, itemId: item?.id || '' }))} 
+              placeholder="Select Item"
+            />
+          </div>
           <DatePicker 
             value={form.date}
             onChange={(val) => setForm((p) => ({ ...p, date: val }))}

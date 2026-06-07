@@ -4,9 +4,10 @@ import { CreatePurchaseReturnPayload, PurchaseInvoiceDTO, PurchaseReturnDTO, pur
 import { sharedApi } from '../../../api/sharedApi';
 import { InventoryItemDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
+import { PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyCurrencies } from '../../accounting/hooks/useCompanyCurrencies';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
@@ -35,6 +36,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [unpostConfirmOpen, setUnpostConfirmOpen] = useState(false);
   const [editReturnDate, setEditReturnDate] = useState('');
   const [editWarehouseId, setEditWarehouseId] = useState('');
   const [editReason, setEditReason] = useState('');
@@ -420,12 +422,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
   const unpostReturn = async () => {
     if (!purchaseReturn?.id) return;
-    if (!window.confirm('Are you sure you want to unpost this return? This will reverse all accounting and inventory entries.')) return;
     try {
       setBusy(true);
       setError(null);
       const unposted = await purchasesApi.unpostReturn(purchaseReturn.id);
       setPurchaseReturn(unwrap<PurchaseReturnDTO>(unposted));
+      setUnpostConfirmOpen(false);
     } catch (err: any) {
       console.error('Failed to unpost purchase return', err);
       setError(
@@ -988,10 +990,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
             {isEditMode ? (
-              <select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white" value={editWarehouseId} onChange={(e) => setEditWarehouseId(e.target.value)}>
-                <option value="">-- Select --</option>
-                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </select>
+              <div className="mt-1">
+                <WarehouseSelector 
+                  value={editWarehouseId} 
+                  onChange={(wh) => setEditWarehouseId(wh?.id || '')} 
+                />
+              </div>
             ) : (
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{purchaseReturn.warehouseId}</div>
             )}
@@ -1193,7 +1197,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
               <button
                 type="button"
                 className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                onClick={unpostReturn}
+                onClick={() => setUnpostConfirmOpen(true)}
                 disabled={busy}
               >
                 {busy ? 'Unposting...' : 'Unpost Return'}
@@ -1202,6 +1206,18 @@ const PurchaseReturnDetailPage: React.FC = () => {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={unpostConfirmOpen}
+        title="Unpost Purchase Return"
+        message="This will reverse all accounting and inventory entries posted for this purchase return. The action is auditable but cannot be undone in place. Continue?"
+        confirmLabel="Unpost Return"
+        cancelLabel="Cancel"
+        tone="danger"
+        isConfirming={busy}
+        onConfirm={unpostReturn}
+        onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
+      />
     </div>
   );
 };

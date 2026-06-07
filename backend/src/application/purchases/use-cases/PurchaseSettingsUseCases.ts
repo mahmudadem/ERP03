@@ -1,25 +1,22 @@
-import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PurchaseSettings, GovernanceRule } from '../../../domain/purchases/entities/PurchaseSettings';
-import { PostingRole } from '../../../domain/designer/entities/PostingRole';
-import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
-import { IVoucherFormRepository, VoucherFormDefinition } from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
 import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchases/IPurchaseOrderRepository';
 import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchases/IGoodsReceiptRepository';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
 import { validatePartyAccountCodeFormat } from '../../shared/services/PartyAccountCodeRenderer';
+import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 
-// Note: Hardcoded templates are now deprecated and will be removed in a future PR
-// Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
+// Voucher type/form copy is delegated to syncCompanyVoucherTemplatesFromSystem,
+// which honors the user's selectedVoucherTypes pick from the init wizard.
 
-const cloneTemplateValue = (val: any) => (val ? JSON.parse(JSON.stringify(val)) : null);
 const normalizeModule = (value: any) => String(value || '').trim().toUpperCase();
 
 const ensureVoucherTypeScope = async (
@@ -41,122 +38,34 @@ const ensureVoucherTypeScope = async (
   }
 };
 
-const cloneVoucherTypeForCompany = (
-  companyId: string,
-  template: VoucherTypeDefinition
-): VoucherTypeDefinition => {
-  return new VoucherTypeDefinition(
-    randomUUID(),
-    companyId,
-    template.name,
-    template.code,
-    template.module,
-    cloneTemplateValue(template.headerFields),
-    cloneTemplateValue(template.tableColumns),
-    cloneTemplateValue(template.layout),
-    template.schemaVersion || 2,
-    template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined,
-    cloneTemplateValue(template.workflow),
-    cloneTemplateValue(template.uiModeOverrides),
-    template.isMultiLine ?? true,
-    cloneTemplateValue(template.rules) || [],
-    cloneTemplateValue(template.actions) || [],
-    template.defaultCurrency,
-    template.voucherType || template.code,
-    template.persona || undefined
-  );
-};
+const DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID = 'purchase-direct-invoicing-company-policy';
 
-const cloneVoucherFormForCompany = (
-  companyId: string,
-  typeId: string,
-  createdBy: string,
-  template: VoucherFormDefinition | any // Can be from system metadata too
-): VoucherFormDefinition => {
-  const now = new Date();
+const isCompanyDirectInvoiceRule = (rule: GovernanceRule): boolean =>
+  rule.persona === 'direct' && rule.scope === 'company';
 
-  return {
-    id: randomUUID(),
-    companyId,
-    module: template.module || 'PURCHASE',
-    typeId,
-    name: template.name,
-    code: template.code,
-    description: template.description || `Default form for ${template.name}`,
-    prefix: template.prefix,
-    numberFormat: template.numberFormat,
-    isDefault: true,
-    isSystemGenerated: true,
-    isLocked: true,
-    enabled: template.enabled ?? true,
-    headerFields: cloneTemplateValue(template.headerFields) || [],
-    tableColumns: cloneTemplateValue(template.tableColumns) || [],
-    layout: cloneTemplateValue(template.layout) || { sections: [] },
-    uiModeOverrides: cloneTemplateValue(template.uiModeOverrides),
-    rules: cloneTemplateValue(template.rules) || [],
-    actions: cloneTemplateValue(template.actions) || [],
-    isMultiLine: template.isMultiLine ?? true,
-    tableStyle: template.tableStyle || 'web',
-    defaultCurrency: template.defaultCurrency,
-    formType: template.formType || template.baseType || template.code,
-    voucherType: template.voucherType || template.code,
-    persona: template.persona || undefined,
-    baseType: template.baseType || template.code,
-    createdAt: now,
-    updatedAt: now,
-    createdBy,
-  };
-};
+const reconcileDirectPurchaseInvoiceGovernanceRules = (
+  governanceRules: GovernanceRule[] | undefined,
+  workflowMode: 'SIMPLE' | 'OPERATIONAL',
+  allowDirectInvoicing: boolean,
+  shouldReconcile: boolean
+): GovernanceRule[] => {
+  const rules = governanceRules ?? [];
+  if (!shouldReconcile) return rules;
 
-const ensurePurchaseVoucherDefinitions = async (
-  companyId: string,
-  createdBy: string,
-  voucherTypeRepo: IVoucherTypeDefinitionRepository,
-  voucherFormRepo: IVoucherFormRepository
-): Promise<void> => {
-  // Fetch ALL system templates from the unified source of truth
-  const systemTemplates = await voucherTypeRepo.getSystemTemplates();
-  const purchaseTemplates = systemTemplates.filter(t => t.module === 'PURCHASE');
-
-  if (purchaseTemplates.length === 0) {
-    console.warn('[PurchaseSettingsUseCases] No PURCHASE system templates found. Check seeder!');
+  const rulesWithoutCompanyDirect = rules.filter((rule) => !isCompanyDirectInvoiceRule(rule));
+  if (workflowMode !== 'OPERATIONAL' || !allowDirectInvoicing) {
+    return rulesWithoutCompanyDirect;
   }
 
-  for (const template of purchaseTemplates) {
-    const existingType = await voucherTypeRepo.getByCode(companyId, template.code);
-    
-    // If it exists but in the WRONG module, we need to re-home it
-    if (existingType && existingType.module !== template.module && existingType.companyId === companyId) {
-       console.log(`Re-homing ${template.code} from ${existingType.module} to ${template.module}`);
-       await voucherTypeRepo.deleteVoucherType(companyId, existingType.id);
-       // We'll create it below
-    }
-
-    const companyVoucherType = existingType && existingType.module === template.module && existingType.companyId === companyId
-        ? existingType
-        : cloneVoucherTypeForCompany(companyId, template);
-    
-    // Set metadata correctly
-    companyVoucherType.module = template.module;
-    await voucherTypeRepo.createVoucherType(companyVoucherType);
-
-    // FORM MIGRATION / RE-HOMING
-    const allExistingForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
-    for (const form of allExistingForms) {
-      if (form.module !== template.module) {
-        console.log(`Re-homing Purchase Form ${form.name} from ${form.module} to ${template.module}`);
-        await voucherFormRepo.delete(companyId, form.id);
-        await voucherFormRepo.create({ ...form, module: template.module });
-      }
-    }
-
-    const companyForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
-    if (companyForms.length > 0) continue;
-
-    // Create default form from template
-    const companyForm = cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, template);
-    await voucherFormRepo.create(companyForm);
-  }
+  return [
+    ...rulesWithoutCompanyDirect,
+    {
+      id: DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID,
+      scope: 'company',
+      action: 'allow',
+      persona: 'direct',
+    },
+  ];
 };
 
 export interface InitializePurchasesInput {
@@ -184,6 +93,13 @@ export interface InitializePurchasesInput {
   piNumberNextSeq?: number;
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
+  governanceRules?: GovernanceRule[];
+  /**
+   * IDs of system Purchase voucher templates the user picked in the wizard.
+   * `undefined` keeps legacy behavior (copy every PURCHASE template).
+   * `[]` copies nothing (user picked none).
+   */
+  selectedVoucherTypes?: string[];
 }
 
 export interface UpdatePurchasesSettingsInput {
@@ -256,12 +172,14 @@ export class InitializePurchasesUseCase {
       }
     }
 
-    await ensurePurchaseVoucherDefinitions(
-      input.companyId,
-      input.userId || 'SYSTEM',
-      this.voucherTypeRepo,
-      this.voucherFormRepo
-    );
+    await syncCompanyVoucherTemplatesFromSystem({
+      companyId: input.companyId,
+      modules: ['PURCHASE'],
+      selectedTemplateIds: input.selectedVoucherTypes,
+      createdBy: input.userId || 'SYSTEM',
+      voucherTypeRepo: this.voucherTypeRepo,
+      voucherFormRepo: this.voucherFormRepo,
+    });
     await ensureVoucherTypeScope(
       this.voucherTypeRepo,
       input.companyId,
@@ -276,9 +194,15 @@ export class InitializePurchasesUseCase {
       : 'INVOICE_DRIVEN';
     DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
     const workflowDefaults = DocumentPolicyResolver.applyPurchaseWorkflowDefaults(workflowMode, {
-      allowDirectInvoicing: input.allowDirectInvoicing ?? true,
+      allowDirectInvoicing: input.allowDirectInvoicing ?? workflowMode === 'SIMPLE',
       requirePOForStockItems: input.requirePOForStockItems ?? false,
     });
+    const governanceRules = reconcileDirectPurchaseInvoiceGovernanceRules(
+      input.governanceRules,
+      workflowMode,
+      workflowDefaults.allowDirectInvoicing,
+      input.allowDirectInvoicing !== undefined || input.governanceRules !== undefined
+    );
     if (accountingMode === 'PERPETUAL' && !input.defaultGRNIAccountId) {
       throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
     }
@@ -307,6 +231,7 @@ export class InitializePurchasesUseCase {
       piNumberNextSeq: input.piNumberNextSeq ?? 1,
       prNumberPrefix: input.prNumberPrefix || 'PR',
       prNumberNextSeq: input.prNumberNextSeq ?? 1,
+      governanceRules,
     });
 
     await this.settingsRepo.saveSettings(settings);
@@ -349,7 +274,9 @@ export class GetPurchaseSettingsUseCase {
       return null;
     }
 
-    await ensurePurchaseVoucherDefinitions(companyId, 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
+    // Voucher templates are no longer lazily ensured here. They are owned by the
+    // module init wizard (selectedVoucherTypes) so that an empty selection sticks
+    // and unselected templates do not silently reappear on every settings read.
     return settings;
   }
 }
@@ -410,6 +337,12 @@ export class UpdatePurchaseSettingsUseCase {
       requirePOForStockItems: input.requirePOForStockItems ?? existing.requirePOForStockItems,
     });
     const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
+    const nextGovernanceRules = reconcileDirectPurchaseInvoiceGovernanceRules(
+      input.governanceRules ?? existing.governanceRules,
+      workflowMode,
+      nextAllowDirectInvoicing,
+      input.allowDirectInvoicing !== undefined
+    );
     const nextAPAccountId = input.defaultAPAccountId ?? existing.defaultAPAccountId;
     const nextAPParentAccountId = input.apParentAccountId ?? existing.apParentAccountId;
     const nextPartyAccountCodeFormat = input.partyAccountCodeFormat ?? existing.partyAccountCodeFormat;
@@ -443,7 +376,7 @@ export class UpdatePurchaseSettingsUseCase {
       throw new Error(partyAccountCodeFormatErrorUpdate);
     }
 
-    await ensurePurchaseVoucherDefinitions(input.companyId, 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
+    // No lazy voucher-template ensure here. See note in GetPurchaseSettingsUseCase.
 
     const updated = new PurchaseSettings({
       companyId: existing.companyId,
@@ -469,7 +402,7 @@ export class UpdatePurchaseSettingsUseCase {
       piNumberNextSeq: input.piNumberNextSeq ?? existing.piNumberNextSeq,
       prNumberPrefix: input.prNumberPrefix ?? existing.prNumberPrefix,
       prNumberNextSeq: input.prNumberNextSeq ?? existing.prNumberNextSeq,
-      governanceRules: input.governanceRules ?? existing.governanceRules,
+      governanceRules: nextGovernanceRules,
       defaultPurchaseInvoicePersona: input.defaultPurchaseInvoicePersona ?? existing.defaultPurchaseInvoicePersona,
     });
 

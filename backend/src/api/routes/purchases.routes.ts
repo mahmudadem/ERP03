@@ -3,8 +3,11 @@ import { PurchaseController } from '../controllers/purchases/PurchaseController'
 import { PurchaseMasterDataController } from '../controllers/purchases/PurchaseMasterDataController';
 import { PurchaseInvoiceAttachmentController } from '../controllers/purchases/PurchaseInvoiceAttachmentController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
+import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeInstallController';
+import { VoucherFormController } from '../controllers/accounting/VoucherFormController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
+import { permissionGuard } from '../middlewares/guards/permissionGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
 import multer from 'multer';
 
@@ -19,6 +22,27 @@ router.use(moduleInitializedGuard('purchase'));
 
 router.put('/settings', PurchaseController.updateSettings);
 router.post('/settings/backfill-party-accounts', PurchaseController.backfillPartyAccounts);
+
+// Manage Voucher Types — used by the per-module settings page to install
+// additional types after the init wizard. Route param `module` is injected.
+router.get(
+  '/voucher-types/catalog',
+  (req, _res, next) => { (req.params as any).module = 'PURCHASE'; next(); },
+  VoucherTypeInstallController.catalog,
+);
+router.post(
+  '/voucher-types/install',
+  (req, _res, next) => { (req.params as any).module = 'PURCHASE'; next(); },
+  VoucherTypeInstallController.install,
+);
+
+// Voucher form management for the per-module Voucher Designer. Uses the same
+// controller as Accounting; the repository searches across modules to find
+// the form by id, so the URL prefix is just for permission scoping per module.
+router.put('/voucher-forms/:id', VoucherFormController.update);
+router.delete('/voucher-forms/:id', VoucherFormController.delete);
+router.post('/voucher-forms', VoucherFormController.create);
+router.post('/voucher-forms/:id/clone', VoucherFormController.clone);
 
 router.post('/vendor-groups', PurchaseMasterDataController.createVendorGroup);
 router.get('/vendor-groups', PurchaseMasterDataController.listVendorGroups);
@@ -58,7 +82,10 @@ router.get('/invoices/:id', PurchaseController.getPI);
 router.put('/invoices/:id', PurchaseController.updatePI);
 router.put('/invoices/:id/update-and-post', idempotencyMiddleware, PurchaseController.updateAndPostPI);
 router.post('/invoices/:id/post', idempotencyMiddleware, PurchaseController.postPI);
-router.post('/invoices/:id/approve', idempotencyMiddleware, PurchaseController.approvePI);
+// SoD: approving a parked Purchase Invoice is an Accounting authority (the ledger effect is what is
+// being approved). Guarded by `accounting.approve.finance`. See
+// docs/architecture/posting-authority.md §4.1.
+router.post('/invoices/:id/approve', permissionGuard('accounting.approve.finance'), idempotencyMiddleware, PurchaseController.approvePI);
 router.post('/invoices/:id/unpost', PurchaseController.unpostPI);
 router.post('/invoices/:id/payment-update', PurchaseController.updatePaymentStatus);
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, PurchaseController.recordPayment);

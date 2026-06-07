@@ -391,11 +391,13 @@ export const loadLocalUserAppearance = (): UserAppearanceSettings => {
   }
 };
 
-export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, themeMode: 'light' | 'dark') => {
+export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, themeMode: 'light' | 'dark', layoutMode: 'legacy' | 'compact' = 'legacy') => {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   
   const palette = themeMode === 'dark' ? settings.dark : settings.light;
+  const isDark = themeMode === 'dark';
+  const isCompact = layoutMode === 'compact';
 
   const vars: Record<string, string> = {
     '--color-bg-primary': palette.bgPrimary,
@@ -423,12 +425,16 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, 
     '--radius-lg': `${settings.radius}px`,
     '--radius-xl': `${settings.radius + 4}px`,
     
-    '--app-sidebar-surface': settings.sidebarSurface === 'contrast' 
-      ? settings.primary 
-      : settings.sidebarSurface === 'secondary' 
-        ? palette.bgSecondary 
-        : palette.bgPrimary,
-    '--app-sidebar-text': settings.sidebarSurface === 'contrast' ? '#ffffff' : palette.textPrimary,
+    '--app-sidebar-surface': isCompact
+      ? (isDark ? palette.bgSecondary : palette.bgSecondary) // Lighter/matching surface in compact
+      : settings.sidebarSurface === 'contrast' 
+        ? settings.primary 
+        : isDark 
+          ? palette.bgSecondary 
+          : palette.bgTertiary,
+    '--app-topbar-surface-rgb': hexToRgb(isDark ? palette.bgSecondary : palette.bgTertiary),
+    '--app-topbar-surface': `rgba(${hexToRgb(isDark ? palette.bgSecondary : palette.bgTertiary)}, 0.8)`,
+    '--app-sidebar-text': (isCompact && settings.sidebarSurface === 'contrast') ? palette.textPrimary : settings.sidebarSurface === 'contrast' ? '#ffffff' : palette.textPrimary,
     '--app-sidebar-muted': settings.sidebarSurface === 'contrast' 
       ? 'rgba(255,255,255,0.7)' 
       : (settings.id === 'tailwind-play' || settings.id === 'erp-default')
@@ -437,6 +443,11 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, 
     
     '--app-font-family': fontVars[settings.fontFamily],
     '--font-sans': fontVars[settings.fontFamily],
+    
+    '--compact-content-max-width': isCompact ? '80rem' : 'none',
+    '--compact-content-padding': isCompact ? '1.25rem' : 'var(--app-content-padding, 1.5rem)',
+    '--compact-card-shadow': isCompact ? (isDark ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.02)') : 'none',
+    '--compact-card-border': isCompact ? palette.border : 'transparent',
     
     ...densityVars[settings.density],
   };

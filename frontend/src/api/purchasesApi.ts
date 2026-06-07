@@ -340,6 +340,7 @@ export interface InitializePurchasesPayload {
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
   exchangeGainLossAccountId?: string;
+  selectedVoucherTypes?: string[];
 }
 
 export interface PurchaseOrderLineInputDTO {
@@ -434,6 +435,9 @@ export interface PurchaseInvoiceLineInputDTO {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  /** When true, `unitPriceDoc` already includes tax. Mirrors backend
+   *  PurchaseInvoiceLineInput.priceIsInclusive. */
+  priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -800,8 +804,8 @@ export const purchasesApi = {
   postPI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/post`, { settlementInput }),
 
-  approvePI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
-    client.post(`/tenant/purchase/invoices/${id}/approve`, { settlementInput }),
+  // approvePI has moved to accountingApi (SoD: Purchases never approves). See
+  // docs/architecture/posting-authority.md §4.1.
 
   unpostPI: (id: string): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/unpost`, {}),

@@ -213,8 +213,17 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
         title={getStatusTooltip()}
       >
         {/* Left: 1 [CURRENCY] → */}
-        <div className="flex items-center justify-center px-2 h-full bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] text-[10px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap min-w-[60px]">
-          1 {currency || t('currencyExchangeWidget.unknownCurrency')} <span className="opacity-50 mx-1">→</span>
+        <div className="flex items-center justify-center px-2 h-full bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] text-[10px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap min-w-[72px]">
+          1 {currency || t('currencyExchangeWidget.unknownCurrency')}{' '}
+          <svg
+            className="w-3 h-3 opacity-60 mx-1 shrink-0 rtl:rotate-180"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
         </div>
 
         {/* Middle: Input + Reset × button */}
@@ -253,7 +262,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
         </div>
 
         {/* Right: [BASE] + status icon + Refresh button */}
-        <div className="flex items-center gap-1.5 px-2 h-full bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] min-w-[80px]">
+        <div className="flex items-center gap-1.5 px-2 h-full bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] min-w-[64px]">
           <span className="text-[10px] font-bold text-[var(--color-text-secondary)]">
             {baseCurrency}
           </span>

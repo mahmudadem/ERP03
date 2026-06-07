@@ -321,8 +321,8 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
 
       {showModal && (
         <>
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[9998]" onClick={() => setShowModal(false)} />
-          <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[450px] pointer-events-auto flex flex-col">
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                 <Search size={18} className="text-slate-400" />
@@ -414,8 +414,8 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
 
       {showCreateModal && (
         <>
-          <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-[1px]" onClick={() => setShowCreateModal(false)} />
-          <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" onClick={() => setShowCreateModal(false)} />
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
             <div className="pointer-events-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                 <div>
@@ -514,3 +514,4 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
 });
 
 WarehouseSelector.displayName = 'WarehouseSelector';
+

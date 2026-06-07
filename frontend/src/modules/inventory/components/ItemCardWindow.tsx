@@ -2,16 +2,16 @@
 import React from 'react';
 import { UIWindow, useWindowManager } from '../../../context/WindowManagerContext';
 import ItemMasterCard from './ItemMasterCard';
-import { DraggableWindow } from '../../accounting/components/DraggableWindow';
+import { MdiWindowFrame } from '../../../components/mdi/MdiWindowFrame';
 
 export const ItemCardWindow: React.FC<{ win: UIWindow }> = ({ win }) => {
   const { closeWindow } = useWindowManager();
 
   return (
-    <DraggableWindow
+    <MdiWindowFrame
       win={win}
-      defaultSize={{ width: 950, height: 650 }}
-      minSize={{ width: 800, height: 500 }}
+      title={win.title}
+      onClose={() => closeWindow(win.id)}
     >
       <ItemMasterCard 
         itemId={win.data?.itemId} 
@@ -21,6 +21,6 @@ export const ItemCardWindow: React.FC<{ win: UIWindow }> = ({ win }) => {
           closeWindow(win.id);
         }}
       />
-    </DraggableWindow>
+    </MdiWindowFrame>
   );
 };

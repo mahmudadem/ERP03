@@ -35,6 +35,7 @@ import {
   UpdatePurchaseReturnUseCase,
   UnpostPurchaseReturnUseCase,
 } from '../../../application/purchases/use-cases/PurchaseReturnUseCases';
+import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
 import { IPurchasesInventoryService } from '../../../application/inventory/contracts/InventoryIntegrationContracts';
 import {
   GetPurchaseSettingsUseCase,
@@ -149,6 +150,10 @@ export class PurchaseController {
 
   private static getUserId(req: Request): string {
     return (req as any).user?.uid || 'SYSTEM';
+  }
+
+  private static getUserEmail(req: Request): string | undefined {
+    return (req as any).user?.email;
   }
 
   private static buildMovementUseCase(): RecordStockMovementUseCase {
@@ -645,17 +650,22 @@ export class PurchaseController {
       validateUpdatePurchaseInvoiceInput((req as any).body);
       const companyId = PurchaseController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = PurchaseController.getUserId(req);
+      const userEmail = PurchaseController.getUserEmail(req);
+
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
 
       const useCase = new UpdatePurchaseInvoiceUseCase(
         diContainer.purchaseInvoiceRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        recordChangeService
       );
 
       const pi = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
         id,
-      });
+      }, { userId, userEmail });
 
       (res as any).json({
         success: true,

@@ -10,6 +10,7 @@ import {
   purchasesApi,
 } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
@@ -78,6 +79,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasLinkedInvoiceLine, setHasLinkedInvoiceLine] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [unpostConfirmOpen, setUnpostConfirmOpen] = useState(false);
   const [linkedPO, setLinkedPO] = useState<PurchaseOrderDTO | null>(null);
 
   const warehouseLabelById = useMemo(
@@ -469,12 +471,12 @@ const GoodsReceiptDetailPage: React.FC = () => {
 
   const unpostGRN = async () => {
     if (!grn?.id) return;
-    if (!window.confirm('Are you sure you want to unpost this goods receipt? This will reverse all inventory movements.')) return;
     try {
       setBusy(true);
       setError(null);
       const unposted = await purchasesApi.unpostGRN(grn.id);
       setGrn(unwrap<GoodsReceiptDTO>(unposted));
+      setUnpostConfirmOpen(false);
     } catch (err: any) {
       console.error('Failed to unpost goods receipt', err);
       setError(
@@ -842,7 +844,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-            onClick={unpostGRN}
+            onClick={() => setUnpostConfirmOpen(true)}
             disabled={busy || hasLinkedInvoiceLine}
             title={hasLinkedInvoiceLine ? "Cannot unpost because this GRN is linked to a PI" : ""}
           >
@@ -850,6 +852,18 @@ const GoodsReceiptDetailPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={unpostConfirmOpen}
+        title="Unpost Goods Receipt"
+        message="This will reverse all inventory movements recorded for this goods receipt. The action is auditable but cannot be undone in place. Continue?"
+        confirmLabel="Unpost GRN"
+        cancelLabel="Cancel"
+        tone="danger"
+        isConfirming={busy}
+        onConfirm={unpostGRN}
+        onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
+      />
     </div>
   );
 };

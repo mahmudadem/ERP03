@@ -1,5 +1,6 @@
 
 import { randomUUID } from 'crypto';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
@@ -55,6 +56,9 @@ export interface SalesReturnLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;    // Selling price — needed for revenue reversal
+  /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
+   *  net + tax. Normally inherited from the source SI line. */
+  priceIsInclusive?: boolean;
   taxCodeId?: string;       // Tax code for the return line
   warehouseId?: string;     // Per-line warehouse override
   description?: string;
@@ -370,6 +374,23 @@ export class CreateSalesReturnUseCase {
     const taxRate = salesInvoiceLine.taxRate || 0;
     const unitPriceDoc = inputLine?.unitPriceDoc ?? salesInvoiceLine.unitPriceDoc;
     const unitPriceBase = salesInvoiceLine.unitPriceBase || roundMoney(unitPriceDoc * (exchangeRate || 1));
+    // Inherit inclusive flag from source SI line so the return reverses the
+    // same gross/net split the original invoice posted.
+    const priceIsInclusive =
+      inputLine?.priceIsInclusive !== undefined
+        ? inputLine.priceIsInclusive === true
+        : salesInvoiceLine.priceIsInclusive === true;
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const grossDoc = roundMoney(returnQty * unitPriceDoc);
+    const grossBase = roundMoney(returnQty * unitPriceBase);
+    const netDoc = roundMoney(grossDoc / divisor);
+    const netBase = roundMoney(grossBase / divisor);
+    const taxAmountDoc = priceIsInclusive
+      ? roundMoney(grossDoc - netDoc)
+      : roundMoney(netDoc * taxRate);
+    const taxAmountBase = priceIsInclusive
+      ? roundMoney(grossBase - netBase)
+      : roundMoney(netBase * taxRate);
 
     return {
       lineId: inputLine?.lineId || randomUUID(),
@@ -390,8 +411,9 @@ export class CreateSalesReturnUseCase {
       fxRateCCYToBase: exchangeRate,
       taxCodeId: salesInvoiceLine.taxCodeId,
       taxRate,
-      taxAmountDoc: roundMoney(returnQty * unitPriceDoc * taxRate),
-      taxAmountBase: roundMoney(returnQty * unitPriceBase * taxRate),
+      priceIsInclusive,
+      taxAmountDoc,
+      taxAmountBase,
       revenueAccountId: salesInvoiceLine.revenueAccountId,
       cogsAccountId: salesInvoiceLine.cogsAccountId,
       inventoryAccountId: salesInvoiceLine.inventoryAccountId,
@@ -598,6 +620,11 @@ export class PostSalesReturnUseCase {
         line.unitCostBase = line.unitCostBase || sourceLine.unitCostBase || 0;
         line.taxCodeId = line.taxCodeId || sourceLine.taxCodeId;
         line.taxRate = Number.isNaN(line.taxRate) ? sourceLine.taxRate : line.taxRate;
+        // Inherit inclusive flag from source SI line if the return line didn't
+        // override it. Needed for the tax recompute below.
+        if (line.priceIsInclusive === undefined) {
+          line.priceIsInclusive = sourceLine.priceIsInclusive === true;
+        }
         line.revenueAccountId = line.revenueAccountId || sourceLine.revenueAccountId;
         line.cogsAccountId = line.cogsAccountId || sourceLine.cogsAccountId;
         line.inventoryAccountId = line.inventoryAccountId || sourceLine.inventoryAccountId;
@@ -645,10 +672,20 @@ export class PostSalesReturnUseCase {
         line.uom = line.uom || item.salesUom || item.baseUom;
       }
 
-      const lineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc || 0));
-      const lineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase || 0));
-      line.taxAmountDoc = roundMoney(lineTotalDoc * line.taxRate);
-      line.taxAmountBase = roundMoney(lineTotalBase * line.taxRate);
+      // Posting-time recompute. lineTotalDoc/Base feed the revenue bucket and
+      // MUST be NET, otherwise the ledger debits gross while AR credits net +
+      // tax → unbalanced. Same split as the entity.
+      const grossLineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc || 0));
+      const grossLineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase || 0));
+      const lineDivisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
+      const lineTotalDoc = roundMoney(grossLineTotalDoc / lineDivisor);
+      const lineTotalBase = roundMoney(grossLineTotalBase / lineDivisor);
+      line.taxAmountDoc = line.priceIsInclusive
+        ? roundMoney(grossLineTotalDoc - lineTotalDoc)
+        : roundMoney(lineTotalDoc * line.taxRate);
+      line.taxAmountBase = line.priceIsInclusive
+        ? roundMoney(grossLineTotalBase - lineTotalBase)
+        : roundMoney(lineTotalBase * line.taxRate);
 
       if (isAfterInvoice || isDirect) {
         if (!line.revenueAccountId) {
@@ -659,8 +696,18 @@ export class PostSalesReturnUseCase {
 
         if (line.taxAmountBase > 0 && line.taxCodeId) {
           const sTaxCode = taxCodesMap.get(line.taxCodeId);
-          const taxAccountId = sTaxCode?.salesTaxAccountId;
-          addToBucket(taxDebitBucket, taxAccountId || '', line.taxAmountBase, line.taxAmountDoc);
+          if (!sTaxCode?.salesTaxAccountId) {
+            const taxLabel = sTaxCode?.code || (line as any).taxCode || line.taxCodeId;
+            throw new AccountMappingError({
+              companyId,
+              itemId: line.itemId,
+              accountRole: 'tax',
+              fallbackChain: ['taxCode.salesTaxAccountId'],
+              lineNo: line.lineNo,
+              hint: `Tax code "${taxLabel}" has no Sales Tax Account configured. Set it in Settings → Tax Codes before posting this return (line ${line.lineNo}).`,
+            });
+          }
+          addToBucket(taxDebitBucket, sTaxCode.salesTaxAccountId, line.taxAmountBase, line.taxAmountDoc);
         }
       }
 
@@ -1298,6 +1345,10 @@ export class UpdateSalesReturnUseCase {
           fxRateCCYToBase: existing?.fxRateCCYToBase ?? 1,
           taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
           taxRate: existing?.taxRate ?? 0,
+          priceIsInclusive:
+            line.priceIsInclusive !== undefined
+              ? line.priceIsInclusive === true
+              : existing?.priceIsInclusive === true,
           taxAmountDoc: existing?.taxAmountDoc ?? 0,
           taxAmountBase: existing?.taxAmountBase ?? 0,
           revenueAccountId: existing?.revenueAccountId,

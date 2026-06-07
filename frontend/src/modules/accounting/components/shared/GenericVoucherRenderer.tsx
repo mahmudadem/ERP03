@@ -13,6 +13,7 @@ import { Account } from '../../../../context/AccountsContext';
 import { useAccounts } from '../../../../context/AccountsContext';
 import { useCompanySettings } from '../../../../hooks/useCompanySettings';
 import { formatCompanyDate, formatCompanyTime, formatForInput, getCompanyToday } from '../../../../utils/dateUtils';
+import { errorHandler } from '../../../../services/errorHandler';
 import { DatePicker } from './DatePicker';
 import { PartySelector } from '../../../../components/shared/selectors/PartySelector';
 import { ItemSelector } from '../../../../components/shared/selectors/ItemSelector';
@@ -122,6 +123,10 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   // Language support
   const { t, i18n } = useTranslation('accounting');
   const isRTL = (i18n.language || '').startsWith('ar');
+  const uniformControlChrome = Boolean(
+    (definition as any).metadata?.uniformControlChrome ||
+    (definition as any).uniformControlChrome
+  );
 
   const normalizeTableColumnId = (id: string): string => {
     switch ((id || '').trim()) {
@@ -1381,19 +1386,15 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   const handleOpenStatement = (rowId: number) => {
     const row = rows.find(r => r.id === rowId);
     if (row?.account) {
-      // TODO: Open account statement window
-      console.log('Open statement for account:', row.account);
-      alert(`Account Statement for: ${row.account}\n(Feature to be implemented)`);
+      errorHandler.showInfo(`Account statement drill-down for "${row.account}" is coming soon. Use Accounting → Reports → Account Statement in the meantime.`);
     }
     closeLineContextMenu();
   };
-  
+
   const handleAccountBalance = (rowId: number) => {
     const row = rows.find(r => r.id === rowId);
     if (row?.account) {
-      // TODO: Show account balance
-      console.log('Show balance for account:', row.account);
-      alert(`Account Balance for: ${row.account}\n(Feature to be implemented)`);
+      errorHandler.showInfo(`Account balance lookup for "${row.account}" is coming soon. Use Accounting → Reports → Trial Balance in the meantime.`);
     }
     closeLineContextMenu();
   };
@@ -2496,6 +2497,17 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     const relationTarget = String(fieldMeta.relationTarget || '').trim().toLowerCase();
     const selectOptions = normalizeSelectOptions(fieldMeta.options);
     const finalLabel = getFieldDisplayLabel(fieldId, labelOverride);
+    const fieldShellClass = uniformControlChrome ? 'space-y-0.5 min-w-0' : 'space-y-1 min-w-0';
+    const fieldLabelClass = 'text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide truncate block';
+    const fieldControlClass = `w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`;
+    const fieldDateControlClass = `w-full h-[32px] px-2 pr-8 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`;
+    const fieldReadOnlyClass = 'w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)] shadow-sm flex items-center transition-colors truncate';
+    const selectorFrameClass = `w-full h-[32px] border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] shadow-sm transition-colors focus-within:ring-1 focus-within:ring-primary-500 ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`;
+    const selectorInnerClass = 'w-full h-full [&>input]:!h-[30px] [&>input]:!py-0 [&>input]:!text-xs [&>input]:placeholder:!text-[var(--color-text-muted)]';
+    const selectorChromeProps = uniformControlChrome ? { noBorder: true, className: selectorInnerClass } : {};
+    const renderSelectorChrome = (node: React.ReactNode) => (
+      uniformControlChrome ? <div className={selectorFrameClass}>{node}</div> : <>{node}</>
+    );
     
     // 0. Suppress standalone exchangeRate if it's handled by CurrencyExchangeWidget (at currency slot)
     if (fieldId === 'exchangeRate') {
@@ -2516,8 +2528,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                           : finalLabel;
                           
       return (
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{displayLabel}</label>
+        <div className={fieldShellClass}>
+          <label className={fieldLabelClass}>{displayLabel}</label>
           <CurrencyComp
             currency={formData.currency || formData.baseCurrency || company?.baseCurrency || 'USD'}
             value={formData.exchangeRate}
@@ -2560,22 +2572,25 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         formData.accountId ||
         '';
       return (
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
-          <AccountComponent
-            value={fieldValue}
-            disabled={effectiveReadOnly}
-            onChange={(val: any) => {
-               if (val && typeof val === 'object' && (val.id || val.code)) {
-                  const stored = fieldId === 'account' ? val.code : (val.id || val.code);
-                  handleInputChange(fieldId, stored);
-                  if (fieldId !== 'account') handleInputChange('accountId', val.id || val.code);
-                  if (fieldId !== 'accountId') handleInputChange('account', val.code || val.id);
-               } else {
-                  handleInputChange(fieldId, val);
-               }
-            }}
-          />
+        <div className={fieldShellClass}>
+          <label className={fieldLabelClass}>{finalLabel}</label>
+          {renderSelectorChrome(
+            <AccountComponent
+              value={fieldValue}
+              disabled={effectiveReadOnly}
+              {...selectorChromeProps}
+              onChange={(val: any) => {
+                 if (val && typeof val === 'object' && (val.id || val.code)) {
+                    const stored = fieldId === 'account' ? val.code : (val.id || val.code);
+                    handleInputChange(fieldId, stored);
+                    if (fieldId !== 'account') handleInputChange('accountId', val.id || val.code);
+                    if (fieldId !== 'accountId') handleInputChange('account', val.code || val.id);
+                 } else {
+                    handleInputChange(fieldId, val);
+                 }
+              }}
+            />
+          )}
         </div>
       );
     }
@@ -2599,20 +2614,23 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       const CompositeSelector = isCustomer ? CustomerAccountSelector : VendorAccountSelector;
 
       return (
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
-          <CompositeSelector
-            value={{ partyId: String(getFieldValue(fieldId) || ''), accountId: String(accountValue || '') }}
-            accountValue={String(accountValue || '')}
-            disabled={effectiveReadOnly}
-            onChange={(next) => {
-              const nextPartyId = String(next?.partyId || '');
-              const nextAccountId = String(next?.accountId || '');
-              handleInputChange(fieldId, nextPartyId);
-              handleInputChange(accountFieldId, nextAccountId);
-              handleInputChange(fallbackAccountFieldId, nextAccountId);
-            }}
-          />
+        <div className={fieldShellClass}>
+          <label className={fieldLabelClass}>{finalLabel}</label>
+          {renderSelectorChrome(
+            <CompositeSelector
+              value={{ partyId: String(getFieldValue(fieldId) || ''), accountId: String(accountValue || '') }}
+              accountValue={String(accountValue || '')}
+              disabled={effectiveReadOnly}
+              {...selectorChromeProps}
+              onChange={(next) => {
+                const nextPartyId = String(next?.partyId || '');
+                const nextAccountId = String(next?.accountId || '');
+                handleInputChange(fieldId, nextPartyId);
+                handleInputChange(accountFieldId, nextAccountId);
+                handleInputChange(fallbackAccountFieldId, nextAccountId);
+              }}
+            />
+          )}
         </div>
       );
     }
@@ -2632,8 +2650,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
     if (isSalesOrderSelector) {
       return (
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+        <div className={fieldShellClass}>
+          <label className={fieldLabelClass}>{finalLabel}</label>
           <select
             value={String(getFieldValue('salesOrderId') || getFieldValue(fieldId) || '')}
             disabled={effectiveReadOnly}
@@ -2660,7 +2678,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
               }
             }}
             onBlur={() => onBlurRef.current?.()}
-            className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+            className={fieldControlClass}
           >
             <option value="">Select sales order...</option>
             {salesOrders.map((order) => (
@@ -2675,42 +2693,51 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
     if (isPartySelector) {
       return (
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
-          <PartySelector
-            value={getFieldValue(fieldId)}
-            disabled={effectiveReadOnly}
-            onChange={(val: any) => {
-              const nextPartyId = val?.id || val?.code || '';
-              handleInputChange(fieldId, nextPartyId);
-            }}
-          />
+        <div className={fieldShellClass}>
+          <label className={fieldLabelClass}>{finalLabel}</label>
+          {renderSelectorChrome(
+            <PartySelector
+              value={getFieldValue(fieldId)}
+              disabled={effectiveReadOnly}
+              {...selectorChromeProps}
+              onChange={(val: any) => {
+                const nextPartyId = val?.id || val?.code || '';
+                handleInputChange(fieldId, nextPartyId);
+              }}
+            />
+          )}
         </div>
       );
     }
 
     if (isItemSelector) {
       return (
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
-          <ItemSelector
-            value={getFieldValue(fieldId)}
-            disabled={effectiveReadOnly}
-            onChange={(val: any) => handleInputChange(fieldId, val?.id || val?.code || '')}
-          />
+        <div className={fieldShellClass}>
+          <label className={fieldLabelClass}>{finalLabel}</label>
+          {renderSelectorChrome(
+            <ItemSelector
+              value={getFieldValue(fieldId)}
+              disabled={effectiveReadOnly}
+              {...selectorChromeProps}
+              onChange={(val: any) => handleInputChange(fieldId, val?.id || val?.code || '')}
+            />
+          )}
         </div>
       );
     }
 
     if (isWarehouseSelector) {
       return (
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
-          <WarehouseSelector
-            value={getFieldValue(fieldId)}
-            disabled={effectiveReadOnly}
-            onChange={(val: any) => handleInputChange(fieldId, val?.id || val?.code || '')}
-          />
+        <div className={fieldShellClass}>
+          <label className={fieldLabelClass}>{finalLabel}</label>
+          {renderSelectorChrome(
+            <WarehouseSelector
+              value={getFieldValue(fieldId)}
+              disabled={effectiveReadOnly}
+              {...selectorChromeProps}
+              onChange={(val: any) => handleInputChange(fieldId, val?.id || val?.code || '')}
+            />
+          )}
         </div>
       );
     }
@@ -2903,10 +2930,10 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
        }
        
        return (
-          <div className="space-y-0.5">
-             <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+          <div className={fieldShellClass}>
+             <label className={fieldLabelClass}>{finalLabel}</label>
              <div 
-                 className="w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs shadow-sm flex items-center transition-colors"
+                 className={fieldReadOnlyClass}
                  style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                  title={rawValue}
              >
@@ -3495,12 +3522,12 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                           lowerFieldId.endsWith('updatedby');
 
     return (
-        <div className="space-y-0.5 min-w-0">
-            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide truncate block" title={finalLabel}>{finalLabel}</label>
+        <div className={fieldShellClass}>
+            <label className={fieldLabelClass} title={finalLabel}>{finalLabel}</label>
             {/* System fields - display as read-only */}
             {(isSystemField || lowerFieldId.includes('created') || lowerFieldId.includes('updated')) ? (
                 <div 
-                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)] italic transition-colors block truncate" 
+                    className={`${fieldReadOnlyClass} italic`}
                     style={{ minWidth: 0 }}
                     title={getFieldValue(fieldId)}
                 >
@@ -3548,6 +3575,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                      value={getFieldValue(fieldId) || ''}
                      disabled={effectiveReadOnly}
                      onChange={(val: string) => handleInputChange(fieldId, val)}
+                     inputClassName={uniformControlChrome ? fieldDateControlClass : undefined}
                    />
                    {(() => {
                       // Check if date matches any FY end date AND has special periods
@@ -3624,7 +3652,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                    disabled={effectiveReadOnly}
                    onChange={(e) => handleInputChange(fieldId, e.target.value)}
                    onBlur={() => onBlurRef.current?.()}
-                   className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                   className={fieldControlClass}
                  >
                    <option value="">Select...</option>
                    {selectOptions.map((option: any) => (
@@ -3639,7 +3667,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                     disabled={effectiveReadOnly}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
                     onBlur={() => onBlurRef.current?.()}
-                    className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm min-h-[60px] transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
+                    className={`w-full min-h-[60px] px-2 py-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                   />
             ) : (
                 <input 
@@ -3648,7 +3676,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                     disabled={effectiveReadOnly}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
                     onBlur={() => onBlurRef.current?.()}
-                    className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                    className={fieldControlClass}
                 />
             )}
         </div>
@@ -3811,6 +3839,22 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       return null;
     }
 
+    // Deduplicate grandtotaldoc and totalamount representing the same "Total Amount" visual block
+    const seenLowerIds = new Set<string>();
+    const filteredSummaryFields = summaryFields.filter((field: any) => {
+      const lowerFid = (field.fieldId || '').toLowerCase();
+      const canonicalId = (lowerFid === 'grandtotaldoc' || lowerFid === 'totalamount') ? 'total_amount_canonical' : lowerFid;
+      if (seenLowerIds.has(canonicalId)) {
+        return false;
+      }
+      seenLowerIds.add(canonicalId);
+      return true;
+    });
+
+    if (filteredSummaryFields.length === 0) {
+      return null;
+    }
+
     return (
       <div
         className="sticky bottom-0 z-20 border-t border-[var(--color-border)] backdrop-blur shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-colors"
@@ -3818,7 +3862,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       >
         <div className="px-4 py-3">
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
-            {summaryFields.map((field: any) => {
+            {filteredSummaryFields.map((field: any) => {
               const value = getFieldValue(field.fieldId);
               const unit = getSummaryFieldUnit(field.fieldId);
 
@@ -3943,12 +3987,30 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     if (sortedFields.length === 0) {
       return null;
     }
+
+    let filteredFields = sortedFields;
+    if (sectionKey === 'FOOTER') {
+      const seenLowerIds = new Set<string>();
+      filteredFields = sortedFields.filter((field: any) => {
+        const lowerFid = (field.fieldId || '').toLowerCase();
+        const canonicalId = (lowerFid === 'grandtotaldoc' || lowerFid === 'totalamount') ? 'total_amount_canonical' : lowerFid;
+        if (seenLowerIds.has(canonicalId)) {
+          return false;
+        }
+        seenLowerIds.add(canonicalId);
+        return true;
+      });
+    }
+
+    if (filteredFields.length === 0) {
+      return null;
+    }
     
     return (
        <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle(sectionKey)}>
          {title && <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{title}</h3>}
         <div className="grid gap-x-2 xl:gap-x-4 gap-y-2" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}>
-          {renderFieldList(sortedFields)}
+          {renderFieldList(filteredFields)}
         </div>
       </div>
     );

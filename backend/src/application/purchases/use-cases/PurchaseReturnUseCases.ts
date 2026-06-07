@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { roundMoney as roundLedgerMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
@@ -53,6 +54,9 @@ export interface PurchaseReturnLineInput {
   itemId?: string;
   returnQty?: number;
   unitCostDoc?: number;
+  /** When true, `unitCostDoc` already includes tax. Normally inherited from
+   *  the source PI line so the return reverses the same gross/net split. */
+  priceIsInclusive?: boolean;
   uomId?: string;
   uom?: string;
   accountId?: string;
@@ -311,8 +315,23 @@ export class CreatePurchaseReturnUseCase {
   ): PurchaseReturnLine {
     const returnQty = inputLine?.returnQty ?? invoiceLine.invoicedQty;
     const taxRate = invoiceLine.taxRate || 0;
-    const taxAmountDoc = roundMoney(returnQty * invoiceLine.unitPriceDoc * taxRate);
-    const taxAmountBase = roundMoney(returnQty * invoiceLine.unitPriceBase * taxRate);
+    // Inherit inclusive flag from source PI line so the return reverses the
+    // same gross/net split the original invoice posted.
+    const priceIsInclusive =
+      inputLine?.priceIsInclusive !== undefined
+        ? inputLine.priceIsInclusive === true
+        : invoiceLine.priceIsInclusive === true;
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const grossDoc = roundMoney(returnQty * invoiceLine.unitPriceDoc);
+    const grossBase = roundMoney(returnQty * invoiceLine.unitPriceBase);
+    const netDoc = roundMoney(grossDoc / divisor);
+    const netBase = roundMoney(grossBase / divisor);
+    const taxAmountDoc = priceIsInclusive
+      ? roundMoney(grossDoc - netDoc)
+      : roundMoney(netDoc * taxRate);
+    const taxAmountBase = priceIsInclusive
+      ? roundMoney(grossBase - netBase)
+      : roundMoney(netBase * taxRate);
 
     return {
       lineId: inputLine?.lineId || randomUUID(),
@@ -333,6 +352,7 @@ export class CreatePurchaseReturnUseCase {
       taxCodeId: invoiceLine.taxCodeId,
       taxCode: invoiceLine.taxCode,
       taxRate,
+      priceIsInclusive,
       taxAmountDoc,
       taxAmountBase,
       accountId: invoiceLine.accountId,
@@ -600,6 +620,11 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         line.taxRate = Number.isNaN(line.taxRate) ? sourceLine.taxRate : line.taxRate;
         line.unitCostDoc = roundMoney(line.unitCostDoc || sourceLine.unitPriceDoc);
         line.unitCostBase = roundMoney(line.unitCostBase || sourceLine.unitPriceBase);
+        // Inherit inclusive flag from source PI line so the recompute below
+        // produces the same gross/net split the original PI posted.
+        if (line.priceIsInclusive === undefined) {
+          line.priceIsInclusive = sourceLine.priceIsInclusive === true;
+        }
       } else if (purchaseReturn.returnContext === 'BEFORE_INVOICE') {
         const sourceLine = findGRNLine(goodsReceipt as GoodsReceipt, line.grnLineId, line.itemId);
         if (!sourceLine) throw new Error(`Goods receipt line not found for return line ${line.lineId}`);
@@ -625,10 +650,20 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         line.taxRate = 0;
       }
 
-      const lineTotalDoc = roundMoney(line.returnQty * line.unitCostDoc);
-      const lineTotalBase = roundMoney(line.returnQty * line.unitCostBase);
-      line.taxAmountDoc = roundMoney(lineTotalDoc * (line.taxRate || 0));
-      line.taxAmountBase = roundMoney(lineTotalBase * (line.taxRate || 0));
+      // Posting-time recompute. lineTotalDoc/Base feed inventory/expense
+      // buckets and MUST be NET, otherwise the ledger debits AP gross while
+      // crediting inventory net + tax → unbalanced.
+      const grossLineTotalDoc = roundMoney(line.returnQty * line.unitCostDoc);
+      const grossLineTotalBase = roundMoney(line.returnQty * line.unitCostBase);
+      const lineDivisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
+      const lineTotalDoc = roundMoney(grossLineTotalDoc / lineDivisor);
+      const lineTotalBase = roundMoney(grossLineTotalBase / lineDivisor);
+      line.taxAmountDoc = line.priceIsInclusive
+        ? roundMoney(grossLineTotalDoc - lineTotalDoc)
+        : roundMoney(lineTotalDoc * (line.taxRate || 0));
+      line.taxAmountBase = line.priceIsInclusive
+        ? roundMoney(grossLineTotalBase - lineTotalBase)
+        : roundMoney(lineTotalBase * (line.taxRate || 0));
 
       // Compute inventory movement for tracked items
       if (item.trackInventory) {
@@ -761,7 +796,17 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         if (line.taxAmountBase > 0 && line.taxCodeId) {
           const sTaxCode = taxCodesMap.get(line.taxCodeId);
           const taxAccountId = sTaxCode?.purchaseTaxAccountId;
-          if (!taxAccountId) throw new Error(`Tax code ${line.taxCodeId} has no purchase tax account`);
+          if (!taxAccountId) {
+            const taxLabel = sTaxCode?.code || line.taxCode || line.taxCodeId;
+            throw new AccountMappingError({
+              companyId,
+              itemId: line.itemId,
+              accountRole: 'tax',
+              fallbackChain: ['taxCode.purchaseTaxAccountId'],
+              lineNo: (line as any).lineNo,
+              hint: `Tax code "${taxLabel}" has no Purchase Tax Account configured. Set it in Settings → Tax Codes before posting this return.`,
+            });
+          }
           voucherLines.push({
             accountId: taxAccountId,
             side: 'Credit',

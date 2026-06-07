@@ -65,6 +65,7 @@
     "quickPnlPrompt": "Kâr ve zarar raporu oluştur",
     "quickBs": "Bilanço",
     "quickBsPrompt": "Mevcut bilanço nedir?",
+    "openFloatingAssistant": "AI Asistanını Aç",
     "feedback": {
       "positive": "Faydalı",
       "negative": "Faydalı değil"
@@ -146,6 +147,8 @@
     "endpointPresetLocked": "Uç nokta URL'sini düzenlemek için \"Özel\" seçeneğine geçin.",
     "enableAssistant": "AI Asistanını Etkinleştir",
     "enableAssistantDesc": "Devre dışı bırakıldığında, kullanıcılar AI Asistanı sohbetine erişemez.",
+    "showFloatingAssistant": "Yüzen AI Başlatıcısını Göster",
+    "showFloatingAssistantDesc": "ERP sayfalarında AI kısayol düğmesini göster. Bu kapalıyken kullanıcılar AI Asistanını menüden açabilir.",
     "runtimeMode": "Bağlantı Modu",
     "runtimeModeDesc": "Şirketinizin AI hizmetlerine nasıl bağlanacağını seçin.",
     "runtimeModeBYOK": "Kendi Anahtarınızı Getirin",

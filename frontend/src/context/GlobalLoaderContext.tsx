@@ -57,7 +57,7 @@ export const GlobalLoaderProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       {/* Global Overlay */}
       {isLoading && (
-        <div className="fixed inset-0 z-[999999] flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm dark:bg-slate-900/80 transition-all duration-200">
+        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm dark:bg-slate-900/80 transition-all duration-200">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 flex flex-col items-center max-w-sm w-full mx-4 border border-slate-100 dark:border-slate-700">
             <div className="relative">
               <div className="absolute inset-0 bg-primary-100 dark:bg-primary-900/30 rounded-full animate-ping opacity-75"></div>
@@ -112,3 +112,4 @@ export const useGlobalLoaderTask = (id: string, message: string, isLoadingCondit
     return () => stopLoading(id);
   }, [id, message, isLoadingCondition, startLoading, stopLoading]);
 };
+

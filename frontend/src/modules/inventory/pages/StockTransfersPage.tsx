@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { DatePicker } from '../../../components/shared/selectors';
 import {
   InventoryItemDTO,
   InventoryWarehouseDTO,
@@ -162,12 +163,10 @@ const StockTransfersPage: React.FC = () => {
               ))}
             </select>
 
-            <input
-              type="date"
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
+            <DatePicker
+              inputClassName="w-full rounded border border-slate-300 px-3 py-2 text-sm"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
+              onChange={setDate}
             />
 
             <input

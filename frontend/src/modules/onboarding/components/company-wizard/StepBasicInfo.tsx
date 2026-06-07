@@ -271,7 +271,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                 </div>
             ) : (
                 <div className="flex-1 min-h-[120px] flex items-center justify-center gap-4 p-4 border rounded-lg bg-slate-50/50 relative group">
-                <div className="relative h-20 w-20 rounded-md overflow-hidden bg-white border shadow-sm transition-transform group-hover:scale-105 duration-300 flex items-center justify-center p-1">
+                <div className="relative h-20 w-20 rounded-md overflow-hidden bg-white border shadow-sm transition-shadow group-hover:shadow-md flex items-center justify-center p-1">
                     <img src={data.logoPreviewUrl} alt="Logo preview" className="max-h-full max-w-full w-auto h-auto object-contain" />
                 </div>
                 <div className="flex-1 min-w-0">

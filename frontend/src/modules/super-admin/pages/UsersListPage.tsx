@@ -19,11 +19,13 @@ import {
   SortIcon,
 } from '../components/SuperAdminPage';
 import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export default function UsersListPage() {
   const { t } = useTranslation('common');
   const [users, setUsers] = useState<SuperAdminUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const { confirm, confirmDialog } = useConfirm();
 
   useEffect(() => {
     loadUsers();
@@ -54,7 +56,12 @@ export default function UsersListPage() {
   };
 
   const handlePromote = async (userId: string) => {
-    if (!window.confirm(t('superAdmin.users.confirmPromote'))) return;
+    const ok = await confirm({
+      title: t('superAdmin.users.confirmPromoteTitle', { defaultValue: 'Promote to Super Admin?' }),
+      message: t('superAdmin.users.confirmPromote'),
+      tone: 'warning',
+    });
+    if (!ok) return;
     try {
       await superAdminApi.promoteUser(userId);
       errorHandler.showSuccess(t('superAdmin.users.messages.promoted'));
@@ -65,7 +72,12 @@ export default function UsersListPage() {
   };
 
   const handleDemote = async (userId: string) => {
-    if (!window.confirm(t('superAdmin.users.confirmDemote'))) return;
+    const ok = await confirm({
+      title: t('superAdmin.users.confirmDemoteTitle', { defaultValue: 'Demote Super Admin?' }),
+      message: t('superAdmin.users.confirmDemote'),
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await superAdminApi.demoteUser(userId);
       errorHandler.showSuccess(t('superAdmin.users.messages.demoted'));
@@ -161,6 +173,7 @@ export default function UsersListPage() {
           </SuperAdminTable>
         </div>
       )}
+      {confirmDialog}
     </SuperAdminPage>
   );
 }

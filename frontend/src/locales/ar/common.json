@@ -111,6 +111,7 @@
     "features": "الميزات",
     "bundles": "الحزم",
     "notifications": "الإشعارات",
+    "communications": "الاتصالات",
     "generalSettings": "الإعدادات العامة",
     "companySettings": "إعدادات الشركة",
     "tradingAccount": "المتاجرة",
@@ -221,7 +222,13 @@
     }
   },
   "actions": {
-    "close": "يغلق"
+    "close": "يغلق",
+    "open": "فتح",
+    "refresh": "تحديث",
+    "clear": "مسح",
+    "search": "بحث",
+    "previous": "السابق",
+    "next": "التالي"
   },
   "notifications": {
     "title": "إشعارات",
@@ -2076,11 +2083,99 @@
   },
   "settings": {
     "appearance": {
-      "title": "مظهر",
-      "placeholder": "ستظهر إعدادات تكوين السمة هنا."
+      "title": "المظهر",
+      "placeholder": "ستظهر إعدادات تكوين السمة هنا.",
+      "layoutBehavior": "التخطيط والسلوك",
+      "layoutMode": "وضع التخطيط",
+      "layoutStandard": "تخطيط قياسي",
+      "layoutCompact": "تخطيط مدمج (Apex)",
+      "themeMode": "وضع المظهر",
+      "themeLight": "الوضع الفاتح",
+      "themeDark": "الوضع الداكن",
+      "uiDensity": "كثافة واجهة المستخدم",
+      "densityCompact": "مدمج (كثافة معلومات عالية)",
+      "densityComfortable": "مريح (متوازن)",
+      "densitySpacious": "متسع (مناسب للمس)",
+      "sidebarNav": "شريط التنقل الجانبي",
+      "sidebarAccordion": "أكورديون (توسيع داخلي)",
+      "sidebarFlyout": "قائمة منبثقة (عند التمرير)",
+      "sidebarSurface": "سطح الشريط الجانبي",
+      "surfaceDefault": "افتراضي (يطابق الخلفية)",
+      "surfaceContrast": "تباين (بلون العلامة التجارية)",
+      "widgetStyle": "نمط أداة الشريط العلوي"
     },
     "home": {
-      "title": "إعدادات النظام"
+      "title": "إعدادات النظام",
+      "subtitle": "استخدم هذه الصفحة للعثور على ضوابط الشركة حسب الغرض التجاري: سير العمل، المحاسبة، الضرائب، الصلاحيات، الاتصالات، وتجربة المستخدم.",
+      "open": "فتح",
+      "groups": {
+        "general": {
+          "title": "عام",
+          "description": "ملف الشركة والمظهر وتفضيلات القائمة وافتراضيات الإشعارات."
+        },
+        "workflow": {
+          "title": "سير العمل",
+          "description": "سلوك الموافقات وضوابط تدفق مستندات المبيعات والمشتريات."
+        },
+        "finance": {
+          "title": "المحاسبة والضرائب",
+          "description": "افتراضيات الترحيل والعملات ومحاسبة المخزون ورموز الضرائب."
+        },
+        "access": {
+          "title": "الصلاحيات والمتقدم",
+          "description": "الأدوار وتعيين المستخدمين وإعدادات الذكاء الاصطناعي والإدارة المتقدمة."
+        }
+      },
+      "links": {
+        "company": {
+          "title": "إعدادات الشركة"
+        },
+        "appearance": {
+          "title": "المظهر"
+        },
+        "notifications": {
+          "title": "الإشعارات"
+        },
+        "approval": {
+          "title": "سير الموافقة"
+        },
+        "sales": {
+          "title": "إعدادات المبيعات"
+        },
+        "purchases": {
+          "title": "إعدادات المشتريات"
+        },
+        "accounting": {
+          "title": "إعدادات المحاسبة"
+        },
+        "inventory": {
+          "title": "إعدادات المخزون"
+        },
+        "taxCodes": {
+          "title": "رموز الضرائب"
+        },
+        "currencies": {
+          "title": "العملات"
+        },
+        "roles": {
+          "title": "الأدوار"
+        },
+        "assignUsers": {
+          "title": "تعيين المستخدمين"
+        },
+        "ai": {
+          "title": "إعدادات الذكاء الاصطناعي"
+        },
+        "communications": {
+          "title": "الاتصالات"
+        }
+      }
+    },
+    "layout": {
+      "unsavedTitle": "تغييرات إعدادات غير محفوظة",
+      "unsavedDescription": "لديك تغييرات غير محفوظة في هذه الوحدة.",
+      "discard": "تجاهل",
+      "saveChanges": "حفظ التغييرات"
     },
     "sidebar": {
       "title": "تكوين القائمة",
@@ -2135,7 +2230,184 @@
   "success": {
     "SAVE": "تم الحفظ بنجاح"
   },
+  "inventory": {
+    "itemsList": {
+      "title": "أصناف المخزون",
+      "subtitle": "ابحث وأنشئ وافتح سجلات الأصناف المستخدمة في المبيعات والمشتريات والمخزون.",
+      "new": "صنف جديد",
+      "newWindowTitle": "بطاقة صنف جديدة",
+      "quickAdd": "إضافة صنف سريعة",
+      "quickAddHelp": "استخدمها لإعداد صنف بسيط. افتح بطاقة الصنف للإعداد الكامل للمحاسبة والمخزون والتسعير.",
+      "add": "إضافة صنف",
+      "search": "بحث",
+      "searchPlaceholder": "بحث بالرمز أو الاسم",
+      "allTypes": "كل الأنواع",
+      "loading": "جارٍ تحميل أصناف المخزون...",
+      "emptyTitle": "لا توجد أصناف معروضة",
+      "emptyDescription": "استخدم البحث أو الفلاتر أعلاه لتحميل سجلات الأصناف.",
+      "page": "الصفحة {{page}}",
+      "fields": {
+        "code": "الرمز",
+        "name": "الاسم",
+        "costCurrency": "عملة التكلفة"
+      },
+      "columns": {
+        "code": "الرمز",
+        "name": "الاسم",
+        "type": "النوع",
+        "baseUom": "وحدة القياس",
+        "costCurrency": "عملة التكلفة",
+        "costMethod": "طريقة التكلفة",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "typeOptions": {
+        "PRODUCT": "منتج",
+        "RAW_MATERIAL": "مادة خام",
+        "SERVICE": "خدمة"
+      },
+      "status": {
+        "active": "نشط",
+        "inactive": "غير نشط"
+      },
+      "messages": {
+        "created": "تم إنشاء الصنف",
+        "createFailed": "فشل إنشاء الصنف",
+        "loadFailed": "فشل تحميل أصناف المخزون"
+      }
+    }
+  },
   "sales": {
+    "quoteDetail": {
+      "pageTitle": "عرض سعر",
+      "loadingQuotation": "جاري تحميل عرض السعر...",
+      "titleWithNumber": "عرض السعر {{number}}",
+      "newQuotation": "عرض سعر جديد",
+      "subtitle": "عرض سعر مبيعات",
+      "save": "حفظ",
+      "saving": "جاري الحفظ...",
+      "send": "إرسال",
+      "discard": "تجاهل",
+      "accept": "قبول",
+      "reject": "رفض",
+      "revise": "مراجعة",
+      "convertToOrder": "تحويل إلى أمر بيع",
+      "convertToInvoice": "تحويل إلى فاتورة",
+      "discardTitle": "تجاهل عرض السعر",
+      "discardMessage": "سيؤدي هذا إلى حذف مسودة عرض السعر نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
+      "discardSuccess": "تم تجاهل عرض السعر.",
+      "convertedNotice": "تم التحويل إلى {{target}} —",
+      "convertedToOrder": "أمر بيع",
+      "convertedToInvoice": "فاتورة مبيعات",
+      "customer": "العميل",
+      "salesperson": "مندوب المبيعات",
+      "none": "— لا شيء —",
+      "quoteDate": "تاريخ العرض",
+      "validUntil": "صالح حتى",
+      "currency": "العملة",
+      "exchangeRate": "سعر الصرف",
+      "notes": "ملاحظات",
+      "notesPlaceholder": "ملاحظات مرئية للعميل...",
+      "lineItems": "البنود",
+      "addLine": "إضافة بند",
+      "colItem": "الصنف",
+      "colQty": "الكمية",
+      "colUom": "الوحدة",
+      "colUnitPrice": "سعر الوحدة",
+      "colDiscType": "نوع الخصم",
+      "colDiscValue": "قيمة الخصم",
+      "colTaxCode": "رمز الضريبة",
+      "colLineTotal": "إجمالي البند",
+      "colTax": "الضريبة",
+      "discNone": "بدون",
+      "discPercent": "%",
+      "discAmount": "مبلغ",
+      "noTax": "بدون ضريبة",
+      "removeLine": "حذف البند",
+      "totals": "الإجماليات",
+      "subtotal": "المجموع الفرعي",
+      "tax": "الضريبة",
+      "grandTotal": "المجموع الكلي",
+      "valCustomer": "العميل مطلوب.",
+      "valQuoteDate": "تاريخ العرض مطلوب.",
+      "valCurrency": "العملة مطلوبة.",
+      "valExchangeRate": "يجب أن يكون سعر الصرف أكبر من 0.",
+      "valNoLines": "مطلوب بند واحد على الأقل.",
+      "valLineItem": "البند {{line}}: الصنف مطلوب.",
+      "valLineQty": "البند {{line}}: يجب أن تكون الكمية أكبر من 0.",
+      "valLinePrice": "البند {{line}}: يجب أن يكون سعر الوحدة >= 0.",
+      "loadFailed": "فشل تحميل عرض السعر.",
+      "saveFailed": "فشل حفظ عرض السعر.",
+      "actionFailed": "فشل الإجراء."
+    },
+    "quotesList": {
+      "title": "Quotations",
+      "subtitle": "Sales quotes and proposals.",
+      "newQuote": "New Quote",
+      "allStatuses": "All Statuses",
+      "allCustomers": "All Customers",
+      "refresh": "Refresh",
+      "clearFilters": "Clear Filters",
+      "quoteNumber": "Quote #",
+      "customer": "Customer",
+      "quoteDate": "Quote Date",
+      "validUntil": "Valid Until",
+      "grandTotal": "Grand Total",
+      "status": "Status",
+      "loading": "Loading...",
+      "emptyTitle": "No Quotations",
+      "emptyDescription": "No quotations match your filters. Create your first quotation or adjust filters.",
+      "loadError": "Failed to load quotations.",
+      "statuses": {
+        "DRAFT": "Draft",
+        "SENT": "Sent",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected",
+        "EXPIRED": "Expired",
+        "CONVERTED": "Converted"
+      }
+    },
+    "invoicesList": {
+      "title": "Sales Invoices",
+      "subtitle": "Post invoices to recognize revenue and receivables.",
+      "newButton": "New Invoice",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales invoices...",
+      "loadError": "Failed to load sales invoices.",
+      "filters": {
+        "status": "Status",
+        "payment": "Payment",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "payment": {
+        "ALL": "All",
+        "UNPAID": "Unpaid",
+        "PARTIALLY_PAID": "Partially Paid",
+        "PAID": "Paid"
+      },
+      "headers": {
+        "invoiceNumber": "Invoice #",
+        "customer": "Customer",
+        "invoiceDate": "Invoice Date",
+        "grandTotal": "Grand Total",
+        "payment": "Payment",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales invoices yet",
+        "description": "Create your first invoice to recognize revenue and receivables."
+      }
+    },
     "governance": {
       "operationalWarning": "سير العمل التشغيلي: الفوترة المباشرة محظورة افتراضياً. حدد طلب مبيعات أعلاه لإنشاء فاتورة مرتبطة، أو اتصل بالمسؤول لإضافة استثناء حوكمة للفوترة المباشرة.",
       "settingsOperationalHint": "سير العمل التشغيلي يحظر الفوترة المباشرة افتراضياً. للسماح بالفواتير المباشرة، أضف قاعدة حوكمة في",
@@ -2323,9 +2595,300 @@
       "cloneModal": {
         "title": "نسخ الفاتورة إلى قالب متكرر"
       }
+    },
+    "ordersList": {
+      "title": "Sales Orders",
+      "subtitle": "Commercial sales commitments (no inventory/GL effects from SO itself).",
+      "newButton": "New Sales Order",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales orders...",
+      "loadError": "Failed to load sales orders.",
+      "filters": {
+        "status": "Status",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "CONFIRMED": "Confirmed",
+        "PARTIALLY_DELIVERED": "Partially Delivered",
+        "FULLY_DELIVERED": "Fully Delivered",
+        "CLOSED": "Closed",
+        "CANCELLED": "Cancelled"
+      },
+      "headers": {
+        "orderNumber": "Order #",
+        "customer": "Customer",
+        "orderDate": "Order Date",
+        "total": "Total",
+        "currency": "Currency",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales orders yet",
+        "description": "Create your first sales order to track customer commitments."
+      }
+    },
+    "deliveryNotesList": {
+      "title": "Delivery Notes",
+      "subtitle": "Post delivery to issue stock and recognize COGS.",
+      "newButton": "New Delivery Note",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading delivery notes...",
+      "loadError": "Failed to load delivery notes.",
+      "filters": {
+        "status": "Status",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All Warehouses",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "headers": {
+        "dnNumber": "DN #",
+        "customer": "Customer",
+        "deliveryDate": "Delivery Date",
+        "warehouse": "Warehouse",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No delivery notes yet",
+        "description": "Create your first delivery note to issue stock and recognize COGS."
+      }
+    },
+    "returnsList": {
+      "title": "Sales Returns",
+      "subtitle": "Track sales return documents posted before or after invoicing.",
+      "newButton": "New Sales Return",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales returns...",
+      "loadError": "Failed to load sales returns.",
+      "filters": {
+        "status": "Status",
+        "context": "Context",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "context": {
+        "ALL": "All",
+        "AFTER_INVOICE": "After Invoice",
+        "BEFORE_INVOICE": "Before Invoice"
+      },
+      "headers": {
+        "returnNumber": "Return #",
+        "customer": "Customer",
+        "returnDate": "Return Date",
+        "context": "Context",
+        "grandTotal": "Grand Total",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales returns yet",
+        "description": "Record customer returns posted before or after invoicing."
+      }
+    },
+    "invoiceDetail": {
+      "loadLinkedLinesFailed": "تعذر تحميل بنود الفاتورة المرتبطة.",
+      "loadFailed": "تعذر تحميل فاتورة المبيعات.",
+      "pricingLookupFailed": "تعذر جلب السعر الخاص بالعميل؛ سيتم الإبقاء على السعر الحالي.",
+      "validation": {
+        "customerRequired": "العميل مطلوب.",
+        "invoiceDateRequired": "تاريخ الفاتورة مطلوب.",
+        "currencyRequired": "العملة مطلوبة.",
+        "exchangeRateInvalid": "يجب أن يكون سعر الصرف أكبر من 0.",
+        "linesRequired": "يجب إضافة بند واحد على الأقل.",
+        "lineUnitPriceInvalid": "البند {{n}}: يجب أن يكون سعر الوحدة ≥ 0.",
+        "lineDiscountInvalid": "البند {{n}}: يجب أن يكون الخصم ≥ 0.",
+        "lineWarehouseRequired": "البند {{n}}: المستودع مطلوب للصنف {{item}}.",
+        "chargeNameRequired": "الرسم {{n}}: الاسم مطلوب.",
+        "chargeAmountInvalid": "الرسم {{n}}: يجب أن يكون المبلغ ≥ 0."
+      },
+      "policyBlocked": "هذا الإجراء محظور بموجب سياسة الشركة.",
+      "creditLimitBlocked": "العميل تجاوز حد الائتمان. لا تملك صلاحية التجاوز.",
+      "creditWarn": "تم إنشاء الفاتورة — العميل تجاوز حد الائتمان (تحذير). الحد: {{limit}}، الانكشاف: {{exposure}}.",
+      "createSuccess": "تم حفظ الفاتورة {{number}} كمسودة.",
+      "createFailed": "تعذر إنشاء مسودة فاتورة المبيعات.",
+      "saveChangesSuccess": "تم حفظ التغييرات بنجاح.",
+      "updateFailed": "تعذر حفظ التغييرات.",
+      "createAndPostSuccess": "تم ترحيل الفاتورة {{number}}.",
+      "createAndPostFailed": "تعذر إنشاء وترحيل فاتورة المبيعات.",
+      "creditOverrideFailed": "تعذر إنشاء الفاتورة مع تجاوز حد الائتمان.",
+      "postSuccess": "تم ترحيل الفاتورة {{number}}.",
+      "periodLockedHard": "هذه الفترة المحاسبية مغلقة ولا يمكن تجاوزها.",
+      "postFailed": "تعذر ترحيل فاتورة المبيعات.",
+      "discardTitle": "إلغاء الفاتورة",
+      "discardMessage": "هل أنت متأكد من إلغاء هذه المسودة؟ لا يمكن التراجع عن هذا الإجراء.",
+      "discardConfirm": "إلغاء",
+      "title": "فاتورة مبيعات",
+      "notFoundTitle": "الفاتورة غير موجودة",
+      "notFoundDesc": "هذه الفاتورة غير موجودة أو لا تملك صلاحية الوصول إليها.",
+      "backToList": "العودة للقائمة",
+      "settlement": {
+        "title": "التسوية",
+        "mode": "طريقة التسوية",
+        "deferred": "آجل (بدون دفع)",
+        "cashFull": "دفع نقدي كامل",
+        "multi": "دفعات متعددة",
+        "arAccount": "حساب ذمم العميل (اختياري)",
+        "arAccountPlaceholder": "اتركه فارغًا لاستخدام حساب ذمم العميل الافتراضي",
+        "paymentRow": "صف الدفع {{n}}",
+        "settlementAccount": "حساب الاستلام (نقد / بنك)",
+        "settlementAccountPlaceholder": "اتركه فارغًا لاستخدام التعيين الافتراضي",
+        "amountBase": "المبلغ (بالعملة الأساسية)",
+        "paymentMethod": "طريقة الدفع",
+        "cash": "نقد",
+        "bankTransfer": "حوالة بنكية",
+        "check": "شيك",
+        "creditCard": "بطاقة ائتمان",
+        "other": "أخرى",
+        "paymentDate": "تاريخ الدفع",
+        "reference": "المرجع",
+        "notes": "ملاحظات",
+        "removeRow": "حذف الصف",
+        "addRow": "+ إضافة صف دفع",
+        "settlementAccountHint": "إلى أين تذهب الأموال. يتم تخفيض حساب ذمم العميل تلقائيًا."
+      },
+      "processing": "جاري المعالجة...",
+      "salesOrder": "أمر البيع (اختياري)",
+      "noSalesOrder": "بدون أمر بيع",
+      "loading": "جاري التحميل...",
+      "loadLines": "تحميل البنود",
+      "customer": "العميل",
+      "salesperson": "مندوب المبيعات",
+      "none": "— بدون —",
+      "customerInvoiceNumber": "رقم فاتورة العميل",
+      "invoiceDate": "تاريخ الفاتورة",
+      "dueDate": "تاريخ الاستحقاق (اختياري)",
+      "currency": "العملة",
+      "exchangeRate": "سعر الصرف",
+      "notes": "ملاحظات",
+      "lineItems": "البنود",
+      "addItem": "إضافة صف",
+      "col": {
+        "item": "الصنف",
+        "qty": "الكمية",
+        "uom": "الوحدة",
+        "unitPrice": "سعر الوحدة",
+        "discountType": "نوع الخصم",
+        "discount": "الخصم",
+        "taxCode": "رمز الضريبة",
+        "warehouse": "المستودع",
+        "discountAmt": "مبلغ الخصم",
+        "lineTotal": "إجمالي البند",
+        "tax": "الضريبة",
+        "lineBase": "بالعملة الأساسية"
+      },
+      "selectUom": "اختر الوحدة",
+      "noItem": "بدون صنف",
+      "noDiscount": "بدون خصم",
+      "discountPercent": "نسبة",
+      "discountAmount": "مبلغ",
+      "noTax": "بدون ضريبة",
+      "taxInclusive": "شامل الضريبة",
+      "default": "افتراضي",
+      "autoFromDN": "تلقائي من سند التسليم",
+      "charges": "رسوم / إضافات",
+      "addCharge": "إضافة رسم",
+      "noCharges": "لا توجد رسوم مضافة.",
+      "chargeName": "اسم الرسم",
+      "chargeAmount": "المبلغ",
+      "chargeDescription": "الوصف (اختياري)",
+      "tax": "الضريبة",
+      "remove": "حذف",
+      "totals": "الإجماليات",
+      "subtotalDoc": "المجموع الفرعي ({{currency}})",
+      "subtotalBase": "المجموع الفرعي (الأساس)",
+      "taxDoc": "الضريبة ({{currency}})",
+      "taxBase": "الضريبة (الأساس)",
+      "grandTotalDoc": "المجموع الكلي ({{currency}})",
+      "grandTotalBase": "المجموع الكلي (الأساس)",
+      "newTitle": "فاتورة مبيعات جديدة",
+      "customerRef": "مرجع العميل:",
+      "invoiceDateLabel": "تاريخ الفاتورة",
+      "dueDateLabel": "تاريخ الاستحقاق",
+      "soRefLabel": "مرجع أمر البيع",
+      "currencyLabel": "العملة",
+      "exchangeRateLabel": "سعر الصرف",
+      "salespersonLabel": "مندوب المبيعات",
+      "paymentStatus": "حالة الدفع",
+      "paymentTerms": "شروط الدفع (يوم)",
+      "outstandingBase": "المتبقي (الأساس)",
+      "paidBase": "المدفوع (الأساس)",
+      "attachmentsLink": "📎 المرفقات",
+      "subtotal": "المجموع الفرعي",
+      "grandTotal": "المجموع الكلي",
+      "confirmSaveAndPost": "تأكيد الحفظ والترحيل",
+      "confirmPost": "تأكيد الترحيل",
+      "creating": "جاري الإنشاء...",
+      "saveDraft": "حفظ مسودة",
+      "savingAndPosting": "جاري الحفظ والترحيل...",
+      "saveAndPost": "حفظ وترحيل",
+      "saving": "جاري الحفظ...",
+      "saveChanges": "حفظ التغييرات",
+      "posting": "جاري الترحيل...",
+      "postInvoice": "ترحيل الفاتورة",
+      "discard": "إلغاء",
+      "createReturn": "إنشاء مرتجع عكسي",
+      "createReceipt": "إنشاء سند قبض",
+      "glImpact": "الأثر المحاسبي",
+      "history": "السجل",
+      "creditLimitTitle": "تم تجاوز حد الائتمان",
+      "creditLimitMessage": "العميل تجاوز حد الائتمان والسياسة هي الحظر. يمكنك التجاوز بتقديم سبب.",
+      "creditLimit": "حد الائتمان:",
+      "currentExposure": "الانكشاف الحالي:",
+      "thisInvoice": "هذه الفاتورة:",
+      "projectedExposure": "الانكشاف المتوقع:",
+      "overrideReason": "سبب التجاوز",
+      "overridePlaceholder": "اشرح سبب اعتماد تجاوز حد الائتمان…",
+      "overrideSubmit": "تجاوز وإنشاء"
     }
   },
   "purchases": {
+    "invoicesList": {
+      "title": "فواتير المشتريات",
+      "subtitle": "الفواتير المرحلة تنشئ الذمم الدائنة وقيود دفتر الأستاذ.",
+      "new": "فاتورة مشتريات جديدة",
+      "status": "الحالة",
+      "payment": "الدفع",
+      "vendor": "المورد",
+      "allVendors": "كل الموردين",
+      "loading": "جارٍ تحميل فواتير المشتريات...",
+      "emptyTitle": "لا توجد فواتير مشتريات",
+      "emptyDescription": "أنشئ فاتورة مورد جديدة أو غيّر الفلاتر للعثور على فواتير موجودة.",
+      "statusOptions": {
+        "ALL": "كل الحالات",
+        "DRAFT": "مسودة",
+        "POSTED": "مرحل",
+        "CANCELLED": "ملغى"
+      },
+      "paymentOptions": {
+        "ALL": "كل حالات الدفع",
+        "UNPAID": "غير مدفوع",
+        "PARTIALLY_PAID": "مدفوع جزئياً",
+        "PAID": "مدفوع"
+      }
+    },
     "settings": {
       "apGeneration": {
         "title": "AP Sub-account Generation",
@@ -2461,5 +3024,67 @@
     "active": "نشط",
     "inactive": "غير نشط",
     "loading": "جارٍ التحميل..."
+  },
+  "messaging": {
+    "whatsapp": {
+      "modalTitle": "Send via WhatsApp",
+      "senderLabel": "Sender Account",
+      "senderDefaultOption": "Use system default sender",
+      "defaultTag": "Default",
+      "phoneLabel": "Recipient Phone (E.164)",
+      "phonePlaceholder": "+905551112233",
+      "documentUrlLabel": "Document URL (Optional)",
+      "documentUrlPlaceholder": "https://...",
+      "messageLabel": "Message",
+      "send": "Send",
+      "sending": "Sending...",
+      "success": "WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).",
+      "defaultSender": "default sender",
+      "sendError": "Failed to send via WhatsApp."
+    },
+    "telegram": {
+      "modalTitle": "Send via Telegram",
+      "senderLabel": "Sender Account",
+      "senderDefaultOption": "Use default sender",
+      "defaultTag": "Default",
+      "chatLabel": "Recipient Chat ID or @Username",
+      "chatPlaceholder": "@customer_username or -1001234567890",
+      "documentUrlLabel": "Document URL (Optional)",
+      "documentUrlPlaceholder": "https://...",
+      "messageLabel": "Message",
+      "send": "Send",
+      "sending": "Sending...",
+      "success": "Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).",
+      "defaultSender": "default sender",
+      "sendError": "Failed to send via Telegram."
+    },
+    "send": {
+      "action": "إرسال",
+      "whatsapp": "واتساب",
+      "telegram": "تيليجرام",
+      "whatsappLink": "مشاركة عبر رابط واتساب"
+    },
+    "share": {
+      "document": "مستند",
+      "customer": "العميل",
+      "amount": "المبلغ",
+      "date": "التاريخ"
+    }
+  },
+  "attachments": {
+    "title": "Attachments",
+    "upload": "Upload Attachment",
+    "uploading": "Uploading...",
+    "help": "Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files.",
+    "empty": "No attachments yet.",
+    "open": "Open",
+    "remove": "Remove",
+    "removing": "Removing...",
+    "uploadSuccess": "Attachment uploaded successfully.",
+    "uploadError": "Failed to upload attachment.",
+    "removeError": "Failed to remove attachment.",
+    "downloadError": "Failed to generate download link.",
+    "fileTooLarge": "File is too large. Maximum size is 10 MB.",
+    "maxFilesReached": "Maximum number of files (5) reached."
   }
 }

@@ -15,11 +15,51 @@ import toast from 'react-hot-toast';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,
+  isPersonaAllowedByGovernance,
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
+const DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID = 'purchase-direct-invoicing-company-policy';
+
+const isCompanyDirectInvoiceRule = (rule: PurchaseGovernanceRuleDTO): boolean =>
+  rule.persona === 'direct' && rule.scope === 'company';
+
+const hasCompanyDirectInvoiceAllowRule = (rules: PurchaseGovernanceRuleDTO[] = []): boolean =>
+  rules.some((rule) => isCompanyDirectInvoiceRule(rule) && rule.action === 'allow');
+
+const reconcileCompanyDirectInvoiceRule = (
+  rules: PurchaseGovernanceRuleDTO[] = [],
+  allowDirect: boolean
+): PurchaseGovernanceRuleDTO[] => {
+  const withoutCompanyDirect = rules.filter((rule) => !isCompanyDirectInvoiceRule(rule));
+  if (!allowDirect) return withoutCompanyDirect;
+
+  return [
+    ...withoutCompanyDirect,
+    {
+      id: DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID,
+      scope: 'company',
+      action: 'allow',
+      persona: 'direct',
+    },
+  ];
+};
+
+const normalizePurchaseDirectPolicy = (settings: PurchaseSettingsDTO | null): PurchaseSettingsDTO | null => {
+  if (!settings || settings.workflowMode !== 'OPERATIONAL') return settings;
+
+  const companyDirectAllowed = hasCompanyDirectInvoiceAllowRule(settings.governanceRules);
+  const shouldAllowDirect = settings.allowDirectInvoicing || companyDirectAllowed;
+  if (!shouldAllowDirect) return settings;
+
+  return {
+    ...settings,
+    allowDirectInvoicing: true,
+    governanceRules: reconcileCompanyDirectInvoiceRule(settings.governanceRules, true),
+  };
+};
 
 type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
 
@@ -52,7 +92,7 @@ const PurchaseSettingsPage: React.FC = () => {
         const currentSettings = unwrap<any>(settingsResult)?.data ?? unwrap<any>(settingsResult);
         const invSettingsData = unwrap<any>(inventorySettingsResult)?.data ?? unwrap<any>(inventorySettingsResult);
 
-        setSettings(currentSettings);
+        setSettings(normalizePurchaseDirectPolicy(currentSettings));
         setOriginalSettings(currentSettings);
         setInvSettings(invSettingsData);
       } catch (err: any) {
@@ -73,11 +113,27 @@ const PurchaseSettingsPage: React.FC = () => {
   const applyWorkflowMode = (mode: 'SIMPLE' | 'OPERATIONAL') => {
     setSettings((prev) => {
       if (!prev) return prev;
+      const allowDirectInvoicing = mode === 'SIMPLE' ? true : prev.allowDirectInvoicing;
       return {
         ...prev,
         workflowMode: mode,
-        allowDirectInvoicing: mode === 'SIMPLE' ? true : prev.allowDirectInvoicing,
+        allowDirectInvoicing,
         requirePOForStockItems: mode === 'SIMPLE' ? false : prev.requirePOForStockItems,
+        governanceRules:
+          mode === 'OPERATIONAL'
+            ? reconcileCompanyDirectInvoiceRule(prev.governanceRules, allowDirectInvoicing)
+            : prev.governanceRules,
+      };
+    });
+  };
+
+  const applyDirectInvoicingPolicy = (allowDirectInvoicing: boolean) => {
+    setSettings((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        allowDirectInvoicing,
+        governanceRules: reconcileCompanyDirectInvoiceRule(prev.governanceRules, allowDirectInvoicing),
       };
     });
   };
@@ -160,32 +216,45 @@ const PurchaseSettingsPage: React.FC = () => {
 
     try {
       setSaving(true);
+      const settingsForSave =
+        settings.workflowMode === 'OPERATIONAL'
+          ? {
+              ...settings,
+              governanceRules: reconcileCompanyDirectInvoiceRule(
+                settings.governanceRules,
+                settings.allowDirectInvoicing
+              ),
+            }
+          : {
+              ...settings,
+              allowDirectInvoicing: true,
+            };
       const payload: Partial<PurchaseSettingsDTO> = {
-        workflowMode: settings.workflowMode,
-        allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
-        requirePOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requirePOForStockItems,
-        defaultAPAccountId: settings.defaultAPAccountId,
-        apParentAccountId: settings.apParentAccountId || undefined,
-        partyAccountCodeFormat: (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim(),
-        defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId || undefined,
-        defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? settings.defaultGRNIAccountId || undefined : undefined,
-        allowOverDelivery: settings.allowOverDelivery,
-        overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
-        overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
-        defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
-        purchaseVoucherTypeId: settings.purchaseVoucherTypeId || undefined,
-        defaultWarehouseId: settings.defaultWarehouseId || undefined,
-        poNumberPrefix: settings.poNumberPrefix,
-        poNumberNextSeq: settings.poNumberNextSeq,
-        grnNumberPrefix: settings.grnNumberPrefix,
-        grnNumberNextSeq: settings.grnNumberNextSeq,
-        piNumberPrefix: settings.piNumberPrefix,
-        piNumberNextSeq: settings.piNumberNextSeq,
-        prNumberPrefix: settings.prNumberPrefix,
-        prNumberNextSeq: settings.prNumberNextSeq,
-        exchangeGainLossAccountId: settings.exchangeGainLossAccountId || undefined,
-        governanceRules: settings.governanceRules || [],
-        defaultPurchaseInvoicePersona: settings.defaultPurchaseInvoicePersona,
+        workflowMode: settingsForSave.workflowMode,
+        allowDirectInvoicing: settingsForSave.workflowMode === 'SIMPLE' ? true : settingsForSave.allowDirectInvoicing,
+        requirePOForStockItems: settingsForSave.workflowMode === 'SIMPLE' ? false : settingsForSave.requirePOForStockItems,
+        defaultAPAccountId: settingsForSave.defaultAPAccountId,
+        apParentAccountId: settingsForSave.apParentAccountId || undefined,
+        partyAccountCodeFormat: (settingsForSave.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim(),
+        defaultPurchaseExpenseAccountId: settingsForSave.defaultPurchaseExpenseAccountId || undefined,
+        defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? settingsForSave.defaultGRNIAccountId || undefined : undefined,
+        allowOverDelivery: settingsForSave.allowOverDelivery,
+        overDeliveryTolerancePct: settingsForSave.overDeliveryTolerancePct,
+        overInvoiceTolerancePct: settingsForSave.overInvoiceTolerancePct,
+        defaultPaymentTermsDays: settingsForSave.defaultPaymentTermsDays,
+        purchaseVoucherTypeId: settingsForSave.purchaseVoucherTypeId || undefined,
+        defaultWarehouseId: settingsForSave.defaultWarehouseId || undefined,
+        poNumberPrefix: settingsForSave.poNumberPrefix,
+        poNumberNextSeq: settingsForSave.poNumberNextSeq,
+        grnNumberPrefix: settingsForSave.grnNumberPrefix,
+        grnNumberNextSeq: settingsForSave.grnNumberNextSeq,
+        piNumberPrefix: settingsForSave.piNumberPrefix,
+        piNumberNextSeq: settingsForSave.piNumberNextSeq,
+        prNumberPrefix: settingsForSave.prNumberPrefix,
+        prNumberNextSeq: settingsForSave.prNumberNextSeq,
+        exchangeGainLossAccountId: settingsForSave.exchangeGainLossAccountId || undefined,
+        governanceRules: settingsForSave.governanceRules || [],
+        defaultPurchaseInvoicePersona: settingsForSave.defaultPurchaseInvoicePersona,
       };
 
       const result = await purchasesApi.updateSettings(payload);
@@ -211,6 +280,12 @@ const PurchaseSettingsPage: React.FC = () => {
 
   if (!settings) return null;
 
+  const personaPolicy = {
+    direct: isPersonaAllowedByGovernance(settings.workflowMode, settings.governanceRules as any, 'direct'),
+    linked: isPersonaAllowedByGovernance(settings.workflowMode, settings.governanceRules as any, 'linked'),
+    service: isPersonaAllowedByGovernance(settings.workflowMode, settings.governanceRules as any, 'service'),
+  };
+
   const tabs = [
     { id: 'policy', label: 'Procurement Policy', icon: ShieldCheck },
     { id: 'accounts', label: 'Account Defaults', icon: DollarSign },
@@ -226,6 +301,13 @@ const PurchaseSettingsPage: React.FC = () => {
         tabs={tabs as any}
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as TabId)}
+        hasChanges={hasChanges}
+        onSave={handleSave}
+        onDiscard={() => {
+          setSettings(originalSettings);
+          toast('Changes discarded', { icon: 'ℹ️' });
+        }}
+        saving={saving}
       >
       <AccountingIntegrationStatus
         moduleCode="purchases"
@@ -240,6 +322,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="grid gap-8 md:grid-cols-2">
@@ -292,7 +375,7 @@ const PurchaseSettingsPage: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={settings.allowDirectInvoicing}
-                        onChange={(e) => updateSetting('allowDirectInvoicing', e.target.checked)}
+                        onChange={(e) => applyDirectInvoicingPolicy(e.target.checked)}
                         className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
                     </label>
@@ -365,6 +448,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-8">
@@ -515,6 +599,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
@@ -564,6 +649,7 @@ const PurchaseSettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
+          hideSaveButton={true}
         >
           <div className="space-y-6">
             <Card className="p-6 border-indigo-100 bg-indigo-50/30">
@@ -575,9 +661,9 @@ const PurchaseSettingsPage: React.FC = () => {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                  { persona: 'Direct', key: 'direct' as const, allowed: settings.workflowMode === 'SIMPLE' || settings.allowDirectInvoicing },
-                  { persona: 'Linked', key: 'linked' as const, allowed: settings.workflowMode === 'OPERATIONAL' },
-                  { persona: 'Service', key: 'service' as const, allowed: true },
+                  { persona: 'Direct', key: 'direct' as const, allowed: personaPolicy.direct },
+                  { persona: 'Linked', key: 'linked' as const, allowed: personaPolicy.linked },
+                  { persona: 'Service', key: 'service' as const, allowed: personaPolicy.service },
                 ].map((p) => (
                   <div key={p.persona} className="flex flex-col items-center p-3 rounded-xl border border-white bg-white/50 shadow-sm">
                     <span className="text-xs font-medium text-gray-500 mb-2">{p.persona}</span>

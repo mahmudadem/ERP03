@@ -34,6 +34,7 @@ import {
   SuperAdminBadge,
   SuperAdminModal,
 } from './SuperAdminPage';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 const CERTIFICATION_CATEGORIES: AiCertificationCategory[] = [
   'GENERAL_CHAT', 'ACCOUNTING', 'FINANCE_REPORTING', 'SALES',
@@ -102,6 +103,8 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
     testSuiteVersion: '',
     summary: '',
   });
+
+  const { confirm, confirmDialog } = useConfirm();
 
   // ── Initialize ──
   useEffect(() => {
@@ -221,7 +224,12 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
   };
 
   const handleExpireCertification = async (certificationId: string) => {
-    if (!window.confirm(t('superAdmin.aiModels.certifications.confirmExpire'))) return;
+    const confirmed = await confirm({
+      title: 'Expire Certification',
+      tone: 'warning',
+      message: t('superAdmin.aiModels.certifications.confirmExpire') as string
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.expireCertification(certificationId);
       errorHandler.showSuccess(t('superAdmin.aiModels.certifications.messages.expired'));
@@ -235,7 +243,12 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
   const handleResetCertHistory = async () => {
     if (!profile?.id) return;
     const confirmMsg = `This will permanently delete ALL certification records for "${profile.displayName || profile.modelName}". This is useful when you want to start a fresh certification cycle.\n\nContinue?`;
-    if (!window.confirm(confirmMsg)) return;
+    const confirmed = await confirm({
+      title: 'Reset Certification History',
+      tone: 'danger',
+      message: confirmMsg
+    });
+    if (!confirmed) return;
     try {
       const result = await superAdminApi.resetAiModelProfileCertifications(profile.id);
       const payload = (result as any).data || result;
@@ -345,6 +358,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
 
   return (
     <>
+      {confirmDialog}
       <SuperAdminModal
         title={t('superAdmin.aiModels.certifications.modalTitle', 'Certification Manager')}
         subtitle={profileLabel}

@@ -8,6 +8,9 @@ import { ICompanyModuleRepository } from '../../../repository/interfaces/company
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IUomRepository } from '../../../repository/interfaces/inventory/IUomRepository';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
+import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
+import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 
 export interface InitializeInventoryInput {
   companyId: string;
@@ -23,6 +26,12 @@ export interface InitializeInventoryInput {
   itemCodePrefix?: string;
   itemCodeNextSeq?: number;
   defaultCOGSAccountId?: string;
+  /**
+   * IDs of system Inventory voucher templates the user picked in the wizard.
+   * `undefined` keeps legacy behavior (no voucher templates copied — Inventory
+   * currently ships none). `[]` is an explicit no-op.
+   */
+  selectedVoucherTypes?: string[];
 }
 
 export class InitializeInventoryUseCase {
@@ -31,7 +40,9 @@ export class InitializeInventoryUseCase {
     private readonly settingsRepo: IInventorySettingsRepository,
     private readonly warehouseRepo: IWarehouseRepository,
     private readonly uomRepo: IUomRepository,
-    private readonly companyModuleRepo: ICompanyModuleRepository
+    private readonly companyModuleRepo: ICompanyModuleRepository,
+    private readonly voucherTypeRepo?: IVoucherTypeDefinitionRepository,
+    private readonly voucherFormRepo?: IVoucherFormRepository
   ) {}
 
   async execute(input: InitializeInventoryInput): Promise<{ settings: InventorySettings; defaultWarehouse: Warehouse | null }> {
@@ -88,6 +99,17 @@ export class InitializeInventoryUseCase {
 
     await this.settingsRepo.saveSettings(settings);
     await this.ensureDefaultUoms(input.companyId, input.userId);
+
+    if (input.selectedVoucherTypes && this.voucherTypeRepo && this.voucherFormRepo) {
+      await syncCompanyVoucherTemplatesFromSystem({
+        companyId: input.companyId,
+        modules: ['INVENTORY'],
+        selectedTemplateIds: input.selectedVoucherTypes,
+        createdBy: input.userId || 'SYSTEM',
+        voucherTypeRepo: this.voucherTypeRepo,
+        voucherFormRepo: this.voucherFormRepo,
+      });
+    }
 
     const now = new Date();
     const inventoryModule = await this.companyModuleRepo.get(input.companyId, 'inventory');

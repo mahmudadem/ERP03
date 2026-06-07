@@ -1,6 +1,11 @@
 import { randomUUID } from 'crypto';
 
-export type RecordChangeEntityType = 'SALES_INVOICE' | 'SALES_ORDER' | 'DELIVERY_NOTE' | 'SALES_RETURN';
+export type RecordChangeEntityType =
+  | 'SALES_INVOICE'
+  | 'SALES_ORDER'
+  | 'DELIVERY_NOTE'
+  | 'SALES_RETURN'
+  | 'PURCHASE_INVOICE';
 export type RecordChangeAction = 'CREATE' | 'UPDATE' | 'POST' | 'PERIOD_LOCK_OVERRIDE';
 
 export interface FieldChange {

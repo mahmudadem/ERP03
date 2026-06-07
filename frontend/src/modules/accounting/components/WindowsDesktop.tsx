@@ -14,6 +14,8 @@ import { ItemCardWindow } from '../../inventory/components/ItemCardWindow';
 import { PartyCardWindow } from './PartyCardWindow';
 import { WarehouseCardWindow } from './WarehouseCardWindow';
 import { DocumentWindow } from '../../../components/mdi/DocumentWindow';
+import { MdiWindowFrame } from '../../../components/mdi/MdiWindowFrame';
+import { SalesInvoiceDetail } from '../../sales/pages/SalesInvoiceDetailPage';
 
 interface WindowsDesktopProps {
   onSaveVoucher: (windowId: string, data: any) => Promise<any>;
@@ -43,64 +45,83 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({
   onSalesAction,
   onPurchasesAction
 }) => {
-  const { windows } = useWindowManager();
+  const { windows, closeWindow } = useWindowManager();
 
   return (
     <>
       {/* Render all windows */}
-      {windows.map((window) => {
-        if (window.type === 'voucher') {
+      {windows.map((win) => {
+        if (win.type === 'voucher') {
           return (
             <VoucherWindow
-              key={window.id}
-              win={window}
+              key={win.id}
+              win={win}
               onSave={onSaveVoucher}
               onSubmit={onSubmitVoucher}
-              onApprove={onApproveVoucher ? (id) => onApproveVoucher(window.id, id) : undefined}
-              onReject={onRejectVoucher ? (id) => onRejectVoucher(window.id, id) : undefined}
-              onConfirm={onConfirmVoucher ? (id) => onConfirmVoucher(window.id, id) : undefined}
+              onApprove={onApproveVoucher ? (id) => onApproveVoucher(win.id, id) : undefined}
+              onReject={onRejectVoucher ? (id) => onRejectVoucher(win.id, id) : undefined}
+              onConfirm={onConfirmVoucher ? (id) => onConfirmVoucher(win.id, id) : undefined}
               onPost={onPostVoucher}
               onCancel={onCancelVoucher}
               onReverse={onReverseVoucher}
               onPrint={onPrintVoucher}
             />
           );
-        } else if (window.type === 'report') {
+        } else if (win.type === 'report') {
           return (
             <ReportWindow 
-              key={window.id}
-              win={window}
+              key={win.id}
+              win={win}
             />
           );
-        } else if (window.type === 'item') {
+        } else if (win.type === 'item') {
           return (
             <ItemCardWindow
-              key={window.id}
-              win={window}
+              key={win.id}
+              win={win}
             />
           );
-        } else if (window.type === 'party') {
+        } else if (win.type === 'party') {
           return (
             <PartyCardWindow
-              key={window.id}
-              win={window}
+              key={win.id}
+              win={win}
             />
           );
-        } else if (window.type === 'warehouse') {
+        } else if (win.type === 'warehouse') {
           return (
             <WarehouseCardWindow
-              key={window.id}
-              win={window}
+              key={win.id}
+              win={win}
             />
           );
-        } else if (window.type === 'document') {
+        } else if (win.type === 'document') {
           return (
             <DocumentWindow
-              key={window.id}
-              win={window}
+              key={win.id}
+              win={win}
               onSalesAction={onSalesAction}
               onPurchasesAction={onPurchasesAction}
             />
+          );
+        } else if (win.type === 'sales_invoice') {
+          return (
+            <MdiWindowFrame
+              key={win.id}
+              win={win}
+              title={win.title}
+              onClose={() => closeWindow(win.id)}
+            >
+              <SalesInvoiceDetail
+                invoiceId={win.data?.invoiceId}
+                isWindow={true}
+                onClose={() => closeWindow(win.id)}
+                onSaved={() => {
+                  closeWindow(win.id);
+                  window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'SI' } }));
+                }}
+              />
+            </MdiWindowFrame>
           );
         }
         return null;

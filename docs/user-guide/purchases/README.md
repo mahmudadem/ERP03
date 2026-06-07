@@ -41,6 +41,8 @@ Key guides:
 4. **Set bill numbering:** prefix (e.g., `BILL-`) and starting number.
 5. **Add your vendors:** `Purchases → Vendors → New Vendor`. Each vendor can have its own AP account override, payment terms, and currency.
 
+In OPERATIONAL mode, direct bills are blocked by default. To allow direct Purchase Invoices, enable **Allow Direct Invoicing** in Purchase Settings or add an explicit governance rule; the system stores this as a company policy exception.
+
 ---
 
 ## Daily workflow (OPERATIONAL mode)
@@ -101,7 +103,7 @@ When you create a bill, the system picks one of three "personas" based on what y
 
 | Persona | What it means | When |
 |---|---|---|
-| **Direct** | Standalone bill, no PO/GRN | One-off purchases, service bills, ad-hoc expenses |
+| **Direct** | Standalone bill, no PO/GRN | One-off purchases, service bills, ad-hoc expenses when company governance allows it |
 | **Linked** | Bill references a PO and (in OPERATIONAL) a GRN | Standard purchase flow |
 | **Service** | Bill for non-stock items | Consulting, subscriptions, utilities — no inventory impact |
 

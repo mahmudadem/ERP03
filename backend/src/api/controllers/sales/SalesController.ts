@@ -1042,7 +1042,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const useCase = new UpdateSalesInvoiceUseCase(
         diContainer.salesInvoiceRepository,
         diContainer.partyRepository,
-        recordChangeService
+        recordChangeService,
+        diContainer.itemRepository
       );
 
       const si = await useCase.execute({
@@ -1055,6 +1056,26 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         success: true,
         data: SalesDTOMapper.toSalesInvoiceDTO(si),
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteSI(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const existing = await diContainer.salesInvoiceRepository.getById(companyId, id);
+      if (!existing) {
+        (res as any).status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Sales invoice not found.' } });
+        return;
+      }
+      if (existing.status !== 'DRAFT') {
+        (res as any).status(409).json({ success: false, error: { code: 'INVALID_STATE', message: 'Only DRAFT invoices can be discarded.' } });
+        return;
+      }
+      await diContainer.salesInvoiceRepository.delete(companyId, id);
+      (res as any).json({ success: true });
     } catch (error) {
       next(error);
     }

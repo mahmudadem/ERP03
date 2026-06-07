@@ -26,6 +26,38 @@ const MODULE_ROUTE_MAP: Record<string, { baseRoute: string; permission: string; 
   purchase:   { baseRoute: '/purchases',            permission: 'purchase.view',            icon: 'File' },
 };
 
+// Sidebar grouping policy — see docs/architecture/sidebar-forms-grouping.md
+//   - native forms       → static `Forms` group declared in moduleMenuMap
+//   - accounting forms   → `Vouchers` group (defaults AND clones, unless the
+//                          user explicitly assigned a different group)
+//   - default forms (sales/purchases) → `Default Forms` group
+//   - cloned forms (sales/purchases, no explicit group) → root of the module
+//                          sidebar (top-level leaves, not nested)
+//   - explicit user group → honored verbatim
+//
+// The literal `"Documents"` value is treated as an unset placeholder because
+// the system seed sets every voucher type to `sidebarGroup: "Documents"`
+// regardless of module — see backend/src/seeder/seedSystemVoucherTypes.ts.
+const DEFAULT_FORMS_GROUP = 'Default Forms';
+const NATIVE_FORMS_GROUP = 'Forms';
+const VOUCHERS_GROUP = 'Vouchers';
+const SEED_PLACEHOLDER_GROUP = 'Documents';
+
+// Order of form-related groups within a module section. `Forms` (native) is
+// already declared in moduleMenuMap; the rest are inserted right after it.
+const FORM_GROUP_RANK: Record<string, number> = {
+  [NATIVE_FORMS_GROUP]: 0,
+  [DEFAULT_FORMS_GROUP]: 1,
+  [VOUCHERS_GROUP]: 2,
+  // user-named custom groups land at rank 3.
+};
+const USER_GROUP_RANK = 3;
+// Root-level leaves (groupless clones) sort between Default Forms and Vouchers.
+const ROOT_LEAF_RANK = 1.5;
+
+const isSystemDefaultForm = (form: SidebarFormEntry): boolean =>
+  !!(form.isDefault || form.isSystemGenerated || form.isLocked);
+
 export const useSidebarConfig = () => {
   const { isSuperAdmin, moduleBundles, resolvedPermissions, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
   const { hasPermission } = useRBAC();
@@ -49,6 +81,10 @@ export const useSidebarConfig = () => {
     'Approval Center': 'sidebar.approvalCenter',
     Vouchers: 'sidebar.vouchers',
     Documents: 'sidebar.documents',
+    Forms: 'sidebar.forms',
+    'Default Forms': 'sidebar.defaultForms',
+    'Other Forms': 'sidebar.otherForms',
+    Tools: 'sidebar.tools',
     'All Vouchers': 'sidebar.allVouchers',
     'Forms Designer': 'sidebar.formsDesigner',
     'Window Designer': 'sidebar.windowDesigner',
@@ -120,68 +156,100 @@ export const useSidebarConfig = () => {
     const routeConfig = MODULE_ROUTE_MAP[moduleId];
     if (!routeConfig) return [];
 
-    // Group by sidebarGroup
+    // Per-module defaulting — see docs/architecture/sidebar-forms-grouping.md.
+    // Returns the effective sidebar group for a form, or `null` to emit the
+    // form as a top-level leaf at the module root.
+    const effectiveGroup = (form: SidebarFormEntry): string | null => {
+      const explicit = (form.sidebarGroup || '').trim();
+      if (explicit && explicit !== SEED_PLACEHOLDER_GROUP) return explicit;
+      if (moduleId === 'accounting') return VOUCHERS_GROUP;
+      if (isSystemDefaultForm(form)) return DEFAULT_FORMS_GROUP;
+      return null; // sales/purchases clone with no explicit group → root
+    };
+
     const groups = new Map<string, SidebarFormEntry[]>();
-    const topLevel: SidebarFormEntry[] = [];
+    const rootLeaves: SidebarFormEntry[] = [];
 
     moduleForms.forEach(form => {
-      if (form.sidebarGroup) {
-        if (!groups.has(form.sidebarGroup)) {
-          groups.set(form.sidebarGroup, []);
-        }
-        groups.get(form.sidebarGroup)!.push(form);
-      } else {
-        topLevel.push(form);
+      const groupName = effectiveGroup(form);
+      if (groupName === null) {
+        rootLeaves.push(form);
+        return;
       }
+      if (!groups.has(groupName)) {
+        groups.set(groupName, []);
+      }
+      groups.get(groupName)!.push(form);
     });
+
+    const formPath = (form: SidebarFormEntry) =>
+      moduleId === 'accounting'
+        ? `${routeConfig.baseRoute}?type=${form.id}`
+        : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`;
+
+    const groupIcon = (groupName: string): string => {
+      if (groupName === DEFAULT_FORMS_GROUP) return 'Layers';
+      if (groupName === VOUCHERS_GROUP) return 'FileText';
+      return 'FolderOpen';
+    };
 
     const result: SidebarItem[] = [];
 
-    // Add grouped items as submenus
     groups.forEach((forms, groupName) => {
       const children: SidebarItem[] = [];
 
-      // For accounting, add "All Vouchers" link at the top
-      if (moduleId === 'accounting' && groupName === 'Vouchers') {
+      // Accounting's Vouchers group gets an "All Vouchers" entry up front so
+      // users can reach the unified list without scanning the per-type entries.
+      if (moduleId === 'accounting' && groupName === VOUCHERS_GROUP) {
         children.push({
           label: translateLabel('All Vouchers'),
           path: '/accounting/vouchers',
           permission: routeConfig.permission,
-          icon: 'FileSearch'
+          icon: 'FileSearch',
         });
       }
 
       forms.forEach(form => {
         children.push({
           label: form.name,
-          path: moduleId === 'accounting' 
-            ? `${routeConfig.baseRoute}?type=${form.id}`
-            : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
+          path: formPath(form),
           permission: routeConfig.permission,
-          icon: routeConfig.icon
+          icon: routeConfig.icon,
         });
       });
 
       result.push({
         label: translateLabel(groupName),
-        icon: groupName === 'Vouchers' ? 'FileText' : 'FolderOpen',
-        children
+        icon: groupIcon(groupName),
+        children,
       });
     });
 
-    // Add top-level items (no submenu)
-    topLevel.forEach(form => {
+    // Groupless clones render as top-level sidebar leaves at the module root.
+    rootLeaves.forEach(form => {
       result.push({
         label: form.name,
-        path: moduleId === 'accounting'
-          ? `${routeConfig.baseRoute}?type=${form.id}`
-          : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
+        path: formPath(form),
         permission: routeConfig.permission,
-        icon: routeConfig.icon
+        icon: routeConfig.icon,
       });
     });
 
     return result;
+  };
+
+  // Rank used to position dynamic form groups and root-level form leaves
+  // right after the static `Forms` group within a module section. Lower rank
+  // → earlier in the sidebar. Items without a known label rank as user groups.
+  const dynamicGroupRank = (item: SidebarItem): number => {
+    // Root-level leaves (no children) — groupless clones rendered flat.
+    if (!item.children) return ROOT_LEAF_RANK;
+    const label = item.label;
+    if (FORM_GROUP_RANK[label] !== undefined) return FORM_GROUP_RANK[label];
+    if (translateLabel(DEFAULT_FORMS_GROUP) === label) return FORM_GROUP_RANK[DEFAULT_FORMS_GROUP];
+    if (translateLabel(VOUCHERS_GROUP) === label) return FORM_GROUP_RANK[VOUCHERS_GROUP];
+    if (translateLabel(NATIVE_FORMS_GROUP) === label) return FORM_GROUP_RANK[NATIVE_FORMS_GROUP];
+    return USER_GROUP_RANK;
   };
 
   const filterSidebarItems = (items: SidebarItem[]): SidebarItem[] => {
@@ -215,7 +283,8 @@ export const useSidebarConfig = () => {
             { label: translateLabel('System Overview'), path: '/super-admin/overview' },
             { label: translateLabel('Appearance Lab'), path: '/super-admin/appearance' },
             { label: translateLabel('System Forms'), path: '/super-admin/system-forms' },
-            { label: translateLabel('Voucher Templates'), path: '/super-admin/voucher-templates' }
+            { label: translateLabel('Voucher Templates'), path: '/super-admin/voucher-templates' },
+            { label: translateLabel('Field Library'), path: '/super-admin/field-library' }
           ]
         },
         'Companies': {
@@ -307,44 +376,60 @@ export const useSidebarConfig = () => {
       });
       
       // === DYNAMIC FORM INJECTION ===
-      // For modules with dynamic forms (accounting, sales, purchase),
-      // inject form entries grouped by sidebarGroup
-      
+      // Insertion order within a module section:
+      //   Forms (static)        — native list pages + clones tagged "Forms"
+      //   Default Forms         — all default forms
+      //   [user-named groups]   — clones tagged with a custom sidebarGroup
+      //   Other Forms           — clones with blank sidebarGroup
+      //   (then Reports, Tools, Settings as declared in moduleMenuMap)
+      //
+      // Dynamic groups are inserted right after the static `Forms` group, in
+      // ascending FORM_GROUP_RANK order, instead of being appended at the end
+      // (which would push them past Reports / Tools / Settings).
       const dynamicModuleId = moduleId;
-      
+
       if (MODULE_ROUTE_MAP[dynamicModuleId]) {
         const dynamicGroups = buildDynamicFormGroups(dynamicModuleId);
-        
+
         if (dynamicGroups.length > 0) {
-          if (moduleId === 'accounting') {
-            // ACCOUNTING: Remove hardcoded "Vouchers" and inject dynamic groups after COA
-            items = items.filter(item => item.label !== 'Vouchers');
-            
-            const coaIndex = items.findIndex(item => item.label === 'Chart of Accounts');
-            const insertIndex = coaIndex >= 0 ? coaIndex + 1 : 0;
-            
-            items = [
-              ...items.slice(0, insertIndex),
-              ...dynamicGroups as any[],
-              { 
-                label: translateLabel('Window Designer'), 
-                path: '/accounting/window-config-test',
-                permission: 'accounting.settings.manage',
-                icon: 'DraftingCompass'
-              },
-              ...items.slice(insertIndex)
-            ] as any;
-          } else {
-            // SALES / PURCHASE: Inject dynamic groups before Settings
-            const settingsIndex = items.findIndex(item => item.label === 'Settings');
-            const insertIndex = settingsIndex >= 0 ? settingsIndex : items.length;
-            
-            items = [
-              ...items.slice(0, insertIndex),
-              ...dynamicGroups as any[],
-              ...items.slice(insertIndex)
-            ] as any;
+          const findFormsIndex = () =>
+            items.findIndex((item) =>
+              (item.label === NATIVE_FORMS_GROUP || item.label === translateLabel(NATIVE_FORMS_GROUP))
+              && Array.isArray(item.children)
+            );
+
+          const toInsert: SidebarItem[] = [];
+
+          for (const dynGroup of dynamicGroups) {
+            const matchesNativeForms =
+              dynGroup.label === NATIVE_FORMS_GROUP
+              || translateLabel(NATIVE_FORMS_GROUP) === dynGroup.label;
+
+            if (matchesNativeForms) {
+              // Clone tagged sidebarGroup="Forms" → fold into the static Forms group.
+              const formsIdx = findFormsIndex();
+              if (formsIdx >= 0) {
+                const existing = items[formsIdx];
+                items[formsIdx] = {
+                  ...existing,
+                  children: [
+                    ...(existing.children || []),
+                    ...((dynGroup as any).children || []),
+                  ],
+                } as any;
+                continue;
+              }
+            }
+            toInsert.push(dynGroup);
           }
+
+          // Sort dynamic groups by rank: Default Forms → user-named → Other Forms.
+          toInsert.sort((a, b) => dynamicGroupRank(a) - dynamicGroupRank(b));
+
+          // Insert right after the static Forms group (or at the end if missing).
+          const anchorIdx = findFormsIndex();
+          const insertAt = anchorIdx >= 0 ? anchorIdx + 1 : items.length;
+          items.splice(insertAt, 0, ...toInsert);
         }
       }
 
@@ -400,6 +485,12 @@ export const useSidebarConfig = () => {
           label: translateLabel('Tailwind Play Demo'), 
           path: '/dev/tailwind-play-demo',
           icon: 'Layout',
+          badge: 'New'
+        },
+        { 
+          label: 'UI Lab 🎨', 
+          path: '/dev/ui-lab',
+          icon: 'Sparkles',
           badge: 'New'
         }
       ]

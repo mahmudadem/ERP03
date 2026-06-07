@@ -7,11 +7,13 @@ import { useTranslation } from 'react-i18next';
 interface ApprovalModeWidgetProps {
   showBorder?: boolean;
   showBackground?: boolean;
+  compact?: boolean;
 }
 
 export const ApprovalModeWidget: React.FC<ApprovalModeWidgetProps> = ({
   showBorder = true,
-  showBackground = true
+  showBackground = true,
+  compact = false
 }) => {
   const { t } = useTranslation('common');
   const { settings, isLoading } = useCompanySettings();
@@ -26,7 +28,8 @@ export const ApprovalModeWidget: React.FC<ApprovalModeWidgetProps> = ({
 
   return (
     <div className={clsx(
-      "flex items-center gap-2 px-3 py-1.5 rounded-lg h-full w-full select-none justify-center transition-all",
+      "flex items-center gap-2 rounded-lg h-full w-full select-none justify-center transition-all",
+      !compact && "px-3 py-1.5",
       showBorder && "border shadow-sm",
       !showBorder && "border-transparent",
       showBackground 
@@ -37,16 +40,18 @@ export const ApprovalModeWidget: React.FC<ApprovalModeWidgetProps> = ({
             ? "text-indigo-700 dark:text-indigo-400"
             : "text-emerald-700 dark:text-emerald-400")
     )}>
-      {settings.strictApprovalMode ? (
+      {!compact && (settings.strictApprovalMode ? (
         <ShieldAlert className="w-4 h-4 shrink-0" />
       ) : (
         <ShieldCheck className="w-4 h-4 shrink-0" />
-      )}
-      <div className="flex flex-col truncate hidden sm:flex">
-         <span className="text-[8px] font-bold uppercase tracking-widest leading-none mb-0.5 opacity-80">
-           {t('widgets.approvalMode.label', 'Approval Mode')}
-         </span>
-         <span className="text-[11px] font-black tracking-tight leading-none uppercase truncate">
+      ))}
+      <div className={clsx("flex flex-col truncate", compact ? "flex" : "hidden sm:flex")}>
+         {!compact && (
+           <span className="text-[8px] font-bold uppercase tracking-widest leading-none mb-0.5 opacity-80">
+              {t('widgets.approvalMode.label', 'Approval Mode')}
+           </span>
+         )}
+         <span className={clsx("font-black tracking-tight leading-none uppercase truncate", compact ? "text-[11px]" : "text-[11px]")}>
             {settings.strictApprovalMode
               ? t('widgets.approvalMode.strict', 'Strict')
               : t('widgets.approvalMode.flexible', 'Flexible')}

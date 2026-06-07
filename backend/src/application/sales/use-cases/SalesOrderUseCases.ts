@@ -76,6 +76,9 @@ export interface SalesOrderLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc: number;
+  /** When true, `unitPriceDoc` already includes tax. The entity splits the
+   *  gross into net + tax so totals match the user's input expectation. */
+  priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -368,6 +371,9 @@ export class CreateSalesOrderUseCase {
       taxRate = selectedTaxCode.rate;
     }
 
+    // Pre-totals here are illustrative; the SalesOrder constructor recomputes
+    // via normalizeLine, which is the source of truth for inclusive/exclusive
+    // splits. We forward `priceIsInclusive` so the entity sees it.
     const lineTotalDoc = roundMoney(lineInput.orderedQty * lineInput.unitPriceDoc);
     const unitPriceBase = roundMoney(lineInput.unitPriceDoc * exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * exchangeRate);
@@ -394,6 +400,7 @@ export class CreateSalesOrderUseCase {
       lineTotalBase,
       taxCodeId,
       taxRate,
+      priceIsInclusive: lineInput.priceIsInclusive === true,
       taxAmountDoc,
       taxAmountBase,
       warehouseId: lineInput.warehouseId,
@@ -440,6 +447,7 @@ export class UpdateSalesOrderUseCase {
           uomId: line.uomId,
           uom: line.uom,
           unitPriceDoc: line.unitPriceDoc,
+          priceIsInclusive: line.priceIsInclusive,
           taxCodeId: line.taxCodeId,
           warehouseId: line.warehouseId,
           description: line.description,
@@ -521,6 +529,10 @@ export class UpdateSalesOrderUseCase {
     const lineTotalBase = roundMoney(lineTotalDoc * exchangeRate);
     const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
     const taxAmountBase = roundMoney(lineTotalBase * taxRate);
+    const priceIsInclusive =
+      lineInput.priceIsInclusive !== undefined
+        ? lineInput.priceIsInclusive === true
+        : currentLine?.priceIsInclusive === true;
 
     return {
       lineId: lineInput.lineId || currentLine?.lineId || randomUUID(),
@@ -542,6 +554,7 @@ export class UpdateSalesOrderUseCase {
       lineTotalBase,
       taxCodeId: lineInput.taxCodeId,
       taxRate,
+      priceIsInclusive,
       taxAmountDoc,
       taxAmountBase,
       warehouseId: lineInput.warehouseId,

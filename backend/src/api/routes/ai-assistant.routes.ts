@@ -27,6 +27,7 @@ router.use(companyContextMiddleware);
 // Settings — view and manage AI provider configuration
 router.get('/settings', permissionGuard('ai-assistant.settings.view'), AiAssistantController.getSettings);
 router.put('/settings', permissionGuard('ai-assistant.settings.manage'), AiAssistantController.updateSettings);
+router.get('/settings/widget-preferences', permissionGuard('ai-assistant.chat.use'), AiAssistantController.getWidgetPreferences);
 router.get('/providers', permissionGuard('ai-assistant.settings.view'), AiAssistantController.listAvailableProviders);
 router.get('/providers/:providerId(.+)/models', permissionGuard('ai-assistant.settings.view'), AiAssistantController.listAvailableProviderModels);
 

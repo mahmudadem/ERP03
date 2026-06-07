@@ -21,6 +21,10 @@ export interface PurchaseInvoiceLine {
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  // When true, `unitPriceDoc` already includes tax. The entity derives net
+  // (lineTotalDoc) and tax (taxAmountDoc) by splitting the gross — same
+  // shape as the SI fix (Task 168) and the SO fix (Task 170B).
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -225,11 +229,16 @@ export class PurchaseInvoice {
     }
 
     const taxRate = Number.isNaN(line.taxRate) ? 0 : line.taxRate;
-    const lineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
+    const priceIsInclusive = line.priceIsInclusive === true;
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
+    const lineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
     const unitPriceBase = roundMoney(line.unitPriceDoc * this.exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
-    const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
-    const taxAmountBase = roundMoney(lineTotalBase * taxRate);
+    const taxAmountDoc = priceIsInclusive
+      ? roundMoney(grossLineTotalDoc - lineTotalDoc)
+      : roundMoney(lineTotalDoc * taxRate);
+    const taxAmountBase = roundMoney(taxAmountDoc * this.exchangeRate);
 
     return {
       lineId: line.lineId,
@@ -250,6 +259,7 @@ export class PurchaseInvoice {
       taxCodeId: line.taxCodeId,
       taxCode: line.taxCode,
       taxRate,
+      priceIsInclusive,
       taxAmountDoc,
       taxAmountBase,
       warehouseId: line.warehouseId,

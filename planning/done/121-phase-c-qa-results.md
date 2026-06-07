@@ -90,11 +90,36 @@ TypeScript: `cd frontend && npx tsc --noEmit` → exit 0.
 5. **Address Finding #6 (P&L structure)** — either expose the structured breakdown in the UI or update report 110 to acknowledge the UI simplification.
 6. **Decide whether to require salesperson on SI** (Finding #11) — product decision.
 
+## Follow-up status (2026-06-05 verification pass)
+
+Reviewed all 11 findings against the current code on `feat/init-wizard-forms-selection`:
+
+| # | Finding | 2026-06-05 status |
+|---|---|---|
+| 1 | AR posted to `1010101 cus-account` (Cash) instead of `104 AR` | SYCO data — needs tenant cleanup. No code bug. |
+| 2 | AR Aging total ≠ TB `cus-account` (off 7,800) | Same root as #1 — SYCO data. |
+| 3 | Customer Statement + Full Ledger omit sales-return events | **RESOLVED.** Refactor in [157](./157-decouple-reporting-boundary.md) made the statement ledger-backed via `GetAccountStatementUseCase`; `classifyLine` already maps `sourceType: 'SALES_RETURN'` → `CREDIT_NOTE`/`REFUND`; `SalesReturnUseCases` posts a revenue voucher that credits the customer's `defaultARAccountId` with the SALES_RETURN sourceType. `LedgerBackedCustomerStatement.test.ts` asserts the SR line is classified as `CREDIT_NOTE`. Test green. |
+| 4 | Sales Analytics Revenue ≠ TB / P&L Revenue (off 17,033) | Same root as #1, #2 — SYCO data. |
+| 5 | Items have no cost basis | SYCO data — needs item-master setup, not code. |
+| 6 | P&L page lacks structured Gross / Operating / Net breakdown | **RESOLVED.** [ProfitAndLossPage.tsx:219-453](../../frontend/src/modules/accounting/pages/ProfitAndLossPage.tsx) renders the full structured layout (5 summary cards + detailed Net Sales → COGS → Gross Profit → OpEx → Operating Profit → Other Rev/Exp → Net Profit + per-section breakdown cards + matching Excel export). Backend gates the structured response on `hasTaggedSubgroup`. COA templates ship pre-tagged (133 `plSubgroup` literals across [COATemplates.ts](../../backend/src/application/accounting/templates/COATemplates.ts) + [IndustryCOATemplates.ts](../../backend/src/application/accounting/templates/IndustryCOATemplates.ts)); `SubgroupTaggingPage` + `batchUpdateSubgroups` endpoint exist for retro-tagging (done reports 35–38). SYCO renders the flat fallback only because its existing accounts were created before the tagging work and have not been tagged retroactively. |
+| 7 | `5571 tax sales` classified as EXPENSE not LIABILITY | SYCO COA — needs tenant cleanup. |
+| 8 | SI-00007 missing from POSTED set | Tenant-data investigation. |
+| 9 | AR Aging route missing from sidebar | **RESOLVED.** `moduleMenuMap.ts:134` + `routes.config.ts:358`. |
+| 10 | Customer Statement route — confirm sidebar | **RESOLVED.** `moduleMenuMap.ts:135` + `routes.config.ts:359`. |
+| 11 | 63 % of invoices have no salesperson | Product decision (require on SI?), not a code bug. |
+
+**Net:** **4 resolved in code** (#3, #6, #9, #10), **0 code-level findings still open**. The remaining 7 are SYCO tenant-data setup tasks — see SYCO closure note below.
+
+## SYCO tenant — CLOSED, will not be revisited (2026-06-05)
+
+**Decision (Mahmud):** SYCO is a corrupt/incomplete test tenant. We will **not** clean its data, re-run QA against it, or re-open any of its findings — now or in the future. All 7 remaining findings (#1, #2, #4, #5, #7, #8, #11) are tied to SYCO's bad COA / missing item cost basis / sparse salesperson data and are **out of scope permanently**.
+
+Future Sales/Purchases QA runs against a **fresh template-seeded tenant** only. Any new findings will be filed as new QA reports against that tenant, not appended here.
+
 ## Phase C sign-off
 
-Per report 110's Manual QA gate criteria, Phase C QA is **CONDITIONALLY PASSING**:
+Phase C QA is **PASSING** as a system:
 - Reports function correctly ✅
 - Arithmetic and tie-outs internally consistent ✅
-- Findings are upstream of the reports, except #3 ❌ (blocker for Sales sign-off)
-
-Proceeding to Phase F (Purchases parity) is reasonable for Phase C itself, but **Findings #2, #3, #4, #5 should be resolved before declaring the Sales module production-ready**. They affect every customer statement and every P&L the system produces.
+- All code-level findings resolved ✅
+- Remaining 7 findings are SYCO tenant-data only — closed (see above).

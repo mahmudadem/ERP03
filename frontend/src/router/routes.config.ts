@@ -64,6 +64,7 @@ const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
+const CommunicationsSettingsPage = lazy(() => import('../modules/settings/pages/CommunicationsSettingsPage'));
 const AppearanceSettingsPage = lazy(() => import('../modules/settings/pages/AppearanceSettingsPage'));
 const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/SidebarSettingsPage'));
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
@@ -108,6 +109,7 @@ const SuperAdminEditRolePage = lazy(() => import('../modules/super-admin/permiss
 const SuperAdminTemplatesPage = lazy(() => import('../modules/super-admin/templates/TemplatesPage'));
 const SuperAdminVoucherTemplatesPage = lazy(() => import('../pages/super-admin/pages/SuperAdminVoucherTemplatesPage').then(module => ({ default: module.SuperAdminVoucherTemplatesPage })));
 const VoucherTemplateEditorPage = lazy(() => import('../pages/super-admin/pages/VoucherTemplateEditorPage').then(module => ({ default: module.VoucherTemplateEditorPage })));
+const SuperAdminFieldLibraryPage = lazy(() => import('../pages/super-admin/pages/SuperAdminFieldLibraryPage').then(module => ({ default: module.SuperAdminFieldLibraryPage })));
 
 // Company Admin
 const CompanyAdminOverviewPage = lazy(() => import('../pages/company-admin/pages/OverviewPage'));
@@ -160,6 +162,10 @@ const RecurringInvoicesPage = lazy(() => import('../modules/sales/pages/Recurrin
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
 const TailwindPlayDemoPage = lazy(() => import('../pages/dev/TailwindPlayDemoPage').then(m => ({ default: m.TailwindPlayDemoPage })));
+const UiLabDashboard = lazy(() => import('../pages/dev/UiLabDashboard').then(m => ({ default: m.UiLabDashboard })));
+const SalesInvoiceV2LayoutPage = lazy(() => import('../pages/dev/SalesInvoiceV2LayoutPage'));
+const ApexLedgerDashboard = lazy(() => import('../pages/dev/apex-ledger/ApexLedgerDashboard'));
+
 
 export interface AppRoute {
   path: string;
@@ -212,6 +218,9 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },
+  { path: '/accounting/tools/voucher-designer', label: 'Voucher Designer', component: lazy(() => import('../modules/accounting/pages/AccountingVoucherDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting', hideInMenu: true },
+  // Legacy path from Phase 2 — superseded by the unified Voucher Designer.
+  { path: '/accounting/settings/voucher-types', label: 'Voucher Designer', component: lazy(() => import('../modules/accounting/pages/AccountingVoucherDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting', hideInMenu: true },
   { path: '/accounting/window-config-test', label: '🎨 Window Config Test', component: lazy(() => import('../modules/accounting/pages/WindowConfigTestPage').then(m => ({ default: m.WindowConfigTestPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/wizard-test', label: '🧪 Wizard Test', component: lazy(() => import('../modules/accounting/pages/VoucherWizardTestPage')), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/demo', label: '🆕 New Forms Demo', component: lazy(() => import('../modules/accounting/pages/NewVoucherFormsDemo')), section: 'ACCOUNTING', requiredModule: 'accounting' },
@@ -249,6 +258,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/widgets', label: 'Topbar Widgets', component: lazy(() => import('../modules/settings/pages/TopbarWidgetDesignerPage')), section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/sidebar', label: 'Menu Config', component: SidebarSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
+  { path: '/settings/communications', label: 'Communications', component: CommunicationsSettingsPage, section: 'SETTINGS' },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
   { path: '/settings/tax-codes', label: 'Tax Codes', component: TaxCodesPage, section: 'SETTINGS' },
   { path: '/system/currencies', label: 'Currencies', component: CompanyCurrencySettings, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
@@ -284,6 +294,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/templates', label: 'Templates', component: SuperAdminTemplatesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/voucher-templates', label: 'Voucher Templates', component: SuperAdminVoucherTemplatesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/voucher-templates/:id', label: 'Edit Voucher Template', component: VoucherTemplateEditorPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/field-library', label: 'Field Library', component: SuperAdminFieldLibraryPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/appearance', label: 'Appearance Lab', component: SuperAdminAppearancePage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/system-forms', label: 'System Forms', component: SystemFormDesignerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
 
@@ -333,6 +344,9 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/returns/new', label: 'New Sales Return', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/returns/:id', label: 'Sales Return Detail', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/settings', label: 'Sales Settings', component: SalesSettingsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/tools/voucher-designer', label: 'Voucher Designer', component: lazy(() => import('../modules/sales/pages/SalesVoucherDesignerPage')), section: 'INVENTORY', requiredModule: 'sales', hideInMenu: true },
+  // Legacy path from Phase 2 — superseded by the unified Voucher Designer.
+  { path: '/sales/settings/voucher-types', label: 'Voucher Designer', component: lazy(() => import('../modules/sales/pages/SalesVoucherDesignerPage')), section: 'INVENTORY', requiredModule: 'sales', hideInMenu: true },
   { path: '/sales/price-lists', label: 'Price Lists', component: PriceListsPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/customer-groups', label: 'Customer Groups', component: CustomerGroupsPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/salespersons', label: 'Salespersons', component: SalespersonsPage, section: 'INVENTORY', requiredModule: 'sales' },
@@ -372,6 +386,9 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases/reports/ap-aging', label: 'AP Aging', component: ApAgingReportPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/reports/purchases-analytics', label: 'Purchases Analytics', component: PurchasesAnalyticsPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/settings', label: 'Purchase Settings', component: PurchaseSettingsPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/tools/voucher-designer', label: 'Voucher Designer', component: lazy(() => import('../modules/purchases/pages/PurchaseVoucherDesignerPage')), section: 'INVENTORY', requiredModule: 'purchase', hideInMenu: true },
+  // Legacy path from Phase 2 — superseded by the unified Voucher Designer.
+  { path: '/purchases/settings/voucher-types', label: 'Voucher Designer', component: lazy(() => import('../modules/purchases/pages/PurchaseVoucherDesignerPage')), section: 'INVENTORY', requiredModule: 'purchase', hideInMenu: true },
 
   // Dynamic Purchase Documents (designed in Forms Designer)
   { path: '/purchases/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
@@ -387,6 +404,47 @@ export const routesConfig: AppRoute[] = [
   { path: '/dev/voucher-list', label: 'Voucher List Demo', component: lazy(() => import('../pages/dev/VoucherListDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
   { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
   { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/ui-lab', label: 'UI Lab 🎨', component: UiLabDashboard, section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/sales-invoice-v2', label: 'Sales Invoice V2 🎨', component: SalesInvoiceV2LayoutPage, section: 'TOOLS', hideInMenu: false },
+  { path: '/dev/apex-ledger', label: 'Apex Ledger Mockup 💻', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: false },
+  // Accounting sub-routes
+  { path: '/dev/apex-ledger/accounting', label: 'Apex Accounting Overview', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/coa', label: 'Apex Chart of Accounts', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/vouchers', label: 'Apex Vouchers List', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/approvals', label: 'Apex Approvals', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/settings', label: 'Apex Settings', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  // Reports hub + all 13 sub-reports
+  { path: '/dev/apex-ledger/reports', label: 'Apex Reports', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/trial-balance', label: 'Apex Trial Balance', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/account-statement', label: 'Apex Account Statement', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/balance-sheet', label: 'Apex Balance Sheet', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/ledger', label: 'Apex General Ledger', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/profit-loss', label: 'Apex Profit & Loss', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/trading-account', label: 'Apex Trading Account', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/cash-flow', label: 'Apex Cash Flow', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/journal', label: 'Apex Journal', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/aging', label: 'Apex Aging', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/bank-reconciliation', label: 'Apex Bank Reconciliation', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/cost-center-summary', label: 'Apex Cost Center Summary', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/budget-vs-actual', label: 'Apex Budget vs Actual', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/reports/consolidated-tb', label: 'Apex Consolidated TB', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  // Tools hub + sub-tools
+  { path: '/dev/apex-ledger/tools', label: 'Apex Tools', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/tools/forms', label: 'Apex Forms Management', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/tools/budgets', label: 'Apex Budgets', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/tools/subgroup-tagging', label: 'Apex Subgroup Tagging', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  // Module routes
+  { path: '/dev/apex-ledger/sales', label: 'Apex Sales', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/purchases', label: 'Apex Purchases', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/inventory', label: 'Apex Inventory', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/ai', label: 'Apex AI Assistant', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/hr', label: 'Apex HR', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/crm', label: 'Apex CRM', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/pos', label: 'Apex POS', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/manufacturing', label: 'Apex Manufacturing', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/projects', label: 'Apex Projects', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/dev', label: 'Apex Dev Panel', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+
 
   // AI ASSISTANT
   { path: '/ai-assistant/setup', label: 'AI Setup', component: lazy(() => import('../modules/ai-assistant/pages/AiAssistantSetupPage').then(m => ({ default: m.AiAssistantSetupPage }))), section: 'SETTINGS', requiredModule: 'ai-assistant', requiredPermission: 'ai-assistant.settings.view', hideInMenu: true },

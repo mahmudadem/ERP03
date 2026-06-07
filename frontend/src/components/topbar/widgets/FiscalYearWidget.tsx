@@ -6,11 +6,13 @@ import { useTranslation } from 'react-i18next';
 interface FiscalYearWidgetProps {
   showBorder?: boolean;
   showBackground?: boolean;
+  compact?: boolean;
 }
 
 export const FiscalYearWidget: React.FC<FiscalYearWidgetProps> = ({
   showBorder = true,
-  showBackground = true
+  showBackground = true,
+  compact = false
 }) => {
   const { t } = useTranslation('common');
   const { company } = useCompanyAccess();
@@ -20,13 +22,16 @@ export const FiscalYearWidget: React.FC<FiscalYearWidgetProps> = ({
 
   return (
     <div className={clsx(
-      "flex flex-col justify-center items-center p-1.5 px-3 rounded-lg h-full w-full select-none overflow-hidden transition-all",
+      "flex flex-col justify-center items-center rounded-lg h-full w-full select-none overflow-hidden transition-all",
+      !compact && "p-1.5 px-3",
       showBackground && "bg-white shadow-sm",
       showBorder && "border border-slate-200"
     )}>
-      <span className="text-[9px] text-[var(--color-text-secondary)] font-bold uppercase tracking-widest leading-none mb-1">
-        {t('widgets.fiscalYear.label', 'Fiscal Year')}
-      </span>
+      {!compact && (
+        <span className="text-[9px] text-[var(--color-text-secondary)] font-bold uppercase tracking-widest leading-none mb-1">
+          {t('widgets.fiscalYear.label', 'Fiscal Year')}
+        </span>
+      )}
       <span className="text-[12px] font-black tracking-tight text-[var(--color-text-primary)] leading-none">
         {t('widgets.fiscalYear.value', { defaultValue: 'FY {{year}}', year: fyYear })}
       </span>

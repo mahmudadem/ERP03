@@ -159,7 +159,9 @@ export class InventoryController {
         diContainer.inventorySettingsRepository,
         diContainer.warehouseRepository,
         diContainer.uomRepository,
-        diContainer.companyModuleRepository
+        diContainer.companyModuleRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
       );
 
       const result = await useCase.execute({
@@ -176,6 +178,7 @@ export class InventoryController {
         accountingMode: (req as any).body.accountingMode,
         inventoryAccountingMethod: (req as any).body.inventoryAccountingMethod,
         defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId,
+        selectedVoucherTypes: (req as any).body.selectedVoucherTypes,
       });
 
       (res as any).status(200).json({

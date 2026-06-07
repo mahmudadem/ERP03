@@ -80,6 +80,7 @@ import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../f
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
 import { FirestoreVoucherFormRepository } from '../firestore/repositories/designer/FirestoreVoucherFormRepository';
+import { FirestoreFieldLibraryRepository } from '../firestore/repositories/designer/FirestoreFieldLibraryRepository';
 import { FirestorePermissionRepository as FirestoreRbacPermissionRepository } from '../firestore/repositories/rbac/FirestorePermissionRepository';
 import { FirestoreSystemRoleTemplateRepository } from '../firestore/repositories/rbac/FirestoreSystemRoleTemplateRepository';
 import { FirestoreCompanyRoleRepository } from '../firestore/repositories/rbac/FirestoreCompanyRoleRepository';
@@ -118,7 +119,9 @@ import { AxiosHttpClient } from '../http/AxiosHttpClient';
 import { IInvoiceMessagingProvider } from '../../application/sales/services/IInvoiceMessagingProvider';
 import { ICompanyMessagingResolver } from '../../application/sales/services/ICompanyMessagingResolver';
 import { MetaWhatsAppCloudProvider } from '../messaging/MetaWhatsAppCloudProvider';
-import { SalesSettingsMessagingResolver } from '../messaging/SalesSettingsMessagingResolver';
+import { CommunicationsSettingsMessagingResolver } from '../messaging/CommunicationsSettingsMessagingResolver';
+import { ICommunicationsSettingsRepository } from '../../repository/interfaces/communications/ICommunicationsSettingsRepository';
+import { FirestoreCommunicationsSettingsRepository } from '../firestore/repositories/communications/FirestoreCommunicationsSettingsRepository';
 import { FirestoreAiChatRepository } from '../firestore/repositories/ai-assistant/FirestoreAiChatRepository';
 import { FirestoreAiSettingsRepository } from '../firestore/repositories/ai-assistant/FirestoreAiSettingsRepository';
 import { FirestoreAiUsageLogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiUsageLogRepository';
@@ -738,6 +741,11 @@ export const diContainer = {
       ? new PrismaVoucherFormRepository(getPrismaClient())
       : new FirestoreVoucherFormRepository(getDb());
   },
+  // Phase A of task 135 — Firestore-only for now. Prisma binding will
+  // follow when the Phase B super-admin authoring UI lands.
+  get fieldLibraryRepository(): DesRepo.IFieldLibraryRepository {
+    return new FirestoreFieldLibraryRepository(getDb());
+  },
 
   // RBAC
   get rbacPermissionRepository(): IRbacPermissionRepository {
@@ -1280,8 +1288,12 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
     });
   },
 
+  get communicationsSettingsRepository(): ICommunicationsSettingsRepository {
+    return new FirestoreCommunicationsSettingsRepository(getDb());
+  },
+
   get companyMessagingResolver(): ICompanyMessagingResolver {
-    return new SalesSettingsMessagingResolver(this.salesSettingsRepository, this.encryptionService);
+    return new CommunicationsSettingsMessagingResolver(this.communicationsSettingsRepository, this.encryptionService);
   },
 
   // AUTH

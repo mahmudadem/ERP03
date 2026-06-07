@@ -40,6 +40,7 @@ export interface UpdateSettingsInput {
   runtimeMode?: AiTenantRuntimeMode;
   allowedRuntimeModes?: AiTenantRuntimeMode[];
   allowUnverifiedModels?: boolean;
+  showFloatingAssistant?: boolean;
 }
 
 export class AiSettingsUseCase {
@@ -124,6 +125,7 @@ export class AiSettingsUseCase {
       runtimeMode: input.runtimeMode,
       allowedRuntimeModes: input.allowedRuntimeModes,
       allowUnverifiedModels: input.allowUnverifiedModels,
+      showFloatingAssistant: input.showFloatingAssistant,
     });
 
     // Encrypt apiKey before saving to repository

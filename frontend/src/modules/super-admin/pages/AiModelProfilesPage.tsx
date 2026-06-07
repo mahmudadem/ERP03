@@ -25,6 +25,7 @@ import {
   tableRowClass,
 } from '../components/SuperAdminPage';
 import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
+import { useConfirm } from '../../../hooks/useConfirm';
 import { ActionMenu, ActionMenuItem } from '../components/ActionMenu';
 import { CertificationManagerModal } from '../components/CertificationManagerModal';
 import { SuperAdminDiagnosticsModal } from '../components/SuperAdminDiagnosticsModal';
@@ -104,6 +105,8 @@ export const AiModelProfilesPage: React.FC = () => {
   // Profile edit modal state
   const [viewState, setViewState] = useState<ViewState>({ mode: 'list' });
   const [form, setForm] = useState<UpsertAiModelProfilePayload>(emptyForm);
+
+  const { confirm, confirmDialog } = useConfirm();
 
   const isEditing = viewState.mode === 'editing';
   const selectedProfile = viewState.mode === 'editing' || viewState.mode === 'diagnostics' || viewState.mode === 'certifications' 
@@ -208,7 +211,12 @@ export const AiModelProfilesPage: React.FC = () => {
   };
 
   const handleDelete = async (profile: AiModelProfile) => {
-    if (!window.confirm(t('superAdmin.aiModels.confirmDelete', { model: profile.modelName }))) return;
+    const confirmed = await confirm({
+      title: 'Delete Model Profile',
+      tone: 'danger',
+      message: t('superAdmin.aiModels.confirmDelete', { model: profile.modelName }) as string
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deleteAiModelProfile(profile.id);
       errorHandler.showSuccess(t('superAdmin.aiModels.messages.deleted'));
@@ -282,6 +290,7 @@ export const AiModelProfilesPage: React.FC = () => {
   // ── Render ──
   return (
     <SuperAdminPage>
+      {confirmDialog}
       <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
         <span>
           <strong>Setting up a new AI model?</strong> Use the guided wizard instead of editing each piece by hand.

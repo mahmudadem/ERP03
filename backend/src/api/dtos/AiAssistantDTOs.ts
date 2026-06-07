@@ -100,7 +100,15 @@ export interface AiSettingsResponse {
     runtimeMode: string;
     allowedRuntimeModes: string[];
     allowUnverifiedModels: boolean;
+    showFloatingAssistant: boolean;
     updatedAt: string;
+  };
+}
+
+export interface AiWidgetPreferencesResponse {
+  preferences: {
+    isEnabled: boolean;
+    showFloatingAssistant: boolean;
   };
 }
 
@@ -119,6 +127,7 @@ export interface UpdateAiSettingsRequest {
   runtimeMode?: 'BYOK' | 'CREDITS' | 'DISABLED';
   allowedRuntimeModes?: Array<'BYOK' | 'CREDITS' | 'DISABLED'>;
   allowUnverifiedModels?: boolean;
+  showFloatingAssistant?: boolean;
 }
 
 // ─── Provider & Model Catalog DTOs ────────────────────────────────────

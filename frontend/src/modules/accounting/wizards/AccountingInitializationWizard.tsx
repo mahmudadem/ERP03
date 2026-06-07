@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { companyModulesApi } from '../../../api/companyModules';
 import { systemMetadataApi } from '../../../api/systemMetadata';
+import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import {
   Calculator,
   Calendar,
@@ -18,7 +20,10 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { COATreePreview } from '../components/COATreePreview';
-import { loadSystemVoucherTypes, SystemVoucherType } from '../services/voucherTypesService';
+import {
+  loadSystemVoucherTypeGroups,
+  SystemVoucherTypeGroup,
+} from '../services/voucherTypesService';
 import { getCountryDefaults } from '../utils/countryDefaults';
 
 interface AccountingSetupData {
@@ -26,7 +31,12 @@ interface AccountingSetupData {
   fiscalYearEnd: string; // MM-DD format
   baseCurrency: string;
   coaTemplate: string; // Changed to string to support API
-  selectedVoucherTypes?: string[]; // IDs of voucher types to include
+  /**
+   * Canonical voucherType keys the user picked (e.g. "journal_entry").
+   * Expanded to template ids at submit time so every form variant of every
+   * selected type installs as a locked + inactive default.
+   */
+  selectedTypeKeys?: string[];
   periodScheme: 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL';
 }
 
@@ -59,6 +69,7 @@ interface CoaTemplate {
 export const AccountingInitializationWizard: React.FC = () => {
   const { companyId, company, refreshCompany } = useCompanyAccess();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -69,15 +80,15 @@ export const AccountingInitializationWizard: React.FC = () => {
   // Dynamic data from API
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [coaTemplates, setCoaTemplates] = useState<CoaTemplate[]>([]);
-  const [systemVoucherTypes, setSystemVoucherTypes] = useState<SystemVoucherType[]>([]);
+  const [voucherTypeGroups, setVoucherTypeGroups] = useState<SystemVoucherTypeGroup[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  
+
   const [setupData, setSetupData] = useState<AccountingSetupData>({
     fiscalYearStart: '01-01', // Jan 1
     fiscalYearEnd: '12-31', // Dec 31
     baseCurrency: '',
     coaTemplate: 'standard',
-    selectedVoucherTypes: [], // Start with none selected
+    selectedTypeKeys: [], // Start with none selected
     periodScheme: 'MONTHLY',
   });
 
@@ -117,20 +128,18 @@ export const AccountingInitializationWizard: React.FC = () => {
     const fetchMetadata = async () => {
       try {
         setIsLoadingData(true);
-        const [currenciesData, templatesData, voucherTypesData] = await Promise.all([
+        const [currenciesData, templatesData, typeGroupsData] = await Promise.all([
           systemMetadataApi.getCurrencies(),
           systemMetadataApi.getCoaTemplates(),
-          loadSystemVoucherTypes('ACCOUNTING'),
+          loadSystemVoucherTypeGroups('ACCOUNTING'),
         ]);
         setCurrencies(currenciesData);
         setCoaTemplates(templatesData);
-        setSystemVoucherTypes(voucherTypesData);
-        
-        // Auto-select recommended voucher types
-        const recommended = voucherTypesData
-          .filter(vt => vt.isRecommended)
-          .map(vt => vt.id);
-        
+        setVoucherTypeGroups(typeGroupsData);
+
+        // Auto-select recommended types; if none flagged, default to all types.
+        const recommended = typeGroupsData.filter(g => g.isRecommended).map(g => g.typeKey);
+
         // Use smart defaults from company country
         const countryDefaults = company?.country ? getCountryDefaults(company.country) : { currency: '', fiscalYearStart: '01-01', fiscalYearEnd: '12-31' };
         console.log('[AccountingWizard] Applied defaults for', company?.country, countryDefaults);
@@ -140,7 +149,7 @@ export const AccountingInitializationWizard: React.FC = () => {
           fiscalYearStart: countryDefaults.fiscalYearStart,
           fiscalYearEnd: countryDefaults.fiscalYearEnd,
           baseCurrency: prev.baseCurrency || countryDefaults.currency || company?.baseCurrency || '',
-          selectedVoucherTypes: recommended.length > 0 ? recommended : voucherTypesData.map(vt => vt.id),
+          selectedTypeKeys: recommended.length > 0 ? recommended : typeGroupsData.map(g => g.typeKey),
         }));
       } catch (err) {
         console.error('Failed to load metadata:', err);
@@ -177,10 +186,23 @@ export const AccountingInitializationWizard: React.FC = () => {
         return;
       }
 
-      // Initialize module with setup data
-      await companyModulesApi.initialize(companyId, 'accounting', setupData);
+      // Expand each selected type key into every template id (form variant)
+      // for that type. The backend sync still takes template ids; the wizard
+      // bundles "pick one type, install all its forms" at the call site.
+      const selectedTemplateIds = voucherTypeGroups
+        .filter((g) => setupData.selectedTypeKeys?.includes(g.typeKey))
+        .flatMap((g) => g.forms.map((f) => f.id));
 
-      // Redirect to accounting module
+      // Initialize module with setup data
+      await companyModulesApi.initialize(companyId, 'accounting', {
+        ...setupData,
+        selectedVoucherTypes: selectedTemplateIds,
+      });
+
+      // Refresh cached module status before navigating so the guard does not
+      // bounce us back to /accounting/setup based on a stale "uninitialized" snapshot.
+      emitCompanyModulesRefresh({ companyId, moduleCode: 'accounting' });
+      await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
       await refreshCompany();
       navigate('/accounting', { replace: true });
     } catch (err: any) {
@@ -501,16 +523,16 @@ export const AccountingInitializationWizard: React.FC = () => {
       title: 'Voucher Types',
       icon: FileCheck,
       content: (() => {
-        const toggleVoucherType = (voucherId: string) => {
+        const toggleType = (typeKey: string) => {
           setSetupData(prev => {
-            const current = prev.selectedVoucherTypes || [];
-            const isSelected = current.includes(voucherId);
-            
+            const current = prev.selectedTypeKeys || [];
+            const isSelected = current.includes(typeKey);
+
             return {
               ...prev,
-              selectedVoucherTypes: isSelected
-                ? current.filter(id => id !== voucherId)
-                : [...current, voucherId]
+              selectedTypeKeys: isSelected
+                ? current.filter(k => k !== typeKey)
+                : [...current, typeKey]
             };
           });
         };
@@ -518,14 +540,14 @@ export const AccountingInitializationWizard: React.FC = () => {
         const selectAll = () => {
           setSetupData(prev => ({
             ...prev,
-            selectedVoucherTypes: systemVoucherTypes.map(vt => vt.id)
+            selectedTypeKeys: voucherTypeGroups.map(g => g.typeKey)
           }));
         };
 
         const selectNone = () => {
           setSetupData(prev => ({
             ...prev,
-            selectedVoucherTypes: []
+            selectedTypeKeys: []
           }));
         };
 
@@ -535,13 +557,13 @@ export const AccountingInitializationWizard: React.FC = () => {
               Select Voucher Types
             </h2>
             <p className="text-gray-600 mb-6 text-center">
-              Choose which voucher types to include in your accounting setup
+              Pick which accounting document types to install. Each type comes with one or more default form variants &mdash; you&apos;ll activate or customize them next.
             </p>
 
             {/* Selection Controls */}
             <div className="flex justify-between items-center mb-6 max-w-4xl mx-auto">
               <p className="text-sm text-gray-600">
-                {setupData.selectedVoucherTypes?.length || 0} of {systemVoucherTypes.length} selected
+                {setupData.selectedTypeKeys?.length || 0} of {voucherTypeGroups.length} types selected
               </p>
               <div className="flex gap-2">
                 <button
@@ -566,7 +588,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                   <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                   <span className="ml-3 text-gray-600">Loading voucher types...</span>
                 </div>
-              ) : systemVoucherTypes.length === 0 ? (
+              ) : voucherTypeGroups.length === 0 ? (
                 <div className="col-span-2 text-center py-12">
                   <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600 font-medium">No voucher types available</p>
@@ -575,13 +597,21 @@ export const AccountingInitializationWizard: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                systemVoucherTypes.map((voucherType) => {
-                  const isSelected = setupData.selectedVoucherTypes?.includes(voucherType.id);
-                  
+                voucherTypeGroups.map((group) => {
+                  const isSelected = setupData.selectedTypeKeys?.includes(group.typeKey);
+                  const formCount = group.forms.length;
+                  const variantLabels = group.forms
+                    .map((f) => {
+                      if (f.persona) return f.persona.charAt(0).toUpperCase() + f.persona.slice(1);
+                      const match = f.name.match(/\(([^)]+)\)/);
+                      return match ? match[1] : null;
+                    })
+                    .filter(Boolean) as string[];
+
                   return (
                     <button
-                      key={voucherType.id}
-                      onClick={() => toggleVoucherType(voucherType.id)}
+                      key={group.typeKey}
+                      onClick={() => toggleType(group.typeKey)}
                       className={`p-5 rounded-lg border-2 transition-all text-left hover:border-primary-500 ${
                         isSelected
                           ? 'border-primary-500 bg-primary-50'
@@ -590,19 +620,21 @@ export const AccountingInitializationWizard: React.FC = () => {
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-bold text-gray-900">{voucherType.name}</h3>
-                            {voucherType.isRecommended && (
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="text-lg font-bold text-gray-900">{group.name}</h3>
+                            {group.isRecommended && (
                               <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                                 Recommended
                               </span>
                             )}
+                            <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
+                              {formCount} default form{formCount !== 1 ? 's' : ''}
+                            </span>
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Prefix: <span className="font-mono font-semibold">{voucherType.prefix}</span>
-                          </p>
-                          {voucherType.description && (
-                            <p className="text-sm text-gray-500">{voucherType.description}</p>
+                          {variantLabels.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Variants: {variantLabels.join(' · ')}
+                            </p>
                           )}
                         </div>
                         {isSelected && (
@@ -616,14 +648,19 @@ export const AccountingInitializationWizard: React.FC = () => {
             </div>
 
             {/* Info Box */}
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-4xl mx-auto">
-              <div className="flex">
-                <FileCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="ml-3">
-                  <p className="text-sm text-blue-700">
-                    <strong>Tip:</strong> You can add more voucher types later from the Voucher Designer, 
-                    or clone the default ones to customize them.
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg max-w-4xl mx-auto">
+              <div className="flex items-start gap-2">
+                <FileCheck className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800 space-y-1">
+                  <p className="font-semibold">These install as locked, inactive default templates.</p>
+                  <p>
+                    The schemas are available immediately, but no sidebar entries appear until you open
+                    <span className="font-semibold"> Tools &rarr; Forms Designer</span> and either:
                   </p>
+                  <ul className="list-disc list-inside ml-1 space-y-0.5">
+                    <li><span className="font-semibold">Activate</span> a default form to use it as-is, or</li>
+                    <li><span className="font-semibold">Clone</span> it to create an editable variant.</li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -743,20 +780,27 @@ export const AccountingInitializationWizard: React.FC = () => {
                   <FileCheck className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Selected Voucher Types</h3>
-                    {setupData.selectedVoucherTypes && setupData.selectedVoucherTypes.length > 0 ? (
+                    {setupData.selectedTypeKeys && setupData.selectedTypeKeys.length > 0 ? (
                       <div className="space-y-2">
-                        {setupData.selectedVoucherTypes.map(id => {
-                          const vt = systemVoucherTypes.find(v => v.id === id);
-                          return vt ? (
-                            <div key={id} className="flex items-center gap-2">
+                        {setupData.selectedTypeKeys.map(typeKey => {
+                          const group = voucherTypeGroups.find(g => g.typeKey === typeKey);
+                          return group ? (
+                            <div key={typeKey} className="flex items-center gap-2">
                               <CheckCircle className="w-4 h-4 text-primary-600" />
-                              <span className="font-medium">{vt.name}</span>
-                              <span className="text-sm text-gray-500">({vt.prefix})</span>
+                              <span className="font-medium">{group.name}</span>
+                              <span className="text-sm text-gray-500">
+                                ({group.forms.length} default form{group.forms.length !== 1 ? 's' : ''})
+                              </span>
                             </div>
                           ) : null;
                         })}
                         <p className="text-sm text-gray-600 mt-3">
-                          Total: {setupData.selectedVoucherTypes.length} voucher type(s)
+                          Total: {setupData.selectedTypeKeys.length} type
+                          {setupData.selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
+                          {voucherTypeGroups
+                            .filter(g => setupData.selectedTypeKeys?.includes(g.typeKey))
+                            .reduce((sum, g) => sum + g.forms.length, 0)}{' '}
+                          form variants will install as locked defaults.
                         </p>
                       </div>
                     ) : (
@@ -844,9 +888,13 @@ export const AccountingInitializationWizard: React.FC = () => {
             </div>
 
             <button
-              onClick={() => navigate('/accounting')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 
-                       text-white font-semibold rounded-lg hover:from-primary-600 hover:to-primary-700 
+              onClick={async () => {
+                emitCompanyModulesRefresh({ companyId, moduleCode: 'accounting' });
+                await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
+                navigate('/accounting', { replace: true });
+              }}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600
+                       text-white font-semibold rounded-lg hover:from-primary-600 hover:to-primary-700
                        transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               Go to Accounting Module

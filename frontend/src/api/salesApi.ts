@@ -397,6 +397,7 @@ export interface InitializeSalesPayload {
   srNumberNextSeq?: number;
   quoteNumberPrefix?: string;
   quoteNumberNextSeq?: number;
+  selectedVoucherTypes?: string[];
 }
 
 export interface SalesOrderLineInputDTO {
@@ -761,8 +762,11 @@ export const salesApi = {
   updateSI: (id: string, payload: UpdateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
     client.put(`/tenant/sales/invoices/${id}`, payload),
 
-  createAndPostSI: (payload: CreateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
-    client.post('/tenant/sales/invoices/create-and-post', payload),
+  deleteSI: (id: string): Promise<{ success: true }> =>
+    client.delete(`/tenant/sales/invoices/${id}`),
+
+  createAndPostSI: (payload: CreateSalesInvoicePayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
+    client.post('/tenant/sales/invoices/create-and-post', { ...payload, periodLockOverrideReason }),
 
   updateAndPostSI: (id: string, payload: UpdateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
     client.put(`/tenant/sales/invoices/${id}/update-and-post`, payload),
@@ -776,8 +780,8 @@ export const salesApi = {
   postSI: (id: string, settlementInput?: SettlementInputPayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/post`, { settlementInput, periodLockOverrideReason }),
 
-  approveSI: (id: string, settlementInput?: SettlementInputPayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
-    client.post(`/tenant/sales/invoices/${id}/approve`, { settlementInput, periodLockOverrideReason }),
+  // approveSI has moved to accountingApi (SoD: Sales never approves). See
+  // docs/architecture/posting-authority.md §4.1.
 
   updatePaymentStatus: (id: string, payload: UpdateSalesInvoicePaymentStatusPayload): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/payment-status`, payload),

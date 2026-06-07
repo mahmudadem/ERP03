@@ -103,4 +103,56 @@ describe('SalesInvoice', () => {
     expect(invoice.subtotalDoc).toBe(23);
     expect(invoice.grandTotalDoc).toBe(24.8);
   });
+
+  // Task 168 regression test. Pre-fix, normalizeLine ignored priceIsInclusive and always
+  // applied exclusive math, so an inclusive-tax line silently had tax stacked on top of the
+  // already-inclusive price during entity construction. That produced UI totals that
+  // disagreed with the ledger.
+  it('respects priceIsInclusive when recomputing line totals during construction', () => {
+    const invoice = SalesInvoice.fromJSON({
+      id: 'si_inclusive',
+      companyId: 'co_1',
+      invoiceNumber: 'SI-INC-1',
+      formType: 'sales_invoice_direct',
+      voucherType: 'sales_invoice',
+      persona: 'direct',
+      customerId: 'cus_1',
+      customerName: 'Customer One',
+      invoiceDate: '2026-06-04',
+      currency: 'USD',
+      exchangeRate: 1,
+      lines: [
+        {
+          lineId: 'line_inc_1',
+          lineNo: 1,
+          itemId: 'item_1',
+          itemCode: '0001',
+          itemName: 'Test Item',
+          trackInventory: false,
+          invoicedQty: 2,
+          uom: 'PCS',
+          unitPriceDoc: 10,
+          taxRate: 0.1,
+          priceIsInclusive: true,
+          revenueAccountId: 'rev_1',
+        },
+      ],
+      charges: [],
+      paymentTermsDays: 0,
+      outstandingAmountBase: 0,
+      createdBy: 'user_1',
+      createdAt: new Date('2026-06-04T00:00:00Z'),
+      updatedAt: new Date('2026-06-04T00:00:00Z'),
+    });
+
+    // 2 * 10 = 20 inclusive. Net = 20 / 1.1 ≈ 18.18, tax = 20 - 18.18 ≈ 1.82.
+    expect(invoice.lines[0].grossLineTotalDoc).toBe(20);
+    expect(invoice.lines[0].lineTotalDoc).toBe(18.18);
+    expect(invoice.lines[0].taxAmountDoc).toBe(1.82);
+    expect(invoice.subtotalDoc).toBe(18.18);
+    expect(invoice.taxTotalDoc).toBe(1.82);
+    expect(invoice.grandTotalDoc).toBe(20);
+    // The flag itself must be preserved so subsequent loads recompute consistently.
+    expect(invoice.lines[0].priceIsInclusive).toBe(true);
+  });
 });

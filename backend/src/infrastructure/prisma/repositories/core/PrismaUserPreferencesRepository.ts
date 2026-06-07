@@ -17,7 +17,8 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
       (data.disabledNotificationCategories as string[]) || [],
       (data.notificationCategoryOverrides as Record<string, boolean>) || {},
       data.createdAt,
-      data.updatedAt
+      data.updatedAt,
+      (data.appearanceSettings as any)?.layoutMode || 'legacy'
     );
   }
 
@@ -30,13 +31,31 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
   }
 
   async upsert(userId: string, prefs: Partial<UserPreferences>): Promise<UserPreferences> {
+    const existing = await this.prisma.userPreferences.findUnique({
+      where: { userId },
+    });
+    const existingAppearance = (existing?.appearanceSettings as any) || {};
+
     const updateData: any = {};
     if (prefs.language !== undefined) updateData.language = prefs.language;
     if (prefs.uiMode !== undefined) updateData.uiMode = prefs.uiMode;
     if (prefs.theme !== undefined) updateData.theme = prefs.theme;
     if (prefs.sidebarMode !== undefined) updateData.sidebarMode = prefs.sidebarMode;
     if (prefs.sidebarPinned !== undefined) updateData.sidebarPinned = prefs.sidebarPinned;
-    if (prefs.appearanceSettings !== undefined) updateData.appearanceSettings = prefs.appearanceSettings as any;
+    
+    if (prefs.appearanceSettings !== undefined) {
+      updateData.appearanceSettings = {
+        ...existingAppearance,
+        ...prefs.appearanceSettings
+      };
+    }
+    if (prefs.layoutMode !== undefined) {
+      updateData.appearanceSettings = {
+        ...existingAppearance,
+        ...(updateData.appearanceSettings || {}),
+        layoutMode: prefs.layoutMode
+      };
+    }
     if (prefs.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = prefs.disabledNotificationCategories as any;
     if (prefs.notificationCategoryOverrides !== undefined) updateData.notificationCategoryOverrides = prefs.notificationCategoryOverrides as any;
 
@@ -50,4 +69,5 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
     });
     return this.toDomain(data);
   }
+
 }

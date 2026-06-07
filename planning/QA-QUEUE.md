@@ -4,9 +4,215 @@
 > Agents add items here when a feature is complete.
 > Mahmud checks them off after testing and marks Pass ✅ or Fail ❌ (with notes).
 
+> **🚫 SYCO tenant is closed (2026-06-05).** Do not run QA against SYCO — its COA / item cost basis / posting data are corrupt and we will not clean them. All QA runs use a **fresh template-seeded tenant**. See [121 — Phase C QA Results](./done/121-phase-c-qa-results.md) for the closure note.
+
 ---
 
 ## 🧪 Ready to Test
+
+### Navigation - Apex Route Coverage Gap Audit
+**Added by:** Codex (report 179)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger`.
+- Open these Accounting/Tools routes directly or through sidebar/actions where available:
+  - `/#/dev/apex-ledger/accounting/setup`
+  - `/#/dev/apex-ledger/accounting/recurring-vouchers`
+  - `/#/dev/apex-ledger/accounting/cost-centers`
+  - `/#/dev/apex-ledger/vouchers/<voucherId>`
+  - `/#/dev/apex-ledger/vouchers/<voucherId>/view`
+  - `/#/dev/apex-ledger/vouchers/demo`
+  - `/#/dev/apex-ledger/accounting/tools/forms`
+  - `/#/dev/apex-ledger/accounting/tools/budgets`
+  - `/#/dev/apex-ledger/accounting/tools/subgroup-tagging`
+  - `/#/dev/apex-ledger/tools/forms`
+- Expected: each page renders inside Apex with the Apex sidebar and topbar still visible.
+- Expected: protected pages keep the same permission/module behavior as the main shell.
+
+**Known limitations:**
+- Super Admin routes are not included in tenant Apex shell cutover. Treat Super Admin as a separate shell decision.
+
+---
+
+### Navigation - Apex Settings/RBAC/AI Native Page Mounting
+**Added by:** Codex (report 178)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger/settings`.
+- Click Settings/RBAC links for General Settings, Appearance, Topbar Widgets, Sidebar/Menu Config, Approval Workflow, Roles, Edit Role, and Assign Users.
+  - Expected: concrete Settings/RBAC pages render inside Apex, with the Apex sidebar and topbar still visible.
+  - Expected: Company Settings footer pages still use the Company Settings footer routes and stay inside Apex.
+- From a Settings/RBAC page inside Apex, use internal navigation such as edit role, back to list, or settings hub links.
+  - Expected: the URL stays under `/#/dev/apex-ledger/settings/...`, not `/#/settings/...`.
+- Open `/#/dev/apex-ledger/ai`.
+- Click AI links for AI Home, AI Settings, AI Usage, AI Proposals, Proposal Detail, and AI Setup where available to the signed-in role.
+  - Expected: concrete AI pages render inside Apex, with the Apex sidebar and topbar still visible.
+- From an AI page inside Apex, use internal AI navigation.
+  - Expected: the URL stays under `/#/dev/apex-ledger/ai/...`, not `/#/ai-assistant/...`.
+- Test restricted roles, disabled AI module, and non-super-admin users.
+  - Expected: protected Settings/RBAC/AI pages remain blocked exactly as they are in the main shell.
+
+**Known limitations:**
+- This mounts the existing native pages inside Apex. It does not yet redesign those native pages with Apex view styling.
+- Full Apex cutover still needs feature flag integration and authenticated cross-role QA.
+
+---
+
+### Navigation - Apex Purchases And Inventory Native Page Mounting
+**Added by:** Codex (report 177)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger/purchases`.
+- Click Purchases sidebar links for Vendors, Vendor Groups, Price Lists, Purchase Orders, Goods Receipts, Purchase Invoices, Purchase Returns, Vendor Statement, AP Aging, Purchases Analytics, and Purchase Settings.
+  - Expected: concrete Purchases subpages render the native production Purchases pages inside the Apex shell, with the Apex sidebar and topbar still visible.
+- Open `/#/dev/apex-ledger/purchases/invoices/new`.
+  - Expected: the real Purchase Invoice detail page opens inside Apex.
+- From a Purchases page inside Apex, use open row, create new, back to list, or linked-document actions.
+  - Expected: the URL stays under `/#/dev/apex-ledger/purchases/...`, not `/#/purchases/...`.
+- Open `/#/dev/apex-ledger/inventory`.
+- Click Inventory sidebar links for Items, Categories, Warehouses, Stock Levels, Stock Movements, Stock Adjustments, Stock Transfers, Opening Stock, Low Stock Alerts, Inventory Valuation, UOM Master, and Inventory Settings.
+  - Expected: concrete Inventory subpages render the native production Inventory pages inside the Apex shell, with the Apex sidebar and topbar still visible.
+- From an Inventory page inside Apex, use open row, create new, back to list, or linked-record actions.
+  - Expected: the URL stays under `/#/dev/apex-ledger/inventory/...`, not `/#/inventory/...`.
+- Test restricted roles and disabled modules.
+  - Expected: protected Purchases and Inventory pages remain blocked exactly as they are in the main shell.
+
+**Known limitations:**
+- This mounts the existing native pages inside Apex. It does not yet redesign those native pages with Apex view styling.
+- Settings/RBAC and AI native page mounting remain pending.
+
+---
+
+### Navigation - Apex Prototype Typography Restoration
+**Added by:** Codex (report 176)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger`.
+- Compare the sidebar, topbar badges, module labels, and small counters against the downloaded Apex prototype.
+  - Expected: normal UI text uses the same Inter feel as the prototype, and small metadata/counters use the sharper JetBrains Mono style.
+- Compare against the old mismatch.
+  - Expected: Apex no longer looks like the same Tailwind classes rendered at the main shell's smaller 90% typography scale.
+- Leave Apex and return to a normal tenant route.
+  - Expected: the main shell keeps its normal compact dashboard typography.
+
+**Known limitations:**
+- This is a visual typography fix only. It does not change permissions, posting, settings behavior, routing contracts, or data.
+
+---
+
+### Navigation — Apex Shell RTL Flyout & Contrast Preset Hardening
+**Added by:** Antigravity (report 175)
+**What to test:**
+- Sign in with an active company and open the Appearance Settings page (`/#/settings/appearance` or `/#/dev/apex-ledger/settings/appearance`).
+- In the **Curated Presets** section, select **Ocean Breeze** (which has Sidebar Surface set to `Contrast (Brand colored)`).
+- Observe the sidebar:
+  - Expected: Inactive sidebar item icons are clearly visible inside subtle translucent white pills (`bg-white/10` background layer over the bright blue, rather than solid white/light-blue).
+  - Expected: The active sidebar item stands out as a clear translucent white row background (`bg-white/20`) rather than matching the bright blue background color.
+  - Expected: Category section hover states and row hovers are subtle semi-transparent overlays (`hover:bg-white/10`) rather than solid bright blue/light-blue page background fills.
+- Switch the sidebar layout to **Flyout (Hover menus)**.
+- Switch the language to Arabic (`AR`).
+  - Expected: Hovering over any sidebar item spawns the flyout submenu to the **left** of the sidebar.
+  - Expected: The submenu does **not** overlap the icons or text labels inside the sidebar.
+  - Expected: The background of the spawned flyout submenu matches the sidebar's bright blue background (`bg-[var(--app-sidebar-surface)]`) instead of hardcoded white, and the white item text inside it is perfectly readable.
+- Switch the language back to `EN` (English).
+  - Expected: Hovering over the same sidebar items spawns the flyout submenus to the **right** of the sidebar.
+
+**Known limitations:**
+- This layout logic handles fixed-portal menu positioning and Contrast preset overlays; it does not change sub-route navigation rules.
+
+---
+
+### Navigation - Apex Company Settings Sidebar Parity
+**Added by:** Codex (report 174)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger`.
+- Look at the bottom of the Apex sidebar.
+  - Expected: it shows **Company Settings**, matching the main sidebar, not the Apex user/profile card.
+- Expand Company Settings and click Overview, Users, Roles, Modules, Features, Bundles, Currencies, Tax Codes, Notifications, Communications, and General Settings.
+  - Expected: each page renders inside Apex and the URL remains under `/#/dev/apex-ledger/...`.
+- Repeat with Arabic selected.
+  - Expected: the Company Settings footer and submenu keep correct RTL alignment.
+
+**Known limitations:**
+- This only mounts the Company Settings footer pages. Broader Settings/RBAC/AI native page mounting remains part of Task 167 Slice 3C-Remaining.
+
+---
+
+### Navigation - Apex Prototype Scale Restoration
+**Added by:** Codex (report 173)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger`.
+- Confirm the Apex sidebar fills the full browser height from top to bottom.
+- Confirm the logo/header area and bottom user profile area remain inside the sidebar while the menu list scrolls in the middle.
+- Compare the overall shell size against the downloaded Apex prototype.
+  - Expected: the shell should feel like the prototype scale, close to the previous app at about 110% browser zoom, without actually requiring browser zoom.
+- Switch the language selector from English to Arabic.
+  - Expected: the larger shell scale remains stable in RTL, with no sidebar clipping or broken active indicators.
+- Open a Sales native subpage such as `/#/dev/apex-ledger/sales/invoices`.
+  - Expected: Apex chrome keeps the larger prototype scale while the native page content scrolls inside the workspace.
+
+**Known limitations:**
+- This is a visual shell-scale fix only. It does not change posting, approvals, taxes, balances, inventory, permissions, or page routing contracts.
+
+---
+
+### Navigation — Apex Sales Native Page Mounting Slice 3C
+**Added by:** Codex (report 171)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger/sales`.
+- Click Sales sidebar links for Customers, Products & Services, Quotations, Sales Orders, Delivery Notes, Sales Invoices, Sales Returns, Customer Statement, Sales Analytics, Aged Backlog, Recurring Invoices, and Sales Settings.
+  - Expected: concrete Sales subpages render the native production Sales pages inside the Apex shell, with the Apex sidebar and topbar still visible.
+- Open `/#/dev/apex-ledger/sales/invoices/new`.
+  - Expected: the real Sales Invoice detail page opens inside Apex.
+- From a Sales list page inside Apex, open a row and then use the page's back/list/new/open-linked-document actions.
+  - Expected: the URL stays under `/#/dev/apex-ledger/sales/...`, not `/#/sales/...`.
+- Test a company in direct-invoicing mode.
+  - Expected: operational workflow pages such as Sales Orders and Delivery Notes are still hidden/blocked according to the same rules as the main shell.
+- Test a restricted role.
+  - Expected: protected Sales pages remain blocked if the role lacks the same access in the main shell.
+
+**Known limitations:**
+- This slice covers Sales only. Purchases, Inventory, Settings/RBAC, and AI native page mounting are still pending.
+
+---
+
+### Navigation — Apex Route/Sidebar Adapter Slice 3B
+**Added by:** Codex (report 170)
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger`.
+- Compare the Apex sidebar modules and child links against the normal tenant sidebar for the same user/company.
+  - Expected: modules, visible child links, and dynamic/default form groups follow the same permission and workflow rules.
+- In a Sales company configured for direct invoicing only, confirm operational full-workflow links such as Sales Orders and Delivery Notes are hidden in Apex when hidden in the main shell.
+- In a restricted role, confirm protected Accounting reports/settings links are hidden in Apex if they are hidden in the main shell.
+- If cloned Sales or Purchase forms exist, confirm they appear in Apex in the same grouping policy as the main sidebar.
+- Click Accounting tool links such as Forms Management, Budgets, and Subgroup Tagging.
+  - Expected: they stay inside `/dev/apex-ledger/...` and render the Apex tool surface rather than falling to a generic placeholder.
+
+**Known limitations:**
+- This slice fixes sidebar/route mapping only. Sales, Purchases, Inventory, Settings/RBAC, and AI child pages may still render Apex workbench pages until Slice 3C mounts the native production pages.
+
+---
+
+### Navigation — Apex Shell Production Candidate Slice 2
+**Added by:** Antigravity (report 168), Codex topbar hotfix
+**What to test:**
+- Sign in with an active company and open `/#/dev/apex-ledger` directly.
+- Confirm the top header shows the active company, fiscal year, base currency, UI mode, and current user initial.
+- In the topbar language selector, switch from `EN` to `AR`.
+  - Expected: Arabic becomes active immediately, the app direction changes to RTL, and the Apex shell remains visually stable.
+- Click the topbar Settings icon.
+  - Expected: `/dev/apex-ledger/settings/appearance` opens directly *inside* the Apex layout.
+- Click the topbar avatar/user initial.
+  - Expected: `/dev/apex-ledger/profile` opens directly *inside* the Apex layout.
+- Verify user profile/avatar details navigation: click the avatar button at the bottom-left of the sidebar.
+  - Expected: The Appearance settings page opens directly *inside* the Apex layout, preserving shell/sidebar continuity.
+- Verify Accounting Settings navigation: click the Settings button at the top header or in the sidebar. Select any setting card or click "Open Full Page".
+  - Expected: The detailed settings tabs render directly *inside* the Apex layout.
+- Test wildcard sub-module paths: type or navigate to an unmapped path (e.g. `/#/dev/apex-ledger/crm/leads` or `/#/dev/apex-ledger/hr/employees`).
+  - Expected: The page renders the clean "Module Coming Soon" card inside the Apex shell, instead of redirecting you to the legacy dashboard.
+- Switch to Arabic/RTL and confirm shell elements and sidebars align properly.
+
+**Known limitations:**
+- Apex is still a candidate route and is hidden from normal static navigation.
+- Cutover as the main tenant shell requires Slice 3 (putting Apex behind a feature flag).
+
+---
 
 ### Accounting — Stage 2b Posting-Authority Decoupling & Reactive Approvals
 **Added by:** Antigravity (report 155)
@@ -18,6 +224,7 @@
 - Repeat the same for a Purchase Invoice and confirm it also transitions to **Pending Approval**.
 - Log in as an authorized approver, open the document, and click **Approve & Post**.
 - Expected: The status transitions to **Posted** and the ledger entries and stock levels are finalized.
+
 
 ### AI Assistant — Floating Launcher Toggle
 **Added by:** Codex (report 153)
@@ -316,5 +523,4 @@ Then append to `planning/JOURNAL.md` and update `planning/ACTIVE.md`.
 
 ---
 
-_Last updated: 2026-06-03 by Antigravity (Stage 2b Posting-Authority QA added)_
-
+_Last updated: 2026-06-04 — Stage 2b Posting-Authority QA carried in; MDI windows unified earlier._

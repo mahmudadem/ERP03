@@ -65,3 +65,11 @@ frontend/typescript-errors.txt
 frontend/build*.log
 frontend/build_err*.txt
 frontend/build_error.log
+
+# Source backups (should never be committed)
+frontend/src.zip
+*.src.zip
+
+# Python build artifacts (skill scripts)
+__pycache__/
+*.pyc

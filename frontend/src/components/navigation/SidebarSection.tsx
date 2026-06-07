@@ -2,30 +2,10 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { clsx } from 'clsx';
-import * as Icons from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
-
-const FLUENT_3D_ICON_MAP: Record<string, string> = {
-  Home: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/House/3D/house_3d.png',
-  Package: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Package/3D/package_3d.png',
-  HandCoins: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Money%20bag/3D/money_bag_3d.png',
-  ShoppingCart: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20cart/3D/shopping_cart_3d.png',
-  ClipboardList: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Clipboard/3D/clipboard_3d.png',
-  Users: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/People/3D/people_3d.png',
-  Monitor: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
-  Factory: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Factory/3D/factory_3d.png',
-  Briefcase: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Briefcase/3D/briefcase_3d.png',
-  Wrench: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png',
-  Bot: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png',
-  Settings: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Gear/3D/gear_3d.png',
-  Code: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Laptop/3D/laptop_3d.png',
-  Layout: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20chart/3D/bar_chart_3d.png',
-  Table: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Calendar/3D/calendar_3d.png',
-  FileText: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Page%20facing%20up/3D/page_facing_up_3d.png',
-  Brain: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Brain/3D/brain_3d.png',
-};
 import { useUserPreferences } from '../../hooks/useUserPreferences';
+import { resolveSidebarIcon } from './sidebarIcons';
 
 interface SidebarItemData {
   path?: string;
@@ -43,6 +23,7 @@ interface SidebarSectionProps {
   onNavigate?: () => void;
   defaultExpanded?: boolean;
   path?: string; // Optional path for top-level direct links
+  isCompact?: boolean;
 }
 
 export const SidebarSection: React.FC<SidebarSectionProps> = ({ 
@@ -52,7 +33,8 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   iconName,
   onNavigate,
   defaultExpanded = false,
-  path
+  path,
+  isCompact = false
 }) => {
   const { appearanceSettings } = useUserPreferences();
   const { i18n } = useTranslation();
@@ -60,9 +42,12 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
   
   const use3DStyle = appearanceSettings?.id === 'tailwind-play';
+  const isContrastSidebar = appearanceSettings?.sidebarSurface === 'contrast';
 
-  // Resolve Icon from name if provided
-  const ResolvedIcon = iconName ? (Icons as any)[iconName] : null;
+  // Phosphor Duotone across the whole sidebar (single icon set everywhere).
+  // resolveSidebarIcon falls back to Lucide for any name without a Phosphor
+  // mapping so unmapped entries still render.
+  const ResolvedIcon = resolveSidebarIcon(iconName);
 
   const location = useLocation();
   const isActivePath = (targetPath: string) => {
@@ -94,57 +79,97 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   const toggleExpand = () => setIsExpanded((prev) => !prev);
 
   const headerClass = clsx(
-    "w-full flex transition-all duration-300 ease-out",
-    isOpen ? "flex-row items-center gap-3 px-4 py-2" : "flex-col items-center gap-1.5 px-2 py-3 justify-center",
-    "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
-    "hover:text-[var(--app-sidebar-text)] hover:bg-[var(--color-bg-tertiary)]/50 group"
+    "w-full flex transition-colors duration-300 ease-out",
+    isOpen 
+      ? isCompact 
+        ? "flex-row items-center gap-2 px-3 py-1.5"
+        : "flex-row items-center gap-3 px-4 py-2"
+      : "flex-col items-center gap-1.5 px-2 py-3 justify-center",
+    isCompact
+      ? "text-[10px] font-semibold text-[var(--app-sidebar-muted)] uppercase tracking-wider"
+      : "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
+    isContrastSidebar
+      ? "hover:text-[var(--app-sidebar-text)] hover:bg-white/10 group"
+      : "hover:text-[var(--app-sidebar-text)] hover:bg-black/5 dark:hover:bg-white/5 group"
   );
 
   const renderHeaderContent = (isActiveLink = false) => {
-    const iconUrl = use3DStyle ? FLUENT_3D_ICON_MAP[iconName || ''] : null;
     const isActive = isActiveLink || isSectionActive;
 
     return (
       <>
-        {(iconUrl || ResolvedIcon) && (
+        {ResolvedIcon && (
           <div className={clsx(
-            "rounded-[var(--radius-md)] transition-all duration-300 flex items-center justify-center shrink-0",
-            isOpen 
-              ? "p-1.5 bg-[var(--color-bg-tertiary)]" 
+            "pointer-events-none rounded-[var(--radius-md)] transition-colors duration-300 flex items-center justify-center shrink-0",
+            isOpen
+              ? isActiveLink
+                ? isCompact
+                  ? "p-1 bg-white/20 text-primary-600"
+                  : "p-1.5 bg-white/20 text-white"           // direct active route → row is blue, pill is translucent white
+                : isSectionActive
+                  ? isContrastSidebar
+                    ? "p-1.5 bg-white/20 text-white"
+                    : "p-1.5 bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"  // child is active → soft brand tint
+                  : isCompact
+                    ? isContrastSidebar
+                      ? "p-1 bg-white/10 text-[var(--app-sidebar-muted)]"
+                      : "p-1 bg-[var(--color-bg-tertiary)]"
+                    : isContrastSidebar
+                      ? "p-1.5 bg-white/10 text-[var(--app-sidebar-muted)]"
+                      : "p-1.5 bg-[var(--color-bg-tertiary)]"
               : use3DStyle
                 ? isActive
                   ? "w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
-                  : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
-                : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
-            
-            !use3DStyle && "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600",
-            !use3DStyle && (isActiveLink || (isOpen && !isExpanded)) && "bg-primary-50 dark:bg-primary-900/20 text-primary-600"
+                  : isContrastSidebar
+                    ? "w-10 h-10 bg-white/10 text-[var(--app-sidebar-muted)] hover:bg-white/15"
+                    : "w-10 h-10 bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
+                : isActiveLink
+                  ? isCompact
+                    ? isContrastSidebar
+                      ? "w-8 h-8 bg-white/25 text-white shadow-sm"
+                      : "w-8 h-8 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                    : isContrastSidebar
+                      ? "w-10 h-10 bg-white/25 text-white shadow-sm"
+                      : "w-10 h-10 bg-primary-600 text-white shadow-sm dark:bg-primary-500"
+                  : isSectionActive
+                    ? isCompact
+                      ? isContrastSidebar
+                        ? "w-8 h-8 bg-white/20 text-white shadow-sm"
+                        : "w-8 h-8 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
+                      : isContrastSidebar
+                        ? "w-10 h-10 bg-white/20 text-white shadow-sm"
+                        : "w-10 h-10 bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-300"
+                    : isCompact
+                      ? isContrastSidebar
+                        ? "w-8 h-8 bg-white/10 text-[var(--app-sidebar-muted)] shadow-sm"
+                        : "w-8 h-8 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm"
+                      : isContrastSidebar
+                        ? "w-10 h-10 bg-white/10 text-[var(--app-sidebar-muted)] shadow-sm"
+                        : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm"
           )}>
-            {iconUrl ? (
-              <img 
-                src={iconUrl} 
-                alt={iconName || 'Icon'} 
-                className={clsx(
-                  "select-none pointer-events-none object-contain",
-                  isOpen ? "w-4 h-4" : "w-7 h-7"
-                )} 
-              />
-            ) : (
-              ResolvedIcon && <ResolvedIcon className={clsx(isOpen ? "w-4 h-4" : "w-6 h-6")} />
-            )}
+            <ResolvedIcon
+              className={clsx(
+                isOpen 
+                  ? isCompact 
+                    ? "w-4 h-4" 
+                    : "w-5 h-5" 
+                  : "w-6 h-6",
+                "transition-colors duration-200"
+              )}
+            />
           </div>
         )}
       
         {isOpen ? (
           <>
-            <span className={clsx("truncate flex-1", isRtl ? "text-right" : "text-left")}>{title}</span>
+            <span className={clsx("pointer-events-none truncate flex-1", isRtl ? "text-right" : "text-left")}>{title}</span>
             {!path && (isExpanded 
-              ? <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" /> 
-              : <InlineChevron className="w-3 h-3 text-gray-400 shrink-0" />
+              ? <ChevronDown className="pointer-events-none w-3 h-3 text-gray-400 shrink-0" /> 
+              : <InlineChevron className="pointer-events-none w-3 h-3 text-gray-400 shrink-0" />
             )}
           </>
         ) : (
-          <span className="text-[9px] font-black uppercase tracking-tighter text-center w-full truncate px-1">
+          <span className="pointer-events-none text-[9px] font-black uppercase tracking-tighter text-center w-full truncate px-1">
             {title}
           </span>
         )}
@@ -152,8 +177,15 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
     );
   };
 
+  const showSeparator = isCompact && ['Reports', 'Tools', 'Settings'].includes(title);
+
   return (
     <div className="mb-2">
+      {showSeparator && (
+        <div className="px-3 py-1">
+          <div className="h-px bg-[var(--color-border)] opacity-60" />
+        </div>
+      )}
       {/* Section Header */}
       {path ? (
         <NavLink
@@ -164,16 +196,24 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
             isActive && (
               use3DStyle
                 ? "bg-transparent text-primary-600 font-bold"
-                : "bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400"
+                : isCompact
+                  ? "sidebar-item-active text-primary-600 dark:text-primary-400 font-semibold"
+                  : "bg-primary-600 text-white shadow-sm dark:bg-primary-500"
             )
           )}
         >
           {({ isActive }) => renderHeaderContent(isActive)}
         </NavLink>
       ) : (
-        <button 
+        <button
           onClick={toggleExpand}
-          className={headerClass}
+          className={clsx(
+            headerClass,
+            // Section contains the active route — soft brand tint so the
+            // parent acknowledges it without competing with the child's
+            // solid-fill active row.
+            isSectionActive && !use3DStyle && "text-primary-700 dark:text-primary-300"
+          )}
         >
           {renderHeaderContent(false)}
         </button>
@@ -199,6 +239,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
               children={item.children}
               iconName={item.icon}
               badge={item.badge}
+              isCompact={isCompact}
             />
           ))}
         </div>

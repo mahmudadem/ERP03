@@ -187,7 +187,7 @@ const StatsCard = ({ label, value, metric, trend, icon, color }: any) => (
 
 const ActionBtn = ({ label, icon, color }: any) => (
    <button className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md transition-all group">
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-transform group-hover:scale-110 ${color}`}>
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors ${color}`}>
          {icon}
       </div>
       <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{label}</span>

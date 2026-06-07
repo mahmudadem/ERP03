@@ -9,21 +9,31 @@ import {
   recurringInvoiceApi,
   SalesInvoiceAttachmentDTO,
   SalesMessagingAccountDTO,
-  SendSalesInvoiceTelegramResult,
-  SendSalesInvoiceWhatsAppResult,
   SalesInvoiceDTO,
   SalesInvoiceLineInputDTO,
   SalesOrderDTO,
   salesApi,
   SalesSettingsDTO,
+  UpdateSalesInvoicePayload,
 } from '../../../api/salesApi';
+import { communicationsApi, CommunicationsSettingsDTO } from '../../../api/communicationsApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
 import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
+import { StatusChip } from '../../../components/ui/StatusChip';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { AttachmentsCard } from '../../../components/attachments/AttachmentsCard';
+import { SendDocumentButton } from '../../../components/messaging/SendDocumentButton';
+import type { MessagingAccount } from '../../../components/messaging/SendWhatsAppModal';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useRBAC } from '../../../api/rbac/useRBAC';
+import { useDocumentPolicies } from '../../../hooks/useDocumentPolicies';
+import { useConfirm } from '../../../hooks/useConfirm';
 import { errorHandler } from '../../../services/errorHandler';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { clsx } from 'clsx';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
@@ -40,24 +50,6 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 const todayIso = todayLocalIso;
 const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
-const formatFileSize = (bytes: number): string => {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-const buildDefaultOutboundMessage = (params: {
-  invoiceNumber: string;
-  customerName: string;
-  grandTotalDoc: number;
-  currency: string;
-  invoiceDate: string;
-}) => [
-  `Invoice ${params.invoiceNumber}`,
-  `Customer: ${params.customerName}`,
-  `Amount: ${params.grandTotalDoc.toFixed(2)} ${params.currency}`,
-  `Date: ${params.invoiceDate}`,
-].join('\n');
 
 interface EditableLine {
   lineId?: string;
@@ -73,7 +65,6 @@ interface EditableLine {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
-  /** undefined → inherit tax code default; true/false → explicit override */
   priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
@@ -90,6 +81,8 @@ interface EditableCharge {
 }
 
 interface EditableForm {
+  id?: string;
+  status?: string;
   salesOrderId: string;
   customerId: string;
   customerName?: string;
@@ -136,35 +129,67 @@ const createEmptyCharge = (): EditableCharge => ({
   description: '',
 });
 
-const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
-  salesOrderId,
-  customerId,
-  invoiceTemplateId: '',
-  invoiceTemplateFormType: '',
-  salespersonId: undefined,
-  customerInvoiceNumber: '',
-  invoiceDate: todayIso(),
-  dueDate: '',
-  currency: 'USD',
-  exchangeRate: 1,
-  notes: '',
-  lines: [createEmptyLine()],
-  charges: [],
-});
+export interface SalesInvoiceDetailProps {
+  invoiceId?: string;
+  isWindow?: boolean;
+  onClose?: () => void;
+  onSaved?: () => void;
+}
 
-const SalesInvoiceDetailPage: React.FC = () => {
+export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
+  invoiceId,
+  isWindow = false,
+  onClose,
+  onSaved,
+}) => {
   const { t } = useTranslation();
   const { company } = useCompanyAccess();
+  const { hasPermission, isOwner } = useRBAC();
+  const { salesSettings } = useDocumentPolicies();
+  const { confirm, confirmDialog } = useConfirm();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const isCreateMode = !params.id || params.id === 'new';
+  const resolvedId = invoiceId !== undefined ? invoiceId : params.id;
+  const isCreateMode = !resolvedId || resolvedId === 'new';
+  const { uiMode } = useUserPreferences();
+  const isWindowsMode = uiMode === 'windows';
+
+  const canOverrideCredit =
+    salesSettings?.allowCreditOverride !== false &&
+    (isOwner || hasPermission('sales.creditOverride'));
+
+  const LINE_DISPLAY_MIN = 10;
+  const padLinesToMin = (lines: EditableLine[]): EditableLine[] => {
+    if (lines.length >= LINE_DISPLAY_MIN) return lines;
+    const pad: EditableLine[] = [];
+    for (let i = lines.length; i < LINE_DISPLAY_MIN; i++) pad.push(createEmptyLine());
+    return [...lines, ...pad];
+  };
+  const filledLines = (lines: EditableLine[]): EditableLine[] => lines.filter((l) => !!l.itemId);
+
+  const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
+    salesOrderId,
+    customerId,
+    invoiceTemplateId: '',
+    invoiceTemplateFormType: '',
+    salespersonId: undefined,
+    customerInvoiceNumber: '',
+    invoiceDate: todayIso(),
+    dueDate: '',
+    currency: company?.baseCurrency || 'USD',
+    exchangeRate: 1,
+    notes: '',
+    lines: padLinesToMin([]),
+    charges: [],
+  });
 
   const initialSalesOrderId = searchParams.get('salesOrderId') || '';
   const initialCustomerId = searchParams.get('customerId') || '';
 
   const [invoice, setInvoice] = useState<SalesInvoiceDTO | null>(null);
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
+  const [commSettings, setCommSettings] = useState<CommunicationsSettingsDTO | null>(null);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
   const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
@@ -174,6 +199,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [invoiceTemplates, setInvoiceTemplates] = useState<VoucherFormResponse[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialSalesOrderId, initialCustomerId));
   const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
+  const [attachments, setAttachments] = useState<SalesInvoiceAttachmentDTO[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -182,6 +208,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [glImpactOpen, setGlImpactOpen] = useState(false);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
+  const [pendingPeriodLockRetry, setPendingPeriodLockRetry] = useState<((reason: string) => void) | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [cloneRecurringOpen, setCloneRecurringOpen] = useState(false);
   const [cloneRecurringBusy, setCloneRecurringBusy] = useState(false);
@@ -192,21 +219,6 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [cloneRecurringStartDate, setCloneRecurringStartDate] = useState(todayIso());
   const [cloneRecurringEndDate, setCloneRecurringEndDate] = useState('');
   const [cloneRecurringMaxOccurrences, setCloneRecurringMaxOccurrences] = useState('');
-  const [sendWhatsAppOpen, setSendWhatsAppOpen] = useState(false);
-  const [sendWhatsAppBusy, setSendWhatsAppBusy] = useState(false);
-  const [sendWhatsAppPhone, setSendWhatsAppPhone] = useState('');
-  const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState('');
-  const [sendWhatsAppDocumentUrl, setSendWhatsAppDocumentUrl] = useState('');
-  const [sendWhatsAppAccountId, setSendWhatsAppAccountId] = useState('');
-  const [sendTelegramOpen, setSendTelegramOpen] = useState(false);
-  const [sendTelegramBusy, setSendTelegramBusy] = useState(false);
-  const [sendTelegramChatId, setSendTelegramChatId] = useState('');
-  const [sendTelegramMessage, setSendTelegramMessage] = useState('');
-  const [sendTelegramDocumentUrl, setSendTelegramDocumentUrl] = useState('');
-  const [sendTelegramAccountId, setSendTelegramAccountId] = useState('');
-  const [attachments, setAttachments] = useState<SalesInvoiceAttachmentDTO[]>([]);
-  const [attachmentBusy, setAttachmentBusy] = useState(false);
-  const [attachmentDeletingId, setAttachmentDeletingId] = useState<string | null>(null);
   const [templateTouched, setTemplateTouched] = useState(false);
 
   // Credit check override state
@@ -221,6 +233,18 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [arAccountId, setArAccountId] = useState('');
   const [settlementRows, setSettlementRows] = useState<SettlementRowState[]>([]);
   const [showSettlement, setShowSettlement] = useState(false);
+
+  // Reset settlement state when navigating between invoices
+  useEffect(() => {
+    setSettlementMode('DEFERRED');
+    setArAccountId('');
+    setSettlementRows([]);
+    setShowSettlement(false);
+  }, [resolvedId]);
+
+  // Clause 1: mode flag — DRAFT is editable, everything else is read-only
+  const isReadOnly = !isCreateMode && !(invoice?.status === 'DRAFT');
+
   const enabledPaymentMethodConfigs = useMemo(
     () => (settings?.paymentMethodConfigs || []).filter((config) => config.isEnabled !== false),
     [settings]
@@ -251,25 +275,15 @@ const SalesInvoiceDetailPage: React.FC = () => {
       }, {}),
     [customers]
   );
-  const whatsappMessagingAccounts = useMemo<SalesMessagingAccountDTO[]>(
+  const messagingAccounts = useMemo<MessagingAccount[]>(
     () =>
-      (settings?.messagingAccounts || [])
-        .filter((account) => account.channel === 'WHATSAPP' && account.isActive !== false)
+      ((commSettings?.messagingAccounts || []) as SalesMessagingAccountDTO[])
+        .filter((account) => account.isActive !== false)
         .sort((a, b) => {
           if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
           return (a.label || '').localeCompare(b.label || '');
-        }),
-    [settings]
-  );
-  const telegramMessagingAccounts = useMemo<SalesMessagingAccountDTO[]>(
-    () =>
-      (settings?.messagingAccounts || [])
-        .filter((account) => account.channel === 'TELEGRAM' && account.isActive !== false)
-        .sort((a, b) => {
-          if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
-          return (a.label || '').localeCompare(b.label || '');
-        }),
-    [settings]
+        }) as unknown as MessagingAccount[],
+    [commSettings]
   );
   const eligibleInvoiceTemplates = useMemo(
     () =>
@@ -354,14 +368,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
         : roundMoney(lineTotalDoc * taxRate);
       const taxAmountBase = roundMoney(taxAmountDoc * (form.exchangeRate || 0));
 
-      return {
-        grossLineTotalDoc,
-        discountAmountDoc,
-        lineTotalDoc,
-        lineTotalBase,
-        taxAmountDoc,
-        taxAmountBase,
-      };
+      // `lineGrossDoc` is what the user is paying for this line — qty × unit price
+      // minus discount, with tax embedded if the line is inclusive. It equals
+      // `lineTotalDoc + taxAmountDoc` either way and is what the LINE TOTAL
+      // column shows. `lineTotalDoc` (net) is shown separately in the NET column.
+      const lineGrossDoc = roundMoney(lineTotalDoc + taxAmountDoc);
+      return { grossLineTotalDoc, discountAmountDoc, lineGrossDoc, lineTotalDoc, lineTotalBase, taxAmountDoc, taxAmountBase };
     });
   }, [form.exchangeRate, form.lines, taxById]);
 
@@ -393,12 +405,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
       computedLines.reduce((sum, line) => sum + line.taxAmountBase, 0)
       + computedCharges.reduce((sum, charge) => sum + charge.taxAmountBase, 0)
     );
-
     return {
-      subtotalDoc,
-      subtotalBase,
-      taxTotalDoc,
-      taxTotalBase,
+      subtotalDoc, subtotalBase, taxTotalDoc, taxTotalBase,
       grandTotalDoc: roundMoney(subtotalDoc + taxTotalDoc),
       grandTotalBase: roundMoney(subtotalBase + taxTotalBase),
     };
@@ -422,7 +430,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   };
 
   const loadReferenceData = async () => {
-    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult, salespersonResult] = await Promise.all([
+    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult, salespersonResult, commResult] = await Promise.all([
       salesApi.getSettings(),
       sharedApi.listParties({ role: 'CUSTOMER', active: true }),
       inventoryApi.listItems({ active: true, limit: 500 }),
@@ -430,6 +438,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       inventoryApi.listWarehouses({ active: true }),
       salesApi.listSOs({ limit: 500 }),
       salesMasterDataApi.listSalespersons({ status: 'ACTIVE' }),
+      communicationsApi.getSettings().catch(() => null),
     ]);
 
     const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
@@ -440,6 +449,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
     const salesOrderList = unwrap<SalesOrderDTO[]>(salesOrderResult);
 
     setSettings(currentSettings);
+    setCommSettings(commResult);
     setCustomers(Array.isArray(customerList) ? customerList : []);
     setItems(Array.isArray(itemList) ? itemList : []);
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
@@ -477,15 +487,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const loadSalesOrderLines = async (orderId: string) => {
     const trimmedOrderId = orderId.trim();
     if (!trimmedOrderId) return;
-
     try {
       setOrderLineLoading(true);
       setError(null);
-
       const sourceResult = await salesApi.getInvoiceableLinkedSource(trimmedOrderId);
       const source = unwrap<InvoiceableLinkedSalesSourceDTO>(sourceResult);
       const nextLines = toEditableLinesFromLinkedSource(source);
-
       setForm((prev) => ({
         ...prev,
         salesOrderId: trimmedOrderId,
@@ -497,15 +504,56 @@ const SalesInvoiceDetailPage: React.FC = () => {
       }));
     } catch (err: any) {
       console.error('Failed to load invoiceable linked lines', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Failed to load invoiceable linked lines.'
-      );
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.loadLinkedLinesFailed', 'Failed to load invoiceable linked lines.'));
     } finally {
       setOrderLineLoading(false);
     }
+  };
+
+  const populateFormFromInvoice = (loaded: SalesInvoiceDTO) => {
+    setForm({
+      id: loaded.id,
+      status: loaded.status,
+      salesOrderId: loaded.salesOrderId || '',
+      customerId: loaded.customerId,
+      customerName: loaded.customerName,
+      invoiceTemplateId: loaded.voucherFormId || '',
+      invoiceTemplateFormType: loaded.formType || '',
+      salespersonId: loaded.salespersonId || undefined,
+      customerInvoiceNumber: loaded.customerInvoiceNumber || '',
+      invoiceDate: loaded.invoiceDate,
+      dueDate: loaded.dueDate || '',
+      currency: loaded.currency,
+      exchangeRate: loaded.exchangeRate,
+      notes: loaded.notes || '',
+      lines: padLinesToMin((loaded.lines || []).map((l) => ({
+        lineId: l.lineId,
+        soLineId: l.soLineId,
+        dnLineId: l.dnLineId,
+        itemId: l.itemId,
+        itemCode: l.itemCode,
+        itemName: l.itemName,
+        invoicedQty: l.invoicedQty,
+        uomId: l.uomId,
+        uom: l.uom,
+        unitPriceDoc: l.unitPriceDoc,
+        discountType: (l as any).discountType as any,
+        discountValue: (l as any).discountValue,
+        taxCodeId: l.taxCodeId,
+        priceIsInclusive: (l as any).priceIsInclusive,
+        warehouseId: l.warehouseId,
+        description: l.description,
+      }))),
+      charges: ((loaded as any).charges || []).map((c: any) => ({
+        chargeId: c.chargeId,
+        code: c.code,
+        name: c.name,
+        amountDoc: c.amountDoc,
+        taxCodeId: c.taxCodeId,
+        revenueAccountId: c.revenueAccountId,
+        description: c.description,
+      })),
+    });
   };
 
   const load = async () => {
@@ -513,12 +561,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
       setLoading(true);
       setError(null);
       await loadReferenceData();
-
-      if (!isCreateMode && params.id) {
-        const result = await salesApi.getSI(params.id);
+      if (!isCreateMode && resolvedId) {
+        const result = await salesApi.getSI(resolvedId);
         const loaded = unwrap<SalesInvoiceDTO>(result);
         setInvoice(loaded);
         setAttachments(Array.isArray(loaded.attachments) ? loaded.attachments : []);
+        populateFormFromInvoice(loaded);
       } else {
         setInvoice(null);
         setAttachments([]);
@@ -528,13 +576,16 @@ const SalesInvoiceDetailPage: React.FC = () => {
         }
       }
     } catch (err: any) {
+      // A missing invoice is a normal not-found state, not a critical error.
+      // Leave `invoice` null so the friendly not-found EmptyState renders.
+      const status = err?.response?.status;
+      const code = err?.response?.data?.error?.code;
+      if (status === 404 || code === 'NOT_FOUND') {
+        setInvoice(null);
+        return;
+      }
       console.error('Failed to load sales invoice detail', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Failed to load sales invoice.'
-      );
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.loadFailed', 'Failed to load sales invoice.'));
     } finally {
       setLoading(false);
     }
@@ -542,64 +593,41 @@ const SalesInvoiceDetailPage: React.FC = () => {
 
   useEffect(() => {
     load();
-  }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resolvedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const ids = Array.from(new Set(form.lines.map((line) => line.itemId).filter(Boolean)));
-    ids.forEach((itemId) => {
-      void ensureItemUomOptions(itemId);
-    });
+    const ids = Array.from(new Set<string>(form.lines.map((line) => line.itemId).filter((id): id is string => Boolean(id))));
+    ids.forEach((itemId) => { void ensureItemUomOptions(itemId); });
   }, [form.lines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isCreateMode) return;
     if (!form.customerId) return;
-
     const currentTemplateIsValid = eligibleInvoiceTemplates.some((template) => template.id === form.invoiceTemplateId);
     if (templateTouched && currentTemplateIsValid) return;
-
     const customer = customerById[form.customerId];
     let nextTemplate =
       eligibleInvoiceTemplates.find((template) => template.id === customer?.defaultSalesInvoiceTemplateId) || null;
-
     if (!nextTemplate && normalizeToken(customer?.defaultSalesInvoiceFormType) === currentInvoiceFormType) {
       nextTemplate = eligibleInvoiceTemplates.find((template) => !!template.isDefault) || eligibleInvoiceTemplates[0] || null;
     }
-
     if (!nextTemplate && currentTemplateIsValid) {
       nextTemplate = eligibleInvoiceTemplates.find((template) => template.id === form.invoiceTemplateId) || null;
     }
-
     if (!nextTemplate) {
       nextTemplate = eligibleInvoiceTemplates.find((template) => !!template.isDefault) || eligibleInvoiceTemplates[0] || null;
     }
-
     const nextTemplateId = nextTemplate?.id || '';
     const nextTemplateFormType = nextTemplate?.formType || currentInvoiceFormType;
     if (nextTemplateId === form.invoiceTemplateId && nextTemplateFormType === form.invoiceTemplateFormType) return;
-
-    setForm((prev) => ({
-      ...prev,
-      invoiceTemplateId: nextTemplateId,
-      invoiceTemplateFormType: nextTemplateFormType,
-    }));
-  }, [
-    currentInvoiceFormType,
-    customerById,
-    eligibleInvoiceTemplates,
-    form.customerId,
-    form.invoiceTemplateFormType,
-    form.invoiceTemplateId,
-    isCreateMode,
-    templateTouched,
-  ]);
+    setForm((prev) => ({ ...prev, invoiceTemplateId: nextTemplateId, invoiceTemplateFormType: nextTemplateFormType }));
+  }, [currentInvoiceFormType, customerById, eligibleInvoiceTemplates, form.customerId, form.invoiceTemplateFormType, form.invoiceTemplateId, isCreateMode, templateTouched]);
 
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
       const lines = [...prev.lines];
       const current = lines[index];
       const next: EditableLine = { ...current, ...patch };
-
       if (patch.itemId !== undefined) {
         const item = itemById[patch.itemId];
         if (item) {
@@ -621,14 +649,10 @@ const SalesInvoiceDetailPage: React.FC = () => {
           next.taxCodeId = undefined;
         }
       }
-
       lines[index] = next;
       return { ...prev, lines };
     });
 
-    // Auto-pricing: after item or qty change, look up effective price.
-    // The changed field comes from `patch`; the unchanged one is read from the
-    // pre-patch closure (its value is identical before and after the patch).
     const shouldFetchPrice = patch.itemId !== undefined || patch.invoicedQty !== undefined;
     if (shouldFetchPrice) {
       const closureLine = form.lines[index];
@@ -648,17 +672,21 @@ const SalesInvoiceDetailPage: React.FC = () => {
               });
             }
           })
-          .catch(() => {
-            // Pricing lookup failure is non-fatal — leave price as-is
+          .catch((err) => {
+            console.warn('Effective price lookup failed', err);
+            errorHandler.showWarning(t('sales.invoiceDetail.pricingLookupFailed', 'Could not look up customer-specific price; keeping current price.'));
           });
       }
     }
   };
 
-  const addLine = () => {
-    setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] }));
+  const addLine = () => { setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] })); };
+  const removeLine = (index: number) => {
+    setForm((prev) => {
+      if (prev.lines.length <= 1) return prev;
+      return { ...prev, lines: prev.lines.filter((_, idx) => idx !== index) };
+    });
   };
-
   const setCharge = (index: number, patch: Partial<EditableCharge>) => {
     setForm((prev) => {
       const charges = [...prev.charges];
@@ -666,59 +694,35 @@ const SalesInvoiceDetailPage: React.FC = () => {
       return { ...prev, charges };
     });
   };
-
-  const addCharge = () => {
-    setForm((prev) => ({ ...prev, charges: [...prev.charges, createEmptyCharge()] }));
-  };
-
+  const addCharge = () => { setForm((prev) => ({ ...prev, charges: [...prev.charges, createEmptyCharge()] })); };
   const removeCharge = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      charges: prev.charges.filter((_, idx) => idx !== index),
-    }));
-  };
-
-  const removeLine = (index: number) => {
-    setForm((prev) => {
-      if (prev.lines.length <= 1) return prev;
-      return {
-        ...prev,
-        lines: prev.lines.filter((_, idx) => idx !== index),
-      };
-    });
+    setForm((prev) => ({ ...prev, charges: prev.charges.filter((_, idx) => idx !== index) }));
   };
 
   const validateBeforeSave = (): string | null => {
-    if (!form.customerId) return 'Customer is required.';
-    if (!form.invoiceDate) return 'Invoice date is required.';
-    if (!form.currency.trim()) return 'Currency is required.';
-    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return 'Exchange rate must be greater than 0.';
-    if (!form.lines.length) return 'At least one line is required.';
-
-    for (let i = 0; i < form.lines.length; i += 1) {
-      const line = form.lines[i];
-      if (!line.itemId) return `Line ${i + 1}: item is required.`;
-      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) {
-        return `Line ${i + 1}: unit price must be greater than or equal to 0.`;
-      }
-      if (line.discountType && (Number.isNaN(line.discountValue || 0) || (line.discountValue || 0) < 0)) {
-        return `Line ${i + 1}: discount must be greater than or equal to 0.`;
-      }
-
+    if (!form.customerId) return t('sales.invoiceDetail.validation.customerRequired', 'Customer is required.');
+    if (!form.invoiceDate) return t('sales.invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
+    if (!form.currency.trim()) return t('sales.invoiceDetail.validation.currencyRequired', 'Currency is required.');
+    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('sales.invoiceDetail.validation.exchangeRateInvalid', 'Exchange rate must be greater than 0.');
+    const usable = filledLines(form.lines);
+    if (!usable.length) return t('sales.invoiceDetail.validation.linesRequired', 'At least one line is required.');
+    for (let i = 0; i < usable.length; i += 1) {
+      const line = usable[i];
+      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('sales.invoiceDetail.validation.lineUnitPriceInvalid', 'Line {{n}}: unit price must be >= 0.', { n: i + 1 });
+      if (line.discountType && (Number.isNaN(line.discountValue || 0) || (line.discountValue || 0) < 0)) return t('sales.invoiceDetail.validation.lineDiscountInvalid', 'Line {{n}}: discount must be >= 0.', { n: i + 1 });
       const item = itemById[line.itemId];
       if (item?.trackInventory && !line.dnLineId && !line.warehouseId) {
-        return `Line ${i + 1}: warehouse is required for stock item ${item.name}.`;
+        return t('sales.invoiceDetail.validation.lineWarehouseRequired', 'Line {{n}}: warehouse is required for stock item {{item}}.', { n: i + 1, item: item.name });
       }
     }
-
     for (let i = 0; i < form.charges.length; i += 1) {
       const charge = form.charges[i];
-      if (!charge.name.trim()) return `Charge ${i + 1}: name is required.`;
-      if (Number.isNaN(charge.amountDoc) || charge.amountDoc < 0) {
-        return `Charge ${i + 1}: amount must be greater than or equal to 0.`;
-      }
+      const hasName = !!charge.name?.trim();
+      const hasAmount = (charge.amountDoc || 0) > 0;
+      if (!hasName && !hasAmount) continue; // empty row — silently dropped on save
+      if (!hasName) return t('sales.invoiceDetail.validation.chargeNameRequired', 'Charge {{n}}: name is required.', { n: i + 1 });
+      if (!hasAmount) return t('sales.invoiceDetail.validation.chargeAmountInvalid', 'Charge {{n}}: amount must be greater than 0.', { n: i + 1 });
     }
-
     return null;
   };
 
@@ -743,98 +747,185 @@ const SalesInvoiceDetailPage: React.FC = () => {
     };
   };
 
+  const buildCreatePayload = (creditOverrideReasonParam?: string, settlementInput?: any): CreateSalesInvoicePayload => ({
+    source: 'native',
+    voucherFormId: selectedInvoiceTemplate?.id || form.invoiceTemplateId || undefined,
+    formType: selectedInvoiceTemplate?.formType || form.invoiceTemplateFormType || currentInvoiceFormType,
+    salesOrderId: form.salesOrderId || undefined,
+    customerId: form.customerId,
+    salespersonId: form.salespersonId || undefined,
+    customerInvoiceNumber: form.customerInvoiceNumber || undefined,
+    invoiceDate: form.invoiceDate,
+    dueDate: form.dueDate || undefined,
+    currency: form.currency.toUpperCase(),
+    exchangeRate: form.exchangeRate,
+    lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
+    charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
+      chargeId: charge.chargeId,
+      code: charge.code || undefined,
+      name: charge.name,
+      amountDoc: charge.amountDoc,
+      taxCodeId: charge.taxCodeId || undefined,
+      revenueAccountId: charge.revenueAccountId || undefined,
+      description: charge.description || undefined,
+    })),
+    notes: form.notes || undefined,
+    settlementInput,
+    creditOverrideReason: creditOverrideReasonParam,
+  });
+
+  const buildUpdatePayload = (): UpdateSalesInvoicePayload => ({
+    voucherFormId: selectedInvoiceTemplate?.id || form.invoiceTemplateId || undefined,
+    formType: selectedInvoiceTemplate?.formType || form.invoiceTemplateFormType || currentInvoiceFormType,
+    customerId: form.customerId,
+    salespersonId: form.salespersonId || undefined,
+    customerInvoiceNumber: form.customerInvoiceNumber || undefined,
+    invoiceDate: form.invoiceDate,
+    dueDate: form.dueDate || undefined,
+    currency: form.currency.toUpperCase(),
+    exchangeRate: form.exchangeRate,
+    lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
+    charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
+      chargeId: charge.chargeId,
+      code: charge.code || undefined,
+      name: charge.name,
+      amountDoc: charge.amountDoc,
+      taxCodeId: charge.taxCodeId || undefined,
+      revenueAccountId: charge.revenueAccountId || undefined,
+      description: charge.description || undefined,
+    })),
+    notes: form.notes || undefined,
+  });
+
+  /**
+   * Detect a SOFT period-lock error and open the override modal.
+   * Returns true if handled (caller should `return` without further error UI).
+   * `retry` will be called with the override reason once user confirms.
+   */
+  const handlePeriodLock = (err: any, retry: (reason: string) => void): boolean => {
+    const data = err?.response?.data?.error;
+    if (!data || data.code !== 'PERIOD_LOCKED') return false;
+    if (data.tier === 'SOFT') {
+      setOverrideModalData({
+        documentDate: data.documentDate || form.invoiceDate,
+        lockedThroughDate: data.lockedThroughDate || '',
+      });
+      setPendingPeriodLockRetry(() => retry);
+      setOverrideModalOpen(true);
+      return true;
+    }
+    // HARD: cannot override
+    errorHandler.showWarning(data.message || t('sales.invoiceDetail.periodLockedHard', 'This accounting period is closed and cannot be overridden.'));
+    return true;
+  };
+
+  /** Detect known policy/governance blocks (expected validation, not a system error). Returns true if handled. */
+  const handlePolicyBlock = (err: any): boolean => {
+    const data = err?.response?.data;
+    const code = data?.code ?? data?.error?.code ?? '';
+    const category = data?.category ?? data?.error?.category ?? '';
+    const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+    // PERIOD_LOCKED has its own dedicated modal flow — don't catch it here.
+    if (code === 'PERIOD_LOCKED') return false;
+    const isPolicy =
+      code === 'PERSONA_NOT_ALLOWED' ||
+      code === 'GOVERNANCE_RULE_VIOLATION' ||
+      code === 'UNSETTLED_COST_BLOCKED' ||
+      category === 'POLICY' ||
+      msg.toLowerCase().includes('governance policy') ||
+      msg.toLowerCase().includes('inventory cost');
+    if (isPolicy) {
+      errorHandler.showWarning(msg || t('sales.invoiceDetail.policyBlocked', 'This action is blocked by company policy.'));
+      return true;
+    }
+    return false;
+  };
+
+  const handleCreditBlock = (err: any, payload: CreateSalesInvoicePayload, mode: 'draft' | 'createAndPost') => {
+    const data = err?.response?.data;
+    const code = data?.code ?? data?.error?.code ?? '';
+    const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
+    const isCreditBlock =
+      code === 'CREDIT_LIMIT_EXCEEDED' ||
+      msg.toLowerCase().includes('credit limit') ||
+      msg.toLowerCase().includes('credit_limit');
+    if (isCreditBlock) {
+      if (!canOverrideCredit) {
+        errorHandler.showError(t('sales.invoiceDetail.creditLimitBlocked', 'Customer is over their credit limit. You do not have permission to override.'));
+        return true;
+      }
+      setPendingCreatePayload({ payload, mode });
+      setCreditOverrideInfo(data?.details ?? data ?? null);
+      setCreditOverrideReason('');
+      setCreditOverrideOpen(true);
+      return true;
+    }
+    return false;
+  };
+
   const createDraft = async (creditOverrideReasonParam?: string) => {
     const validationError = validateBeforeSave();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
+    if (validationError) { errorHandler.showError(validationError); return; }
     try {
       setBusy(true);
       setError(null);
-
-      const payload: CreateSalesInvoicePayload = {
-        source: 'native',
-        voucherFormId: selectedInvoiceTemplate?.id || form.invoiceTemplateId || undefined,
-        formType: selectedInvoiceTemplate?.formType || form.invoiceTemplateFormType || currentInvoiceFormType,
-        salesOrderId: form.salesOrderId || undefined,
-        customerId: form.customerId,
-        salespersonId: form.salespersonId || undefined,
-        customerInvoiceNumber: form.customerInvoiceNumber || undefined,
-        invoiceDate: form.invoiceDate,
-        dueDate: form.dueDate || undefined,
-        currency: form.currency.toUpperCase(),
-        exchangeRate: form.exchangeRate,
-        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
-        charges: form.charges.map((charge) => ({
-          chargeId: charge.chargeId,
-          code: charge.code || undefined,
-          name: charge.name,
-          amountDoc: charge.amountDoc,
-          taxCodeId: charge.taxCodeId || undefined,
-          revenueAccountId: charge.revenueAccountId || undefined,
-          description: charge.description || undefined,
-        })),
-        notes: form.notes || undefined,
-        creditOverrideReason: creditOverrideReasonParam,
-      };
-
+      const payload = buildCreatePayload(creditOverrideReasonParam);
       try {
         const created = await salesApi.createSI(payload);
         const raw = created as any;
         const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
         if (creditCheck?.outcome === 'WARN') {
-          setCreditWarnBanner(
-            `Invoice created — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
-          );
+          setCreditWarnBanner(t('sales.invoiceDetail.creditWarn', 'Invoice created — customer is over their credit limit (warning). Limit: {{limit}}, Exposure: {{exposure}}.', { limit: creditCheck.creditLimit ?? '—', exposure: creditCheck.currentExposure ?? '—' }));
         }
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
-      } catch (err: any) {
-        const data = err?.response?.data;
-        const code = data?.code ?? data?.error?.code ?? '';
-        const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
-        const isCreditBlock =
-          code === 'CREDIT_LIMIT_EXCEEDED' ||
-          msg.toLowerCase().includes('credit limit') ||
-          msg.toLowerCase().includes('credit_limit');
-        if (isCreditBlock) {
-          setPendingCreatePayload({ payload, mode: 'draft' });
-          setCreditOverrideInfo(data?.details ?? data ?? null);
-          setCreditOverrideReason('');
-          setCreditOverrideOpen(true);
-          return;
+        errorHandler.showSuccess(t('sales.invoiceDetail.createSuccess', 'Invoice {{number}} saved as draft.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
         }
+      } catch (err: any) {
+        if (handleCreditBlock(err, payload, 'draft')) return;
         throw err;
       }
     } catch (err: any) {
+      if (handlePolicyBlock(err)) return;
       console.error('Failed to create sales invoice', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Failed to create sales invoice draft.'
-      );
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.createFailed', 'Failed to create sales invoice draft.'));
     } finally {
       setBusy(false);
     }
   };
 
-  const createAndPostDraft = async (creditOverrideReasonParam?: string) => {
+  const saveDraftChanges = async () => {
+    if (!invoice?.id) return;
     const validationError = validateBeforeSave();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
+    if (validationError) { errorHandler.showError(validationError); return; }
     try {
       setBusy(true);
       setError(null);
+      const updated = await salesApi.updateSI(invoice.id, buildUpdatePayload());
+      const dto = unwrap<SalesInvoiceDTO>(updated);
+      setInvoice(dto);
+      populateFormFromInvoice(dto);
+      errorHandler.showSuccess(t('sales.invoiceDetail.saveChangesSuccess', 'Changes saved successfully.'));
+      window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'SI' } }));
+    } catch (err: any) {
+      console.error('Failed to update sales invoice', err);
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.updateFailed', 'Failed to save changes.'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
+  const createAndPostDraft = async (creditOverrideReasonParam?: string, periodLockOverrideReason?: string) => {
+    const validationError = validateBeforeSave();
+    if (validationError) { errorHandler.showError(validationError); return; }
+    try {
+      setBusy(true);
+      setError(null);
       const outstanding = roundMoney(totals.grandTotalBase);
       const useSettlement = settlementMode !== 'DEFERRED' && outstanding > 0.005;
-
       const settlementInput = useSettlement ? {
         settlementMode,
         receivablePayableAccountId: arAccountId || undefined,
@@ -847,70 +938,30 @@ const SalesInvoiceDetailPage: React.FC = () => {
           paymentDate: r.paymentDate || undefined,
         })),
       } : undefined;
-
-      const payload: CreateSalesInvoicePayload = {
-        source: 'native',
-        voucherFormId: selectedInvoiceTemplate?.id || form.invoiceTemplateId || undefined,
-        formType: selectedInvoiceTemplate?.formType || form.invoiceTemplateFormType || currentInvoiceFormType,
-        salesOrderId: form.salesOrderId || undefined,
-        customerId: form.customerId,
-        salespersonId: form.salespersonId || undefined,
-        customerInvoiceNumber: form.customerInvoiceNumber || undefined,
-        invoiceDate: form.invoiceDate,
-        dueDate: form.dueDate || undefined,
-        currency: form.currency.toUpperCase(),
-        exchangeRate: form.exchangeRate,
-        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
-        charges: form.charges.map((charge) => ({
-          chargeId: charge.chargeId,
-          code: charge.code || undefined,
-          name: charge.name,
-          amountDoc: charge.amountDoc,
-          taxCodeId: charge.taxCodeId || undefined,
-          revenueAccountId: charge.revenueAccountId || undefined,
-          description: charge.description || undefined,
-        })),
-        notes: form.notes || undefined,
-        settlementInput,
-        creditOverrideReason: creditOverrideReasonParam,
-      };
-
+      const payload = buildCreatePayload(creditOverrideReasonParam, settlementInput);
       try {
-        const created = await salesApi.createAndPostSI(payload);
+        const created = await salesApi.createAndPostSI(payload, periodLockOverrideReason);
         const raw = created as any;
         const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
         if (creditCheck?.outcome === 'WARN') {
-          setCreditWarnBanner(
-            `Invoice created — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
-          );
+          setCreditWarnBanner(t('sales.invoiceDetail.creditWarn', 'Invoice created — customer is over their credit limit (warning). Limit: {{limit}}, Exposure: {{exposure}}.', { limit: creditCheck.creditLimit ?? '—', exposure: creditCheck.currentExposure ?? '—' }));
         }
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
-      } catch (err: any) {
-        const data = err?.response?.data;
-        const code = data?.code ?? data?.error?.code ?? '';
-        const msg: string = data?.message ?? data?.error?.message ?? err?.message ?? '';
-        const isCreditBlock =
-          code === 'CREDIT_LIMIT_EXCEEDED' ||
-          msg.toLowerCase().includes('credit limit') ||
-          msg.toLowerCase().includes('credit_limit');
-        if (isCreditBlock) {
-          setPendingCreatePayload({ payload, mode: 'createAndPost' });
-          setCreditOverrideInfo(data?.details ?? data ?? null);
-          setCreditOverrideReason('');
-          setCreditOverrideOpen(true);
-          return;
+        errorHandler.showSuccess(t('sales.invoiceDetail.createAndPostSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
         }
+      } catch (err: any) {
+        if (handleCreditBlock(err, payload, 'createAndPost')) return;
+        if (handlePeriodLock(err, (reason) => createAndPostDraft(creditOverrideReasonParam, reason))) return;
         throw err;
       }
     } catch (err: any) {
+      if (handlePolicyBlock(err)) return;
       console.error('Failed to create and post sales invoice', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Failed to create and post sales invoice.'
-      );
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.createAndPostFailed', 'Failed to create and post sales invoice.'));
     } finally {
       setBusy(false);
     }
@@ -929,20 +980,25 @@ const SalesInvoiceDetailPage: React.FC = () => {
       if (mode === 'draft') {
         const created = await salesApi.createSI(newPayload);
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        errorHandler.showSuccess(t('sales.invoiceDetail.createSuccess', 'Invoice {{number}} saved as draft.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        }
       } else {
         const created = await salesApi.createAndPostSI(newPayload);
         const dto = unwrap<SalesInvoiceDTO>(created);
-        navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        errorHandler.showSuccess(t('sales.invoiceDetail.createAndPostSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
+        if (isWindow && onSaved) {
+          onSaved();
+        } else {
+          navigate(`/sales/invoices/${dto.id}`, { replace: true });
+        }
       }
     } catch (err: any) {
       console.error('Failed to create invoice with credit override', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Failed to create invoice with credit override.'
-      );
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.creditOverrideFailed', 'Failed to create invoice with credit override.'));
     } finally {
       setBusy(false);
     }
@@ -953,7 +1009,6 @@ const SalesInvoiceDetailPage: React.FC = () => {
     try {
       setBusy(true);
       setError(null);
-
       const settlementInput = settlementMode !== 'DEFERRED' ? {
         settlementMode,
         receivablePayableAccountId: arAccountId || undefined,
@@ -966,34 +1021,36 @@ const SalesInvoiceDetailPage: React.FC = () => {
           paymentDate: r.paymentDate || undefined,
         })),
       } : undefined;
-
-      const action = invoice.status === 'PENDING_APPROVAL' ? salesApi.approveSI : salesApi.postSI;
-      const posted = await action(invoice.id, settlementInput, periodLockOverrideReason);
-      setInvoice(unwrap<SalesInvoiceDTO>(posted));
-      setShowSettlement(false);
-    } catch (err: any) {
-      const errorCode = err?.response?.data?.error?.code;
-      if (errorCode === 'PERIOD_LOCKED') {
-        const errorData = err?.response?.data?.error;
-        if (errorData?.tier === 'SOFT') {
-          setOverrideModalData({
-            documentDate: errorData.documentDate || invoice.invoiceDate,
-            lockedThroughDate: errorData.lockedThroughDate || '',
-          });
-          setOverrideModalOpen(true);
-          return;
-        } else {
-          setError('This accounting period is closed and cannot be overridden.');
-          return;
-        }
+      // SoD: Sales never approves. If the SI is already PENDING_APPROVAL,
+      // direct the user to Accounting → Approval Center. Routing approval
+      // through the source module violates the "one approval authority"
+      // architecture (see docs/architecture/posting-authority.md §4.1).
+      if (invoice.status === 'PENDING_APPROVAL') {
+        setError(
+          t(
+            'sales.invoiceDetail.approveFromAccounting',
+            'This invoice is waiting for accounting approval. Approve it from Accounting → Approval Center.',
+          ),
+        );
+        setShowSettlement(false);
+        return;
       }
+      const posted = await salesApi.postSI(invoice.id, settlementInput, periodLockOverrideReason);
+      const dto = unwrap<SalesInvoiceDTO>(posted);
+      setInvoice(dto);
+      populateFormFromInvoice(dto);
+      setShowSettlement(false);
+      errorHandler.showSuccess(t('sales.invoiceDetail.postSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
+      if (isWindow && onSaved) {
+        onSaved();
+      } else {
+        window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'SI' } }));
+      }
+    } catch (err: any) {
+      if (handlePeriodLock(err, (reason) => postDraft(reason))) return;
+      if (handlePolicyBlock(err)) return;
       console.error('Failed to post sales invoice', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Failed to post sales invoice.'
-      );
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.postFailed', 'Failed to post sales invoice.'));
     } finally {
       setBusy(false);
     }
@@ -1007,6 +1064,38 @@ const SalesInvoiceDetailPage: React.FC = () => {
       setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
     } else {
       postDraft();
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (!invoice?.id) {
+      if (isWindow && onClose) {
+        onClose();
+      } else {
+        navigate('/sales/invoices');
+      }
+      return;
+    }
+    const confirmed = await confirm({
+      title: t('sales.invoiceDetail.discardTitle', 'Discard Invoice'),
+      message: t('sales.invoiceDetail.discardMessage', 'Are you sure you want to discard this draft invoice? This action cannot be undone.'),
+      confirmLabel: t('sales.invoiceDetail.discardConfirm', 'Discard'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      setBusy(true);
+      await salesApi.deleteSI(invoice.id);
+      errorHandler.showSuccess(t('sales.invoiceDetail.discardSuccess', 'Invoice {{number}} discarded.', { number: invoice.invoiceNumber }));
+      if (isWindow && onClose) {
+        onClose();
+      } else {
+        navigate('/sales/invoices');
+      }
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || t('sales.invoiceDetail.discardFailed', 'Failed to discard invoice.'));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -1025,14 +1114,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const cloneAsRecurringTemplate = async () => {
     if (!invoice?.id) return;
     if (!cloneRecurringName.trim()) {
-      setError(t('sales.recurring.validation.cloneNameRequired', 'Template name is required'));
+      errorHandler.showError(t('sales.recurring.validation.cloneNameRequired', 'Template name is required'));
       return;
     }
-
     try {
       setCloneRecurringBusy(true);
       setError(null);
-
       await recurringInvoiceApi.cloneToTemplate(invoice.id, {
         name: cloneRecurringName.trim(),
         frequency: cloneRecurringFrequency,
@@ -1042,1617 +1129,1125 @@ const SalesInvoiceDetailPage: React.FC = () => {
         endDate: cloneRecurringEndDate || undefined,
         maxOccurrences: cloneRecurringMaxOccurrences ? parseInt(cloneRecurringMaxOccurrences, 10) : undefined,
       });
-
       setCloneRecurringOpen(false);
-      navigate('/sales/recurring-invoices');
+      errorHandler.showSuccess(t('sales.recurring.success.cloneFromInvoice', 'Recurring template created successfully.'));
+      if (isWindow && onClose) {
+        onClose();
+      } else {
+        navigate('/sales/recurring-invoices');
+      }
     } catch (err: any) {
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          t('sales.recurring.errors.cloneFromInvoice', 'Failed to clone invoice as recurring template.')
-      );
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.recurring.errors.cloneFromInvoice', 'Failed to clone invoice as recurring template.'));
     } finally {
       setCloneRecurringBusy(false);
     }
   };
 
-  const openSendWhatsAppModal = () => {
-    if (!invoice) return;
-    const customer = customerById[invoice.customerId];
-    setSendWhatsAppPhone((customer?.phone || '').trim());
-    setSendWhatsAppDocumentUrl('');
-    const defaultWhatsappAccount =
-      whatsappMessagingAccounts.find((account) => account.isDefault) || whatsappMessagingAccounts[0];
-    setSendWhatsAppAccountId(defaultWhatsappAccount?.id || '');
-    setSendWhatsAppMessage(buildDefaultOutboundMessage({
-      invoiceNumber: invoice.invoiceNumber,
-      customerName: customerNameById[invoice.customerId] || invoice.customerName,
-      grandTotalDoc: invoice.grandTotalDoc,
-      currency: invoice.currency,
-      invoiceDate: invoice.invoiceDate,
-    }));
-    setSendWhatsAppOpen(true);
+  const buildDefaultOutboundMessage = () => {
+    if (!invoice) return '';
+    return [
+      `Invoice ${invoice.invoiceNumber}`,
+      `Customer: ${customerNameById[invoice.customerId] || invoice.customerName}`,
+      `Amount: ${invoice.grandTotalDoc.toFixed(2)} ${invoice.currency}`,
+      `Date: ${invoice.invoiceDate}`,
+    ].join('\n');
   };
 
-  const openSendTelegramModal = () => {
-    if (!invoice) return;
-    const defaultTelegramAccount =
-      telegramMessagingAccounts.find((account) => account.isDefault) || telegramMessagingAccounts[0];
-    setSendTelegramAccountId(defaultTelegramAccount?.id || '');
-    setSendTelegramChatId('');
-    setSendTelegramDocumentUrl('');
-    setSendTelegramMessage(buildDefaultOutboundMessage({
-      invoiceNumber: invoice.invoiceNumber,
-      customerName: customerNameById[invoice.customerId] || invoice.customerName,
-      grandTotalDoc: invoice.grandTotalDoc,
-      currency: invoice.currency,
-      invoiceDate: invoice.invoiceDate,
-    }));
-    setSendTelegramOpen(true);
-  };
-
-  const sendInvoiceViaWhatsApp = async () => {
-    if (!invoice?.id) return;
-    try {
-      setSendWhatsAppBusy(true);
-      setError(null);
-      const result = await salesApi.sendInvoiceWhatsApp(invoice.id, {
-        messagingAccountId: sendWhatsAppAccountId || undefined,
-        toPhoneNumber: sendWhatsAppPhone.trim() || undefined,
-        messageText: sendWhatsAppMessage.trim() || undefined,
-        documentUrl: sendWhatsAppDocumentUrl.trim() || undefined,
-      });
-      const payload = unwrap<SendSalesInvoiceWhatsAppResult>(result);
-      setSendWhatsAppOpen(false);
-      errorHandler.showInfo(
-        t(
-          'sales.invoices.whatsapp.success',
-          'WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).',
-          {
-            phone: payload.recipientPhoneNumber,
-            sender: payload.senderLabel || t('sales.invoices.whatsapp.defaultSender', 'default sender'),
-            messageId: payload.messageId,
-          }
-        )
-      );
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          t('sales.invoices.whatsapp.sendError', 'Failed to send invoice via WhatsApp.')
-      );
-    } finally {
-      setSendWhatsAppBusy(false);
-    }
-  };
-
-  const sendInvoiceViaTelegram = async () => {
-    if (!invoice?.id) return;
-    try {
-      setSendTelegramBusy(true);
-      setError(null);
-      const result = await salesApi.sendInvoiceTelegram(invoice.id, {
-        messagingAccountId: sendTelegramAccountId || undefined,
-        toChatId: sendTelegramChatId.trim() || undefined,
-        messageText: sendTelegramMessage.trim() || undefined,
-        documentUrl: sendTelegramDocumentUrl.trim() || undefined,
-      });
-      const payload = unwrap<SendSalesInvoiceTelegramResult>(result);
-      setSendTelegramOpen(false);
-      errorHandler.showInfo(
-        t(
-          'sales.invoices.telegram.success',
-          'Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).',
-          {
-            chatId: payload.recipientChatId,
-            sender: payload.senderLabel || t('sales.invoices.telegram.defaultSender', 'default sender'),
-            messageId: payload.messageId,
-          }
-        )
-      );
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          t('sales.invoices.telegram.sendError', 'Failed to send invoice via Telegram.')
-      );
-    } finally {
-      setSendTelegramBusy(false);
-    }
-  };
-
-  const refreshAttachments = async () => {
-    if (!invoice?.id) return;
-    const result = await salesApi.listInvoiceAttachments(invoice.id);
-    const list = unwrap<SalesInvoiceAttachmentDTO[]>(result);
-    const normalized = Array.isArray(list) ? list : [];
-    setAttachments(normalized);
-    setInvoice((current) => (current ? { ...current, attachments: normalized } : current));
-  };
-
-  const uploadAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file || !invoice?.id) return;
-    try {
-      setAttachmentBusy(true);
-      setError(null);
-      await salesApi.uploadInvoiceAttachment(invoice.id, file);
-      await refreshAttachments();
-      errorHandler.showInfo(t('sales.invoices.attachments.uploadSuccess', 'Attachment uploaded successfully.'));
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          t('sales.invoices.attachments.uploadError', 'Failed to upload attachment.')
-      );
-    } finally {
-      setAttachmentBusy(false);
-    }
-  };
-
-  const removeAttachment = async (attachmentId: string) => {
-    if (!invoice?.id) return;
-    try {
-      setAttachmentDeletingId(attachmentId);
-      setError(null);
-      await salesApi.removeInvoiceAttachment(invoice.id, attachmentId);
-      await refreshAttachments();
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          t('sales.invoices.attachments.removeError', 'Failed to remove attachment.')
-      );
-    } finally {
-      setAttachmentDeletingId(null);
-    }
-  };
-
-  const downloadAttachment = async (attachmentId: string) => {
-    if (!invoice?.id) return;
-    try {
-      setError(null);
-      const result = await salesApi.getInvoiceAttachmentDownloadLink(invoice.id, attachmentId);
-      const payload = unwrap<{ url?: string }>(result);
-      if (!payload?.url) {
-        throw new Error(t('sales.invoices.attachments.downloadError', 'Failed to generate download link.'));
-      }
-      window.open(payload.url, '_blank', 'noopener,noreferrer');
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          t('sales.invoices.attachments.downloadError', 'Failed to generate download link.')
-      );
-    }
-  };
-
+  // ─── Loading / Not-found states ───────────────────────────────────────────
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Invoice</h1>
-        <Card className="p-6">Loading sales invoice...</Card>
+        <div className="h-8 w-64 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-48 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
+        <div className="h-64 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
       </div>
     );
   }
 
-  if (isCreateMode) {
+  if (!isCreateMode && !invoice) {
     return (
-      <div className="space-y-6 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">New Sales Invoice</h1>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => navigate('/sales/invoices')}
+      <div className="space-y-4 p-4">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.title', 'Sales Invoice')}</h1>
+        <EmptyState
+          title={t('sales.invoiceDetail.notFoundTitle', 'Invoice not found')}
+          description={t('sales.invoiceDetail.notFoundDesc', 'This sales invoice does not exist or you do not have access.')}
+          action={
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              onClick={() => navigate('/sales/invoices')}
+            >
+              {t('sales.invoiceDetail.backToList', 'Back to List')}
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
+  const canCreateReceipt = invoice?.status === 'POSTED' && (invoice?.outstandingAmountBase || 0) > 0;
+  const receiptHref = invoice ? `/accounting/vouchers?mode=create&type=receipt&sourceType=SALES_INVOICE&sourceId=${invoice.id}` : '';
+  const createReturnHref = invoice
+    ? `/sales/returns/new?salesInvoiceId=${encodeURIComponent(invoice.id)}${invoice.salesOrderId ? `&salesOrderId=${encodeURIComponent(invoice.salesOrderId)}` : ''}`
+    : '';
+
+  // ─── Shared settlement section renderer ──────────────────────────────────
+  const renderSettlementSection = (onConfirm: () => void, confirmLabel: string) => (
+    <Card className="p-5 border-blue-200 bg-blue-50">
+      <h2 className="mb-3 text-lg font-semibold text-slate-900">{t('sales.invoiceDetail.settlement.title', 'Settlement')}</h2>
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.mode', 'Settlement Mode')}</label>
+          <select
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={settlementMode}
+            onChange={(e) => setSettlementMode(e.target.value as any)}
           >
-            Back to List
-          </button>
+            <option value="DEFERRED">{t('sales.invoiceDetail.settlement.deferred', 'Deferred (No Payment)')}</option>
+            <option value="CASH_FULL">{t('sales.invoiceDetail.settlement.cashFull', 'Cash Full Payment')}</option>
+            <option value="MULTI">{t('sales.invoiceDetail.settlement.multi', 'Multiple Payments')}</option>
+          </select>
         </div>
-
-{error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        {creditWarnBanner && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start justify-between gap-2">
-            <span>{creditWarnBanner}</span>
-            <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
-          </div>
-        )}
-
-        {creditOverrideOpen && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Credit Limit Exceeded</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {t('sales:creditLimit.exceededMessage', 'This customer is over their credit limit and the policy is set to BLOCK. You can override by providing a reason.')}
-              </p>
-              {creditOverrideInfo && (
-                <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
-                  {creditOverrideInfo.creditLimit !== undefined && <div>Credit Limit: <strong>{creditOverrideInfo.creditLimit}</strong></div>}
-                  {creditOverrideInfo.currentExposure !== undefined && <div>Current Exposure: <strong>{creditOverrideInfo.currentExposure}</strong></div>}
-                  {creditOverrideInfo.orderAmount !== undefined && <div>This Invoice: <strong>{creditOverrideInfo.orderAmount}</strong></div>}
-                  {creditOverrideInfo.projectedExposure !== undefined && <div>Projected Exposure: <strong>{creditOverrideInfo.projectedExposure}</strong></div>}
-                </div>
-              )}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales:creditLimit.overrideReason', 'Override Reason')} <span className="text-red-500">*</span></label>
-                <textarea
-                  rows={3}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                  placeholder={t('sales:creditLimit.overridePlaceholder', 'Explain why this credit limit override is approved…')}
-                  value={creditOverrideReason}
-                  onChange={(e) => setCreditOverrideReason(e.target.value)}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                  onClick={() => { setCreditOverrideOpen(false); setPendingCreatePayload(null); setCreditOverrideInfo(null); setCreditOverrideReason(''); }}
-                >
-                  {t('common:cancel', 'Cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                  disabled={!creditOverrideReason.trim() || busy}
-                  onClick={submitCreditOverride}
-                >
-                  {t('sales:creditLimit.overrideSubmit', 'Override & Create')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.')}
-          </div>
-        )}
-
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-2">
+        {settlementMode !== 'DEFERRED' && (
+          <>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order (optional)</label>
-              <div className="flex gap-2">
-                <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.salesOrderId}
-                  onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
-                >
-                  <option value="">No sales order</option>
-                  {salesOrders.map((order) => (
-                    <option key={order.id} value={order.id}>
-                      {order.orderNumber} - {order.customerName}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium disabled:opacity-50"
-                  onClick={() => loadSalesOrderLines(form.salesOrderId)}
-                  disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
-                >
-                  {orderLineLoading ? 'Loading...' : 'Load Invoiceable Lines'}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-              <PartySelector
-                value={form.customerId}
-                onChange={(party) => {
-                  setTemplateTouched(false);
-                  setForm((prev) => ({
-                    ...prev,
-                    customerId: party?.id || '',
-                    customerName: party?.displayName || '',
-                    currency: party?.defaultCurrency || prev.currency,
-                    invoiceTemplateId: party ? prev.invoiceTemplateId : '',
-                    invoiceTemplateFormType: party ? prev.invoiceTemplateFormType : currentInvoiceFormType,
-                  }));
-                }}
+              <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.arAccount', 'AR Account (Optional Override)')}</label>
+              <AccountSelector
+                value={arAccountId}
+                placeholder={t('sales.invoiceDetail.settlement.arAccountPlaceholder', 'Leave empty to use Sales default AR')}
+                onChange={(account) => setArAccountId(account?.id || '')}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                {t('sales.invoiceTemplates.fieldLabel', 'Invoice Template')}
-              </label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={form.invoiceTemplateId}
-                onChange={(e) => {
-                  const selected = eligibleInvoiceTemplates.find((template) => template.id === e.target.value);
-                  setTemplateTouched(true);
-                  setForm((prev) => ({
-                    ...prev,
-                    invoiceTemplateId: e.target.value,
-                    invoiceTemplateFormType: selected?.formType || currentInvoiceFormType,
-                  }));
-                }}
+            {settlementRows.map((row, idx) => (
+              <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                <div className="text-sm font-medium text-slate-700">{t('sales.invoiceDetail.settlement.paymentRow', 'Payment Row {{n}}', { n: idx + 1 })}</div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.settlementAccount', 'Receiving Account (Cash / Bank)')}</label>
+                    <AccountSelector
+                      value={row.settlementAccountId}
+                      placeholder={t('sales.invoiceDetail.settlement.settlementAccountPlaceholder', 'Leave empty to use payment method mapping')}
+                      onChange={(account) => {
+                        const updated = [...settlementRows];
+                        updated[idx].settlementAccountId = account?.id || '';
+                        setSettlementRows(updated);
+                      }}
+                    />
+                    <p className="mt-1 text-[11px] text-slate-500">{t('sales.invoiceDetail.settlement.settlementAccountHint', 'Where the money lands. The customer’s AR account is reduced automatically.')}</p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.amountBase', 'Amount (Base)')}</label>
+                    <input type="number" step="0.01" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                      value={row.amountBase}
+                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].amountBase = parseFloat(e.target.value) || 0; setSettlementRows(updated); }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.paymentMethod', 'Payment Method')}</label>
+                    <select className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                      value={row.paymentMethod}
+                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].paymentMethod = e.target.value; setSettlementRows(updated); }}
+                    >
+                      {enabledPaymentMethodConfigs.length > 0 ? (
+                        enabledPaymentMethodConfigs.map((config) => (
+                          <option key={config.method} value={config.method}>{config.label || config.method}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="CASH">{t('sales.invoiceDetail.settlement.cash', 'Cash')}</option>
+                          <option value="BANK_TRANSFER">{t('sales.invoiceDetail.settlement.bankTransfer', 'Bank Transfer')}</option>
+                          <option value="CHECK">{t('sales.invoiceDetail.settlement.check', 'Check')}</option>
+                          <option value="CREDIT_CARD">{t('sales.invoiceDetail.settlement.creditCard', 'Credit Card')}</option>
+                          <option value="OTHER">{t('sales.invoiceDetail.settlement.other', 'Other')}</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.paymentDate', 'Payment Date')}</label>
+                    <input type="date" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                      value={row.paymentDate}
+                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].paymentDate = e.target.value; setSettlementRows(updated); }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.reference', 'Reference')}</label>
+                    <input type="text" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                      value={row.reference}
+                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].reference = e.target.value; setSettlementRows(updated); }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.notes', 'Notes')}</label>
+                    <input type="text" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                      value={row.notes}
+                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].notes = e.target.value; setSettlementRows(updated); }}
+                    />
+                  </div>
+                </div>
+                {settlementMode === 'MULTI' && (
+                  <button type="button" className="text-xs text-rose-600 hover:text-rose-800"
+                    onClick={() => setSettlementRows(settlementRows.filter((_, i) => i !== idx))}
+                  >
+                    {t('sales.invoiceDetail.settlement.removeRow', 'Remove Row')}
+                  </button>
+                )}
+              </div>
+            ))}
+            {settlementMode === 'MULTI' && (
+              <button type="button"
+                className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: 0, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
               >
-                <option value="">
-                  {t('sales.invoiceTemplates.autoSelect', 'Auto Select')}
-                </option>
-                {eligibleInvoiceTemplates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}{template.isDefault ? ` ${t('sales.invoiceTemplates.defaultTag', '(Default)')}` : ''}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-slate-500">
-                {eligibleInvoiceTemplates.length
-                  ? t('sales.invoiceTemplates.help', 'Controls the print layout (logo/footer/terms) for this invoice.')
-                  : t('sales.invoiceTemplates.noneForType', 'No invoice templates are available for this invoice type.')}
-              </p>
+                {t('sales.invoiceDetail.settlement.addRow', '+ Add Payment Row')}
+              </button>
+            )}
+          </>
+        )}
+        <div className="flex gap-2 pt-2">
+          <button type="button"
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+            onClick={onConfirm} disabled={busy}
+          >
+            {busy ? t('sales.invoiceDetail.processing', 'Processing...') : confirmLabel}
+          </button>
+          <button type="button"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => setShowSettlement(false)} disabled={busy}
+          >
+            {t('common.cancel', 'Cancel')}
+          </button>
+        </div>
+      </div>
+    </Card>
+  );
+
+  // ─── Header fields form (shared for create + edit DRAFT) ─────────────────
+  const renderHeaderForm = () => (
+    <div className="flex-none bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200/60 dark:border-slate-800/60 p-4 space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Card 1: Customer & Logistics */}
+        <div className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/85 p-4 shadow-sm space-y-3">
+          <div className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-2">
+            {t('sales.invoiceDetail.sections.customerLogistics', 'Customer & Timelines')}
+          </div>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <div className="col-span-full">
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.customer', 'Customer')}</label>
+              {isReadOnly ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900">
+                  {customerNameById[form.customerId] || form.customerName || form.customerId || '—'}
+                </div>
+              ) : (
+                <PartySelector
+                  value={form.customerId}
+                  onChange={(party) => {
+                    setTemplateTouched(false);
+                    setForm((prev) => ({
+                      ...prev,
+                      customerId: party?.id || '',
+                      customerName: party?.displayName || '',
+                      currency: party?.defaultCurrency || prev.currency,
+                      invoiceTemplateId: party ? prev.invoiceTemplateId : '',
+                      invoiceTemplateFormType: party ? prev.invoiceTemplateFormType : currentInvoiceFormType,
+                    }));
+                  }}
+                />
+              )}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Salesperson</label>
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.invoiceDate', 'Invoice Date')}</label>
+              <DatePicker value={form.invoiceDate} onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))} disabled={isReadOnly} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.dueDate', 'Due Date (optional)')}</label>
+              <DatePicker value={form.dueDate} onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))} disabled={isReadOnly} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.salesperson', 'Salesperson')}</label>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
                 value={form.salespersonId || ''}
+                disabled={isReadOnly}
                 onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
               >
-                <option value="">— None —</option>
+                <option value="">{t('sales.invoiceDetail.none', '— None —')}</option>
                 {salespersons.map((sp) => (
                   <option key={sp.id} value={sp.id}>{sp.name}</option>
                 ))}
               </select>
             </div>
+            {eligibleInvoiceTemplates.length > 1 && (
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceTemplates.fieldLabel', 'Print Template')}</label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
+                  value={form.invoiceTemplateId}
+                  disabled={isReadOnly}
+                  onChange={(e) => {
+                    const selected = eligibleInvoiceTemplates.find((template) => template.id === e.target.value);
+                    setTemplateTouched(true);
+                    setForm((prev) => ({
+                      ...prev,
+                      invoiceTemplateId: e.target.value,
+                      invoiceTemplateFormType: selected?.formType || currentInvoiceFormType,
+                    }));
+                  }}
+                >
+                  <option value="">{t('sales.invoiceTemplates.autoSelect', 'Auto Select')}</option>
+                  {eligibleInvoiceTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}{template.isDefault ? ` ${t('sales.invoiceTemplates.defaultTag', '(Default)')}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Card 2: Financial Details & Origin */}
+        <div className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/85 p-4 shadow-sm space-y-3">
+          <div className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-2">
+            {t('sales.invoiceDetail.sections.financialDetails', 'Financial Details')}
+          </div>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <div className="col-span-full">
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.salesOrder', 'Sales Order (optional)')}</label>
+              <div className="flex gap-2">
+                <select
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
+                  value={form.salesOrderId}
+                  disabled={isReadOnly}
+                  onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
+                >
+                  <option value="">{t('sales.invoiceDetail.noSalesOrder', 'No sales order')}</option>
+                  {salesOrders.map((order) => (
+                    <option key={order.id} value={order.id}>{order.orderNumber} - {order.customerName}</option>
+                  ))}
+                </select>
+                {!isReadOnly && (
+                  <button type="button"
+                    className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
+                    onClick={() => loadSalesOrderLines(form.salesOrderId)}
+                    disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
+                  >
+                    {orderLineLoading ? t('sales.invoiceDetail.loading', 'Loading...') : t('sales.invoiceDetail.loadLines', 'Load Lines')}
+                  </button>
+                )}
+              </div>
+            </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Customer Invoice #</label>
-              <input
-                type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.customerInvoiceNumber', 'Customer Invoice #')}</label>
+              <input type="text"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
                 value={form.customerInvoiceNumber}
+                disabled={isReadOnly}
                 onChange={(e) => setForm((prev) => ({ ...prev, customerInvoiceNumber: e.target.value }))}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Invoice Date</label>
-              <DatePicker 
-                value={form.invoiceDate}
-                onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Due Date (optional)</label>
-              <DatePicker 
-                value={form.dueDate}
-                onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))}
-              />
-            </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Currency</label>
-              <CurrencySelector
-                value={form.currency}
-                onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
-                disabled={busy}
-              />
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.currency', 'Currency')}</label>
+              <CurrencySelector value={form.currency} onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))} disabled={isReadOnly || busy} />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Exchange Rate</label>
+            <div className="flex flex-col gap-1 col-span-full">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
               <CurrencyExchangeWidget
                 currency={form.currency}
                 baseCurrency={company?.baseCurrency || 'USD'}
                 voucherDate={form.invoiceDate}
                 value={form.exchangeRate}
                 onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
-                disabled={busy}
+                disabled={isReadOnly || busy}
               />
             </div>
           </div>
+        </div>
+      </div>
+      <div className="bg-white/85 dark:bg-slate-900/85 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
+        <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.notes', 'Notes')}</label>
+        <textarea rows={1.5}
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-y text-slate-900 dark:text-slate-100"
+          value={form.notes}
+          disabled={isReadOnly}
+          onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+        />
+      </div>
+    </div>
+  );
 
-          <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
-            <textarea
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={form.notes}
-              onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-            />
-          </div>
-
-          <div className="mt-4 text-xs text-slate-500">
-            If a Sales Order is selected, stock lines load from posted Delivery Notes and service lines load from uninvoiced Sales Order quantities.
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-              onClick={addLine}
-              disabled={busy}
-            >
-              Add Item
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="py-2 text-left">Item</th>
-                  <th className="py-2 text-right">Qty</th>
-                  <th className="py-2 text-left">UOM</th>
-                  <th className="py-2 text-right">Unit Price</th>
-                  <th className="py-2 text-left">Discount Type</th>
-                  <th className="py-2 text-right">Discount</th>
-                  <th className="py-2 text-left">Tax Code</th>
-                  <th className="py-2 text-left">Warehouse</th>
-                  <th className="py-2 text-right">Discount Amt</th>
-                  <th className="py-2 text-right">Line Total</th>
-                  <th className="py-2 text-right">Tax</th>
-                  <th className="py-2 text-right">Line Base</th>
-                  <th className="py-2 text-right" />
-                </tr>
-              </thead>
-              <tbody>
-                {form.lines.map((line, index) => (
-                  <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                    <td className="py-2 pr-2">
-                      <ItemSelector 
-                        value={line.itemId}
+  const renderLinesTable = () => (
+    <div className="flex-1 min-h-[250px] flex flex-col bg-white dark:bg-slate-900 border-y border-slate-200/60 dark:border-slate-800/60">
+      <div className="flex-none flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.invoiceDetail.lineItems', 'Line Items')}</h2>
+        {!isReadOnly && (
+          <button type="button"
+            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
+            onClick={addLine} disabled={busy}
+          >
+            {t('sales.invoiceDetail.addItem', 'Add Row')}
+          </button>
+        )}
+      </div>
+      <div className="flex-1 overflow-auto">
+        <table className="min-w-full text-xs border-collapse">
+          <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60 z-10 shadow-sm">
+            <tr>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.item', 'Item')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.qty', 'Qty')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.uom', 'UOM')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.unitPrice', 'Unit Price')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discountType', 'Discount Type')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discount', 'Discount')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.taxCode', 'Tax Code')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.warehouse', 'Warehouse')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discountAmt', 'Discount Amt')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.lineTotal', 'Line Total')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.net', 'Net')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.tax', 'Tax')}</th>
+              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.netBase', 'Net Base')}</th>
+              {!isReadOnly && <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500" />}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {form.lines.map((line, index) => (
+              <tr key={line.lineId || `line-${index}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-950/40 align-middle transition-colors duration-150">
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle min-w-[180px]">
+                  {isReadOnly ? (
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName || '—'}</div>
+                  ) : (
+                    <>
+                      <ItemSelector value={line.itemId}
                         onChange={(item) => {
                           if (item) {
                             const defaultUom = getDefaultItemUomOption(item, 'sales');
-                            setLine(index, {
-                              itemId: item.id,
-                              itemCode: item.code,
-                              itemName: item.name,
-                              uomId: defaultUom?.uomId,
-                              uom: defaultUom?.code || item.salesUom || item.baseUom,
-                            });
+                            setLine(index, { itemId: item.id, itemCode: item.code, itemName: item.name, uomId: defaultUom?.uomId, uom: defaultUom?.code || item.salesUom || item.baseUom });
                           } else {
                             setLine(index, { itemId: '', itemCode: '', itemName: '', uomId: undefined, uom: '' });
                           }
                         }}
                       />
                       {(line.itemCode || line.itemName) && (
-                        <div className="mt-1 text-xs text-slate-500">
-                          {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
-                        </div>
+                        <div className="mt-1 text-[10px] text-slate-400">{(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}</div>
                       )}
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        min={0.000001}
-                        step={0.000001}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                        value={line.invoicedQty}
-                        onChange={(e) => setLine(index, { invoicedQty: Number(e.target.value) })}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                        value={
-                          findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                          line.uomId ||
-                          line.uom
-                        }
-                        disabled={!line.itemId}
-                        onChange={(e) => {
-                          const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                            (option) => (option.uomId || option.code) === e.target.value
-                          );
-                          setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                        }}
-                      >
-                        <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                        {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                          <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                            {option.code}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                        value={line.unitPriceDoc}
-                        onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-28 rounded-lg border border-slate-300 px-2 py-1.5"
-                        value={line.discountType || ''}
-                        onChange={(e) => setLine(index, { discountType: (e.target.value || undefined) as any, discountValue: 0 })}
-                      >
-                        <option value="">No Discount</option>
-                        <option value="PERCENT">Percent</option>
-                        <option value="AMOUNT">Amount</option>
-                      </select>
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        min={0}
-                        step={line.discountType === 'PERCENT' ? 0.01 : 0.01}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                        value={line.discountValue || 0}
-                        disabled={!line.discountType}
-                        onChange={(e) => setLine(index, { discountValue: Number(e.target.value) })}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
+                    </>
+                  )}
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[70px]">
+                  {isReadOnly ? (
+                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.invoicedQty}</div>
+                  ) : (
+                    <input type="number" min={0.000001} step={0.000001}
+                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
+                      value={line.invoicedQty}
+                      onChange={(e) => setLine(index, { invoicedQty: Number(e.target.value) })}
+                    />
+                  )}
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[80px]">
+                  {isReadOnly ? (
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 uppercase">{line.uom || '—'}</div>
+                  ) : (
+                    <select className="w-full border-0 bg-transparent px-1 py-1.5 text-xs uppercase focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
+                      value={findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId || line.uomId || line.uom}
+                      disabled={!line.itemId}
+                      onChange={(e) => {
+                        const selected = (uomOptionsByItemId[line.itemId] || []).find((option) => (option.uomId || option.code) === e.target.value);
+                        setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                      }}
+                    >
+                      <option value="">{line.itemId ? t('sales.invoiceDetail.selectUom', 'Select UOM') : t('sales.invoiceDetail.noItem', 'No item')}</option>
+                      {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                        <option key={option.uomId || option.code} value={option.uomId || option.code}>{option.code}</option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[90px]">
+                  {isReadOnly ? (
+                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.unitPriceDoc?.toFixed(2)}</div>
+                  ) : (
+                    <input type="number" min={0} step={0.01}
+                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
+                      value={line.unitPriceDoc}
+                      onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
+                    />
+                  )}
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[100px]">
+                  {isReadOnly ? (
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.discountType || t('sales.invoiceDetail.noDiscount', 'No Discount')}</div>
+                  ) : (
+                    <select className="w-full border-0 bg-transparent px-1 py-1.5 text-xs focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
+                      value={line.discountType || ''}
+                      onChange={(e) => setLine(index, { discountType: (e.target.value || undefined) as any, discountValue: 0 })}
+                    >
+                      <option value="">{t('sales.invoiceDetail.noDiscount', 'No Discount')}</option>
+                      <option value="PERCENT">{t('sales.invoiceDetail.discountPercent', 'Percent')}</option>
+                      <option value="AMOUNT">{t('sales.invoiceDetail.discountAmount', 'Amount')}</option>
+                    </select>
+                  )}
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[70px]">
+                  {isReadOnly ? (
+                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.discountValue || 0}</div>
+                  ) : (
+                    <input type="number" min={0} step={0.01}
+                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
+                      value={line.discountValue || 0}
+                      disabled={!line.discountType}
+                      onChange={(e) => setLine(index, { discountValue: Number(e.target.value) })}
+                    />
+                  )}
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[110px]">
+                  {isReadOnly ? (
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.taxCodeId ? taxById[line.taxCodeId]?.code || line.taxCodeId : t('sales.invoiceDetail.noTax', 'No Tax')}</div>
+                  ) : (
+                    <div className="flex flex-col p-1 gap-1">
+                      <select className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-1 py-0.5 text-xs focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
                         value={line.taxCodeId || ''}
                         onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
                       >
-                        <option value="">No Tax</option>
+                        <option value="">{t('sales.invoiceDetail.noTax', 'No Tax')}</option>
                         {salesTaxCodes.map((taxCode) => (
-                          <option key={taxCode.id} value={taxCode.id}>
-                            {taxCode.code} ({Math.round(taxCode.rate * 100)}%)
-                          </option>
+                          <option key={taxCode.id} value={taxCode.id}>{taxCode.code} ({Math.round(taxCode.rate * 100)}%)</option>
                         ))}
                       </select>
                       {line.taxCodeId && (() => {
                         const tc = taxById[line.taxCodeId];
-                        const effective =
-                          line.priceIsInclusive !== undefined
-                            ? line.priceIsInclusive
-                            : tc?.priceIsInclusive === true;
+                        const effective = line.priceIsInclusive !== undefined ? line.priceIsInclusive : tc?.priceIsInclusive === true;
                         return (
-                          <label className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
-                            <input
-                              type="checkbox"
-                              className="h-3.5 w-3.5 rounded border-slate-300"
+                          <label className="flex items-center gap-1 text-[10px] text-slate-500 select-none">
+                            <input type="checkbox" className="h-3 w-3 rounded border-slate-300 dark:border-slate-700 text-primary-600 focus:ring-primary-500"
                               checked={effective}
-                              onChange={(e) =>
-                                setLine(index, { priceIsInclusive: e.target.checked })
-                              }
+                              onChange={(e) => setLine(index, { priceIsInclusive: e.target.checked })}
                             />
-                            <span>
-                              Tax-inclusive
-                              {line.priceIsInclusive === undefined && tc?.priceIsInclusive && (
-                                <span className="ml-1 text-[10px] text-slate-400">(default)</span>
-                              )}
+                            <span className="truncate">
+                              {t('sales.invoiceDetail.taxInclusive', 'Tax-incl.')}
                             </span>
                           </label>
                         );
                       })()}
-                    </td>
-                    <td className="py-2 pr-2">
-                      {line.dnLineId ? (
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
-                          Auto from Delivery Note
-                        </div>
-                      ) : (
-                        <WarehouseSelector
-                          value={line.warehouseId}
-                          onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })}
-                        />
-                      )}
-                    </td>
-                    <td className="py-2 pr-2 text-right">
-                      {form.currency} {computedLines[index]?.discountAmountDoc.toFixed(2)}
-                    </td>
-                    <td className="py-2 pr-2 text-right">
-                      {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
-                    </td>
-                    <td className="py-2 pr-2 text-right">
-                      {form.currency} {computedLines[index]?.taxAmountDoc.toFixed(2)}
-                    </td>
-                    <td className="py-2 pr-2 text-right">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
-                    <td className="py-2 text-right">
-                      <button
-                        type="button"
-                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
-                        onClick={() => removeLine(index)}
-                        disabled={busy || form.lines.length <= 1}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Totals</h3>
-          <div className="grid gap-2 text-sm md:grid-cols-2">
-            <div className="flex justify-between">
-              <span className="text-slate-600">Subtotal ({form.currency})</span>
-              <span className="font-medium">
-                {form.currency} {totals.subtotalDoc.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Subtotal (Base)</span>
-              <span className="font-medium">{totals.subtotalBase.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Tax ({form.currency})</span>
-              <span className="font-medium">
-                {form.currency} {totals.taxTotalDoc.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Tax (Base)</span>
-              <span className="font-medium">{totals.taxTotalBase.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between border-t border-slate-200 pt-2">
-              <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total ({form.currency})</span>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
-                {form.currency} {totals.grandTotalDoc.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between border-t border-slate-200 pt-2">
-              <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total (Base)</span>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{totals.grandTotalBase.toFixed(2)}</span>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Charges / Additions</h3>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-              onClick={addCharge}
-              disabled={busy}
-            >
-              Add Charge
-            </button>
-          </div>
-          <div className="space-y-3">
-            {form.charges.length === 0 && (
-              <div className="text-sm text-slate-500">No charges added.</div>
-            )}
-            {form.charges.map((charge, index) => (
-              <div key={charge.chargeId || `charge-${index}`} className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-6">
-                <input
-                  type="text"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  placeholder="Charge name"
-                  value={charge.name}
-                  onChange={(e) => setCharge(index, { name: e.target.value })}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-right"
-                  placeholder="Amount"
-                  value={charge.amountDoc}
-                  onChange={(e) => setCharge(index, { amountDoc: Number(e.target.value) })}
-                />
-                <select
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={charge.taxCodeId || ''}
-                  onChange={(e) => setCharge(index, { taxCodeId: e.target.value || undefined })}
-                >
-                  <option value="">No Tax</option>
-                  {salesTaxCodes.map((taxCode) => (
-                    <option key={taxCode.id} value={taxCode.id}>
-                      {taxCode.code} ({Math.round(taxCode.rate * 100)}%)
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  placeholder="Description (optional)"
-                  value={charge.description || ''}
-                  onChange={(e) => setCharge(index, { description: e.target.value })}
-                />
-                <div className="flex items-center justify-end text-sm font-medium text-slate-700">
-                  {form.currency} {computedCharges[index]?.amountDoc.toFixed(2)} + Tax {computedCharges[index]?.taxAmountDoc.toFixed(2)}
-                </div>
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-red-700"
-                  onClick={() => removeCharge(index)}
-                  disabled={busy}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {showSettlement && (
-          <Card className="p-5 border-blue-200 bg-blue-50">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Save & Post</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Settlement Mode</label>
-                <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={settlementMode}
-                  onChange={(e) => setSettlementMode(e.target.value as any)}
-                >
-                  <option value="DEFERRED">Deferred (No Payment)</option>
-                  <option value="CASH_FULL">Cash Full Payment</option>
-                  <option value="MULTI">Multiple Payments</option>
-                </select>
-              </div>
-
-              {settlementMode !== 'DEFERRED' && (
-                <>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">AR Account (Optional Override)</label>
-                    <AccountSelector
-                      value={arAccountId}
-                      placeholder="Leave empty to use Sales default AR"
-                      onChange={(account) => setArAccountId(account?.id || '')}
-                    />
-                  </div>
-
-                  {settlementRows.map((row, idx) => (
-                    <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
-                      <div className="text-sm font-medium text-slate-700">Payment Row {idx + 1}</div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Settlement Account (Optional Override)</label>
-                          <AccountSelector
-                            value={row.settlementAccountId}
-                            placeholder="Leave empty to use payment method mapping"
-                            onChange={(account) => {
-                              const updated = [...settlementRows];
-                              updated[idx].settlementAccountId = account?.id || '';
-                              setSettlementRows(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Amount (Base)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                            value={row.amountBase}
-                            onChange={(e) => {
-                              const updated = [...settlementRows];
-                              updated[idx].amountBase = parseFloat(e.target.value) || 0;
-                              setSettlementRows(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Payment Method</label>
-                          <select
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                            value={row.paymentMethod}
-                            onChange={(e) => {
-                              const updated = [...settlementRows];
-                              updated[idx].paymentMethod = e.target.value;
-                              setSettlementRows(updated);
-                            }}
-                          >
-                            <option value="CASH">Cash</option>
-                            <option value="BANK_TRANSFER">Bank Transfer</option>
-                            <option value="CHECK">Check</option>
-                            <option value="CREDIT_CARD">Credit Card</option>
-                            <option value="OTHER">Other</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Payment Date</label>
-                          <input
-                            type="date"
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                            value={row.paymentDate}
-                            onChange={(e) => {
-                              const updated = [...settlementRows];
-                              updated[idx].paymentDate = e.target.value;
-                              setSettlementRows(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Reference</label>
-                          <input
-                            type="text"
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                            value={row.reference}
-                            onChange={(e) => {
-                              const updated = [...settlementRows];
-                              updated[idx].reference = e.target.value;
-                              setSettlementRows(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Notes</label>
-                          <input
-                            type="text"
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                            value={row.notes}
-                            onChange={(e) => {
-                              const updated = [...settlementRows];
-                              updated[idx].notes = e.target.value;
-                              setSettlementRows(updated);
-                            }}
-                          />
-                        </div>
-                      </div>
-                      {settlementMode === 'MULTI' && (
-                        <button
-                          type="button"
-                          className="text-xs text-red-600 hover:text-red-800"
-                          onClick={() => setSettlementRows(settlementRows.filter((_, i) => i !== idx))}
-                        >
-                          Remove Row
-                        </button>
-                      )}
                     </div>
-                  ))}
-
-                  {settlementMode === 'MULTI' && (
-                    <button
-                      type="button"
-                      className="rounded-lg border border-blue-300 px-3 py-1 text-sm text-blue-700 hover:bg-blue-100"
-                      onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: roundMoney(totals.grandTotalBase / (settlementRows.length + 1)), paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
-                    >
-                      + Add Payment Row
-                    </button>
                   )}
-                </>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  onClick={() => createAndPostDraft()}
-                  disabled={busy || orderLineLoading}
-                >
-                  {busy ? 'Saving & Posting...' : 'Confirm Save & Post'}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-                  onClick={() => setShowSettlement(false)}
-                  disabled={busy}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={() => createDraft()}
-            disabled={busy || orderLineLoading}
-          >
-            {busy ? 'Creating...' : 'Save Draft'}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={() => {
-              const outstanding = roundMoney(totals.grandTotalBase);
-              if (outstanding > 0.005) {
-                setShowSettlement(true);
-                setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
-              } else {
-                setSettlementMode('DEFERRED');
-                createAndPostDraft();
-              }
-            }}
-            disabled={busy || orderLineLoading}
-          >
-            {busy ? 'Saving & Posting...' : 'Save & Post'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!invoice) {
-    return (
-      <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Invoice</h1>
-        <Card className="p-6 text-sm text-red-700">Sales invoice not found.</Card>
-      </div>
-    );
-  }
-
-  const canCreateReceipt = invoice.status === 'POSTED' && invoice.outstandingAmountBase > 0;
-  const receiptHref = `/accounting/vouchers?mode=create&type=receipt&sourceType=SALES_INVOICE&sourceId=${invoice.id}`;
-  const createReturnHref = `/sales/returns/new?salesInvoiceId=${encodeURIComponent(invoice.id)}${invoice.salesOrderId ? `&salesOrderId=${encodeURIComponent(invoice.salesOrderId)}` : ''}`;
-
-  return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{invoice.invoiceNumber}</h1>
-          <p className="text-sm text-slate-600">
-            Customer: <span className="font-medium">{customerNameById[invoice.customerId] || invoice.customerName}</span>
-            {invoice.customerInvoiceNumber ? ` • Customer Ref: ${invoice.customerInvoiceNumber}` : ''}
-          </p>
-        </div>
-        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${invoice.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100'}`}>
-          {invoice.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : invoice.status}
-        </span>
-      </div>
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-      <Card className="p-5">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Invoice Date</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.invoiceDate}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Due Date</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.dueDate || '-'}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">SO Reference</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {(invoice.salesOrderId && salesOrderLabelById[invoice.salesOrderId]) || invoice.salesOrderId || '-'}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Currency</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.currency}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Exchange Rate</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.exchangeRate}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              {t('sales.governance.directInvoicingStatusLabel', 'Direct Invoicing')}
-            </div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {settings
-                ? isDirectInvoiceAllowed
-                  ? t('sales.governance.directAllowed', 'Allowed')
-                  : t('sales.governance.directBlockedOperational', 'Blocked (Operational)')
-                : '-'}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Salesperson</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {(() => {
-                if (!invoice.salespersonId) return '-';
-                const sp = salespersons.find((s) => s.id === invoice.salespersonId);
-                return sp ? `${sp.code} - ${sp.name}` : invoice.salespersonId;
-              })()}
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Price</th>
-                <th className="py-2 text-left">Tax Code</th>
-                <th className="py-2 text-right">Line Total</th>
-                <th className="py-2 text-right">Tax</th>
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle min-w-[120px]">
+                  {line.dnLineId ? (
+                    <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 text-[10px] text-slate-500">
+                      {t('sales.invoiceDetail.autoFromDN', 'Auto from DN')}
+                    </div>
+                  ) : isReadOnly ? (
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.warehouseId ? (warehouses.find(w => w.id === line.warehouseId)?.name || line.warehouseId) : '—'}</div>
+                  ) : (
+                    <WarehouseSelector value={line.warehouseId} onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })} />
+                  )}
+                </td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.discountAmountDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{computedLines[index]?.lineGrossDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.lineTotalDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.taxAmountDoc.toFixed(2)}</td>
+                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
+                {!isReadOnly && (
+                  <td className="px-2 py-1 text-center align-middle">
+                    <button type="button"
+                      className="rounded-full h-5 w-5 inline-flex items-center justify-center border border-slate-200 dark:border-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 transition-all active:scale-[0.98]"
+                      onClick={() => removeLine(index)} disabled={busy || form.lines.length <= 1}
+                    >
+                      ✕
+                    </button>
+                  </td>
+                )}
               </tr>
-            </thead>
-            <tbody>
-              {invoice.lines.map((line) => (
-                <tr key={line.lineId} className="border-b border-slate-100">
-                  <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                  <td className="py-2 text-right">{line.invoicedQty}</td>
-                  <td className="py-2">{line.uom}</td>
-                  <td className="py-2 text-right">{line.unitPriceDoc.toFixed(2)}</td>
-                  <td className="py-2">{line.taxCode || line.taxCodeId || '-'}</td>
-                  <td className="py-2 text-right">{line.lineTotalDoc.toFixed(2)}</td>
-                  <td className="py-2 text-right">{line.taxAmountDoc.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Payment Info</h2>
-        <div className="grid gap-2 text-sm md:grid-cols-2">
-          <div className="flex justify-between">
-            <span className="text-slate-600">Payment Terms (days)</span>
-            <span className="font-medium">{invoice.paymentTermsDays}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Payment Status</span>
-            <span className="font-medium">{invoice.paymentStatus}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Outstanding (Base)</span>
-            <span className="font-medium">{invoice.outstandingAmountBase.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Paid (Base)</span>
-            <span className="font-medium">{invoice.paidAmountBase.toFixed(2)}</span>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {t('sales.invoices.attachments.title', 'Attachments')}
-          </h2>
-          <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <input
-              type="file"
-              className="hidden"
-              accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
-              onChange={uploadAttachment}
-              disabled={attachmentBusy}
-            />
-            {attachmentBusy
-              ? t('sales.invoices.attachments.uploading', 'Uploading...')
-              : t('sales.invoices.attachments.upload', 'Upload Attachment')}
-          </label>
-        </div>
-
-        <p className="mb-4 text-xs text-slate-500">
-          {t(
-            'sales.invoices.attachments.help',
-            'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.'
-          )}
-        </p>
-
-        {attachments.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-            {t('sales.invoices.attachments.empty', 'No attachments yet.')}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {attachments.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {attachment.name}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {formatFileSize(attachment.size)} • {attachment.type} • {new Date(attachment.uploadedAt).toLocaleString()}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
-                    onClick={() => downloadAttachment(attachment.id)}
-                  >
-                    {t('sales.invoices.attachments.open', 'Open')}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:opacity-50"
-                    onClick={() => removeAttachment(attachment.id)}
-                    disabled={attachmentDeletingId === attachment.id}
-                  >
-                    {attachmentDeletingId === attachment.id
-                      ? t('sales.invoices.attachments.removing', 'Removing...')
-                      : t('sales.invoices.attachments.remove', 'Remove')}
-                  </button>
-                </div>
-              </div>
             ))}
-          </div>
-        )}
-      </Card>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
-      {showSettlement && invoice && (
-        <Card className="p-5 border-blue-200 bg-blue-50">
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Post</h2>
-          <div className="space-y-4">
+  const renderChargesSection = () => (
+    <div className="py-2 space-y-3 bg-white dark:bg-slate-900">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.invoiceDetail.charges', 'Charges / Additions')}</h3>
+        {!isReadOnly && (
+          <button type="button"
+            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
+            onClick={addCharge} disabled={busy}
+          >
+            {t('sales.invoiceDetail.addCharge', 'Add Charge')}
+          </button>
+        )}
+      </div>
+      <div className="space-y-2">
+        {form.charges.length === 0 && (
+          <div className="text-xs text-slate-400 dark:text-slate-500 py-2 italic">{t('sales.invoiceDetail.noCharges', 'No charges added.')}</div>
+        )}
+        {form.charges.map((charge, index) => (
+          <div key={charge.chargeId || `charge-${index}`} className="grid gap-3 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/20 md:grid-cols-6 items-center">
             <div>
-              <label className="mb-1 block text-sm font-medium">Settlement Mode</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={settlementMode}
-                onChange={(e) => setSettlementMode(e.target.value as any)}
+              <input type="text"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.invoiceDetail.chargeName', 'Charge name')}
+                value={charge.name} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { name: e.target.value })}
+              />
+            </div>
+            <div>
+              <input type="number" min={0} step={0.01}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-right font-mono focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.invoiceDetail.chargeAmount', 'Amount')}
+                value={charge.amountDoc} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { amountDoc: Number(e.target.value) })}
+              />
+            </div>
+            <div>
+              <select className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                value={charge.taxCodeId || ''} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { taxCodeId: e.target.value || undefined })}
               >
-                <option value="DEFERRED">Deferred (No Payment)</option>
-                <option value="CASH_FULL">Cash Full Payment</option>
-                <option value="MULTI">Multiple Payments</option>
+                <option value="">{t('sales.invoiceDetail.noTax', 'No Tax')}</option>
+                {salesTaxCodes.map((taxCode) => (
+                  <option key={taxCode.id} value={taxCode.id}>{taxCode.code} ({Math.round(taxCode.rate * 100)}%)</option>
+                ))}
               </select>
             </div>
-
-            {settlementMode !== 'DEFERRED' && (
-              <>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">AR/AP Account (Optional Override)</label>
-                  <AccountSelector
-                    value={arAccountId}
-                    placeholder="Leave empty to use Sales default AR"
-                    onChange={(account) => setArAccountId(account?.id || '')}
-                  />
-                </div>
-
-                {settlementRows.map((row, idx) => (
-                  <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
-                    <div className="text-sm font-medium text-slate-700">Payment Row {idx + 1}</div>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      <div>
-                          <label className="mb-1 block text-xs font-medium">Settlement Account (Optional Override)</label>
-                        <AccountSelector
-                          value={row.settlementAccountId}
-                          placeholder="Leave empty to use payment method mapping"
-                          onChange={(account) => {
-                            const updated = [...settlementRows];
-                            updated[idx].settlementAccountId = account?.id || '';
-                            setSettlementRows(updated);
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">Amount (Base)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                          value={row.amountBase}
-                          onChange={(e) => {
-                            const updated = [...settlementRows];
-                            updated[idx].amountBase = parseFloat(e.target.value) || 0;
-                            setSettlementRows(updated);
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">Payment Method</label>
-                        <select
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                          value={row.paymentMethod}
-                          onChange={(e) => {
-                            const updated = [...settlementRows];
-                            updated[idx].paymentMethod = e.target.value;
-                            setSettlementRows(updated);
-                          }}
-                        >
-                          {enabledPaymentMethodConfigs.length > 0 ? (
-                            enabledPaymentMethodConfigs.map((config) => (
-                              <option key={config.method} value={config.method}>
-                                {config.label || config.method}
-                              </option>
-                            ))
-                          ) : (
-                            <>
-                              <option value="CASH">Cash</option>
-                              <option value="BANK_TRANSFER">Bank Transfer</option>
-                              <option value="CHECK">Check</option>
-                              <option value="CREDIT_CARD">Credit Card</option>
-                              <option value="OTHER">Other</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">Payment Date</label>
-                        <input
-                          type="date"
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                          value={row.paymentDate}
-                          onChange={(e) => {
-                            const updated = [...settlementRows];
-                            updated[idx].paymentDate = e.target.value;
-                            setSettlementRows(updated);
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">Reference</label>
-                        <input
-                          type="text"
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                          value={row.reference}
-                          onChange={(e) => {
-                            const updated = [...settlementRows];
-                            updated[idx].reference = e.target.value;
-                            setSettlementRows(updated);
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">Notes</label>
-                        <input
-                          type="text"
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                          value={row.notes}
-                          onChange={(e) => {
-                            const updated = [...settlementRows];
-                            updated[idx].notes = e.target.value;
-                            setSettlementRows(updated);
-                          }}
-                        />
-                      </div>
-                    </div>
-                    {settlementMode === 'MULTI' && (
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:text-red-800"
-                        onClick={() => setSettlementRows(settlementRows.filter((_, i) => i !== idx))}
-                      >
-                        Remove Row
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {settlementMode === 'MULTI' && (
-                  <button
-                    type="button"
-                    className="rounded-lg border border-blue-300 px-3 py-1 text-sm text-blue-700 hover:bg-blue-100"
-                    onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: 0, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
-                  >
-                    + Add Payment Row
-                  </button>
-                )}
-              </>
-            )}
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                onClick={() => postDraft()}
-                disabled={busy}
-              >
-                {busy ? 'Posting...' : 'Confirm & Post'}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-                onClick={() => setShowSettlement(false)}
-                disabled={busy}
-              >
-                Cancel
-              </button>
+            <div className="md:col-span-2 flex items-center gap-2">
+              <input type="text"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.invoiceDetail.chargeDescription', 'Description (optional)')}
+                value={charge.description || ''} disabled={isReadOnly}
+                onChange={(e) => setCharge(index, { description: e.target.value })}
+              />
+              <div className="text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                {form.currency} {computedCharges[index]?.amountDoc.toFixed(2)} + {t('sales.invoiceDetail.tax', 'Tax')} {computedCharges[index]?.taxAmountDoc.toFixed(2)}
+              </div>
+            </div>
+            <div className="flex items-center justify-end">
+              {!isReadOnly && (
+                <button type="button"
+                  className="rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-slate-900 px-3 py-1 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-[0.98]"
+                  onClick={() => removeCharge(index)} disabled={busy}
+                >
+                  {t('sales.invoiceDetail.remove', 'Remove')}
+                </button>
+              )}
             </div>
           </div>
-        </Card>
-      )}
+        ))}
+      </div>
+    </div>
+  );
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => navigate('/sales/invoices')}
-        >
-          Back to List
-        </button>
-        {invoice.status === 'DRAFT' && !showSettlement && (
-          <button
-            type="button"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={handlePostClick}
-            disabled={busy}
-          >
-            {busy ? 'Posting...' : 'Post Invoice'}
-          </button>
-        )}
-        {invoice.status === 'PENDING_APPROVAL' && !showSettlement && (
-          <button
-            type="button"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={handlePostClick}
-            disabled={busy}
-          >
-            {busy ? 'Approving...' : 'Approve & Post'}
-          </button>
-        )}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700"
-            onClick={() => navigate(createReturnHref)}
-          >
-            Create Return
-          </button>
-        )}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => navigate(receiptHref)}
-            disabled={!canCreateReceipt}
-          >
-            Create Receipt
-          </button>
-        )}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-teal-300 px-4 py-2 text-sm font-medium text-teal-700"
-            onClick={openSendWhatsAppModal}
-          >
-            {t('sales.invoices.whatsapp.action', 'Send via WhatsApp')}
-          </button>
-        )}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-sky-300 px-4 py-2 text-sm font-medium text-sky-700"
-            onClick={openSendTelegramModal}
-          >
-            {t('sales.invoices.telegram.action', 'Send via Telegram')}
-          </button>
-        )}
-        {(invoice.status === 'DRAFT' || invoice.status === 'POSTED') && (
-          <button
-            type="button"
-            className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700"
-            onClick={openCloneRecurringModal}
-          >
-            {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
-          </button>
-        )}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
-            onClick={() => setGlImpactOpen(true)}
-          >
-            GL Impact
-          </button>
-        )}
-        <button
-          type="button"
-          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-          onClick={() => setAuditModalOpen(true)}
-        >
-          History
-        </button>
+  const renderTotals = () => (
+    <Card className="p-5">
+      <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.totals', 'Totals')}</h3>
+      <div className="grid gap-2 text-sm md:grid-cols-2">
+        <div className="flex justify-between">
+          <span className="text-slate-600">{t('sales.invoiceDetail.subtotalDoc', 'Subtotal ({{currency}})', { currency: form.currency })}</span>
+          <span className="font-medium">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-600">{t('sales.invoiceDetail.subtotalBase', 'Subtotal (Base)')}</span>
+          <span className="font-medium">{totals.subtotalBase.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-600">{t('sales.invoiceDetail.taxDoc', 'Tax ({{currency}})', { currency: form.currency })}</span>
+          <span className="font-medium">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-600">{t('sales.invoiceDetail.taxBase', 'Tax (Base)')}</span>
+          <span className="font-medium">{totals.taxTotalBase.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between border-t border-slate-200 pt-2">
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.grandTotalDoc', 'Grand Total ({{currency}})', { currency: form.currency })}</span>
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{form.currency} {totals.grandTotalDoc.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between border-t border-slate-200 pt-2">
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.grandTotalBase', 'Grand Total (Base)')}</span>
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{totals.grandTotalBase.toFixed(2)}</span>
+        </div>
+      </div>
+    </Card>
+  );
+
+  // ─── Main render ──────────────────────────────────────────────────────────
+  return (
+    <div className={clsx("flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950", isWindow ? "h-full w-full" : "h-[calc(100vh-3.5rem)]")}>
+      {/* Info bar — ~5% */}
+      <div className="flex-none flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
+            {isCreateMode ? t('sales.invoiceDetail.newTitle', 'New Sales Invoice') : (invoice?.invoiceNumber || t('sales.invoiceDetail.title', 'Sales Invoice'))}
+          </h1>
+          {invoice && (
+            <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              {customerNameById[invoice.customerId] || invoice.customerName}
+              {invoice.customerInvoiceNumber ? ` · ${t('sales.invoiceDetail.customerRef', 'Customer Ref:')} ${invoice.customerInvoiceNumber}` : ''}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {invoice && <StatusChip status={invoice.status} type="si" />}
+          {isCreateMode && <StatusChip status="DRAFT" type="si" />}
+        </div>
       </div>
 
-      <GlImpactModal
-        isOpen={glImpactOpen}
-        onClose={() => setGlImpactOpen(false)}
-        sourceId={invoice.id}
-        sourceLabel={invoice.invoiceNumber}
-        documentStatus={invoice.status}
-      />
+      {/* Banners */}
+      {/*
+        SoD: a Sales Invoice in PENDING_APPROVAL is awaiting accounting approval. Sales-side
+        cannot Approve its own postings. The accountant clears the parked state from the
+        Approval Center. See docs/architecture/posting-authority.md §4.1.
+      */}
+      {invoice?.status === 'PENDING_APPROVAL' && (
+        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+          <div className="font-semibold mb-0.5">
+            {t('sales.invoiceDetail.pendingApprovalBanner.title', '⏳ Awaiting accounting approval')}
+          </div>
+          <div className="text-amber-800 dark:text-amber-300">
+            {t('sales.invoiceDetail.pendingApprovalBanner.description', 'This invoice was submitted and is waiting for accounting to approve the ledger effect. You cannot edit it while it is pending. The decision will appear here when it is made.')}
+          </div>
+        </div>
+      )}
+      {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
+        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300">
+          {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked. Select a Sales Order or ask an admin for an exception.')}
+        </div>
+      )}
+      {creditWarnBanner && (
+        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2">
+          <span>{creditWarnBanner}</span>
+          <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
+        </div>
+      )}
+
+      {/* Payment info — POSTED only, inline compact strip */}
+      {invoice && invoice.status !== 'DRAFT' && (
+        <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-2">
+          <div className="grid gap-2 grid-cols-3 md:grid-cols-6">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.invoiceDateLabel', 'Invoice Date')}</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.invoiceDate}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.dueDateLabel', 'Due Date')}</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.dueDate || '-'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.soRefLabel', 'SO Reference')}</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+                {(invoice.salesOrderId && salesOrderLabelById[invoice.salesOrderId]) || invoice.salesOrderId || '-'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.currencyLabel', 'Currency')}</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.currency}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.exchangeRateLabel', 'Exchange Rate')}</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.exchangeRate}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.salespersonLabel', 'Salesperson')}</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+                {(() => {
+                  if (!invoice.salespersonId) return '-';
+                  const sp = salespersons.find((s) => s.id === invoice.salespersonId);
+                  return sp ? `${sp.code} - ${sp.name}` : invoice.salespersonId;
+                })()}
+              </div>
+            </div>
+          </div>
+          {invoice.status === 'POSTED' && (
+            <div className="mt-4 grid gap-2 text-sm md:grid-cols-2 border-t border-slate-100 pt-4">
+              <div className="flex justify-between">
+                <span className="text-slate-600">{t('sales.invoiceDetail.paymentStatus', 'Payment Status')}</span>
+                <span className="font-medium">{invoice.paymentStatus}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">{t('sales.invoiceDetail.paymentTerms', 'Payment Terms (days)')}</span>
+                <span className="font-medium">{invoice.paymentTermsDays}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">{t('sales.invoiceDetail.outstandingBase', 'Outstanding (Base)')}</span>
+                <span className="font-medium">{invoice.outstandingAmountBase?.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">{t('sales.invoiceDetail.paidBase', 'Paid (Base)')}</span>
+                <span className="font-medium">{invoice.paidAmountBase?.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* DRAFT: editable form */}
+      {(isCreateMode || invoice?.status === 'DRAFT') && renderHeaderForm()}
+
+      {/* Lines — flex-1 */}
+      {renderLinesTable()}
+
+      {/* Charges (collapsible) — flex-none */}
+      <details className="flex-none bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60 group">
+        <summary className="cursor-pointer px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 select-none hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors duration-150">
+          {t('sales.invoiceDetail.charges', 'Charges / Additions')} {form.charges.length > 0 && <span className="text-slate-400">({form.charges.length})</span>}
+        </summary>
+        <div className="px-4 pb-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">{renderChargesSection()}</div>
+      </details>
+
+      {/* Totals + Attachments (collapsed) — flex-none */}
+      <div className="flex-none px-4 py-3 bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+        <div className="text-xs text-slate-500">
+          {!isCreateMode && invoice && (
+            <details className="inline-block relative">
+              <summary className="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 select-none transition-colors duration-150 font-medium">
+                📎 {t('sales.invoiceDetail.attachmentsLink', 'Attachments')} ({attachments.length})
+              </summary>
+              <div className="absolute right-0 bottom-full mb-2 z-[999] w-[480px] max-w-[90vw] rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 p-3 shadow-xl">
+                <AttachmentsCard
+                  entityId={invoice.id}
+                  attachments={attachments as any}
+                  onChange={(list) => {
+                    setAttachments(list as SalesInvoiceAttachmentDTO[]);
+                    setInvoice((current) => (current ? { ...current, attachments: list as SalesInvoiceAttachmentDTO[] } : current));
+                  }}
+                  api={{
+                    list: (id) => salesApi.listInvoiceAttachments(id) as any,
+                    upload: (id, file) => salesApi.uploadInvoiceAttachment(id, file) as any,
+                    remove: (id, attachmentId) => salesApi.removeInvoiceAttachment(id, attachmentId) as any,
+                    getDownloadLink: (id, attachmentId) => salesApi.getInvoiceAttachmentDownloadLink(id, attachmentId) as any,
+                  }}
+                />
+              </div>
+            </details>
+          )}
+        </div>
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.subtotal', 'Subtotal')}</span>
+            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.tax', 'Tax')}</span>
+            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
+          </div>
+          <div className="flex flex-col items-end border-l border-slate-200 dark:border-slate-800 pl-6">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.grandTotal', 'Grand Total')}</span>
+            <span className="font-mono font-black text-xl text-primary-600 dark:text-primary-400">{form.currency} {totals.grandTotalDoc.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Settlement section (conditional overlay-style band).
+          SoD guard: never render once the SI is PENDING_APPROVAL — the only
+          legitimate next step at that point is approval in Accounting. */}
+      {showSettlement && (isCreateMode || invoice?.status === 'DRAFT') && (
+        <div className="flex-none px-4 py-2 bg-blue-50 border-t border-blue-200 max-h-[40vh] overflow-auto">
+          {isCreateMode
+            ? renderSettlementSection(() => createAndPostDraft(), t('sales.invoiceDetail.confirmSaveAndPost', 'Confirm Save & Post'))
+            : renderSettlementSection(() => postDraft(), t('sales.invoiceDetail.confirmPost', 'Confirm & Post'))}
+        </div>
+      )}
+
+      {/* Action button bar — sticky bottom, flex-none */}
+      <div className="flex-none flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60">
+        {/* Left Side: Back, History, Sharing, GL Impact */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button"
+            className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+            onClick={() => {
+              if (isWindow && onClose) {
+                onClose();
+              } else {
+                navigate('/sales/invoices');
+              }
+            }}
+          >
+            {isWindow ? t('common.close', 'Close') : t('sales.invoiceDetail.backToList', 'Back to List')}
+          </button>
+          
+          {!isCreateMode && (
+            <button type="button"
+              className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+              onClick={() => setAuditModalOpen(true)}
+            >
+              {t('sales.invoiceDetail.history', 'History')}
+            </button>
+          )}
+
+          {invoice?.status === 'POSTED' && (
+            <>
+              {/* GL Impact */}
+              <button type="button"
+                className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+                onClick={() => setGlImpactOpen(true)}
+              >
+                {t('sales.invoiceDetail.glImpact', 'GL Impact')}
+              </button>
+              
+              {/* Unified send (WhatsApp / Telegram / share link) */}
+              <SendDocumentButton
+                accounts={messagingAccounts}
+                defaultPhone={invoice ? (customerById[invoice.customerId]?.phone || '').trim() : ''}
+                documentNumber={invoice?.invoiceNumber || ''}
+                customerName={invoice ? (customerNameById[invoice.customerId] || invoice.customerName) : ''}
+                amount={invoice?.grandTotalDoc || 0}
+                currency={invoice?.currency || ''}
+                documentDate={invoice?.invoiceDate || ''}
+                onSendWhatsApp={async (params) => {
+                  if (!invoice?.id) return { messageId: '', recipientPhoneNumber: '' };
+                  const result = await salesApi.sendInvoiceWhatsApp(invoice.id, {
+                    messagingAccountId: params.messagingAccountId,
+                    toPhoneNumber: params.toPhoneNumber,
+                    messageText: params.messageText,
+                    documentUrl: params.documentUrl,
+                  });
+                  const payload = unwrap<any>(result);
+                  errorHandler.showInfo(
+                    t('sales.invoices.whatsapp.success', 'WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).', {
+                      phone: payload.recipientPhoneNumber,
+                      sender: payload.senderLabel || t('sales.invoices.whatsapp.defaultSender', 'default sender'),
+                      messageId: payload.messageId,
+                    })
+                  );
+                  return payload;
+                }}
+                onSendTelegram={async (params) => {
+                  if (!invoice?.id) return { messageId: '', recipientChatId: '' };
+                  const result = await salesApi.sendInvoiceTelegram(invoice.id, {
+                    messagingAccountId: params.messagingAccountId,
+                    toChatId: params.toChatId,
+                    messageText: params.messageText,
+                    documentUrl: params.documentUrl,
+                  });
+                  const payload = unwrap<any>(result);
+                  errorHandler.showInfo(
+                    t('sales.invoices.telegram.success', 'Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).', {
+                      chatId: payload.recipientChatId,
+                      sender: payload.senderLabel || t('sales.invoices.telegram.defaultSender', 'default sender'),
+                      messageId: payload.messageId,
+                    })
+                  );
+                  return payload;
+                }}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Right Side: State changes (Save, Post, Discard, Reversing, Receipt) */}
+        <div className="flex flex-wrap items-center gap-2 justify-end">
+          {/* POSTED actions (Refund/Receipt/Recurring) */}
+          {invoice?.status === 'POSTED' && (
+            <>
+              {/* Caution: clone to recurring */}
+              <button type="button"
+                className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-all active:scale-[0.98]"
+                onClick={openCloneRecurringModal}
+              >
+                {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
+              </button>
+
+              {/* Caution: create return */}
+              <button type="button"
+                className="rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 px-4 py-2 text-sm font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-100/50 dark:hover:bg-rose-950/40 transition-all active:scale-[0.98]"
+                onClick={() => navigate(createReturnHref)}
+              >
+                {t('sales.invoiceDetail.createReturn', 'Create Reversing Sales Return')}
+              </button>
+
+              {/* Outbound: create receipt */}
+              <button type="button"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                onClick={() => navigate(receiptHref)} disabled={!canCreateReceipt}
+              >
+                {t('sales.invoiceDetail.createReceipt', 'Create Receipt')}
+              </button>
+            </>
+          )}
+
+          {/* PENDING_APPROVAL actions: SoD says Sales cannot Approve its own posting.
+              Only History is rendered so the user can see who submitted and when.
+              Approval happens in the Accounting Approval Center. */}
+          {!isCreateMode && invoice?.status === 'PENDING_APPROVAL' && (
+            <>
+              <button type="button"
+                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+                onClick={() => setAuditModalOpen(true)}
+              >
+                {t('sales.invoiceDetail.history', 'History')}
+              </button>
+            </>
+          )}
+
+          {/* DRAFT actions */}
+          {!isCreateMode && invoice?.status === 'DRAFT' && (
+            <>
+              {/* Clone to recurring (draft) */}
+              <button type="button"
+                className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-all active:scale-[0.98]"
+                onClick={openCloneRecurringModal}
+              >
+                {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
+              </button>
+
+              {/* Discard */}
+              <button type="button"
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={handleDiscard} disabled={busy}
+              >
+                {t('sales.invoiceDetail.discard', 'Discard')}
+              </button>
+
+              {/* Save Draft Changes */}
+              <button type="button"
+                className="rounded-lg bg-slate-800 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 dark:hover:bg-slate-600 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={saveDraftChanges} disabled={busy}
+              >
+                {busy ? t('sales.invoiceDetail.saving', 'Saving...') : t('sales.invoiceDetail.saveChanges', 'Save Changes')}
+              </button>
+
+              {/* Post Invoice */}
+              {!showSettlement && (
+                <button type="button"
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                  onClick={handlePostClick} disabled={busy}
+                >
+                  {busy ? t('sales.invoiceDetail.posting', 'Posting...') : t('sales.invoiceDetail.postInvoice', 'Post Invoice')}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* CREATE actions */}
+          {isCreateMode && (
+            <>
+              {/* Save Draft */}
+              <button type="button"
+                className="rounded-lg bg-slate-800 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 dark:hover:bg-slate-600 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={() => createDraft()} disabled={busy || orderLineLoading}
+              >
+                {busy ? t('sales.invoiceDetail.creating', 'Creating...') : t('sales.invoiceDetail.saveDraft', 'Save Draft')}
+              </button>
+
+              {/* Save & Post */}
+              <button type="button"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={() => {
+                  const outstanding = roundMoney(totals.grandTotalBase);
+                  if (outstanding > 0.005) {
+                    setShowSettlement(true);
+                    setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+                  } else {
+                    setSettlementMode('DEFERRED');
+                    createAndPostDraft();
+                  }
+                }}
+                disabled={busy || orderLineLoading}
+              >
+                {busy ? t('sales.invoiceDetail.savingAndPosting', 'Saving & Posting...') : t('sales.invoiceDetail.saveAndPost', 'Save & Post')}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      {invoice && (
+        <GlImpactModal
+          isOpen={glImpactOpen}
+          onClose={() => setGlImpactOpen(false)}
+          sourceId={invoice.id}
+          sourceLabel={invoice.invoiceNumber}
+          documentStatus={invoice.status}
+        />
+      )}
 
       {overrideModalData && (
         <PeriodLockOverrideModal
           isOpen={overrideModalOpen}
-          onClose={() => setOverrideModalOpen(false)}
+          onClose={() => { setOverrideModalOpen(false); setPendingPeriodLockRetry(null); }}
           documentDate={overrideModalData.documentDate}
           lockedThroughDate={overrideModalData.lockedThroughDate}
           onConfirm={(reason) => {
             setOverrideModalOpen(false);
-            postDraft(reason);
+            // Prefer the pending retry callback (set by handlePeriodLock) so the
+            // override works for both postDraft AND createAndPostDraft paths.
+            const retry = pendingPeriodLockRetry;
+            setPendingPeriodLockRetry(null);
+            if (retry) retry(reason); else postDraft(reason);
           }}
         />
       )}
 
-      <RecordAuditModal
-        isOpen={auditModalOpen}
-        onClose={() => setAuditModalOpen(false)}
-        entityType="SALES_INVOICE"
-        entityId={invoice.id}
-      />
+      {!isCreateMode && invoice && (
+        <RecordAuditModal
+          isOpen={auditModalOpen}
+          onClose={() => setAuditModalOpen(false)}
+          entityType="SALES_INVOICE"
+          entityId={invoice.id}
+        />
+      )}
 
-      <Modal
-        isOpen={sendWhatsAppOpen}
-        onClose={() => setSendWhatsAppOpen(false)}
-        title={t('sales.invoices.whatsapp.modalTitle', 'Send Invoice via WhatsApp')}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.whatsapp.senderLabel', 'Sender Account')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendWhatsAppAccountId}
-              onChange={(e) => setSendWhatsAppAccountId(e.target.value)}
-            >
-              <option value="">{t('sales.invoices.whatsapp.senderDefaultOption', 'Use system default sender')}</option>
-              {whatsappMessagingAccounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.label}
-                  {account.phoneNumberE164 ? ` (${account.phoneNumberE164})` : ''}
-                  {account.isDefault ? ` - ${t('sales.invoices.whatsapp.defaultTag', 'Default')}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.whatsapp.phoneLabel', 'Recipient Phone (E.164)')}
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendWhatsAppPhone}
-              onChange={(e) => setSendWhatsAppPhone(e.target.value)}
-              placeholder={t('sales.invoices.whatsapp.phonePlaceholder', '+905551112233')}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.whatsapp.documentUrlLabel', 'Document URL (Optional)')}
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendWhatsAppDocumentUrl}
-              onChange={(e) => setSendWhatsAppDocumentUrl(e.target.value)}
-              placeholder={t('sales.invoices.whatsapp.documentUrlPlaceholder', 'https://...')}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.whatsapp.messageLabel', 'Message')}
-            </label>
-            <textarea
-              className="min-h-[120px] w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendWhatsAppMessage}
-              onChange={(e) => setSendWhatsAppMessage(e.target.value)}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
-              onClick={() => setSendWhatsAppOpen(false)}
-              disabled={sendWhatsAppBusy}
-            >
-              {t('common.cancel', 'Cancel')}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={sendInvoiceViaWhatsApp}
-              disabled={sendWhatsAppBusy}
-            >
-              {sendWhatsAppBusy
-                ? t('sales.invoices.whatsapp.sending', 'Sending...')
-                : t('sales.invoices.whatsapp.send', 'Send')}
-            </button>
+      {/* Credit override modal */}
+      {creditOverrideOpen && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.creditLimitTitle', 'Credit Limit Exceeded')}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {t('sales.invoiceDetail.creditLimitMessage', 'This customer is over their credit limit and the policy is set to BLOCK. You can override by providing a reason.')}
+            </p>
+            {creditOverrideInfo && (
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                {creditOverrideInfo.creditLimit !== undefined && <div>{t('sales.invoiceDetail.creditLimit', 'Credit Limit:')} <strong>{creditOverrideInfo.creditLimit}</strong></div>}
+                {creditOverrideInfo.currentExposure !== undefined && <div>{t('sales.invoiceDetail.currentExposure', 'Current Exposure:')} <strong>{creditOverrideInfo.currentExposure}</strong></div>}
+                {creditOverrideInfo.orderAmount !== undefined && <div>{t('sales.invoiceDetail.thisInvoice', 'This Invoice:')} <strong>{creditOverrideInfo.orderAmount}</strong></div>}
+                {creditOverrideInfo.projectedExposure !== undefined && <div>{t('sales.invoiceDetail.projectedExposure', 'Projected Exposure:')} <strong>{creditOverrideInfo.projectedExposure}</strong></div>}
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t('sales.invoiceDetail.overrideReason', 'Override Reason')} <span className="text-red-500">*</span>
+              </label>
+              <textarea rows={3}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.invoiceDetail.overridePlaceholder', 'Explain why this credit limit override is approved…')}
+                value={creditOverrideReason}
+                onChange={(e) => setCreditOverrideReason(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                onClick={() => { setCreditOverrideOpen(false); setPendingCreatePayload(null); setCreditOverrideInfo(null); setCreditOverrideReason(''); }}
+              >
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button type="button"
+                className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                disabled={!creditOverrideReason.trim() || busy}
+                onClick={submitCreditOverride}
+              >
+                {t('sales.invoiceDetail.overrideSubmit', 'Override & Create')}
+              </button>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
 
-      <Modal
-        isOpen={sendTelegramOpen}
-        onClose={() => setSendTelegramOpen(false)}
-        title={t('sales.invoices.telegram.modalTitle', 'Send Invoice via Telegram')}
-      >
+      {/* Clone to recurring modal */}
+      <Modal isOpen={cloneRecurringOpen} onClose={() => setCloneRecurringOpen(false)} title={t('sales.recurring.cloneModal.title', 'Clone Invoice to Recurring Template')}>
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.telegram.senderLabel', 'Sender Account')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendTelegramAccountId}
-              onChange={(e) => setSendTelegramAccountId(e.target.value)}
-            >
-              <option value="">{t('sales.invoices.telegram.senderDefaultOption', 'Use default sender')}</option>
-              {telegramMessagingAccounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.label}
-                  {account.botUsername ? ` (${account.botUsername})` : ''}
-                  {account.isDefault ? ` - ${t('sales.invoices.telegram.defaultTag', 'Default')}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.telegram.chatLabel', 'Recipient Chat ID or @Username')}
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendTelegramChatId}
-              onChange={(e) => setSendTelegramChatId(e.target.value)}
-              placeholder={t('sales.invoices.telegram.chatPlaceholder', '@customer_username or -1001234567890')}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.telegram.documentUrlLabel', 'Document URL (Optional)')}
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendTelegramDocumentUrl}
-              onChange={(e) => setSendTelegramDocumentUrl(e.target.value)}
-              placeholder={t('sales.invoices.telegram.documentUrlPlaceholder', 'https://...')}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.invoices.telegram.messageLabel', 'Message')}
-            </label>
-            <textarea
-              className="min-h-[120px] w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={sendTelegramMessage}
-              onChange={(e) => setSendTelegramMessage(e.target.value)}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
-              onClick={() => setSendTelegramOpen(false)}
-              disabled={sendTelegramBusy}
-            >
-              {t('common.cancel', 'Cancel')}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={sendInvoiceViaTelegram}
-              disabled={sendTelegramBusy}
-            >
-              {sendTelegramBusy
-                ? t('sales.invoices.telegram.sending', 'Sending...')
-                : t('sales.invoices.telegram.send', 'Send')}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={cloneRecurringOpen}
-        onClose={() => setCloneRecurringOpen(false)}
-        title={t('sales.recurring.cloneModal.title', 'Clone Invoice to Recurring Template')}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              {t('sales.recurring.fields.templateName', 'Template Name *')}
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={cloneRecurringName}
-              onChange={(e) => setCloneRecurringName(e.target.value)}
-            />
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.templateName', 'Template Name *')}</label>
+            <input type="text" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={cloneRecurringName} onChange={(e) => setCloneRecurringName(e.target.value)} />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                {t('sales.recurring.fields.frequency', 'Frequency *')}
-              </label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringFrequency}
-                onChange={(e) => setCloneRecurringFrequency(e.target.value as RecurrenceFrequency)}
-              >
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.frequency', 'Frequency *')}</label>
+              <select className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringFrequency} onChange={(e) => setCloneRecurringFrequency(e.target.value as RecurrenceFrequency)}>
                 <option value="WEEKLY">{t('sales.recurring.frequency.weekly', 'Weekly')}</option>
                 <option value="MONTHLY">{t('sales.recurring.frequency.monthly', 'Monthly')}</option>
                 <option value="QUARTERLY">{t('sales.recurring.frequency.quarterly', 'Quarterly')}</option>
@@ -2660,17 +2255,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                {cloneRecurringFrequency === 'WEEKLY'
-                  ? t('sales.recurring.fields.dayOfWeek', 'Day of Week')
-                  : t('sales.recurring.fields.dayOfMonth', 'Day of Month')}
+              <label className="mb-1 block text-sm font-medium text-slate-600">
+                {cloneRecurringFrequency === 'WEEKLY' ? t('sales.recurring.fields.dayOfWeek', 'Day of Week') : t('sales.recurring.fields.dayOfMonth', 'Day of Month')}
               </label>
               {cloneRecurringFrequency === 'WEEKLY' ? (
-                <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={cloneRecurringDayOfWeek}
-                  onChange={(e) => setCloneRecurringDayOfWeek(parseInt(e.target.value, 10))}
-                >
+                <select className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={cloneRecurringDayOfWeek} onChange={(e) => setCloneRecurringDayOfWeek(parseInt(e.target.value, 10))}>
                   <option value={0}>{t('sales.recurring.weekdays.sunday', 'Sunday')}</option>
                   <option value={1}>{t('sales.recurring.weekdays.monday', 'Monday')}</option>
                   <option value={2}>{t('sales.recurring.weekdays.tuesday', 'Tuesday')}</option>
@@ -2680,79 +2270,51 @@ const SalesInvoiceDetailPage: React.FC = () => {
                   <option value={6}>{t('sales.recurring.weekdays.saturday', 'Saturday')}</option>
                 </select>
               ) : (
-                <input
-                  type="number"
-                  min={1}
-                  max={28}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={cloneRecurringDayOfMonth}
-                  onChange={(e) => setCloneRecurringDayOfMonth(parseInt(e.target.value, 10) || 1)}
-                />
+                <input type="number" min={1} max={28} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={cloneRecurringDayOfMonth} onChange={(e) => setCloneRecurringDayOfMonth(parseInt(e.target.value, 10) || 1)} />
               )}
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                {t('sales.recurring.fields.startDate', 'Start Date *')}
-              </label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringStartDate}
-                onChange={(e) => setCloneRecurringStartDate(e.target.value)}
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.startDate', 'Start Date *')}</label>
+              <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringStartDate} onChange={(e) => setCloneRecurringStartDate(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                {t('sales.recurring.fields.endDate', 'End Date')}
-              </label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringEndDate}
-                onChange={(e) => setCloneRecurringEndDate(e.target.value)}
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.endDate', 'End Date')}</label>
+              <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringEndDate} onChange={(e) => setCloneRecurringEndDate(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                {t('sales.recurring.fields.maxOccurrences', 'Max Occurrences')}
-              </label>
-              <input
-                type="number"
-                min={1}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringMaxOccurrences}
-                onChange={(e) => setCloneRecurringMaxOccurrences(e.target.value)}
-                placeholder={t('sales.recurring.placeholders.maxOccurrences', 'Leave empty for unlimited')}
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.maxOccurrences', 'Max Occurrences')}</label>
+              <input type="number" min={1} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={cloneRecurringMaxOccurrences} onChange={(e) => setCloneRecurringMaxOccurrences(e.target.value)}
+                placeholder={t('sales.recurring.placeholders.maxOccurrences', 'Leave empty for unlimited')} />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
-              onClick={() => setCloneRecurringOpen(false)}
-              disabled={cloneRecurringBusy}
-            >
+            <button type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              onClick={() => setCloneRecurringOpen(false)} disabled={cloneRecurringBusy}>
               {t('common.cancel', 'Cancel')}
             </button>
-            <button
-              type="button"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={cloneAsRecurringTemplate}
-              disabled={cloneRecurringBusy}
-            >
-              {cloneRecurringBusy
-                ? t('sales.recurring.actions.creatingTemplate', 'Creating...')
-                : t('sales.recurring.actions.createTemplate', 'Create Template')}
+            <button type="button"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+              onClick={cloneAsRecurringTemplate} disabled={cloneRecurringBusy}>
+              {cloneRecurringBusy ? t('sales.recurring.actions.creatingTemplate', 'Creating...') : t('sales.recurring.actions.createTemplate', 'Create Template')}
             </button>
           </div>
         </div>
       </Modal>
+
+      {confirmDialog}
     </div>
   );
 };
 
-export default SalesInvoiceDetailPage;
+export const SalesInvoiceDetailPage: React.FC = () => {
+  return <SalesInvoiceDetail />;
+};
 
+export default SalesInvoiceDetailPage;

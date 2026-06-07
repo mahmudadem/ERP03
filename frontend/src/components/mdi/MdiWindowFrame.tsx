@@ -54,6 +54,7 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.window-header') && 
         !(e.target as HTMLElement).closest('button')) {
+      e.preventDefault();
       setIsDragging(true);
       const rect = windowRef.current?.getBoundingClientRect();
       if (rect) {
@@ -68,6 +69,7 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
 
   const handleResizeMouseDown = (e: React.MouseEvent, type: string) => {
     e.stopPropagation();
+    e.preventDefault();
     setIsResizing(true);
     setResizeType(type);
     focusWindow(win.id);
@@ -165,7 +167,7 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
       {/* Invisible overlay during drag/resize to prevent events leaking to background */}
       {(isDragging || isResizing) && (
         <div 
-          className="fixed inset-0 z-[9999]"
+          className="fixed inset-0 z-50"
           style={{ cursor: isDragging ? 'move' : 'se-resize' }}
         />
       )}
@@ -226,7 +228,7 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
         {contextMenu && (
           <>
             <div 
-              className="fixed inset-0 z-[9998]" 
+              className="fixed inset-0 z-40" 
               onClick={() => setContextMenu(null)}
               onContextMenu={(e) => {
                 e.preventDefault();
@@ -235,7 +237,7 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
               }}
             />
             <div 
-              className="fixed bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] z-[9999] py-1.5 w-52 transition-colors animate-in fade-in zoom-in duration-200"
+              className="fixed bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] z-50 py-1.5 w-52 transition-colors animate-in fade-in zoom-in duration-200"
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onContextMenu={(e) => {
                 e.preventDefault();
@@ -310,3 +312,4 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
     </>
   );
 };
+

@@ -1,14 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import './styles/globals.css';
-import { queryClient } from './queryClient';
 import './i18n/config'; // Initialize i18n
 import { ErrorModal } from './components/ErrorModal';
 import { setupErrorInterceptor } from './api/errorInterceptor';
 
+// React Query is mounted by App.tsx via providers/QueryProvider.tsx so the
+// app has exactly one QueryClientProvider in the tree.
 
 // Setup error handling for API calls
 setupErrorInterceptor();
@@ -20,34 +20,32 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-        <App />
-      <Toaster 
-        position="top-right"
-        containerStyle={{ zIndex: 1000000 }}
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
+    <App />
+    <Toaster
+      position="top-right"
+      containerStyle={{ zIndex: 1000000 }}
+      toastOptions={{
+        duration: 4000,
+        style: {
+          background: '#363636',
+          color: '#fff',
+        },
+        success: {
+          duration: 3000,
+          iconTheme: {
+            primary: '#10B981',
+            secondary: '#fff',
           },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#10B981',
-              secondary: '#fff',
-            },
+        },
+        error: {
+          duration: 5000,
+          iconTheme: {
+            primary: '#EF4444',
+            secondary: '#fff',
           },
-          error: {
-            duration: 5000,
-            iconTheme: {
-              primary: '#EF4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
-      <ErrorModal />
-    </QueryClientProvider>
+        },
+      }}
+    />
+    <ErrorModal />
   </React.StrictMode>
 );

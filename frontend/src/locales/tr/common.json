@@ -111,6 +111,7 @@
     "features": "Özellikler",
     "bundles": "Paketler",
     "notifications": "Bildirimler",
+    "communications": "İletişim",
     "generalSettings": "Genel Ayarlar",
     "companySettings": "Şirket Ayarları",
     "tradingAccount": "Ticaret Hesab?",
@@ -221,7 +222,13 @@
     }
   },
   "actions": {
-    "close": "Kapat"
+    "close": "Kapat",
+    "open": "Aç",
+    "refresh": "Yenile",
+    "clear": "Temizle",
+    "search": "Ara",
+    "previous": "Önceki",
+    "next": "Sonraki"
   },
   "notifications": {
     "title": "Bildirimler",
@@ -2076,11 +2083,99 @@
   },
   "settings": {
     "appearance": {
-      "title": "Dış görünüş",
-      "placeholder": "Tema yapılandırma ayarları burada görünecektir."
+      "title": "Görünüm",
+      "placeholder": "Tema yapılandırma ayarları burada görünecektir.",
+      "layoutBehavior": "Düzen ve Davranış",
+      "layoutMode": "Düzen Modu",
+      "layoutStandard": "Standart Düzen",
+      "layoutCompact": "Kompakt Düzen (Apex)",
+      "themeMode": "Tema Modu",
+      "themeLight": "Açık Tema",
+      "themeDark": "Karanlık Tema",
+      "uiDensity": "Arayüz Yoğunluğu",
+      "densityCompact": "Kompakt (Yüksek bilgi yoğunluğu)",
+      "densityComfortable": "Rahat (Dengeli)",
+      "densitySpacious": "Geniş (Dokunmatik dostu)",
+      "sidebarNav": "Kenar Çubuğu Navigasyonu",
+      "sidebarAccordion": "Akordeon (Satır içi genişleme)",
+      "sidebarFlyout": "Açılır Menü (Üzerine gelince)",
+      "sidebarSurface": "Kenar Çubuğu Yüzeyi",
+      "surfaceDefault": "Varsayılan (Arka planla eşleşen)",
+      "surfaceContrast": "Kontrast (Marka renkli)",
+      "widgetStyle": "Üst Çubuk Bileşen Stili"
     },
     "home": {
-      "title": "Sistem Ayarları"
+      "title": "Sistem Ayarları",
+      "subtitle": "Şirket kontrollerini iş amacına göre bulmak için bu merkezi kullanın: iş akışı, muhasebe, vergi, erişim, iletişim ve kullanıcı deneyimi.",
+      "open": "Aç",
+      "groups": {
+        "general": {
+          "title": "Genel",
+          "description": "Şirket profili, görünüm, menü tercihleri ve bildirim varsayılanları."
+        },
+        "workflow": {
+          "title": "İş Akışı",
+          "description": "Onay davranışı ve satış/satın alma belge akışı kontrolleri."
+        },
+        "finance": {
+          "title": "Muhasebe ve Vergi",
+          "description": "Kayıt varsayılanları, para birimleri, stok muhasebesi ve vergi kodları."
+        },
+        "access": {
+          "title": "Erişim ve Gelişmiş",
+          "description": "Roller, kullanıcı atamaları, AI yapılandırması ve gelişmiş yönetim."
+        }
+      },
+      "links": {
+        "company": {
+          "title": "Şirket Ayarları"
+        },
+        "appearance": {
+          "title": "Görünüm"
+        },
+        "notifications": {
+          "title": "Bildirimler"
+        },
+        "approval": {
+          "title": "Onay İş Akışı"
+        },
+        "sales": {
+          "title": "Satış Ayarları"
+        },
+        "purchases": {
+          "title": "Satın Alma Ayarları"
+        },
+        "accounting": {
+          "title": "Muhasebe Ayarları"
+        },
+        "inventory": {
+          "title": "Stok Ayarları"
+        },
+        "taxCodes": {
+          "title": "Vergi Kodları"
+        },
+        "currencies": {
+          "title": "Para Birimleri"
+        },
+        "roles": {
+          "title": "Roller"
+        },
+        "assignUsers": {
+          "title": "Kullanıcı Ata"
+        },
+        "ai": {
+          "title": "AI Ayarları"
+        },
+        "communications": {
+          "title": "İletişim"
+        }
+      }
+    },
+    "layout": {
+      "unsavedTitle": "Kaydedilmemiş Ayar Değişiklikleri",
+      "unsavedDescription": "Bu modülde kaydedilmemiş değişiklikleriniz var.",
+      "discard": "Vazgeç",
+      "saveChanges": "Değişiklikleri Kaydet"
     },
     "sidebar": {
       "title": "Menü Yapılandırması",
@@ -2135,7 +2230,184 @@
   "success": {
     "SAVE": "Başarıyla kaydedildi"
   },
+  "inventory": {
+    "itemsList": {
+      "title": "Stok Kalemleri",
+      "subtitle": "Satış, satın alma ve stok süreçlerinde kullanılan kalem kartlarını arayın, oluşturun ve açın.",
+      "new": "Yeni Kalem",
+      "newWindowTitle": "Yeni Kalem Kartı",
+      "quickAdd": "Hızlı Kalem Ekle",
+      "quickAddHelp": "Basit kalem kurulumu için kullanın. Muhasebe, stok ve fiyatlandırma ayarları için kalem kartını açın.",
+      "add": "Kalem Ekle",
+      "search": "Ara",
+      "searchPlaceholder": "Kod/ad ara",
+      "allTypes": "Tüm Türler",
+      "loading": "Stok kalemleri yükleniyor...",
+      "emptyTitle": "Gösterilen kalem yok",
+      "emptyDescription": "Kalem kartlarını yüklemek için yukarıdaki arama veya filtreleri kullanın.",
+      "page": "Sayfa {{page}}",
+      "fields": {
+        "code": "Kod",
+        "name": "Ad",
+        "costCurrency": "Maliyet Para Birimi"
+      },
+      "columns": {
+        "code": "Kod",
+        "name": "Ad",
+        "type": "Tür",
+        "baseUom": "Temel Birim",
+        "costCurrency": "Maliyet PB",
+        "costMethod": "Maliyet Yöntemi",
+        "status": "Durum",
+        "actions": "İşlemler"
+      },
+      "typeOptions": {
+        "PRODUCT": "Ürün",
+        "RAW_MATERIAL": "Hammadde",
+        "SERVICE": "Hizmet"
+      },
+      "status": {
+        "active": "Aktif",
+        "inactive": "Pasif"
+      },
+      "messages": {
+        "created": "Kalem oluşturuldu",
+        "createFailed": "Kalem oluşturulamadı",
+        "loadFailed": "Stok kalemleri yüklenemedi"
+      }
+    }
+  },
   "sales": {
+    "quoteDetail": {
+      "pageTitle": "Teklif",
+      "loadingQuotation": "Teklif yükleniyor...",
+      "titleWithNumber": "Teklif {{number}}",
+      "newQuotation": "Yeni Teklif",
+      "subtitle": "Satış Teklifi",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor...",
+      "send": "Gönder",
+      "discard": "Sil",
+      "accept": "Kabul Et",
+      "reject": "Reddet",
+      "revise": "Revize Et",
+      "convertToOrder": "Satış Siparişine Dönüştür",
+      "convertToInvoice": "Faturaya Dönüştür",
+      "discardTitle": "Teklifi Sil",
+      "discardMessage": "Bu işlem taslak teklifi kalıcı olarak silecektir. Bu işlem geri alınamaz.",
+      "discardSuccess": "Teklif silindi.",
+      "convertedNotice": "{{target}} öğesine dönüştürüldü —",
+      "convertedToOrder": "Satış Siparişi",
+      "convertedToInvoice": "Satış Faturası",
+      "customer": "Müşteri",
+      "salesperson": "Satış Temsilcisi",
+      "none": "— Yok —",
+      "quoteDate": "Teklif Tarihi",
+      "validUntil": "Geçerlilik Tarihi",
+      "currency": "Para Birimi",
+      "exchangeRate": "Döviz Kuru",
+      "notes": "Notlar",
+      "notesPlaceholder": "Müşteriye görünen notlar...",
+      "lineItems": "Satırlar",
+      "addLine": "Satır Ekle",
+      "colItem": "Ürün",
+      "colQty": "Miktar",
+      "colUom": "Birim",
+      "colUnitPrice": "Birim Fiyat",
+      "colDiscType": "İnd. Türü",
+      "colDiscValue": "İnd. Değeri",
+      "colTaxCode": "Vergi Kodu",
+      "colLineTotal": "Satır Toplamı",
+      "colTax": "Vergi",
+      "discNone": "Yok",
+      "discPercent": "%",
+      "discAmount": "Tutar",
+      "noTax": "Vergi yok",
+      "removeLine": "Satırı kaldır",
+      "totals": "Toplamlar",
+      "subtotal": "Ara Toplam",
+      "tax": "Vergi",
+      "grandTotal": "Genel Toplam",
+      "valCustomer": "Müşteri gereklidir.",
+      "valQuoteDate": "Teklif tarihi gereklidir.",
+      "valCurrency": "Para birimi gereklidir.",
+      "valExchangeRate": "Döviz kuru 0'dan büyük olmalıdır.",
+      "valNoLines": "En az bir satır gereklidir.",
+      "valLineItem": "Satır {{line}}: ürün gereklidir.",
+      "valLineQty": "Satır {{line}}: miktar 0'dan büyük olmalıdır.",
+      "valLinePrice": "Satır {{line}}: birim fiyat >= 0 olmalıdır.",
+      "loadFailed": "Teklif yüklenemedi.",
+      "saveFailed": "Teklif kaydedilemedi.",
+      "actionFailed": "İşlem başarısız oldu."
+    },
+    "quotesList": {
+      "title": "Quotations",
+      "subtitle": "Sales quotes and proposals.",
+      "newQuote": "New Quote",
+      "allStatuses": "All Statuses",
+      "allCustomers": "All Customers",
+      "refresh": "Refresh",
+      "clearFilters": "Clear Filters",
+      "quoteNumber": "Quote #",
+      "customer": "Customer",
+      "quoteDate": "Quote Date",
+      "validUntil": "Valid Until",
+      "grandTotal": "Grand Total",
+      "status": "Status",
+      "loading": "Loading...",
+      "emptyTitle": "No Quotations",
+      "emptyDescription": "No quotations match your filters. Create your first quotation or adjust filters.",
+      "loadError": "Failed to load quotations.",
+      "statuses": {
+        "DRAFT": "Draft",
+        "SENT": "Sent",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected",
+        "EXPIRED": "Expired",
+        "CONVERTED": "Converted"
+      }
+    },
+    "invoicesList": {
+      "title": "Sales Invoices",
+      "subtitle": "Post invoices to recognize revenue and receivables.",
+      "newButton": "New Invoice",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales invoices...",
+      "loadError": "Failed to load sales invoices.",
+      "filters": {
+        "status": "Status",
+        "payment": "Payment",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "payment": {
+        "ALL": "All",
+        "UNPAID": "Unpaid",
+        "PARTIALLY_PAID": "Partially Paid",
+        "PAID": "Paid"
+      },
+      "headers": {
+        "invoiceNumber": "Invoice #",
+        "customer": "Customer",
+        "invoiceDate": "Invoice Date",
+        "grandTotal": "Grand Total",
+        "payment": "Payment",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales invoices yet",
+        "description": "Create your first invoice to recognize revenue and receivables."
+      }
+    },
     "governance": {
       "operationalWarning": "Operasyonel iş akışı: Doğrudan faturalandırma varsayılan olarak engellenmiştir. Bağlı bir fatura oluşturmak için yukarıdan bir Satış Siparişi seçin veya doğrudan faturalandırma yönetimi istisnası eklemek için yöneticinize başvurun.",
       "settingsOperationalHint": "Operasyonel iş akışı varsayılan olarak doğrudan faturalandırmayı engeller. Doğrudan faturalara izin vermek için şuradan bir yönetim kuralı ekleyin:",
@@ -2323,9 +2595,300 @@
       "cloneModal": {
         "title": "Faturayı Tekrarlayan Şablona Kopyala"
       }
+    },
+    "ordersList": {
+      "title": "Sales Orders",
+      "subtitle": "Commercial sales commitments (no inventory/GL effects from SO itself).",
+      "newButton": "New Sales Order",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales orders...",
+      "loadError": "Failed to load sales orders.",
+      "filters": {
+        "status": "Status",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "CONFIRMED": "Confirmed",
+        "PARTIALLY_DELIVERED": "Partially Delivered",
+        "FULLY_DELIVERED": "Fully Delivered",
+        "CLOSED": "Closed",
+        "CANCELLED": "Cancelled"
+      },
+      "headers": {
+        "orderNumber": "Order #",
+        "customer": "Customer",
+        "orderDate": "Order Date",
+        "total": "Total",
+        "currency": "Currency",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales orders yet",
+        "description": "Create your first sales order to track customer commitments."
+      }
+    },
+    "deliveryNotesList": {
+      "title": "Delivery Notes",
+      "subtitle": "Post delivery to issue stock and recognize COGS.",
+      "newButton": "New Delivery Note",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading delivery notes...",
+      "loadError": "Failed to load delivery notes.",
+      "filters": {
+        "status": "Status",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All Warehouses",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "headers": {
+        "dnNumber": "DN #",
+        "customer": "Customer",
+        "deliveryDate": "Delivery Date",
+        "warehouse": "Warehouse",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No delivery notes yet",
+        "description": "Create your first delivery note to issue stock and recognize COGS."
+      }
+    },
+    "returnsList": {
+      "title": "Sales Returns",
+      "subtitle": "Track sales return documents posted before or after invoicing.",
+      "newButton": "New Sales Return",
+      "refresh": "Refresh",
+      "clearFilters": "Clear filters",
+      "open": "Open",
+      "loading": "Loading sales returns...",
+      "loadError": "Failed to load sales returns.",
+      "filters": {
+        "status": "Status",
+        "context": "Context",
+        "customer": "Customer",
+        "allCustomers": "All Customers"
+      },
+      "status": {
+        "ALL": "All",
+        "DRAFT": "Draft",
+        "POSTED": "Posted",
+        "CANCELLED": "Cancelled"
+      },
+      "context": {
+        "ALL": "All",
+        "AFTER_INVOICE": "After Invoice",
+        "BEFORE_INVOICE": "Before Invoice"
+      },
+      "headers": {
+        "returnNumber": "Return #",
+        "customer": "Customer",
+        "returnDate": "Return Date",
+        "context": "Context",
+        "grandTotal": "Grand Total",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "empty": {
+        "title": "No sales returns yet",
+        "description": "Record customer returns posted before or after invoicing."
+      }
+    },
+    "invoiceDetail": {
+      "loadLinkedLinesFailed": "Faturalanabilir bağlı satırlar yüklenemedi.",
+      "loadFailed": "Satış faturası yüklenemedi.",
+      "pricingLookupFailed": "Müşteriye özel fiyat alınamadı; mevcut fiyat korunuyor.",
+      "validation": {
+        "customerRequired": "Müşteri zorunludur.",
+        "invoiceDateRequired": "Fatura tarihi zorunludur.",
+        "currencyRequired": "Para birimi zorunludur.",
+        "exchangeRateInvalid": "Döviz kuru 0'dan büyük olmalıdır.",
+        "linesRequired": "En az bir satır gereklidir.",
+        "lineUnitPriceInvalid": "Satır {{n}}: birim fiyat ≥ 0 olmalıdır.",
+        "lineDiscountInvalid": "Satır {{n}}: iskonto ≥ 0 olmalıdır.",
+        "lineWarehouseRequired": "Satır {{n}}: stok ürünü {{item}} için depo zorunludur.",
+        "chargeNameRequired": "Ek ücret {{n}}: ad zorunludur.",
+        "chargeAmountInvalid": "Ek ücret {{n}}: tutar ≥ 0 olmalıdır."
+      },
+      "policyBlocked": "Bu işlem şirket politikası tarafından engellendi.",
+      "creditLimitBlocked": "Müşteri kredi limitini aştı. Geçersiz kılma yetkiniz yok.",
+      "creditWarn": "Fatura oluşturuldu — müşteri kredi limitini aştı (uyarı). Limit: {{limit}}, Açık risk: {{exposure}}.",
+      "createSuccess": "Fatura {{number}} taslak olarak kaydedildi.",
+      "createFailed": "Satış faturası taslağı oluşturulamadı.",
+      "saveChangesSuccess": "Değişiklikler başarıyla kaydedildi.",
+      "updateFailed": "Değişiklikler kaydedilemedi.",
+      "createAndPostSuccess": "Fatura {{number}} kaydedildi.",
+      "createAndPostFailed": "Satış faturası oluşturulup kaydedilemedi.",
+      "creditOverrideFailed": "Kredi limiti geçersiz kılma ile fatura oluşturulamadı.",
+      "postSuccess": "Fatura {{number}} kaydedildi.",
+      "periodLockedHard": "Bu muhasebe dönemi kapalı ve geçersiz kılınamaz.",
+      "postFailed": "Satış faturası kaydedilemedi.",
+      "discardTitle": "Faturayı İptal Et",
+      "discardMessage": "Bu taslak faturayı iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "discardConfirm": "İptal",
+      "title": "Satış Faturası",
+      "notFoundTitle": "Fatura bulunamadı",
+      "notFoundDesc": "Bu satış faturası mevcut değil veya erişiminiz yok.",
+      "backToList": "Listeye Dön",
+      "settlement": {
+        "title": "Tahsilat",
+        "mode": "Tahsilat Modu",
+        "deferred": "Ertelenmiş (Ödeme Yok)",
+        "cashFull": "Tam Nakit Ödeme",
+        "multi": "Çoklu Ödeme",
+        "arAccount": "Müşteri Alacak Hesabı (İsteğe Bağlı)",
+        "arAccountPlaceholder": "Müşteri varsayılan alacak hesabını kullanmak için boş bırakın",
+        "paymentRow": "Ödeme Satırı {{n}}",
+        "settlementAccount": "Tahsilat Hesabı (Nakit / Banka)",
+        "settlementAccountPlaceholder": "Ödeme yöntemi eşlemesi için boş bırakın",
+        "amountBase": "Tutar (Baz)",
+        "paymentMethod": "Ödeme Yöntemi",
+        "cash": "Nakit",
+        "bankTransfer": "Havale",
+        "check": "Çek",
+        "creditCard": "Kredi Kartı",
+        "other": "Diğer",
+        "paymentDate": "Ödeme Tarihi",
+        "reference": "Referans",
+        "notes": "Notlar",
+        "removeRow": "Satırı Kaldır",
+        "addRow": "+ Ödeme Satırı Ekle",
+        "settlementAccountHint": "Paranın geldiği hesap. Müşterinin alacak hesabı otomatik düşürülür."
+      },
+      "processing": "İşleniyor...",
+      "salesOrder": "Satış Siparişi (isteğe bağlı)",
+      "noSalesOrder": "Satış siparişi yok",
+      "loading": "Yükleniyor...",
+      "loadLines": "Satırları Yükle",
+      "customer": "Müşteri",
+      "salesperson": "Satış Temsilcisi",
+      "none": "— Yok —",
+      "customerInvoiceNumber": "Müşteri Fatura #",
+      "invoiceDate": "Fatura Tarihi",
+      "dueDate": "Vade Tarihi (isteğe bağlı)",
+      "currency": "Para Birimi",
+      "exchangeRate": "Döviz Kuru",
+      "notes": "Notlar",
+      "lineItems": "Satırlar",
+      "addItem": "Satır Ekle",
+      "col": {
+        "item": "Ürün",
+        "qty": "Mik.",
+        "uom": "Birim",
+        "unitPrice": "Birim Fiyat",
+        "discountType": "İskonto Türü",
+        "discount": "İskonto",
+        "taxCode": "Vergi Kodu",
+        "warehouse": "Depo",
+        "discountAmt": "İskonto Tutarı",
+        "lineTotal": "Satır Toplamı",
+        "tax": "Vergi",
+        "lineBase": "Satır (Baz)"
+      },
+      "selectUom": "Birim Seç",
+      "noItem": "Ürün yok",
+      "noDiscount": "İskonto yok",
+      "discountPercent": "Yüzde",
+      "discountAmount": "Tutar",
+      "noTax": "Vergi yok",
+      "taxInclusive": "Vergi dahil",
+      "default": "varsayılan",
+      "autoFromDN": "Sevk İrsaliyesinden otomatik",
+      "charges": "Ek Ücretler",
+      "addCharge": "Ek Ücret Ekle",
+      "noCharges": "Eklenmiş ek ücret yok.",
+      "chargeName": "Ek ücret adı",
+      "chargeAmount": "Tutar",
+      "chargeDescription": "Açıklama (isteğe bağlı)",
+      "tax": "Vergi",
+      "remove": "Kaldır",
+      "totals": "Toplamlar",
+      "subtotalDoc": "Ara Toplam ({{currency}})",
+      "subtotalBase": "Ara Toplam (Baz)",
+      "taxDoc": "Vergi ({{currency}})",
+      "taxBase": "Vergi (Baz)",
+      "grandTotalDoc": "Genel Toplam ({{currency}})",
+      "grandTotalBase": "Genel Toplam (Baz)",
+      "newTitle": "Yeni Satış Faturası",
+      "customerRef": "Müşteri Ref:",
+      "invoiceDateLabel": "Fatura Tarihi",
+      "dueDateLabel": "Vade Tarihi",
+      "soRefLabel": "Sipariş Ref",
+      "currencyLabel": "Para Birimi",
+      "exchangeRateLabel": "Döviz Kuru",
+      "salespersonLabel": "Satış Temsilcisi",
+      "paymentStatus": "Ödeme Durumu",
+      "paymentTerms": "Ödeme Vadesi (gün)",
+      "outstandingBase": "Bakiye (Baz)",
+      "paidBase": "Ödenen (Baz)",
+      "attachmentsLink": "📎 Ekler",
+      "subtotal": "Ara Toplam",
+      "grandTotal": "Genel Toplam",
+      "confirmSaveAndPost": "Kaydet ve Onayla",
+      "confirmPost": "Onayla",
+      "creating": "Oluşturuluyor...",
+      "saveDraft": "Taslak Kaydet",
+      "savingAndPosting": "Kaydediliyor ve Onaylanıyor...",
+      "saveAndPost": "Kaydet ve Onayla",
+      "saving": "Kaydediliyor...",
+      "saveChanges": "Değişiklikleri Kaydet",
+      "posting": "Onaylanıyor...",
+      "postInvoice": "Faturayı Onayla",
+      "discard": "İptal",
+      "createReturn": "Karşı İade Oluştur",
+      "createReceipt": "Tahsilat Oluştur",
+      "glImpact": "Muhasebe Etkisi",
+      "history": "Geçmiş",
+      "creditLimitTitle": "Kredi Limiti Aşıldı",
+      "creditLimitMessage": "Müşteri kredi limitini aştı ve politika ENGELLE olarak ayarlandı. Gerekçe sağlayarak geçersiz kılabilirsiniz.",
+      "creditLimit": "Kredi Limiti:",
+      "currentExposure": "Mevcut Açık Risk:",
+      "thisInvoice": "Bu Fatura:",
+      "projectedExposure": "Beklenen Açık Risk:",
+      "overrideReason": "Geçersiz Kılma Gerekçesi",
+      "overridePlaceholder": "Kredi limiti geçersiz kılmanın neden onaylandığını açıklayın…",
+      "overrideSubmit": "Geçersiz Kıl ve Oluştur"
     }
   },
   "purchases": {
+    "invoicesList": {
+      "title": "Satın Alma Faturaları",
+      "subtitle": "Kaydedilen faturalar borç ve genel muhasebe kayıtları oluşturur.",
+      "new": "Yeni Satın Alma Faturası",
+      "status": "Durum",
+      "payment": "Ödeme",
+      "vendor": "Tedarikçi",
+      "allVendors": "Tüm Tedarikçiler",
+      "loading": "Satın alma faturaları yükleniyor...",
+      "emptyTitle": "Satın alma faturası bulunamadı",
+      "emptyDescription": "Yeni bir tedarikçi faturası oluşturun veya mevcut faturaları bulmak için filtreleri değiştirin.",
+      "statusOptions": {
+        "ALL": "Tüm Durumlar",
+        "DRAFT": "Taslak",
+        "POSTED": "Kaydedildi",
+        "CANCELLED": "İptal Edildi"
+      },
+      "paymentOptions": {
+        "ALL": "Tüm Ödemeler",
+        "UNPAID": "Ödenmedi",
+        "PARTIALLY_PAID": "Kısmen Ödendi",
+        "PAID": "Ödendi"
+      }
+    },
     "settings": {
       "apGeneration": {
         "title": "AP Sub-account Generation",
@@ -2461,5 +3024,67 @@
     "active": "Aktif",
     "inactive": "Pasif",
     "loading": "Yukleniyor..."
+  },
+  "messaging": {
+    "whatsapp": {
+      "modalTitle": "Send via WhatsApp",
+      "senderLabel": "Sender Account",
+      "senderDefaultOption": "Use system default sender",
+      "defaultTag": "Default",
+      "phoneLabel": "Recipient Phone (E.164)",
+      "phonePlaceholder": "+905551112233",
+      "documentUrlLabel": "Document URL (Optional)",
+      "documentUrlPlaceholder": "https://...",
+      "messageLabel": "Message",
+      "send": "Send",
+      "sending": "Sending...",
+      "success": "WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).",
+      "defaultSender": "default sender",
+      "sendError": "Failed to send via WhatsApp."
+    },
+    "telegram": {
+      "modalTitle": "Send via Telegram",
+      "senderLabel": "Sender Account",
+      "senderDefaultOption": "Use default sender",
+      "defaultTag": "Default",
+      "chatLabel": "Recipient Chat ID or @Username",
+      "chatPlaceholder": "@customer_username or -1001234567890",
+      "documentUrlLabel": "Document URL (Optional)",
+      "documentUrlPlaceholder": "https://...",
+      "messageLabel": "Message",
+      "send": "Send",
+      "sending": "Sending...",
+      "success": "Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).",
+      "defaultSender": "default sender",
+      "sendError": "Failed to send via Telegram."
+    },
+    "send": {
+      "action": "Gönder",
+      "whatsapp": "WhatsApp",
+      "telegram": "Telegram",
+      "whatsappLink": "WhatsApp bağlantısıyla paylaş"
+    },
+    "share": {
+      "document": "Belge",
+      "customer": "Müşteri",
+      "amount": "Tutar",
+      "date": "Tarih"
+    }
+  },
+  "attachments": {
+    "title": "Attachments",
+    "upload": "Upload Attachment",
+    "uploading": "Uploading...",
+    "help": "Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files.",
+    "empty": "No attachments yet.",
+    "open": "Open",
+    "remove": "Remove",
+    "removing": "Removing...",
+    "uploadSuccess": "Attachment uploaded successfully.",
+    "uploadError": "Failed to upload attachment.",
+    "removeError": "Failed to remove attachment.",
+    "downloadError": "Failed to generate download link.",
+    "fileTooLarge": "File is too large. Maximum size is 10 MB.",
+    "maxFilesReached": "Maximum number of files (5) reached."
   }
 }

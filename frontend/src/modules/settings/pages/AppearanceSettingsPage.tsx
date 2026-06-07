@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, RotateCcw, Save, Palette, Wand2, Type, Layers, Settings2, Code } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -51,6 +52,7 @@ const PreviewCard = ({ title, value }: { title: string; value: string }) => (
 );
 
 const AppearanceSettingsPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const {
     appearanceSettings,
     setAppearanceSettings,
@@ -61,9 +63,25 @@ const AppearanceSettingsPage: React.FC = () => {
     setSidebarMode,
     theme,
     setTheme,
+    layoutMode,
+    setLayoutMode,
   } = useUserPreferences();
   
   const [draft, setDraft] = useState<UserAppearanceSettings>(() => normalizeUserAppearance(appearanceSettings));
+  
+  const [widgetStyle, setWidgetStyle] = useState(() => {
+    return localStorage.getItem('erp_topbar_widget_style') || '1';
+  });
+
+  React.useEffect(() => {
+    const handleStyleChange = (e: any) => {
+      if (e.detail?.style) {
+        setWidgetStyle(e.detail.style);
+      }
+    };
+    window.addEventListener('topbar-widget-style-changed', handleStyleChange);
+    return () => window.removeEventListener('topbar-widget-style-changed', handleStyleChange);
+  }, []);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [activeColorTab, setActiveColorTab] = useState<'brand' | 'light' | 'dark'>('brand');
@@ -272,36 +290,66 @@ const AppearanceSettingsPage: React.FC = () => {
                 <div className="p-1.5 bg-[var(--color-bg-tertiary)] rounded-md">
                   <Layers className="h-4 w-4 text-[var(--color-text-primary)]" />
                 </div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">Layout & Behavior</h2>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">{t('settings.appearance.layoutBehavior', 'Layout & Behavior')}</h2>
               </div>
               <div className="space-y-4">
                 <label>
-                  <span className={labelClass}>Theme Mode</span>
+                  <span className={labelClass}>{t('settings.appearance.layoutMode', 'Layout Mode')}</span>
+                  <select className={fieldClass} value={layoutMode} onChange={event => setLayoutMode(event.target.value as any)}>
+                    <option value="legacy">{t('settings.appearance.layoutStandard', 'Standard Layout')}</option>
+                    <option value="compact">{t('settings.appearance.layoutCompact', 'Compact Layout (Apex)')}</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>{t('settings.appearance.themeMode', 'Theme Mode')}</span>
                   <select className={fieldClass} value={theme} onChange={event => setTheme(event.target.value as any)}>
-                    <option value="light">Light Mode</option>
-                    <option value="dark">Dark Mode</option>
+                    <option value="light">{t('settings.appearance.themeLight', 'Light Mode')}</option>
+                    <option value="dark">{t('settings.appearance.themeDark', 'Dark Mode')}</option>
                   </select>
                 </label>
                 <label>
-                  <span className={labelClass}>UI Density</span>
+                  <span className={labelClass}>{t('settings.appearance.uiDensity', 'UI Density')}</span>
                   <select className={fieldClass} value={draft.density} onChange={event => updateRoot('density', event.target.value as any)}>
-                    <option value="compact">Compact (High info density)</option>
-                    <option value="comfortable">Comfortable (Balanced)</option>
-                    <option value="spacious">Spacious (Touch-friendly)</option>
+                    <option value="compact">{t('settings.appearance.densityCompact', 'Compact (High info density)')}</option>
+                    <option value="comfortable">{t('settings.appearance.densityComfortable', 'Comfortable (Balanced)')}</option>
+                    <option value="spacious">{t('settings.appearance.densitySpacious', 'Spacious (Touch-friendly)')}</option>
                   </select>
                 </label>
                 <label>
-                  <span className={labelClass}>Sidebar Navigation</span>
+                  <span className={labelClass}>{t('settings.appearance.sidebarNav', 'Sidebar Navigation')}</span>
                   <select className={fieldClass} value={sidebarMode} onChange={event => setSidebarMode(event.target.value as any)}>
-                    <option value="classic">Accordion (Expand inline)</option>
-                    <option value="submenus">Flyout (Hover menus)</option>
+                    <option value="classic">{t('settings.appearance.sidebarAccordion', 'Accordion (Expand inline)')}</option>
+                    <option value="submenus">{t('settings.appearance.sidebarFlyout', 'Flyout (Hover menus)')}</option>
                   </select>
                 </label>
                 <label>
-                  <span className={labelClass}>Sidebar Surface</span>
+                  <span className={labelClass}>{t('settings.appearance.sidebarSurface', 'Sidebar Surface')}</span>
                   <select className={fieldClass} value={draft.sidebarSurface} onChange={event => updateRoot('sidebarSurface', event.target.value as any)}>
-                    <option value="default">Default (Matches background)</option>
-                    <option value="contrast">Contrast (Brand colored)</option>
+                    <option value="default">{t('settings.appearance.surfaceDefault', 'Default (Matches background)')}</option>
+                    <option value="contrast">{t('settings.appearance.surfaceContrast', 'Contrast (Brand colored)')}</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={labelClass}>{t('settings.appearance.widgetStyle', 'TopBar Widget Style')}</span>
+                  <select
+                    className={fieldClass}
+                    value={widgetStyle}
+                    onChange={event => {
+                      const val = event.target.value;
+                      setWidgetStyle(val);
+                      localStorage.setItem('erp_topbar_widget_style', val);
+                      window.dispatchEvent(new CustomEvent('topbar-widget-style-changed', { detail: { style: val } }));
+                    }}
+                  >
+                    <option value="1">1: العرض المزدوج الرأسي المتكدس (Double Decker)</option>
+                    <option value="2">2: النظام الهندسي البرمجي (Tech Terminal)</option>
+                    <option value="3">3: خطوط الفاصل العمودي (Pipeline Separators)</option>
+                    <option value="5">5: الكبسولة الفقاعية الموحدة (Bubble Pill)</option>
+                    <option value="10">10: الأشكال الهندسية المائلة (Slanted Angles)</option>
+                    <option value="11">11: الإطارات المنقطة التقنية (Dotted Matrix)</option>
+                    <option value="16">16: بطاقة الكوبون المثقوبة (Coupon Tag)</option>
+                    <option value="17">17: المخطط الهندسي المتقطع (Dashed Blueprint)</option>
+                    <option value="18">18: مؤشرات النقاط الملونة (State Indicator)</option>
                   </select>
                 </label>
               </div>

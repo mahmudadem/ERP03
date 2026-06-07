@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -22,7 +22,22 @@ const DESKTOP_SIDEBAR_WIDTH = {
 } as const;
 
 export const AppShell: React.FC = () => {
-  const { uiMode, sidebarPinned } = useUserPreferences();
+  const location = useLocation();
+  const isApexMockupPath = location.pathname.startsWith('/dev/apex-ledger');
+  const { uiMode, sidebarPinned, sidebarMode, layoutMode } = useUserPreferences();
+
+  if (isApexMockupPath) {
+    return (
+      <AccountsProvider>
+        <CostCentersProvider>
+          <div className="h-screen w-screen bg-[#FAFAFB] overflow-hidden">
+            <Outlet />
+          </div>
+        </CostCentersProvider>
+      </AccountsProvider>
+    );
+  }
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
   const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher, post, cancel, reverse } = useVoucherActions();
   const documentActions = useDocumentActions();
@@ -36,6 +51,7 @@ export const AppShell: React.FC = () => {
   const [viewingFormType, setViewingFormType] = useState<any>(null);
 
   const isWindowsMode = uiMode === 'windows';
+  const isAccordionMode = sidebarMode === 'submenus';
 
   // Sync sidebar state with pinned preference and breakpoint
   React.useEffect(() => {
@@ -81,64 +97,76 @@ export const AppShell: React.FC = () => {
     return () => window.removeEventListener('print-voucher', handler as any);
   }, []);
 
-  const desktopSidebarWidth = isSidebarOpen
-    ? DESKTOP_SIDEBAR_WIDTH.expanded
-    : DESKTOP_SIDEBAR_WIDTH.collapsed;
-
   const shellStyle = {
-    '--app-sidebar-width': desktopSidebarWidth,
+    '--app-sidebar-width': '16rem',
   } as React.CSSProperties;
 
-  // Sidebar is fixed, so desktop content needs an offset. Keep the offset tied
-  // to the same CSS variable used by the sidebar width.
-  const desktopMarginStyle = isDesktop
-    ? (isRtl
-        ? { marginRight: 'var(--app-sidebar-width)', marginLeft: 0 }
-        : { marginLeft: 'var(--app-sidebar-width)', marginRight: 0 })
-    : undefined; // mobile: sidebar is off-screen, content is full width
+  // Determine desktop margin (offset) for main content area
+  let desktopMarginStyle: React.CSSProperties | undefined = undefined;
+
+  if (isDesktop) {
+    if (isAccordionMode) {
+      // Accordion mode: shifts content only when open AND pinned
+      if (isSidebarOpen && sidebarPinned) {
+        desktopMarginStyle = isRtl
+          ? { marginRight: '16rem', marginLeft: 0 }
+          : { marginLeft: '16rem', marginRight: 0 };
+      }
+    } else {
+      // Flat mode: shifts content by 16rem if open, and by 6rem if closed
+      const currentWidth = isSidebarOpen ? '16rem' : '6rem';
+      desktopMarginStyle = isRtl
+        ? { marginRight: currentWidth, marginLeft: 0 }
+        : { marginLeft: currentWidth, marginRight: 0 };
+    }
+  }
 
   return (
     <AccountsProvider>
       <CostCentersProvider>
         <div
-          className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden"
-          style={shellStyle}
+          data-layout={layoutMode}
+          className="app-shell-container h-screen flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans overflow-hidden"
         >
           <PageTitleManager />
 
-          {/* Sidebar — slides off-screen on mobile, collapses to icon strip on desktop */}
-          <Sidebar
-            isOpen={isSidebarOpen}
-            onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-            onNavigate={() => {
-              if (!sidebarPinned && !isDesktop) {
-                setIsSidebarOpen(false);
-              }
-            }}
-          />
+          {/* TopBar spans 100% width of the viewport */}
+          <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-          {/* Mobile backdrop — closes sidebar when tapped */}
-          {!isDesktop && isSidebarOpen && (
-            <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
-              onClick={() => setIsSidebarOpen(false)}
+          {/* Main workspace area below TopBar */}
+          <div className="flex-1 flex relative overflow-hidden" style={shellStyle}>
+            {/* Sidebar — floats on top or docks below TopBar */}
+            <Sidebar
+              isOpen={isSidebarOpen}
+              onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+              onNavigate={() => {
+                if (!sidebarPinned && !isDesktop) {
+                  setIsSidebarOpen(false);
+                }
+              }}
             />
-          )}
 
-          {/* Main Content Area */}
-          <div
-            className={clsx(
-              'flex-1 flex flex-col h-screen transition-all duration-300 print:!ml-0 print:!mr-0 print:!h-auto'
+            {/* Backdrop — active when sidebar is open and in overlay mode (not pinned accordion on desktop, or mobile) */}
+            {isSidebarOpen && (!isDesktop || (isAccordionMode && !sidebarPinned)) && (
+              <div
+                className="fixed inset-0 bg-black/30 z-30"
+                onClick={() => setIsSidebarOpen(false)}
+              />
             )}
-            style={desktopMarginStyle}
-          >
-            <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-            <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
-              <div className="h-full overflow-y-auto custom-scroll print:!h-auto print:!overflow-visible">
-                <Outlet />
-              </div>
-            </main>
+            {/* Main Content Area */}
+            <div
+              className={clsx(
+                'flex-1 flex flex-col transition-all duration-300 print:!ml-0 print:!mr-0'
+              )}
+              style={desktopMarginStyle}
+            >
+              <main className="app-main-content flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
+                <div className="h-full overflow-y-auto custom-scroll print:!h-auto print:!overflow-visible page-container">
+                  <Outlet />
+                </div>
+              </main>
+            </div>
           </div>
 
           {/* Global Windows Desktop for MDI Mode */}

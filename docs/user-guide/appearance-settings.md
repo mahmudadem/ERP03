@@ -28,6 +28,11 @@ To apply a preset, simply click on its card in the **Curated Presets** section.
 ## 2. Dynamic Settings & Fine-tuning
 You can customize the layout structure, fonts, and depth rules independently:
 
+### Layout Mode
+* **Layout Mode**: Choose how application panels are positioned and structured:
+  * *Standard*: The traditional full-width web layout.
+  * *Compact (Apex)*: Centered content max-width (`80rem`/`max-w-7xl`), high info-density padding, light sidebar backgrounds, and styled section separators (`───`). Ideal for widescreen monitors.
+
 ### Typography
 * **Font Family**: Select your preferred typeface. Options include *Inter (Modern & Clean)*, *Roboto (Classic UI)*, *Outfit (Geometric)*, *Cairo (Modern Arabic)*, *Monospace*, or *System Default*.
 * **Corner Radius**: Use the slider to make card borders sharp (0px) or highly rounded (up to 24px).

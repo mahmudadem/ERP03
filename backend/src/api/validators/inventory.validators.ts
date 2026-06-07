@@ -115,6 +115,13 @@ export const validateInitializeInventoryInput = (body: any) => {
       throw ApiError.badRequest('itemCodeNextSeq must be a positive number');
     }
   }
+
+  if (body.selectedVoucherTypes !== undefined) {
+    if (!Array.isArray(body.selectedVoucherTypes)
+      || body.selectedVoucherTypes.some((id: unknown) => typeof id !== 'string')) {
+      throw ApiError.badRequest('selectedVoucherTypes must be an array of strings');
+    }
+  }
 };
 
 export const validateCreateItemInput = (body: any) => {

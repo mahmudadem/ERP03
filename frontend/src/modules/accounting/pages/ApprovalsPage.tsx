@@ -5,42 +5,46 @@
  * Consolidates 'Awaiting Financial Approval' and 'Awaiting Custody Confirmation'.
  */
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { accountingApi } from '../../../api/accountingApi';
+import { accountingApi, type PendingApprovalSourceDoc } from '../../../api/accountingApi';
 import { VoucherTable } from '../components/VoucherTable';
 import { useVoucherTypes } from '../../../hooks/useVoucherTypes';
 import { useVoucherActions } from '../../../hooks/useVoucherActions';
 import { useWindowManager } from '../../../context/WindowManagerContext';
-import { Shield, UserCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, UserCheck, AlertCircle, Loader2, FileText } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { errorHandler } from '../../../services/errorHandler';
 import { AccountsProvider } from '../../../context/AccountsContext';
 import { Tab } from '@headlessui/react';
 import { clsx } from 'clsx';
+import { formatMoney } from '../../../utils/formatMoney';
 
 import { RejectionModal } from '../components/RejectionModal';
 
 const ApprovalsPage: React.FC = () => {
   const { t } = useTranslation('accounting');
+  const navigate = useNavigate();
   const { voucherTypes } = useVoucherTypes();
   const { openWindow } = useWindowManager();
   const { handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher } = useVoucherActions();
   const [rejectionTarget, setRejectionTarget] = React.useState<string | null>(null);
+  const [busySourceId, setBusySourceId] = React.useState<string | null>(null);
 
-  // 1. Fetch Vouchers Pending Financial Approval
-  const { 
-    data: pendingApprovals = [], 
+  // 1. Fetch Vouchers Pending Financial Approval (legacy: voucher-based, Stage 2a/manual flows)
+  const {
+    data: pendingApprovals = [],
     isLoading: loadingApprovals,
-    refetch: refetchApprovals 
+    refetch: refetchApprovals
   } = useQuery({
     queryKey: ['vouchers', 'pending-approvals'],
     queryFn: accountingApi.getPendingApprovals
   });
 
   // 2. Fetch Vouchers Pending Custody Confirmation (User Specific)
-  const { 
-    data: pendingCustody = [], 
+  const {
+    data: pendingCustody = [],
     isLoading: loadingCustody,
     refetch: refetchCustody
   } = useQuery({
@@ -48,9 +52,46 @@ const ApprovalsPage: React.FC = () => {
     queryFn: accountingApi.getPendingCustody
   });
 
+  // 3. SoD Approval Center feed: source documents (SI/PI) in PENDING_APPROVAL.
+  // See docs/architecture/posting-authority.md §4.1.
+  const {
+    data: pendingSourceDocs = [],
+    isLoading: loadingSourceDocs,
+    refetch: refetchSourceDocs,
+  } = useQuery({
+    queryKey: ['accounting', 'pending-approval-source-docs'],
+    queryFn: accountingApi.getPendingApprovalSourceDocuments,
+  });
+
   const handleRefresh = async () => {
-    await Promise.all([refetchApprovals(), refetchCustody()]);
+    await Promise.all([refetchApprovals(), refetchCustody(), refetchSourceDocs()]);
   };
+
+  const handleApproveSourceDoc = async (row: PendingApprovalSourceDoc) => {
+    setBusySourceId(row.id);
+    try {
+      if (row.source === 'SALES_INVOICE') {
+        await accountingApi.approveSI(row.id);
+      } else {
+        await accountingApi.approvePI(row.id);
+      }
+      await refetchSourceDocs();
+    } catch (err) {
+      errorHandler.showError(err);
+    } finally {
+      setBusySourceId(null);
+    }
+  };
+
+  const openSourceDoc = (row: PendingApprovalSourceDoc) => {
+    if (row.source === 'SALES_INVOICE') {
+      navigate(`/sales/invoices/${row.id}`);
+    } else {
+      navigate(`/purchases/invoices/${row.id}`);
+    }
+  };
+
+  const fmtMoney = (amount: number, currency: string): string => formatMoney(amount, currency);
 
   const handleRowClick = async (id: string) => {
     try {
@@ -97,8 +138,8 @@ const ApprovalsPage: React.FC = () => {
     }
   };
 
-  const isLoading = loadingApprovals || loadingCustody;
-  const totalPending = pendingApprovals.length + pendingCustody.length;
+  const isLoading = loadingApprovals || loadingCustody || loadingSourceDocs;
+  const totalPending = pendingApprovals.length + pendingCustody.length + pendingSourceDocs.length;
 
   return (
     <AccountsProvider>
@@ -168,6 +209,27 @@ const ApprovalsPage: React.FC = () => {
                     {pendingCustody.length}
                   </span>
                 </Tab>
+                {/* SoD: source documents (SI/PI) pending accounting approval — the post-Stage-2b feed. */}
+                <Tab
+                  className={({ selected }) =>
+                    clsx(
+                      'w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium leading-5 transition-all',
+                      'focus:outline-none focus:ring-2 focus:ring-primary-500/50',
+                      selected
+                        ? 'bg-[var(--color-bg-primary)] text-amber-700 shadow dark:text-amber-400'
+                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)]/50 hover:text-[var(--color-text-primary)]'
+                    )
+                  }
+                >
+                  <FileText size={18} />
+                  {t('approvals.awaitingSourceDocs', 'Source Documents')}
+                  <span className={clsx(
+                    "ml-2 text-xs font-bold px-2 py-0.5 rounded-full",
+                    pendingSourceDocs.length > 0 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]"
+                  )}>
+                    {pendingSourceDocs.length}
+                  </span>
+                </Tab>
               </Tab.List>
 
               <Tab.Panels className="mt-2">
@@ -211,7 +273,7 @@ const ApprovalsPage: React.FC = () => {
                       <p className="text-lg font-medium">{t('approvals.noneCustody')}</p>
                     </div>
                   ) : (
-                     <VoucherTable 
+                     <VoucherTable
                         vouchers={pendingCustody}
                         voucherTypes={voucherTypes}
                         isLoading={loadingCustody}
@@ -222,6 +284,84 @@ const ApprovalsPage: React.FC = () => {
                         }}
                         onReject={(id) => setRejectionTarget(id)}
                       />
+                  )}
+                </Tab.Panel>
+
+                {/* SoD Source Documents Panel — SI/PI in PENDING_APPROVAL */}
+                <Tab.Panel
+                  className={clsx(
+                    'rounded-2xl bg-[var(--color-bg-primary)] shadow-sm border border-[var(--color-border)] overflow-hidden min-h-[400px]',
+                    'focus:outline-none'
+                  )}
+                >
+                  {!loadingSourceDocs && pendingSourceDocs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[400px] text-[var(--color-text-muted)]">
+                      <FileText size={64} className="opacity-10 mb-4" />
+                      <p className="text-lg font-medium">{t('approvals.noneSourceDocs', 'No source documents pending approval')}</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm divide-y divide-[var(--color-border)]">
+                        <thead className="bg-[var(--color-bg-secondary)]">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.type', 'Type')}</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.number', 'Number')}</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.party', 'Party')}</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.date', 'Date')}</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.total', 'Total')}</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.actions', 'Actions')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--color-border)]">
+                          {pendingSourceDocs.map((row) => (
+                            <tr key={`${row.source}-${row.id}`} className="hover:bg-[var(--color-bg-secondary)]/50">
+                              <td className="px-4 py-3">
+                                <span className={clsx(
+                                  "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                                  row.source === 'SALES_INVOICE'
+                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                                )}>
+                                  {row.source === 'SALES_INVOICE' ? 'SI' : 'PI'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <button
+                                  type="button"
+                                  className="font-medium text-indigo-600 hover:text-indigo-700 hover:underline dark:text-indigo-400"
+                                  onClick={() => openSourceDoc(row)}
+                                >
+                                  {row.number}
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-[var(--color-text-primary)]">{row.partyName}</td>
+                              <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.date}</td>
+                              <td className="px-4 py-3 text-right font-mono text-[var(--color-text-primary)]">{fmtMoney(row.totalDoc, row.currency)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                                    onClick={() => handleApproveSourceDoc(row)}
+                                    disabled={busySourceId === row.id}
+                                  >
+                                    {busySourceId === row.id ? t('approvals.sourceDocs.approving', 'Approving...') : t('approvals.sourceDocs.approve', 'Approve')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-400 cursor-not-allowed"
+                                    title={t('approvals.sourceDocs.rejectPendingTooltip', 'Reject endpoint pending — Task 165')}
+                                    disabled
+                                  >
+                                    {t('approvals.sourceDocs.reject', 'Reject')}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </Tab.Panel>
               </Tab.Panels>

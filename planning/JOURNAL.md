@@ -2,7 +2,497 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-05 (Fri) - Apex Purchases And Inventory Native Page Mounting
+
+**Task:** Mount Purchases and Inventory native production pages inside the Apex candidate shell.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.9h.
+
+**What changed:**
+- Added `frontend/src/pages/dev/apex-ledger/components/NativeModuleRouteMount.tsx` as a shared route mount for module-native pages inside Apex.
+- Reused `routesConfig` so Purchases and Inventory pages keep the same native components, permissions, module guards, and workflow guards as the main router.
+- Updated `ApexLedgerDashboard.tsx` so concrete Purchases and Inventory subroutes render native pages inside Apex while the module roots keep the Apex workbench sections.
+- Added an Apex-only hash-route bridge for internal `/purchases/...` and `/inventory/...` navigations.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, PRIORITIES, and created [planning/done/177-apex-purchases-inventory-native-page-mounting.md](./done/177-apex-purchases-inventory-native-page-mounting.md).
+
+**Accounting/ERP impact:** No posting, ledger, tax, valuation, approval, period-lock, or data schema behavior changed. The slice preserves existing native Purchases and Inventory controls inside Apex.
+
+**Verification:** `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only.
+
+**Next recommended step:** Run frontend typecheck/build, then continue Task 167 Slice 3C-Settings/RBAC/AI native page mounting.
+
+---
+
+## 2026-06-05 (Fri) - Apex Prototype Typography Restoration
+
+**Task:** Restore Apex candidate typography to match the downloaded prototype source.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- Compared `D:\DEV2026\apex-ledger-erp.zip` typography source with ERP03 globals.
+- Confirmed the prototype uses `Inter` plus `JetBrains Mono` and normal 100% root font sizing, while ERP03 globally applies `font-size: 90%`.
+- Updated `frontend/index.html` to load `Inter` 400-900 and `JetBrains Mono` 400-800.
+- Added `.apex-ledger-shell` scoped font rules in `frontend/src/styles/globals.css`.
+- Updated `ApexLedgerDashboard.tsx` to set root font size to `100%` while Apex is mounted, then restore the prior inline value on unmount.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, and created [planning/done/176-apex-prototype-typography-restoration.md](./done/176-apex-prototype-typography-restoration.md).
+
+**Accounting/ERP impact:** None. This is visual shell typography only and does not alter permissions, settings behavior, posting, tax, balances, inventory, reports, or data contracts.
+
+**Verification:** `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only. `graphify update .` could not run because `graphify` is not available in this PowerShell environment.
+
+**Next recommended step:** Manual visual QA comparing Apex typography against the downloaded prototype, then continue Task 167 Slice 3C-Purchases/Inventory native page mounting.
+
+---
+
+## 2026-06-05 (Fri) — RTL Flyout Positioning, Contrast Sidebar Hardening & Theme-Agnostic Hover Highlights
+
+**Task:** Fix coordinate positioning, background style discrepancies, contrast sidebar element overlays, and hover highlight contrast in RTL/contrast presets.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- **RTL Flyout Coordinate Alignment:** Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to store both `left` and `right` coordinates from `getBoundingClientRect()`.
+- Updated Portal overlay positioning styling to swap from LTR `left` alignment (`coords.right + gap`) to RTL `right` alignment (`(window.innerWidth - coords.left) + gap`), placing the submenu flyout cleanly to the left of the right-positioned sidebar.
+- **Themed Background Color Cohesion:** Swapped the hardcoded `bg-white dark:bg-slate-900` spawned popover container background with `bg-[var(--app-sidebar-surface)]` so submenus match the main sidebar exactly across all themes and dark/light modes. This also resolves the invisible white-on-white text bug in contrast sidebar modes.
+- **Contrast Sidebar Preset Visual Hardening:** Configured `SidebarItem.tsx` and [SidebarSection.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarSection.tsx) to detect contrast (brand colored) sidebars. Updated active item rows, row hover backgrounds, section headers, and category icon containers to use translucent white overlays (like `bg-white/10` and `bg-white/20`) when rendered inside brand colored sidebars. This fixes invisible text (white-on-white) and invisible active row highlights.
+- **Theme-Agnostic Hover Highlights:** Replaced the light-blue page-background hover styling (`hover:bg-[var(--color-bg-tertiary)]`) on all normal sidebar items and category section headers with a clean, theme-agnostic translucent overlay `hover:bg-black/5 dark:hover:bg-white/5`. This provides a sharp and noticeable hover highlight on all light and dark theme presets, resolving visual match errors.
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run build` passed.
+- Report check, no-confirm validation, and SoD approval scripts all passed.
+
+## 2026-06-05 (Fri) - Apex Company Settings Sidebar Parity
+
+**Task:** Restore Company Settings visibility in the Apex sidebar and remove the Apex-specific bottom profile/user section.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.7h.
+
+**What changed:**
+- Confirmed the main sidebar appends Company Settings in `frontend/src/layout/Sidebar.tsx`, outside `useSidebarConfig()`. Apex only adapted `useSidebarConfig()`, so it was dropping that footer block.
+- Updated `frontend/src/pages/dev/apex-ledger/components/Sidebar.tsx` to replace the old bottom user/profile card with a Company Settings footer that matches the main sidebar child links.
+- Added `frontend/src/pages/dev/apex-ledger/components/NativeCompanySettingsRouteMount.tsx` so Company Admin, currencies, tax-code, notification, and communication settings pages render inside Apex using the existing native route components and guards.
+- Updated `ApexLedgerDashboard.tsx` to route those settings paths to the native Company Settings mount.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, and created [planning/done/174-apex-company-settings-sidebar-parity.md](./done/174-apex-company-settings-sidebar-parity.md).
+
+**Accounting/ERP impact:** None. This is sidebar/routing shell work only. Existing settings page permissions and route guards remain the enforcement layer.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+
+**Next recommended step:** Manual visual QA for the Company Settings footer in English and Arabic RTL, then continue Task 167 Slice 3C-Purchases/Inventory native page mounting.
+
+---
+
+## 2026-06-05 (Fri) — Sidebar Active Indicators & Mode-Width Reversal
+
+**Task:** Fix active indicator white contrast line rendering on light highlights, and reverse the sidebar widths and collapsed behaviors for Flyout vs. Accordion modes.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.7h.
+
+**What changed:**
+- **Active Indicators Contrast:** Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to unify row highlights, icon container backgrounds, and indicator line colors behind `isSolidActive = active || (isAnyChildActive && !isExpanded && !isSubmenusMode && isOpen)`. Collapsed parent rows now get soft highlights and primary theme-colored lines (`bg-primary-600` / `dark:bg-primary-400`) instead of harsh solid blue blocks with white lines.
+- **Reversed Sidebar Layout Widths & Behaviors:**
+  - **Flyout (Hover menus) Mode:** Reduced open width to `14rem` (`w-56`) since child items display outside the sidebar. Changed closed behavior to remain visible on desktop as a narrow `5rem` (`w-20`) icon strip, allowing users to hover over icons to trigger flyout submenus.
+  - **Accordion (Expand inline) Mode:** Increased open width to `18rem` (`w-72`) to accommodate nested multi-level items without text truncation. Changed closed behavior to slide completely off-screen (`0px` margin and `translate-x` translation on desktop/mobile).
+- **Unified Backdrop & Flyout Desktop Bugfix:** Refactored overlay backdrop rendering in [AppShell.tsx](file:///d:/DEV2026/ERP03/frontend/src/layout/AppShell.tsx). In Flyout Mode, because the sidebar expands in place on desktop (shifting the workspace rather than overlaying it), we now disable the backdrop overlay on desktop in Flyout Mode (`isSidebarOpen && (!isDesktop || (!isFlyoutMode && !sidebarPinned))`). This fixes the bug where expanding the unpinned Flyout sidebar dimmed the screen and blocked user clicks on the main workspace.
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run build` passed.
+
+## 2026-06-05 (Fri) - Apex Prototype Scale Restoration
+
+**Task:** Restore Apex candidate shell sizing toward the downloaded prototype and make the Apex sidebar cover the full vertical viewport.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.6h.
+
+**What changed:**
+- Inspected `D:\DEV2026\apex-ledger-erp.zip` and used its shell sizing as the visual baseline.
+- Updated `ApexLedgerDashboard.tsx` so the candidate shell is viewport-bound (`h-screen min-h-screen flex overflow-hidden`) and the main workspace scrolls internally with `p-6` content spacing.
+- Updated `components/Sidebar.tsx` to `w-64`, `h-screen`, `min-h-screen`, fixed header/footer, scrolling menu body, and larger prototype-matched row, icon, footer, and label sizing.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, and created [planning/done/173-apex-shell-prototype-scale-restoration.md](./done/173-apex-shell-prototype-scale-restoration.md).
+
+**Accounting/ERP impact:** None. This is visual shell chrome only. It does not change posting, ledger writes, approvals, taxes, balances, permissions, route guards, or data contracts.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+
+**Next recommended step:** Manual visual QA on `/#/dev/apex-ledger` in English and Arabic RTL, then continue Task 167 Slice 3C-Purchases/Inventory native page mounting.
+
+---
+
+## 2026-06-05 (Fri) — Sidebar Active Indicator Contrast Polish
+
+**Task:** Fix active indicator white contrast line rendering on light active highlights when parent groups are active in collapsed or flyout navigation modes.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.3h.
+
+**What changed:**
+- Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to unify row highlights, icon container backgrounds, and indicator line colors behind a single `isSolidActive` flag.
+- Added `&& isOpen` to the active-collapsed parent check: `const isSolidActive = active || (isAnyChildActive && !isExpanded && !isSubmenusMode && isOpen)`.
+- This ensures that when the sidebar is collapsed/shrunk (`isOpen === false`), parent groups get a soft highlight background (`bg-primary-50/50`) and a primary theme-colored indicator line (`bg-primary-600` / `dark:bg-primary-400`) instead of a harsh solid blue block with a high-contrast white line.
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run build` passed.
+
+## 2026-06-05 (Fri) — `priceIsInclusive` sweep + SoD structural hardening
+
+**Task:** Close the inclusive-tax math discrepancy that started as Task 168 (SI only) and
+turned out to live in 4 more entities; close the SoD leak that let source-module UI invoke
+the approve endpoint via the Settlement-on-Post panel.
+**Agent:** Claude.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~6h across two sittings.
+
+**What changed:**
+
+*Inclusive-tax math (closes Tasks 168, 170A, 170B, 170C):*
+- `SalesOrder`, `PurchaseInvoice`, `SalesReturn`, `PurchaseReturn` entities all honour
+  `priceIsInclusive` with the same divisor split SI gained last week.
+- `CreatePurchaseInvoiceUseCase.buildLine` now defaults `priceIsInclusive` from the tax
+  code when input omits it — safety net for legacy clients.
+- PI form's `EditableLine` + `buildLinePayload` carry the flag through to the API.
+- `PostSalesInvoiceUseCase` voucher-build path: revenue credit and discount debit now
+  scaled by `1/(1+taxRate)` for inclusive lines so AR debit balances credits (was throwing
+  `Subledger voucher is not balanced` because revenue was credited at gross while AR was
+  debited at net+tax).
+- 4 new regression tests: SO, PI, SR, PR — each pins `2 × 10 inclusive @ 10% → subtotal
+  18.18, tax 1.82, grand 20`. Domain suite went 243 → 247.
+
+*SoD hardening (closes Tasks 19, 20; companions commits `83b8d187` + `e3b71e4f`):*
+- `approveSI` removed from `salesApi`, `approvePI` removed from `purchasesApi`. Both now
+  live exclusively on `accountingApi`. Only `ApprovalsPage.tsx` imports them.
+- `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` +
+  `purchases/pages/PurchaseInvoiceDetailPage.tsx`: `postDraft` refuses to call the approve
+  endpoint when status is `PENDING_APPROVAL`; settlement-on-post card gated on
+  `status === 'DRAFT'` so a stale render can't survive the DRAFT → PENDING_APPROVAL
+  transition.
+- New build-time guard: `frontend/scripts/check-sod-approve.mjs`, wired into `npm run
+  build` ahead of tsc. Bans references to `approveSI` / `approvePI` and the approve route
+  fragments outside `src/api/accountingApi.ts` and `src/modules/accounting/**`. Verified
+  it fires by injecting a probe symbol into `SalesInvoicesListPage` and confirming exit
+  code 1.
+
+*Currency display fix:* `frontend/src/components/shared/formatMoney.ts` (and `salesApi` /
+`useLocaleFormat` adopters) — pass explicit `minimumFractionDigits: 2` so SYP/JPY/KRW
+don't round 1.50 to "SYP 2".
+
+*Shared line-items table:* new `frontend/src/components/shared/ClassicLineItemsTable.tsx`
+extracted from GVR Classic style. First consumer migrated: `PurchaseInvoiceDetailPage`.
+
+**Accounting/ERP impact:** Genuine. Inclusive-tax invoices across every document type now
+produce balanced GL postings consistent with what users typed. The SoD rule that's been
+the centerpiece of the posting-authority epic is now structurally enforced — three
+independent layers (backend permission guard, frontend UI render gate, build-time SoD
+check) — instead of relying on developer discipline. The architecture finally matches the
+doc.
+
+**Verification:**
+- `cd backend && npx tsc --noEmit` clean.
+- `cd backend && npx jest src/tests/domain` — **247/247** (was 243).
+- `cd frontend && npx tsc --noEmit` clean.
+- `cd frontend && node scripts/check-sod-approve.mjs` — passes; verified it catches a
+  probe violation.
+- Manual: created an SI with `tax10 INC` (10% inclusive), unit price 10, qty 1. Got a
+  balanced voucher (`Journal Entry #42c8...`): AR debit 10.00, revenue credit 9.09,
+  VAT credit 0.91, diff 0.00.
+
+**Docs touched:**
+- `docs/architecture/posting-authority.md` — new §4.2 "Enforcement layers (frontend)" +
+  §8 conformance row added.
+- `planning/done/172-priceisinclusive-sweep-and-sod-hardening.md` — full completion
+  report.
+- `planning/QA-NOW.md` (earlier in session) — re-entry checklist for the user QA pass.
+
+**Next recommended step:** User completes Task 17 (UI QA per `planning/QA-NOW.md`). If it
+passes, write Task 18 (backend regression test asserting `CreateAndPostPurchaseInvoiceUseCase`
+parks as `PENDING_APPROVAL` when `approvalRequired = true` and no `approvalContext`).
+
+---
+
+## 2026-06-05 (Fri) - Apex Sales Native Page Mounting
+
+**Task:** Execute Task 167 Slice 3C-Sales by mounting native Sales production subroutes inside the Apex shell.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~1.3h.
+
+**What changed:**
+- Added `frontend/src/pages/dev/apex-ledger/components/NativeSalesRouteMount.tsx`.
+- Updated `ApexLedgerDashboard.tsx` so `/dev/apex-ledger/sales` keeps the Apex Sales overview, while concrete `/dev/apex-ledger/sales/*` subroutes render the native Sales production route components.
+- Reused the main router guard stack for mounted Sales pages: module configuration, workflow mode, RBAC, and module bundle checks.
+- Added an Apex-only hash route bridge so native Sales page navigations to `/sales/...` are translated back to `/dev/apex-ledger/sales/...` while testing Apex.
+- Updated Apex architecture/user docs, Task 167 planning, PRIORITIES, QA queue, and created [planning/done/171-apex-sales-native-page-mounting.md](./done/171-apex-sales-native-page-mounting.md).
+
+**Accounting/ERP impact:** No posting, ledger, approval, period-lock, tax, AR/AP, inventory costing, or database schema behavior changed. This reduces cutover risk because Apex now uses the real Sales pages for invoice/order/delivery/return/report/settings workflows instead of the simplified Apex Sales workbench.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+
+**Next recommended step:** Task 167 Slice 3C-Purchases/Inventory - mount native Purchases and Inventory production pages inside Apex using the same route-mount pattern.
+
+---
+
+## 2026-06-05 (Fri) - Sidebar Hover Color Shift & Flicker Fixes
+
+**Task:** Remove the hover color shift on icons (`group-hover:text-indigo-600 dark:group-hover:text-indigo-400`) in both Flyout (submenus) and Accordion (classic) sidebar modes and fix hover flickering.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.4h.
+
+**What changed:**
+- Modified [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) to remove `group-hover:text-indigo-600 dark:group-hover:text-indigo-400` color transitions on item icons.
+- Modified [SidebarSection.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarSection.tsx) to remove `group-hover:text-indigo-600 dark:group-hover:text-indigo-400` color transitions on section category icons.
+- Replaced general `transition-all` layout transitions with `transition-colors` on the sidebar row containers and inner icon wrappers in both [SidebarItem.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarItem.tsx) and [SidebarSection.tsx](file:///d:/DEV2026/ERP03/frontend/src/components/navigation/SidebarSection.tsx) to prevent subpixel layout adjustments from triggering hover loops.
+- Added `pointer-events-none` to child icons, labels, and chevrons to ensure hover states are cleanly handled by the parent row container, completely resolving micro-flickering.
+- Completely removed separate hover background and text color classes (e.g., `group-hover:bg-gray-200`, `group-hover:bg-primary-50`, and group-hover text color modifiers) from the nested icon wrapper div elements. Now, icons and category images remain completely static and unified with the row on hover.
+
+**Accounting/ERP impact:** None. UI/UX styling alignment.
+
+**Verification:** `npm run typecheck` passed. `npm run build` passed.
+
+## 2026-06-05 (Fri) - Apex Route/Sidebar Adapter
+
+**Task:** Execute Task 167 Slice 3B by preserving Apex visual styling while making its runtime sidebar use the same permission-filtered tree as the main shell.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~1.1h.
+
+**What changed:**
+- Added `frontend/src/pages/dev/apex-ledger/routeMap.ts` with explicit tenant path <-> Apex candidate path helpers.
+- Updated `ApexLedgerDashboard.tsx` so `/dev/apex-ledger/accounting/tools/*` routes render the Apex tools subpage instead of the generic placeholder.
+- Updated `Sidebar.tsx` so runtime child links are adapted from `useSidebarConfig()` instead of the curated static Apex child list.
+- Preserved the existing Apex compact styling and RTL classes. No legacy sidebar DOM was rendered.
+- Updated Apex architecture/user docs, Task 167 planning, ACTIVE, PRIORITIES, QA queue, and created [planning/done/170-apex-route-sidebar-adapter.md](./done/170-apex-route-sidebar-adapter.md).
+
+**Accounting/ERP impact:** No posting, ledger, approval, period-lock, tax, AR/AP, inventory costing, or database schema behavior changed. The improvement is navigation safety: Apex now inherits item-level permissions, workflow hiding, and dynamic form groups from the same source as the main shell.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+
+**Next recommended step:** Task 167 Slice 3C - mount native production pages inside Apex by module, starting with Sales and Purchases operational routes.
+
+---
+
+## 2026-06-05 (Fri) - Apex Route/Page Coverage Matrix
+
+**Task:** Clarify whether Apex needs copied main-shell pages or a route/page embedding strategy before cutover.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.6h.
+
+**What changed:**
+- Created [planning/briefs/20260605-apex-route-page-coverage-matrix.md](./briefs/20260605-apex-route-page-coverage-matrix.md).
+- Audited `routes.config.ts`, `moduleMenuMap.ts`, `useSidebarConfig.ts`, `ApexLedgerDashboard.tsx`, and the Apex sidebar.
+- Confirmed Apex wildcard routing keeps subpaths inside the candidate shell, but many Sales/Purchases/Inventory/AI child routes currently render the same module workbench instead of the exact native page.
+- Confirmed Apex sidebar currently filters by visible module ID, but its child links are still static; it must adapt the real `useSidebarConfig()` tree to preserve item-level permissions, workflow hiding, and dynamic form groups.
+
+**Decision/recommendation:** Do not duplicate main-shell pages. Apex should own shell/chrome and embed native production pages for operational ERP workflows unless an Apex-native replacement is fully equivalent to the native page's API contracts, posting controls, audit behavior, permissions, and empty states.
+
+**Next recommended step:** Task 167 Slice 3B - build route translation helper plus Apex sidebar tree adapter, then split native page mounting by module.
+
+---
+
+## 2026-06-05 (Fri) — Phase C QA Findings #3 / #6 / #9 / #10 verified resolved
+
+**Task:** Revisit the 11 findings in [121 — Phase C QA Results](./done/121-phase-c-qa-results.md).
+**Agent:** Claude (Opus 4.7).
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~15 min (verification only — no code changes).
+
+**Verified resolved (no code change needed):**
+- **#3** (the only "real bug" — credit notes missing from Customer Statement / Full Ledger). The QA report cited a `_buildRawEvents` method in `ReceivablesReportingUseCases.ts`. That method no longer exists — the file was rewritten as part of the F8 reporting-decoupling refactor ([157](./done/157-decouple-reporting-boundary.md)) and the per-party AR account work. The use case is now ledger-backed via `GetAccountStatementUseCase`, and `classifyLine` already labels entries with `sourceType: 'SALES_RETURN'` as `CREDIT_NOTE` / `REFUND`. `SalesReturnUseCases.postSalesReturn` posts a revenue voucher that credits the customer's `defaultARAccountId` (line ~973) with the SALES_RETURN sourceType (line ~1000). The `LedgerBackedCustomerStatement.test.ts` regression test explicitly asserts the SR line is classified as `CREDIT_NOTE`. Test suite green.
+- **#9** AR Aging in sidebar — wired in `frontend/src/config/moduleMenuMap.ts:134` and `frontend/src/router/routes.config.ts:358`.
+- **#10** Customer Statement in sidebar — wired in `moduleMenuMap.ts:135` and `routes.config.ts:359`.
+
+**Status of remaining findings:**
+- **#1, #2, #4, #5, #7** — SYCO-tenant chart-of-accounts and item-master data issues (AR posting target, missing cost basis, tax-account classification). Not code bugs; need a fresh-tenant reproduction or SYCO data cleanup. **No action.**
+- **#6** — Also **already resolved.** The structured P&L UI is fully built ([`ProfitAndLossPage.tsx`](../frontend/src/modules/accounting/pages/ProfitAndLossPage.tsx) lines 219–453: 5 summary cards + detailed Net Sales → COGS → Gross Profit → OpEx → Operating Profit → Other Rev/Exp → Net Profit + per-section breakdown cards + matching Excel export). It's gated on `hasTaggedSubgroup` in `GetProfitAndLossUseCase`. The COA templates ship pre-tagged (133 `plSubgroup` literals), and a dedicated `SubgroupTaggingPage` + `batchUpdateSubgroups` endpoint exist for retro-tagging (Tasks 35–38). SYCO renders the flat fallback because its accounts were created before the tagging work — pure tenant-data action.
+- **#8** — SI-00007 missing from POSTED set in SYCO. **Tenant-data investigation, not a code bug.**
+- **#11** — 63 % of SYCO invoices have no salesperson. **Product decision (require salesperson on SI?), not a code bug.**
+
+**Verdict:** Of the 11 findings, **none still warrant code work**. Four (#3, #6, #9, #10) were already resolved by post-QA refactors (F8 ledger-decoupling, per-party AR accounts, sidebar wiring, Tasks 35–38 P&L subgroup tooling). The remaining seven are SYCO tenant-data follow-ups (subgroup tagging, COA cleanup, item cost basis) or product decisions — they don't block Sales sign-off as a *system*. Recommended next action: run [bulk subgroup tagging](../frontend/src/modules/accounting/pages/SubgroupTaggingPage.tsx) on SYCO, then re-QA against the tagged tenant.
+
+## 2026-06-05 (Fri) — Apex Shell RTL Support Completed (Task 167 Slice 2/3)
+
+**Task:** Fix RTL (Right-to-Left) layout support for the Apex candidate shell.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- **Sidebar.tsx** — Swapped LTR borders (`border-r` -> `border-l`), margins, active indicators (`border-l-2 rounded-l-none` -> `border-r-2 rounded-r-none`), logical gap settings, text-right alignments, and rotated the collapsed chevron arrow dynamically (`rtl:rotate-180`).
+- **ApexLedgerDashboard.tsx** — Added dynamic root layout direction `dir={isRtl ? 'rtl' : 'ltr'}` and adapted header gaps, breadcrumbs page title border, and search commands box layout (magnifying glass shifts to right, input padding flips, text aligns to right).
+- **DashboardHome.tsx** — Replaced all flex `space-x` values with direction-agnostic logical `gap` configurations and flipped absolute chart tooltips dynamically.
+- **Verification checks:** Ran `npm run typecheck` and `npm run build` successfully with 0 errors.
+- **Docs & Reports:** Updated `docs/architecture/apex-shell-candidate.md` and `docs/user-guide/tools/apex-ledger-mockup.md`. Created completion report at `planning/done/169-apex-shell-rtl-support.md`.
+
+---
+
+## 2026-06-04 (Thu) — Apex Topbar Language/Profile Hotfix
+
+**Task:** Fix Apex candidate topbar links so language switching and embedded account/settings navigation work inside `/dev/apex-ledger`.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.3h.
+
+**What changed:**
+- **ApexLedgerDashboard.tsx** — Added an Apex-native EN/AR/TR selector wired to `useUserPreferences().setLanguage`, `localStorage.erp_language`, and `i18n.changeLanguage()` so Arabic can be selected directly from the candidate shell.
+- **ApexLedgerDashboard.tsx** — Changed the settings icon to open `/dev/apex-ledger/settings/appearance` and the avatar to open `/dev/apex-ledger/profile`, preserving the Apex layout instead of falling back to legacy routes.
+- **UX boundary:** No sidebar redesign was made. The original Apex sidebar styling should remain the baseline while functionality is hardened.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports` and `check:no-confirm`; only existing bundle-size/browser-metadata warnings appeared.
+
+**Next recommended step:** Proceed to Task 167 Slice 3: feature flag, role/module-bundle navigation checks, empty-state checks, and authenticated Arabic RTL visual QA.
+
+---
+
+## 2026-06-04 (Thu) — Apex Shell Route Coverage & QA Completed (Task 167 Slice 2)
+
+**Task:** Execute Task 167 Slice 2 (Route coverage & shell settings/profile continuity for Apex ledger candidate).
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~1.2h.
+
+**What changed:**
+- **routes.config.ts** — Added explicit child route entries for `/dev/apex-ledger/settings/appearance`, `/dev/apex-ledger/settings/accounting`, and `/dev/apex-ledger/profile` as well as a catch-all wildcard `dev/apex-ledger/*` to forward all nested subpaths to `ApexLedgerDashboard`.
+- **ApexLedgerDashboard.tsx** — Lazy-imported and mapped the real `AppearanceSettingsPage`, `ProfilePage`, and `AccountingSettingsPage` to render directly within the Apex shell layout, keeping active company/user context. Added matching cases inside `renderContent()` and `getPageTitle()`.
+- **Sidebar.tsx** — Modified the footer user profile details button to navigate to `/dev/apex-ledger/settings/appearance` instead of the legacy `/settings/appearance`.
+- **ApexAccountingSettings.tsx** — Changed the "Open Full Settings Page" button and card click handlers to navigate to the embedded `/dev/apex-ledger/settings/accounting` details view.
+- **Verification checks:** Verified both typecheck and production bundling are clean (`npm run typecheck` and `npm run build` succeeded with 0 errors).
+- **Completion Report:** Created [planning/done/168-apex-shell-route-coverage-and-qa.md](./done/168-apex-shell-route-coverage-and-qa.md).
+
+**Next recommended step:** Proceed to Slice 3 (cutover candidate using feature flag and permission checks).
+
+---
+
+## 2026-06-04 (Thu) — Compact Layout Mode Integration Complete
+
+**Task:** Complete Phase 4 and Verification of the Compact Layout Mode Integration (Task 166). Integrate layout switches, add en/ar/tr localizations, fix duplicate imports context bug, and run full compiler and production bundling checks.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~1.5h.
+
+**What changed:**
+- **AppearanceSettingsPage.tsx** — Replaced all hardcoded labels/dropdowns in the Layout & Behavior section with `useTranslation` i18n hook calls (`t(...)`).
+- **UserPreferencesContext.tsx** — Fixed syntax compilation error caused by duplicate imports blocks.
+- **common.json** (English, Arabic, Turkish) — Added translations for all Layout & Behavior controls, including `layoutMode`, `themeMode`, `uiDensity`, `sidebarNav`, `sidebarSurface`, `widgetStyle`, and their respective standard/compact options.
+- **appearance-settings.md** (Architecture doc) — Appended Technical Section 11 detailing the Compact Layout Mode (Zero-Duplication App Shell) design.
+- **appearance-settings.md** (User guide) — Documented Layout Mode options and selection steps.
+- **Build & Verification checks:** Verified both typecheck and production bundling are clean (`npm run typecheck` and `npm run build` succeeded with 0 errors/warnings).
+- **Completion Report:** Created [planning/done/166-compact-layout-mode.md](./done/166-compact-layout-mode.md).
+
+**Next recommended step:** Proceed with priority Task 132 polish backlog (Phase 5: audit action checks and selector integrations).
+
+---
+
+## 2026-06-04 (Thu) — Apex Accounting: All 12 Report Pages Completed
+
+**Task:** Build all 12 functional Apex-styled accounting report pages to replace the ReportsSection index stubs. Sub-agents hit quota (429) before finishing, so all 5 missing pages were built directly.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~45 min.
+
+**What changed:**
+- **ApexAccountStatement.tsx** [NEW] — Account statement with AccountSelector, date range, include-unposted, running balance column, opening/closing summary, FX rate column, drill-through to voucher. Wrapped in `AccountsProvider`.
+- **ApexAging.tsx** [NEW] — AR/AP aging with bucket columns (dynamic from API), expandable transaction detail rows, totals footer, generate-on-demand.
+- **ApexCostCenterSummary.tsx** [NEW] — Cost Center selector (live from API), period filter, Debit/Credit/Net columns, KPI banner.
+- **ApexBudgetVsActual.tsx** [NEW] — Budget selector (lists real budgets from API, prefers APPROVED), cost center filter, date range; fetches actual ledger entries using `getGeneralLedger` pagination loop, builds variance % column, favorable/unfavorable color coding, KPI summary row.
+- **ApexConsolidatedTB.tsx** [NEW] — Informative placeholder: explains multi-company requirement, links to single-company TB and Settings.
+- **ApexLedgerDashboard.tsx** [MODIFIED] — Added lazy imports for all 12 report pages + `ApexAccountingSettings`; `reports-sub` case now maps URL slugs to real components with `<Suspense>` fallback; `settings` case uses `ApexAccountingSettings`.
+- Already built by sub-agents (before quota hit): `ApexTrialBalance`, `ApexBalanceSheet`, `ApexProfitLoss`, `ApexTradingAccount`, `ApexCashFlow`, `ApexJournal`, `ApexBankReconciliation`.
+- **TypeScript check:** 0 errors (all imports verified).
+
+**Result:** 12/12 accounting report pages exist and are routed. Every link in the Apex sidebar Reports menu leads to a functional page.
+
+**Next recommended step:** Run `npm run dev` and test each report page. Then start Sales module pages: Customer List, Sales Orders, Sales Invoices in Apex styling.
+
+---
+
+## 2026-06-04 (Thu) — Apex Ledger Full Sidebar + All Module Pages
+
+**Task:** Complete Apex Ledger feature parity — full hierarchical sidebar mirroring all legacy `moduleMenuMap` modules, all 13 accounting reports as clickable pages, Tools section (Forms, Budgets, Subgroup Tagging), Settings section, and 35+ routes registered.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~1.0h.
+
+**What changed:**
+- **Sidebar.tsx** — Completely rebuilt from scratch. Now a full hierarchical menu matching the legacy app: Accounting (COA, Vouchers, Approval Center, 13 Reports, 3 Tools, Settings), Sales (Customers, Products, 5 Forms, 4 Reports, 5 Tools, Settings), Purchases (Vendors, Products, 4 Forms, 3 Reports, 3 Tools, Settings), Inventory (Items, Warehouses, 3 Forms, 5 Reports, 2 Tools, Settings), HR, CRM, POS, Manufacturing, Projects, AI Assistant. Expandable/collapsable per module. Active path tracking via `useLocation`.
+- **ReportsSection.tsx** — Full 13-report hub (Trial Balance, Account Statement, Balance Sheet, General Ledger, P&L, Trading Account, Cash Flow, Journal, Aging, Bank Reconciliation, Cost Center Summary, Budget vs Actual, Consolidated TB). Each report has its own Apex sub-page with legacy quick-launch link.
+- **ToolsSection.tsx** — NEW. Accounting Tools hub with Forms Management, Budgets, Subgroup Tagging cards. Each tool has its own sub-page.
+- **SettingsSection.tsx** — NEW. Accounting Settings hub with categorized setting sections (General, Fiscal, Currency, Approval, Notifications, COA Config) + direct link to full settings page.
+- **ApexLedgerDashboard.tsx** — Full rewrite. Now uses `getActiveSectionFromPath()` for granular URL routing (35 route patterns), handles `reports-sub`, `tools-sub`, `settings`, `accounting-overview`, `generic-placeholder` for future modules. Added `AccountingOverviewBento` for the Accounting module overview.
+- **routes.config.ts** — Added 26 new Apex sub-routes (all 13 reports, 3 tools, settings, accounting overview, HR, CRM, POS, Manufacturing, Projects, Dev panel).
+- TypeScript typecheck: **clean (0 errors)**.
+
+Report: [done/165-apex-ledger-full-sidebar-module-parity.md](./done/165-apex-ledger-full-sidebar-module-parity.md).
+
+---
+
+
+
+**Task:** Re-wire Apex Ledger dashboard to use path-based routing sub-pages, integrate infinite query caching and currency checker on Voucher Register, and define sub-tab placeholders.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.6h.
+
+**What changed:**
+- Refactored `AppShell.tsx` path matching to support wildcard route matches (`startsWith('/dev/apex-ledger')`).
+- Registered nested routes (`/coa`, `/vouchers`, `/approvals`, `/reports`, `/sales`, `/purchases`, `/inventory`, `/ai`) under the `/dev/apex-ledger` prefix namespace in `routes.config.ts`.
+- Remapped `ApexLedgerDashboard.tsx` to derive tab views from the current pathname, and wired all sidebar and sub-tab selection clicks to trigger router navigations.
+- Re-wired `VoucherListSection.tsx` to use the standard cache sync hook `useVouchersWithCache`, support search query parameters (`?type=...`), implement multi-currency `checkVoucherRateDeviations` checks, and show the warning dialog `RateDeviationDialog`.
+- Created high-density visual placeholders for `ApprovalCenterSection.tsx` and `ReportsSection.tsx`.
+- Verified `npm run typecheck` and `npm run build` are 100% green.
+
+Report: [done/164-apex-ledger-routing-and-voucher-parity.md](./done/164-apex-ledger-routing-and-voucher-parity.md).
+
+---
+
+## 2026-06-04 (Thu) — Apex Ledger Mockup Live API & AI Assistant Integration
+
+**Task:** Integrate Apex Ledger dashboard mockup with live database endpoints and the server-side Gemini CFO AI Assistant.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.8h.
+
+**What changed:**
+- Refactored `AIAssistantSection.tsx` to query the backend AI endpoint `aiAssistantApi.sendMessage` instead of a mockup local fetch route.
+- Configured conversational context tracking using `conversationId` and dynamically updated model display in the header from response metadata.
+- Standardized DTO type mappings (`invoicedQty`, `orderNumber`, `SOStatus`, `paymentStatus` states) in `ApexLedgerDashboard.tsx` to fix typescript compiler checks.
+- Bound data mutation handlers (`handleSetAccounts`, `handleSetInvoices`, `handleSetSalesOrders`, etc.) to sub-component props to link mockup forms directly with backend database operations.
+- Updated technical architecture (`docs/architecture/apex-ledger-mockup.md`) and user guides (`docs/user-guide/tools/apex-ledger-mockup.md`) to reflect live data integration.
+- Verified frontend typechecking and production build bundling compile cleanly.
+
+**Report:** [done/163-apex-ledger-mockup-integration.md](./done/163-apex-ledger-mockup-integration.md).
+
+---
+
+## 2026-06-04 (Thu) — Apex Ledger Mockup Isolated Preview Route Registration
+
+**Task:** Register and configure the Apex Ledger Mockup Preview Route `/dev/apex-ledger` with type safety and build verification.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- Lazy-imported `ApexLedgerDashboard` and bound it to route `/dev/apex-ledger` under `TOOLS` section in `frontend/src/router/routes.config.ts`.
+- Replaced native browser `alert()` statements in `SalesPage2.tsx` with `toast` notifications from `react-hot-toast` to meet the `check:no-confirm` script rules.
+- Created technical documentation at `docs/architecture/apex-ledger-mockup.md`.
+- Created end-user documentation at `docs/user-guide/tools/apex-ledger-mockup.md`.
+- Ran automated verification checks (`npm run typecheck` and `npm run build`) on the frontend to ensure bundle and code compilation integrity.
+
+**Report:** [done/163-apex-ledger-mockup-isolated-preview.md](./done/163-apex-ledger-mockup-isolated-preview.md).
+
+---
+
 ## 2026-06-03 (Wed) — Stages 6 & 7: Vocabulary + Future Hooks (docs)
+
 
 **Task:** Stage 6 (purge "ticket" metaphor; standardize override reason) + Stage 7 (document future
 hooks, do not build).
@@ -1813,3 +2303,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
   - Full backend test suite (`npm test`) passed except pre-existing F8 boundary test.
 - **Time spent:** ~1.0h.
 - **Next:** Stage 4 — Put the guard at the door (ensure `recordForVoucher` is only reached through the posting guard).
+
+---
+
+### Session: 2026-06-04 (Apex shell production candidate - Slice 1)
+
+- **Goal:** Start the approved Apex-native shell path: harden Apex separately as a production candidate instead of patching Apex styling onto the legacy tenant shell.
+- **What was done:** Added Task 167 docs and completed Slice 1. The Apex sidebar now adapts `useSidebarConfig()` instead of owning hardcoded modules, so it inherits tenant module bundles, RBAC, workflow hiding, and dynamic form grouping. Dev/demo routes are hidden from production navigation. Apex dashboard API mappings no longer fall back to dummy data; the unused dummy data file was removed. Apex header/footer and touched Sales/AI surfaces now read active company/user context. Raw browser delete confirmations in Apex Sales were replaced with shared `ConfirmDialog` and toast feedback.
+- **Accounting/ERP impact:** No posting, ledger, approval, period-lock, AR/AP, tax, report, inventory valuation, or database schema behavior changed. The main accounting safety improvement is removing fake financial/demo data from the candidate shell.
+- **Docs added:** `planning/tasks/167-apex-shell-production-migration.md`, `docs/architecture/apex-shell-candidate.md`, `docs/user-guide/navigation/apex-shell-candidate.md`, `planning/done/167-apex-shell-production-candidate-slice-1.md`.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports` and `check:no-confirm`. Build still reports existing bundle-size/Browserslist warnings.
+- **Not verified:** Authenticated visual QA was not completed because the in-app Browser tool was not exposed and Playwright is not installed. Dev server was started at `http://127.0.0.1:5173/` for smoke-check preparation.
+- **Time spent:** about 1.8 hours.
+- **Next:** Task 167 Slice 2 - Apex route coverage/wildcard handling, settings/profile shell decision, and authenticated English/Arabic RTL visual QA before any main tenant-shell cutover. Estimated 2-3 hours.

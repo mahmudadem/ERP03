@@ -14,6 +14,7 @@ import {
   salesApi,
 } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
+import { StatusChip } from '../../../components/ui/StatusChip';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { Plus, Trash2 } from 'lucide-react';
@@ -99,6 +100,7 @@ const SalesReturnDetailPage: React.FC = () => {
   const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [postConfirmOpen, setPostConfirmOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const salesInvoiceLabelById = useMemo(
     () =>
@@ -147,6 +149,7 @@ const SalesReturnDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setIsEditing(false);
 
       await loadReferenceData();
 
@@ -173,6 +176,74 @@ const SalesReturnDetailPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const beginEdit = () => {
+    if (!salesReturn) return;
+    setReturnDate(salesReturn.returnDate || todayIso());
+    setWarehouseId(salesReturn.warehouseId || '');
+    setSettlementMode(salesReturn.settlementMode);
+    setReasonCode(salesReturn.reasonCode);
+    setReason(salesReturn.reason || '');
+    setRestockingFeeType(salesReturn.restockingFeeType || 'AMOUNT');
+    setRestockingFeeValue(String(salesReturn.restockingFeeValue ?? 0));
+    setNotes(salesReturn.notes || '');
+    setError(null);
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setError(null);
+  };
+
+  const saveEdits = async () => {
+    if (!salesReturn?.id) return;
+    if (!returnDate) {
+      setError('Return date is required.');
+      return;
+    }
+    if (!reason.trim()) {
+      setError('Reason is required.');
+      return;
+    }
+    const parsedRestockingValue = Number(restockingFeeValue || '0');
+    if (Number.isNaN(parsedRestockingValue) || parsedRestockingValue < 0) {
+      setError('Restocking fee value must be a non-negative number.');
+      return;
+    }
+    if (restockingFeeType === 'PERCENT' && parsedRestockingValue > 100) {
+      setError('Restocking fee percent cannot exceed 100.');
+      return;
+    }
+    const allowRestockingFee = salesReturn.returnContext !== 'BEFORE_INVOICE';
+    try {
+      setBusy(true);
+      setError(null);
+      const updated = await salesApi.updateReturn(salesReturn.id, {
+        returnDate,
+        warehouseId: warehouseId || undefined,
+        settlementMode,
+        reasonCode,
+        reason: reason.trim(),
+        restockingFeeType: allowRestockingFee && parsedRestockingValue > 0 ? restockingFeeType : undefined,
+        restockingFeeValue: allowRestockingFee && parsedRestockingValue > 0 ? parsedRestockingValue : undefined,
+        notes: notes || undefined,
+      });
+      setSalesReturn(unwrap<SalesReturnDTO>(updated));
+      setIsEditing(false);
+      toast.success('Return updated');
+    } catch (err: any) {
+      console.error('Failed to update sales return', err);
+      setError(
+        err?.response?.data?.error?.message
+          || err?.response?.data?.message
+          || err?.message
+          || 'Failed to update sales return.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const applyDefaultWarehouseFromInvoice = (invoiceId: string) => {
     const selectedInvoice = salesInvoices.find((entry) => entry.id === invoiceId);
@@ -964,59 +1035,146 @@ const SalesReturnDetailPage: React.FC = () => {
           <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
             {salesReturn.returnContext}
           </span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{salesReturn.status}</span>
+          <StatusChip status={salesReturn.status} type="sr" />
         </div>
       </div>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      <Card className="p-5">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{salesReturn.returnDate}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {warehouseLabelById[salesReturn.warehouseId] || salesReturn.warehouseId}
+      {isEditing ? (
+        <Card className="p-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Return Date</label>
+              <DatePicker value={returnDate} onChange={(val) => setReturnDate(val)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Warehouse</label>
+              <WarehouseSelector
+                value={warehouseId}
+                onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
+                disabled={busy}
+                warehouses={warehouses}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Settlement</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                value={settlementMode}
+                onChange={(e) => setSettlementMode(e.target.value as ReturnSettlementMode)}
+              >
+                {Object.entries(settlementModeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Reason Code</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                value={reasonCode}
+                onChange={(e) => setReasonCode(e.target.value as ReturnReasonCode)}
+              >
+                {Object.entries(reasonCodeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Reason</label>
+              <input
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </div>
+            {salesReturn.returnContext !== 'BEFORE_INVOICE' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Restocking Fee</label>
+                <div className="flex gap-2">
+                  <select
+                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    value={restockingFeeType}
+                    onChange={(e) => setRestockingFeeType(e.target.value as RestockingFeeType)}
+                  >
+                    <option value="AMOUNT">Amount</option>
+                    <option value="PERCENT">Percent</option>
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-right bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    value={restockingFeeValue}
+                    onChange={(e) => setRestockingFeeValue(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Notes</label>
+              <textarea
+                rows={2}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
             </div>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Reason</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{salesReturn.reason}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Reason Code</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {reasonCodeLabels[salesReturn.reasonCode] || salesReturn.reasonCode}
+          <p className="mt-3 text-xs text-slate-500">
+            Editing header details only. Return lines are fixed once the draft is created.
+          </p>
+        </Card>
+      ) : (
+        <Card className="p-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{salesReturn.returnDate}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+                {warehouseLabelById[salesReturn.warehouseId] || salesReturn.warehouseId}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Reason</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{salesReturn.reason}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Reason Code</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+                {reasonCodeLabels[salesReturn.reasonCode] || salesReturn.reasonCode}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Settlement</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+                {settlementModeLabels[salesReturn.settlementMode] || salesReturn.settlementMode}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Restocking Fee</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+                {salesReturn.restockingFeeAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
+                {salesReturn.restockingFeeType ? ` (${salesReturn.restockingFeeType} ${salesReturn.restockingFeeValue})` : ''}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Net Settlement</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+                {salesReturn.netSettlementAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Source Document</div>
+              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{sourceLabel}</div>
             </div>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Settlement</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {settlementModeLabels[salesReturn.settlementMode] || salesReturn.settlementMode}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Restocking Fee</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {salesReturn.restockingFeeAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
-              {salesReturn.restockingFeeType ? ` (${salesReturn.restockingFeeType} ${salesReturn.restockingFeeValue})` : ''}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Net Settlement</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {salesReturn.netSettlementAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Source Document</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{sourceLabel}</div>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       <Card className="p-5">
         <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
@@ -1054,10 +1212,40 @@ const SalesReturnDetailPage: React.FC = () => {
         >
           Back to List
         </button>
-        {salesReturn.status === 'DRAFT' && (
+        {salesReturn.status === 'DRAFT' && isEditing && (
+          <>
+            <button
+              type="button"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+              onClick={saveEdits}
+              disabled={busy}
+            >
+              {busy ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              onClick={cancelEdit}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+          </>
+        )}
+        {salesReturn.status === 'DRAFT' && !isEditing && (
           <button
             type="button"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            onClick={beginEdit}
+            disabled={busy}
+          >
+            Edit
+          </button>
+        )}
+        {salesReturn.status === 'DRAFT' && !isEditing && (
+          <button
+            type="button"
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             onClick={() => setPostConfirmOpen(true)}
             disabled={busy}
           >

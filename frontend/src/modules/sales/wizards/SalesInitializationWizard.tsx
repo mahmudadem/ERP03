@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Calculator,
@@ -6,12 +7,14 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  FileCheck,
   Info,
   Loader2,
   Settings,
   ShoppingCart,
 } from 'lucide-react';
 import { useAccounts } from '../../../context/AccountsContext';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { InitializeSalesPayload, salesApi, WorkflowMode } from '../../../api/salesApi';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
@@ -22,15 +25,21 @@ import {
 } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
+import {
+  loadSystemVoucherTypeGroups,
+  SystemVoucherTypeGroup,
+} from '../../accounting/services/voucherTypesService';
 
 interface SalesInitializationWizardProps {
   onComplete: () => void;
 }
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
-const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Review'];
+const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Voucher Types', 'Review'];
 
 const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ onComplete }) => {
+  const queryClient = useQueryClient();
+  const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +57,12 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
   const [dnNumberPrefix, setDnNumberPrefix] = useState('DN');
   const [siNumberPrefix, setSiNumberPrefix] = useState('SI');
   const [srNumberPrefix, setSrNumberPrefix] = useState('SR');
+  // Voucher Type groups (each group = one abstract type with N form variants).
+  // The wizard tracks selection by typeKey (e.g. "sales_invoice"); on submit
+  // we expand to template ids so every form variant of every selected type is
+  // installed as a locked + inactive default.
+  const [voucherTypeGroups, setVoucherTypeGroups] = useState<SystemVoucherTypeGroup[]>([]);
+  const [selectedTypeKeys, setSelectedTypeKeys] = useState<string[]>([]);
   const [inventorySettings, setInventorySettings] = useState<{
     defaultInventoryAssetAccountId?: string;
     defaultCOGSAccountId?: string;
@@ -59,7 +74,10 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
     const loadData = async () => {
       try {
         setLoadingSettings(true);
-        const inventorySettingsResult = await inventoryApi.getSettings().catch(() => null);
+        const [inventorySettingsResult, typeGroups] = await Promise.all([
+          inventoryApi.getSettings().catch(() => null),
+          loadSystemVoucherTypeGroups('SALES'),
+        ]);
         const invSettingsData = inventorySettingsResult
           ? unwrap<any>(inventorySettingsResult)?.data ?? unwrap<any>(inventorySettingsResult)
           : null;
@@ -68,6 +86,11 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
         if (resolveInventoryAccountingMode(invSettingsData) === 'PERPETUAL') {
           setWorkflowMode('OPERATIONAL');
         }
+
+        setVoucherTypeGroups(typeGroups);
+        // Default-select recommended types, or every type if none flagged.
+        const recommended = typeGroups.filter((g) => g.isRecommended).map((g) => g.typeKey);
+        setSelectedTypeKeys(recommended.length > 0 ? recommended : typeGroups.map((g) => g.typeKey));
       } catch (err) {
         console.error('Failed to load dependencies for sales initialization', err);
       } finally {
@@ -144,6 +167,13 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
       setSubmitting(true);
       setError(null);
 
+      // Expand each selected type key into every template id (form variant) for
+      // that type. The backend sync still takes template ids; the wizard just
+      // bundles "pick one type, install all its forms" at the call site.
+      const selectedTemplateIds = voucherTypeGroups
+        .filter((g) => selectedTypeKeys.includes(g.typeKey))
+        .flatMap((g) => g.forms.map((f) => f.id));
+
       await salesApi.initializeSales({
         workflowMode,
         defaultRevenueAccountId: accountingEnabled ? defaultRevenueAccountId : undefined,
@@ -154,8 +184,10 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
         dnNumberPrefix: dnNumberPrefix || 'DN',
         siNumberPrefix: siNumberPrefix || 'SI',
         srNumberPrefix: srNumberPrefix || 'SR',
+        selectedVoucherTypes: selectedTemplateIds,
       });
-      emitCompanyModulesRefresh({ moduleCode: 'sales' });
+      emitCompanyModulesRefresh({ companyId, moduleCode: 'sales' });
+      await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
       onComplete();
     } catch (err: any) {
       console.error('Sales initialization failed', err);
@@ -411,6 +443,122 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
       );
     }
 
+    if (currentStep === 4) {
+      const toggleType = (typeKey: string) => {
+        setSelectedTypeKeys((prev) =>
+          prev.includes(typeKey) ? prev.filter((entry) => entry !== typeKey) : [...prev, typeKey]
+        );
+      };
+      const selectAll = () => setSelectedTypeKeys(voucherTypeGroups.map((g) => g.typeKey));
+      const clearAll = () => setSelectedTypeKeys([]);
+
+      return (
+        <div className="py-8 max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Voucher Types</h2>
+          <p className="text-gray-600 mb-6 text-center">
+            Pick which sales document types to install. Each type comes with one or more default form variants &mdash; you'll activate or customize them next.
+          </p>
+
+          <div className="flex justify-between items-center mb-6">
+            <p className="text-sm text-gray-600">
+              {selectedTypeKeys.length} of {voucherTypeGroups.length} types selected
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded transition"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 rounded transition"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {voucherTypeGroups.length === 0 ? (
+              <div className="col-span-2 text-center py-12">
+                <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">No Sales voucher types available</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  The system catalog has no Sales templates yet. Contact your administrator.
+                </p>
+              </div>
+            ) : (
+              voucherTypeGroups.map((group) => {
+                const isSelected = selectedTypeKeys.includes(group.typeKey);
+                const formCount = group.forms.length;
+                const variantLabels = group.forms
+                  .map((f) => {
+                    if (f.persona) return f.persona.charAt(0).toUpperCase() + f.persona.slice(1);
+                    const match = f.name.match(/\(([^)]+)\)/);
+                    return match ? match[1] : null;
+                  })
+                  .filter(Boolean) as string[];
+                return (
+                  <button
+                    type="button"
+                    key={group.typeKey}
+                    onClick={() => toggleType(group.typeKey)}
+                    className={`p-5 rounded-lg border-2 transition-all text-left hover:border-primary-500 ${
+                      isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="text-lg font-bold text-gray-900">{group.name}</h3>
+                          {group.isRecommended && (
+                            <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                              Recommended
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
+                            {formCount} default form{formCount !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        {variantLabels.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Variants: {variantLabels.join(' · ')}
+                          </p>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <CheckCircle className="w-6 h-6 text-primary-600 flex-shrink-0 ml-2" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800 space-y-1">
+                <p className="font-semibold">These install as locked, inactive default templates.</p>
+                <p>
+                  The schemas are available immediately, but no sidebar entries appear until you open
+                  <span className="font-semibold"> Tools &rarr; Forms Designer</span> and either:
+                </p>
+                <ul className="list-disc list-inside ml-1 space-y-0.5">
+                  <li><span className="font-semibold">Activate</span> a default form to use it as-is, or</li>
+                  <li><span className="font-semibold">Clone</span> it to create an editable variant.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="py-8 max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Review & Confirm</h2>
@@ -476,6 +624,35 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
             <p className="text-sm text-gray-900">
               Prefixes: {soNumberPrefix || 'SO'} / {dnNumberPrefix || 'DN'} / {siNumberPrefix || 'SI'} / {srNumberPrefix || 'SR'}
             </p>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <h3 className="text-sm text-gray-600 mb-2">Selected Voucher Types</h3>
+            {selectedTypeKeys.length === 0 ? (
+              <p className="text-sm text-gray-500">No voucher types selected. You can add them later from Settings.</p>
+            ) : (
+              <ul className="space-y-1">
+                {selectedTypeKeys.map((typeKey) => {
+                  const group = voucherTypeGroups.find((g) => g.typeKey === typeKey);
+                  return group ? (
+                    <li key={typeKey} className="flex items-center gap-2 text-sm text-gray-900">
+                      <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                      <span className="font-medium">{group.name}</span>
+                      <span className="text-xs text-gray-500">
+                        ({group.forms.length} default form{group.forms.length !== 1 ? 's' : ''})
+                      </span>
+                    </li>
+                  ) : null;
+                })}
+                <li className="text-sm text-gray-600 mt-2">
+                  Total: {selectedTypeKeys.length} type{selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
+                  {voucherTypeGroups
+                    .filter((g) => selectedTypeKeys.includes(g.typeKey))
+                    .reduce((sum, g) => sum + g.forms.length, 0)}{' '}
+                  form variants will install as locked defaults
+                </li>
+              </ul>
+            )}
           </div>
         </div>
 

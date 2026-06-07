@@ -1,13 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card } from '../../../components/ui/Card';
+import { StatusChip } from '../../../components/ui/StatusChip';
 import { QuoteDTO, QuoteLineDTO, QuoteStatus, salesOperationalApi } from '../../../api/salesOperationalApi';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
 import { sharedApi, PartyDTO, TaxCodeDTO } from '../../../api/sharedApi';
-import { PartySelector } from '../../../components/shared/selectors';
+import { PartySelector, ItemSelector } from '../../../components/shared/selectors';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
+import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { errorHandler } from '../../../services/errorHandler';
 import { FileText, ChevronLeft, Plus, Trash2 } from 'lucide-react';
-import { clsx } from 'clsx';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -15,29 +22,7 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (v: number): number => Math.round((v + Number.EPSILON) * 100) / 100;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
 type QuoteStatusLocal = QuoteStatus;
-
-const STATUS_STYLES: Record<QuoteStatusLocal, string> = {
-  DRAFT: 'bg-slate-100 text-slate-700',
-  SENT: 'bg-blue-100 text-blue-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  EXPIRED: 'bg-amber-100 text-amber-700',
-  CONVERTED: 'bg-violet-100 text-violet-700',
-};
-
-const StatusBadge: React.FC<{ status: QuoteStatusLocal }> = ({ status }) => (
-  <span
-    className={clsx(
-      'inline-flex rounded-full px-3 py-1 text-xs font-semibold',
-      STATUS_STYLES[status] ?? 'bg-slate-100 text-slate-700'
-    )}
-  >
-    {status}
-  </span>
-);
 
 // ─── Editable line shape ──────────────────────────────────────────────────────
 
@@ -85,13 +70,13 @@ const createEmptyLine = (): EditableLine => ({
   description: '',
 });
 
-const createEmptyForm = (): EditableForm => ({
+const createEmptyForm = (baseCurrency = 'USD'): EditableForm => ({
   status: 'DRAFT',
   customerId: '',
   customerName: '',
   quoteDate: todayIso(),
   validUntil: '',
-  currency: 'USD',
+  currency: baseCurrency,
   exchangeRate: 1,
   notes: '',
   lines: [createEmptyLine()],
@@ -130,9 +115,12 @@ const fromQuoteDTO = (q: QuoteDTO): EditableForm => ({
 // ─── Page component ───────────────────────────────────────────────────────────
 
 const QuotationDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const isCreateMode = !params.id || params.id === 'new';
+  const { company } = useCompanyAccess();
+  const { confirm, confirmDialog } = useConfirm();
 
   const [form, setForm] = useState<EditableForm>(createEmptyForm());
   const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
@@ -194,6 +182,14 @@ const QuotationDetailPage: React.FC = () => {
   const isDraft = form.status === 'DRAFT';
   const isReadOnly = !isDraft;
 
+  // ── Button palette (rationalized: brand-primary / neutral / danger) ────────────
+  const btnPrimary =
+    'rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-primary-700 transition-colors';
+  const btnNeutral =
+    'rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors';
+  const btnDanger =
+    'rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50 hover:bg-red-50 transition-colors';
+
   // ── Data loading ──────────────────────────────────────────────────────────────
 
   const loadReferenceData = async () => {
@@ -213,13 +209,13 @@ const QuotationDetailPage: React.FC = () => {
       setError(null);
       await loadReferenceData();
       if (isCreateMode) {
-        setForm(createEmptyForm());
+        setForm(createEmptyForm(company?.baseCurrency || 'USD'));
       } else if (params.id) {
         const q = await salesOperationalApi.getQuote(params.id);
         setForm(fromQuoteDTO(q));
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load quotation.');
+      setError(err?.response?.data?.message ?? err?.message ?? t('sales.quoteDetail.loadFailed', 'Failed to load quotation.'));
     } finally {
       setLoading(false);
     }
@@ -265,16 +261,16 @@ const QuotationDetailPage: React.FC = () => {
   // ── Validation ────────────────────────────────────────────────────────────────
 
   const validate = (): string | null => {
-    if (!form.customerId) return 'Customer is required.';
-    if (!form.quoteDate) return 'Quote date is required.';
-    if (!form.currency.trim()) return 'Currency is required.';
-    if (form.exchangeRate <= 0) return 'Exchange rate must be greater than 0.';
-    if (!form.lines.length) return 'At least one line is required.';
+    if (!form.customerId) return t('sales.quoteDetail.valCustomer', 'Customer is required.');
+    if (!form.quoteDate) return t('sales.quoteDetail.valQuoteDate', 'Quote date is required.');
+    if (!form.currency.trim()) return t('sales.quoteDetail.valCurrency', 'Currency is required.');
+    if (form.exchangeRate <= 0) return t('sales.quoteDetail.valExchangeRate', 'Exchange rate must be greater than 0.');
+    if (!form.lines.length) return t('sales.quoteDetail.valNoLines', 'At least one line is required.');
     for (let i = 0; i < form.lines.length; i++) {
       const l = form.lines[i];
-      if (!l.itemId) return `Line ${i + 1}: item is required.`;
-      if (l.quotedQty <= 0) return `Line ${i + 1}: quantity must be greater than 0.`;
-      if (l.unitPriceDoc < 0) return `Line ${i + 1}: unit price must be >= 0.`;
+      if (!l.itemId) return t('sales.quoteDetail.valLineItem', { line: i + 1, defaultValue: 'Line {{line}}: item is required.' });
+      if (l.quotedQty <= 0) return t('sales.quoteDetail.valLineQty', { line: i + 1, defaultValue: 'Line {{line}}: quantity must be greater than 0.' });
+      if (l.unitPriceDoc < 0) return t('sales.quoteDetail.valLinePrice', { line: i + 1, defaultValue: 'Line {{line}}: unit price must be >= 0.' });
     }
     return null;
   };
@@ -331,7 +327,7 @@ const QuotationDetailPage: React.FC = () => {
       setForm(fromQuoteDTO(saved));
       return saved;
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to save quotation.');
+      setError(err?.response?.data?.message ?? err?.message ?? t('sales.quoteDetail.saveFailed', 'Failed to save quotation.'));
       return null;
     } finally {
       setSaving(false);
@@ -346,7 +342,7 @@ const QuotationDetailPage: React.FC = () => {
       setError(null);
       await action();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Action failed.');
+      setError(err?.response?.data?.message ?? err?.message ?? t('sales.quoteDetail.actionFailed', 'Action failed.'));
     } finally {
       setActionBusy(false);
     }
@@ -394,13 +390,27 @@ const QuotationDetailPage: React.FC = () => {
       navigate(`/sales/invoices/${result.salesInvoiceId}`);
     });
 
+  const handleDiscard = () =>
+    withAction(async () => {
+      const confirmed = await confirm({
+        title: t('sales.quoteDetail.discardTitle', 'Discard Quotation'),
+        message: t('sales.quoteDetail.discardMessage', 'This will permanently delete this draft quotation. This action cannot be undone.'),
+        confirmLabel: t('sales.quoteDetail.discard', 'Discard'),
+        tone: 'danger',
+      });
+      if (!confirmed) return;
+      await salesOperationalApi.deleteQuote(form.id!);
+      errorHandler.showSuccess(t('sales.quoteDetail.discardSuccess', 'Quotation discarded.'));
+      navigate('/sales/quotes');
+    });
+
   // ── Loading state ─────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quotation</h1>
-        <Card className="p-6">Loading quotation...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.quoteDetail.pageTitle', 'Quotation')}</h1>
+        <Card className="p-6">{t('sales.quoteDetail.loadingQuotation', 'Loading quotation...')}</Card>
       </div>
     );
   }
@@ -424,14 +434,16 @@ const QuotationDetailPage: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                {form.quoteNumber ? `Quote ${form.quoteNumber}` : 'New Quotation'}
+                {form.quoteNumber
+                  ? t('sales.quoteDetail.titleWithNumber', { number: form.quoteNumber, defaultValue: 'Quote {{number}}' })
+                  : t('sales.quoteDetail.newQuotation', 'New Quotation')}
               </h1>
               <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">
-                Sales Quote
+                {t('sales.quoteDetail.subtitle', 'Sales Quote')}
                 {form.id && ` · v${form.id ? (form as any).version ?? '' : ''}`}
               </p>
             </div>
-            {form.status !== 'DRAFT' && <StatusBadge status={form.status} />}
+            <StatusChip status={form.status} type="quote" />
           </div>
 
           {/* Action buttons */}
@@ -442,18 +454,28 @@ const QuotationDetailPage: React.FC = () => {
                   type="button"
                   onClick={saveQuote}
                   disabled={saving || actionBusy}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-slate-700 transition-colors"
+                  className={btnPrimary}
                 >
-                  {saving ? 'Saving...' : 'Save'}
+                  {saving ? t('sales.quoteDetail.saving', 'Saving...') : t('sales.quoteDetail.save', 'Save')}
                 </button>
                 <button
                   type="button"
                   onClick={handleSend}
                   disabled={saving || actionBusy}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700 transition-colors"
+                  className={btnNeutral}
                 >
-                  Send
+                  {t('sales.quoteDetail.send', 'Send')}
                 </button>
+                {form.id && (
+                  <button
+                    type="button"
+                    onClick={handleDiscard}
+                    disabled={saving || actionBusy}
+                    className={btnDanger}
+                  >
+                    {t('sales.quoteDetail.discard', 'Discard')}
+                  </button>
+                )}
               </>
             )}
 
@@ -463,25 +485,25 @@ const QuotationDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleAccept}
                   disabled={actionBusy}
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-green-700 transition-colors"
+                  className={btnPrimary}
                 >
-                  Accept
+                  {t('sales.quoteDetail.accept', 'Accept')}
                 </button>
                 <button
                   type="button"
                   onClick={handleReject}
                   disabled={actionBusy}
-                  className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50 hover:bg-red-50 transition-colors"
+                  className={btnDanger}
                 >
-                  Reject
+                  {t('sales.quoteDetail.reject', 'Reject')}
                 </button>
                 <button
                   type="button"
                   onClick={handleRevise}
                   disabled={actionBusy}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+                  className={btnNeutral}
                 >
-                  Revise
+                  {t('sales.quoteDetail.revise', 'Revise')}
                 </button>
               </>
             )}
@@ -492,17 +514,17 @@ const QuotationDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleConvertToOrder}
                   disabled={actionBusy}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-indigo-700 transition-colors"
+                  className={btnPrimary}
                 >
-                  Convert to Sales Order
+                  {t('sales.quoteDetail.convertToOrder', 'Convert to Sales Order')}
                 </button>
                 <button
                   type="button"
                   onClick={handleConvertToInvoice}
                   disabled={actionBusy}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-emerald-700 transition-colors"
+                  className={btnNeutral}
                 >
-                  Convert to Invoice
+                  {t('sales.quoteDetail.convertToInvoice', 'Convert to Invoice')}
                 </button>
               </>
             )}
@@ -512,9 +534,9 @@ const QuotationDetailPage: React.FC = () => {
                 type="button"
                 onClick={handleRevise}
                 disabled={actionBusy}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+                className={btnPrimary}
               >
-                Revise
+                {t('sales.quoteDetail.revise', 'Revise')}
               </button>
             )}
           </div>
@@ -533,7 +555,13 @@ const QuotationDetailPage: React.FC = () => {
           {/* Converted notice */}
           {form.status === 'CONVERTED' && form.convertedToType && form.convertedToId && (
             <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400 text-sm px-4 py-3 rounded-lg">
-              Converted to {form.convertedToType === 'SALES_ORDER' ? 'Sales Order' : 'Sales Invoice'} —{' '}
+              {t('sales.quoteDetail.convertedNotice', {
+                target:
+                  form.convertedToType === 'SALES_ORDER'
+                    ? t('sales.quoteDetail.convertedToOrder', 'Sales Order')
+                    : t('sales.quoteDetail.convertedToInvoice', 'Sales Invoice'),
+                defaultValue: 'Converted to {{target}} —',
+              })}{' '}
               <button
                 type="button"
                 onClick={() =>
@@ -555,7 +583,7 @@ const QuotationDetailPage: React.FC = () => {
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Customer
+                  {t('sales.quoteDetail.customer', 'Customer')}
                 </label>
                 <PartySelector
                   value={form.customerId}
@@ -574,7 +602,7 @@ const QuotationDetailPage: React.FC = () => {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Salesperson
+                  {t('sales.quoteDetail.salesperson', 'Salesperson')}
                 </label>
                 <select
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -584,7 +612,7 @@ const QuotationDetailPage: React.FC = () => {
                     setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))
                   }
                 >
-                  <option value="">— None —</option>
+                  <option value="">{t('sales.quoteDetail.none', '— None —')}</option>
                   {salespersons.map((sp) => (
                     <option key={sp.id} value={sp.id}>
                       {sp.name}
@@ -595,70 +623,55 @@ const QuotationDetailPage: React.FC = () => {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Quote Date
+                  {t('sales.quoteDetail.quoteDate', 'Quote Date')}
                 </label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                <DatePicker
                   value={form.quoteDate}
                   disabled={isReadOnly}
-                  onChange={(e) => setForm((prev) => ({ ...prev, quoteDate: e.target.value }))}
+                  onChange={(val) => setForm((prev) => ({ ...prev, quoteDate: val }))}
                 />
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Valid Until
+                  {t('sales.quoteDetail.validUntil', 'Valid Until')}
                 </label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                <DatePicker
                   value={form.validUntil}
                   disabled={isReadOnly}
-                  onChange={(e) => setForm((prev) => ({ ...prev, validUntil: e.target.value }))}
+                  onChange={(val) => setForm((prev) => ({ ...prev, validUntil: val }))}
                 />
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Currency
+                  {t('sales.quoteDetail.currency', 'Currency')}
                 </label>
-                <input
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                  maxLength={3}
+                <CurrencySelector
                   value={form.currency}
-                  disabled={isReadOnly}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))
-                  }
-                  placeholder="USD"
+                  disabled={isReadOnly || saving || actionBusy}
+                  onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
                 />
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Exchange Rate
+                  {t('sales.quoteDetail.exchangeRate', 'Exchange Rate')}
                 </label>
-                <input
-                  type="number"
-                  min={0.000001}
-                  step={0.000001}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                <CurrencyExchangeWidget
+                  currency={form.currency}
+                  baseCurrency={company?.baseCurrency || 'USD'}
+                  voucherDate={form.quoteDate}
                   value={form.exchangeRate}
-                  disabled={isReadOnly}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      exchangeRate: parseFloat(e.target.value) || 1,
-                    }))
-                  }
+                  disabled={isReadOnly || saving || actionBusy}
+                  onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
                 />
               </div>
             </div>
 
             <div className="mt-4">
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Notes
+                {t('sales.quoteDetail.notes', 'Notes')}
               </label>
               <textarea
                 rows={3}
@@ -666,7 +679,7 @@ const QuotationDetailPage: React.FC = () => {
                 value={form.notes}
                 disabled={isReadOnly}
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notes visible to the customer..."
+                placeholder={t('sales.quoteDetail.notesPlaceholder', 'Notes visible to the customer...')}
               />
             </div>
           </Card>
@@ -674,14 +687,14 @@ const QuotationDetailPage: React.FC = () => {
           {/* Lines table */}
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.quoteDetail.lineItems', 'Line Items')}</h2>
               {!isReadOnly && (
                 <button
                   type="button"
                   onClick={addLine}
                   className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
                 >
-                  <Plus size={14} /> Add Line
+                  <Plus size={14} /> {t('sales.quoteDetail.addLine', 'Add Line')}
                 </button>
               )}
             </div>
@@ -690,15 +703,15 @@ const QuotationDetailPage: React.FC = () => {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="py-2 text-left">Item</th>
-                    <th className="py-2 text-right">Qty</th>
-                    <th className="py-2 text-left">UOM</th>
-                    <th className="py-2 text-right">Unit Price</th>
-                    <th className="py-2 text-left">Disc. Type</th>
-                    <th className="py-2 text-right">Disc. Value</th>
-                    <th className="py-2 text-left">Tax Code</th>
-                    <th className="py-2 text-right">Line Total</th>
-                    <th className="py-2 text-right">Tax</th>
+                    <th className="py-2 text-left">{t('sales.quoteDetail.colItem', 'Item')}</th>
+                    <th className="py-2 text-right">{t('sales.quoteDetail.colQty', 'Qty')}</th>
+                    <th className="py-2 text-left">{t('sales.quoteDetail.colUom', 'UOM')}</th>
+                    <th className="py-2 text-right">{t('sales.quoteDetail.colUnitPrice', 'Unit Price')}</th>
+                    <th className="py-2 text-left">{t('sales.quoteDetail.colDiscType', 'Disc. Type')}</th>
+                    <th className="py-2 text-right">{t('sales.quoteDetail.colDiscValue', 'Disc. Value')}</th>
+                    <th className="py-2 text-left">{t('sales.quoteDetail.colTaxCode', 'Tax Code')}</th>
+                    <th className="py-2 text-right">{t('sales.quoteDetail.colLineTotal', 'Line Total')}</th>
+                    <th className="py-2 text-right">{t('sales.quoteDetail.colTax', 'Tax')}</th>
                     <th className="py-2" />
                   </tr>
                 </thead>
@@ -709,21 +722,37 @@ const QuotationDetailPage: React.FC = () => {
                       className="border-b border-slate-100 dark:border-slate-800 align-top"
                     >
                       <td className="py-2 pr-2">
-                        <select
-                          className="w-52 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50"
-                          value={line.itemId}
-                          disabled={isReadOnly}
-                          onChange={(e) => setLine(index, { itemId: e.target.value })}
-                        >
-                          <option value="">Select item</option>
-                          {items.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.code} - {item.name}
-                            </option>
-                          ))}
-                        </select>
-                        {line.itemName && (
-                          <div className="mt-0.5 text-xs text-slate-400">{line.itemName}</div>
+                        {!isReadOnly ? (
+                          <div className="w-52">
+                            <ItemSelector
+                              value={line.itemId}
+                              onChange={(item) => {
+                                if (!item) {
+                                  setLine(index, { itemId: '', itemCode: '', itemName: '', uom: 'EA', uomId: undefined });
+                                  return;
+                                }
+                                const patch: Partial<EditableLine> = {
+                                  itemId: item.id,
+                                  itemCode: item.code,
+                                  itemName: item.name,
+                                  uom: item.salesUom || item.baseUom || 'EA',
+                                  uomId: item.salesUomId || item.baseUomId,
+                                };
+                                if (!line.taxCodeId && item.defaultSalesTaxCodeId) {
+                                  patch.taxCodeId = item.defaultSalesTaxCodeId;
+                                }
+                                setLine(index, patch);
+                              }}
+                            />
+                            {line.itemName && (
+                              <div className="mt-0.5 text-xs text-slate-400">{line.itemName}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-52">
+                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{line.itemCode}</div>
+                            {line.itemName && <div className="text-xs text-slate-400">{line.itemName}</div>}
+                          </div>
                         )}
                       </td>
                       <td className="py-2 pr-2">
@@ -767,9 +796,9 @@ const QuotationDetailPage: React.FC = () => {
                             })
                           }
                         >
-                          <option value="">None</option>
-                          <option value="PERCENT">%</option>
-                          <option value="AMOUNT">Amt</option>
+                          <option value="">{t('sales.quoteDetail.discNone', 'None')}</option>
+                          <option value="PERCENT">{t('sales.quoteDetail.discPercent', '%')}</option>
+                          <option value="AMOUNT">{t('sales.quoteDetail.discAmount', 'Amt')}</option>
                         </select>
                       </td>
                       <td className="py-2 pr-2">
@@ -795,7 +824,7 @@ const QuotationDetailPage: React.FC = () => {
                           disabled={isReadOnly}
                           onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
                         >
-                          <option value="">No Tax</option>
+                          <option value="">{t('sales.quoteDetail.noTax', 'No Tax')}</option>
                           {salesTaxCodes.map((tc) => (
                             <option key={tc.id} value={tc.id}>
                               {tc.code} ({Math.round(tc.rate * 100)}%)
@@ -816,7 +845,7 @@ const QuotationDetailPage: React.FC = () => {
                             onClick={() => removeLine(index)}
                             disabled={form.lines.length <= 1}
                             className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors"
-                            title="Remove line"
+                            title={t('sales.quoteDetail.removeLine', 'Remove line')}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -831,22 +860,22 @@ const QuotationDetailPage: React.FC = () => {
 
           {/* Totals */}
           <Card className="p-5">
-            <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Totals</h3>
+            <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.quoteDetail.totals', 'Totals')}</h3>
             <div className="space-y-1.5 text-sm max-w-xs ml-auto">
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Subtotal</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('sales.quoteDetail.subtotal', 'Subtotal')}</span>
                 <span className="font-medium">
                   {form.currency} {totals.subtotalDoc.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Tax</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('sales.quoteDetail.tax', 'Tax')}</span>
                 <span className="font-medium">
                   {form.currency} {totals.taxTotalDoc.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
-                <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{t('sales.quoteDetail.grandTotal', 'Grand Total')}</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {form.currency} {totals.grandTotalDoc.toFixed(2)}
                 </span>
@@ -855,6 +884,7 @@ const QuotationDetailPage: React.FC = () => {
           </Card>
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 };

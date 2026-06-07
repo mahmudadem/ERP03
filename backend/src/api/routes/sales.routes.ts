@@ -6,8 +6,11 @@ import { SalesReportingController } from '../controllers/sales/SalesReportingCon
 import { RecurringInvoiceController } from '../controllers/sales/RecurringInvoiceController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
 import { SalesInvoiceAttachmentController } from '../controllers/sales/SalesInvoiceAttachmentController';
+import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeInstallController';
+import { VoucherFormController } from '../controllers/accounting/VoucherFormController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { moduleInitializedGuard } from '../middlewares/guards/moduleInitializedGuard';
+import { permissionGuard } from '../middlewares/guards/permissionGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
 import multer from 'multer';
 
@@ -22,6 +25,27 @@ router.use(moduleInitializedGuard('sales'));
 
 router.put('/settings', SalesController.updateSettings);
 router.post('/settings/backfill-party-accounts', SalesController.backfillPartyAccounts);
+
+// Manage Voucher Types — used by the per-module settings page to install
+// additional types after the init wizard. Route param `module` is injected.
+router.get(
+  '/voucher-types/catalog',
+  (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },
+  VoucherTypeInstallController.catalog,
+);
+router.post(
+  '/voucher-types/install',
+  (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },
+  VoucherTypeInstallController.install,
+);
+
+// Voucher form management for the per-module Voucher Designer. Uses the same
+// controller as Accounting; the repository searches across modules to find
+// the form by id, so the URL prefix is just for permission scoping per module.
+router.put('/voucher-forms/:id', VoucherFormController.update);
+router.delete('/voucher-forms/:id', VoucherFormController.delete);
+router.post('/voucher-forms', VoucherFormController.create);
+router.post('/voucher-forms/:id/clone', VoucherFormController.clone);
 
 router.post('/orders', SalesController.createSO);
 router.get('/orders', SalesController.listSOs);
@@ -43,9 +67,13 @@ router.post('/invoices/create-and-post', idempotencyMiddleware, SalesController.
 router.get('/invoices', SalesController.listSIs);
 router.get('/invoices/:id', SalesController.getSI);
 router.put('/invoices/:id', SalesController.updateSI);
+router.delete('/invoices/:id', SalesController.deleteSI);
 router.put('/invoices/:id/update-and-post', idempotencyMiddleware, SalesController.updateAndPostSI);
 router.post('/invoices/:id/post', idempotencyMiddleware, SalesController.postSI);
-router.post('/invoices/:id/approve', idempotencyMiddleware, SalesController.approveSI);
+// SoD: approving a parked Sales Invoice is an Accounting authority (the ledger effect is what is
+// being approved). Guarded by `accounting.approve.finance`. See
+// docs/architecture/posting-authority.md §4.1.
+router.post('/invoices/:id/approve', permissionGuard('accounting.approve.finance'), idempotencyMiddleware, SalesController.approveSI);
 router.post('/invoices/:id/payment-status', SalesController.updatePaymentStatus);
 router.post('/invoices/:id/record-payment', idempotencyMiddleware, SalesController.recordPayment);
 router.get('/invoices/:id/payments', SalesController.getPaymentHistory);

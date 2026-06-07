@@ -66,7 +66,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const styles = toneStyles[tone];
 
   return createPortal(
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="absolute inset-0" onClick={() => !isConfirming && onCancel()} aria-hidden="true" />
       <div
         role="dialog"
@@ -113,3 +113,4 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 };
 
 export default ConfirmDialog;
+

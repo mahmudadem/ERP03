@@ -15,6 +15,7 @@ import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { loadCompanyForms } from '../modules/accounting/voucher-wizard/services/voucherWizardService';
 import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 import { voucherFormApi } from '../api/voucherFormApi';
+import { COMPANY_MODULES_REFRESH_EVENT } from '../utils/companyModulesEvents';
 
 export interface SidebarFormEntry {
   id: string;
@@ -26,6 +27,13 @@ export interface SidebarFormEntry {
   enabled: boolean;
   formType?: string;
   baseType?: string;
+  // Canonical voucher type (e.g., 'sales_invoice'). Used by useSidebarConfig
+  // to suppress system-default form shortcuts when a static module nav entry
+  // (e.g. "Sales Invoices" list page) already covers the same voucher type.
+  voucherType?: string;
+  isDefault?: boolean;
+  isSystemGenerated?: boolean;
+  isLocked?: boolean;
 }
 
 export function useVoucherTypes() {
@@ -38,6 +46,9 @@ export function useVoucherTypes() {
   const [voucherTypes, setVoucherTypes] = useState<VoucherFormConfig[]>([]);
   const [allModuleForms, setAllModuleForms] = useState<SidebarFormEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  // Bumped by the companyModules refresh event so module-init wizards can
+  // re-trigger this hook without a page reload.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     async function loadVouchers() {
@@ -66,6 +77,10 @@ export function useVoucherTypes() {
                 enabled: form.enabled,
                 formType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
                 baseType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
+                voucherType: (form as any).voucherType || (form as any).formType || (form as any).baseType || form.typeId || form.code,
+                isDefault: !!(form as any).isDefault,
+                isSystemGenerated: !!(form as any).isSystemGenerated,
+                isLocked: !!(form as any).isLocked,
               }));
 
             setAllModuleForms(sidebarEntries);
@@ -125,6 +140,10 @@ export function useVoucherTypes() {
           enabled: v.enabled !== false,
           formType: v.formType || v.baseType || v.code || v.id,
           baseType: v.formType || v.baseType || v.code || v.id,
+          voucherType: v.voucherType || v.formType || v.baseType || v.code || v.id,
+          isDefault: !!v.isDefault,
+          isSystemGenerated: !!v.isSystemGenerated,
+          isLocked: !!v.isLocked,
         })));
       } catch (error) {
         console.error('Failed to load voucher types for sidebar:', error);
@@ -137,7 +156,16 @@ export function useVoucherTypes() {
 
     setLoading(canLoadForms);
     loadVouchers();
-  }, [canLoadForms]);
+  }, [canLoadForms, refreshTick]);
+
+  // Re-fetch voucher forms whenever a module finishes initialization. The Sales
+  // / Purchase / Accounting wizards emit this event so the sidebar picks up the
+  // newly copied forms without forcing the user to reload the page.
+  useEffect(() => {
+    const handleRefresh = () => setRefreshTick((tick) => tick + 1);
+    window.addEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
+    return () => window.removeEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
+  }, []);
 
   return { voucherTypes, allModuleForms, loading };
 }

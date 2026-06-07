@@ -21,9 +21,11 @@ import {
 } from '../../../api/aiAssistantApi';
 import type { AiProviderType, ConversationContextMode } from '../utils/settingsHelpers';
 import { PROVIDER_PRESETS, resolvePresetId, resolveProviderChange } from '../utils/settingsHelpers';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export function useAiSettings(canView: boolean, canManage: boolean) {
   const { t } = useTranslation('aiAssistant');
+  const { confirm, confirmDialog } = useConfirm();
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -42,6 +44,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
   const [conversationContextMode, setConversationContextMode] = useState<ConversationContextMode>('balanced');
   const [includePreviousToolResults, setIncludePreviousToolResults] = useState(true);
   const [isEnabled, setIsEnabled] = useState(true);
+  const [showFloatingAssistant, setShowFloatingAssistant] = useState(true);
   const [allowUnverifiedModels, setAllowUnverifiedModels] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<'BYOK' | 'CREDITS' | 'DISABLED'>('BYOK');
   const [allowedRuntimeModes, setAllowedRuntimeModes] = useState<Array<'BYOK' | 'CREDITS' | 'DISABLED'>>(['BYOK', 'CREDITS']);
@@ -137,6 +140,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
         setConversationContextMode(config.conversationContextMode || 'balanced');
         setIncludePreviousToolResults(config.includePreviousToolResults !== false);
         setIsEnabled(config.isEnabled);
+        setShowFloatingAssistant(config.showFloatingAssistant !== false);
         setAllowUnverifiedModels(config.allowUnverifiedModels === true);
         setPresetId(resolvePresetId(config.provider, config.apiEndpoint || ''));
         if (config.runtimeMode) setRuntimeMode(config.runtimeMode as any);
@@ -304,6 +308,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
         conversationContextMode,
         includePreviousToolResults,
         isEnabled,
+        showFloatingAssistant,
         allowUnverifiedModels,
         runtimeMode,
         mode: settings?.mode || 'legacy_unverified',
@@ -351,7 +356,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     } finally {
       setSaving(false);
     }
-  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, conversationContextMode, includePreviousToolResults, isEnabled, runtimeMode, selectedCertifiedProfile, registeredProfileId, registeredProfileData, selectedErp03Profile, selectedProviderOption]);
+  }, [provider, model, apiKey, apiEndpoint, maxTokens, maxRequestsPerDay, conversationContextMode, includePreviousToolResults, isEnabled, showFloatingAssistant, runtimeMode, selectedCertifiedProfile, registeredProfileId, registeredProfileData, selectedErp03Profile, selectedProviderOption]);
 
   const handleRunDiagnostics = useCallback(async () => {
     try {
@@ -470,8 +475,12 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
 
   const handleDeprecateProfile = useCallback(async () => {
     if (!registeredProfileId || !canManage) return;
-    // eslint-disable-next-line no-alert
-    if (!window.confirm(t('settings.customModel.deprecateConfirm', 'Deprecate this model profile? It will be removed from your settings and can no longer be used.'))) return;
+    const confirmed = await confirm({
+      title: t('settings.customModel.deprecateTitle', 'Deprecate Profile'),
+      tone: 'warning',
+      message: t('settings.customModel.deprecateConfirm', 'Deprecate this model profile? It will be removed from your settings and can no longer be used.')
+    });
+    if (!confirmed) return;
     try {
       setIsDeprecating(true);
       setError(null);
@@ -488,6 +497,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
       setConversationContextMode(config.conversationContextMode || 'balanced');
       setIncludePreviousToolResults(config.includePreviousToolResults !== false);
       setIsEnabled(config.isEnabled);
+      setShowFloatingAssistant(config.showFloatingAssistant !== false);
       setPresetId(resolvePresetId(config.provider, config.apiEndpoint || ''));
       if (config.runtimeMode) setRuntimeMode(config.runtimeMode as any);
       if (Array.isArray(config.allowedRuntimeModes)) setAllowedRuntimeModes(config.allowedRuntimeModes as any);
@@ -516,6 +526,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     (settings.conversationContextMode || 'balanced') !== conversationContextMode ||
     (settings.includePreviousToolResults !== false) !== includePreviousToolResults ||
     settings.isEnabled !== isEnabled ||
+    (settings.showFloatingAssistant !== false) !== showFloatingAssistant ||
     (settings.allowUnverifiedModels === true) !== allowUnverifiedModels ||
     (settings.runtimeMode || 'BYOK') !== runtimeMode ||
     (settings.providerId || 'mock') !== (selectedProviderId === '__mock__' ? 'mock' : (selectedProviderId || 'mock')) ||
@@ -535,7 +546,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     presetId, provider, model, apiKey, apiEndpoint,
     maxTokens, maxRequestsPerDay,
     conversationContextMode, includePreviousToolResults,
-    isEnabled, allowUnverifiedModels, runtimeMode, allowedRuntimeModes,
+    isEnabled, showFloatingAssistant, allowUnverifiedModels, runtimeMode, allowedRuntimeModes,
     usageAnalytics, usageLoading,
     healthResult, healthTesting, healthError,
     showCertifiedModels, selectedCertifiedProfile,
@@ -552,7 +563,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     certificationMatch, hasChanges, hasUnsavedChanges,
     // Setters
     setConversationContextMode, setIncludePreviousToolResults,
-    setIsEnabled, setAllowUnverifiedModels, setRuntimeMode, setAllowedRuntimeModes,
+    setIsEnabled, setShowFloatingAssistant, setAllowUnverifiedModels, setRuntimeMode, setAllowedRuntimeModes,
     setApiKey, setApiEndpoint, setModel, setMaxTokens, setMaxRequestsPerDay,
     setSelectedErp03Profile, setRegisteredCertCategory,
     setShowCertifiedModels,
@@ -561,5 +572,6 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     handleSelectCertifiedProfile, handleRegisterAndCertify,
     handleRunRegisteredDiagnostics, handleRunRegisteredCertification,
     handleCancelRegistration, handleDeprecateProfile,
+    confirmDialog,
   };
 }

@@ -15,7 +15,7 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, ShieldCheck, ExternalLink, Globe, BarChart3, ToggleLeft, Loader2 } from 'lucide-react';
+import { Shield, ShieldCheck, ExternalLink, Globe, BarChart3, ToggleLeft, Loader2, BrainCircuit } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { CertifiedModelsModal } from '../components/CertifiedModelsModal';
@@ -59,9 +59,11 @@ export const AiAssistantSettingsPage: React.FC = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <ModuleSettingsLayout
-      title={t('settings.title', 'AI Assistant Settings')}
-      subtitle={t('settings.subtitle', 'Configure the AI provider and preferences for your company.')}
+    <>
+      {ai.confirmDialog}
+      <ModuleSettingsLayout
+        title={t('settings.title', 'AI Assistant Settings')}
+        subtitle={t('settings.subtitle', 'Configure the AI provider and preferences for your company.')}
       tabs={[
         { id: 'provider', label: t('settings.providerTab', 'Provider'), icon: Globe },
         { id: 'security', label: t('settings.securityTab', 'Security'), icon: Shield },
@@ -117,6 +119,37 @@ export const AiAssistantSettingsPage: React.FC = () => {
               <span
                 className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
                   ai.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Floating Launcher Toggle */}
+          <div className="mb-6 flex items-center justify-between p-4 bg-sky-50 border border-sky-200 rounded-lg">
+            <div>
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="w-4 h-4 text-sky-700" />
+                <span className="text-sm font-medium text-sky-950">
+                  {t('settings.showFloatingAssistant', 'Show Floating AI Launcher')}
+                </span>
+              </div>
+              <p className="text-xs text-sky-700 mt-0.5">
+                {t('settings.showFloatingAssistantDesc', 'Show the AI shortcut button across ERP pages. Users can still open AI Assistant from the menu when this is off.')}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ai.showFloatingAssistant}
+              onClick={() => canManage && ai.setShowFloatingAssistant(!ai.showFloatingAssistant)}
+              disabled={!canManage}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 ${
+                ai.showFloatingAssistant ? 'bg-sky-600' : 'bg-gray-300'
+              } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  ai.showFloatingAssistant ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>
@@ -360,6 +393,7 @@ export const AiAssistantSettingsPage: React.FC = () => {
       {activeTab === 'security' && <SettingsSecurityTab />}
       {activeTab === 'analytics' && <SettingsAnalyticsTab usageLoading={ai.usageLoading} usageAnalytics={ai.usageAnalytics} />}
     </ModuleSettingsLayout>
+    </>
   );
 };
 

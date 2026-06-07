@@ -270,11 +270,11 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
       {showModal && (
         <>
           <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[9998]" 
+            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40" 
             onClick={() => setShowModal(false)}
           />
           
-          <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none p-4">
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
             <div className="bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] w-full max-w-[280px] max-h-[400px] pointer-events-auto flex flex-col transition-colors duration-300">
               <div className="p-3 border-b border-[var(--color-border)]">
                 <div className="flex items-center gap-2">
@@ -347,3 +347,4 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
 CurrencySelector.displayName = 'CurrencySelector';
 
 export default CurrencySelector;
+

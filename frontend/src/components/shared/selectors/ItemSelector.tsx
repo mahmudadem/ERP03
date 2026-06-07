@@ -402,8 +402,8 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 
       {showModal && (
         <>
-          <div className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-[1px]" onClick={() => setShowModal(false)} />
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
             <div className="pointer-events-auto flex max-h-[500px] w-full max-w-lg flex-col rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
                 <Search size={18} className="text-slate-400" />
@@ -518,8 +518,8 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 
       {showCreateModal && (
         <>
-          <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-[1px]" onClick={() => setShowCreateModal(false)} />
-          <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" onClick={() => setShowCreateModal(false)} />
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
             <div className="pointer-events-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                 <div>
@@ -687,3 +687,4 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 });
 
 ItemSelector.displayName = 'ItemSelector';
+

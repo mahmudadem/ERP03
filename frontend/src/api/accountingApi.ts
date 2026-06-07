@@ -4,6 +4,8 @@
  */
 import client from './client';
 import { VoucherListFilters, VoucherListResponse, VoucherListItem } from '../types/accounting/VoucherListTypes';
+import type { SalesInvoiceDTO, SettlementInputPayload as SalesSettlementInputPayload } from './salesApi';
+import type { PurchaseInvoiceDTO, SettlementInputPayload as PurchaseSettlementInputPayload } from './purchasesApi';
 
 // Re-export types for convenience
 export type { VoucherListItem };
@@ -23,6 +25,25 @@ export interface VoucherDetailDTO extends VoucherListItem {
   rejectionReason?: string;
   postedByName?: string;
   postedByEmail?: string;
+}
+
+/**
+ * One row in the SoD Approval Center feed. Returned by
+ * GET /tenant/accounting/pending-approvals/source-documents.
+ * Each row is a source document (currently SI or PI) parked in PENDING_APPROVAL.
+ */
+export interface PendingApprovalSourceDoc {
+  source: 'SALES_INVOICE' | 'PURCHASE_INVOICE';
+  id: string;
+  number: string;
+  partyId: string;
+  partyName: string;
+  totalBase: number;
+  totalDoc: number;
+  currency: string;
+  date: string;
+  createdBy: string;
+  parkedAt: string;
 }
 
 export interface TrialBalanceLine {
@@ -356,6 +377,12 @@ export const accountingApi = {
 
   getPendingApprovals: (): Promise<VoucherDetailDTO[]> => {
     return client.get('/tenant/accounting/vouchers/pending/approvals');
+  },
+
+  // SoD Approval Center feed: source documents (SI / PI) in PENDING_APPROVAL across modules.
+  // See docs/architecture/posting-authority.md §4.1.
+  getPendingApprovalSourceDocuments: (): Promise<PendingApprovalSourceDoc[]> => {
+    return client.get('/tenant/accounting/pending-approvals/source-documents');
   },
 
   getPendingCustody: (): Promise<VoucherDetailDTO[]> => {
@@ -722,6 +749,31 @@ export const accountingApi = {
   createAccount: (payload: any): Promise<any> => {
     return client.post('/tenant/accounting/accounts', payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
+
+  // ============================================================
+  // Source-document approval (SoD: Accounting owns approval)
+  // ============================================================
+  // These belong on accountingApi — NOT salesApi / purchasesApi — so that
+  // source-module code physically cannot call them. Only the Approval Center
+  // (modules/accounting/pages/ApprovalsPage.tsx) should import these.
+  // Backend routes live under /tenant/sales and /tenant/purchase because
+  // that's their REST identity, but the API client lives here because that's
+  // their architectural authority.
+  approveSI: (
+    id: string,
+    settlementInput?: SalesSettlementInputPayload,
+    periodLockOverrideReason?: string,
+  ): Promise<SalesInvoiceDTO> =>
+    client.post(`/tenant/sales/invoices/${id}/approve`, {
+      settlementInput,
+      periodLockOverrideReason,
+    }),
+
+  approvePI: (
+    id: string,
+    settlementInput?: PurchaseSettlementInputPayload,
+  ): Promise<PurchaseInvoiceDTO> =>
+    client.post(`/tenant/purchase/invoices/${id}/approve`, { settlementInput }),
 };
 
 // Currency DTOs

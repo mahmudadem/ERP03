@@ -50,6 +50,7 @@ import {
   superAdminApi,
 } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -1196,13 +1197,15 @@ const StepCertify: React.FC<{
   onFinish: () => void;
 }> = ({ model, onCertified, onBack, onFinish }) => {
   const [certs, setCerts] = useState<Record<string, 'idle' | 'running' | 'passed' | 'failed'>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [selectedCategory, setSelectedCategory] = useState<AiCertificationCategory>('GENERAL_CHAT');
   const [runningAll, setRunningAll] = useState(false);
+  const { confirm, confirmDialog } = useConfirm();
 
   const runOneCategory = async (category: AiCertificationCategory): Promise<boolean> => {
     if (!model) return false;
     setCerts(c => ({ ...c, [category]: 'running' }));
+    setErrors(e => ({ ...e, [category]: null }));
     try {
       const result: any = await superAdminApi.runGlobalCertification(model.id, {
         profileHash: model.profileHash,
@@ -1231,7 +1234,12 @@ const StepCertify: React.FC<{
 
   const handleRunAll = async () => {
     if (!model || runningAll) return;
-    if (!window.confirm(`Run certification for all ${CERT_CATEGORIES.length} categories, one after another? This can take a few minutes.`)) return;
+    const confirmed = await confirm({
+      title: 'Run All Certifications',
+      tone: 'info',
+      message: `Run certification for all ${CERT_CATEGORIES.length} categories, one after another? This can take a few minutes.`
+    });
+    if (!confirmed) return;
     setRunningAll(true);
     try {
       let okCount = 0;
@@ -1253,6 +1261,7 @@ const StepCertify: React.FC<{
       helpText="Pick a category and certify. You can certify for multiple categories — each one unlocks tool access for that part of the ERP."
       onBack={onBack}
     >
+      {confirmDialog}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
           <div className="flex-1 w-full">

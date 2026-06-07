@@ -8,20 +8,25 @@
 
 ## 🔴 Current Priority (work this first)
 
-**Task 132 chrome work, authored mode-aware from the start** — natives are the v1 surface; chrome must be polished AND honor `uiMode` (classic / windows) before per-voucher polish or QA passes begin. Foundation already exists: `useUserPreferences().uiMode`, `AppShell` mode branch, `TopBar UIModeWidget`.
+**Task 167 Apex shell production candidate migration** — the shell strategy has pivoted away from patching Apex styling onto the legacy shell. Apex should be hardened separately, validated against real tenant/RBAC/data contracts, and only then cut over as the main tenant shell.
 
-Concrete next step: **[Task 132](./tasks/132-ux-layout-production-hardening.md) Phase 5 continuation** — shrink remaining unsafe action-feedback allowlist entries outside the frozen top-bar widget scope. Phase 0.5 inventory, Phase 1 P0 action/date hardening, raw date cleanup, shared selector promotion, sidebar/navigation polish, Phase 3 settings taxonomy foundation, Sales/Purchase invoice-list standardization, and Accounting/Inventory list standardization are complete.
+Concrete next step: **[Task 167](./tasks/167-apex-shell-production-migration.md) Slice 3D** — add an Apex tenant-shell feature flag and run full role/module/empty-tenant cutover QA now that Sales, Purchases, Inventory, Settings/RBAC, AI, and Company Settings native mounting slices are complete. See [planning/briefs/20260605-apex-route-page-coverage-matrix.md](./briefs/20260605-apex-route-page-coverage-matrix.md). Estimated 2-4 hours.
 
 ---
 
 ## 🟡 Up Next (v1, in order)
 
-1. **Task 132 phases 1 → 6** — shell cleanup, sidebar IA polish, settings taxonomy, action safety, RTL/i18n. Each touched component reads `uiMode` and provides both renderings; each phase ends in a two-mode visual check via UIModeWidget.
-2. **Native QA passes** — once chrome is stable, retest every native voucher flow per module (Sales → Purchases → Accounting → Inventory). One module per session. Findings into `planning/done/138-…` reports.
-3. **Native UI-mode per-voucher polish** — hardcoded web-mode + Windows card/window-mode renderings for each native voucher page. Task 132 Phase 4.5 standard.
-4. **#3 Shared Account Selector standardization + filtering** — selector contract exists ([done/64](./done/64-invoice-party-account-selector-contract.md)); enforcement folds into Task 132 Phases 0.5 + 5.
-5. **Phase F — RFQ** (~2–3 hours): Request for Quotation — procure-to-pay parity. Still a v1 must-have for Purchases.
-6. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days). v1 if buyer-critical, else defer.
+1. **Task 167 Slice 3D** — Apex feature flag integration, role/bundle navigation permissions checks, empty data checks.
+2. **Task 132 remaining chrome work** — resume only after the Apex route strategy is clear, because the shell direction has changed from legacy-shell styling to Apex-native hardening.
+3. **Native QA passes** — once chrome is stable, retest every native voucher flow per module (Sales → Purchases → Accounting → Inventory). One module per session. Findings into `planning/done/138-…` reports.
+4. **Native UI-mode per-voucher polish** — hardcoded web-mode + Windows card/window-mode renderings for each native voucher page. Task 132 Phase 4.5 standard.
+5. **#3 Shared Account Selector standardization + filtering** — selector contract exists ([done/64](./done/64-invoice-party-account-selector-contract.md)); enforcement folds into Task 132 Phases 0.5 + 5.
+6. **[Task 176](./tasks/176-unified-line-items-table-skins.md) — Unified line-items table: one component, two skins.** PI is the only voucher using `ClassicLineItemsTable`; migrate SI / SO / SR / PR / GVR so every voucher shares the same table with a user-flippable Classic/Modern skin. Five sessions, one voucher per session.
+7. **[Task 177](./tasks/177-si-pi-detail-page-redesign.md) — SI & PI detail page redesign (compact layout, shared table for SI, fixed Settlement card, posted-view treatment, severity-driven ErrorModal, fix SI phantom empty rows).** Last visual blocker before SI/PI ship. All math, posting, tax-account, approval, and error contracts are already correct — this is purely the layout/visual polish layer. UI agent only.
+8. **[Task 178](./tasks/178-subledger-document-poster-refactor.md) — `SubledgerDocumentPoster` refactor (backend).** Consolidate the duplicated middle layer of SI / PI / SR / PR posting into one service so future cross-cutting bugs are one-place fixes, not four. ~1–2 days. **Should land before Phase F + G** so they don't add a 5th and 6th parallel copy.
+8b. **[Task 179](./tasks/179-editing-posted-documents.md) — Editing posted documents.** Phase 0 ✅ done (non-financial fields editable on POSTED, financial blocked, PI audit added — report 181). Phases 1–6 open: financial-field flag, layered Mode A/B edit policy, `isFieldEditable` helper, first-class Reverse for SI/PI, Mode A amend-and-repost (depends on 178), edge-case guards. Backend + UI (177).
+9. **Phase F — RFQ** (~2–3 hours): Request for Quotation — procure-to-pay parity. Still a v1 must-have for Purchases.
+10. **Phase G — Purchases-specific** (three-way match + vendor master, ~3–4 days). v1 if buyer-critical, else defer.
 
 ---
 
@@ -65,6 +70,21 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | AI floating launcher settings toggle | 2026-06-02 | ✅ Done |
 | Antigravity | Unify Windows UI MDI window wrappers & drag/resize | 2026-06-03 | ✅ Done |
 | Antigravity | Stage 2b Posting-Authority decoupling & reactive approvals | 2026-06-03 | ✅ Done |
+| Claude (Opus 4.7) | Posting-Authority Stages 2c / 3 / 4 / 5 / 6 / 7 (F8 reporting decoupling) | 2026-06-03 | ✅ Done |
+| Antigravity | Register Apex Ledger mockup route /dev/apex-ledger | 2026-06-04 | ✅ Done |
+| Antigravity | Integrate Apex Ledger mockup route with live APIs & AI | 2026-06-04 | ✅ Done |
+| Antigravity | Re-wire Apex Ledger dashboard subrouting and Voucher parity | 2026-06-04 | ✅ Done |
+| Antigravity | Compact Layout Mode Integration | 2026-06-04 | ✅ Done |
+| Codex | Task 167 - Apex shell production candidate migration | 2026-06-04 | ✅ Done (Slice 1) |
+| Antigravity | Task 167 Slice 2 - Apex route coverage & QA | 2026-06-04 | ✅ Done |
+| Antigravity | Task 167 - Apex shell RTL layout support fixes | 2026-06-05 | ✅ Done |
+| Codex | Task 167 Slice 3A - Apex route/page coverage matrix | 2026-06-05 | ✅ Done |
+| Codex | Task 167 Slice 3B - Apex route/sidebar adapter | 2026-06-05 | ✅ Done |
+| Codex | Task 167 Slice 3C-Sales - native page mounting inside Apex | 2026-06-05 | ✅ Done |
+| Codex | Task 167 Slice 3C-Purchases/Inventory - native page mounting inside Apex | 2026-06-05 | ✅ Done |
+| Codex | Task 167 Slice 3C-Settings/RBAC/AI - native page mounting inside Apex | 2026-06-06 | ✅ Done |
+| Antigravity | RTL flyout positioning & Contrast sidebar preset visual hardening | 2026-06-05 | ✅ Done |
+
 
 **How to use:**
 1. Before starting, add a row with your agent name, task, and today's date
@@ -86,4 +106,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-06-03 by Antigravity (MDI window wrappers unified & Stage 2b Posting-Authority decoupled; Task 132 remains current priority)_
+_Last updated: 2026-06-06 — Task 167 Slice 3C-Settings/RBAC/AI native page mounting inside Apex is complete. Next priority is Slice 3D feature flag and cutover QA._

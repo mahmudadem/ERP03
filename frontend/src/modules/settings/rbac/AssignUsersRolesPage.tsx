@@ -4,10 +4,12 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../services/errorHandler';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 export default function AssignUsersRolesPage() {
   const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
+  const { confirm, confirmDialog } = useConfirm();
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +37,13 @@ export default function AssignUsersRolesPage() {
   
   const handleDeleteUser = async (userId: string) => {
     if (!companyId) return;
-    if (!window.confirm(t('rbac.assignUsers.confirmRemoveUser'))) return;
+    const ok = await confirm({
+      title: t('rbac.assignUsers.confirmRemoveUserTitle', { defaultValue: 'Remove user from company?' }),
+      message: t('rbac.assignUsers.confirmRemoveUser'),
+      confirmLabel: t('common.remove', { defaultValue: 'Remove' }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await rbacApi.deleteCompanyUser(companyId, userId);
       await loadData();
@@ -117,6 +125,7 @@ export default function AssignUsersRolesPage() {
           </tbody>
         </table>
       </div>
+      {confirmDialog}
     </div>
   );
 }
