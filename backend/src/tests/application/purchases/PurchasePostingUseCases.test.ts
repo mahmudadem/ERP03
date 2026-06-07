@@ -612,6 +612,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
     expect(savedVouchers[0].metadata.sourceModule).toBe('purchases');
     expect(savedVouchers[0].metadata.sourceType).toBe('PURCHASE_INVOICE');
+
+    // Characterization (Task 178 — PI posts through SubledgerDocumentPoster):
+    // per-line expense/inventory debit(s) + a SINGLE AP credit, balanced. The
+    // single-credit property is the key granularity guarantee for PI.
+    const piVoucher = savedVouchers[0];
+    const piCredits = piVoucher.lines.filter((l: any) => l.side === 'Credit');
+    expect(piCredits).toHaveLength(1);
+    expect(piVoucher.lines.some((l: any) => l.accountId === 'EXP-500' && l.side === 'Debit')).toBe(true);
+    expect(piVoucher.totalDebit).toBeCloseTo(piVoucher.totalCredit, 2);
+    expect(piCredits[0].creditAmount).toBeCloseTo(piVoucher.totalCredit, 2);
   });
 
   it('7) PostPI (SIMPLE standalone): creates inventory movement + GL voucher', async () => {

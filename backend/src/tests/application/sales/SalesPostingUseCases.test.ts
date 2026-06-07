@@ -1119,6 +1119,17 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(creditLines.some((line: any) => line.accountId === 'TAX-OUT-100' && line.creditAmount === 1.8)).toBe(true);
     expect(revenueVoucher.totalDebit).toBe(26.8);
     expect(revenueVoucher.totalCredit).toBe(26.8);
+
+    // Characterization (Task 178 — guards SI revenue-voucher shape against
+    // line-granularity drift now that posting flows through SubledgerDocumentPoster).
+    // Exactly: AR debit, discount debit, two REV credits (20 + 5), tax credit.
+    expect(revenueVoucher.lines).toHaveLength(5);
+    expect(debitLines).toHaveLength(2);
+    expect(creditLines).toHaveLength(3);
+    const sumDebit = revenueVoucher.lines.reduce((s: number, l: any) => s + (l.debitAmount || 0), 0);
+    const sumCredit = revenueVoucher.lines.reduce((s: number, l: any) => s + (l.creditAmount || 0), 0);
+    expect(sumDebit).toBeCloseTo(26.8, 2);
+    expect(sumCredit).toBeCloseTo(26.8, 2);
   });
 
   it('11) PostDN: accounting failure does not persist posted DN or SO status', async () => {
