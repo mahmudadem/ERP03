@@ -1,7 +1,9 @@
 # 178 — `SubledgerDocumentPoster` refactor (consolidate the duplicated middle layer of SI / PI / SR / PR posting)
 
-**Status:** Stages A ✅ + B ✅ done (2026-06-07, branch `feat/subledger-document-poster`) · Stages C–E open
+**Status:** Stages A ✅ + B ✅ + C ✅ done (2026-06-07, branch `feat/subledger-document-poster`) · Stages D–E open
 **Owner:** Claude (Opus 4.7)
+
+**Stage C ✅ (SI migrated, 2026-06-07):** both Sales Invoice vouchers — the revenue voucher (AR debit + discount/revenue/charge/tax) and the COGS voucher (COGS debit / inventory credit) — now post through `SubledgerDocumentPoster`. SI's upstream bucket accumulation (`revenueCredits`/`taxCredits`/`discountDebits` Maps + `addToBucket`) is **kept as-is**; only the final voucher-line assembly + `postInTransaction` calls were swapped for `SubledgerPostingEntry[]` + `poster.post()`. Behaviour preserved — **237 sales tests + 607 in the full posting sweep pass, 0 failures**. (Folding SI's inline buckets into `poster.accumulateByAccount` + removing the local `VoucherAccumulatedLine`/`addToBucket` is left for Stage E so this stage stays a behaviour-preserving swap.)
 
 **Design note from Stage B:** the poster's `assembleLines` does **not** force accumulation — it preserves caller granularity (PI keeps one debit line per source line for drill-down). Accumulation is an opt-in `SubledgerDocumentPoster.accumulateByAccount(entries)` helper for callers that want one line per account (SI revenue/tax/discount buckets, returns).
 
