@@ -98,11 +98,45 @@ Receipt voucher:               Dr Cash 1500 / Cr AR 1500
 
 ---
 
-## Part C — The contract (us)
+## Part C — The component contract (frozen 2026-06-08)
 
-Define + freeze the `settlementInput` API the `<SettlementPanel>` calls, so the UI agent wires to a finished backend:
-- Existing fields (above) + document the `allowOverpayment` semantics (server reads the setting; the panel only needs to *permit* entering > outstanding when the setting is on, surfaced via the invoice/settings payload).
-- Endpoints already exist: `POST /invoices/:id/record-payment` (later) and the settlement-on-post path; over-payment flows through the same calls once validation is lifted.
+**Principle:** the block is a **controlled component** — it never reaches around the page for the customer/currency/rate. The host form (native page OR designer-rendered form) resolves the selected party + document currency/rate and **feeds them in**; the block only owns the settlement choice + the reactive glue, and emits a value + validity back. This is what makes it reusable across native SI/PI/SR and Forms-Designer dynamic forms (which mount it via the `settlement` `system_core` field type).
+
+### Props IN (host form provides)
+| Prop | Type | Meaning |
+|---|---|---|
+| `module` | `'sales' \| 'purchases'` | AR vs AP, Receipt vs Payment, labels |
+| `receivablePayableAccountId` | `string` | party's **AR/AP** account (on-credit contra) — form resolves from the selected customer/vendor (`Party.defaultARAccountId`/`defaultAPAccountId` → settings default) |
+| `outstandingBase` | `number` | amount left to settle (base currency) |
+| `currency`, `exchangeRate` | `string`, `number` | document-level (display/doc-amount only — **not** part of the block's own state) |
+| `paymentMethodConfigs` | `{ method, settlementAccountId }[]` | method → default cash/bank account map (settings) |
+| `defaultCashAccountId?` | `string` | fallback default for Fully-Paid auto-populate |
+| `allowOverpayment` | `boolean` | may total exceed outstanding (Part B) |
+| `readOnly` | `boolean` | posted/locked → view-only |
+| `value`, `onChange(next, validity)` | controlled | current value + emits value & validity |
+
+### Value OUT (maps 1:1 to the existing backend `settlementInput`)
+```ts
+type SettlementValue = {
+  mode: 'DEFERRED' | 'CASH_FULL' | 'MULTI';
+  rows: { settlementAccountId: string; amountBase: number;
+          paymentMethod?: string; paymentDate?: string; reference?: string }[];
+};
+// On Credit  → { mode:'DEFERRED', rows:[] }
+// Fully Paid → { mode:'CASH_FULL', rows:[{ account, amount: outstanding }] }
+// Partial    → { mode:'MULTI', rows:[ … ] }
+```
+The form sends `{ settlementMode: value.mode, receivablePayableAccountId, settlements: value.rows }` to the existing endpoints (`POST /invoices/:id/record-payment` for later, or the settlement-on-post path). No backend change — Part B already lifted the over-payment guard.
+
+### Validity (the Post gate — Mahmud's rules, 2026-06-08)
+```ts
+type Validity = { ok: boolean; message?: string };
+```
+- **On Credit** → always `{ ok: true }` (nothing to fill; contra = AR/AP).
+- **Fully Paid** → one receiving account; auto-populate the default (`paymentMethodConfigs[method]` → `defaultCashAccountId`). **If none resolves, `{ ok:false }` and the form must BLOCK Post until the user fills it.**
+- **Partial/Multi** → modal of (account, amount[, method, date]) rows; each row account + amount > 0; ≥1 row; sum ≤ outstanding (or any when `allowOverpayment`).
+
+The host form disables/rejects Post whenever `validity.ok === false`. The backend re-checks account validity + the over-payment flag independently (a buggy form can never post a bad settlement).
 
 ---
 
