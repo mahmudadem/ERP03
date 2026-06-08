@@ -76,6 +76,24 @@ Verified by code dig (2026-06-08): the deferred-cost mechanism can **defer** and
 
 Screenshot: PI-00010 has **Invoice Date 2026-06-07** but **Posted At 6/8/2026**, both showing `02:14 AM`; the voucher is dated 07/06. Voucher-date = document date and posted-at = actual post time is *correct* behavior. The same `02:14 AM` on both, and the 6/7↔6/8 split, hint at a possible **timezone / midnight-rollover** display issue. **Pending Mahmud's clarification on what specifically reads wrong** before investigating date handling.
 
+## Finding 5 — "Record Payment/Receipt" on a posted invoice is mis-wired (orphaned-but-built) 🟠
+
+**Symptom (Mahmud QA, 2026-06-08):** On a posted PI/SI, clicking **Create Payment / Receipt** dumps the user on a *blank* generic payment voucher (only the type is preset) — no party, no outstanding amount, no link to the invoice. Feels useless / "full settlement only".
+
+**Root cause — traced end-to-end:**
+- The button navigates to the generic voucher editor: `paymentHref = /accounting/vouchers?mode=create&type=payment&sourceType=PURCHASE_INVOICE&sourceId=${invoice.id}` ([PurchaseInvoiceDetailPage.tsx:1406,1820](../../frontend/src/modules/purchases/pages/PurchaseInvoiceDetailPage.tsx:1406); SI: [SalesInvoiceDetailPage.tsx:474](../../frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx:474)).
+- The editor reads only `formId` and `type` from the URL and **ignores `sourceType`/`sourceId`** ([VoucherEditorPage.tsx:37-38](../../frontend/src/modules/accounting/pages/VoucherEditorPage.tsx:37)) → blank form.
+- Worse than "full-only": a payment posted that way hits the ledger (Dr AP / Cr Cash) but **never reconciles to the invoice** — `paidAmountBase` / `outstandingAmountBase` / `paymentStatus` are untouched, so the invoice stays "unpaid" even after a full payment.
+
+**The correct path already exists — it just isn't called from the UI:**
+- Use case `RecordPurchaseInvoicePaymentUseCase` / sales equivalent — wraps `PostPurchaseInvoiceWithSettlementUseCase`: creates a **linked** `PaymentHistory` (`sourceType`/`sourceId`), posts through the gateway, updates outstanding/paymentStatus, **supports partial** ([PaymentSyncUseCases.ts:272](../../backend/src/application/purchases/use-cases/PaymentSyncUseCases.ts:272)).
+- Endpoint `POST /invoices/:id/record-payment` (both modules) ([purchases.routes.ts:91](../../backend/src/api/routes/purchases.routes.ts:91), [sales.routes.ts:78](../../backend/src/api/routes/sales.routes.ts:78)).
+- Frontend API client `purchasesApi.recordPayment` / `salesApi.recordPayment` already written ([purchasesApi.ts:816](../../frontend/src/api/purchasesApi.ts:816), [salesApi.ts:789](../../frontend/src/api/salesApi.ts:789)) — **0 call sites in the UI.**
+
+**Fix (UI agent):** replace the `navigate(paymentHref)` button with a small invoice-aware payment/receipt dialog — party + outstanding pre-filled, amount input defaulting to the outstanding balance, partial allowed — that calls `recordPayment(invoiceId, …)`. Backend needs no change. This is the **pay-later (credit-model)** entry point, distinct from settlement-on-post (which pays *at* post time) — both share the same engine.
+
+**Why it must post to the ledger even when Accounting UI is "not activated":** a payment is inherently a ledger event (engine mandatory / UI optional). "Not activating Accounting" only hides the Accounting *screens*; the vouchers still post so AP/AR, aging, and cash stay correct. Do not add a no-ledger payment path.
+
 ---
 
 ## Merge note
