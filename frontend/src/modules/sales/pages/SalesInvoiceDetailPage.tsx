@@ -424,7 +424,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     code: '120000',
     subtitle: 'Accounts Receivable',
     balance: 0,
-    note: 'Select or hover over an item line to view details, stock level, and SKU info.',
+    note: t('sales.invoiceDetail.selectItemHint', 'Select or hover over an item line to view details, stock level, and SKU info.'),
   }));
 
   // Reset settlement state when navigating between invoices

@@ -1425,7 +1425,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               onClick={() => errorHandler.showWarning('Purchase tax preset automation is not connected yet.')}
               className="hidden h-6 items-center rounded border border-emerald-300 px-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 md:inline-flex"
             >
-              Apply Tax Preset
+              {t('purchases.invoiceDetail.allocation.applyTaxPreset', 'Apply Tax Preset')}
             </button>
           }
         >

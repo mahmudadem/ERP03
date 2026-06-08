@@ -367,7 +367,7 @@ export function DocumentDetailScaffold({
   banner,
   children,
   sideRail,
-  railTitle = 'Document side rail',
+  railTitle,
   forceRailDrawer = false,
   defaultRailPinned = true,
   showRailEdgeButton = true,
@@ -393,11 +393,12 @@ export function DocumentDetailScaffold({
   footerActions: React.ReactNode | ((state: ScaffoldRailState) => React.ReactNode);
   isWindow?: boolean;
 }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('common');
   const [railPinned, setRailPinned] = useState(defaultRailPinned);
   const [railDrawerOpen, setRailDrawerOpen] = useState(false);
   const [railAutoCollapsed, setRailAutoCollapsed] = useState(false);
   const isRtl = i18n.dir() === 'rtl';
+  const railLabel = railTitle ?? t('documentDetail.sideRail', 'Document side rail');
   const BackIcon = isRtl ? ArrowRight : ArrowLeft;
   const RailOpenIcon = isRtl ? PanelLeftOpen : PanelRightOpen;
   const RailCloseIcon = isRtl ? PanelLeftClose : PanelRightClose;
@@ -445,7 +446,7 @@ export function DocumentDetailScaffold({
       <button
         type="button"
         onClick={showRailFromEdge}
-        title={railTitle}
+        title={railLabel}
         className={clsx(
           'absolute top-1/2 z-30 flex h-24 w-6 -translate-y-1/2 items-center justify-center border border-slate-200 bg-white text-slate-600 shadow-md transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
           isRtl
@@ -454,7 +455,7 @@ export function DocumentDetailScaffold({
         )}
       >
         <RailOpenIcon className="h-4 w-4" />
-        <span className="sr-only">{railTitle}</span>
+        <span className="sr-only">{railLabel}</span>
       </button>
     );
   };
@@ -471,7 +472,7 @@ export function DocumentDetailScaffold({
         <button
           type="button"
           className="absolute inset-0 cursor-default"
-          aria-label={railTitle}
+          aria-label={railLabel}
           onClick={() => setRailDrawerOpen(false)}
         />
         <aside
@@ -486,13 +487,13 @@ export function DocumentDetailScaffold({
             <div className="flex min-w-0 items-center gap-2">
               <RailOpenIcon className="h-4 w-4 text-slate-500" />
               <span className="truncate text-xs font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">
-                {railTitle}
+                {railLabel}
               </span>
             </div>
             <button
               type="button"
               onClick={() => setRailDrawerOpen(false)}
-              title={railTitle}
+              title={railLabel}
               className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               <X className="h-4 w-4" />
@@ -553,14 +554,14 @@ export function DocumentDetailScaffold({
             <button
               type="button"
               onClick={() => setRailPinned(false)}
-              title={railTitle}
+              title={railLabel}
               className={clsx(
                 'absolute top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
                 isRtl ? '-right-3' : '-left-3',
               )}
             >
               <RailCloseIcon className="h-4 w-4" />
-              <span className="sr-only">{railTitle}</span>
+              <span className="sr-only">{railLabel}</span>
             </button>
             {sideRail}
           </aside>

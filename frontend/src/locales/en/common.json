@@ -2637,6 +2637,32 @@
       }
     },
     "invoiceDetail": {
+      "info": "Info",
+      "selectItemHint": "Select or hover over an item line to view details, stock level, and SKU info.",
+      "item": "Item",
+      "account": "Account",
+      "postingReadiness": "Posting Readiness",
+      "documentStatus": "Document Status",
+      "balancedPostingPreview": "Balanced posting preview",
+      "ledgerVoucherCreated": "Ledger voucher created",
+      "taxAccountResolved": "Tax accounts resolved",
+      "taxLinesPosted": "Tax lines posted",
+      "creditChecksActive": "Credit policy active",
+      "headerDirect": "Header - Direct Invoice",
+      "headerFromSO": "Header - From Sales Order",
+      "source": "Source",
+      "sourceDirect": "Direct",
+      "sourceFromSO": "From SO",
+      "sourceFromDN": "From DN",
+      "directHeaderDriven": "Direct header driven",
+      "draftStatusPill": "Draft",
+      "postedStatusPill": "Posted",
+      "pendingApprovalStatusPill": "Pending Approval",
+      "linkedOrder": "From SO",
+      "focus": {
+        "inventoryTracked": "Inventory item: cost and stock checks run before posting.",
+        "serviceItem": "Service line: no inventory valuation movement."
+      },
       "loadLinkedLinesFailed": "Failed to load invoiceable linked lines.",
       "loadFailed": "Failed to load sales invoice.",
       "pricingLookupFailed": "Could not look up customer-specific price; keeping current price.",
@@ -2791,6 +2817,8 @@
       "overridePlaceholder": "Explain why this credit limit override is approved…",
       "overrideSubmit": "Override & Create",
       "allocation": {
+        "title": "Allocation",
+        "applyTaxPreset": "Apply Tax Preset",
         "emptyTitle": "No allocation rows",
         "emptyDescription": "Real ledger and tax allocation controls are not shown until the controlled allocation contract is implemented."
       },
@@ -2798,6 +2826,12 @@
         "subtotal": "Subtotal",
         "taxAmount": "Tax Amount",
         "grandTotal": "Grand Total ({{currency}})"
+      },
+      "rail": {
+        "show": "Show invoice side rail",
+        "close": "Close invoice side rail",
+        "title": "Invoice side rail",
+        "hide": "Hide invoice side rail"
       }
     }
   },
@@ -2914,6 +2948,12 @@
         "deleted": "Price list deleted successfully",
         "saveFailed": "Save failed",
         "deleteFailed": "Failed to delete price list"
+      }
+    },
+    "invoiceDetail": {
+      "allocation": {
+        "title": "Allocation",
+        "applyTaxPreset": "Apply Tax Preset"
       }
     }
   },
@@ -3270,6 +3310,62 @@
       "errorDesc": "We could not fetch the advisor response due to: {{message}}.",
       "errorRetry": "Please ensure server stability or try again later.",
       "loading": "Analyzing data and calculating double entries..."
+    }
+  },
+  "documentDetail": {
+    "sideRail": "Document side rail"
+  },
+  "settlement": {
+    "title": "Settlement",
+    "stat": {
+      "outstanding": "Outstanding",
+      "recorded": "Recorded",
+      "remaining": "Remaining",
+      "overpaid": "Over-paid"
+    },
+    "validation": {
+      "needsAttention": "Settlement needs attention.",
+      "noPayments": "Record at least one payment.",
+      "selectAccount": "Select an account for each payment.",
+      "positiveAmount": "Amount must be greater than zero.",
+      "overpayment": "Over-payment exceeds allowance."
+    },
+    "mode": {
+      "onCredit": "On credit",
+      "fullyPaid": "Fully paid",
+      "multiPayments": "Multi payments",
+      "deferredWithNoPayment": "Deferred (no payments yet)"
+    },
+    "contra": {
+      "ar": "Affected account (A/R)",
+      "ap": "Affected account (A/P)",
+      "contra": "Contra account",
+      "customerReceivable": "Customer Receivable",
+      "vendorPayable": "Vendor Payable"
+    },
+    "field": {
+      "editPayments": "Edit payments",
+      "method": "Method",
+      "amountFull": "Amount (full)",
+      "cashBank": "cash / bank",
+      "selectAccount": "Select cash/bank account",
+      "accountCashBank": "Account (cash / bank)",
+      "amount": "Amount",
+      "type": "Type",
+      "remove": "Remove",
+      "addPayment": "+ Add payment",
+      "multiPayments": "Multi payments",
+      "recordedOf": "Recorded {{amount}} of {{total}}",
+      "remaining": "Remaining",
+      "overpaid": "Over-paid",
+      "extraBecomesCustomerCredit": "The extra becomes a credit on the customer account.",
+      "extraBecomesVendorCredit": "The extra becomes a credit on the vendor account.",
+      "done": "Done"
+    },
+    "overpayment": {
+      "text": "Over-payment: extra {{amount}} becomes {{party}} credit.",
+      "customer": "customer",
+      "vendor": "vendor"
     }
   }
 }

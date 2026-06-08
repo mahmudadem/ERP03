@@ -14,6 +14,7 @@
  * Contract: planning/tasks/186-shared-settlement-panel-and-overpayment.md (Part C).
  */
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AccountSelector } from '../../../modules/accounting/components/shared/AccountSelector';
 import { todayLocalIso } from '../../../utils/dateUtils';
 
@@ -84,6 +85,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
   currencyCode,
   onValidityChange,
 }) => {
+  const { t } = useTranslation('common');
   const isSales = module === 'sales';
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -148,13 +150,13 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
 
   const validity: SettlementValidity = useMemo(() => {
     if (mode === 'DEFERRED') return { ok: true };
-    if (rows.length === 0) return { ok: false, message: 'Add at least one payment.' };
+    if (rows.length === 0) return { ok: false, message: t('settlement.validation.noPayments', 'Add at least one payment.') };
     for (const r of rows) {
-      if (!r.settlementAccountId) return { ok: false, message: 'Select the cash/bank account that receives the payment.' };
-      if (!(Number(r.amountBase) > 0)) return { ok: false, message: 'Each payment amount must be greater than zero.' };
+      if (!r.settlementAccountId) return { ok: false, message: t('settlement.validation.selectAccount', 'Select the cash/bank account that receives the payment.') };
+      if (!(Number(r.amountBase) > 0)) return { ok: false, message: t('settlement.validation.positiveAmount', 'Each payment amount must be greater than zero.') };
     }
     if (isOver && !allowOverpayment) {
-      return { ok: false, message: 'Total exceeds the outstanding amount. Turn on "Allow over-payment" in settings to record the excess as a party credit.' };
+      return { ok: false, message: t('settlement.validation.overpayment', 'Total exceeds the outstanding amount. Turn on "Allow over-payment" in settings to record the excess as a party credit.') };
     }
     return { ok: true };
   }, [mode, rows, isOver, allowOverpayment]);
@@ -164,11 +166,15 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [validity.ok, validity.message]);
 
-  const modeTag = mode === 'DEFERRED' ? 'On credit' : mode === 'CASH_FULL' ? 'Fully paid' : 'Multi payments';
+  const modeTag = mode === 'DEFERRED'
+    ? t('settlement.mode.onCredit', 'On credit')
+    : mode === 'CASH_FULL'
+      ? t('settlement.mode.fullyPaid', 'Fully paid')
+      : t('settlement.mode.multiPayments', 'Multi payments');
   const contraLabel = mode === 'DEFERRED'
-    ? (isSales ? 'Affected account (A/R)' : 'Affected account (A/P)')
-    : 'Contra account';
-  const affectedText = partyAccountLabel || partyAccountId || (isSales ? 'Customer receivable' : 'Vendor payable');
+    ? (isSales ? t('settlement.contra.ar', 'Affected account (A/R)') : t('settlement.contra.ap', 'Affected account (A/P)'))
+    : t('settlement.contra.contra', 'Contra account');
+  const affectedText = partyAccountLabel || partyAccountId || (isSales ? t('settlement.contra.customerReceivable', 'Customer receivable') : t('settlement.contra.vendorPayable', 'Vendor payable'));
   const ccy = currencyCode ? ` ${currencyCode}` : '';
   const fieldLabelClass = 'text-[9px] font-bold text-slate-950 dark:text-slate-100';
   const uppercaseFieldLabelClass = 'text-[9px] font-black uppercase text-slate-950 dark:text-slate-100';
@@ -176,11 +182,14 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
     mode === 'DEFERRED'
       ? null
       : !validity.ok
-        ? { tone: 'error' as const, text: validity.message || 'Settlement needs attention.' }
+        ? { tone: 'error' as const, text: validity.message || t('settlement.validation.needsAttention', 'Settlement needs attention.') }
         : isOver && allowOverpayment
           ? {
               tone: 'warning' as const,
-              text: `Over-payment: extra ${Math.abs(round2(recordedTotal - outstandingBase)).toFixed(2)} becomes ${isSales ? 'customer' : 'vendor'} credit.`,
+              text: t('settlement.overpayment.text', 'Over-payment: extra {amount} becomes {party} credit.', {
+                amount: Math.abs(round2(recordedTotal - outstandingBase)).toFixed(2),
+                party: isSales ? t('settlement.overpayment.customer', 'customer') : t('settlement.overpayment.vendor', 'vendor'),
+              }),
             }
           : null;
 
@@ -189,14 +198,14 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
     return (
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-1.5 dark:border-slate-800">
-          <h3 className="text-[10px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">Settlement</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">{t('settlement.title', 'Settlement')}</h3>
           <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${mode === 'DEFERRED' ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>{modeTag}</span>
         </div>
         <div className="grid grid-cols-3 gap-1.5 p-2 text-[11px]">
           {[
-            { l: 'Outstanding', v: round2(outstandingBase).toFixed(2), c: 'text-slate-900 dark:text-slate-100' },
-            { l: 'Recorded', v: recorded.toFixed(2), c: 'text-emerald-700 dark:text-emerald-300' },
-            { l: isOver ? 'Over-paid' : 'Remaining', v: Math.abs(remaining).toFixed(2), c: isOver ? 'text-amber-700 dark:text-amber-300' : 'text-slate-900 dark:text-slate-100' },
+            { l: t('settlement.stat.outstanding', 'Outstanding'), v: round2(outstandingBase).toFixed(2), c: 'text-slate-900 dark:text-slate-100' },
+            { l: t('settlement.stat.recorded', 'Recorded'), v: recorded.toFixed(2), c: 'text-emerald-700 dark:text-emerald-300' },
+            { l: isOver ? t('settlement.stat.overpaid', 'Over-paid') : t('settlement.stat.remaining', 'Remaining'), v: Math.abs(remaining).toFixed(2), c: isOver ? 'text-amber-700 dark:text-amber-300' : 'text-slate-900 dark:text-slate-100' },
           ].map((s) => (
             <div key={s.l} className="rounded border border-slate-100 bg-slate-50/70 px-2 py-1 dark:border-slate-800 dark:bg-slate-900/40">
               <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{s.l}</div>
@@ -217,7 +226,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="grid items-center gap-2 border-b border-slate-100 px-3 py-2 dark:border-slate-800 md:grid-cols-[auto_minmax(0,1fr)_auto]">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">Settlement</h3>
+          <h3 className="text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">{t('settlement.title', 'Settlement')}</h3>
           <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${mode === 'DEFERRED' ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>{modeTag}</span>
         </div>
         <div className="min-w-0">
@@ -234,16 +243,16 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
             </div>
           )}
         </div>
-        <select
-          className="h-7 w-full min-w-[10rem] rounded border border-slate-300 bg-white px-2 text-xs outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-40"
-          value={mode}
-          disabled={readOnly}
-          onChange={(e) => handleModeChange(e.target.value as SettlementMode)}
-        >
-          <option value="DEFERRED">On credit (no payment)</option>
-          <option value="CASH_FULL">Fully paid</option>
-          <option value="MULTI">Multi payments</option>
-        </select>
+          <select
+            className="h-7 w-full min-w-[10rem] rounded border border-slate-300 bg-white px-2 text-xs outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-40"
+            value={mode}
+            disabled={readOnly}
+            onChange={(e) => handleModeChange(e.target.value as SettlementMode)}
+          >
+            <option value="DEFERRED">{t('settlement.mode.deferredWithNoPayment', 'On credit (no payment)')}</option>
+            <option value="CASH_FULL">{t('settlement.mode.fullyPaid', 'Fully paid')}</option>
+            <option value="MULTI">{t('settlement.mode.multiPayments', 'Multi payments')}</option>
+          </select>
       </div>
 
       <div className="space-y-2 p-3">
@@ -259,7 +268,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
         {mode === 'CASH_FULL' && rows[0] && (
           <div className="grid grid-cols-3 gap-2">
             <div className="min-w-0">
-              <label className={fieldLabelClass}>Method</label>
+              <label className={fieldLabelClass}>{t('settlement.field.method', 'Method')}</label>
               <select
                 className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={rows[0].paymentMethod}
@@ -272,16 +281,16 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
               </select>
             </div>
             <div className="min-w-0">
-              <label className={fieldLabelClass}>Amount (full){ccy}</label>
+              <label className={fieldLabelClass}>{t('settlement.field.amountFull', 'Amount (full)')}{ccy}</label>
               <div className="flex h-9 items-center justify-end rounded border border-slate-200 bg-slate-50 px-2 text-right font-mono text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
                 {round2(outstandingBase).toFixed(2)}
               </div>
             </div>
             <div className="min-w-0">
-              <label className={fieldLabelClass}>{contraLabel} (cash / bank)</label>
+              <label className={fieldLabelClass}>{contraLabel} ({t('settlement.field.cashBank', 'cash / bank')})</label>
               <AccountSelector
                 value={rows[0].settlementAccountId}
-                placeholder="Select cash/bank account"
+                placeholder={t('settlement.field.selectAccount', 'Select cash/bank account')}
                 disabled={readOnly}
                 onChange={(acc) => updateRow(0, { settlementAccountId: acc?.id || '' })}
               />
@@ -293,9 +302,9 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
         {mode === 'MULTI' && (
           <div className="flex items-center justify-between rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
             <div className="text-[11px] text-slate-600 dark:text-slate-300">
-              <span className="font-black text-slate-900 dark:text-slate-100">{rows.length}</span> payment{rows.length === 1 ? '' : 's'}
+              <span className="font-black text-slate-900 dark:text-slate-100">{rows.length}</span>{' '}{t('settlement.field.paymentCount', { defaultValue: 'payment', count: rows.length })}
               <span className="mx-1 text-slate-300">·</span>
-              recorded <span className="font-mono font-bold">{recordedTotal.toFixed(2)}</span> / {round2(outstandingBase).toFixed(2)}
+              {t('settlement.field.recordedOf', { defaultValue: 'recorded {amount} of {total}', amount: recordedTotal.toFixed(2), total: round2(outstandingBase).toFixed(2) })}
             </div>
             {!readOnly && (
               <button
@@ -303,7 +312,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
                 onClick={() => setModalOpen(true)}
                 className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
               >
-                Edit payments
+                {t('settlement.field.editPayments', 'Edit payments')}
               </button>
             )}
           </div>
@@ -315,7 +324,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/40 p-4" onClick={() => setModalOpen(false)}>
           <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
-              <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">Multi payments</h3>
+              <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">{t('settlement.field.multiPayments', 'Multi payments')}</h3>
               <button type="button" onClick={() => setModalOpen(false)} className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
             </div>
 
@@ -323,15 +332,15 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
               {rows.map((row, idx) => (
                 <div key={idx} className="grid grid-cols-12 items-end gap-2 rounded border border-slate-200 p-2 dark:border-slate-800">
                   <div className="col-span-6">
-                    <label className={fieldLabelClass}>Account (cash / bank)</label>
+                    <label className={fieldLabelClass}>{t('settlement.field.accountCashBank', 'Account (cash / bank)')}</label>
                     <AccountSelector
                       value={row.settlementAccountId}
-                      placeholder="Select cash/bank"
+                      placeholder={t('settlement.field.selectAccount', 'Select cash/bank account')}
                       onChange={(acc) => updateRow(idx, { settlementAccountId: acc?.id || '' })}
                     />
                   </div>
                   <div className="col-span-3">
-                    <label className={fieldLabelClass}>Amount{ccy}</label>
+                    <label className={fieldLabelClass}>{t('settlement.field.amount', 'Amount')}{ccy}</label>
                     <input
                       type="number"
                       step="0.01"
@@ -341,7 +350,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className={fieldLabelClass}>Type</label>
+                    <label className={fieldLabelClass}>{t('settlement.field.type', 'Type')}</label>
                     <select
                       className="w-full rounded border border-slate-300 bg-white px-1 py-1 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       value={row.paymentMethod}
@@ -354,7 +363,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
                   </div>
                   <div className="col-span-1 flex justify-center pb-1">
                     {rows.length > 1 && (
-                      <button type="button" title="Remove" className="text-rose-600 hover:text-rose-800" onClick={() => setRows(rows.filter((_, i) => i !== idx))}>✕</button>
+                      <button type="button" title={t('settlement.field.remove', 'Remove')} className="text-rose-600 hover:text-rose-800" onClick={() => setRows(rows.filter((_, i) => i !== idx))}>✕</button>
                     )}
                   </div>
                 </div>
@@ -365,19 +374,19 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
                 onClick={() => setRows([...rows, newRow()])}
                 className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-slate-300 bg-white py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
-                + Add payment
+                {t('settlement.field.addPayment', '+ Add payment')}
               </button>
             </div>
 
             <div className="space-y-1.5 border-t border-slate-200 px-4 py-2.5 dark:border-slate-800">
               <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
-                <span>Recorded <span className="font-mono font-black text-emerald-700 dark:text-emerald-300">{recordedTotal.toFixed(2)}</span> of {round2(outstandingBase).toFixed(2)}</span>
-                <span className={isOver ? 'text-amber-700 dark:text-amber-300' : ''}>{isOver ? 'Over-paid' : 'Remaining'} <span className="font-mono font-black">{Math.abs(round2(outstandingBase - recordedTotal)).toFixed(2)}</span></span>
+                <span>{t('settlement.field.recordedOf', { defaultValue: 'Recorded {amount} of {total}', amount: recordedTotal.toFixed(2), total: round2(outstandingBase).toFixed(2) })}</span>
+                <span className={isOver ? 'text-amber-700 dark:text-amber-300' : ''}>{isOver ? t('settlement.field.overpaid', 'Over-paid') : t('settlement.field.remaining', 'Remaining')} <span className="font-mono font-black">{Math.abs(round2(outstandingBase - recordedTotal)).toFixed(2)}</span></span>
               </div>
               {!validity.ok && <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">{validity.message}</div>}
-              {validity.ok && isOver && allowOverpayment && <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">The extra becomes a credit on the {isSales ? 'customer' : 'vendor'} account.</div>}
+              {validity.ok && isOver && allowOverpayment && <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">{isSales ? t('settlement.field.extraBecomesCustomerCredit', 'The extra becomes a credit on the customer account.') : t('settlement.field.extraBecomesVendorCredit', 'The extra becomes a credit on the vendor account.')}</div>}
               <div className="flex justify-end">
-                <button type="button" onClick={() => setModalOpen(false)} className="rounded bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900">Done</button>
+                <button type="button" onClick={() => setModalOpen(false)} className="rounded bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900">{t('settlement.field.done', 'Done')}</button>
               </div>
             </div>
           </div>

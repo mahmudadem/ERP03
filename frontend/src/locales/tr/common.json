@@ -2710,6 +2710,32 @@
       }
     },
     "invoiceDetail": {
+      "info": "Bilgi",
+      "selectItemHint": "Detayları, stok seviyesini ve SKU bilgilerini görmek için bir kalem satırı seçin veya üzerine gelin.",
+      "item": "Kalem",
+      "account": "Hesap",
+      "postingReadiness": "Kayıt Hazırlığı",
+      "documentStatus": "Belge Durumu",
+      "balancedPostingPreview": "Dengeli kayıt önizlemesi",
+      "ledgerVoucherCreated": "Defteri kebir fişi oluşturuldu",
+      "taxAccountResolved": "Vergi hesapları belirlendi",
+      "taxLinesPosted": "Vergi satırları kaydedildi",
+      "creditChecksActive": "Kredi politikası aktif",
+      "headerDirect": "Başlık - Doğrudan Fatura",
+      "headerFromSO": "Başlık - Satış Siparişinden",
+      "source": "Kaynak",
+      "sourceDirect": "Doğrudan",
+      "sourceFromSO": "Siparişten",
+      "sourceFromDN": "Teslim Notundan",
+      "directHeaderDriven": "Doğrudan başlık odaklı",
+      "draftStatusPill": "Taslak",
+      "postedStatusPill": "Kaydedildi",
+      "pendingApprovalStatusPill": "Onay Bekliyor",
+      "linkedOrder": "Siparişten",
+      "focus": {
+        "inventoryTracked": "Stok kalemi: Kayıt öncesinde maliyet ve stok kontrolleri çalıştırılır.",
+        "serviceItem": "Hizmet satırı: Stok değerleme hareketi yok."
+      },
       "loadLinkedLinesFailed": "Faturalanabilir bağlı satırlar yüklenemedi.",
       "loadFailed": "Satış faturası yüklenemedi.",
       "pricingLookupFailed": "Müşteriye özel fiyat alınamadı; mevcut fiyat korunuyor.",
@@ -2864,6 +2890,8 @@
       "overridePlaceholder": "Kredi limiti geçersiz kılmanın neden onaylandığını açıklayın…",
       "overrideSubmit": "Geçersiz Kıl ve Oluştur",
       "allocation": {
+        "title": "Tahsis",
+        "applyTaxPreset": "Vergi Ön Ayarını Uygula",
         "emptyTitle": "Tahsis satırı yok",
         "emptyDescription": "Gerçek defter ve vergi tahsisi kontrolleri, kontrollü tahsis sözleşmesi uygulanana kadar gösterilmez."
       },
@@ -2871,6 +2899,12 @@
         "subtotal": "Ara Toplam",
         "taxAmount": "Vergi Tutarı",
         "grandTotal": "Genel Toplam ({{currency}})"
+      },
+      "rail": {
+        "show": "Fatura yan panelini göster",
+        "close": "Fatura yan panelini kapat",
+        "title": "Fatura yan paneli",
+        "hide": "Fatura yan panelini gizle"
       }
     }
   },
@@ -2987,6 +3021,12 @@
         "deleted": "Fiyat listesi başarıyla silindi",
         "saveFailed": "Kaydetme başarısız",
         "deleteFailed": "Fiyat listesi silinemedi"
+      }
+    },
+    "invoiceDetail": {
+      "allocation": {
+        "title": "Tahsis",
+        "applyTaxPreset": "Vergi Ön Ayarını Uygula"
       }
     }
   },
@@ -3343,6 +3383,62 @@
       "errorDesc": "Finansal danışmanın yanıtı şu sebepten dolayı alınamadı: {{message}}.",
       "errorRetry": "Lütfen sunucu bağlantısını kontrol edin veya daha sonra tekrar deneyin.",
       "loading": "Veriler analiz ediliyor ve fiş taslağı hesaplanıyor..."
+    }
+  },
+  "documentDetail": {
+    "sideRail": "Belge yan paneli"
+  },
+  "settlement": {
+    "title": "Ödeme",
+    "stat": {
+      "outstanding": "Ödenmemiş",
+      "recorded": "Kaydedilmiş",
+      "remaining": "Kalan",
+      "overpaid": "Fazla ödeme"
+    },
+    "validation": {
+      "needsAttention": "Ödeme işlemi ilgi gerektiriyor.",
+      "noPayments": "En az bir ödeme kaydedin.",
+      "selectAccount": "Her ödeme için bir hesap seçin.",
+      "positiveAmount": "Tutar sıfırdan büyük olmalıdır.",
+      "overpayment": "Fazla ödeme limiti aşıldı."
+    },
+    "mode": {
+      "onCredit": "Kredili",
+      "fullyPaid": "Tamamen ödendi",
+      "multiPayments": "Çoklu ödeme",
+      "deferredWithNoPayment": "Ertelenmiş (henüz ödeme yok)"
+    },
+    "contra": {
+      "ar": "Etkilenen hesap (A/R)",
+      "ap": "Etkilenen hesap (A/P)",
+      "contra": "Karşı hesap",
+      "customerReceivable": "Müşteri Alacağı",
+      "vendorPayable": "Tedarikçi Borcu"
+    },
+    "field": {
+      "editPayments": "Ödemeleri düzenle",
+      "method": "Yöntem",
+      "amountFull": "Tutar (tam)",
+      "cashBank": "Nakit / banka",
+      "selectAccount": "Nakit/banka hesabı seçin",
+      "accountCashBank": "Hesap (nakit / banka)",
+      "amount": "Tutar",
+      "type": "Tür",
+      "remove": "Kaldır",
+      "addPayment": "+ Ödeme ekle",
+      "multiPayments": "Çoklu ödeme",
+      "recordedOf": "Kaydedilmiş {{amount}} / {{total}}",
+      "remaining": "Kalan",
+      "overpaid": "Fazla ödeme",
+      "extraBecomesCustomerCredit": "Fazlalık müşteri hesabında krediye dönüşür.",
+      "extraBecomesVendorCredit": "Fazlalık tedarikçi hesabında krediye dönüşür.",
+      "done": "Tamam"
+    },
+    "overpayment": {
+      "text": "Fazla ödeme: ek {{amount}} tutarı {{party}} kredisi olur.",
+      "customer": "müşteri",
+      "vendor": "tedarikçi"
     }
   }
 }

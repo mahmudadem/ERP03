@@ -2710,6 +2710,32 @@
       }
     },
     "invoiceDetail": {
+      "info": "معلومات",
+      "selectItemHint": "اختر أو مرر المؤشر فوق بند صنف لعرض التفاصيل ومستوى المخزون ومعلومات وحدة SKU.",
+      "item": "صنف",
+      "account": "حساب",
+      "postingReadiness": "جاهزية الترحيل",
+      "documentStatus": "حالة المستند",
+      "balancedPostingPreview": "معاينة الترحيل المتوازن",
+      "ledgerVoucherCreated": "تم إنشاء قيد الأستاذ",
+      "taxAccountResolved": "حسابات الضرائب محددة",
+      "taxLinesPosted": "بنود الضرائب مرحلة",
+      "creditChecksActive": "سياسة الائتمان نشطة",
+      "headerDirect": "الرأس - فاتورة مباشرة",
+      "headerFromSO": "الرأس - من أمر بيع",
+      "source": "المصدر",
+      "sourceDirect": "مباشر",
+      "sourceFromSO": "من أمر بيع",
+      "sourceFromDN": "من إشعار تسليم",
+      "directHeaderDriven": "معتمد على ترويسة مباشرة",
+      "draftStatusPill": "مسودة",
+      "postedStatusPill": "مرحّل",
+      "pendingApprovalStatusPill": "قيد الاعتماد",
+      "linkedOrder": "من أمر بيع",
+      "focus": {
+        "inventoryTracked": "صنف مخزون: يتم فحص التكلفة والمخزون قبل الترحيل.",
+        "serviceItem": "بند خدمة: لا توجد حركة تقييم مخزون."
+      },
       "loadLinkedLinesFailed": "تعذر تحميل بنود الفاتورة المرتبطة.",
       "loadFailed": "تعذر تحميل فاتورة المبيعات.",
       "pricingLookupFailed": "تعذر جلب السعر الخاص بالعميل؛ سيتم الإبقاء على السعر الحالي.",
@@ -2864,6 +2890,8 @@
       "overridePlaceholder": "اشرح سبب اعتماد تجاوز حد الائتمان…",
       "overrideSubmit": "تجاوز وإنشاء",
       "allocation": {
+        "title": "التخصيص",
+        "applyTaxPreset": "تطبيق إعدادات الضريبة",
         "emptyTitle": "لا توجد صفوف تخصيص",
         "emptyDescription": "لا يتم عرض ضوابط تخصيص دفتر الأستاذ والضرائب الحقيقية حتى يتم تنفيذ عقد التخصيص المنضبط."
       },
@@ -2871,6 +2899,12 @@
         "subtotal": "المجموع الفرعي",
         "taxAmount": "مبلغ الضريبة",
         "grandTotal": "المجموع الكلي ({{currency}})"
+      },
+      "rail": {
+        "show": "إظهار الشريط الجانبي للفاتورة",
+        "close": "إغلاق الشريط الجانبي للفاتورة",
+        "title": "الشريط الجانبي للفاتورة",
+        "hide": "إخفاء الشريط الجانبي للفاتورة"
       }
     }
   },
@@ -2987,6 +3021,12 @@
         "deleted": "تم حذف قائمة الأسعار بنجاح",
         "saveFailed": "فشل حفظ قائمة الأسعار",
         "deleteFailed": "فشل حذف قائمة الأسعار"
+      }
+    },
+    "invoiceDetail": {
+      "allocation": {
+        "title": "التخصيص",
+        "applyTaxPreset": "تطبيق إعدادات الضريبة"
       }
     }
   },
@@ -3343,6 +3383,62 @@
       "errorDesc": "لم نتمكن من جلب رد المستشار المالي بسبب الخصائص التالية: {{message}}.",
       "errorRetry": "يرجى التأكد من استقرار الخادم أو المحاولة مرة أخرى لاحقاً.",
       "loading": "جاري دراسة البيانات وإجراء الحسابات المالية المزدوجة..."
+    }
+  },
+  "documentDetail": {
+    "sideRail": "الشريط الجانبي للمستند"
+  },
+  "settlement": {
+    "title": "التسوية",
+    "stat": {
+      "outstanding": "المستحق",
+      "recorded": "المسجل",
+      "remaining": "المتبقي",
+      "overpaid": "دفع زائد"
+    },
+    "validation": {
+      "needsAttention": "التسوية تحتاج إلى مراجعة.",
+      "noPayments": "سجل دفعة واحدة على الأقل.",
+      "selectAccount": "اختر حسابًا لكل دفعة.",
+      "positiveAmount": "يجب أن يكون المبلغ أكبر من صفر.",
+      "overpayment": "الدفع الزائد يتجاوز المسموح."
+    },
+    "mode": {
+      "onCredit": "آجل",
+      "fullyPaid": "مدفوعة بالكامل",
+      "multiPayments": "دفعات متعددة",
+      "deferredWithNoPayment": "آجل (بدون دفعات بعد)"
+    },
+    "contra": {
+      "ar": "الحساب المتأثر (ذمم عملاء)",
+      "ap": "الحساب المتأثر (ذمم موردين)",
+      "contra": "الحساب المقابل",
+      "customerReceivable": "ذمم عملاء",
+      "vendorPayable": "ذمم موردين"
+    },
+    "field": {
+      "editPayments": "تعديل الدفعات",
+      "method": "طريقة الدفع",
+      "amountFull": "المبلغ (كامل)",
+      "cashBank": "نقد / بنك",
+      "selectAccount": "اختر حساب نقد/بنك",
+      "accountCashBank": "الحساب (نقد / بنك)",
+      "amount": "المبلغ",
+      "type": "النوع",
+      "remove": "حذف",
+      "addPayment": "+ إضافة دفعة",
+      "multiPayments": "دفعات متعددة",
+      "recordedOf": "مسجل {{amount}} من {{total}}",
+      "remaining": "المتبقي",
+      "overpaid": "دفع زائد",
+      "extraBecomesCustomerCredit": "يصبح الفائض رصيدًا دائنًا في حساب العميل.",
+      "extraBecomesVendorCredit": "يصبح الفائض رصيدًا دائنًا في حساب المورد.",
+      "done": "تم"
+    },
+    "overpayment": {
+      "text": "دفع زائد: المبلغ الإضافي {{amount}} يصبح رصيدًا دائنًا لـ {{party}}.",
+      "customer": "العميل",
+      "vendor": "المورد"
     }
   }
 }
