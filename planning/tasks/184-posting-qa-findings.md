@@ -94,6 +94,24 @@ Screenshot: PI-00010 has **Invoice Date 2026-06-07** but **Posted At 6/8/2026**,
 
 **Why it must post to the ledger even when Accounting UI is "not activated":** a payment is inherently a ledger event (engine mandatory / UI optional). "Not activating Accounting" only hides the Accounting *screens*; the vouchers still post so AP/AR, aging, and cash stay correct. Do not add a no-ledger payment path.
 
+**Extra reason the current button is wrong — it routes into an Accounting screen the user may not have access to.** `paymentHref` navigates to `/accounting/vouchers?...`. A tenant/user with Purchases (or Sales) but **no Accounting module** cannot reach that route, so today they are *locked out of paying their own posted invoices later*. The pay-later dialog must live **on the invoice page** and call `recordPayment(...)` directly — never navigate into Accounting. The engine still posts the receipt/payment voucher behind the scenes; the user never opens the Accounting UI.
+
+### Clarification — settlement-on-post (#2) vs record-payment (#4): both are the SAME mechanism, only timing differs
+
+Confirmed by code ([SalesInvoiceUseCases.ts:1699-1862](../../backend/src/application/sales/use-cases/SalesInvoiceUseCases.ts:1699), [PaymentSyncUseCases.ts:272](../../backend/src/application/purchases/use-cases/PaymentSyncUseCases.ts:272)). Settlement-on-post does **not** fold cash into the invoice voucher. It always posts the **AR/AP roundtrip as two vouchers**:
+```
+Voucher 1 (invoice, always):   Dr AR 110 / Cr Revenue 100 / Cr Tax 10
+Voucher 2 (separate RECEIPT,    Dr Cash/Bank 110 / Cr AR 110
+   its own RV- number):
+```
+- **#2 settlement-on-post** = the receipt/payment voucher is created in the **same transaction at post** (settlement card: DEFERRED / CASH_FULL / MULTI; the chosen cash/bank account becomes the **debit** of the receipt voucher, AR is always the contra/credit). MULTI = one receipt voucher per paid row; the deferred remainder stays in AR.
+- **#4 record-payment** = the **same** receipt/payment voucher, created **later** via `recordPayment` (wraps the same engine).
+- Do **not** redesign #2 into a single combined `Dr Cash / Cr Revenue` voucher — the AR roundtrip is the correct uniform model (invoice always makes AR; payment always clears AR; receipt is its own auditable document; AR aging / cash-receipts journal / payment history all read off it).
+
+### #2 settlement-on-post "needs work" = UI, not engine
+
+Engine is correct (above). The symptom ("can't see the settlement component / how it affects the contra account") is that the **Settlement card is hidden/overflowing** in the native invoice form (`showSettlement` / `settlementExpanded` state exists at [SalesInvoiceDetailPage.tsx:401-406](../../frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx:401) but the card is the broken one). This is the [Task 177](./177-si-pi-detail-page-redesign.md) "fixed Settlement card" item — UI agent's lane, not a posting bug.
+
 ---
 
 ## Merge note
