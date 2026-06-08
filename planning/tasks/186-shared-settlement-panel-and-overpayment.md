@@ -37,14 +37,31 @@ A **composite "smart" widget**, not a plain field. The Field Library ([fieldLibr
 
 **Component UX (header section, not the rail):**
 - A **dropdown**, default **On Credit**, options: On Credit / Fully Paid / Partially Paid.
-- **On Credit** → shows the affected account = party's default AR/AP (read-only display).
-- **Fully Paid** → auto-fills the **form's default cash account** as the contra; **user can override** to another cash/bank account. Amount = full outstanding.
-- **Partially Paid** → opens a **small modal**:
-  - Account selector + amount per row; shows each row's **% of the invoice total**.
-  - **"+"** adds another row; stops adding once recorded total reaches the invoice total (unless over-payment flag is on — see Part B).
-  - Modal **does not close** until the recorded total is validated (≤ invoice total when flag off; any amount when flag on).
-- Reuse the shared **AccountSelector** and the `paymentMethodConfigs` already wired in the current card.
-- Used by **both** SI and PI (the only difference is AR vs AP and Receipt vs Payment — pass via props/context).
+#### The reactive state machine (this IS the component — the glue, not the selectors)
+
+The component's value is the **reactive linkage**, which is currently re-implemented inline in SI/PI/SR and drifts. Two linkages it must own:
+1. **party → AR/AP account** (because default mode = on credit).
+2. **payment method → contra (cash/bank) account.**
+
+| Mode | Contra account | Method shown? | Posts |
+|---|---|---|---|
+| **On Credit** (default) | the **party's AR/AP account**, auto-derived the moment the customer/vendor is picked (read-only display; advanced override optional) | no | invoice only — `Dr AR / Cr Revenue` |
+| **Fully Paid** | **cash/bank account, auto-filled from the chosen method** (`settings.paymentMethodConfigs[method].settlementAccountId`); user can override | yes | invoice + one receipt — `Dr Cash/Bank / Cr AR` |
+| **Partially Paid / Installments** | per-row: method + auto-filled cash/bank account + amount + date; **"+"** adds rows; each row shows **% of total** | yes (per row) | invoice + one receipt **per row** |
+
+- **The key rule (`onMethodChange → setContra(default-for-method)`) lives INSIDE the component.** If it's wired per-page instead, it's re-written 3× and drifts — that's the whole reason this is a component, not inline code (Mahmud, 2026-06-08).
+- Partial sum **<** outstanding → remainder stays on credit (AR). Sum **>** outstanding → only when `allowOverpayment` is on (AR goes negative — Part B). Flag off → blocked.
+
+#### What's reused vs. net-new (confirmed 2026-06-08)
+- ✅ reuse [`AccountSelector`](../../frontend/src/modules/accounting/components/shared/AccountSelector.tsx) for the contra/cash-bank **and** AR account.
+- ✅ reuse [`PaymentMethodDropdown`](../../frontend/src/modules/accounting/components/shared/PaymentMethodDropdown.tsx) for the method.
+- ✅ reuse [`PartyAccountSelector`](../../frontend/src/components/shared/selectors/PartyAccountSelector.tsx) / derive AR from the selected party.
+- ❌ **net-new: the mode dropdown** (On Credit / Fully Paid / Partially Paid) — there is **no** reusable settlement-mode component today (inline + duplicated in SI/PI/SR pages).
+- ❌ **net-new: the reactive orchestration** above — the actual work.
+
+So ~80% is assembling existing parts; the new 20% (mode dropdown + reactive glue) is the component's reason to exist.
+
+- The **rail stays view-only** (read-only Paid/Remaining/Affected-account summary). The **editable** control is this component, placed in the **header**. Used by **both** SI and PI (swap AR→AP, Receipt→Payment) and SR (contra-revenue) — pass via props.
 
 **Contract the component calls (defined by us, Part C):** the existing `settlementInput` shape — `{ settlementMode, receivablePayableAccountId?, settlements: [{ settlementAccountId?, amountBase, amountDoc?, paymentMethod?, paymentDate?, reference?, notes? }] }` — plus the new `allowOverpayment` path.
 
