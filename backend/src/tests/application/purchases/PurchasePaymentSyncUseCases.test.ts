@@ -200,4 +200,53 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
     expect(deps.voucherRepo.save).not.toHaveBeenCalled();
     expect(deps.paymentHistoryRepo.create).not.toHaveBeenCalled();
   });
+
+  it('rejects MULTI over-payment when allowOverpayment is off (default)', async () => {
+    const invoice = buildPostedInvoice(100, 0);
+    const deps = makeDeps(invoice);
+    const useCase = new RecordPurchaseInvoicePaymentUseCase(
+      deps.purchaseInvoiceRepo as any,
+      deps.paymentHistoryRepo as any,
+      deps.purchaseSettingsRepo as any,
+      deps.voucherRepo as any,
+      deps.voucherSequenceRepo as any,
+      deps.ledgerRepo as any,
+      deps.companyCurrencyRepo as any,
+      deps.transactionManager as any
+    );
+
+    await expect(useCase.execute('cmp-1', 'u-1', 'pi-1', makeSettlementInput(150, 'MULTI'))).rejects.toThrow(
+      'exceeds outstanding amount'
+    );
+    expect(deps.purchaseInvoiceRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('allows MULTI over-payment when allowOverpayment is on, debiting AP in full (vendor credit) and marking PAID', async () => {
+    const invoice = buildPostedInvoice(100, 0);
+    const deps = makeDeps(invoice);
+    deps.purchaseSettingsRepo.getSettings = jest.fn().mockResolvedValue({ defaultAPAccountId: 'AP-1', allowOverpayment: true });
+    const useCase = new RecordPurchaseInvoicePaymentUseCase(
+      deps.purchaseInvoiceRepo as any,
+      deps.paymentHistoryRepo as any,
+      deps.purchaseSettingsRepo as any,
+      deps.voucherRepo as any,
+      deps.voucherSequenceRepo as any,
+      deps.ledgerRepo as any,
+      deps.companyCurrencyRepo as any,
+      deps.transactionManager as any
+    );
+
+    const result = await useCase.execute('cmp-1', 'u-1', 'pi-1', makeSettlementInput(150, 'MULTI'));
+
+    // Invoice fully settled; the over-payment lives in the AP ledger as a negative balance (vendor owes us).
+    expect(result.invoice.paymentStatus).toBe('PAID');
+    expect(result.invoice.paidAmountBase).toBe(150);
+    expect(result.invoice.outstandingAmountBase).toBe(0);
+
+    // The payment voucher debits AP by the FULL cash paid (150) -> drives the party's AP negative.
+    const savedVoucher = deps.voucherRepo.save.mock.calls[0][0];
+    const debitLines = savedVoucher.lines.filter((l: any) => l.side === 'Debit');
+    expect(debitLines).toHaveLength(1);
+    expect(debitLines[0].debitAmount).toBe(150);
+  });
 });

@@ -314,4 +314,57 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       settlements: [{ amountBase: -10, paymentMethod: 'CASH' }],
     })).rejects.toThrow('Each settlement row amount must be positive');
   });
+
+  it('rejects MULTI over-payment when allowOverpayment is off (default)', async () => {
+    const invoice = buildPostedInvoice(100, 0);
+    const deps = makeDeps(invoice);
+    const useCase = new RecordSalesInvoicePaymentUseCase(
+      deps.salesInvoiceRepo as any,
+      deps.paymentHistoryRepo as any,
+      deps.salesSettingsRepo as any,
+      deps.voucherRepo as any,
+      deps.voucherSequenceRepo as any,
+      deps.ledgerRepo as any,
+      deps.companyCurrencyRepo as any,
+      deps.transactionManager as any
+    );
+
+    await expect(useCase.execute('cmp-1', 'u-1', 'si-1', makeSettlementInput(150, 'MULTI'))).rejects.toThrow(
+      'exceeds outstanding amount'
+    );
+    expect(deps.salesInvoiceRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('allows MULTI over-payment when allowOverpayment is on, crediting AR in full (customer credit) and marking PAID', async () => {
+    const invoice = buildPostedInvoice(100, 0);
+    const deps = makeDeps(invoice);
+    deps.salesSettingsRepo.getSettings = jest.fn().mockResolvedValue({
+      defaultARAccountId: 'AR-1',
+      allowOverpayment: true,
+      paymentMethodConfigs: [{ method: 'CASH', settlementAccountId: 'CASH-1', isEnabled: true }],
+    });
+    const useCase = new RecordSalesInvoicePaymentUseCase(
+      deps.salesInvoiceRepo as any,
+      deps.paymentHistoryRepo as any,
+      deps.salesSettingsRepo as any,
+      deps.voucherRepo as any,
+      deps.voucherSequenceRepo as any,
+      deps.ledgerRepo as any,
+      deps.companyCurrencyRepo as any,
+      deps.transactionManager as any
+    );
+
+    const result = await useCase.execute('cmp-1', 'u-1', 'si-1', makeSettlementInput(150, 'MULTI'));
+
+    // Invoice fully settled; the over-payment lives in the AR ledger as a negative balance (we owe the customer).
+    expect(result.invoice.paymentStatus).toBe('PAID');
+    expect(result.invoice.paidAmountBase).toBe(150);
+    expect(result.invoice.outstandingAmountBase).toBe(0);
+
+    // The receipt voucher credits AR by the FULL cash received (150) -> drives the party's AR negative.
+    const savedVoucher = deps.voucherRepo.save.mock.calls[0][0];
+    const creditLines = savedVoucher.lines.filter((l: any) => l.side === 'Credit');
+    expect(creditLines).toHaveLength(1);
+    expect(creditLines[0].creditAmount).toBe(150);
+  });
 });

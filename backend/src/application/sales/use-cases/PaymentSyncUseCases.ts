@@ -169,8 +169,9 @@ export class PostSalesInvoiceWithSettlementUseCase {
 
     if (settlementMode === 'MULTI') {
       const outstanding = roundSalesMoney(invoice.grandTotalBase - (invoice.paidAmountBase || 0));
-      if (arReducingTotal > outstanding + 0.01) {
-        throw new Error(`MULTI settlement total (${arReducingTotal}) exceeds outstanding amount (${outstanding})`);
+      const allowOverpayment = settings?.allowOverpayment === true;
+      if (!allowOverpayment && arReducingTotal > outstanding + 0.01) {
+        throw new Error(`MULTI settlement total (${arReducingTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Sales settings to record the excess as a customer credit.`);
       }
       if (settlements.length === 0) {
         throw new Error('MULTI mode requires at least one settlement row');

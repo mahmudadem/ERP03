@@ -985,8 +985,9 @@ export class PostPurchaseInvoiceUseCase {
 
     if (settlementMode === 'MULTI') {
       const outstanding = roundMoney(pi.grandTotalBase - (pi.paidAmountBase || 0));
-      if (settlementTotal > outstanding + 0.01) {
-        throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding})`);
+      const allowOverpayment = (await this.settingsRepo.getSettings(companyId))?.allowOverpayment === true;
+      if (!allowOverpayment && settlementTotal > outstanding + 0.01) {
+        throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Purchase settings to record the excess as a vendor credit.`);
       }
       if (settlements.length === 0) {
         throw new Error('MULTI mode requires at least one settlement row');

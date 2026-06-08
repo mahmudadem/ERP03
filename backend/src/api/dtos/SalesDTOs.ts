@@ -39,6 +39,8 @@ export interface SalesMessagingAccountDTO {
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
+  showOperationalDocsInSimple: boolean;
+  allowCreditOverride: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -51,6 +53,7 @@ export interface SalesSettingsDTO {
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
+  allowOverpayment: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -388,6 +391,8 @@ export class SalesDTOMapper {
     return {
       companyId: settings.companyId,
       workflowMode: settings.workflowMode,
+      showOperationalDocsInSimple: settings.showOperationalDocsInSimple,
+      allowCreditOverride: settings.allowCreditOverride,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
       defaultARAccountId: settings.defaultARAccountId,
@@ -400,6 +405,7 @@ export class SalesDTOMapper {
       defaultRefundAccountId: settings.defaultRefundAccountId,
       restockingFeeAccountId: settings.restockingFeeAccountId,
       allowOverDelivery: settings.allowOverDelivery,
+      allowOverpayment: settings.allowOverpayment,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,

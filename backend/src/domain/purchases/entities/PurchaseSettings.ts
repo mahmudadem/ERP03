@@ -25,6 +25,9 @@ export interface PurchaseSettingsProps {
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
+  /** Governance: when true, a settlement may exceed the invoice outstanding; the excess
+   *  drives the party's AP balance negative (a prepayment / credit owed by the vendor). Default false. */
+  allowOverpayment?: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -54,6 +57,7 @@ export class PurchaseSettings {
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
+  allowOverpayment: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -84,6 +88,7 @@ export class PurchaseSettings {
     this.defaultPurchaseExpenseAccountId = props.defaultPurchaseExpenseAccountId;
     this.defaultGRNIAccountId = props.defaultGRNIAccountId?.trim() || undefined;
     this.allowOverDelivery = props.allowOverDelivery;
+    this.allowOverpayment = props.allowOverpayment === true;
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
     this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
     this.defaultPaymentTermsDays = props.defaultPaymentTermsDays;
@@ -110,6 +115,7 @@ export class PurchaseSettings {
       requirePOForStockItems: false,
       defaultAPAccountId,
       allowOverDelivery: false,
+      allowOverpayment: false,
       overDeliveryTolerancePct: 0,
       overInvoiceTolerancePct: 0,
       defaultPaymentTermsDays: 30,
@@ -136,6 +142,7 @@ export class PurchaseSettings {
       defaultPurchaseExpenseAccountId: this.defaultPurchaseExpenseAccountId,
       defaultGRNIAccountId: this.defaultGRNIAccountId,
       allowOverDelivery: this.allowOverDelivery,
+      allowOverpayment: this.allowOverpayment,
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
       overInvoiceTolerancePct: this.overInvoiceTolerancePct,
       defaultPaymentTermsDays: this.defaultPaymentTermsDays,
@@ -167,6 +174,7 @@ export class PurchaseSettings {
       defaultPurchaseExpenseAccountId: data.defaultPurchaseExpenseAccountId,
       defaultGRNIAccountId: data.defaultGRNIAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,
+      allowOverpayment: data.allowOverpayment ?? false,
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: data.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: data.defaultPaymentTermsDays ?? 30,
