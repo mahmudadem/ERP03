@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   BarChart3,
   ScrollText,
@@ -167,6 +168,26 @@ interface ReportsSectionProps {
 
 export default function ReportsSection({ activeSubReport }: ReportsSectionProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const getReportKey = (name: string): string => {
+    switch (name) {
+      case 'Trial Balance': return 'apex.reports.trialBalance';
+      case 'Account Statement': return 'apex.reports.accountStatement';
+      case 'Balance Sheet': return 'apex.reports.balanceSheet';
+      case 'General Ledger': return 'apex.reports.generalLedger';
+      case 'Profit & Loss': return 'apex.reports.profitLoss';
+      case 'Trading Account': return 'apex.reports.tradingAccount';
+      case 'Cash Flow': return 'apex.reports.cashFlow';
+      case 'Journal': return 'apex.reports.journal';
+      case 'Aging Report': return 'apex.reports.aging';
+      case 'Bank Reconciliation': return 'apex.reports.bankReconciliation';
+      case 'Cost Center Summary': return 'apex.reports.costCenterSummary';
+      case 'Budget vs Actual': return 'apex.reports.budgetVsActual';
+      case 'Consolidated Trial Balance': return 'apex.reports.consolidatedTB';
+      default: return 'sidebar.reports';
+    }
+  };
 
   // If a specific sub-report is active, show a "live preview" using an iframe or a message
   if (activeSubReport) {
@@ -185,10 +206,10 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
               onClick={() => navigate('/dev/apex-ledger/reports')}
               className="hover:text-blue-600 transition-colors"
             >
-              التقارير المالية / Reports
+              {t('apex.reports.financialReports', { defaultValue: 'Financial Reports' })}
             </button>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-800 font-semibold">{report.name}</span>
+            <span className="text-slate-800 font-semibold">{t(getReportKey(report.name), { defaultValue: report.name })}</span>
           </div>
 
           {/* Report Header */}
@@ -198,7 +219,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
                 <Icon className="w-5 h-5" />
               </div>
               <div>
-                <h2 className={`text-sm font-bold ${report.color}`}>{report.nameAr} / {report.name}</h2>
+                <h2 className={`text-sm font-bold ${report.color}`}>{t(getReportKey(report.name), { defaultValue: report.name })}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">{report.desc}</p>
               </div>
             </div>
@@ -206,7 +227,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
               onClick={() => navigate(report.legacyPath)}
               className={`flex items-center space-x-1.5 text-xs font-bold px-3 py-1.5 rounded-md border ${report.bgColor} ${report.color} border-current hover:opacity-80 transition-opacity`}
             >
-              <span>Open Full Report</span>
+              <span>{t('common.open', { defaultValue: 'Open' })}</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -265,7 +286,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
             <BarChart3 className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-800">مركز التقارير والاستعلامات المالية</h2>
+            <h2 className="text-sm font-bold text-slate-800">{t('apex.reports.centerTitle', { defaultValue: 'Financial Reports & Queries Center' })}</h2>
             <p className="text-[10px] text-slate-500 font-mono">Financial Reports Center — {REPORTS.length} reports available</p>
           </div>
         </div>
@@ -275,6 +296,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {REPORTS.map((r, idx) => {
           const Icon = r.icon;
+          const translatedName = t(getReportKey(r.name), { defaultValue: r.name });
           return (
             <button
               key={idx}
@@ -287,7 +309,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h4 className="text-[10px] font-bold text-slate-800 leading-tight">{r.nameAr}</h4>
+                    <h4 className="text-[10px] font-bold text-slate-800 leading-tight">{translatedName}</h4>
                     <h5 className={`text-[10px] font-semibold ${r.color} leading-tight`}>{r.name}</h5>
                   </div>
                   <ArrowUpRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0 mt-0.5" />
@@ -302,8 +324,8 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
       {/* Quick access row */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-4 text-white flex items-center justify-between">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider">Quick Launch — Legacy Reports</h3>
-          <p className="text-[10px] text-blue-200 mt-0.5">Open directly in the full application</p>
+          <h3 className="text-xs font-bold uppercase tracking-wider">{t('apex.reports.quickLaunch', { defaultValue: 'Quick Launch — Legacy Reports' })}</h3>
+          <p className="text-[10px] text-blue-200 mt-0.5">{t('apex.reports.openDirectly', { defaultValue: 'Open directly in the full application' })}</p>
         </div>
         <div className="flex items-center space-x-2">
           {REPORTS.slice(0, 3).map((r, i) => {
@@ -323,7 +345,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
             onClick={() => navigate('/accounting')}
             className="text-[10px] font-bold bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg transition-colors flex items-center space-x-1"
           >
-            <span>All</span>
+            <span>{t('common.all', { defaultValue: 'All' })}</span>
             <ArrowUpRight className="w-3 h-3" />
           </button>
         </div>

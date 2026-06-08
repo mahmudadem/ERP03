@@ -26,6 +26,7 @@ export interface PurchaseSettingsDTO {
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
+  allowOverpayment: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -326,6 +327,7 @@ export interface InitializePurchasesPayload {
   defaultPurchaseExpenseAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;
+  allowOverpayment?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;

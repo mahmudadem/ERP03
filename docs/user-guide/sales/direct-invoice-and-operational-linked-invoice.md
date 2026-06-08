@@ -50,21 +50,22 @@ Typical fit:
 ### What the user does
 
 1. Open `Sales -> Invoices -> New Sales Invoice`
-2. Choose the customer
-3. Add item or service lines
-4. Optionally add:
-   - **line discount**
-   - **charges / additions** such as delivery fee or service fee
-   - **pay now** settlement rows
-5. Save as draft or use **Save & Post**
+2. In the **Control** section, choose **Direct**
+3. In the header, choose the customer, invoice date, currency, exchange rate, main warehouse, salesperson, and customer reference
+4. Add item or service lines
+5. Review tax/allocation information below the line grid
+6. At the end of the invoice, choose settlement:
+   - leave it on credit
+   - record a full payment
+   - add multiple payment rows
+7. Save as draft or use **Save & Post**
 
 ### What the system does
 
 When posted, the system:
 
 - calculates tax after discount
-- includes document charges in the invoice total
-- keeps discounts and additions visible in the accounting voucher
+- keeps line discounts visible in the accounting voucher
 - records the receivable
 - records payment immediately if the user chose pay-now
 - moves stock for stock-tracked items
@@ -72,9 +73,11 @@ When posted, the system:
 
 ### Important behavior
 
-- Stock items need a warehouse on the invoice line.
+- Direct invoices use the **Main Warehouse** in the header for stock lines unless a line was already populated from a source document.
 - Service-only lines do not need a warehouse.
 - The user chooses a payment method such as `Cash`, `Bank Transfer`, `Check`, or `Credit Card`.
+- The invoice totals are always visible in the bottom action bar, even when the side rail is hidden. If the side rail is open, it still shows the full totals card as well.
+- While the invoice form opens, the loading panel shows elapsed time, cache status, and API progress. This helps support staff identify whether startup data or a specific request is delaying the page.
 - In standalone Sales, the user does not need to know accounting account IDs.
 
 ---
@@ -98,8 +101,8 @@ Typical fit:
 3. Review the loaded Sales Order lines and edit **Delivered Qty** if this is a partial delivery
 4. Post the Delivery Note
 5. Open `Sales -> Invoices -> New Sales Invoice`
-6. Select the Sales Order
-7. Click **Load Invoiceable Lines**
+6. In the **Control** section, choose **From SO**
+7. In the header, select an open Sales Order
 8. Review the generated invoice lines
 9. Save or post the invoice
 
@@ -112,6 +115,12 @@ For linked operational invoicing:
 - delivered stock quantity is limited to what was delivered and not yet invoiced
 - the warehouse for stock lines is taken automatically from the Delivery Note
 - the invoice does not move stock again
+
+The linked-invoice header is source-aware:
+
+- Customer, currency, and exchange rate are populated from the selected Sales Order.
+- The main warehouse control is hidden because warehouse comes from the source lines.
+- Fully delivered, closed, and cancelled Sales Orders are not shown as normal invoiceable choices.
 
 ### Important behavior
 
@@ -126,7 +135,7 @@ For linked operational invoicing:
 
 ---
 
-## 3. Discounts and charges
+## 3. Discounts and invoice-level allocation
 
 Both invoice styles support commercial terms on the invoice itself.
 
@@ -139,18 +148,13 @@ Each line can use:
 
 The system reduces the taxable base and invoice line total accordingly. In accounting, the discount is posted separately so it can be reported as a discount/expense instead of disappearing inside a final net sales amount.
 
-### Charges / additions
+### Account Ledger and Financial Taxes Allocation Grid
 
-The invoice can include extra rows such as:
+The invoice page no longer shows mocked ledger allocation rows or the old **Charge / Account Name** entry table. Until the controlled allocation contract is implemented, invoice posting continues to use the backend's validated Sales Invoice posting rules rather than editable allocation rows on the page.
 
-- delivery fee
-- packaging fee
-- service charge
-- other additions
+Invoice-level additions and account overrides are planned separately so they can affect totals, posting, audit trail, and tax reporting consistently.
 
-These amounts are added to the invoice total and can also carry tax if configured.
-
-In accounting, additions are posted as separate revenue lines so delivery fees, service fees, packaging, and similar gains remain traceable.
+The settlement control appears after this allocation area so the user finishes the invoice lines and tax review before choosing payment handling.
 
 ---
 
@@ -187,7 +191,22 @@ Advanced users may override the settlement or AR account, but the system only ac
 
 ---
 
-## 6. Common mistakes
+## 6. Smaller screens and Windows mode
+
+The Sales Invoice page is designed to remain usable when opened in Windows mode or on a smaller screen:
+
+- The main invoice workspace scrolls vertically when the available height is limited.
+- On wide screens, the right-side information, posting readiness, settlement, and totals rail is pinned by default. Use the rail button to hide it; a small edge button remains available to bring it back.
+- In Windows mode or on smaller screens, the rail hides automatically and opens from the edge button as a drawer so it does not cover or push the invoice fields.
+- In Arabic/RTL, the same rail appears on the left side, and its hide/show buttons open from that left edge.
+- Wide invoice tables keep their own horizontal scroll, so columns remain reachable without losing the action buttons.
+- If a Windows-mode invoice is resized very small, maximize the window for the most comfortable editing experience.
+
+This layout behavior does not change invoice amounts, taxes, posting, payment handling, or accounting entries.
+
+---
+
+## 7. Common mistakes
 
 **Why can’t I invoice my stock line in operational mode?**  
 Because the stock item must first be delivered on a posted Delivery Note.

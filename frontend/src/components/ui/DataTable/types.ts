@@ -157,6 +157,22 @@ export interface DataTableProps<T = any> {
   // Column resizing
   resizable?: boolean;
   onColumnResize?: (columnKey: string, newWidth: number) => void;
+
+  // Quick Status Filters Config
+  statusFilterConfig?: StatusFilterConfig;
+}
+
+export interface StatusFilterOption {
+  value: string;
+  label: string;
+  color: string;
+}
+
+export interface StatusFilterConfig {
+  options: StatusFilterOption[];
+  activeValue: string;
+  onChange: (value: string) => void;
+  counts: Record<string, number>;
 }
 
 // ── Responsive Column ────────────────────────────────────────────────

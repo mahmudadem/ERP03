@@ -17,12 +17,19 @@ import { Card } from '../../../components/ui/Card';
 import { StatusChip } from '../../../components/ui/StatusChip';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
-import { Plus, Trash2 } from 'lucide-react';
+import { FileText, Plus, Trash2 } from 'lucide-react';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
+import {
+  DocumentDetailScaffold,
+  DocumentFooterTotalsStrip,
+  DocumentPill,
+  DocumentRailCard,
+  DocumentRailStat,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -551,18 +558,53 @@ const SalesReturnDetailPage: React.FC = () => {
   }
 
   if (isCreateMode) {
+    const draftFooterSummary = (
+      <DocumentFooterTotalsStrip
+        totals={[
+          { label: 'Mode', value: returnContext.replace('_', ' ') },
+          { label: 'Settlement', value: settlementModeLabels[settlementMode], tone: settlementMode === 'REFUND' ? 'amber' : 'blue' },
+        ]}
+      />
+    );
+    const draftSideRail = (
+      <>
+        <DocumentRailCard title="Return Draft">
+          <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
+            <DocumentRailStat label="Context" value={returnContext.replace('_', ' ')} tone={returnContext === 'AFTER_INVOICE' ? 'blue' : returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'} />
+            <DocumentRailStat label="Settlement" value={settlementModeLabels[settlementMode]} tone={settlementMode === 'REFUND' ? 'amber' : 'blue'} />
+            <DocumentRailStat label="Return Date" value={returnDate || '-'} />
+            <DocumentRailStat label="Reason" value={reasonCodeLabels[reasonCode]} />
+          </div>
+        </DocumentRailCard>
+      </>
+    );
+
     return (
-      <div className="space-y-6 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">New Sales Return</h1>
+      <DocumentDetailScaffold
+        title="New Sales Return"
+        subtitle="Customer return document with credit-note or refund settlement."
+        icon={FileText}
+        backLabel="Back to sales returns"
+        onBack={() => navigate('/sales/returns')}
+        badges={
+          <DocumentPill tone={returnContext === 'AFTER_INVOICE' ? 'blue' : returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'}>
+            {returnContext.replace('_', ' ')}
+          </DocumentPill>
+        }
+        sideRail={draftSideRail}
+        railTitle="Sales return side rail"
+        footerSummary={draftFooterSummary}
+        footerActions={
           <button
             type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => navigate('/sales/returns')}
+            className="rounded bg-slate-800 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700"
+            onClick={createDraft}
+            disabled={busy}
           >
-            Back to List
+            {busy ? 'Creating...' : 'Create Draft Return'}
           </button>
-        </div>
+        }
+      >
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
@@ -996,15 +1038,7 @@ const SalesReturnDetailPage: React.FC = () => {
           </Card>
         )}
 
-        <button
-          type="button"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          onClick={createDraft}
-          disabled={busy}
-        >
-          {busy ? 'Creating...' : 'Create Draft Return'}
-        </button>
-      </div>
+      </DocumentDetailScaffold>
     );
   }
 
@@ -1021,23 +1055,138 @@ const SalesReturnDetailPage: React.FC = () => {
     salesReturn.returnContext === 'AFTER_INVOICE'
       ? (salesReturn.salesInvoiceId && salesInvoiceLabelById[salesReturn.salesInvoiceId]) || salesReturn.salesInvoiceId || '-'
       : (salesReturn.deliveryNoteId && deliveryNoteLabelById[salesReturn.deliveryNoteId]) || salesReturn.deliveryNoteId || '-';
+  const viewFooterSummary = (
+    <DocumentFooterTotalsStrip
+      totals={[
+        { label: 'Subtotal', value: `${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}` },
+        { label: 'Tax', value: `${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: 'Settlement', value: `${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}`, tone: 'amber' },
+        { label: 'Grand', value: `${salesReturn.currency} ${salesReturn.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+      ]}
+    />
+  );
+  const viewSideRail = (
+    <>
+      <DocumentRailCard title="Return Totals">
+        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
+          <DocumentRailStat label={`Subtotal (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}`} />
+          <DocumentRailStat label={`Tax (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`} tone="blue" />
+          <DocumentRailStat label="Net Settlement" value={`${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}`} tone="amber" />
+          <DocumentRailStat label="Lines" value={salesReturn.lines.length} />
+          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+            <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
+              {salesReturn.currency} {salesReturn.grandTotalDoc.toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </DocumentRailCard>
+      <DocumentRailCard title="Return Control">
+        <div className="space-y-1.5 p-2.5 text-xs">
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Source</div>
+            <div className="truncate font-black text-slate-900 dark:text-slate-100">{sourceLabel}</div>
+          </div>
+          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <span className="font-bold text-slate-600 dark:text-slate-300">Settlement</span>
+            <DocumentPill tone={salesReturn.settlementMode === 'REFUND' ? 'amber' : 'blue'}>
+              {settlementModeLabels[salesReturn.settlementMode] || salesReturn.settlementMode}
+            </DocumentPill>
+          </div>
+        </div>
+      </DocumentRailCard>
+    </>
+  );
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{salesReturn.returnNumber}</h1>
-          <p className="text-sm text-slate-600">
-            Customer: <span className="font-medium">{salesReturn.customerName}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+    <>
+    <DocumentDetailScaffold
+      title={salesReturn.returnNumber}
+      subtitle={`Customer: ${salesReturn.customerName}`}
+      icon={FileText}
+      backLabel="Back to sales returns"
+      onBack={() => navigate('/sales/returns')}
+      badges={
+        <>
+          <DocumentPill tone={salesReturn.returnContext === 'AFTER_INVOICE' ? 'blue' : salesReturn.returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'}>
             {salesReturn.returnContext}
-          </span>
-          <StatusChip status={salesReturn.status} type="sr" />
-        </div>
-      </div>
+          </DocumentPill>
+          <DocumentPill tone={salesReturn.status === 'POSTED' ? 'green' : salesReturn.status === 'CANCELLED' ? 'rose' : 'slate'}>
+            {salesReturn.status}
+          </DocumentPill>
+        </>
+      }
+      sideRail={viewSideRail}
+      railTitle="Sales return side rail"
+      footerSummary={viewFooterSummary}
+      footerActions={
+        <>
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            onClick={() => navigate('/sales/returns')}
+          >
+            Back to List
+          </button>
+          {salesReturn.status === 'DRAFT' && isEditing && (
+            <>
+              <button
+                type="button"
+                className="rounded bg-primary-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+                onClick={saveEdits}
+                disabled={busy}
+              >
+                {busy ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                onClick={cancelEdit}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+          {salesReturn.status === 'DRAFT' && !isEditing && (
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              onClick={beginEdit}
+              disabled={busy}
+            >
+              Edit
+            </button>
+          )}
+          {salesReturn.status === 'DRAFT' && !isEditing && (
+            <button
+              type="button"
+              className="rounded bg-primary-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              onClick={() => setPostConfirmOpen(true)}
+              disabled={busy}
+            >
+              {busy ? 'Posting...' : 'Post Return'}
+            </button>
+          )}
+          {salesReturn.status === 'POSTED' && (
+            <button
+              type="button"
+              className="rounded border border-violet-300 bg-white px-4 py-2 text-xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
+              onClick={() => setGlImpactOpen(true)}
+            >
+              GL Impact
+            </button>
+          )}
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            onClick={() => setAuditModalOpen(true)}
+          >
+            History
+          </button>
+        </>
+      }
+    >
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
@@ -1204,71 +1353,7 @@ const SalesReturnDetailPage: React.FC = () => {
         </div>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => navigate('/sales/returns')}
-        >
-          Back to List
-        </button>
-        {salesReturn.status === 'DRAFT' && isEditing && (
-          <>
-            <button
-              type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-              onClick={saveEdits}
-              disabled={busy}
-            >
-              {busy ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              onClick={cancelEdit}
-              disabled={busy}
-            >
-              Cancel
-            </button>
-          </>
-        )}
-        {salesReturn.status === 'DRAFT' && !isEditing && (
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            onClick={beginEdit}
-            disabled={busy}
-          >
-            Edit
-          </button>
-        )}
-        {salesReturn.status === 'DRAFT' && !isEditing && (
-          <button
-            type="button"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            onClick={() => setPostConfirmOpen(true)}
-            disabled={busy}
-          >
-            {busy ? 'Posting...' : 'Post Return'}
-          </button>
-        )}
-        {salesReturn.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
-            onClick={() => setGlImpactOpen(true)}
-          >
-            GL Impact
-          </button>
-        )}
-        <button
-          type="button"
-          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-          onClick={() => setAuditModalOpen(true)}
-        >
-          History
-        </button>
-      </div>
+    </DocumentDetailScaffold>
 
       <GlImpactModal
         isOpen={glImpactOpen}
@@ -1318,7 +1403,7 @@ const SalesReturnDetailPage: React.FC = () => {
           postDraft();
         }}
       />
-    </div>
+    </>
   );
 };
 

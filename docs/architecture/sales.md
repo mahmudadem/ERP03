@@ -78,6 +78,27 @@ Sales Order (SO) → Delivery Note (DN) → Sales Invoice (SI) → Receipt
 - **Sales Order (SO)** — pre-sale agreement with the customer. Tracks `orderedQty`, `deliveredQty`, `invoicedQty`, `returnedQty` per line. Status: DRAFT → CONFIRMED → PARTIALLY_DELIVERED / FULLY_DELIVERED → CLOSED / CANCELLED.
 - **Delivery Note (DN)** — physical delivery event. Creates a `SALES_DELIVERY` inventory movement and (in OPERATIONAL mode) the COGS GL entry.
 - **Sales Invoice (SI)** — the financial event. Posts AR + Revenue (+ COGS in SIMPLE mode). Drives payment tracking.
+
+### Sales Invoice source-aware header
+
+The native Sales Invoice detail page separates source control from header data:
+
+- The top Control section selects the invoice mechanism: Direct, From Sales Order, or future source options.
+- Direct invoices show a header-level Main Warehouse. The frontend uses this value as the default warehouse for direct stock lines when building the invoice payload.
+- Sales Order-linked invoices show an open Sales Order selector in the header. Selecting an SO loads invoiceable linked lines through `getInvoiceableLinkedSource`; customer, currency, exchange rate, and source line warehouse data come from that linked source.
+- The invoice template selector is intentionally hidden from the operational page. Existing template auto-selection remains an internal/default-form compatibility detail.
+- Due date is hidden from this native page slice and is not sent on new/update payloads from the page.
+- The editable settlement control sits at the end of the invoice workspace, after line entry and the Account Ledger and Financial Taxes Allocation Grid placeholder. Attachments and audit/history remain compact toolbar actions instead of large body cards, preserving the bottom workspace for settlement before the sticky footer actions.
+
+Accounting boundary: this is a frontend workflow/layout change only. It does not alter Sales Invoice posting, tax-account resolution, settlement posting, period-lock policy, or approval behavior.
+
+### Sales Invoice startup cache and diagnostic loader
+
+The native Sales Invoice detail page caches startup reference data in-memory per company for a short TTL. The cache covers selector/reference data only: Sales settings, customers, items, tax codes, warehouses, sales orders, salespersons, communications settings, accounting policy, and invoice templates. It does **not** cache invoice documents or posting state.
+
+The loading skeleton remains in place while the page initializes, but it now shows elapsed time, startup cache status, current API phase, and completed/total API call count. This is intentionally diagnostic-friendly while the form-open latency is being tuned.
+
+Accounting boundary: this is a frontend performance optimization only. It does not alter invoice totals, tax calculation, settlement, approval, period-lock, posting, receivables, inventory movement, ledger writes, or audit behavior.
 - **Sales Return (SR)** — reverses a delivery and/or invoice. Two contexts: `AFTER_INVOICE` (full reversal) and `BEFORE_INVOICE` (delivery-only reversal, COGS only).
 
 ## Workflow Modes and Product Modes
@@ -89,6 +110,8 @@ ERP03 treats these as separate concepts:
 - **OPERATIONAL** workflow: Sales Order -> Delivery Note -> Sales Invoice.
 
 Configured in `Sales -> Settings`. Trades off rigor vs simplicity.
+
+In SIMPLE workflow, `SalesSettings.showOperationalDocsInSimple` may be enabled to expose Sales Orders and Delivery Notes in navigation for occasional operational use. This flag is a UI/workflow visibility override only: it does not change invoice posting, tax calculation, inventory valuation, AR, approval, period-lock, or ledger policy.
 
 ### Governance precedence
 
@@ -240,6 +263,10 @@ Configured per posting call. Three modes:
 | `MULTI` | Post the invoice with multiple settlement rows (partial / staged payments). |
 
 Payment status (`UNPAID` → `PARTIALLY_PAID` → `PAID`) is auto-computed from `paidAmount` vs `grandTotal`.
+
+### Over-payment (party credit) — opt-in (`allowOverpayment`)
+
+By default a `MULTI` settlement may **not** exceed the invoice outstanding (`CASH_FULL` must equal it exactly). When **`SalesSettings.allowOverpayment`** is enabled (default **off**), a `MULTI` settlement *may* exceed the outstanding: the receipt voucher credits A/R by the **full** cash received, driving the customer's A/R balance **negative** — a credit you owe them that offsets their future invoices. The invoice itself is marked `PAID` (outstanding is clamped at 0); the over-payment credit lives in the **A/R ledger**, not on the invoice. `CASH_FULL` stays exact — over-payment always flows through `MULTI`. With the flag off the prior validation stands (over-payment rejected with a guiding message). The Purchases side mirrors this via `PurchaseSettings.allowOverpayment` (the excess drives A/P **negative** — a prepayment the vendor owes back). Gated in all four settlement engines (settle-on-post + record-payment-later, both modules).
 
 ### Sales Payment Abstraction
 
@@ -706,6 +733,62 @@ Phase D.6 adds invoice-level document attachments with tenant-scoped storage. At
 | API routes | `backend/src/api/routes/sales.routes.ts` |
 | Frontend API client | `frontend/src/api/salesApi.ts` |
 | Frontend UI | `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` |
+
+---
+
+## Sales Invoice responsive window layout (2026-06-07)
+
+The native Sales Invoice detail page is used both as a normal route and inside Windows-mode MDI frames. The page must not assume full desktop height because Sales Invoice windows can be resized smaller than their default `1100x750` opening size.
+
+### Layout rule
+
+- The page keeps a single reliable vertical scroll surface for normal laptop and resized-window layouts.
+- On wide normal-route layouts, the invoice side rail remains pinned by default and can be hidden with the rail toggle.
+- In Windows mode, or below the rail breakpoint, the side rail is removed from the workspace grid automatically and opens as an edge-triggered drawer instead of pushing invoice fields over each other.
+- In RTL languages, the rail controls are direction-aware: the pinned rail sits on the left, the inline hide button stays on the rail's inner edge, and the drawer/edge trigger opens from the left instead of using the LTR right edge.
+- The line-items table stays horizontally scrollable instead of forcing the whole page wider.
+- The Account Ledger and Financial Taxes Allocation Grid no longer renders mocked ledger rows, and the old Charge / Account Name table is removed from the Sales Invoice page until the controlled allocation contract is implemented.
+- Invoice totals remain in the side rail, and a compact duplicate subtotal/tax/grand-total strip is always rendered in the sticky footer so totals remain visible even when the rail is hidden or opened as a drawer.
+- The footer remains visible as an action area, while the main workspace scrolls inside the remaining available height.
+
+### Accounting impact
+
+These Sales Invoice UI changes do not change invoice totals, tax calculation, posting, approval, period-lock, settlement, AR, inventory, or ledger behavior.
+
+### Key file
+
+| Layer | File |
+|---|---|
+| Frontend UI | `frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` |
+
+---
+
+## Native Sales document detail parity (2026-06-08)
+
+Sales Order, Delivery Note, and Sales Return detail pages now render through the shared Sales Invoice-style document scaffold at `frontend/src/components/shared/DocumentDetailScaffold.tsx`. The scaffold owns the common page skeleton: compact topbar, document/status pills, full-height scroll workspace, optional responsive side rail, edge-triggered rail drawer, and persistent footer summary/actions. The scaffold rail controls are also RTL-aware, so Arabic layouts mirror the rail edge, drawer side, inner hide button, and back-arrow direction.
+
+Document pages supply only their business-specific slots. Customer-facing Sales documents keep customer selectors and Sales flow controls; Delivery Notes keep stock delivery/warehouse quantity and cost summary; Sales Returns keep return context, credit-note/refund settlement, restocking-fee, source lines, GL Impact, and audit controls.
+
+### Detail-page footer rules
+
+- Sales Order shows a sticky subtotal / tax / grand-total strip beside draft/confirm/downstream actions.
+- Delivery Note shows a sticky delivery summary (line count, delivered quantity, base cost) beside post, return, GL Impact, and history actions.
+- Sales Return shows a sticky return summary (subtotal, tax, settlement, grand total) beside edit/post/GL Impact/history actions.
+- Sales Return creation also keeps the Create Draft action pinned so long source/line sections do not hide the primary save action.
+- All three pages use the same shared route shell pattern instead of each page owning a separate topbar/footer implementation.
+
+### Accounting impact
+
+These changes are UI/layout only. They do not change Sales Order commercial calculations, Delivery Note stock movement or COGS logic, Sales Return settlement/tax/revenue-reversal logic, approval, period-lock, posting, AR, inventory valuation, or ledger behavior.
+
+### Key files
+
+| Layer | File |
+|---|---|
+| Frontend UI | `frontend/src/modules/sales/pages/SalesOrderDetailPage.tsx` |
+| Frontend UI | `frontend/src/modules/sales/pages/DeliveryNoteDetailPage.tsx` |
+| Frontend UI | `frontend/src/modules/sales/pages/SalesReturnDetailPage.tsx` |
+| Shared UI | `frontend/src/components/shared/DocumentDetailScaffold.tsx` |
 
 ---
 

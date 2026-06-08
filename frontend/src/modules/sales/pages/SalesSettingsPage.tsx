@@ -207,6 +207,7 @@ const SalesSettingsPage: React.FC = () => {
       setSaving(true);
       const payload: Partial<SalesSettingsDTO> = {
         workflowMode: settings.workflowMode,
+        showOperationalDocsInSimple: settings.showOperationalDocsInSimple === true,
         allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
         requireSOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requireSOForStockItems,
         arParentAccountId: settings.arParentAccountId || undefined,
@@ -216,6 +217,7 @@ const SalesSettingsPage: React.FC = () => {
         defaultRefundAccountId: settings.defaultRefundAccountId || undefined,
         restockingFeeAccountId: settings.restockingFeeAccountId || undefined,
         allowOverDelivery: settings.allowOverDelivery,
+        allowOverpayment: settings.allowOverpayment,
         overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
         defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
@@ -388,6 +390,26 @@ const SalesSettingsPage: React.FC = () => {
                         When off, BLOCK policy is absolute — no one can bypass it. Requires the{' '}
                         <code className="rounded bg-slate-100 px-1">sales.creditOverride</code> permission
                         when on (Owner always allowed).
+                      </span>
+                    </span>
+                  </label>
+                  <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      checked={settings.allowOverpayment === true}
+                      onChange={(e) =>
+                        setSettings((prev) =>
+                          prev ? { ...prev, allowOverpayment: e.target.checked } : prev
+                        )
+                      }
+                    />
+                    <span className="text-xs">
+                      <span className="font-semibold text-gray-900">
+                        Allow over-payment
+                      </span>
+                      <span className="ml-1 text-gray-500">
+                        When on, a receipt may exceed the invoice total. The extra becomes a credit on the customer's account (their AR balance goes negative) and offsets their future invoices.
                       </span>
                     </span>
                   </label>

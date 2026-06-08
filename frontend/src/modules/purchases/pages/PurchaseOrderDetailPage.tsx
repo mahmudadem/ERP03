@@ -20,6 +20,14 @@ import { CurrencyExchangeWidget } from '../../accounting/components/shared/Curre
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { FileText } from 'lucide-react';
+import {
+  DocumentDetailScaffold,
+  DocumentFooterTotalsStrip,
+  DocumentPill,
+  DocumentRailCard,
+  DocumentRailStat,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -535,19 +543,156 @@ const PurchaseOrderDetailPage: React.FC = () => {
     );
   }
 
-  return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {form.orderNumber || 'New Purchase Order'}
-          </h1>
-          <p className="text-sm text-slate-600">Commercial document only. No inventory or accounting effects in Phase 1.</p>
+  const footerSummary = (
+    <DocumentFooterTotalsStrip
+      totals={[
+        { label: 'Subtotal', value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+        { label: 'Tax', value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: 'Grand', value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+      ]}
+    />
+  );
+
+  const footerActions = (
+    <>
+      {isDraft && (
+        <>
+          <button
+            type="button"
+            className="rounded bg-slate-800 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700"
+            onClick={saveOrder}
+            disabled={saving || actionBusy}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            type="button"
+            className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            onClick={confirmOrder}
+            disabled={saving || actionBusy}
+          >
+            Confirm
+          </button>
+          <button
+            type="button"
+            className="rounded border border-rose-300 bg-rose-50/50 px-4 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100/50 disabled:opacity-50"
+            onClick={deleteDraft}
+            disabled={saving || actionBusy}
+          >
+            Delete
+          </button>
+        </>
+      )}
+
+      {!isDraft && (canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
+        <>
+          {canReceiveGoods && (
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => navigate(`/purchases/goods-receipts/new?${downstreamActionQuery}`)}
+              disabled={!form.id}
+            >
+              Receive Goods
+            </button>
+          )}
+          {canCreateInvoice && (
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => navigate(`/purchases/invoices/new?${downstreamActionQuery}`)}
+              disabled={!form.id}
+            >
+              Create Invoice
+            </button>
+          )}
+          {canCancelOrder && (
+            <button
+              type="button"
+              className="rounded border border-rose-300 bg-rose-50/50 px-4 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100/50 disabled:opacity-50"
+              onClick={cancelOrder}
+              disabled={saving || actionBusy}
+            >
+              Cancel
+            </button>
+          )}
+          {canCloseOrder && (
+            <button
+              type="button"
+              className="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+              onClick={closeOrder}
+              disabled={saving || actionBusy}
+            >
+              Close
+            </button>
+          )}
+        </>
+      )}
+
+      {!isDraft && !(canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
+        <span className="text-xs font-semibold text-slate-500">This purchase order is read-only in status: {form.status}.</span>
+      )}
+    </>
+  );
+
+  const sideRail = (
+    <>
+      <DocumentRailCard title="Order Totals">
+        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
+          <DocumentRailStat label={`Subtotal (${form.currency})`} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
+          <DocumentRailStat label="Subtotal Base" value={totals.subtotalBase.toFixed(2)} />
+          <DocumentRailStat label={`Tax (${form.currency})`} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
+          <DocumentRailStat label="Tax Base" value={totals.taxTotalBase.toFixed(2)} tone="blue" />
+          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+            <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
+              {form.currency} {totals.grandTotalDoc.toFixed(2)}
+            </div>
+            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} base</div>
+          </div>
         </div>
-        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(form.status)}`}>
+      </DocumentRailCard>
+
+      <DocumentRailCard title="Procurement Status">
+        <div className="space-y-1.5 p-2.5 text-xs">
+          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <span className="font-bold text-slate-600 dark:text-slate-300">Lines</span>
+            <span className="font-mono font-black text-slate-900 dark:text-slate-100">{form.lines.length}</span>
+          </div>
+          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <span className="font-bold text-slate-600 dark:text-slate-300">Vendor</span>
+            <span className="max-w-[160px] truncate font-black text-slate-900 dark:text-slate-100">
+              {form.vendorName || '-'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <span className="font-bold text-slate-600 dark:text-slate-300">Workflow</span>
+            <DocumentPill tone={isDraft ? 'slate' : form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
+              {form.status}
+            </DocumentPill>
+          </div>
+        </div>
+      </DocumentRailCard>
+    </>
+  );
+
+  return (
+    <DocumentDetailScaffold
+      title={form.orderNumber || 'New Purchase Order'}
+      subtitle="Commercial purchase document. Inventory and accounting effects occur in later documents."
+      icon={FileText}
+      backLabel="Back to purchase orders"
+      onBack={() => navigate('/purchases/orders')}
+      badges={
+        <DocumentPill tone={form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : form.status === 'CANCELLED' ? 'rose' : 'slate'}>
           {form.status}
-        </span>
-      </div>
+        </DocumentPill>
+      }
+      sideRail={sideRail}
+      railTitle="Purchase order side rail"
+      footerSummary={footerSummary}
+      footerActions={footerActions}
+    >
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
@@ -773,42 +918,6 @@ const PurchaseOrderDetailPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-5">
-        <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Totals</h3>
-        <div className="grid gap-2 text-sm md:grid-cols-2">
-          <div className="flex justify-between">
-            <span className="text-slate-600">Subtotal ({form.currency})</span>
-            <span className="font-medium">
-              {form.currency} {totals.subtotalDoc.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Subtotal (Base)</span>
-            <span className="font-medium">{totals.subtotalBase.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Tax ({form.currency})</span>
-            <span className="font-medium">
-              {form.currency} {totals.taxTotalDoc.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Tax (Base)</span>
-            <span className="font-medium">{totals.taxTotalBase.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between border-t border-slate-200 pt-2">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total ({form.currency})</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100">
-              {form.currency} {totals.grandTotalDoc.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between border-t border-slate-200 pt-2">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total (Base)</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100">{totals.grandTotalBase.toFixed(2)}</span>
-          </div>
-        </div>
-      </Card>
-
       {!isCreateMode && form.id && (
         <Card className="p-5">
           <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Linked Documents</h3>
@@ -865,86 +974,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         </Card>
       )}
 
-      <Card className="p-5">
-        {isDraft && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={saveOrder}
-              disabled={saving || actionBusy}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={confirmOrder}
-              disabled={saving || actionBusy}
-            >
-              Confirm
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700 disabled:opacity-50"
-              onClick={deleteDraft}
-              disabled={saving || actionBusy}
-            >
-              Delete
-            </button>
-          </div>
-        )}
-
-        {!isDraft && (canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
-          <div className="flex flex-wrap gap-2">
-            {canReceiveGoods && (
-              <button
-                type="button"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-                onClick={() => navigate(`/purchases/goods-receipts/new?${downstreamActionQuery}`)}
-                disabled={!form.id}
-              >
-                Receive Goods
-              </button>
-            )}
-            {canCreateInvoice && (
-              <button
-                type="button"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-                onClick={() => navigate(`/purchases/invoices/new?${downstreamActionQuery}`)}
-                disabled={!form.id}
-              >
-                Create Invoice
-              </button>
-            )}
-            {canCancelOrder && (
-              <button
-                type="button"
-                className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700 disabled:opacity-50"
-                onClick={cancelOrder}
-                disabled={saving || actionBusy}
-              >
-                Cancel
-              </button>
-            )}
-            {canCloseOrder && (
-              <button
-                type="button"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                onClick={closeOrder}
-                disabled={saving || actionBusy}
-              >
-                Close
-              </button>
-            )}
-          </div>
-        )}
-
-        {!isDraft && !(canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
-          <div className="text-sm text-slate-500">This purchase order is read-only in status: {form.status}.</div>
-        )}
-      </Card>
-    </div>
+    </DocumentDetailScaffold>
   );
 };
 

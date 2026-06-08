@@ -82,11 +82,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   }, [sections, searchQuery]);
 
   const isTailwindPlayTheme = appearanceSettings?.id === 'tailwind-play';
-  const isAccordionMode = sidebarMode === 'submenus';
+  const isFlyoutMode = sidebarMode === 'submenus';
 
-  // Determine classes based on mode (accordion vs flat) and screen sizes
+  // Determine classes based on mode (flyout vs accordion) and screen sizes
   let asideClasses: string[] = [];
-  if (isAccordionMode) {
+  if (isFlyoutMode) {
+    // Flyout Mode: has a persistent narrow icon-strip on desktop when closed
+    if (isDesktop) {
+      asideClasses = [
+        "top-12 bottom-0 z-30",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        isOpen ? "w-[var(--app-sidebar-width)]" : "w-20",
+        "translate-x-0",
+      ];
+    } else {
+      // Mobile: standard slide-over drawer
+      asideClasses = [
+        "top-0 bottom-0 z-50",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        "w-56 shadow-2xl",
+        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
+      ];
+    }
+  } else {
+    // Accordion Mode: either fully shown or fully hidden (no narrow strip when closed)
     if (isPinnedAndDocked) {
       asideClasses = [
         "top-12 bottom-0 z-30",
@@ -95,28 +114,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
         isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
       ];
     } else {
+      // Mobile or unpinned overlay: standard overlay drawer
       asideClasses = [
         "top-0 bottom-0 z-50",
         isRtl ? "right-0 border-l" : "left-0 border-r",
-        "w-64 shadow-2xl",
-        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
-      ];
-    }
-  } else {
-    // Flat Mode (not accordion): persistent narrow icon-strip on desktop when closed
-    if (isDesktop) {
-      asideClasses = [
-        "top-12 bottom-0 z-30",
-        isRtl ? "right-0 border-l" : "left-0 border-r",
-        isOpen ? "w-64" : "w-24",
-        "translate-x-0",
-      ];
-    } else {
-      // Mobile: standard overlay drawer
-      asideClasses = [
-        "top-0 bottom-0 z-50",
-        isRtl ? "right-0 border-l" : "left-0 border-r",
-        "w-64 shadow-2xl",
+        "w-72 shadow-2xl",
         isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
       ];
     }

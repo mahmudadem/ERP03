@@ -10,6 +10,66 @@
 
 ## 🧪 Ready to Test
 
+### Sales/Purchases - Document UI Parity
+**Added by:** Codex (report 191)
+**What to test:**
+- Open Sales -> Returns.
+  - Expected: list uses the same layout style as Sales Invoices, with quick status pills, search, customer/context/status/date filters, row actions, company date formatting, centered cells, and pagination.
+- Open Sales Order, Delivery Note, and Sales Return detail pages.
+  - Expected: pages use the shared Sales Invoice-style document scaffold: compact topbar, document icon/status pills, full-height scroll workspace, responsive right rail, and persistent footer.
+  - Expected: the right rail shows SO totals/status, DN delivery quantity/cost/source, and SR return totals/settlement/source context.
+  - Expected: footer actions stay visible while scrolling and the rail can be hidden/restored or opened from the edge on smaller windows.
+- Open Purchases -> Purchase Orders detail.
+  - Expected: page uses the shared Sales Invoice-style document scaffold with right rail and footer actions visible with subtotal/tax/grand total.
+- Open Purchases -> Invoices -> New.
+  - Expected: page uses the shared Sales Invoice-style document scaffold with persistent footer.
+  - Expected: inside the page, PI follows the Sales Invoice anatomy: source controls, compact source-aware header, line table, allocation grid placeholder, attachments/audit shortcuts, and right rail cards ordered Info -> Posting Readiness -> Settlement -> Totals.
+  - Expected: the Vendor picker is vendor-only, not a generic customer/vendor selector.
+  - Expected: PO Reference is a dropdown of real purchase orders, not a typed ID field.
+  - Expected: selecting a PO loads open lines and pre-fills vendor/currency data.
+- Open a posted Purchase Invoice.
+  - Expected: page uses the shared Sales Invoice-style document scaffold and the same PI internal anatomy as the new/edit screen, with read-only header fields, line table, allocation grid placeholder, attachments/audit shortcuts, and Info/Document Status/Settlement/Totals rail.
+  - Expected: sticky footer shows subtotal/tax/grand total/outstanding and keeps payment/return/unpost actions reachable.
+
+**Known limitations:**
+- This is UI/data-entry parity only. It does not change posting, tax, settlement, AP/AR, inventory valuation, approval, period-lock, COGS, or ledger behavior.
+- Visual QA should be repeated in both Classic and Windows mode to confirm sticky footers do not cover important fields in small windows.
+- SO, DN, SR, and PO still need a follow-up internal-anatomy audit against Sales Invoice; this QA item now specifically expects PI to match the SI body/rail structure.
+- Browser screenshot QA was not completed because the in-app Browser navigation/screenshot tool was not exposed in this session.
+
+---
+
+### Sales - Invoices List Filter Polish
+**Added by:** Codex (report 190)
+**What to test:**
+- Open Sales -> Invoices.
+- Confirm Type, Status, and Payment filters show placeholder-style neutral text.
+- Confirm the date range defaults from fiscal-year beginning through today and displays in the company date format.
+- Confirm table cell content is centered.
+- Confirm Pending Approval stays on one line in both the quick status pills and the Status column.
+
+---
+
+### Sales - Invoice Responsive Window Layout
+**Added by:** Codex (report 187)
+**What to test:**
+- Sign in with an active company.
+- Open `/#/sales/invoices/new` in normal web mode.
+  - Expected: the Sales Invoice header, line items, allocation grid, attachments/audit shortcuts, right-side information panels, settlement, totals, and footer actions are reachable.
+  - Expected on a wide screen: the side rail is pinned by default, can be hidden, and can be restored from the small edge button.
+- Switch to Windows mode and open a Sales Invoice window from the Sales Invoices list.
+- Resize the invoice window smaller than its default `1100x750` size.
+  - Expected: page content scrolls vertically inside the available window area instead of hiding sections.
+  - Expected: the side rail does not push over invoice fields; it opens from the edge button as a drawer.
+  - Expected: wide line-item/allocation tables scroll horizontally inside their table area.
+  - Expected: footer actions such as Close/Save/Post remain reachable.
+
+**Known limitations:**
+- This is a layout-only fix. It does not change posting, taxes, totals, settlement, approval, period-lock, inventory, or ledger behavior.
+- Automated visual screenshot QA was not completed because the in-app Browser tool was unavailable and Playwright is not installed.
+
+---
+
 ### Navigation - Apex Route Coverage Gap Audit
 **Added by:** Codex (report 179)
 **What to test:**
@@ -25,11 +85,33 @@
   - `/#/dev/apex-ledger/accounting/tools/budgets`
   - `/#/dev/apex-ledger/accounting/tools/subgroup-tagging`
   - `/#/dev/apex-ledger/tools/forms`
+- Specifically click these Apex sidebar entries that previously had stale URLs:
+  - Sales Analytics -> `/#/dev/apex-ledger/sales/reports/sales-analytics`
+  - Aged Backlog -> `/#/dev/apex-ledger/sales/aged-backlog`
+  - Sales Voucher Designer -> `/#/dev/apex-ledger/sales/tools/voucher-designer`
+  - Purchases Analytics -> `/#/dev/apex-ledger/purchases/reports/purchases-analytics`
+  - Purchases Voucher Designer -> `/#/dev/apex-ledger/purchases/tools/voucher-designer`
+  - Low Stock Alerts -> `/#/dev/apex-ledger/inventory/alerts/low-stock`
+  - Unsettled Costs -> `/#/dev/apex-ledger/inventory/reports/unsettled-costs`
+  - Inventory Valuation -> `/#/dev/apex-ledger/inventory/reports/valuation`
+- Open representative remaining route groups directly where your role has access:
+  - `/#/dev/apex-ledger/companies`
+  - `/#/dev/apex-ledger/notifications`
+  - `/#/dev/apex-ledger/companyAdmin/setup`
+  - `/#/dev/apex-ledger/hr/employees`
+  - `/#/dev/apex-ledger/pos`
+  - `/#/dev/apex-ledger/super-admin`
+  - `/#/dev/apex-ledger/company-wizard`
+  - `/#/dev/apex-ledger/crm/leads`
+  - `/#/dev/apex-ledger/manufacturing/work-orders`
+  - `/#/dev/apex-ledger/projects`
+  - `/#/dev/apex-ledger/canvas-dev`
 - Expected: each page renders inside Apex with the Apex sidebar and topbar still visible.
 - Expected: protected pages keep the same permission/module behavior as the main shell.
 
 **Known limitations:**
-- Super Admin routes are not included in tenant Apex shell cutover. Treat Super Admin as a separate shell decision.
+- This verifies route continuity only. Some pages still use their native/basic visual design inside Apex.
+- Super Admin routes now stay inside Apex, but platform-role QA is still required before default-shell cutover.
 
 ---
 

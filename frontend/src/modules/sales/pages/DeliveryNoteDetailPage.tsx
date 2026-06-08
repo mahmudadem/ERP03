@@ -18,6 +18,14 @@ import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, Manage
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
+import { Truck } from 'lucide-react';
+import {
+  DocumentDetailScaffold,
+  DocumentFooterTotalsStrip,
+  DocumentPill,
+  DocumentRailCard,
+  DocumentRailStat,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -515,25 +523,68 @@ const DeliveryNoteDetailPage: React.FC = () => {
   }
 
   if (isCreateMode || isEditing) {
-    return (
-      <div className="space-y-6 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {isEditing
-                ? t('sales.dnDetail.editTitle', 'Edit Delivery Note')
-                : t('sales.dnDetail.newTitle', 'New Delivery Note')}
-            </h1>
-            {isEditing && deliveryNote && <StatusChip status={deliveryNote.status} type="dn" />}
+    const draftFooterSummary = (
+      <DocumentFooterTotalsStrip
+        totals={[
+          { label: 'Draft', value: `${form.lines.length} lines` },
+          { label: 'Source', value: form.salesOrderId ? 'From SO' : 'Direct', tone: form.salesOrderId ? 'blue' : 'slate' },
+        ]}
+      />
+    );
+
+    const draftSideRail = (
+      <>
+        <DocumentRailCard title="Delivery Draft">
+          <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
+            <DocumentRailStat label="Lines" value={form.lines.length} />
+            <DocumentRailStat label="Source" value={form.salesOrderId ? 'Sales Order' : 'Direct'} tone={form.salesOrderId ? 'blue' : 'slate'} />
+            <DocumentRailStat label="Delivery Date" value={form.deliveryDate || '-'} />
+            <DocumentRailStat label="Warehouse" value={warehouseLabelById[form.warehouseId] || form.warehouseId || '-'} />
           </div>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => (isEditing ? cancelEdit() : navigate('/sales/delivery-notes'))}
-          >
-            {isEditing ? t('sales.dnDetail.cancel', 'Cancel') : t('sales.dnDetail.backToList', 'Back to List')}
-          </button>
-        </div>
+        </DocumentRailCard>
+      </>
+    );
+
+    return (
+      <DocumentDetailScaffold
+        title={isEditing ? t('sales.dnDetail.editTitle', 'Edit Delivery Note') : t('sales.dnDetail.newTitle', 'New Delivery Note')}
+        subtitle="Stock delivery document. Posting can move inventory and, in perpetual mode, COGS."
+        icon={Truck}
+        backLabel="Back to delivery notes"
+        onBack={() => (isEditing ? cancelEdit() : navigate('/sales/delivery-notes'))}
+        badges={isEditing && deliveryNote ? <DocumentPill tone="slate">{deliveryNote.status}</DocumentPill> : <DocumentPill tone="slate">Draft</DocumentPill>}
+        sideRail={draftSideRail}
+        railTitle="Delivery note side rail"
+        footerSummary={draftFooterSummary}
+        footerActions={
+          <>
+            <button
+              type="button"
+              className="rounded bg-primary-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              onClick={isEditing ? saveEdits : createDraft}
+              disabled={busy || orderLineLoading}
+            >
+              {busy
+                ? isEditing
+                  ? t('sales.dnDetail.saving', 'Saving...')
+                  : t('sales.dnDetail.creating', 'Creating...')
+                : isEditing
+                  ? t('sales.dnDetail.saveChanges', 'Save Changes')
+                  : t('sales.dnDetail.createDraft', 'Create Draft Delivery Note')}
+            </button>
+            {isEditing && (
+              <button
+                type="button"
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                onClick={cancelEdit}
+                disabled={busy}
+              >
+                {t('sales.dnDetail.cancel', 'Cancel')}
+              </button>
+            )}
+          </>
+        }
+      >
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
@@ -748,33 +799,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
           </Card>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            onClick={isEditing ? saveEdits : createDraft}
-            disabled={busy || orderLineLoading}
-          >
-            {busy
-              ? isEditing
-                ? t('sales.dnDetail.saving', 'Saving...')
-                : t('sales.dnDetail.creating', 'Creating...')
-              : isEditing
-                ? t('sales.dnDetail.saveChanges', 'Save Changes')
-                : t('sales.dnDetail.createDraft', 'Create Draft Delivery Note')}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              onClick={cancelEdit}
-              disabled={busy}
-            >
-              {t('sales.dnDetail.cancel', 'Cancel')}
-            </button>
-          )}
-        </div>
-      </div>
+      </DocumentDetailScaffold>
     );
   }
 
@@ -789,21 +814,117 @@ const DeliveryNoteDetailPage: React.FC = () => {
 
   const canCreateReturn = deliveryNote.status === 'POSTED' && !!settings?.requireSOForStockItems;
   const createReturnHref = `/sales/returns/new?deliveryNoteId=${encodeURIComponent(deliveryNote.id)}${deliveryNote.salesOrderId ? `&salesOrderId=${encodeURIComponent(deliveryNote.salesOrderId)}` : ''}`;
+  const deliveredQtyTotal = deliveryNote.lines.reduce((sum, line) => sum + (line.deliveredQty || 0), 0);
+  const lineCostBaseTotal = deliveryNote.lines.reduce((sum, line) => sum + (line.lineCostBase || 0), 0);
+  const viewFooterSummary = (
+    <DocumentFooterTotalsStrip
+      totals={[
+        { label: 'Lines', value: deliveryNote.lines.length },
+        { label: 'Qty', value: deliveredQtyTotal.toFixed(2), tone: 'blue' },
+        { label: 'Cost Base', value: lineCostBaseTotal.toFixed(2), tone: 'green' },
+      ]}
+    />
+  );
+  const viewSideRail = (
+    <>
+      <DocumentRailCard title="Delivery Summary">
+        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
+          <DocumentRailStat label="Lines" value={deliveryNote.lines.length} />
+          <DocumentRailStat label="Delivered Qty" value={deliveredQtyTotal.toFixed(2)} tone="blue" />
+          <DocumentRailStat label="Cost Base" value={lineCostBaseTotal.toFixed(2)} tone="green" />
+          <DocumentRailStat label="Warehouse" value={warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-'} />
+        </div>
+      </DocumentRailCard>
+      <DocumentRailCard title="Source">
+        <div className="space-y-1.5 p-2.5 text-xs">
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Customer</div>
+            <div className="truncate font-black text-slate-900 dark:text-slate-100">{deliveryNote.customerName}</div>
+          </div>
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Sales Order</div>
+            <div className="truncate font-black text-slate-900 dark:text-slate-100">
+              {deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '-'}
+            </div>
+          </div>
+        </div>
+      </DocumentRailCard>
+    </>
+  );
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{deliveryNote.dnNumber}</h1>
-          <p className="text-sm text-slate-600">
-            Customer: <span className="font-medium">{deliveryNote.customerName}</span>
-            {deliveryNote.salesOrderId
-              ? ` • SO: ${salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId}`
-              : ''}
-          </p>
-        </div>
-        <StatusChip status={deliveryNote.status} type="dn" className="w-fit" />
-      </div>
+    <>
+    <DocumentDetailScaffold
+      title={deliveryNote.dnNumber}
+      subtitle={`Customer: ${deliveryNote.customerName}${deliveryNote.salesOrderId ? ` | SO: ${salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId}` : ''}`}
+      icon={Truck}
+      backLabel="Back to delivery notes"
+      onBack={() => navigate('/sales/delivery-notes')}
+      badges={
+        <DocumentPill tone={deliveryNote.status === 'POSTED' ? 'green' : deliveryNote.status === 'CANCELLED' ? 'rose' : 'slate'}>
+          {deliveryNote.status}
+        </DocumentPill>
+      }
+      sideRail={viewSideRail}
+      railTitle="Delivery note side rail"
+      footerSummary={viewFooterSummary}
+      footerActions={
+        <>
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            onClick={() => navigate('/sales/delivery-notes')}
+          >
+            Back to List
+          </button>
+          {deliveryNote.status === 'DRAFT' && (
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              onClick={beginEdit}
+              disabled={busy}
+            >
+              {t('sales.dnDetail.edit', 'Edit')}
+            </button>
+          )}
+          {deliveryNote.status === 'DRAFT' && (
+            <button
+              type="button"
+              className="rounded bg-primary-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              onClick={() => postDraft()}
+              disabled={busy}
+            >
+              {busy ? t('sales.dnDetail.posting', 'Posting...') : t('sales.dnDetail.post', 'Post Delivery Note')}
+            </button>
+          )}
+          {canCreateReturn && (
+            <button
+              type="button"
+              className="rounded border border-amber-300 bg-amber-50/50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100/50"
+              onClick={() => navigate(createReturnHref)}
+            >
+              Create Return
+            </button>
+          )}
+          {deliveryNote.status === 'POSTED' && (
+            <button
+              type="button"
+              className="rounded border border-violet-300 bg-white px-4 py-2 text-xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
+              onClick={() => setGlImpactOpen(true)}
+            >
+              GL Impact
+            </button>
+          )}
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            onClick={() => setAuditModalOpen(true)}
+          >
+            History
+          </button>
+        </>
+      }
+    >
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
@@ -909,60 +1030,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         );
       })()}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => navigate('/sales/delivery-notes')}
-        >
-          Back to List
-        </button>
-        {deliveryNote.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            onClick={beginEdit}
-            disabled={busy}
-          >
-            {t('sales.dnDetail.edit', 'Edit')}
-          </button>
-        )}
-        {deliveryNote.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            onClick={() => postDraft()}
-            disabled={busy}
-          >
-            {busy ? t('sales.dnDetail.posting', 'Posting...') : t('sales.dnDetail.post', 'Post Delivery Note')}
-          </button>
-        )}
-        {canCreateReturn && (
-          <button
-            type="button"
-            className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700"
-            onClick={() => navigate(createReturnHref)}
-          >
-            Create Return
-          </button>
-        )}
-        {deliveryNote.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
-            onClick={() => setGlImpactOpen(true)}
-          >
-            GL Impact
-          </button>
-        )}
-        <button
-          type="button"
-          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-          onClick={() => setAuditModalOpen(true)}
-        >
-          History
-        </button>
-      </div>
+    </DocumentDetailScaffold>
 
       <GlImpactModal
         isOpen={glImpactOpen}
@@ -991,7 +1059,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         entityType="DELIVERY_NOTE"
         entityId={deliveryNote.id}
       />
-    </div>
+    </>
   );
 };
 

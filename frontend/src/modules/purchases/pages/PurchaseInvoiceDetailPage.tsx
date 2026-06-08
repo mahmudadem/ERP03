@@ -6,6 +6,7 @@ import {
   CreatePurchaseInvoicePayload,
   PurchaseInvoiceAttachmentDTO,
   PurchaseInvoiceDTO,
+  PurchaseInvoiceLineDTO,
   PurchaseInvoiceLineInputDTO,
   PurchaseOrderDTO,
   PurchaseSettingsDTO,
@@ -21,7 +22,38 @@ import { CurrencyExchangeWidget } from '../../accounting/components/shared/Curre
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { clsx } from 'clsx';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  History,
+  Info,
+  Link2,
+  Paperclip,
+  ShieldCheck,
+  Upload,
+} from 'lucide-react';
+import {
+  DocumentCompactCard,
+  DocumentControlPanel,
+  DocumentDetailScaffold,
+  DocumentEmptyPanel,
+  DocumentField,
+  DocumentFooterTotalsStrip,
+  DocumentIconButton,
+  DocumentLinesRegion,
+  DocumentPill,
+  DocumentRailCard,
+  DocumentRailStat,
+  DocumentSecondaryPanel,
+  DocumentSegmentButton,
+  DocumentSegmentedGroup,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -111,10 +143,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [invoice, setInvoice] = useState<PurchaseInvoiceDTO | null>(null);
   const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [vendors, setVendors] = useState<PartyDTO[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialPurchaseOrderId, initialVendorId));
+  const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'po'>(initialPurchaseOrderId ? 'po' : 'direct');
   const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
 
   const [loading, setLoading] = useState(true);
@@ -141,6 +175,15 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         return acc;
       }, {}),
     [vendors]
+  );
+
+  const invoiceablePurchaseOrders = useMemo(
+    () =>
+      purchaseOrders.filter((order) =>
+        ['CONFIRMED', 'PARTIALLY_RECEIVED', 'FULLY_RECEIVED'].includes(order.status) ||
+        order.id === form.purchaseOrderId
+      ),
+    [form.purchaseOrderId, purchaseOrders]
   );
 
   const itemById = useMemo(
@@ -246,9 +289,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   };
 
   const loadReferenceData = async () => {
-    const [settingsResult, vendorResult, itemResult, taxResult, warehouseResult] = await Promise.all([
+    const [settingsResult, vendorResult, orderResult, itemResult, taxResult, warehouseResult] = await Promise.all([
       purchasesApi.getSettings(),
       sharedApi.listParties({ role: 'VENDOR', active: true }),
+      purchasesApi.listPOs({ limit: 500 }).catch(() => []),
       inventoryApi.listItems({ active: true, limit: 500 }),
       sharedApi.listTaxCodes({ active: true }),
       inventoryApi.listWarehouses({ active: true }),
@@ -256,12 +300,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
     const currentSettings = unwrap<PurchaseSettingsDTO | null>(settingsResult);
     const vendorList = unwrap<PartyDTO[]>(vendorResult);
+    const orderList = unwrap<PurchaseOrderDTO[]>(orderResult);
     const itemList = unwrap<InventoryItemDTO[]>(itemResult);
     const taxCodeList = unwrap<TaxCodeDTO[]>(taxResult);
     const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
 
     setSettings(currentSettings);
     setVendors(Array.isArray(vendorList) ? vendorList : []);
+    setPurchaseOrders(Array.isArray(orderList) ? orderList : []);
     setItems(Array.isArray(itemList) ? itemList : []);
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
     setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
@@ -669,6 +715,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         description: l.description,
       })),
     });
+    setRequestedSourceMode(invoice.purchaseOrderId ? 'po' : 'direct');
     setIsEditMode(true);
   };
 
@@ -851,123 +898,390 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   }
 
   if (isCreateMode || isEditMode) {
+    const baseCurrency = company?.baseCurrency || 'USD';
+    const activeSourceMode = form.purchaseOrderId || requestedSourceMode === 'po' ? 'po' : 'direct';
+    const selectedPurchaseOrder = form.purchaseOrderId
+      ? invoiceablePurchaseOrders.find((order) => order.id === form.purchaseOrderId)
+      : undefined;
+    const selectedVendorName =
+      selectedPurchaseOrder?.vendorName ||
+      vendorNameById[form.vendorId] ||
+      form.vendorName ||
+      '-';
+    const filledDraftLines = form.lines.filter((line) => line.itemId && line.invoicedQty > 0);
+    const draftHasVendor = !!form.vendorId;
+    const draftHasLines = filledDraftLines.length > 0;
+    const draftBalanced = totals.grandTotalDoc >= 0;
+    const draftTaxResolved = filledDraftLines.every((line) => !line.taxCodeId || !!taxById[line.taxCodeId]);
+    const draftAttachmentInputId = isCreateMode ? 'purchase-invoice-draft-attachment-input' : 'purchase-invoice-edit-attachment-input';
+    const draftAttachmentCount = invoice?.id ? attachments.length : pendingAttachmentFiles.length;
+    const headerLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
+    const headerFieldWrapperClass = 'min-w-0';
+    const headerControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+    const headerSelectorClass = 'h-9 [&>input]:h-9 [&>input]:rounded [&>input]:border-slate-300 [&>input]:py-0 [&>input]:text-xs dark:[&>input]:border-slate-700';
+
+    const draftFooterSummary = (
+      <DocumentFooterTotalsStrip
+        totals={[
+          { label: 'Subtotal', value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+          { label: 'Tax', value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+          { label: 'Grand', value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+        ]}
+      />
+    );
+    const draftSideRail = (
+      <>
+        <DocumentRailCard
+          title="Info"
+          action={<DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? 'PO' : 'Account'}</DocumentPill>}
+        >
+          <div className="flex min-h-[132px] flex-col gap-2 overflow-auto p-2.5 text-xs">
+            <div className="rounded border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
+              <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">
+                {form.purchaseOrderId ? selectedPurchaseOrder?.orderNumber || form.purchaseOrderId : 'Direct bill'}
+              </div>
+              <div className="mt-0.5 truncate text-sm font-black text-slate-900 dark:text-slate-100">
+                {selectedVendorName}
+              </div>
+              <div className="truncate text-[10px] font-semibold text-slate-500">
+                {form.vendorInvoiceNumber || 'Vendor invoice number not entered'}
+              </div>
+            </div>
+            <div className="rounded border border-blue-50 bg-blue-50/50 px-2 py-1.5 text-[11px] leading-relaxed text-blue-700 dark:border-blue-950/20 dark:bg-blue-950/10 dark:text-blue-300">
+              Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.
+            </div>
+          </div>
+        </DocumentRailCard>
+
+        <DocumentRailCard title="Posting Readiness">
+          <div className="space-y-1.5 p-2.5 text-xs">
+            <div className={clsx(
+              'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
+              draftHasVendor && draftHasLines && draftBalanced
+                ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
+                : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
+            )}>
+              {draftHasVendor && draftHasLines && draftBalanced ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+              )}
+              <span>Balanced AP posting preview</span>
+            </div>
+
+            <div className={clsx(
+              'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
+              draftTaxResolved
+                ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
+                : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
+            )}>
+              {draftTaxResolved ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+              )}
+              <span>Purchase tax accounts resolved</span>
+            </div>
+
+            <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
+              <Info className="h-4 w-4 shrink-0" />
+              <span>AP, inventory, and approval policy active</span>
+            </div>
+          </div>
+        </DocumentRailCard>
+
+        <SettlementBlock
+          variant="summary"
+          module="purchases"
+          mode={settlementMode}
+          rows={settlementRows}
+          partyAccountId={apAccountId}
+          partyAccountLabel={selectedVendorName || apAccountId}
+          outstandingBase={totals.grandTotalBase}
+        />
+
+        <DocumentRailCard title="Totals" action={<DocumentPill tone="slate">{form.currency}</DocumentPill>}>
+          <div className="space-y-1.5 p-2.5">
+            <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
+              <span className="font-bold text-slate-500">Subtotal</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
+              <span className="font-bold text-slate-500">Tax</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
+            </div>
+            <div className="rounded-lg border border-slate-950 bg-slate-900 px-3 py-2 text-white shadow-md dark:bg-slate-950">
+              <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+              <div className="mt-0.5 text-right font-mono text-xl font-black text-emerald-400">
+                {form.currency} {totals.grandTotalDoc.toFixed(2)}
+              </div>
+              {form.currency !== baseCurrency && (
+                <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1 text-[10px] font-bold text-slate-300">
+                  <span>Grand Total (Base)</span>
+                  <span className="font-mono">{baseCurrency} {totals.grandTotalBase.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </DocumentRailCard>
+      </>
+    );
+
     return (
-      <div className="space-y-6 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {isCreateMode ? 'New Purchase Invoice' : `Edit ${invoice?.invoiceNumber}`}
-          </h1>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/invoices'))}
-          >
-            {isEditMode ? 'Cancel' : 'Back to List'}
-          </button>
-        </div>
+      <DocumentDetailScaffold
+        title={isCreateMode ? 'New Purchase Invoice' : `Edit ${invoice?.invoiceNumber}`}
+        subtitle="Vendor bill document. Posting creates AP and purchase/inventory entries."
+        icon={FileText}
+        backLabel="Back to purchase invoices"
+        onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/invoices'))}
+        badges={
+          <>
+            <DocumentPill tone="slate">{isEditMode ? 'Edit Draft' : 'Draft'}</DocumentPill>
+            {activeSourceMode === 'po' && <DocumentPill tone="blue">From PO</DocumentPill>}
+          </>
+        }
+        sideRail={draftSideRail}
+        railTitle="Purchase invoice side rail"
+        footerSummary={draftFooterSummary}
+        footerActions={
+          <>
+            <button
+              type="button"
+              className="rounded bg-slate-800 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700"
+              onClick={saveInvoice}
+              disabled={busy || orderLineLoading}
+            >
+              {busy ? 'Saving...' : isCreateMode ? 'Save Draft' : 'Update Draft'}
+            </button>
+            {isCreateMode && (
+              <button
+                type="button"
+                className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                onClick={() => {
+                  const outstanding = roundMoney(totals.grandTotalBase);
+                  if (outstanding > 0.005) {
+                    setShowSettlement(true);
+                    setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+                  } else {
+                    setSettlementMode('DEFERRED');
+                    createAndPostDraft();
+                  }
+                }}
+                disabled={busy || orderLineLoading}
+              >
+                {busy ? 'Saving & Posting...' : 'Save & Post'}
+              </button>
+            )}
+          </>
+        }
+      >
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">PO Reference (optional)</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  value={form.purchaseOrderId}
-                  onChange={(e) => setForm((prev) => ({ ...prev, purchaseOrderId: e.target.value }))}
-                  placeholder="purchaseOrderId"
+        <DocumentControlPanel>
+          <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <DocumentSegmentedGroup>
+                <DocumentSegmentButton
+                  active={activeSourceMode === 'direct'}
+                  disabled={busy || orderLineLoading || isEditMode}
+                  icon={FileText}
+                  label="Direct"
+                  onClick={() => {
+                    setRequestedSourceMode('direct');
+                    setForm((prev) => ({ ...prev, purchaseOrderId: '' }));
+                  }}
                 />
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium disabled:opacity-50"
-                  onClick={() => loadPurchaseOrderLines(form.purchaseOrderId)}
-                  disabled={busy || orderLineLoading || !form.purchaseOrderId.trim()}
-                >
-                  {orderLineLoading ? 'Loading...' : 'Load PO Lines'}
-                </button>
-              </div>
+                <DocumentSegmentButton
+                  active={activeSourceMode === 'po'}
+                  disabled={busy || orderLineLoading || isEditMode}
+                  icon={Link2}
+                  label="From PO"
+                  onClick={() => setRequestedSourceMode('po')}
+                />
+              </DocumentSegmentedGroup>
+              <button
+                type="button"
+                disabled
+                className="inline-flex h-7 items-center gap-1.5 rounded border border-slate-200 bg-white px-2 text-[10px] font-black uppercase tracking-wide text-slate-500 disabled:cursor-default dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                {activeSourceMode === 'po' ? 'Pick PO in header' : 'Direct header driven'}
+              </button>
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Vendor</label>
-              <PartySelector 
-                value={form.vendorId}
-                onChange={(party) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    vendorId: party?.id || '',
-                    vendorName: party?.displayName || '',
-                    currency: party?.defaultCurrency || prev.currency,
-                  }));
-                }}
+
+            <div className="flex flex-wrap items-center justify-end gap-1.5 rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/50">
+              <input
+                id={draftAttachmentInputId}
+                type="file"
+                className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+                onChange={uploadAttachment}
+                disabled={attachmentBusy || (!invoice?.id && pendingAttachmentFiles.length >= MAX_ATTACHMENT_FILES)}
               />
+              <DocumentIconButton
+                title={t('purchases.invoices.attachments.upload', 'Upload Attachment')}
+                onClick={() => document.getElementById(draftAttachmentInputId)?.click()}
+                disabled={attachmentBusy || (!invoice?.id && pendingAttachmentFiles.length >= MAX_ATTACHMENT_FILES)}
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+              </DocumentIconButton>
+              <DocumentIconButton
+                title="Download Excel"
+                onClick={() => errorHandler.showWarning('Purchase invoice line export is not connected yet.')}
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+              </DocumentIconButton>
+              <DocumentIconButton
+                title="Upload from file"
+                onClick={() => errorHandler.showWarning('Purchase invoice file import is not connected yet.')}
+              >
+                <Upload className="h-3.5 w-3.5" />
+              </DocumentIconButton>
+              <DocumentIconButton
+                title="Read from image"
+                onClick={() => errorHandler.showWarning('Purchase invoice image reading is not connected yet.')}
+              >
+                <FileImage className="h-3.5 w-3.5" />
+              </DocumentIconButton>
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Vendor Invoice #</label>
+          </div>
+        </DocumentControlPanel>
+
+        <DocumentCompactCard
+          title={activeSourceMode === 'po' ? 'Header - From Purchase Order' : 'Header - Direct Bill'}
+          action={
+            <div className="flex items-center gap-1.5">
+              <DocumentPill tone={activeSourceMode === 'po' ? 'blue' : 'slate'}>
+                {activeSourceMode === 'po' ? 'From PO' : 'Direct'}
+              </DocumentPill>
+              <DocumentPill tone="slate">{form.currency}</DocumentPill>
+              {draftHasVendor && (
+                <DocumentPill tone="green">
+                  <ShieldCheck className="h-3 w-3" />
+                  AP Ready
+                </DocumentPill>
+              )}
+            </div>
+          }
+          className="overflow-visible"
+        >
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 p-3">
+            {activeSourceMode === 'po' ? (
+              <>
+                <div className={headerFieldWrapperClass}>
+                  <label className={headerLabelClass}>Purchase Order</label>
+                  <select
+                    className={headerControlClass}
+                    value={form.purchaseOrderId}
+                    onChange={(e) => {
+                      const nextOrderId = e.target.value;
+                      setRequestedSourceMode('po');
+                      if (!nextOrderId) {
+                        setForm((prev) => ({ ...prev, purchaseOrderId: '' }));
+                        return;
+                      }
+                      void loadPurchaseOrderLines(nextOrderId);
+                    }}
+                    disabled={busy || orderLineLoading || isEditMode}
+                  >
+                    <option value="">Select invoiceable purchase order...</option>
+                    {invoiceablePurchaseOrders.map((order) => (
+                      <option key={order.id} value={order.id}>
+                        {order.orderNumber} - {vendorNameById[order.vendorId] || order.vendorName} ({order.status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <DocumentField label="Vendor" value={selectedVendorName} locked />
+              </>
+            ) : (
+              <div className={headerFieldWrapperClass}>
+                <label className={headerLabelClass}>Vendor</label>
+                <PartySelector
+                  role="VENDOR"
+                  placeholder="Select vendor..."
+                  className={headerSelectorClass}
+                  value={form.vendorId}
+                  onChange={(party) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      vendorId: party?.id || '',
+                      vendorName: party?.displayName || '',
+                      currency: party?.defaultCurrency || prev.currency,
+                    }));
+                  }}
+                />
+              </div>
+            )}
+
+            <div className={headerFieldWrapperClass}>
+              <label className={headerLabelClass}>Vendor Invoice #</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={headerControlClass}
                 value={form.vendorInvoiceNumber}
                 onChange={(e) => setForm((prev) => ({ ...prev, vendorInvoiceNumber: e.target.value }))}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Invoice Date</label>
-              <DatePicker 
+
+            <div className={headerFieldWrapperClass}>
+              <label className={headerLabelClass}>Invoice Date</label>
+              <DatePicker
+                className="w-full"
+                inputClassName={clsx(headerControlClass, 'pr-8')}
                 value={form.invoiceDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Due Date (optional)</label>
-              <DatePicker 
+
+            <div className={headerFieldWrapperClass}>
+              <label className={headerLabelClass}>Due Date</label>
+              <DatePicker
+                className="w-full"
+                inputClassName={clsx(headerControlClass, 'pr-8')}
                 value={form.dueDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))}
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Currency</label>
+
+            <div className={headerFieldWrapperClass}>
+              <label className={headerLabelClass}>Currency</label>
               <CurrencySelector
+                className={headerSelectorClass}
                 value={form.currency}
                 onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
-                disabled={busy}
+                disabled={busy || activeSourceMode === 'po'}
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Exchange Rate</label>
-              <CurrencyExchangeWidget
-                currency={form.currency}
-                baseCurrency={company?.baseCurrency || 'USD'}
-                voucherDate={form.invoiceDate}
-                value={form.exchangeRate}
-                onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
-                disabled={busy}
+
+            <div className={headerFieldWrapperClass}>
+              <label className={headerLabelClass}>Exchange Rate</label>
+              <div className="[&>div]:h-9 [&>div]:rounded">
+                <CurrencyExchangeWidget
+                  currency={form.currency}
+                  baseCurrency={baseCurrency}
+                  voucherDate={form.invoiceDate}
+                  value={form.exchangeRate}
+                  onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+                  disabled={busy || activeSourceMode === 'po'}
+                />
+              </div>
+            </div>
+
+            <div className="min-w-0 md:col-span-2 xl:col-span-2">
+              <label className={headerLabelClass}>Notes</label>
+              <textarea
+                rows={1}
+                className={clsx(headerControlClass, 'h-9 resize-none py-2')}
+                value={form.notes}
+                onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
               />
             </div>
           </div>
+        </DocumentCompactCard>
 
-          <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
-            <textarea
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={form.notes}
-              onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-            />
-          </div>
-
-          <div className="mt-4 text-xs text-slate-500">
-            If PO reference is provided, you can load open order lines into this draft.
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <div className="mb-3">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-          </div>
-
+        <DocumentLinesRegion>
           <ClassicLineItemsTable<EditableLine>
             rows={form.lines}
             disabled={busy}
@@ -1098,102 +1412,111 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 compute: (_row, index) => computedLines[index]?.lineTotalBase ?? 0,
               },
             ]}
+            minRows={1}
+            className="flex-1 [&>div:first-child]:h-full [&>div:first-child]:max-h-none"
           />
-        </Card>
+        </DocumentLinesRegion>
 
-        <Card className="p-5">
-          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Totals</h3>
-          <div className="grid gap-2 text-sm md:grid-cols-2">
-            <div className="flex justify-between">
-              <span className="text-slate-600">Subtotal ({form.currency})</span>
-              <span className="font-medium">
-                {form.currency} {totals.subtotalDoc.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Subtotal (Base)</span>
-              <span className="font-medium">{totals.subtotalBase.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Tax ({form.currency})</span>
-              <span className="font-medium">
-                {form.currency} {totals.taxTotalDoc.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Tax (Base)</span>
-              <span className="font-medium">{totals.taxTotalBase.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between border-t border-slate-200 pt-2">
-              <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total ({form.currency})</span>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
-                {form.currency} {totals.grandTotalDoc.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between border-t border-slate-200 pt-2">
-              <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total (Base)</span>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{totals.grandTotalBase.toFixed(2)}</span>
-            </div>
-          </div>
-        </Card>
+        <DocumentSecondaryPanel
+          title="Account Ledger & Purchase Taxes Allocation Grid"
+          action={
+            <button
+              type="button"
+              onClick={() => errorHandler.showWarning('Purchase tax preset automation is not connected yet.')}
+              className="hidden h-6 items-center rounded border border-emerald-300 px-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 md:inline-flex"
+            >
+              Apply Tax Preset
+            </button>
+          }
+        >
+          <DocumentEmptyPanel
+            title="No allocation rows"
+            description="Real AP, inventory, and tax allocation controls are not shown until the controlled allocation contract is implemented."
+          />
+        </DocumentSecondaryPanel>
 
-        {isCreateMode && (
-          <Card className="p-5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {t('purchases.invoices.attachments.title', 'Attachments')}
-              </h2>
-              <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
-                  onChange={uploadAttachment}
-                  disabled={attachmentBusy || pendingAttachmentFiles.length >= MAX_ATTACHMENT_FILES}
-                />
-                {t('purchases.invoices.attachments.upload', 'Upload Attachment')}
+        <div className="grid gap-2 md:grid-cols-2">
+          <DocumentCompactCard
+            title={t('purchases.invoices.attachments.title', 'Attachments')}
+            action={
+              <label
+                htmlFor={draftAttachmentInputId}
+                className="inline-flex h-6 cursor-pointer items-center rounded border border-slate-200 px-2 text-[10px] font-black uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                {attachmentBusy ? t('purchases.invoices.attachments.uploading', 'Uploading...') : t('purchases.invoices.attachments.upload', 'Upload')}
               </label>
-            </div>
-
-            <p className="mb-4 text-xs text-slate-500">
-              {t(
-                'purchases.invoices.attachments.unsavedHelp',
-                'Files selected here are queued locally and uploaded automatically when the invoice is saved.'
-              )}
-            </p>
-
-            {pendingAttachmentFiles.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-                {t('purchases.invoices.attachments.emptyQueued', 'No attachments queued yet.')}
+            }
+          >
+            <div className="min-h-[56px] p-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4 text-slate-500" />
+                <div className="min-w-0">
+                  <div className="font-black text-slate-900 dark:text-slate-100">
+                    {draftAttachmentCount} {draftAttachmentCount === 1 ? 'file' : 'files'}
+                  </div>
+                  <div className="truncate text-[11px] text-slate-500">
+                    {invoice?.id
+                      ? t('purchases.invoices.attachments.help', 'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.')
+                      : t('purchases.invoices.attachments.unsavedHelp', 'Files selected here are queued locally and uploaded automatically when the invoice is saved.')}
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {pendingAttachmentFiles.map((file, index) => (
-                  <div
-                    key={`${file.name}-${file.lastModified}-${index}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+
+              {!invoice?.id && pendingAttachmentFiles.length > 0 && (
+                <div className="mt-2 grid gap-1">
+                  {pendingAttachmentFiles.map((file, index) => (
+                    <div
+                      key={`${file.name}-${file.lastModified}-${index}`}
+                      className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1 dark:border-slate-800 dark:bg-slate-900/40"
+                    >
+                      <div className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
                         {file.name}
                       </div>
-                      <div className="text-xs text-slate-500">
-                        {formatFileSize(file.size)} - {file.type || t('purchases.invoices.attachments.unknownType', 'Unknown type')}
-                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 text-[10px] font-black uppercase text-rose-600"
+                        onClick={() => setPendingAttachmentFiles((current) => current.filter((_, idx) => idx !== index))}
+                      >
+                        {t('purchases.invoices.attachments.remove', 'Remove')}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700"
-                      onClick={() => setPendingAttachmentFiles((current) => current.filter((_, idx) => idx !== index))}
-                    >
-                      {t('purchases.invoices.attachments.remove', 'Remove')}
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </div>
+          </DocumentCompactCard>
+
+          <DocumentCompactCard
+            title="Audit & Warnings"
+            action={<DocumentPill tone={draftHasVendor && draftHasLines ? 'green' : 'amber'}>{draftHasVendor && draftHasLines ? 'Ready' : 'Open'}</DocumentPill>}
+          >
+            <div className="flex min-h-[56px] items-center gap-2 p-2.5 text-xs">
+              <History className="h-4 w-4 text-slate-500" />
+              <div className="min-w-0">
+                <div className="font-black text-slate-900 dark:text-slate-100">
+                  Draft checks
+                </div>
+                <div className="truncate text-[11px] text-slate-500">
+                  Vendor, line, warehouse, tax, AP, and attachment warnings remain visible before saving.
+                </div>
               </div>
-            )}
-          </Card>
-        )}
+            </div>
+          </DocumentCompactCard>
+        </div>
+
+        <SettlementBlock
+          module="purchases"
+          mode={settlementMode}
+          onModeChange={setSettlementMode}
+          rows={settlementRows}
+          onRowsChange={setSettlementRows}
+          partyAccountId={apAccountId}
+          partyAccountLabel={selectedVendorName || apAccountId}
+          outstandingBase={totals.grandTotalBase}
+          paymentMethodConfigs={(settings as any)?.paymentMethodConfigs || []}
+          allowOverpayment={(settings as any)?.allowOverpayment === true}
+          currencyCode={form.currency}
+        />
 
         {showSettlement && (
           <Card className="p-5 border-blue-200 bg-blue-50">
@@ -1359,36 +1682,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           </Card>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-50"
-            onClick={saveInvoice}
-            disabled={busy || orderLineLoading}
-          >
-            {busy ? 'Saving...' : isCreateMode ? 'Save Draft' : 'Update Draft'}
-          </button>
-          {isCreateMode && (
-            <button
-              type="button"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={() => {
-                const outstanding = roundMoney(totals.grandTotalBase);
-                if (outstanding > 0.005) {
-                  setShowSettlement(true);
-                  setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
-                } else {
-                  setSettlementMode('DEFERRED');
-                  createAndPostDraft();
-                }
-              }}
-              disabled={busy || orderLineLoading}
-            >
-              {busy ? 'Saving & Posting...' : 'Save & Post'}
-            </button>
-          )}
-        </div>
-      </div>
+      </DocumentDetailScaffold>
     );
   }
 
@@ -1407,21 +1701,204 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const createReturnHref = `/purchases/returns/new?purchaseInvoiceId=${encodeURIComponent(invoice.id)}${
     invoice.purchaseOrderId ? `&purchaseOrderId=${encodeURIComponent(invoice.purchaseOrderId)}` : ''
   }`;
+  const viewBaseCurrency = company?.baseCurrency || 'USD';
+  const viewVendorName = vendorNameById[invoice.vendorId] || invoice.vendorName || '-';
+  const viewTaxResolved = invoice.lines.every((line) => !line.taxCodeId || line.taxCode || taxById[line.taxCodeId]);
+  const viewPostingOk = invoice.status === 'POSTED' || invoice.status === 'PENDING_APPROVAL' || (invoice.lines.length > 0 && !!invoice.vendorId);
+  const viewAttachmentInputId = 'purchase-invoice-view-attachment-input';
+  const viewFooterSummary = (
+    <DocumentFooterTotalsStrip
+      totals={[
+        { label: 'Subtotal', value: `${invoice.currency} ${invoice.subtotalDoc.toFixed(2)}` },
+        { label: 'Tax', value: `${invoice.currency} ${invoice.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: 'Outstanding', value: `${company?.baseCurrency || 'Base'} ${invoice.outstandingAmountBase.toFixed(2)}`, tone: 'amber' },
+        { label: 'Grand', value: `${invoice.currency} ${invoice.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+      ]}
+    />
+  );
+  const viewSideRail = (
+    <>
+      <DocumentRailCard
+        title="Info"
+        action={<DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? 'PO' : 'Account'}</DocumentPill>}
+      >
+        <div className="flex min-h-[132px] flex-col gap-2 overflow-auto p-2.5 text-xs">
+          <div className="rounded border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">
+              {invoice.purchaseOrderId || invoice.invoiceNumber}
+            </div>
+            <div className="mt-0.5 truncate text-sm font-black text-slate-900 dark:text-slate-100">
+              {viewVendorName}
+            </div>
+            <div className="truncate text-[10px] font-semibold text-slate-500">
+              {invoice.vendorInvoiceNumber || 'Vendor invoice number not entered'}
+            </div>
+          </div>
+          <div className="rounded border border-blue-50 bg-blue-50/50 px-2 py-1.5 text-[11px] leading-relaxed text-blue-700 dark:border-blue-950/20 dark:bg-blue-950/10 dark:text-blue-300">
+            Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.
+          </div>
+        </div>
+      </DocumentRailCard>
+
+      <DocumentRailCard title={invoice.status === 'POSTED' ? 'Document Status' : 'Posting Readiness'}>
+        <div className="space-y-1.5 p-2.5 text-xs">
+          <div className={clsx(
+            'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
+            viewPostingOk
+              ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
+              : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
+          )}>
+            {viewPostingOk ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
+            <span>{invoice.status === 'POSTED' ? 'Ledger voucher created' : 'Balanced AP posting preview'}</span>
+          </div>
+          <div className={clsx(
+            'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
+            viewTaxResolved
+              ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
+              : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
+          )}>
+            {viewTaxResolved ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
+            <span>{invoice.status === 'POSTED' ? 'Purchase tax lines posted' : 'Purchase tax accounts resolved'}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
+            <Info className="h-4 w-4 shrink-0" />
+            <span>AP, inventory, and approval policy active</span>
+          </div>
+        </div>
+      </DocumentRailCard>
+
+      <DocumentRailCard
+        title="Settlement"
+        action={
+          <DocumentPill tone={invoice.paymentStatus === 'PAID' ? 'green' : invoice.paymentStatus === 'PARTIALLY_PAID' ? 'amber' : 'slate'}>
+            {invoice.paymentStatus === 'UNPAID' ? 'Credit' : invoice.paymentStatus}
+          </DocumentPill>
+        }
+      >
+        <div className="grid grid-cols-2 gap-1.5 border-b border-slate-100 p-2 dark:border-slate-800">
+          <DocumentRailStat label="Paid" value={invoice.paidAmountBase.toFixed(2)} tone="green" />
+          <DocumentRailStat label="Remaining" value={invoice.outstandingAmountBase.toFixed(2)} tone={invoice.outstandingAmountBase > 0 ? 'amber' : 'green'} />
+          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 text-[11px] dark:border-slate-800">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Affected Account</div>
+            <div className="truncate font-bold text-slate-800 dark:text-slate-100">{viewVendorName}</div>
+            <div className="truncate font-mono text-[10px] text-slate-500">
+              {viewBaseCurrency} {invoice.outstandingAmountBase.toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </DocumentRailCard>
+
+      <DocumentRailCard title="Totals" action={<DocumentPill tone="slate">{invoice.currency}</DocumentPill>}>
+        <div className="space-y-1.5 p-2.5">
+          <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
+            <span className="font-bold text-slate-500">Subtotal</span>
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{invoice.currency} {invoice.subtotalDoc.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
+            <span className="font-bold text-slate-500">Tax</span>
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{invoice.currency} {invoice.taxTotalDoc.toFixed(2)}</span>
+          </div>
+          <div className="rounded-lg border border-slate-950 bg-slate-900 px-3 py-2 text-white shadow-md dark:bg-slate-950">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+            <div className="mt-0.5 text-right font-mono text-xl font-black text-emerald-400">
+              {invoice.currency} {invoice.grandTotalDoc.toFixed(2)}
+            </div>
+            {invoice.currency !== viewBaseCurrency && (
+              <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1 text-[10px] font-bold text-slate-300">
+                <span>Grand Total (Base)</span>
+                <span className="font-mono">{viewBaseCurrency} {invoice.grandTotalBase.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </DocumentRailCard>
+    </>
+  );
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{invoice.invoiceNumber}</h1>
-          <p className="text-sm text-slate-600">
-            Vendor: <span className="font-medium">{vendorNameById[invoice.vendorId] || invoice.vendorName}</span>
-            {invoice.vendorInvoiceNumber ? ` • Vendor Ref: ${invoice.vendorInvoiceNumber}` : ''}
-          </p>
-        </div>
-        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${invoice.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100'}`}>
-          {invoice.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : invoice.status}
-        </span>
-      </div>
+    <>
+    <DocumentDetailScaffold
+      title={invoice.invoiceNumber}
+      subtitle={`Vendor: ${vendorNameById[invoice.vendorId] || invoice.vendorName}${invoice.vendorInvoiceNumber ? ` | Vendor Ref: ${invoice.vendorInvoiceNumber}` : ''}`}
+      icon={FileText}
+      backLabel="Back to purchase invoices"
+      onBack={() => navigate('/purchases/invoices')}
+      badges={
+        <>
+          <DocumentPill tone={invoice.status === 'POSTED' ? 'green' : invoice.status === 'PENDING_APPROVAL' ? 'amber' : invoice.status === 'CANCELLED' ? 'rose' : 'slate'}>
+            {invoice.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : invoice.status}
+          </DocumentPill>
+          <DocumentPill tone={invoice.paymentStatus === 'PAID' ? 'green' : invoice.paymentStatus === 'PARTIALLY_PAID' ? 'amber' : 'rose'}>
+            {invoice.paymentStatus}
+          </DocumentPill>
+          {invoice.purchaseOrderId && <DocumentPill tone="blue">From PO</DocumentPill>}
+        </>
+      }
+      sideRail={viewSideRail}
+      railTitle="Purchase invoice side rail"
+      footerSummary={viewFooterSummary}
+      footerActions={
+        <>
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            onClick={() => navigate('/purchases/invoices')}
+          >
+            Back to List
+          </button>
+          {invoice.status === 'DRAFT' && (
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              onClick={toggleEdit}
+              disabled={busy}
+            >
+              Edit Draft
+            </button>
+          )}
+          {invoice.status === 'DRAFT' && !showSettlement && (
+            <button
+              type="button"
+              className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              onClick={handlePostClick}
+              disabled={busy}
+            >
+              {busy ? 'Posting...' : 'Post Invoice'}
+            </button>
+          )}
+          {invoice.status === 'POSTED' && (
+            <button
+              type="button"
+              className="rounded border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => navigate(createReturnHref)}
+              disabled={!canCreateReturn}
+            >
+              Create Return
+            </button>
+          )}
+          {invoice.status === 'POSTED' && (
+            <button
+              type="button"
+              className="rounded border border-emerald-300 bg-white px-4 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => navigate(paymentHref)}
+              disabled={!canCreatePayment}
+            >
+              Create Payment
+            </button>
+          )}
+          {invoice.status === 'POSTED' && (
+            <button
+              type="button"
+              className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+              onClick={() => setUnpostConfirmOpen(true)}
+              disabled={busy || canCreatePayment === false || invoice.paymentStatus !== 'UNPAID'}
+            >
+              {busy ? 'Unposting...' : 'Unpost Invoice'}
+            </button>
+          )}
+        </>
+      }
+    >
 
       {/*
         SoD: a Purchase Invoice in PENDING_APPROVAL is awaiting accounting approval. Purchases-side
@@ -1440,160 +1917,206 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      <Card className="p-5">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Invoice Date</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.invoiceDate}</div>
+      <DocumentControlPanel>
+        <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DocumentSegmentedGroup>
+              <DocumentSegmentButton active={!invoice.purchaseOrderId} disabled icon={FileText} label="Direct" />
+              <DocumentSegmentButton active={!!invoice.purchaseOrderId} disabled icon={Link2} label="From PO" />
+            </DocumentSegmentedGroup>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-7 items-center gap-1.5 rounded border border-slate-200 bg-white px-2 text-[10px] font-black uppercase tracking-wide text-slate-500 disabled:cursor-default dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              {invoice.purchaseOrderId ? 'Source locked from PO' : 'Direct header driven'}
+            </button>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Due Date</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.dueDate || '-'}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">PO Reference</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.purchaseOrderId || '-'}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Currency</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.currency}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Exchange Rate</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.exchangeRate}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Direct Invoicing</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {settings ? (settings.allowDirectInvoicing ? 'Enabled' : 'Disabled') : '-'}
-            </div>
-          </div>
-        </div>
-      </Card>
 
-      <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Price</th>
-                <th className="py-2 text-left">Tax Code</th>
-                <th className="py-2 text-right">Line Total</th>
-                <th className="py-2 text-right">Tax</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoice.lines.map((line) => (
-                <tr key={line.lineId} className="border-b border-slate-100">
-                  <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                  <td className="py-2 text-right">{line.invoicedQty}</td>
-                  <td className="py-2">{line.uom}</td>
-                  <td className="py-2 text-right">{line.unitPriceDoc.toFixed(2)}</td>
-                  <td className="py-2">{line.taxCode || line.taxCodeId || '-'}</td>
-                  <td className="py-2 text-right">{(line.lineTotalDoc + line.taxAmountDoc).toFixed(2)}</td>
-                  <td className="py-2 text-right">{line.taxAmountDoc.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Payment Info</h2>
-        <div className="grid gap-2 text-sm md:grid-cols-2">
-          <div className="flex justify-between">
-            <span className="text-slate-600">Payment Terms (days)</span>
-            <span className="font-medium">{invoice.paymentTermsDays}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Payment Status</span>
-            <span className="font-medium">{invoice.paymentStatus}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Outstanding (Base)</span>
-            <span className="font-medium">{invoice.outstandingAmountBase.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Paid (Base)</span>
-            <span className="font-medium">{invoice.paidAmountBase.toFixed(2)}</span>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {t('purchases.invoices.attachments.title', 'Attachments')}
-          </h2>
-          <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/50">
             <input
+              id={viewAttachmentInputId}
               type="file"
               className="hidden"
               accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
               onChange={uploadAttachment}
               disabled={attachmentBusy}
             />
-            {attachmentBusy
-              ? t('purchases.invoices.attachments.uploading', 'Uploading...')
-              : t('purchases.invoices.attachments.upload', 'Upload Attachment')}
-          </label>
-        </div>
-
-        <p className="mb-4 text-xs text-slate-500">
-          {t(
-            'purchases.invoices.attachments.help',
-            'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.'
-          )}
-        </p>
-
-        {attachments.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-            {t('purchases.invoices.attachments.empty', 'No attachments yet.')}
+            <DocumentIconButton
+              title={t('purchases.invoices.attachments.upload', 'Upload Attachment')}
+              onClick={() => document.getElementById(viewAttachmentInputId)?.click()}
+              disabled={attachmentBusy}
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+            </DocumentIconButton>
+            <DocumentIconButton title="Download Excel" onClick={() => errorHandler.showWarning('Purchase invoice line export is not connected yet.')}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+            </DocumentIconButton>
+            <DocumentIconButton title="Upload from file" onClick={() => errorHandler.showWarning('Purchase invoice file import is not connected yet.')}>
+              <Upload className="h-3.5 w-3.5" />
+            </DocumentIconButton>
+            <DocumentIconButton title="Read from image" onClick={() => errorHandler.showWarning('Purchase invoice image reading is not connected yet.')}>
+              <FileImage className="h-3.5 w-3.5" />
+            </DocumentIconButton>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {attachments.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {attachment.name}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {formatFileSize(attachment.size)} - {attachment.type} - {new Date(attachment.uploadedAt).toLocaleString()}
-                  </div>
+        </div>
+      </DocumentControlPanel>
+
+      <DocumentCompactCard
+        title={invoice.purchaseOrderId ? 'Header - From Purchase Order' : 'Header - Direct Bill'}
+        action={
+          <div className="flex items-center gap-1.5">
+            <DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? 'From PO' : 'Direct'}</DocumentPill>
+            <DocumentPill tone="slate">{invoice.currency}</DocumentPill>
+            {invoice.status === 'POSTED' && (
+              <DocumentPill tone="green">
+                <ShieldCheck className="h-3 w-3" />
+                Policy OK
+              </DocumentPill>
+            )}
+          </div>
+        }
+      >
+        <div className="grid grid-cols-2 gap-2 p-3 md:grid-cols-4 xl:grid-cols-6">
+          <DocumentField label="Invoice No." value={invoice.invoiceNumber} plain />
+          <DocumentField label="Source" value={invoice.purchaseOrderId || 'Direct'} plain />
+          <DocumentField label="Vendor" value={viewVendorName} plain />
+          <DocumentField label="Vendor Invoice #" value={invoice.vendorInvoiceNumber || '-'} plain />
+          <DocumentField label="Invoice Date" value={invoice.invoiceDate} plain />
+          <DocumentField label="Due Date" value={invoice.dueDate || '-'} plain />
+          <DocumentField label="Currency" value={invoice.currency} plain />
+          <DocumentField label="Exchange Rate" value={invoice.exchangeRate} plain />
+          <DocumentField label="Payment Terms" value={`${invoice.paymentTermsDays} days`} plain />
+          <DocumentField label="Direct Invoicing" value={settings ? (settings.allowDirectInvoicing ? 'Enabled' : 'Disabled') : '-'} plain />
+        </div>
+      </DocumentCompactCard>
+
+      <DocumentLinesRegion>
+        <ClassicLineItemsTable<PurchaseInvoiceLineDTO>
+          rows={invoice.lines}
+          disabled
+          onRowChange={() => undefined}
+          addLabel="Add Item"
+          columns={[
+            {
+              id: 'item',
+              label: 'Item',
+              kind: 'custom',
+              width: '260px',
+              render: (row) => (
+                <div className="flex h-9 items-center truncate px-2 text-xs font-medium text-slate-800 dark:text-slate-100">
+                  {row.itemCode ? `${row.itemCode} - ${row.itemName}` : row.itemName}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
-                    onClick={() => downloadAttachment(attachment.id)}
-                  >
-                    {t('purchases.invoices.attachments.open', 'Open')}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:opacity-50"
-                    onClick={() => setAttachmentPendingDelete(attachment)}
-                    disabled={attachmentDeletingId === attachment.id}
-                  >
-                    {attachmentDeletingId === attachment.id
-                      ? t('purchases.invoices.attachments.removing', 'Removing...')
-                      : t('purchases.invoices.attachments.remove', 'Remove')}
-                  </button>
+              ),
+            },
+            { id: 'qty', label: 'Qty', kind: 'computed', width: '80px', compute: (row) => row.invoicedQty },
+            { id: 'uom', label: 'UOM', kind: 'custom', width: '90px', render: (row) => <div className="flex h-9 items-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">{row.uom}</div> },
+            { id: 'unitCost', label: 'Unit Cost', kind: 'computed', width: '110px', compute: (row) => row.unitPriceDoc },
+            { id: 'taxCode', label: 'Tax Code', kind: 'custom', width: '140px', render: (row) => <div className="flex h-9 items-center px-2 text-xs text-slate-700 dark:text-slate-200">{row.taxCode || row.taxCodeId || 'No Tax'}</div> },
+            { id: 'lineTotal', label: 'Line Total', kind: 'computed', width: '110px', compute: (row) => row.lineTotalDoc + row.taxAmountDoc },
+            { id: 'net', label: 'Net', kind: 'computed', width: '100px', compute: (row) => row.lineTotalDoc },
+            { id: 'tax', label: 'Tax', kind: 'computed', width: '90px', compute: (row) => row.taxAmountDoc },
+            { id: 'netBase', label: 'Net Base', kind: 'computed', width: '110px', compute: (row) => row.lineTotalBase },
+          ]}
+          minRows={1}
+          className="flex-1 [&>div:first-child]:h-full [&>div:first-child]:max-h-none"
+        />
+      </DocumentLinesRegion>
+
+      <DocumentSecondaryPanel
+        title="Account Ledger & Purchase Taxes Allocation Grid"
+        action={
+          <button
+            type="button"
+            onClick={() => errorHandler.showWarning('Purchase tax preset automation is not connected yet.')}
+            className="hidden h-6 items-center rounded border border-emerald-300 px-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 md:inline-flex"
+          >
+            Apply Tax Preset
+          </button>
+        }
+      >
+        <DocumentEmptyPanel
+          title="No allocation rows"
+          description="Real AP, inventory, and tax allocation controls are not shown until the controlled allocation contract is implemented."
+        />
+      </DocumentSecondaryPanel>
+
+      <div className="grid gap-2 md:grid-cols-2">
+        <DocumentCompactCard
+          title={t('purchases.invoices.attachments.title', 'Attachments')}
+          action={
+            <label
+              htmlFor={viewAttachmentInputId}
+              className="inline-flex h-6 cursor-pointer items-center rounded border border-slate-200 px-2 text-[10px] font-black uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {attachmentBusy ? t('purchases.invoices.attachments.uploading', 'Uploading...') : t('purchases.invoices.attachments.upload', 'Upload')}
+            </label>
+          }
+        >
+          <div className="min-h-[56px] p-2.5 text-xs">
+            <div className="flex items-center gap-2">
+              <Paperclip className="h-4 w-4 text-slate-500" />
+              <div className="min-w-0">
+                <div className="font-black text-slate-900 dark:text-slate-100">
+                  {attachments.length} {attachments.length === 1 ? 'file' : 'files'}
+                </div>
+                <div className="truncate text-[11px] text-slate-500">
+                  {t('purchases.invoices.attachments.help', 'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.')}
                 </div>
               </div>
-            ))}
+            </div>
+            {attachments.length > 0 && (
+              <div className="mt-2 grid gap-1">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1 dark:border-slate-800 dark:bg-slate-900/40"
+                  >
+                    <div className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
+                      {attachment.name}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-[10px] font-black uppercase text-slate-600"
+                        onClick={() => downloadAttachment(attachment.id)}
+                      >
+                        {t('purchases.invoices.attachments.open', 'Open')}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[10px] font-black uppercase text-rose-600 disabled:opacity-50"
+                        onClick={() => setAttachmentPendingDelete(attachment)}
+                        disabled={attachmentDeletingId === attachment.id}
+                      >
+                        {attachmentDeletingId === attachment.id
+                          ? t('purchases.invoices.attachments.removing', 'Removing...')
+                          : t('purchases.invoices.attachments.remove', 'Remove')}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </Card>
+        </DocumentCompactCard>
+
+        <DocumentCompactCard
+          title="Audit & Warnings"
+          action={<DocumentPill tone={invoice.status === 'POSTED' ? 'green' : invoice.status === 'PENDING_APPROVAL' ? 'amber' : 'slate'}>{invoice.status}</DocumentPill>}
+        >
+          <div className="flex min-h-[56px] items-center gap-2 p-2.5 text-xs">
+            <History className="h-4 w-4 text-slate-500" />
+            <div className="min-w-0">
+              <div className="font-black text-slate-900 dark:text-slate-100">Document checks</div>
+              <div className="truncate text-[11px] text-slate-500">
+                Status, payment, AP, inventory, and attachment warnings stay visible before legal actions.
+              </div>
+            </div>
+          </div>
+        </DocumentCompactCard>
+      </div>
 
       {/*
         SoD guard: the Settlement-on-Post panel is a posting action. It must
@@ -1768,72 +2291,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => navigate('/purchases/invoices')}
-        >
-          Back to List
-        </button>
-        {invoice.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            onClick={toggleEdit}
-            disabled={busy}
-          >
-            Edit Draft
-          </button>
-        )}
-        {invoice.status === 'DRAFT' && !showSettlement && (
-          <button
-            type="button"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
-            onClick={handlePostClick}
-            disabled={busy}
-          >
-            {busy ? 'Posting...' : 'Post Invoice'}
-          </button>
-        )}
-        {/*
-          Removed: 'Approve & Post' button on the source-document page violates SoD.
-          Approval of the ledger effect belongs to Accounting (accountant / controller / CFO),
-          not to the buyer who initiated the invoice. Approve happens in the Accounting
-          Approval Center, guarded by accounting.approve.finance.
-          See docs/architecture/posting-authority.md §4.1 and planning/tasks/167.
-        */}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => navigate(createReturnHref)}
-            disabled={!canCreateReturn}
-          >
-            Create Return
-          </button>
-        )}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => navigate(paymentHref)}
-            disabled={!canCreatePayment}
-          >
-            Create Payment
-          </button>
-        )}
-        {invoice.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-            onClick={() => setUnpostConfirmOpen(true)}
-            disabled={busy || canCreatePayment === false || invoice.paymentStatus !== 'UNPAID'}
-          >
-            {busy ? 'Unposting...' : 'Unpost Invoice'}
-          </button>
-        )}
-      </div>
+    </DocumentDetailScaffold>
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
@@ -1863,7 +2321,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           if (!attachmentDeletingId) setAttachmentPendingDelete(null);
         }}
       />
-    </div>
+    </>
   );
 };
 

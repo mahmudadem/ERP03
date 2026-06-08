@@ -77,3 +77,15 @@ The system calculates:
 6. Create draft and review.
 7. Click **Post Return**.
 8. Use **GL Impact** and **History** to review accounting and audit trail.
+
+## Page Layout
+
+The Sales Returns list and detail page follow the same operational style as Sales Invoices:
+
+- the list has quick status filters, search, customer/context/date filters, row actions, and paginated results
+- return dates display using the company date format
+- on the return detail page, the same document skeleton as Sales Invoice keeps the header, right-side summary rail, and action footer consistent
+- the right-side rail summarizes return totals, settlement mode, and source-document context on wide screens, and opens from the page edge on smaller windows
+- the footer shows subtotal, tax, net settlement, and grand total so you can review the return amount before posting
+
+This layout does not change how return settlement, tax, stock, COGS reversal, GL Impact, or audit history work.

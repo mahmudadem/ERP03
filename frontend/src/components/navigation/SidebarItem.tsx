@@ -366,26 +366,31 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       )}
 
       {/* Render children inline (Classic Mode) */}
-      {hasChildren && isExpanded && isOpen && !isSubmenusMode && (
+      {hasChildren && isOpen && !isSubmenusMode && (
         <div
           className={clsx(
-            "mt-1 space-y-0.5 transition-all duration-300",
-            isRtl ? "mr-6 border-r border-[var(--color-border)] pr-[1px]" : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+            "grid transition-all duration-300 ease-in-out overflow-hidden mt-0.5",
+            isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
           )}
         >
-          {children.map((child, idx) => (
-            <SidebarItem
-              key={child.path || idx}
-              path={child.path}
-              label={child.label}
-              isOpen={isOpen}
-              onClick={onClick}
-              children={child.children}
-              iconName={child.icon}
-              isChild={true}
-              isCompact={isCompact}
-            />
-          ))}
+          <div className={clsx(
+            "min-h-0 space-y-0.5 overflow-hidden",
+            isRtl ? "mr-6 border-r border-[var(--color-border)] pr-[1px]" : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+          )}>
+            {children.map((child, idx) => (
+              <SidebarItem
+                key={child.path || idx}
+                path={child.path}
+                label={child.label}
+                isOpen={isOpen}
+                onClick={onClick}
+                children={child.children}
+                iconName={child.icon}
+                isChild={true}
+                isCompact={isCompact}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

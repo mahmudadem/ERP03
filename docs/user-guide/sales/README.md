@@ -92,6 +92,21 @@ If you picked SIMPLE in settings:
 3. **Post**. Stock is decremented at the moment of posting (no separate delivery step).
 4. Record payment as in step 4 above.
 
+If you sometimes need Sales Orders or Delivery Notes without switching the whole company to Operational mode, open `Sales -> Settings` and enable **Show Sales Orders & Delivery Notes anyway**. This only shows those pages in Simple mode; it does not change invoice posting, tax, stock valuation, or accounting controls.
+
+---
+
+## Sales Order, Delivery Note, and Return Page Layout
+
+Sales Orders, Delivery Notes, and Sales Returns use the same document page skeleton as the Sales Invoice page:
+
+- the document header stays compact and shows the document number, source/context, and status
+- a right-side summary rail shows totals, delivery quantities, settlement, or source-document context depending on the document type
+- the action footer stays visible while you scroll long forms and line tables
+- the footer shows the most important totals or counts before you save, post, deliver, return, or open GL Impact/history
+
+This layout does not change posting, tax, stock movement, COGS, AR, approval, period-lock, or ledger behavior.
+
 ---
 
 ## Sales returns

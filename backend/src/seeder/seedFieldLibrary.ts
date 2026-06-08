@@ -102,6 +102,7 @@ const AVAILABLE_FIELDS_BY_MODULE: Record<string, RawField[]> = {
     { id: 'salesInvoiceId',   label: 'Sales Invoice Ref',     type: 'select',                  sectionHint: 'HEADER', category: 'shared' },
     { id: 'reason',           label: 'Reason',                type: 'text',                    sectionHint: 'HEADER', category: 'core' },
     { id: 'notes',            label: 'Notes',                 type: 'textarea',                sectionHint: 'HEADER', category: 'shared' },
+    { id: 'settlement',       label: 'Settlement',            type: 'settlement',              sectionHint: 'HEADER', category: 'core',   supportedTypes: ['sales_invoice'] },
     { id: 'lineItems',        label: 'Line Items Table',      type: 'table',                   sectionHint: 'BODY',   category: 'core',   mandatory: true },
   ],
   PURCHASE: [
@@ -117,6 +118,7 @@ const AVAILABLE_FIELDS_BY_MODULE: Record<string, RawField[]> = {
     { id: 'goodsReceiptId',        label: 'Goods Receipt Ref',       type: 'select',                     sectionHint: 'HEADER', category: 'shared' },
     { id: 'notes',                 label: 'Notes',                   type: 'textarea',                   sectionHint: 'HEADER', category: 'shared' },
     { id: 'internalNotes',         label: 'Internal Notes',          type: 'textarea',                   sectionHint: 'HEADER', category: 'shared' },
+    { id: 'settlement',            label: 'Settlement',              type: 'settlement',                 sectionHint: 'HEADER', category: 'core',   supportedTypes: ['purchase_invoice'] },
     { id: 'lineItems',             label: 'Line Items Table',        type: 'table',                      sectionHint: 'BODY',   category: 'core',   mandatory: true },
   ],
 };

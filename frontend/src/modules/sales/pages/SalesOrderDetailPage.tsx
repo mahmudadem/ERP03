@@ -27,6 +27,14 @@ import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { salesOperationalApi, PromotionEvaluationResult } from '../../../api/salesOperationalApi';
+import { FileText } from 'lucide-react';
+import {
+  DocumentDetailScaffold,
+  DocumentFooterTotalsStrip,
+  DocumentPill,
+  DocumentRailCard,
+  DocumentRailStat,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -696,19 +704,178 @@ const SalesOrderDetailPage: React.FC = () => {
     );
   }
 
-  return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {form.orderNumber || 'New Sales Order'}
-          </h1>
-          <p className="text-sm text-slate-600">Commercial sales document. Inventory and accounting effects occur in later documents.</p>
+  const footerSummary = (
+    <DocumentFooterTotalsStrip
+      totals={[
+        { label: 'Subtotal', value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+        { label: 'Tax', value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: 'Grand', value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+      ]}
+    />
+  );
+
+  const footerActions = (
+    <>
+      {isDraft && (
+        <>
+          <button
+            type="button"
+            className="rounded bg-slate-800 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700"
+            onClick={saveOrder}
+            disabled={saving || actionBusy}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            type="button"
+            className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            onClick={confirmOrder}
+            disabled={saving || actionBusy}
+          >
+            Confirm
+          </button>
+        </>
+      )}
+
+      {isConfirmed && (
+        <>
+          <button
+            type="button"
+            className="rounded border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => navigate(deliverGoodsHref)}
+            disabled={!canDeliverGoods}
+          >
+            Deliver Goods
+          </button>
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => navigate(createInvoiceHref)}
+            disabled={!canCreateInvoice}
+          >
+            Create Invoice
+          </button>
+          <button
+            type="button"
+            className="rounded border border-rose-300 bg-rose-50/50 px-4 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100/50 disabled:opacity-50"
+            onClick={cancelOrder}
+            disabled={saving || actionBusy}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            onClick={closeOrder}
+            disabled={saving || actionBusy}
+          >
+            Close
+          </button>
+        </>
+      )}
+
+      {(form.status === 'PARTIALLY_DELIVERED' || form.status === 'FULLY_DELIVERED') && (
+        <>
+          <button
+            type="button"
+            className="rounded border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => navigate(deliverGoodsHref)}
+            disabled={!canDeliverGoods}
+          >
+            Deliver Goods
+          </button>
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => navigate(createInvoiceHref)}
+            disabled={!canCreateInvoice}
+          >
+            Create Invoice
+          </button>
+          <button
+            type="button"
+            className="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            onClick={closeOrder}
+            disabled={saving || actionBusy}
+          >
+            Close
+          </button>
+        </>
+      )}
+
+      {(form.status === 'CLOSED' || form.status === 'CANCELLED') && (
+        <span className="text-xs font-semibold text-slate-500">This sales order is read-only in status: {form.status}.</span>
+      )}
+
+      <button
+        type="button"
+        className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+        onClick={() => setAuditModalOpen(true)}
+      >
+        History
+      </button>
+    </>
+  );
+
+  const sideRail = (
+    <>
+      <DocumentRailCard title="Order Totals">
+        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
+          <DocumentRailStat label={`Subtotal (${form.currency})`} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
+          <DocumentRailStat label="Subtotal Base" value={totals.subtotalBase.toFixed(2)} />
+          <DocumentRailStat label={`Tax (${form.currency})`} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
+          <DocumentRailStat label="Tax Base" value={totals.taxTotalBase.toFixed(2)} tone="blue" />
+          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+            <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
+              {form.currency} {totals.grandTotalDoc.toFixed(2)}
+            </div>
+            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} base</div>
+          </div>
         </div>
-        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(form.status)}`}>
+      </DocumentRailCard>
+
+      <DocumentRailCard title="Order Status">
+        <div className="space-y-1.5 p-2.5 text-xs">
+          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <span className="font-bold text-slate-600 dark:text-slate-300">Lines</span>
+            <span className="font-mono font-black text-slate-900 dark:text-slate-100">{form.lines.length}</span>
+          </div>
+          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <span className="font-bold text-slate-600 dark:text-slate-300">Customer</span>
+            <span className="max-w-[160px] truncate font-black text-slate-900 dark:text-slate-100">
+              {form.customerName || customers.find((customer) => customer.id === form.customerId)?.displayName || '-'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <span className="font-bold text-slate-600 dark:text-slate-300">Workflow</span>
+            <DocumentPill tone={isDraft ? 'slate' : isConfirmed ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
+              {form.status}
+            </DocumentPill>
+          </div>
+        </div>
+      </DocumentRailCard>
+    </>
+  );
+
+  return (
+    <>
+    <DocumentDetailScaffold
+      title={form.orderNumber || 'New Sales Order'}
+      subtitle="Commercial sales document. Inventory and accounting effects occur in later documents."
+      icon={FileText}
+      backLabel="Back to sales orders"
+      onBack={() => navigate('/sales/orders')}
+      badges={
+        <DocumentPill tone={form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : form.status === 'CANCELLED' ? 'rose' : 'slate'}>
           {form.status}
-        </span>
-      </div>
+        </DocumentPill>
+      }
+      sideRail={sideRail}
+      railTitle="Sales order side rail"
+      footerSummary={footerSummary}
+      footerActions={footerActions}
+    >
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
@@ -1047,42 +1214,6 @@ const SalesOrderDetailPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-5">
-        <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Totals</h3>
-        <div className="grid gap-2 text-sm md:grid-cols-2">
-          <div className="flex justify-between">
-            <span className="text-slate-600">Subtotal ({form.currency})</span>
-            <span className="font-medium">
-              {form.currency} {totals.subtotalDoc.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Subtotal (Base)</span>
-            <span className="font-medium">{totals.subtotalBase.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Tax ({form.currency})</span>
-            <span className="font-medium">
-              {form.currency} {totals.taxTotalDoc.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Tax (Base)</span>
-            <span className="font-medium">{totals.taxTotalBase.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between border-t border-slate-200 pt-2">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total ({form.currency})</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100">
-              {form.currency} {totals.grandTotalDoc.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between border-t border-slate-200 pt-2">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total (Base)</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100">{totals.grandTotalBase.toFixed(2)}</span>
-          </div>
-        </div>
-      </Card>
-
       {!isDraft && (
         <Card className="p-5">
           <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -1212,108 +1343,7 @@ const SalesOrderDetailPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-5">
-        {isDraft && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={saveOrder}
-              disabled={saving || actionBusy}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={confirmOrder}
-              disabled={saving || actionBusy}
-            >
-              Confirm
-            </button>
-          </div>
-        )}
-
-        {isConfirmed && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => navigate(deliverGoodsHref)}
-              disabled={!canDeliverGoods}
-            >
-              Deliver Goods
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => navigate(createInvoiceHref)}
-              disabled={!canCreateInvoice}
-            >
-              Create Invoice
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700 disabled:opacity-50"
-              onClick={cancelOrder}
-              disabled={saving || actionBusy}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={closeOrder}
-              disabled={saving || actionBusy}
-            >
-              Close
-            </button>
-          </div>
-        )}
-
-        {(form.status === 'PARTIALLY_DELIVERED' || form.status === 'FULLY_DELIVERED') && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => navigate(deliverGoodsHref)}
-              disabled={!canDeliverGoods}
-            >
-              Deliver Goods
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => navigate(createInvoiceHref)}
-              disabled={!canCreateInvoice}
-            >
-              Create Invoice
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={closeOrder}
-              disabled={saving || actionBusy}
-            >
-              Close
-            </button>
-          </div>
-        )}
-
-        {(form.status === 'CLOSED' || form.status === 'CANCELLED') && (
-          <div className="text-sm text-slate-500">This sales order is read-only in status: {form.status}.</div>
-        )}
-
-        <div className="flex justify-end mt-4">
-          <button
-            type="button"
-            className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-            onClick={() => setAuditModalOpen(true)}
-          >
-            History
-          </button>
-        </div>
-      </Card>
+    </DocumentDetailScaffold>
 
       <RecordAuditModal
         isOpen={auditModalOpen}
@@ -1321,7 +1351,7 @@ const SalesOrderDetailPage: React.FC = () => {
         entityType="SALES_ORDER"
         entityId={form.id || ''}
       />
-    </div>
+    </>
   );
 };
 

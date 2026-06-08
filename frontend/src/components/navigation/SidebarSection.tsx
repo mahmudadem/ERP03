@@ -219,29 +219,34 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
         </button>
       )}
 
-      {/* Items List - Conditionally Rendered */}
-      {isExpanded && (
-        <div className={clsx(
-          "space-y-0.5 mt-1 transition-all duration-300",
-          isOpen && (
+      {/* Items List - Rendered with Grid transition */}
+      {isOpen && (
+        <div
+          className={clsx(
+            "grid transition-all duration-300 ease-in-out overflow-hidden mt-1",
+            isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          )}
+        >
+          <div className={clsx(
+            "min-h-0 space-y-0.5 overflow-hidden",
             isRtl
               ? "mr-6 border-r border-[var(--color-border)] pr-[1px]"
               : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
-          )
-        )}>
-          {items.map((item, idx) => (
-            <SidebarItem
-              key={item.path || `${item.label}-${idx}`}
-              path={item.path || ''}
-              label={item.label}
-              isOpen={isOpen}
-              onClick={onNavigate}
-              children={item.children}
-              iconName={item.icon}
-              badge={item.badge}
-              isCompact={isCompact}
-            />
-          ))}
+          )}>
+            {items.map((item, idx) => (
+              <SidebarItem
+                key={item.path || `${item.label}-${idx}`}
+                path={item.path || ''}
+                label={item.label}
+                isOpen={isOpen}
+                onClick={onNavigate}
+                children={item.children}
+                iconName={item.icon}
+                badge={item.badge}
+                isCompact={isCompact}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -221,6 +221,8 @@ Dr  Accounts Payable
 
 All vouchers carry `sourceModule='purchases'`, `sourceType=<doctype>`, `sourceId=<docId>` for traceability.
 
+**Over-payment (vendor credit) — opt-in (`PurchaseSettings.allowOverpayment`, default off).** By default a `MULTI` settlement may not exceed the PI outstanding. When enabled, an over-payment debits A/P by the **full** cash paid, driving the vendor's A/P balance **negative** — a prepayment the vendor owes back / offsets their future bills. The PI is marked `PAID` (outstanding clamped at 0); the credit lives in the **A/P ledger**, not on the invoice. Mirrors `SalesSettings.allowOverpayment` (see [sales.md](./sales.md) "Over-payment"). `CASH_FULL` stays exact; over-payment flows through `MULTI`.
+
 ## Inventory Integration
 
 Purchases calls the inventory contract `IPurchasesInventoryService`:
@@ -268,6 +270,22 @@ All under `backend/src/application/purchases/use-cases/`.
 | Frontend module | `frontend/src/modules/purchases/` |
 | Inventory contract | `backend/src/application/inventory/contracts/InventoryIntegrationContracts.ts` |
 | Module deep-dive | `docs/modules/purchases/MASTER_PLAN.md`, `ALGORITHMS.md` |
+
+## Native Purchases detail-page parity (2026-06-08)
+
+Purchase Order and Purchase Invoice detail pages now render through the shared Sales Invoice-style document scaffold at `frontend/src/components/shared/DocumentDetailScaffold.tsx`. The scaffold owns the common page skeleton: compact topbar, document/status pills, full-height scroll workspace, optional responsive side rail, edge-triggered rail drawer, and persistent footer summary/actions. The scaffold rail controls are RTL-aware, so Arabic layouts mirror the rail edge, drawer side, inner hide button, and back-arrow direction.
+
+Purchase pages supply their own business-specific slots. Purchase Orders use vendor/order/procurement workflow content. Purchase Invoices use vendor bill, PO/direct source, attachments, AP totals/payment status, SoD approval messaging, payment/return/unpost actions, and settlement-on-post panels.
+
+Purchase Invoice now reuses the Sales Invoice page anatomy inside the scaffold, not only the outer chrome. Create/edit and saved-view modes use the shared control strip, compact source-aware header card, shared line-items region, allocation-grid placeholder, attachments/audit shortcut tiles, and side rail ordered as Info, Posting Readiness/Document Status, Settlement, and Totals. The vendor picker is role-filtered to vendors only.
+
+- Purchase Order shows a sticky subtotal / tax / grand-total strip beside save, confirm, receive, invoice, cancel, and close actions.
+- Purchase Invoice create/edit and posted views show a sticky subtotal / tax / grand-total strip beside save/post/payment/return/unpost actions.
+- Purchase Invoice source selection no longer accepts arbitrary raw `purchaseOrderId` text. The form loads real Purchase Orders and uses a dropdown, then loads open PO lines from the selected document.
+- Purchase Invoice no longer renders the old standalone header/totals/attachments card stack in create/edit or saved view; totals live in the rail and sticky footer like Sales Invoice.
+- Both pages use the same shared route shell pattern instead of each page owning a separate topbar/footer implementation.
+
+These changes are UI/data-integrity improvements only. They do not change AP posting, tax calculation, inventory receipt valuation, settlement, approval, SoD enforcement, period-lock behavior, or ledger writes.
 
 ## What Is NOT Implemented
 

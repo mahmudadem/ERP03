@@ -86,6 +86,8 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Task 167 Slice 3C-Purchases/Inventory - native page mounting inside Apex | 2026-06-05 | ✅ Done |
 | Codex | Task 167 Slice 3C-Settings/RBAC/AI - native page mounting inside Apex | 2026-06-06 | ✅ Done |
 | Antigravity | RTL flyout positioning & Contrast sidebar preset visual hardening | 2026-06-05 | ✅ Done |
+| Antigravity | Task 177 - SI & PI detail page redesign | 2026-06-07 | ⏸ Deferred |
+| Antigravity | Operational List Page Template & Standardization | 2026-06-07 | ✅ Done |
 
 
 **How to use:**

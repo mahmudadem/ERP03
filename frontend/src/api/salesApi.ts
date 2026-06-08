@@ -69,6 +69,7 @@ export interface SalesSettingsDTO {
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
+  allowOverpayment: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -380,6 +381,7 @@ export interface InitializeSalesPayload {
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery?: boolean;
+  allowOverpayment?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;

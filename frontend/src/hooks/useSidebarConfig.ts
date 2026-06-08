@@ -64,6 +64,9 @@ export const useSidebarConfig = () => {
   const { voucherTypes, allModuleForms } = useVoucherTypes();
   const { showPurchaseOperationalDocs, showSalesOperationalDocs } = useDocumentPolicies();
   const { t } = useTranslation('common');
+  const showDevNavigation =
+    import.meta.env.DEV ||
+    (typeof window !== 'undefined' && window.localStorage.getItem('erp_show_dev_navigation') === 'true');
 
   const labelKeyMap: Record<string, string> = {
     Accounting: 'sidebar.accounting',
@@ -133,11 +136,32 @@ export const useSidebarConfig = () => {
     'Voucher List Demo': 'sidebar.voucherListDemo',
     'Smart Voucher List': 'sidebar.smartVoucherList',
     'Tailwind Play Demo': 'sidebar.tailwindPlayDemo',
+    'UI Lab': 'sidebar.uiLab',
     'Demo': 'sidebar.demo',
     'New': 'sidebar.new'
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });
+
+  const isDevPath = (path?: string) =>
+    !!path && (path === '/canvas-dev' || path.startsWith('/dev'));
+
+  const filterProductionSidebarItems = (items: SidebarItem[]): SidebarItem[] => {
+    if (showDevNavigation) return items;
+
+    return items.reduce<SidebarItem[]>((acc, item) => {
+      if (isDevPath(item.path)) return acc;
+
+      const children = item.children ? filterProductionSidebarItems(item.children) : undefined;
+      if (item.children && (!children || children.length === 0) && !item.path) return acc;
+
+      acc.push({
+        ...item,
+        children
+      });
+      return acc;
+    }, []);
+  };
 
   /**
    * Build dynamic form groups for a given module from allModuleForms.
@@ -434,6 +458,7 @@ export const useSidebarConfig = () => {
       }
 
       items = filterSidebarItems(items);
+      items = filterProductionSidebarItems(items);
       
       if (items.length > 0) {
         sections[translateLabel(def.label)] = {
@@ -458,43 +483,43 @@ export const useSidebarConfig = () => {
       }
     });
 
-    // === DEV SECTION ===
-    // Always visible, placed after all module sections
-    sections[translateLabel('Dev')] = {
-      icon: 'Code',
-      items: [
-        { 
-          label: translateLabel('DataTable Demo'), 
-          path: '/dev/data-table',
-          icon: 'Table',
-          badge: 'Demo'
-        },
-        { 
-          label: translateLabel('Voucher List Demo'), 
-          path: '/dev/voucher-list',
-          icon: 'FileText',
-          badge: 'Demo'
-        },
-        { 
-          label: translateLabel('Smart Voucher List'), 
-          path: '/dev/smart-vouchers',
-          icon: 'Brain',
-          badge: 'New'
-        },
-        { 
-          label: translateLabel('Tailwind Play Demo'), 
-          path: '/dev/tailwind-play-demo',
-          icon: 'Layout',
-          badge: 'New'
-        },
-        { 
-          label: 'UI Lab 🎨', 
-          path: '/dev/ui-lab',
-          icon: 'Sparkles',
-          badge: 'New'
-        }
-      ]
-    };
+    if (showDevNavigation) {
+      sections[translateLabel('Dev')] = {
+        icon: 'Code',
+        items: [
+          { 
+            label: translateLabel('DataTable Demo'), 
+            path: '/dev/data-table',
+            icon: 'Table',
+            badge: 'Demo'
+          },
+          { 
+            label: translateLabel('Voucher List Demo'), 
+            path: '/dev/voucher-list',
+            icon: 'FileText',
+            badge: 'Demo'
+          },
+          { 
+            label: translateLabel('Smart Voucher List'), 
+            path: '/dev/smart-vouchers',
+            icon: 'Brain',
+            badge: 'New'
+          },
+          { 
+            label: translateLabel('Tailwind Play Demo'), 
+            path: '/dev/tailwind-play-demo',
+            icon: 'Layout',
+            badge: 'New'
+          },
+          { 
+            label: translateLabel('UI Lab'), 
+            path: '/dev/ui-lab',
+            icon: 'Sparkles',
+            badge: 'New'
+          }
+        ]
+      };
+    }
 
     return sections;
   }, [
@@ -507,6 +532,7 @@ export const useSidebarConfig = () => {
     allModuleForms,
     voucherTypes,
     t,
+    showDevNavigation,
     showPurchaseOperationalDocs,
     showSalesOperationalDocs,
   ]);

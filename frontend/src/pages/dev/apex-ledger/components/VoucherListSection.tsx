@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 export default function VoucherListSection() {
-  const { t } = useTranslation('accounting');
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const typeFromUrl = searchParams.get('type')?.trim();
   const isJournalEntry = !typeFromUrl || typeFromUrl.toLowerCase() === 'all';
@@ -275,38 +275,38 @@ export default function VoucherListSection() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white border border-[#E2E8F0] p-4 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between h-24">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">سجل القيود / Vouchers Count</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{t('apex.vouchers.count', { defaultValue: 'Vouchers Count' })}</span>
             <span className="text-2xl font-mono font-black text-slate-800 mt-1 block">{metrics.total}</span>
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">سند مسجل في الدورة الحالية</div>
+          <div className="text-[10px] text-slate-500 font-medium">{t('apex.vouchers.registeredCurrent', { defaultValue: 'Voucher registered in the current cycle' })}</div>
         </div>
 
         <div className="bg-white border border-[#E2E8F0] p-4 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between h-24">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">مجموع القيم / Total Value</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{t('apex.vouchers.totalValue', { defaultValue: 'Total Value' })}</span>
             <span className="text-xl font-mono font-bold text-emerald-600 mt-1 block">
               {metrics.totalAmountSum.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-xs">SYP</span>
             </span>
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">القيمة الإجمالية للحركات الحالية</div>
+          <div className="text-[10px] text-slate-500 font-medium">{t('apex.vouchers.totalValueCurrent', { defaultValue: 'Total value of current movements' })}</div>
         </div>
 
         <div className="bg-white border border-[#E2E8F0] p-4 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between h-24">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">المسودات / Draft & Pending</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{t('apex.vouchers.draftPending', { defaultValue: 'Draft & Pending' })}</span>
             <span className="text-2xl font-mono font-black text-amber-500 mt-1 block">
               {metrics.draft} <span className="text-xs font-sans font-bold text-slate-404">/ {metrics.pending} pending</span>
             </span>
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">بانتظار المراجعة أو الترحيل المالي</div>
+          <div className="text-[10px] text-slate-500 font-medium">{t('apex.vouchers.pendingReviewPosting', { defaultValue: 'Pending review or financial posting' })}</div>
         </div>
 
         <div className="bg-white border border-[#E2E8F0] p-4 rounded-lg shadow-xs relative overflow-hidden flex flex-col justify-between h-24">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">المرحل للدفاتر / Posted to GL</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{t('apex.vouchers.postedToGl', { defaultValue: 'Posted to GL' })}</span>
             <span className="text-2xl font-mono font-black text-blue-600 mt-1 block">{metrics.posted}</span>
           </div>
-          <div className="text-[10px] text-emerald-600 font-bold">✓ حركات مالية نشطة في الحسابات</div>
+          <div className="text-[10px] text-emerald-600 font-bold">{t('apex.vouchers.activeFinancialMovements', { defaultValue: '✓ Active financial movements in accounts' })}</div>
         </div>
       </div>
 
@@ -315,7 +315,7 @@ export default function VoucherListSection() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
             <Layers className="w-4 h-4 text-blue-600" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase">سجل القيود المحاسبية والسندات</h3>
+            <h3 className="text-xs font-bold text-slate-800 uppercase">{t('apex.vouchers.listTitle', { defaultValue: 'Accounting Vouchers & Documents Log' })}</h3>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -333,7 +333,7 @@ export default function VoucherListSection() {
                 onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center gap-1 cursor-pointer shadow-xs"
               >
-                + إنشاء سند جديد
+                {t('apex.vouchers.createNew', { defaultValue: '+ Create New Voucher' })}
                 <ChevronDown className="w-3 h-3" />
               </button>
 
@@ -362,7 +362,7 @@ export default function VoucherListSection() {
             <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-zinc-400" />
             <input
               type="text"
-              placeholder="البحث بالرقم أو الوصف..."
+              placeholder={t('apex.vouchers.searchPlaceholder', { defaultValue: 'Search by number or description...' })}
               value={clientFilters.search || ''}
               onChange={(e) => setClientFilters(prev => ({ ...prev, search: e.target.value }))}
               className="w-full pl-8 pr-2.5 py-2 border border-[#E2E8F0] rounded font-medium outline-none focus:border-blue-500 text-right"
@@ -376,12 +376,12 @@ export default function VoucherListSection() {
               onChange={(e) => setClientFilters(prev => ({ ...prev, status: e.target.value === 'ALL' ? undefined : e.target.value }))}
               className="w-full px-2.5 py-2 border border-[#E2E8F0] rounded font-semibold outline-none bg-white text-right"
             >
-              <option value="ALL">جميع الحالات / All Statuses</option>
-              <option value="draft">مسودة / Draft</option>
-              <option value="pending">بانتظار الموافقة / Pending</option>
-              <option value="approved">موافق عليه / Approved</option>
-              <option value="posted">مرحل للدفاتر / Posted</option>
-              <option value="cancelled">ملغي / Cancelled</option>
+              <option value="ALL">{t('apex.vouchers.allStatuses', { defaultValue: 'All Statuses' })}</option>
+              <option value="draft">{t('apex.vouchers.draft', { defaultValue: 'Draft' })}</option>
+              <option value="pending">{t('apex.vouchers.pending', { defaultValue: 'Pending' })}</option>
+              <option value="approved">{t('apex.vouchers.approved', { defaultValue: 'Approved' })}</option>
+              <option value="posted">{t('apex.vouchers.posted', { defaultValue: 'Posted' })}</option>
+              <option value="cancelled">{t('apex.vouchers.cancelled', { defaultValue: 'Cancelled' })}</option>
             </select>
           </div>
 
@@ -393,7 +393,7 @@ export default function VoucherListSection() {
               onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
               className="w-full bg-transparent outline-none py-1.5 font-mono text-[11px] text-center"
             />
-            <span className="text-[10px] text-zinc-400 font-bold ml-1">من</span>
+            <span className="text-[10px] text-zinc-400 font-bold ml-1">{t('apex.vouchers.from', { defaultValue: 'From' })}</span>
           </div>
 
           {/* Date to */}
@@ -404,7 +404,7 @@ export default function VoucherListSection() {
               onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
               className="w-full bg-transparent outline-none py-1.5 font-mono text-[11px] text-center"
             />
-            <span className="text-[10px] text-zinc-400 font-bold ml-1">إلى</span>
+            <span className="text-[10px] text-zinc-400 font-bold ml-1">{t('apex.vouchers.to', { defaultValue: 'To' })}</span>
           </div>
         </div>
       </div>
@@ -415,13 +415,13 @@ export default function VoucherListSection() {
           <table className="w-full border-collapse text-right text-xs">
             <thead>
               <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-slate-500 font-bold font-sans">
-                <th className="p-3 text-center w-24">الخيارات / Actions</th>
-                <th className="p-3 w-32">الحالة / Status</th>
-                <th className="p-3 text-left w-36">القيمة المدونة / Amount</th>
-                <th className="p-3">البيان / Description</th>
-                <th className="p-3 w-36">النوع / Type</th>
-                <th className="p-3 w-36">رقم السند / Number</th>
-                <th className="p-3 w-28 text-center">التاريخ / Date</th>
+                <th className="p-3 text-center w-24">{t('apex.vouchers.actions', { defaultValue: 'Actions' })}</th>
+                <th className="p-3 w-32">{t('apex.vouchers.status', { defaultValue: 'Status' })}</th>
+                <th className="p-3 text-left w-36">{t('apex.vouchers.amount', { defaultValue: 'Amount' })}</th>
+                <th className="p-3">{t('apex.vouchers.description', { defaultValue: 'Description' })}</th>
+                <th className="p-3 w-36">{t('apex.vouchers.type', { defaultValue: 'Type' })}</th>
+                <th className="p-3 w-36">{t('apex.vouchers.number', { defaultValue: 'Number' })}</th>
+                <th className="p-3 w-28 text-center">{t('apex.vouchers.date', { defaultValue: 'Date' })}</th>
               </tr>
             </thead>
             <tbody>
@@ -430,14 +430,14 @@ export default function VoucherListSection() {
                   <td colSpan={7} className="p-8 text-center text-slate-500 font-semibold">
                     <div className="flex items-center justify-center gap-2">
                       <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
-                      جاري تحميل القيود المحاسبية والسندات...
+                      {t('apex.vouchers.loading', { defaultValue: 'Loading accounting vouchers and documents...' })}
                     </div>
                   </td>
                 </tr>
               ) : vouchers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-zinc-400 font-semibold">
-                    لا توجد سندات مطابقة للمحددات الحالية.
+                    {t('apex.vouchers.empty', { defaultValue: 'No vouchers match the current filters.' })}
                   </td>
                 </tr>
               ) : (
@@ -487,7 +487,7 @@ export default function VoucherListSection() {
                             ? 'bg-rose-50 text-rose-700 border border-rose-200'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}>
-                          {v.postedAt ? 'مرحل / Posted' : v.status === 'pending' ? 'انتظار / Pending' : v.status === 'draft' ? 'مسودة / Draft' : v.status}
+                          {v.postedAt ? t('apex.vouchers.postedLabel', { defaultValue: 'Posted' }) : v.status === 'pending' ? t('apex.vouchers.pendingLabel', { defaultValue: 'Pending' }) : v.status === 'draft' ? t('apex.vouchers.draftLabel', { defaultValue: 'Draft' }) : v.status}
                         </span>
                       </td>
 
@@ -593,9 +593,9 @@ export default function VoucherListSection() {
                 <AlertTriangle className="text-rose-600 w-5 h-5" />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-bold text-slate-800">حذف مسودة القيد</h3>
+                <h3 className="text-sm font-bold text-slate-800">{t('apex.vouchers.deleteDraftTitle', { defaultValue: 'Delete Draft Voucher' })}</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  هل أنت متأكد من حذف مسودة القيد المحاسبي بالكامل؟ لا يمكن التراجع عن هذا الإجراء لاحقاً.
+                  {t('apex.vouchers.deleteDraftConfirm', { defaultValue: 'Are you sure you want to completely delete this draft voucher? This action cannot be undone.' })}
                 </p>
               </div>
             </div>
@@ -605,13 +605,13 @@ export default function VoucherListSection() {
                 onClick={() => setDeleteVoucherId(null)}
                 className="px-3.5 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 border border-slate-200 rounded cursor-pointer"
               >
-                إلغاء / Cancel
+                {t('common.cancel', { defaultValue: 'Cancel' })}
               </button>
               <button
                 onClick={handleDeleteConfirm}
                 className="px-3.5 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded shadow-xs cursor-pointer"
               >
-                تأكيد الحذف / Delete
+                {t('common.delete', { defaultValue: 'Delete' })}
               </button>
             </div>
           </div>

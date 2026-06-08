@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Settings2, Check, Search, X } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 import { DataTableProps, ColumnDefinition, FontSize, Density, ActiveFilters } from './types';
 import { useResponsiveColumns } from './useResponsiveColumns';
 import { DataTableHeader } from './DataTableHeader';
@@ -87,8 +88,11 @@ export function DataTable<T = any>({
 
   resizable = false,
   onColumnResize,
+  statusFilterConfig,
 }: DataTableProps<T>) {
   const tableId = `table-${columns.map(c => c.key).join('-')}`;
+  const { i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
   const {
     visibleColumns,
     allVisibleKeys,
@@ -237,30 +241,76 @@ export function DataTable<T = any>({
       className
     )}>
       {/* Toolbar: Search + Settings */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)]">
-        {searchable && (
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] w-4 h-4" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={e => handleSearchChange(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full pl-9 pr-8 py-2 text-sm border border-[var(--color-border)] rounded-md bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-[var(--color-bg-secondary)] rounded"
-                aria-label="Clear search"
-              >
-                <X className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-              </button>
-            )}
-          </div>
-        )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-b border-[var(--color-border)]">
+        <div className="flex flex-1 items-center gap-3 min-w-0">
+          {searchable && (
+            <div className="w-full sm:w-64 relative shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] w-4 h-4" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => handleSearchChange(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="w-full pl-9 pr-8 py-2 text-sm border border-[var(--color-border)] rounded-md bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-[var(--color-bg-secondary)] rounded"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                </button>
+              )}
+            </div>
+          )}
 
-        <div className="relative" ref={settingsRef}>
+          {/* Quick Status Filters (to the left of table settings button) */}
+          {statusFilterConfig && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none min-w-0 flex-1">
+              {statusFilterConfig.options.map((option) => {
+                const count = statusFilterConfig.counts[option.value] ?? 0;
+                const isActive = statusFilterConfig.activeValue === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      if (isActive) {
+                        statusFilterConfig.onChange('ALL');
+                      } else {
+                        statusFilterConfig.onChange(option.value);
+                      }
+                    }}
+                    className={clsx(
+                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all duration-200 cursor-pointer active:scale-95 whitespace-nowrap shrink-0',
+                      isActive
+                        ? 'border-primary-500 bg-primary-50/50 text-primary-700 dark:bg-primary-950/20 dark:border-primary-400 dark:text-primary-300 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        'w-1.5 h-1.5 rounded-full',
+                        option.color === 'slate' && 'bg-slate-400 dark:bg-slate-500',
+                        option.color === 'amber' && 'bg-amber-500',
+                        option.color === 'blue' && 'bg-blue-500',
+                        option.color === 'emerald' && 'bg-emerald-500',
+                        option.color === 'rose' && 'bg-rose-500',
+                        option.color === 'indigo' && 'bg-indigo-500',
+                        option.color === 'gray' && 'bg-gray-400'
+                      )}
+                    />
+                    <span>{option.label}</span>
+                    <span className="font-mono text-[9px] opacity-75 font-bold ml-0.5">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className={clsx("relative flex-none", !searchable && (isRtl ? "mr-auto" : "ml-auto"))} ref={settingsRef}>
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors text-[var(--color-text-secondary)]"
@@ -271,7 +321,10 @@ export function DataTable<T = any>({
           </button>
 
           {showSettings && (
-            <div className="absolute top-full end-0 mt-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-lg z-[100] p-4 text-xs text-[var(--color-text-primary)]">
+            <div className={clsx(
+              "absolute top-full mt-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-lg z-[100] p-4 text-xs text-[var(--color-text-primary)]",
+              isRtl ? "left-0" : "right-0"
+            )}>
               {/* Density */}
               <div className="mb-4">
                 <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">
