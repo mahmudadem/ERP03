@@ -44,6 +44,16 @@ export interface PendingApprovalSourceDoc {
   date: string;
   createdBy: string;
   parkedAt: string;
+  /**
+   * Settlement the user entered before the post was parked for approval. Present only
+   * when a payment was recorded (CASH_FULL/MULTI); approving replays it. Null = on credit.
+   */
+  settlement?: {
+    mode: 'CASH_FULL' | 'MULTI';
+    recordedBase: number;
+    paymentCount: number;
+    fullyPaid: boolean;
+  } | null;
 }
 
 export interface TrialBalanceLine {

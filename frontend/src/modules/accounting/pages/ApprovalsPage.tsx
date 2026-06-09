@@ -309,6 +309,7 @@ const ApprovalsPage: React.FC = () => {
                             <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.party', 'Party')}</th>
                             <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.date', 'Date')}</th>
                             <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.total', 'Total')}</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.onApproval', 'On Approval')}</th>
                             <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)]">{t('approvals.sourceDocs.actions', 'Actions')}</th>
                           </tr>
                         </thead>
@@ -337,6 +338,27 @@ const ApprovalsPage: React.FC = () => {
                               <td className="px-4 py-3 text-[var(--color-text-primary)]">{row.partyName}</td>
                               <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.date}</td>
                               <td className="px-4 py-3 text-right font-mono text-[var(--color-text-primary)]">{fmtMoney(row.totalDoc, row.currency)}</td>
+                              <td className="px-4 py-3">
+                                {row.settlement ? (
+                                  <span
+                                    title={t('approvals.sourceDocs.settlementHint', 'Approving will also record this payment, not just post on credit.')}
+                                    className={clsx(
+                                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold',
+                                      row.settlement.fullyPaid
+                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                    )}
+                                  >
+                                    {row.settlement.fullyPaid
+                                      ? t('approvals.sourceDocs.willPostPaid', 'Will post PAID — {{amount}}', { amount: fmtMoney(row.settlement.recordedBase, row.currency) })
+                                      : t('approvals.sourceDocs.willPostPartial', 'Partial — {{amount}}', { amount: fmtMoney(row.settlement.recordedBase, row.currency) })}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-[var(--color-bg-secondary)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-text-muted)]">
+                                    {t('approvals.sourceDocs.onCredit', 'On credit')}
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="flex justify-end gap-2">
                                   <button

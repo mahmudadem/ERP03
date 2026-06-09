@@ -264,6 +264,32 @@ Configured per posting call. Three modes:
 
 Payment status (`UNPAID` → `PARTIALLY_PAID` → `PAID`) is auto-computed from `paidAmount` vs `grandTotal`.
 
+### Voucher model: two-voucher roundtrip (decision — Task 186, reaffirmed 2026-06-09)
+
+A paid invoice **always** posts as **two linked vouchers**, never one combined entry:
+
+```
+Invoice voucher:   Dr A/R 100        Cr Revenue 100 (+ tax)
+Receipt voucher:   Dr Cash/Bank 45   Cr A/R 45          (own RV- number, linked PaymentHistory)
+→ net A/R 55, Cash 45, Revenue 100
+```
+
+The receipt voucher carries `metadata.sourceInvoiceId`, so it is discoverable from the invoice. **Settle-on-post and pay-later use the exact same mechanism — only the timing differs.**
+
+**Why two vouchers, not one combined `Dr A/R 55 + Dr Cash 45 / Cr Revenue 100`** (both produce identical net balances / trial balance):
+
+- **Timing symmetry (the deciding reason).** A posted invoice voucher is immutable, so a payment recorded *later* must be its own voucher. If settle-on-post were combined, the same economic event (customer pays cash) would produce two different ledger shapes depending on *when* they paid — every report, reconciliation, and reversal would have to handle both. Two-voucher keeps one shape always.
+- **Standard journal separation.** Maps cleanly to the Sales Journal (invoices) vs Cash Receipts Journal (receipts). A combined entry blurs the two.
+- **Bank reconciliation.** Receipts are discrete cash documents to match against the bank statement; combined buries the cash movement inside the revenue-recognition entry.
+- **Reversal / un-pay.** Reverse only the receipt voucher; the invoice (and its revenue) is untouched. Combined would force editing the invoice voucher to undo a payment.
+- **Partial / installments & over-payment.** Every installment is a uniform receipt voucher; over-payment credits A/R by the full cash received (driving A/R negative) without the invoice voucher carrying more than the invoice total.
+
+**Presentation, not posting.** The desire to see "one transaction" is met in the UI by grouping the invoice voucher with its linked receipt voucher (via `sourceInvoiceId`) — *not* by merging the postings. Do not collapse the two vouchers in the engine.
+
+### Settlement preserved across the approval boundary (2026-06-09)
+
+When financial approval is enabled, posting a paid invoice hits `APPROVAL_REQUIRED` and the whole posting (invoice voucher **and** receipt voucher) rolls back as the invoice is parked `PENDING_APPROVAL`. To avoid silently discarding the cash receipt the user entered at post time, the entered settlement is preserved on the invoice as `SalesInvoice.pendingSettlement` (domain-local type, round-tripped via `toJSON`/`fromJSON`, Firestore-safe via `stripUndefinedDeep`). `ApproveSalesInvoiceUseCase` replays it on approval — an explicit `settlementInput` on the approval request still wins; otherwise the stored intent is used. A successful post clears `pendingSettlement` so it can never be replayed twice. No effect when approval is off (settlement applies immediately) or for `DEFERRED` (nothing stored). The Approval Center surfaces a per-row preview ("Will post PAID — {amount}" / "Partial" / "On credit") computed from `pendingSettlement`. Purchases mirror this via `PurchaseInvoice.pendingSettlement` and `ApprovePurchaseInvoiceUseCase`.
+
 ### Over-payment (party credit) — opt-in (`allowOverpayment`)
 
 By default a `MULTI` settlement may **not** exceed the invoice outstanding (`CASH_FULL` must equal it exactly). When **`SalesSettings.allowOverpayment`** is enabled (default **off**), a `MULTI` settlement *may* exceed the outstanding: the receipt voucher credits A/R by the **full** cash received, driving the customer's A/R balance **negative** — a credit you owe them that offsets their future invoices. The invoice itself is marked `PAID` (outstanding is clamped at 0); the over-payment credit lives in the **A/R ledger**, not on the invoice. `CASH_FULL` stays exact — over-payment always flows through `MULTI`. With the flag off the prior validation stands (over-payment rejected with a guiding message). The Purchases side mirrors this via `PurchaseSettings.allowOverpayment` (the excess drives A/P **negative** — a prepayment the vendor owes back). Gated in all four settlement engines (settle-on-post + record-payment-later, both modules).

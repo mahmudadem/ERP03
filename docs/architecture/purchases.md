@@ -221,6 +221,10 @@ Dr  Accounts Payable
 
 All vouchers carry `sourceModule='purchases'`, `sourceType=<doctype>`, `sourceId=<docId>` for traceability.
 
+**Voucher model: two-voucher roundtrip (decision — Task 186, reaffirmed 2026-06-09).** A paid PI always posts as **two linked vouchers** — the invoice voucher (`Dr Expense/Inventory / Cr A/P`) plus a separate payment voucher (`Dr A/P / Cr Cash/Bank`, own PV- number, linked PaymentHistory, `metadata.sourceInvoiceId`) — never one combined entry. Settle-on-post and pay-later use the same mechanism; only timing differs. Rationale (timing symmetry with immutable posted vouchers, Purchases Journal vs Cash Payments Journal separation, clean bank reconciliation/reversal, and over-payment handling) is detailed in [sales.md](./sales.md) "Voucher model". The "one transaction" view is a UI grouping concern (link via `sourceInvoiceId`), not a posting change.
+
+**Settlement preserved across the approval boundary (2026-06-09).** When approval is enabled, posting a paid PI hits `APPROVAL_REQUIRED` and rolls back (invoice + payment voucher) as the PI is parked `PENDING_APPROVAL`. The entered settlement is preserved on `PurchaseInvoice.pendingSettlement` and replayed by `ApprovePurchaseInvoiceUseCase` (explicit approval-request `settlementInput` wins; otherwise the stored intent is used; cleared on successful post). The Approval Center shows a per-row preview of what will post. Mirrors Sales (see [sales.md](./sales.md) "Settlement preserved across the approval boundary").
+
 **Over-payment (vendor credit) — opt-in (`PurchaseSettings.allowOverpayment`, default off).** By default a `MULTI` settlement may not exceed the PI outstanding. When enabled, an over-payment debits A/P by the **full** cash paid, driving the vendor's A/P balance **negative** — a prepayment the vendor owes back / offsets their future bills. The PI is marked `PAID` (outstanding clamped at 0); the credit lives in the **A/P ledger**, not on the invoice. Mirrors `SalesSettings.allowOverpayment` (see [sales.md](./sales.md) "Over-payment"). `CASH_FULL` stays exact; over-payment flows through `MULTI`.
 
 ## Inventory Integration

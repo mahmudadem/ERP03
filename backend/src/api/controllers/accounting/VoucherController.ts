@@ -508,6 +508,23 @@ export class VoucherController {
         diContainer.purchaseInvoiceRepository.list(companyId, { status: 'PENDING_APPROVAL' as const }),
       ]);
 
+      // Summarize the settlement the user entered before the post was parked, so the
+      // approver can see that approving will also record a payment (not just post on
+      // credit). Replayed by Approve{Sales,Purchase}InvoiceUseCase. See docs/architecture.
+      const summarizeSettlement = (ps: any, totalBase: number) => {
+        if (!ps || !ps.settlementMode || ps.settlementMode === 'DEFERRED') return null;
+        const rows = Array.isArray(ps.settlements) ? ps.settlements : [];
+        const recordedBase = Math.round(
+          rows.reduce((sum: number, r: any) => sum + (Number(r.amountBase) || 0), 0) * 100,
+        ) / 100;
+        return {
+          mode: ps.settlementMode as 'CASH_FULL' | 'MULTI',
+          recordedBase,
+          paymentCount: rows.length,
+          fullyPaid: recordedBase >= Math.round(totalBase * 100) / 100 - 0.01,
+        };
+      };
+
       const items = [
         ...sis.map((si) => ({
           source: 'SALES_INVOICE' as const,
@@ -521,6 +538,7 @@ export class VoucherController {
           date: si.invoiceDate,
           createdBy: si.createdBy,
           parkedAt: si.updatedAt instanceof Date ? si.updatedAt.toISOString() : si.updatedAt,
+          settlement: summarizeSettlement(si.pendingSettlement, si.grandTotalBase),
         })),
         ...pis.map((pi) => ({
           source: 'PURCHASE_INVOICE' as const,
@@ -534,6 +552,7 @@ export class VoucherController {
           date: pi.invoiceDate,
           createdBy: pi.createdBy,
           parkedAt: pi.updatedAt instanceof Date ? pi.updatedAt.toISOString() : pi.updatedAt,
+          settlement: summarizeSettlement(pi.pendingSettlement, pi.grandTotalBase),
         })),
       ];
 
