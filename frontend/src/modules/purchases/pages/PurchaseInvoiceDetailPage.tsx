@@ -166,6 +166,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
   const [apAccountId, setApAccountId] = useState('');
   const [settlementRows, setSettlementRows] = useState<{ settlementAccountId: string; amountBase: number; paymentMethod: string; reference: string; notes: string; paymentDate: string }[]>([]);
+  const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
   const [showSettlement, setShowSettlement] = useState(false);
 
   const vendorNameById = useMemo(
@@ -768,13 +769,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const handlePostClick = () => {
     if (!invoice) return;
-    const outstanding = roundMoney((invoice.grandTotalBase || 0) - (invoice.paidAmountBase || 0));
-    if (outstanding > 0.005) {
-      setShowSettlement(true);
-      setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
-    } else {
-      postDraft();
+    // The inline SettlementBlock already holds the user's settlement rows.
+    // Gate on its validity, then post directly. (#193 retired the old settlement
+    // modal — re-opening it here silently wiped the entry.)
+    if (settlementMode !== 'DEFERRED' && !settlementValidity.ok) {
+      setError(settlementValidity.message || 'Settlement needs attention.');
+      return;
     }
+    postDraft();
   };
 
   const unpostPI = async () => {
@@ -1059,13 +1061,18 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                 onClick={() => {
                   const outstanding = roundMoney(totals.grandTotalBase);
-                  if (outstanding > 0.005) {
-                    setShowSettlement(true);
-                    setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
-                  } else {
+                  if (outstanding <= 0.005) {
                     setSettlementMode('DEFERRED');
                     createAndPostDraft();
+                    return;
                   }
+                  // Inline SettlementBlock holds the rows; gate on validity, then post.
+                  // (#193 retired the old settlement modal — re-opening it wiped the entry.)
+                  if (settlementMode !== 'DEFERRED' && !settlementValidity.ok) {
+                    setError(settlementValidity.message || 'Settlement needs attention.');
+                    return;
+                  }
+                  createAndPostDraft();
                 }}
                 disabled={busy || orderLineLoading}
               >
@@ -1516,6 +1523,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           paymentMethodConfigs={(settings as any)?.paymentMethodConfigs || []}
           allowOverpayment={(settings as any)?.allowOverpayment === true}
           currencyCode={form.currency}
+          onValidityChange={setSettlementValidity}
         />
 
         {showSettlement && (

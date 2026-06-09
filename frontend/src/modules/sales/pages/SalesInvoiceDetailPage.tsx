@@ -410,6 +410,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
   const [arAccountId, setArAccountId] = useState('');
   const [settlementRows, setSettlementRows] = useState<SettlementRowState[]>([]);
+  const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
   const [showSettlement, setShowSettlement] = useState(false);
   const [settlementExpanded, setSettlementExpanded] = useState(false);
   const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'so' | 'dn'>('direct');
@@ -1663,10 +1664,14 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       });
       if (!confirmed) return;
       postDraft();
-    } else if (outstanding > 0.005) {
-      setShowSettlement(true);
-      setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
     } else {
+      // The inline SettlementBlock already holds the user's settlement rows.
+      // Gate on its validity, then post directly. (#193 retired the old settlement
+      // modal — re-opening it here rendered nothing and silently wiped the entry.)
+      if (!settlementValidity.ok) {
+        errorHandler.showError(settlementValidity.message || t('settlement.validation.needsAttention', 'Settlement needs attention.'));
+        return;
+      }
       postDraft();
     }
   };
@@ -1849,8 +1854,13 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       if (!confirmed) return;
       createAndPostDraft();
     } else if (outstanding > 0.005) {
-      setShowSettlement(true);
-      setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+      // Inline SettlementBlock holds the rows; gate on validity, then post directly.
+      // (#193 retired the old settlement modal — re-opening it here wiped the entry.)
+      if (!settlementValidity.ok) {
+        errorHandler.showError(settlementValidity.message || t('settlement.validation.needsAttention', 'Settlement needs attention.'));
+        return;
+      }
+      createAndPostDraft();
     } else {
       setSettlementMode('DEFERRED');
       createAndPostDraft();
@@ -2820,6 +2830,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
               paymentMethodConfigs={enabledPaymentMethodConfigs}
               allowOverpayment={(settings as any)?.allowOverpayment === true}
               currencyCode={form.currency}
+              onValidityChange={setSettlementValidity}
             />
           )}
         </section>
