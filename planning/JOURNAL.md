@@ -2553,6 +2553,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 ## 2026-05-20 (Wed) — Phase C (sales finance & reporting)
 **Task:** Task 110 — Phase C of the sales completion roadmap
 
+### Session: 2026-06-09 (Native Invoice Reference Label Clarification)
+
+- **Goal:** Clarify whether Sales/Purchases native invoice reference fields should be free text or SO/PO selectors.
+- **Decision:** Keep the external reference fields as optional free text. Sales uses the internal Sales Order selector only in From SO mode; Purchases uses the internal Purchase Order selector only in From PO mode.
+- **What was done:** Renamed Sales `customerInvoiceNumber` UI text to **Customer PO / Ref** and Purchases `vendorInvoiceNumber` UI text to **Vendor Invoice / Ref**. Updated English, Arabic, and Turkish locale strings plus sales/purchases user-guide notes. Added completion report [195-native-invoice-reference-labels.md](./done/195-native-invoice-reference-labels.md).
+- **Accounting impact:** Label/documentation clarity only. No posting, tax, AR/AP, inventory, settlement, approval, period-lock, audit, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~0.4h.
+- **Next:** Manual visual QA on Sales Invoice and Purchase Invoice Direct/linked modes to confirm the labels read correctly.
+
 ### Session: 2026-06-08 (Sales Invoices List Filter Polish)
 
 - **Goal:** Polish the Sales Invoices list filter bar and table scan layout.

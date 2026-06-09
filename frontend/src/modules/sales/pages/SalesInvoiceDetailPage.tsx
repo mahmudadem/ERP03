@@ -1997,7 +1997,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
               <Field label={t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')} value={String(form.exchangeRate || 1)} plain />
               {activeSourceMode === 'direct' && <Field label={t('sales.invoiceDetail.mainWarehouse', 'Main Warehouse')} value={selectedWarehouseName} plain />}
               <Field label={t('sales.invoiceDetail.salesperson', 'Salesperson')} value={selectedSalespersonName} plain />
-              <Field label={t('sales.invoiceDetail.customerInvoiceNumber', 'Customer Ref')} value={form.customerInvoiceNumber || '—'} plain />
+              <Field label={t('sales.invoiceDetail.customerInvoiceNumber', 'Customer PO / Ref')} value={form.customerInvoiceNumber || '—'} plain />
             </>
           ) : (
             <>
@@ -2126,7 +2126,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                 </select>
               </div>
               <div className={headerFieldWrapperClass}>
-                <label className={headerLabelClass}>{t('sales.invoiceDetail.customerInvoiceNumber', 'Customer Ref')}</label>
+                <label className={headerLabelClass}>{t('sales.invoiceDetail.customerInvoiceNumber', 'Customer PO / Ref')}</label>
                 <input
                   type="text"
                   className={headerControlClass}

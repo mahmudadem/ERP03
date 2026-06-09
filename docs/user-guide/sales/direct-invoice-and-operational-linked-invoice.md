@@ -51,7 +51,7 @@ Typical fit:
 
 1. Open `Sales -> Invoices -> New Sales Invoice`
 2. In the **Control** section, choose **Direct**
-3. In the header, choose the customer, invoice date, currency, exchange rate, main warehouse, salesperson, and customer reference
+3. In the header, choose the customer, invoice date, currency, exchange rate, main warehouse, salesperson, and optional customer PO/reference
 4. Add item or service lines
 5. Review tax/allocation information below the line grid
 6. At the end of the invoice, choose settlement:

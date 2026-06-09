@@ -167,6 +167,7 @@ Purchase Orders and Purchase Invoices use the same document page skeleton as the
 - A right-side summary rail shows totals and status details on wide screens, and opens from the page edge on smaller windows.
 - Save, post, receive, invoice, payment, return, cancel, close, and unpost actions remain reachable at the bottom of the page when they apply to the document status.
 - Purchase Invoice PO selection uses real Purchase Orders from the system instead of a raw typed ID. Selecting a PO loads its open lines into the bill.
+- The Vendor Invoice / Ref field is optional free text for the vendor's own invoice or bill reference; it is separate from the internal Purchase Order selector.
 - Purchase Invoice now follows the same inside-page structure as Sales Invoice: source controls at the top, compact header, line table, allocation grid placeholder, attachments/audit shortcuts, and a right rail for info, posting readiness, settlement, and totals.
 
 This layout does not change AP posting, tax, inventory valuation, approval, segregation-of-duties controls, period lock, or payment voucher behavior.
