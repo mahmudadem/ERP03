@@ -411,8 +411,6 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [arAccountId, setArAccountId] = useState('');
   const [settlementRows, setSettlementRows] = useState<SettlementRowState[]>([]);
   const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
-  const [showSettlement, setShowSettlement] = useState(false);
-  const [settlementExpanded, setSettlementExpanded] = useState(false);
   const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'so' | 'dn'>('direct');
   const [attachmentsPanelOpen, setAttachmentsPanelOpen] = useState(false);
   const [railPinned, setRailPinned] = useState(true);
@@ -433,17 +431,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     setSettlementMode('DEFERRED');
     setArAccountId('');
     setSettlementRows([]);
-    setShowSettlement(false);
-    setSettlementExpanded(false);
   }, [resolvedId]);
-
-  useEffect(() => {
-    if (settlementMode !== 'DEFERRED') {
-      setSettlementExpanded(true);
-    } else {
-      setSettlementExpanded(false);
-    }
-  }, [settlementMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1628,14 +1616,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             'This invoice is waiting for accounting approval. Approve it from Accounting → Approval Center.',
           ),
         );
-        setShowSettlement(false);
         return;
       }
       const posted = await salesApi.postSI(invoice.id, settlementInput, periodLockOverrideReason);
       const dto = unwrap<SalesInvoiceDTO>(posted);
       setInvoice(dto);
       populateFormFromInvoice(dto);
-      setShowSettlement(false);
       errorHandler.showSuccess(t('sales.invoiceDetail.postSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
       if (isWindow && onSaved) {
         onSaved();
@@ -2358,183 +2344,6 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             </div>
           )}
         </div>
-      </section>
-    );
-  };
-
-  const renderSettlementCard = () => {
-    const outstanding = roundMoney(isCreateMode ? totals.grandTotalBase : ((invoice?.grandTotalBase || 0) - (invoice?.paidAmountBase || 0)));
-    const paidAmount = roundMoney(isCreateMode ? 0 : invoice?.paidAmountBase || 0);
-    const affectedAccountLabel = arAccountId || customerNameById[form.customerId] || form.customerName || t('sales.invoiceDetail.customerReceivable', 'Customer receivable');
-
-    return (
-      <section className="min-h-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div
-          className="flex h-8 items-center justify-between border-b border-slate-150 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 px-3 cursor-pointer select-none"
-          onClick={() => setSettlementExpanded(!settlementExpanded)}
-        >
-          <div className="flex items-center gap-2">
-            <h2 className="text-[10px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-350">
-              {t('sales.invoiceDetail.settlement.title', 'Settlement')}
-            </h2>
-            <span className="text-[9px] font-black text-slate-400">({settlementMode})</span>
-          </div>
-          <Pill tone={settlementMode !== 'DEFERRED' ? 'green' : 'slate'}>
-            {settlementMode !== 'DEFERRED' ? t('sales.invoiceDetail.settlement.cash', 'Immediate') : t('sales.invoiceDetail.settlement.deferredShort', 'Credit')}
-          </Pill>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5 border-b border-slate-100 p-2 dark:border-slate-800">
-          <div className="rounded border border-slate-100 bg-slate-50/70 px-2 py-1 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.invoiceDetail.settlement.paid', 'Paid')}</div>
-            <div className="truncate font-mono text-xs font-black text-emerald-700 dark:text-emerald-300">{paidAmount.toFixed(2)}</div>
-          </div>
-          <div className="rounded border border-slate-100 bg-slate-50/70 px-2 py-1 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.invoiceDetail.settlement.remaining', 'Remaining')}</div>
-            <div className="truncate font-mono text-xs font-black text-slate-900 dark:text-slate-100">{outstanding.toFixed(2)}</div>
-          </div>
-          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 text-[11px] dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-              {settlementMode === 'DEFERRED'
-                ? t('sales.invoiceDetail.settlement.affectedAccount', 'Affected Account')
-                : t('sales.invoiceDetail.settlement.contraAccount', 'Contra Account')}
-            </div>
-            <div className="truncate font-bold text-slate-800 dark:text-slate-100">{affectedAccountLabel}</div>
-            <div className="truncate font-mono text-[10px] text-slate-500">{outstanding.toFixed(2)}</div>
-          </div>
-        </div>
-        {settlementExpanded && (
-          <div className="p-2.5 space-y-2 text-xs border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/20">
-            {!isReadOnly && (
-              <div>
-                <label className="mb-0.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.settlement.mode', 'Settlement Mode')}</label>
-                <select
-                  className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
-                  value={settlementMode}
-                  onChange={(e) => setSettlementMode(e.target.value as any)}
-                >
-                  <option value="DEFERRED">{t('sales.invoiceDetail.settlement.deferred', 'Deferred (No Payment)')}</option>
-                  <option value="CASH_FULL">{t('sales.invoiceDetail.settlement.cashFull', 'Cash Full Payment')}</option>
-                  <option value="MULTI">{t('sales.invoiceDetail.settlement.multi', 'Multiple Payments')}</option>
-                </select>
-              </div>
-            )}
-
-            {settlementMode !== 'DEFERRED' && (
-              <>
-                {!isReadOnly && (
-                  <div className="mt-1">
-                     <label className="mb-0.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.settlement.arAccount', 'AR Account')}</label>
-                     <AccountSelector
-                       value={arAccountId}
-                       placeholder={t('sales.invoiceDetail.settlement.arAccountPlaceholder', 'Default AR Account')}
-                       onChange={(account) => setArAccountId(account?.id || '')}
-                     />
-                  </div>
-                )}
-
-                <div className="space-y-2 max-h-[160px] overflow-y-auto mt-2">
-                  {settlementRows.map((row, idx) => (
-                    <div key={idx} className="rounded border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 p-2 space-y-1">
-                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
-                        <span>{t('sales.invoiceDetail.settlement.paymentRow', 'Payment #{{n}}', { n: idx + 1 })}</span>
-                        {settlementMode === 'MULTI' && !isReadOnly && (
-                          <button
-                            type="button"
-                            className="text-[10px] text-rose-600 hover:text-rose-800"
-                            onClick={() => setSettlementRows(settlementRows.filter((_, i) => i !== idx))}
-                          >
-                            {t('sales.invoiceDetail.remove', 'Remove')}
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid gap-1.5 grid-cols-2">
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400">{t('sales.invoiceDetail.settlement.settlementAccount', 'Account')}</label>
-                          {isReadOnly ? (
-                            <div className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{row.settlementAccountId || '—'}</div>
-                          ) : (
-                            <AccountSelector
-                              value={row.settlementAccountId}
-                              placeholder={t('sales.invoiceDetail.settlement.settlementAccountPlaceholder', 'Select cash/bank')}
-                              onChange={(account) => {
-                                const updated = [...settlementRows];
-                                updated[idx].settlementAccountId = account?.id || '';
-                                setSettlementRows(updated);
-                              }}
-                            />
-                          )}
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400">{t('sales.invoiceDetail.settlement.amountBase', 'Amount (Base)')}</label>
-                          {isReadOnly ? (
-                            <div className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">{row.amountBase.toFixed(2)}</div>
-                          ) : (
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-xs text-right font-mono text-slate-900 dark:text-slate-100"
-                              value={row.amountBase}
-                              onChange={(e) => {
-                                const updated = [...settlementRows];
-                                updated[idx].amountBase = parseFloat(e.target.value) || 0;
-                                setSettlementRows(updated);
-                              }}
-                            />
-                          )}
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400">{t('sales.invoiceDetail.settlement.paymentMethod', 'Method')}</label>
-                          {isReadOnly ? (
-                            <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 uppercase">{row.paymentMethod}</div>
-                          ) : (
-                            <select
-                              className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-1 py-0.5 text-xs text-slate-900 dark:text-slate-100"
-                              value={row.paymentMethod}
-                              onChange={(e) => {
-                                const updated = [...settlementRows];
-                                updated[idx].paymentMethod = e.target.value;
-                                setSettlementRows(updated);
-                              }}
-                            >
-                              {enabledPaymentMethodConfigs.map((config) => (
-                                <option key={config.method} value={config.method}>{config.label || config.method}</option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400">{t('sales.invoiceDetail.settlement.paymentDate', 'Date')}</label>
-                          {isReadOnly ? (
-                            <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">{row.paymentDate}</div>
-                          ) : (
-                            <DatePicker
-                              value={row.paymentDate}
-                              onChange={(val) => {
-                                const updated = [...settlementRows];
-                                updated[idx].paymentDate = val;
-                                setSettlementRows(updated);
-                              }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {settlementMode === 'MULTI' && !isReadOnly && (
-                  <button
-                    type="button"
-                    className="mt-1 w-full rounded border border-slate-200 bg-white dark:bg-slate-800 py-1 text-center text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
-                    onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: 0, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
-                  >
-                    + {t('sales.invoiceDetail.settlement.addRow', 'Add Payment Row')}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
       </section>
     );
   };
