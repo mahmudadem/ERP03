@@ -24,6 +24,7 @@ import { PartySelector, ItemSelector, WarehouseSelector } from '../../../compone
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
+import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { clsx } from 'clsx';
 import {
@@ -170,6 +171,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [recordPaymentBusy, setRecordPaymentBusy] = useState(false);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
 
   const vendorNameById = useMemo(
     () =>
@@ -1749,6 +1751,15 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               Create Payment
             </button>
           )}
+          {invoice.status === 'POSTED' && (invoice.paidAmountBase || 0) > 0 && (
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              onClick={() => setPaymentHistoryOpen(true)}
+            >
+              {t('purchases.invoiceDetail.viewPayments', 'Payments')}
+            </button>
+          )}
           {invoice.status === 'POSTED' && (
             <button
               type="button"
@@ -2024,6 +2035,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         busy={recordPaymentBusy}
         onClose={() => setRecordPaymentOpen(false)}
         onSubmit={handleRecordPayment}
+      />
+
+      <PaymentHistoryModal
+        open={paymentHistoryOpen}
+        invoiceNumber={invoice.invoiceNumber}
+        currencyCode={invoice.currency}
+        fetchPayments={() => purchasesApi.getPaymentHistory(invoice.id)}
+        onClose={() => setPaymentHistoryOpen(false)}
       />
     </>
   );

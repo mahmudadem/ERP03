@@ -41,6 +41,7 @@ import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
+import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
 import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
@@ -414,6 +415,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [recordPaymentBusy, setRecordPaymentBusy] = useState(false);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'so' | 'dn'>('direct');
   const [attachmentsPanelOpen, setAttachmentsPanelOpen] = useState(false);
   const [railPinned, setRailPinned] = useState(true);
@@ -2760,6 +2762,15 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                 >
                   {t('sales.invoiceDetail.createReturn', 'Create Return')}
                 </button>
+                {invoice?.status === 'POSTED' && (invoice?.paidAmountBase || 0) > 0 && (
+                  <button
+                    type="button"
+                    className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    onClick={() => setPaymentHistoryOpen(true)}
+                  >
+                    {t('sales.invoiceDetail.viewPayments', 'Payments')}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
@@ -2882,6 +2893,16 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           busy={recordPaymentBusy}
           onClose={() => setRecordPaymentOpen(false)}
           onSubmit={handleRecordPayment}
+        />
+      )}
+
+      {invoice && (
+        <PaymentHistoryModal
+          open={paymentHistoryOpen}
+          invoiceNumber={invoice.invoiceNumber}
+          currencyCode={invoice.currency || form.currency}
+          fetchPayments={() => salesApi.getPaymentHistory(invoice.id)}
+          onClose={() => setPaymentHistoryOpen(false)}
         />
       )}
 

@@ -3467,5 +3467,17 @@
       "selectAccount": "Nakit/banka hesabını seçin.",
       "overpayment": "Tutar kalan bakiyeyi aşıyor. Fazlalığı taraf kredisi olarak kaydetmek için ayarlardan \"Fazla ödemeye izin ver\" seçeneğini açın."
     }
+  },
+  "paymentHistory": {
+    "title": "Ödeme Geçmişi",
+    "loading": "Yükleniyor…",
+    "loadFailed": "Ödemeler yüklenemedi.",
+    "empty": "Henüz ödeme kaydedilmedi.",
+    "date": "Tarih",
+    "method": "Yöntem",
+    "reference": "Referans",
+    "amount": "Tutar",
+    "voucher": "Fiş",
+    "totalPaid": "Toplam ödenen"
   }
 }

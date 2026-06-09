@@ -3394,5 +3394,17 @@
       "selectAccount": "Select the cash/bank account.",
       "overpayment": "Amount exceeds the outstanding balance. Turn on \"Allow over-payment\" in settings to record the excess as a party credit."
     }
+  },
+  "paymentHistory": {
+    "title": "Payment History",
+    "loading": "Loading…",
+    "loadFailed": "Failed to load payments.",
+    "empty": "No payments recorded yet.",
+    "date": "Date",
+    "method": "Method",
+    "reference": "Reference",
+    "amount": "Amount",
+    "voucher": "Voucher",
+    "totalPaid": "Total paid"
   }
 }
