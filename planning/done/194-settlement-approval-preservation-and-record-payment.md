@@ -76,7 +76,7 @@ Docs: `docs/architecture/sales.md`, `docs/architecture/purchases.md`.
 
 **D — Over-payment (flag on):** record more than outstanding → ✅ hint "extra becomes a {customer/vendor} credit"; party AR/AP goes negative. Flag off → ✅ blocked with a clear message.
 
-## Follow-ups (not in this report)
+## Follow-ups
 
-- Show **payment history** on the invoice page (the `getPaymentHistory` API already exists).
-- Optional: group the invoice voucher + its linked receipt in the UI as one "what posted" panel (the presentation answer to the combined-voucher question).
+- ✅ **Payment history on the invoice page** — done (`7c0595c0`): read-only `PaymentHistoryModal` (date, method, reference, amount, linked voucher, total paid) reading the existing `getPaymentHistory` endpoint, opened via a "Payments" button on posted invoices with ≥1 payment. EN/AR/TR added; no backend change.
+- Optional (open): group the invoice voucher + its linked receipt in the UI as one "what posted" panel (the presentation answer to the combined-voucher question).
