@@ -3953,6 +3953,57 @@
   "documentDetail": {
     "sideRail": "الشريط الجانبي للمستند"
   },
+  "lineItemsTable": {
+    "addItem": "إضافة مادة",
+    "empty": "لا توجد بنود بعد.",
+    "menu": {
+      "copy": "نسخ",
+      "paste": "لصق",
+      "delete": "حذف",
+      "insertRow": "إدراج صف",
+      "highlight": "تمييز",
+      "removeHighlight": "إزالة التمييز",
+      "clean": "تنظيف",
+      "export": "تصدير",
+      "import": "استيراد",
+      "uiSelector": "محدد الواجهة",
+      "tableActions": "إجراءات الجدول"
+    },
+    "preferences": {
+      "title": "محدد واجهة الجدول",
+      "subtitle": "محفوظ محلياً لهذا المستخدم وهذا الجدول.",
+      "done": "تم",
+      "layout": "التخطيط",
+      "classic": "كلاسيكي",
+      "web": "ويب",
+      "rowColoring": "تلوين الصفوف",
+      "none": "بدون",
+      "soft": "خفيف",
+      "strong": "واضح",
+      "textSize": "حجم النص",
+      "compact": "مضغوط",
+      "normal": "عادي",
+      "large": "كبير",
+      "numbersFont": "خط الأرقام",
+      "mono": "أحادي",
+      "tabular": "جدولي",
+      "sans": "عادي"
+    },
+    "toast": {
+      "rowCopied": "تم نسخ الصف",
+      "rowPasted": "تم لصق الصف",
+      "invalidRow": "الحافظة لا تحتوي على صف صالح",
+      "rowInserted": "تم إدراج الصف",
+      "rowDeleted": "تم حذف الصف",
+      "tableCopied": "تم نسخ الجدول",
+      "tablePasted": "تم لصق الجدول",
+      "invalidTable": "الحافظة لا تحتوي على جدول صالح",
+      "tableCleaned": "تم تنظيف الجدول",
+      "tableExported": "تم تصدير الجدول",
+      "tableImported": "تم استيراد الجدول",
+      "importFailed": "تعذر استيراد الجدول"
+    }
+  },
   "settlement": {
     "title": "التسوية",
     "stat": {

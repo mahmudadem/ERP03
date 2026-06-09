@@ -945,21 +945,20 @@ const SalesReturnDetailPage: React.FC = () => {
                 <Plus className="h-3.5 w-3.5" /> {t('sales.returnDetail.addLine')}
               </button>
             </div>
-            {directLines.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
-                {t('sales.returnDetail.noLinesYet')}
-              </div>
-            ) : (
-              <ClassicLineItemsTable<DirectLine>
-                title={t('sales.returnDetail.linesToReturn')}
-                rows={directLines}
-                disabled={busy}
-                onRowChange={(index, patch) => updateDirectLine(directLines[index].key, patch)}
-                onRowRemove={(index) => removeDirectLine(directLines[index].key)}
-                onRowAdd={addDirectLine}
-                addLabel={t('sales.returnDetail.addLine')}
-                minTableWidth="920px"
-                columns={[
+            <ClassicLineItemsTable<DirectLine>
+              tableId="sales.return.direct.lines"
+              title={t('sales.returnDetail.linesToReturn')}
+              rows={directLines}
+              disabled={busy}
+              onRowChange={(index, patch) => updateDirectLine(directLines[index].key, patch)}
+              onRowRemove={(index) => removeDirectLine(directLines[index].key)}
+              onRowsChange={setDirectLines}
+              createEmptyRow={newDirectLine}
+              isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.returnQty || line.unitPriceDoc)}
+              onRowAdd={addDirectLine}
+              addLabel={t('sales.returnDetail.addLine')}
+              minTableWidth="920px"
+              columns={[
                   {
                     id: 'item',
                     label: t('sales.returnDetail.itemColumn'),
@@ -980,9 +979,8 @@ const SalesReturnDetailPage: React.FC = () => {
                   { id: 'unitPrice', label: t('sales.returnDetail.unitPriceColumn'), kind: 'number', width: '120px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: String(value) }) },
                   { id: 'lineTotal', label: t('sales.returnDetail.lineTotalColumn'), kind: 'computed', width: '130px', compute: (line) => Number(line.returnQty || '0') * Number(line.unitPriceDoc || '0') },
                   { id: 'description', label: t('sales.returnDetail.descriptionColumn'), kind: 'text', width: '190px', accessor: (line) => line.description, setter: (value) => ({ description: value }) },
-                ]}
-              />
-            )}
+              ]}
+            />
             <p className="mt-3 text-xs text-slate-500 italic">
               {t('sales.returnDetail.directReturnInfo')}
             </p>

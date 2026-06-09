@@ -2,6 +2,36 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-09 (Tue) — Native Document Shared Table And Action Tray
+
+**Task:** Task 200 — make the shared line-items table and top action tray part of the native document scaffold/template across Sales and Purchases.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Plan:** [tasks/200-native-document-table-and-section-parity.md](./tasks/200-native-document-table-and-section-parity.md). **Report:** [done/200-native-document-table-and-section-parity.md](./done/200-native-document-table-and-section-parity.md).
+
+**Checkpoint commit before starting:** `14310574` (`feat(ui): checkpoint native document scaffold parity [ACTIVE-196]`) after `npm --prefix frontend run typecheck` passed.
+
+**What changed:**
+- Upgraded `ClassicLineItemsTable` with GVR-style row context menu actions: copy, paste, insert row, delete, and highlight.
+- Added table context actions from the empty `#` header cell: copy, paste, clean, export, import, and UI selector.
+- Added resizable columns saved to `localStorage` per table/page/user via stable `tableId` values.
+- Added local table UI preferences for classic/web layout, alternating row colors, text size, and number font.
+- Suppressed placeholder text inside table cells so empty cells display blank until filled.
+- Wired SI, PI, SO, DN, SR Direct, Quotation, PO, GRN, and PR tables with stable table IDs and filled-row predicates.
+- Added `DocumentActionTray` to `DocumentDetailScaffold`; scaffold now owns the top compact icon cluster.
+- Updated English/Arabic/Turkish locale keys, architecture docs, Sales/Purchases user guides, ACTIVE, PRIORITIES, and QA queue.
+
+**Accounting boundary:** UI/data-entry parity only. No posting, tax, AP/AR, settlement, inventory valuation, COGS, approval, period-lock, audit, backend DTO, or repository behavior changed. Allocation remains placeholder/display-only until the controlled allocation contract exists.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed after shared table work.
+- `npm --prefix frontend run typecheck` passed after page wiring.
+- `npm --prefix frontend run typecheck` passed after resizing/i18n/action-tray changes.
+- `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, and `check:sod-approve`; existing bundle/Browserslist/baseline/dynamic-import warnings remain.
+- `graphify update .` attempted but `graphify` is not available on this PowerShell PATH.
+
+**Time spent:** ~4.5h.
+
+**Next:** Manual QA from [QA-QUEUE.md](./QA-QUEUE.md): Classic + Windows pass for row/table context menus, resize persistence, UI selector persistence, placeholder-free cells, selector blending, and linked-source row-action disabling across SI, PI, SO, DN, SR, Quote, PO, GRN, and PR.
+
 ## 2026-06-09 (Tue) — Sales Return Source Control Parity
 
 **Task:** Move Sales Return source mode choices into a Sales Invoice-style control strip.

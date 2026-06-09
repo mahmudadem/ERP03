@@ -10,6 +10,25 @@
 
 ## 🧪 Ready to Test
 
+### Sales/Purchases - Native Document Shared Table And Action Tray
+**Added by:** Codex (report 200)
+**What to test:**
+- Open SI, PI, SO, DN, SR, Quotation, PO, GRN, and PR create/edit/view screens.
+- Confirm the top icon cluster appears as one compact document action tray.
+- In editable line grids, right-click a row and confirm Copy, Paste, Insert row, Highlight, and Delete actions appear.
+- Confirm Delete/Insert are disabled or absent where linked-source rows should not be structurally edited.
+- Click or right-click the empty `#` header cell and confirm Copy, Paste, Clean, Export, Import, and UI selector actions appear.
+- Resize several columns, reload the page, and confirm widths persist for that document table only.
+- Open the UI selector, change classic/web layout, row coloring, text size, and number font; reload and confirm preferences persist.
+- Confirm empty cells do not show placeholder text and selectors visually blend into table cells.
+- Repeat representative tests in Windows mode with a resized window.
+
+**Known limitations:**
+- This is UI/data-entry parity only. It does not change posting, tax, AP/AR, settlement, inventory valuation, COGS, approval, period locks, audit, backend DTOs, or repository behavior.
+- Allocation grid behavior remains placeholder/display-only until the controlled allocation contract is implemented.
+
+---
+
 ### Sales - Sales Return Source Control Parity
 **Added by:** Codex (report 199)
 **What to test:**

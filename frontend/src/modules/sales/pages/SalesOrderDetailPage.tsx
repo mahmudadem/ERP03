@@ -1056,12 +1056,16 @@ const SalesOrderDetailPage: React.FC = () => {
       )}
 
       <ClassicLineItemsTable<EditableLine>
+        tableId="sales.order.lines"
         title={t('sales.orders.detail.lineItems', 'Line Items')}
         rows={form.lines}
         disabled={isReadOnly}
         onRowChange={setLine}
-        onRowRemove={removeLine}
-        onRowAdd={addLine}
+        onRowRemove={!isReadOnly ? removeLine : undefined}
+        onRowsChange={!isReadOnly ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
+        createEmptyRow={createEmptyLine}
+        isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.orderedQty || line.unitPriceDoc || line.appliedDiscountPct || line.taxCodeId || line.warehouseId)}
+        onRowAdd={!isReadOnly ? addLine : undefined}
         addLabel={t('sales.orders.detail.addLine', 'Add Line')}
         minTableWidth="1160px"
         columns={[

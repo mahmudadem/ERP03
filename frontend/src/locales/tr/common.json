@@ -3957,6 +3957,57 @@
   "documentDetail": {
     "sideRail": "Belge yan paneli"
   },
+  "lineItemsTable": {
+    "addItem": "Ürün Ekle",
+    "empty": "Henüz satır yok.",
+    "menu": {
+      "copy": "Kopyala",
+      "paste": "Yapıştır",
+      "delete": "Sil",
+      "insertRow": "Satır ekle",
+      "highlight": "Vurgula",
+      "removeHighlight": "Vurguyu kaldır",
+      "clean": "Temizle",
+      "export": "Dışa aktar",
+      "import": "İçe aktar",
+      "uiSelector": "UI seçici",
+      "tableActions": "Tablo işlemleri"
+    },
+    "preferences": {
+      "title": "Tablo UI seçici",
+      "subtitle": "Bu kullanıcı ve bu tablo için yerel olarak kaydedilir.",
+      "done": "Tamam",
+      "layout": "Düzen",
+      "classic": "Klasik",
+      "web": "Web",
+      "rowColoring": "Satır renklendirme",
+      "none": "Yok",
+      "soft": "Yumuşak",
+      "strong": "Belirgin",
+      "textSize": "Yazı boyutu",
+      "compact": "Kompakt",
+      "normal": "Normal",
+      "large": "Büyük",
+      "numbersFont": "Sayı yazı tipi",
+      "mono": "Mono",
+      "tabular": "Tablo",
+      "sans": "Sans"
+    },
+    "toast": {
+      "rowCopied": "Satır kopyalandı",
+      "rowPasted": "Satır yapıştırıldı",
+      "invalidRow": "Panoda geçerli bir satır yok",
+      "rowInserted": "Satır eklendi",
+      "rowDeleted": "Satır silindi",
+      "tableCopied": "Tablo kopyalandı",
+      "tablePasted": "Tablo yapıştırıldı",
+      "invalidTable": "Panoda geçerli bir tablo yok",
+      "tableCleaned": "Tablo temizlendi",
+      "tableExported": "Tablo dışa aktarıldı",
+      "tableImported": "Tablo içe aktarıldı",
+      "importFailed": "Tablo içe aktarılamadı"
+    }
+  },
   "settlement": {
     "title": "Ödeme",
     "stat": {

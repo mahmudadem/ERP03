@@ -2241,11 +2241,15 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     return (
       <div className="flex min-h-[210px] flex-none flex-col 2xl:flex-[1.2]">
         <ClassicLineItemsTable<EditableLine>
+          tableId="sales.invoice.lines"
           rows={form.lines}
           columns={lineColumns}
           disabled={isReadOnly || busy}
           onRowChange={(index, patch) => setLine(index, patch)}
           onRowRemove={!isReadOnly ? removeLine : undefined}
+          onRowsChange={!isReadOnly ? (lines) => setForm((prev) => ({ ...prev, lines: padLinesToMin(lines) })) : undefined}
+          createEmptyRow={createEmptyLine}
+          isRowFilled={hasLineContent}
           onRowAdd={!isReadOnly ? addLine : undefined}
           addLabel={t('sales.invoiceDetail.addItem', 'Add Line')}
           minRows={1}

@@ -28,6 +28,8 @@ The footer exposes:
 1. `totals`
 2. `actions`
 
+The top header exposes the **Document action tray** through `headerTools`. The scaffold wraps these tools in the shared tray chrome automatically. This is the compact icon cluster used for document-level quick actions such as attachments, upload/export, delete/void, history/audit, and page-specific tools. Pages should pass actions into `headerTools`; they should not rebuild a separate action strip.
+
 Each slot uses the same `DocumentScaffoldSection` contract:
 
 ```ts
@@ -61,6 +63,21 @@ Native document headers use Sales Invoice density as the default:
 - Notes, reasons, and other long free-text fields should sit below the compact header grid, not consume one of the two header rows unless there is a strong document-specific reason.
 
 This keeps Sales Invoice, Purchase Invoice, Sales Order, Delivery Note, Quotation, Purchase Order, Goods Receipt, Sales Return, and Purchase Return from drifting into different input sizes.
+
+## Shared Line Items Table
+
+`frontend/src/components/shared/ClassicLineItemsTable.tsx` is the required line-grid surface for native document pages. It owns behavior that must not be reimplemented page-by-page:
+
+- row right-click context menu: copy, paste, delete, insert row, highlight
+- table context menu from the empty `#` header cell: copy, paste, clean, export, import, UI selector
+- resizable columns saved in `localStorage` per `tableId`
+- per-table local preferences for classic/web skin, row coloring, text size, and number font
+- blank visual cells until values are entered; input placeholder text is suppressed in the table
+- borderless custom selector cells, with callers expected to pass shared selectors using `noBorder`
+- optional 25-line edit-mode working grid when the page supplies `createEmptyRow` and `onRowsChange`
+- optional read-only/view filtering of blank rows when the page supplies `isRowFilled`
+
+Every native document table must pass a stable `tableId` so local column widths and UI preferences do not leak across document types.
 
 ## Accounting Boundary
 

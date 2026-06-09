@@ -305,6 +305,27 @@ export function DocumentIconButton({
   );
 }
 
+export function DocumentActionTray({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  if (!isRenderable(children)) return null;
+  return (
+    <div
+      data-document-action-tray
+      className={clsx(
+        'inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950/70',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function DocumentSegmentButton({
   active,
   disabled,
@@ -711,7 +732,7 @@ export function DocumentDetailScaffold({
             {subtitle && <div className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</div>}
           </div>
         </div>
-        {isRenderable(headerTools) && <div className="flex shrink-0 items-center gap-2">{headerTools}</div>}
+        {isRenderable(headerTools) && <DocumentActionTray>{headerTools}</DocumentActionTray>}
       </div>
 
       {banner && <div className="mx-3 mt-2 shrink-0">{banner}</div>}

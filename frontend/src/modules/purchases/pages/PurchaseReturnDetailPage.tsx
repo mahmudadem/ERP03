@@ -654,12 +654,25 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
             <div className="col-span-full mt-2 border-t border-slate-100 pt-3">
               <ClassicLineItemsTable<any>
+                tableId="purchases.return.create.lines"
                 title="Return Items"
                 rows={selectedLines}
                 onRowChange={(index, patch) => {
                   setSelectedLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
                 }}
                 onRowRemove={removeLine}
+                onRowsChange={setSelectedLines}
+                createEmptyRow={() => ({
+                  itemId: '',
+                  itemName: '',
+                  itemCode: '',
+                  returnQty: 0,
+                  uomId: undefined,
+                  uom: '',
+                  unitCostDoc: 0,
+                  lineId: `new-${Date.now()}`,
+                })}
+                isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.returnQty || line.unitCostDoc)}
                 onRowAdd={addLine}
                 addLabel="Add Item"
                 minTableWidth="980px"
@@ -1065,6 +1078,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       </Card>
 
       <ClassicLineItemsTable<any>
+        tableId="purchases.return.view.lines"
         title="Lines"
         rows={isEditMode ? editLines : purchaseReturn.lines}
         disabled={!isEditMode}
@@ -1073,6 +1087,18 @@ const PurchaseReturnDetailPage: React.FC = () => {
           setEditLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
         }}
         onRowRemove={isEditMode ? (index) => setEditLines((prev) => prev.filter((_, i) => i !== index)) : undefined}
+        onRowsChange={isEditMode ? setEditLines : undefined}
+        createEmptyRow={() => ({
+          itemId: '',
+          itemName: '',
+          itemCode: '',
+          returnQty: 0,
+          uomId: undefined,
+          uom: '',
+          unitCostDoc: 0,
+          lineId: `new-${Date.now()}`,
+        })}
+        isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.returnQty || line.unitCostDoc)}
         minTableWidth="760px"
         columns={[
           {

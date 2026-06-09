@@ -688,11 +688,15 @@ const DeliveryNoteDetailPage: React.FC = () => {
 
         {(!form.salesOrderId || form.lines.length > 0) && (
           <ClassicLineItemsTable<EditableLine>
+            tableId="sales.deliveryNote.lines"
             title={t('sales.dnDetail.lineItemsTitle')}
             rows={form.lines}
             disabled={busy}
             onRowChange={setLine}
-            onRowRemove={removeLine}
+            onRowRemove={!form.salesOrderId ? removeLine : undefined}
+            onRowsChange={!form.salesOrderId ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
+            createEmptyRow={createEmptyLine}
+            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.deliveredQty || line.warehouseId)}
             onRowAdd={!form.salesOrderId ? addLine : undefined}
             addLabel={t('sales.dnDetail.addItem')}
             minTableWidth="820px"

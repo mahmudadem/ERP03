@@ -91,6 +91,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Task 196 - Native document scaffold parity | 2026-06-09 | ✅ Done |
 | Codex | Task 197 - Sectioned native document scaffold contract | 2026-06-09 | ✅ Done |
 | Codex | Task 198 - Native document header density standard | 2026-06-09 | ✅ Done |
+| Codex | Task 200 - Native document table and section parity | 2026-06-09 | ✅ Done |
 
 
 **How to use:**
@@ -113,4 +114,4 @@ These are known issues that don't block current work. Do not fix unless specific
 
 ---
 
-_Last updated: 2026-06-06 — Task 167 Slice 3C-Settings/RBAC/AI native page mounting inside Apex is complete. Next priority is Slice 3D feature flag and cutover QA._
+_Last updated: 2026-06-09 — Task 200 native document shared table/action-tray parity is complete. Next priority remains Task 167 Slice 3D feature flag and cutover QA, after manual visual QA of the native document table rollout._

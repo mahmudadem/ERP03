@@ -633,6 +633,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         </Card>
 
         <ClassicLineItemsTable<EditableLine>
+          tableId="purchases.goodsReceipt.lines"
           title="Line Items"
           headerAction={
             form.purchaseOrderId ? (
@@ -649,8 +650,11 @@ const GoodsReceiptDetailPage: React.FC = () => {
           rows={form.lines}
           disabled={busy}
           onRowChange={setLine}
-          onRowRemove={removeLine}
-          onRowAdd={addLine}
+          onRowRemove={!form.purchaseOrderId ? removeLine : undefined}
+          onRowsChange={!form.purchaseOrderId ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
+          createEmptyRow={createEmptyLine}
+          isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.receivedQty || line.warehouseId)}
+          onRowAdd={!form.purchaseOrderId ? addLine : undefined}
           addLabel="Add Item"
           minTableWidth="860px"
           columns={[

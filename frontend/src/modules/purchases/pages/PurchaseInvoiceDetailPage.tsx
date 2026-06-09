@@ -1296,10 +1296,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
         <DocumentLinesRegion>
           <ClassicLineItemsTable<EditableLine>
+            tableId="purchases.invoice.lines"
             rows={form.lines}
             disabled={busy}
             onRowChange={(index, patch) => setLine(index, patch)}
             onRowRemove={(index) => removeLine(index)}
+            onRowsChange={(lines) => setForm((prev) => ({ ...prev, lines }))}
+            createEmptyRow={createEmptyLine}
+            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.invoicedQty || line.unitPriceDoc || line.taxCodeId || line.warehouseId)}
             onRowAdd={addLine}
             addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
             columns={[
@@ -1874,9 +1878,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
       <DocumentLinesRegion>
         <ClassicLineItemsTable<PurchaseInvoiceLineDTO>
+          tableId="purchases.invoice.view.lines"
           rows={invoice.lines}
           disabled
           onRowChange={() => undefined}
+          isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.invoicedQty || line.unitPriceDoc || line.taxCodeId || line.warehouseId)}
           addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
           columns={[
             {
