@@ -2,6 +2,26 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-09 (Tue) — Settlement: approval-boundary preservation + pay-later dialog
+
+**Task:** Settlement QA on a Financial-Approval tenant — "paid invoices always post as deferred, payment never reaches the ledger." Diagnose + fix, document the voucher-model decision, and fix the record-payment button.
+**Agent:** Claude (Opus 4.8). **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/194-settlement-approval-preservation-and-record-payment.md](./done/194-settlement-approval-preservation-and-record-payment.md).
+
+**Root cause (not the settlement engine):** with Financial Approval ON, posting a paid invoice throws `APPROVAL_REQUIRED`, rolls back the whole posting (invoice + receipt voucher), and parks `PENDING_APPROVAL` — **discarding the entered settlement**. On later approval it posted on credit; the payment was lost. Confirmed against the live emulator: the QA invoice was `PENDING_APPROVAL`, `voucherId`/`settlementVoucherIds` null, paid 0.
+
+**Fixes (6 commits):**
+- `86ba56b9` — #193 regression: the Post handlers still drove the retired settlement modal (`setShowSettlement(true)` rendered nothing post-#193) and **wiped `settlementRows`**, so valid CASH_FULL/MULTI never posted. Both SI/PI now post directly from the inline `SettlementBlock`, gated on its validity.
+- `2e677172` — removed the dead settlement modal/card code (`renderSettlementCard`, `showSettlement`, legacy PI cards).
+- `ae295800` — **settlement preserved across approval**: new domain-local `pendingSettlement` on SalesInvoice/PurchaseInvoice; stored when parking, replayed by `Approve{Sales,Purchase}InvoiceUseCase`, cleared on successful post. Tests: parking-preserves + approve-replays-and-clears (sales + purchases).
+- `54a7e07a` — **docs**: recorded the two-voucher decision (invoice voucher + separate linked receipt; not one combined entry) with reasons in `sales.md`/`purchases.md`; Approval Center now shows a per-row settlement preview ("Will post PAID / Partial / On credit").
+- `8585e246` — **pay-later dialog (Task 184 Finding 5)**: replaced the broken "Create Payment/Receipt" button (navigated to a blank Accounting voucher that never reconciled) with a shared on-page `RecordPaymentDialog` calling the existing `recordPayment` endpoint. EN/AR/TR added.
+
+**Boundary:** posting/tax/AR-AP/ledger semantics unchanged — only preserve+replay an already-valid settlement, and invoke the existing record-payment use case from the UI. Architecture boundary tests green.
+
+**Verification:** backend build + 50 settlement/posting/payment-sync + 28 boundary/authority tests green; frontend typecheck + production build green.
+
+**Manual QA needed:** full scripts A–D in report 194 (approval-tenant settle→approve, immediate post, pay-later partial→full, over-payment). Restart the backend emulator first so it serves the rebuilt code.
+
 ## 2026-06-09 (Tue) — Task 186 Part A: Settlement Field-Type Registration + Branch Commit
 
 **Task:** Finish the last unbuilt piece of Task 186 Part A — register the shared `<SettlementBlock>` as a Forms-Designer `settlement` `system_core` HEADER field type — then commit the branch's accumulated work.
