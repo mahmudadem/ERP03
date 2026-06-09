@@ -2732,6 +2732,7 @@
       "postedStatusPill": "Kaydedildi",
       "pendingApprovalStatusPill": "Onay Bekliyor",
       "linkedOrder": "Siparişten",
+      "postedReadonly": "Belge kaydedildi, salt okunur.",
       "focus": {
         "inventoryTracked": "Stok kalemi: Kayıt öncesinde maliyet ve stok kontrolleri çalıştırılır.",
         "serviceItem": "Hizmet satırı: Stok değerleme hareketi yok."
@@ -3439,6 +3440,32 @@
       "text": "Fazla ödeme: ek {{amount}} tutarı {{party}} kredisi olur.",
       "customer": "müşteri",
       "vendor": "tedarikçi"
+    }
+  },
+  "recordPayment": {
+    "titleReceipt": "Tahsilat Kaydet",
+    "titlePayment": "Ödeme Kaydet",
+    "outstanding": "Kalan",
+    "amount": "Tutar",
+    "method": "Yöntem",
+    "receivedInto": "Tahsil edilen hesap (nakit / banka)",
+    "paidFrom": "Ödenen hesap (nakit / banka)",
+    "selectAccount": "Nakit/banka hesabı seçin",
+    "date": "Tarih",
+    "reference": "Referans",
+    "referencePlaceholder": "İsteğe bağlı",
+    "notes": "Notlar",
+    "notesPlaceholder": "İsteğe bağlı",
+    "overpaymentHint": "Fazla {{amount}} tutarı {{party}} kredisi olur.",
+    "customer": "müşteri",
+    "vendor": "tedarikçi",
+    "cancel": "İptal",
+    "record": "Kaydet",
+    "recording": "Kaydediliyor…",
+    "validation": {
+      "positiveAmount": "Sıfırdan büyük bir tutar girin.",
+      "selectAccount": "Nakit/banka hesabını seçin.",
+      "overpayment": "Tutar kalan bakiyeyi aşıyor. Fazlalığı taraf kredisi olarak kaydetmek için ayarlardan \"Fazla ödemeye izin ver\" seçeneğini açın."
     }
   }
 }

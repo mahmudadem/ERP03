@@ -2732,6 +2732,7 @@
       "postedStatusPill": "مرحّل",
       "pendingApprovalStatusPill": "قيد الاعتماد",
       "linkedOrder": "من أمر بيع",
+      "postedReadonly": "المستند مرحل للقراءة فقط.",
       "focus": {
         "inventoryTracked": "صنف مخزون: يتم فحص التكلفة والمخزون قبل الترحيل.",
         "serviceItem": "بند خدمة: لا توجد حركة تقييم مخزون."
@@ -3439,6 +3440,32 @@
       "text": "دفع زائد: المبلغ الإضافي {{amount}} يصبح رصيدًا دائنًا لـ {{party}}.",
       "customer": "العميل",
       "vendor": "المورد"
+    }
+  },
+  "recordPayment": {
+    "titleReceipt": "تسجيل سند قبض",
+    "titlePayment": "تسجيل سند دفع",
+    "outstanding": "المتبقي",
+    "amount": "المبلغ",
+    "method": "الطريقة",
+    "receivedInto": "مستلم في (نقد / بنك)",
+    "paidFrom": "مدفوع من (نقد / بنك)",
+    "selectAccount": "اختر حساب النقد/البنك",
+    "date": "التاريخ",
+    "reference": "المرجع",
+    "referencePlaceholder": "اختياري",
+    "notes": "ملاحظات",
+    "notesPlaceholder": "اختياري",
+    "overpaymentHint": "المبلغ الإضافي {{amount}} يصبح رصيدًا دائنًا لـ {{party}}.",
+    "customer": "العميل",
+    "vendor": "المورد",
+    "cancel": "إلغاء",
+    "record": "تسجيل",
+    "recording": "جارٍ التسجيل…",
+    "validation": {
+      "positiveAmount": "أدخل مبلغًا أكبر من صفر.",
+      "selectAccount": "اختر حساب النقد/البنك.",
+      "overpayment": "المبلغ يتجاوز الرصيد المتبقي. فعّل \"السماح بالدفع الزائد\" في الإعدادات لتسجيل الفائض كرصيد دائن للطرف."
     }
   }
 }

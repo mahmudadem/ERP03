@@ -23,6 +23,7 @@ import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
+import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { clsx } from 'clsx';
 import {
@@ -167,6 +168,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [apAccountId, setApAccountId] = useState('');
   const [settlementRows, setSettlementRows] = useState<{ settlementAccountId: string; amountBase: number; paymentMethod: string; reference: string; notes: string; paymentDate: string }[]>([]);
   const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [recordPaymentBusy, setRecordPaymentBusy] = useState(false);
 
   const vendorNameById = useMemo(
     () =>
@@ -1538,10 +1541,29 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const canCreatePayment = invoice.status === 'POSTED' && invoice.outstandingAmountBase > 0;
   const canCreateReturn = invoice.status === 'POSTED';
-  const paymentHref = `/accounting/vouchers?mode=create&type=payment&sourceType=PURCHASE_INVOICE&sourceId=${invoice.id}`;
   const createReturnHref = `/purchases/returns/new?purchaseInvoiceId=${encodeURIComponent(invoice.id)}${
     invoice.purchaseOrderId ? `&purchaseOrderId=${encodeURIComponent(invoice.purchaseOrderId)}` : ''
   }`;
+
+  // Pay-later entry point (Task 184 Finding 5): record a payment against this posted invoice
+  // via the invoice-aware dialog → recordPayment endpoint (posts the linked payment voucher,
+  // reconciles outstanding/paymentStatus). Stays on the invoice page; never routes into Accounting.
+  const handleRecordPayment = async (payload: RecordPaymentPayload) => {
+    if (!invoice) return;
+    setRecordPaymentBusy(true);
+    try {
+      const res = await purchasesApi.recordPayment(invoice.id, payload as any);
+      const dto = ((res as any)?.invoice ?? res) as PurchaseInvoiceDTO;
+      setInvoice(dto);
+      setRecordPaymentOpen(false);
+      errorHandler.showSuccess(t('purchases.invoiceDetail.recordPaymentSuccess', 'Payment recorded.'));
+      window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'PI' } }));
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('purchases.invoiceDetail.recordPaymentFailed', 'Failed to record payment.'));
+    } finally {
+      setRecordPaymentBusy(false);
+    }
+  };
   const viewBaseCurrency = company?.baseCurrency || 'USD';
   const viewVendorName = vendorNameById[invoice.vendorId] || invoice.vendorName || '-';
   const viewTaxResolved = invoice.lines.every((line) => !line.taxCodeId || line.taxCode || taxById[line.taxCodeId]);
@@ -1721,7 +1743,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             <button
               type="button"
               className="rounded border border-emerald-300 bg-white px-4 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => navigate(paymentHref)}
+              onClick={() => setRecordPaymentOpen(true)}
               disabled={!canCreatePayment}
             >
               Create Payment
@@ -1988,6 +2010,20 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         onCancel={() => {
           if (!attachmentDeletingId) setAttachmentPendingDelete(null);
         }}
+      />
+
+      <RecordPaymentDialog
+        open={recordPaymentOpen}
+        module="purchases"
+        invoiceNumber={invoice.invoiceNumber}
+        partyName={invoice.vendorName}
+        currencyCode={invoice.currency}
+        outstandingBase={invoice.outstandingAmountBase || 0}
+        paymentMethodConfigs={(settings as any)?.paymentMethodConfigs || []}
+        allowOverpayment={(settings as any)?.allowOverpayment === true}
+        busy={recordPaymentBusy}
+        onClose={() => setRecordPaymentOpen(false)}
+        onSubmit={handleRecordPayment}
       />
     </>
   );

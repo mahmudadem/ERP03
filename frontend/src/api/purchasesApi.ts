@@ -547,6 +547,13 @@ export interface UpdateInvoicePaymentStatusPayload {
 
 export interface RecordPurchaseInvoicePaymentPayload {
   paymentAmountBase: number;
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
+  settlementAccountId?: string;
+  receivablePayableAccountId?: string;
+  apAccountId?: string;
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
 }
 
 export interface PurchaseInvoiceAttachmentDownloadLinkResult {

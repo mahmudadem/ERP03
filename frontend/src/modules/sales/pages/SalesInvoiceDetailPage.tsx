@@ -40,6 +40,7 @@ import { CurrencyExchangeWidget } from '../../accounting/components/shared/Curre
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
+import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
@@ -411,6 +412,8 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [arAccountId, setArAccountId] = useState('');
   const [settlementRows, setSettlementRows] = useState<SettlementRowState[]>([]);
   const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [recordPaymentBusy, setRecordPaymentBusy] = useState(false);
   const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'so' | 'dn'>('direct');
   const [attachmentsPanelOpen, setAttachmentsPanelOpen] = useState(false);
   const [railPinned, setRailPinned] = useState(true);
@@ -469,8 +472,28 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       : t('sales.invoiceDetail.draftStatusPill', 'Draft');
 
   const canCreateReceipt = invoice?.status === 'POSTED' && (invoice?.outstandingAmountBase || 0) > 0;
-  const receiptHref = invoice ? `/accounting/vouchers?mode=create&type=receipt&sourceType=SALES_INVOICE&sourceId=${invoice.id}` : '';
   const createReturnHref = invoice ? `/sales/returns/new?salesInvoiceId=${encodeURIComponent(invoice.id)}${invoice.salesOrderId ? `&salesOrderId=${encodeURIComponent(invoice.salesOrderId)}` : ''}` : '';
+
+  // Pay-later entry point (Task 184 Finding 5): record a receipt against this posted invoice
+  // via the invoice-aware dialog → recordPayment endpoint (posts the linked receipt voucher,
+  // reconciles outstanding/paymentStatus). Stays on the invoice page; never routes into Accounting.
+  const handleRecordPayment = async (payload: RecordPaymentPayload) => {
+    if (!invoice) return;
+    setRecordPaymentBusy(true);
+    try {
+      const res = await salesApi.recordPayment(invoice.id, payload as any);
+      const dto = ((res as any)?.invoice ?? res) as SalesInvoiceDTO;
+      setInvoice(dto);
+      populateFormFromInvoice(dto);
+      setRecordPaymentOpen(false);
+      errorHandler.showSuccess(t('sales.invoiceDetail.recordPaymentSuccess', 'Payment recorded.'));
+      window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'SI' } }));
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.recordPaymentFailed', 'Failed to record payment.'));
+    } finally {
+      setRecordPaymentBusy(false);
+    }
+  };
 
   const enabledPaymentMethodConfigs = useMemo(
     () => (settings?.paymentMethodConfigs || []).filter((config) => config.isEnabled !== false),
@@ -2740,7 +2763,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                 <button
                   type="button"
                   className="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                  onClick={() => navigate(receiptHref)}
+                  onClick={() => setRecordPaymentOpen(true)}
                   disabled={!canCreateReceipt}
                 >
                   {t('sales.invoiceDetail.createReceipt', 'Create Receipt')}
@@ -2843,6 +2866,22 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           onClose={() => setAuditModalOpen(false)}
           entityType="SALES_INVOICE"
           entityId={invoice.id}
+        />
+      )}
+
+      {invoice && (
+        <RecordPaymentDialog
+          open={recordPaymentOpen}
+          module="sales"
+          invoiceNumber={invoice.invoiceNumber}
+          partyName={customerNameById[form.customerId] || form.customerName || invoice.customerName}
+          currencyCode={invoice.currency || form.currency}
+          outstandingBase={invoice.outstandingAmountBase || 0}
+          paymentMethodConfigs={enabledPaymentMethodConfigs}
+          allowOverpayment={(settings as any)?.allowOverpayment === true}
+          busy={recordPaymentBusy}
+          onClose={() => setRecordPaymentOpen(false)}
+          onSubmit={handleRecordPayment}
         />
       )}
 

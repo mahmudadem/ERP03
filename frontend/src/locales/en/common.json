@@ -2659,6 +2659,7 @@
       "postedStatusPill": "Posted",
       "pendingApprovalStatusPill": "Pending Approval",
       "linkedOrder": "From SO",
+      "postedReadonly": "Posted document is read-only.",
       "focus": {
         "inventoryTracked": "Inventory item: cost and stock checks run before posting.",
         "serviceItem": "Service line: no inventory valuation movement."
@@ -3366,6 +3367,32 @@
       "text": "Over-payment: extra {{amount}} becomes {{party}} credit.",
       "customer": "customer",
       "vendor": "vendor"
+    }
+  },
+  "recordPayment": {
+    "titleReceipt": "Record Receipt",
+    "titlePayment": "Record Payment",
+    "outstanding": "Outstanding",
+    "amount": "Amount",
+    "method": "Method",
+    "receivedInto": "Received into (cash / bank)",
+    "paidFrom": "Paid from (cash / bank)",
+    "selectAccount": "Select cash/bank account",
+    "date": "Date",
+    "reference": "Reference",
+    "referencePlaceholder": "Optional",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional",
+    "overpaymentHint": "The extra {{amount}} becomes a {{party}} credit.",
+    "customer": "customer",
+    "vendor": "vendor",
+    "cancel": "Cancel",
+    "record": "Record",
+    "recording": "Recording…",
+    "validation": {
+      "positiveAmount": "Enter an amount greater than zero.",
+      "selectAccount": "Select the cash/bank account.",
+      "overpayment": "Amount exceeds the outstanding balance. Turn on \"Allow over-payment\" in settings to record the excess as a party credit."
     }
   }
 }
