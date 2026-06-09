@@ -20,8 +20,108 @@ type ScaffoldRailState = {
   railDrawerOpen: boolean;
 };
 
+export type DocumentScaffoldBodySlot =
+  | 'control'
+  | 'header'
+  | 'lines'
+  | 'secondary'
+  | 'attachments'
+  | 'custom';
+
+export type DocumentScaffoldRailSlot =
+  | 'info'
+  | 'readiness'
+  | 'settlement'
+  | 'totals'
+  | 'custom';
+
+export type DocumentScaffoldFooterSlot = 'totals' | 'actions';
+
+export type DocumentScaffoldSection = {
+  show?: boolean;
+  preserveSpace?: boolean;
+  title?: string;
+  action?: React.ReactNode;
+  content?: React.ReactNode;
+  className?: string;
+};
+
+export type DocumentScaffoldSections = Partial<Record<DocumentScaffoldBodySlot, DocumentScaffoldSection>>;
+export type DocumentScaffoldRailSections = Partial<Record<DocumentScaffoldRailSlot, DocumentScaffoldSection>>;
+export type DocumentScaffoldFooterSections = Partial<Record<DocumentScaffoldFooterSlot, DocumentScaffoldSection>>;
+
+export const documentHeaderLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
+export const documentHeaderControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900 dark:disabled:text-slate-500';
+export const documentHeaderSelectorClass = 'h-9 [&>input]:h-9 [&>input]:rounded [&>input]:border-slate-300 [&>input]:py-0 [&>input]:text-xs dark:[&>input]:border-slate-700';
+
 const isRenderable = (value: React.ReactNode): boolean =>
   value !== undefined && value !== null && value !== false;
+
+const shouldRenderScaffoldSection = (section?: DocumentScaffoldSection): boolean =>
+  !!section && section.show !== false && (section.preserveSpace || isRenderable(section.content));
+
+const hasRenderableScaffoldSection = <TSlot extends string>(
+  sections: Partial<Record<TSlot, DocumentScaffoldSection>> | undefined,
+  slots: readonly TSlot[],
+): boolean => slots.some((slot) => shouldRenderScaffoldSection(sections?.[slot]));
+
+const renderScaffoldBodySection = (
+  slot: DocumentScaffoldBodySlot,
+  section?: DocumentScaffoldSection,
+): React.ReactNode => {
+  if (!shouldRenderScaffoldSection(section)) return null;
+
+  return (
+    <section
+      key={slot}
+      data-document-section={slot}
+      className={clsx(
+        slot === 'control' && 'shrink-0',
+        slot === 'header' && 'shrink-0',
+        slot === 'lines' && 'min-h-[210px] flex-none 2xl:flex-[1.2]',
+        slot === 'secondary' && 'min-h-[150px] flex-none 2xl:flex-[0.55]',
+        slot === 'attachments' && 'flex-none',
+        slot === 'custom' && 'flex-none',
+        section?.className,
+      )}
+    >
+      {section?.title ? (
+        <DocumentCompactCard title={section.title} action={section.action}>
+          {section.content}
+        </DocumentCompactCard>
+      ) : (
+        section?.content
+      )}
+    </section>
+  );
+};
+
+const renderScaffoldRailSection = (
+  slot: DocumentScaffoldRailSlot,
+  section?: DocumentScaffoldSection,
+): React.ReactNode => {
+  if (!shouldRenderScaffoldSection(section)) return null;
+
+  const content = section?.content ?? null;
+  if (!section?.title) {
+    return (
+      <div key={slot} data-document-rail-section={slot} className={section?.className}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <DocumentRailCard
+      key={slot}
+      title={section.title}
+      action={section.action}
+      className={section.className}
+    >
+      {content}
+    </DocumentRailCard>
+  );
+};
 
 export function DocumentPill({
   tone = 'slate',
@@ -104,6 +204,42 @@ export function DocumentCompactCard({
       </div>
       {children}
     </section>
+  );
+}
+
+export function DocumentHeaderGrid({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={clsx(
+        'grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function DocumentHeaderField({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={clsx('min-w-0', className)}>
+      <label className={documentHeaderLabelClass}>{label}</label>
+      {children}
+    </div>
   );
 }
 
@@ -366,13 +502,16 @@ export function DocumentDetailScaffold({
   headerTools,
   banner,
   children,
+  sections,
   sideRail,
+  railSections,
   railTitle,
   forceRailDrawer = false,
   defaultRailPinned = true,
   showRailEdgeButton = true,
   footerSummary,
   footerActions,
+  footerSections,
   isWindow,
 }: {
   title: string;
@@ -383,14 +522,17 @@ export function DocumentDetailScaffold({
   badges?: React.ReactNode;
   headerTools?: React.ReactNode;
   banner?: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  sections?: DocumentScaffoldSections;
   sideRail?: React.ReactNode;
+  railSections?: DocumentScaffoldRailSections;
   railTitle?: string;
   forceRailDrawer?: boolean;
   defaultRailPinned?: boolean;
   showRailEdgeButton?: boolean;
   footerSummary?: React.ReactNode | ((state: ScaffoldRailState) => React.ReactNode);
-  footerActions: React.ReactNode | ((state: ScaffoldRailState) => React.ReactNode);
+  footerActions?: React.ReactNode | ((state: ScaffoldRailState) => React.ReactNode);
+  footerSections?: DocumentScaffoldFooterSections;
   isWindow?: boolean;
 }) {
   const { t, i18n } = useTranslation('common');
@@ -402,9 +544,29 @@ export function DocumentDetailScaffold({
   const BackIcon = isRtl ? ArrowRight : ArrowLeft;
   const RailOpenIcon = isRtl ? PanelLeftOpen : PanelRightOpen;
   const RailCloseIcon = isRtl ? PanelLeftClose : PanelRightClose;
+  const bodySlots = ['control', 'header', 'lines', 'secondary', 'attachments', 'custom'] as const;
+  const railSlots = ['info', 'readiness', 'settlement', 'totals', 'custom'] as const;
+  const bodySections = sections ?? {
+    control: { show: false },
+    header: { show: false },
+    lines: { show: false },
+    secondary: { show: false },
+    attachments: { show: false },
+    custom: { show: isRenderable(children), content: children },
+  };
+  const scaffoldBody = bodySlots.map((slot) => renderScaffoldBodySection(slot, bodySections[slot]));
+  const normalizedRailSections = railSections ?? {
+    info: { show: false },
+    readiness: { show: false },
+    settlement: { show: false },
+    totals: { show: false },
+    custom: { show: isRenderable(sideRail), content: sideRail },
+  };
+  const scaffoldRail = railSlots.map((slot) => renderScaffoldRailSection(slot, normalizedRailSections[slot]));
+  const hasRail = hasRenderableScaffoldSection(normalizedRailSections, railSlots);
 
   useEffect(() => {
-    if (!sideRail || typeof window === 'undefined') return;
+    if (!hasRail || typeof window === 'undefined') return;
     const media = window.matchMedia('(max-width: 1279px)');
     const syncRailMode = () => {
       setRailAutoCollapsed(media.matches);
@@ -416,15 +578,29 @@ export function DocumentDetailScaffold({
     syncRailMode();
     media.addEventListener('change', syncRailMode);
     return () => media.removeEventListener('change', syncRailMode);
-  }, [forceRailDrawer, sideRail]);
+  }, [forceRailDrawer, hasRail]);
 
-  const railUsesDrawer = !!sideRail && (forceRailDrawer || railAutoCollapsed);
-  const showInlineRail = !!sideRail && !railUsesDrawer && railPinned;
+  const railUsesDrawer = hasRail && (forceRailDrawer || railAutoCollapsed);
+  const showInlineRail = hasRail && !railUsesDrawer && railPinned;
   const railState = { showInlineRail, railDrawerOpen };
+  const footerTotalsSection = footerSections?.totals;
+  const footerActionsSection = footerSections?.actions;
   const renderedFooterSummary =
-    typeof footerSummary === 'function' ? footerSummary(railState) : footerSummary;
+    footerSections
+      ? shouldRenderScaffoldSection(footerTotalsSection)
+        ? footerTotalsSection?.content
+        : null
+      : typeof footerSummary === 'function'
+        ? footerSummary(railState)
+        : footerSummary;
   const renderedFooterActions =
-    typeof footerActions === 'function' ? footerActions(railState) : footerActions;
+    footerSections
+      ? shouldRenderScaffoldSection(footerActionsSection)
+        ? footerActionsSection?.content
+        : null
+      : typeof footerActions === 'function'
+        ? footerActions(railState)
+        : footerActions;
 
   useEffect(() => {
     if (!railUsesDrawer) {
@@ -441,7 +617,7 @@ export function DocumentDetailScaffold({
   };
 
   const renderRailEdgeButton = () => {
-    if (!sideRail || !showRailEdgeButton || showInlineRail) return null;
+    if (!hasRail || !showRailEdgeButton || showInlineRail) return null;
     return (
       <button
         type="button"
@@ -461,7 +637,7 @@ export function DocumentDetailScaffold({
   };
 
   const renderRailDrawer = () => {
-    if (!sideRail || !railDrawerOpen) return null;
+    if (!hasRail || !railDrawerOpen) return null;
     return (
       <div
         className={clsx(
@@ -500,7 +676,7 @@ export function DocumentDetailScaffold({
             </button>
           </div>
           <div className="grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto p-2">
-            {sideRail}
+            {scaffoldRail}
           </div>
         </aside>
       </div>
@@ -547,7 +723,7 @@ export function DocumentDetailScaffold({
         )}
       >
         <section className={clsx('flex min-h-0 flex-col gap-2', isRtl ? 'pl-1' : 'pr-1', !isWindow && '2xl:overflow-y-auto')}>
-          {children}
+          {scaffoldBody}
         </section>
         {showInlineRail && (
           <aside className="relative grid min-h-0 auto-rows-min gap-2 2xl:grid-rows-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] 2xl:overflow-hidden">
@@ -563,7 +739,7 @@ export function DocumentDetailScaffold({
               <RailCloseIcon className="h-4 w-4" />
               <span className="sr-only">{railLabel}</span>
             </button>
-            {sideRail}
+            {scaffoldRail}
           </aside>
         )}
       </div>

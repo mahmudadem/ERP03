@@ -56,6 +56,10 @@ export interface ColumnDef<T> {
 }
 
 export interface ClassicLineItemsTableProps<T> {
+  /** Optional section title rendered in the shared SI/PI-style table header. */
+  title?: string;
+  /** Optional compact action area rendered next to the title. */
+  headerAction?: React.ReactNode;
   columns: ColumnDef<T>[];
   rows: T[];
   /** Called when the user edits a cell. */
@@ -76,6 +80,10 @@ export interface ClassicLineItemsTableProps<T> {
   minRows?: number;
   /** Optional extra class on the outer wrapper. */
   className?: string;
+  /** Optional scroll cap for the table body. Defaults to the current invoice cap. */
+  maxBodyHeight?: string;
+  /** Optional table min width. Defaults to 600px. */
+  minTableWidth?: string;
 }
 
 const alignClass = (align: ColumnDef<any>['align'], kind: ColumnDef<any>['kind']): string => {
@@ -108,6 +116,10 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     showRowNumbers = true,
     minRows = 1,
     className = '',
+    title,
+    headerAction,
+    maxBodyHeight = '480px',
+    minTableWidth = '600px',
   } = props;
 
   const showRemove = !!onRowRemove;
@@ -195,8 +207,18 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     <div
       className={`border border-slate-200 dark:border-slate-800 rounded overflow-hidden shadow-sm bg-white dark:bg-slate-950 ${className}`}
     >
-      <div className="max-h-[480px] overflow-y-auto overflow-x-auto">
-        <table className="w-full text-sm min-w-[600px] border-collapse">
+      {(title || headerAction) && (
+        <div className="flex h-9 items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-3 dark:border-slate-800 dark:bg-slate-900/60">
+          {title ? (
+            <h2 className="truncate text-[11px] font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
+              {title}
+            </h2>
+          ) : <span />}
+          {headerAction}
+        </div>
+      )}
+      <div className="overflow-y-auto overflow-x-auto" style={{ maxHeight: maxBodyHeight }}>
+        <table className="w-full text-sm border-collapse" style={{ minWidth: minTableWidth }}>
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
             <tr className="border-b-2 border-slate-200 dark:border-slate-800">
               {showRowNumbers && (

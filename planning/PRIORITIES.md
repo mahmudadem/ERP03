@@ -88,6 +88,9 @@ If you are starting work on a priority item, record it here so other agents don'
 | Antigravity | RTL flyout positioning & Contrast sidebar preset visual hardening | 2026-06-05 | ✅ Done |
 | Antigravity | Task 177 - SI & PI detail page redesign | 2026-06-07 | ⏸ Deferred |
 | Antigravity | Operational List Page Template & Standardization | 2026-06-07 | ✅ Done |
+| Codex | Task 196 - Native document scaffold parity | 2026-06-09 | ✅ Done |
+| Codex | Task 197 - Sectioned native document scaffold contract | 2026-06-09 | ✅ Done |
+| Codex | Task 198 - Native document header density standard | 2026-06-09 | ✅ Done |
 
 
 **How to use:**

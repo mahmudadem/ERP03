@@ -47,6 +47,7 @@ import {
   DocumentEmptyPanel,
   DocumentField,
   DocumentFooterTotalsStrip,
+  DocumentHeaderGrid,
   DocumentIconButton,
   DocumentLinesRegion,
   DocumentPill,
@@ -55,6 +56,9 @@ import {
   DocumentSecondaryPanel,
   DocumentSegmentButton,
   DocumentSegmentedGroup,
+  documentHeaderControlClass,
+  documentHeaderLabelClass,
+  documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -919,10 +923,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     const draftTaxResolved = filledDraftLines.every((line) => !line.taxCodeId || !!taxById[line.taxCodeId]);
     const draftAttachmentInputId = isCreateMode ? 'purchase-invoice-draft-attachment-input' : 'purchase-invoice-edit-attachment-input';
     const draftAttachmentCount = invoice?.id ? attachments.length : pendingAttachmentFiles.length;
-    const headerLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
+    const headerLabelClass = documentHeaderLabelClass;
     const headerFieldWrapperClass = 'min-w-0';
-    const headerControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
-    const headerSelectorClass = 'h-9 [&>input]:h-9 [&>input]:rounded [&>input]:border-slate-300 [&>input]:py-0 [&>input]:text-xs dark:[&>input]:border-slate-700';
+    const headerControlClass = documentHeaderControlClass;
+    const headerSelectorClass = documentHeaderSelectorClass;
 
     const draftFooterSummary = (
       <DocumentFooterTotalsStrip
@@ -1175,7 +1179,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           }
           className="overflow-visible"
         >
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 p-3">
+          <DocumentHeaderGrid>
             {activeSourceMode === 'po' ? (
               <>
                 <div className={headerFieldWrapperClass}>
@@ -1287,7 +1291,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
               />
             </div>
-          </div>
+          </DocumentHeaderGrid>
         </DocumentCompactCard>
 
         <DocumentLinesRegion>
@@ -1854,7 +1858,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           </div>
         }
       >
-        <div className="grid grid-cols-2 gap-2 p-3 md:grid-cols-4 xl:grid-cols-6">
+        <DocumentHeaderGrid>
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.invoiceNo', 'Invoice No.')} value={invoice.invoiceNumber} plain />
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.source', 'Source')} value={invoice.purchaseOrderId || t('purchases.invoiceDetail.viewHeader.direct', 'Direct')} plain />
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.vendor', 'Vendor')} value={viewVendorName} plain />
@@ -1865,7 +1869,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.exchangeRate', 'Exchange Rate')} value={invoice.exchangeRate} plain />
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.paymentTerms', 'Payment Terms')} value={`${invoice.paymentTermsDays}${t('purchases.invoiceDetail.viewHeader.days', ' days')}`} plain />
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.directInvoicing', 'Direct Invoicing')} value={settings ? (settings.allowDirectInvoicing ? t('purchases.invoiceDetail.viewHeader.enabled', 'Enabled') : t('purchases.invoiceDetail.viewHeader.disabled', 'Disabled')) : '-'} plain />
-        </div>
+        </DocumentHeaderGrid>
       </DocumentCompactCard>
 
       <DocumentLinesRegion>

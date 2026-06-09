@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { InventoryItemDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
@@ -18,15 +19,20 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { FileText } from 'lucide-react';
 import {
   DocumentDetailScaffold,
   DocumentFooterTotalsStrip,
+  DocumentHeaderField,
+  DocumentHeaderGrid,
   DocumentPill,
   DocumentRailCard,
   DocumentRailStat,
+  documentHeaderControlClass,
+  documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -102,6 +108,7 @@ const statusBadgeClass = (status: POStatus): string => {
 
 const PurchaseOrderDetailPage: React.FC = () => {
   const { company } = useCompanyAccess();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const isCreateMode = !params.id || params.id === 'new';
@@ -284,7 +291,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load purchase order.'
+          t('purchases.poDetail.loadFailed')
       );
     } finally {
       setLoading(false);
@@ -393,17 +400,17 @@ const PurchaseOrderDetailPage: React.FC = () => {
   };
 
   const validateBeforeSave = (): string | null => {
-    if (!form.vendorId) return 'Vendor is required.';
-    if (!form.orderDate) return 'Order date is required.';
-    if (!form.currency.trim()) return 'Currency is required.';
-    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return 'Exchange rate must be greater than 0.';
-    if (!form.lines.length) return 'At least one line is required.';
+    if (!form.vendorId) return t('purchases.poDetail.vendorRequired');
+    if (!form.orderDate) return t('purchases.poDetail.orderDateRequired');
+    if (!form.currency.trim()) return t('purchases.poDetail.currencyRequired');
+    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('purchases.poDetail.exchangeRatePositive');
+    if (!form.lines.length) return t('purchases.poDetail.minLines');
 
     for (let i = 0; i < form.lines.length; i += 1) {
       const line = form.lines[i];
-      if (!line.itemId) return `Line ${i + 1}: item is required.`;
-      if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return `Line ${i + 1}: quantity must be greater than 0.`;
-      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return `Line ${i + 1}: unit price must be greater than or equal to 0.`;
+      if (!line.itemId) return t('purchases.poDetail.lineItemRequired', { lineNum: i + 1 });
+      if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return t('purchases.poDetail.lineQtyPositive', { lineNum: i + 1 });
+      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('purchases.poDetail.lineUnitPriceNonNegative', { lineNum: i + 1 });
     }
 
     return null;
@@ -465,7 +472,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to save purchase order.'
+          t('purchases.poDetail.saveFailed')
       );
       return null;
     } finally {
@@ -484,7 +491,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Action failed.'
+          t('purchases.poDetail.actionFailed')
       );
     } finally {
       setActionBusy(false);
@@ -537,8 +544,8 @@ const PurchaseOrderDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchase Order</h1>
-        <Card className="p-6">Loading purchase order...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('purchases.poDetail.title')}</h1>
+        <Card className="p-6">{t('purchases.poDetail.loading')}</Card>
       </div>
     );
   }
@@ -546,9 +553,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
   const footerSummary = (
     <DocumentFooterTotalsStrip
       totals={[
-        { label: 'Subtotal', value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
-        { label: 'Tax', value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
-        { label: 'Grand', value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+        { label: t('purchases.poDetail.subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+        { label: t('purchases.poDetail.tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: t('purchases.poDetail.grand'), value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
       ]}
     />
   );
@@ -563,7 +570,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             onClick={saveOrder}
             disabled={saving || actionBusy}
           >
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('purchases.poDetail.saving') : t('purchases.poDetail.save')}
           </button>
           <button
             type="button"
@@ -571,7 +578,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             onClick={confirmOrder}
             disabled={saving || actionBusy}
           >
-            Confirm
+            {t('purchases.poDetail.confirm')}
           </button>
           <button
             type="button"
@@ -579,7 +586,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             onClick={deleteDraft}
             disabled={saving || actionBusy}
           >
-            Delete
+            {t('purchases.poDetail.delete')}
           </button>
         </>
       )}
@@ -593,7 +600,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={() => navigate(`/purchases/goods-receipts/new?${downstreamActionQuery}`)}
               disabled={!form.id}
             >
-              Receive Goods
+              {t('purchases.poDetail.receiveGoods')}
             </button>
           )}
           {canCreateInvoice && (
@@ -603,7 +610,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={() => navigate(`/purchases/invoices/new?${downstreamActionQuery}`)}
               disabled={!form.id}
             >
-              Create Invoice
+              {t('purchases.poDetail.createInvoice')}
             </button>
           )}
           {canCancelOrder && (
@@ -613,7 +620,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={cancelOrder}
               disabled={saving || actionBusy}
             >
-              Cancel
+              {t('purchases.poDetail.cancel')}
             </button>
           )}
           {canCloseOrder && (
@@ -623,50 +630,50 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={closeOrder}
               disabled={saving || actionBusy}
             >
-              Close
+              {t('purchases.poDetail.close')}
             </button>
           )}
         </>
       )}
 
       {!isDraft && !(canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
-        <span className="text-xs font-semibold text-slate-500">This purchase order is read-only in status: {form.status}.</span>
+        <span className="text-xs font-semibold text-slate-500">{t('purchases.poDetail.readOnlyStatus', { status: form.status })}</span>
       )}
     </>
   );
 
   const sideRail = (
     <>
-      <DocumentRailCard title="Order Totals">
+      <DocumentRailCard title={t('purchases.poDetail.orderTotals')}>
         <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={`Subtotal (${form.currency})`} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
-          <DocumentRailStat label="Subtotal Base" value={totals.subtotalBase.toFixed(2)} />
-          <DocumentRailStat label={`Tax (${form.currency})`} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
-          <DocumentRailStat label="Tax Base" value={totals.taxTotalBase.toFixed(2)} tone="blue" />
+          <DocumentRailStat label={t('purchases.poDetail.subtotalWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
+          <DocumentRailStat label={t('purchases.poDetail.subtotalBase')} value={totals.subtotalBase.toFixed(2)} />
+          <DocumentRailStat label={t('purchases.poDetail.taxWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
+          <DocumentRailStat label={t('purchases.poDetail.taxBase')} value={totals.taxTotalBase.toFixed(2)} tone="blue" />
           <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('purchases.poDetail.grandTotal')}</div>
             <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
               {form.currency} {totals.grandTotalDoc.toFixed(2)}
             </div>
-            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} base</div>
+            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} {t('purchases.poDetail.baseSuffix')}</div>
           </div>
         </div>
       </DocumentRailCard>
 
-      <DocumentRailCard title="Procurement Status">
+      <DocumentRailCard title={t('purchases.poDetail.procurementStatus')}>
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">Lines</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">{t('purchases.poDetail.linesCount')}</span>
             <span className="font-mono font-black text-slate-900 dark:text-slate-100">{form.lines.length}</span>
           </div>
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">Vendor</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">{t('purchases.poDetail.vendor')}</span>
             <span className="max-w-[160px] truncate font-black text-slate-900 dark:text-slate-100">
               {form.vendorName || '-'}
             </span>
           </div>
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">Workflow</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">{t('purchases.poDetail.workflow')}</span>
             <DocumentPill tone={isDraft ? 'slate' : form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
               {form.status}
             </DocumentPill>
@@ -678,10 +685,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
 
   return (
     <DocumentDetailScaffold
-      title={form.orderNumber || 'New Purchase Order'}
-      subtitle="Commercial purchase document. Inventory and accounting effects occur in later documents."
+      title={form.orderNumber || t('purchases.poDetail.newPurchaseOrder')}
+      subtitle={t('purchases.poDetail.subtitle')}
       icon={FileText}
-      backLabel="Back to purchase orders"
+      backLabel={t('purchases.poDetail.backToList')}
       onBack={() => navigate('/purchases/orders')}
       badges={
         <DocumentPill tone={form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : form.status === 'CANCELLED' ? 'rose' : 'slate'}>
@@ -689,18 +696,18 @@ const PurchaseOrderDetailPage: React.FC = () => {
         </DocumentPill>
       }
       sideRail={sideRail}
-      railTitle="Purchase order side rail"
+      railTitle={t('purchases.poDetail.sideRailTitle')}
       footerSummary={footerSummary}
       footerActions={footerActions}
     >
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      <Card className="p-5">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Vendor</label>
+      <Card className="overflow-visible p-0">
+        <DocumentHeaderGrid>
+          <DocumentHeaderField label={t('purchases.poDetail.vendorLabel')}>
             <PartySelector 
+              className={documentHeaderSelectorClass}
               value={form.vendorId}
               disabled={isReadOnly}
               onChange={(party) => {
@@ -712,33 +719,34 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 }));
               }}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Order Date</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('purchases.poDetail.orderDate')}>
             <DatePicker 
+              className="w-full"
+              inputClassName={documentHeaderControlClass}
               value={form.orderDate}
               disabled={isReadOnly}
               onChange={(val) => setForm((prev) => ({ ...prev, orderDate: val }))}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Expected Delivery</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('purchases.poDetail.expectedDelivery')}>
             <DatePicker 
+              className="w-full"
+              inputClassName={documentHeaderControlClass}
               value={form.expectedDeliveryDate}
               disabled={isReadOnly}
               onChange={(val) => setForm((prev) => ({ ...prev, expectedDeliveryDate: val }))}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('purchases.poDetail.currency')}>
             <CurrencySelector
+              className={documentHeaderSelectorClass}
               value={form.currency}
               onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
               disabled={isReadOnly || saving || actionBusy}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Exchange Rate</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('purchases.poDetail.exchangeRate')}>
             <CurrencyExchangeWidget
               currency={form.currency}
               baseCurrency={company?.baseCurrency || 'USD'}
@@ -747,156 +755,122 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
               disabled={isReadOnly || saving || actionBusy}
             />
-          </div>
-        </div>
+          </DocumentHeaderField>
+        </DocumentHeaderGrid>
       </Card>
 
-      <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-            onClick={addLine}
-            disabled={isReadOnly}
-          >
-            Add Line
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Price</th>
-                <th className="py-2 text-left">Tax Code</th>
-                <th className="py-2 text-right">Line Total</th>
-                <th className="py-2 text-right">Tax</th>
-                <th className="py-2 text-right">Line Base</th>
-                <th className="py-2 text-left">Status Qty</th>
-                <th className="py-2 text-right" />
-              </tr>
-            </thead>
-            <tbody>
-              {form.lines.map((line, index) => (
-                <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                  <td className="py-2 pr-2">
-                    <select
-                      className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
-                      value={line.itemId}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { itemId: e.target.value })}
-                    >
-                      <option value="">Select item</option>
-                      {items.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.code} - {item.name}
-                        </option>
-                      ))}
-                    </select>
-                    {(line.itemCode || line.itemName) && (
-                      <div className="mt-1 text-xs text-slate-500">
-                        {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2 pr-2">
-                    <input
-                      type="number"
-                      min={0.000001}
-                      step={0.000001}
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                      value={line.orderedQty}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { orderedQty: Number(e.target.value) })}
-                    />
-                  </td>
-                  <td className="py-2 pr-2">
-                    <select
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                      value={
-                        findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                        line.uomId ||
-                        line.uom
-                      }
-                      disabled={isReadOnly || !line.itemId}
-                      onChange={(e) => {
-                        const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                          (option) => (option.uomId || option.code) === e.target.value
-                        );
-                        setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                      }}
-                    >
-                      <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                      {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                        <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                          {option.code}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-2 pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                      value={line.unitPriceDoc}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
-                    />
-                  </td>
-                  <td className="py-2 pr-2">
-                    <select
-                      className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
-                      value={line.taxCodeId || ''}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
-                    >
-                      <option value="">No Tax</option>
-                      {purchaseTaxCodes.map((taxCode) => (
-                        <option key={taxCode.id} value={taxCode.id}>
-                          {taxCode.code} ({Math.round(taxCode.rate * 100)}%)
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-2 pr-2 text-right">
-                    {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
-                  </td>
-                  <td className="py-2 pr-2 text-right">
-                    {form.currency} {computedLines[index]?.taxAmountDoc.toFixed(2)}
-                  </td>
-                  <td className="py-2 pr-2 text-right">
-                    {computedLines[index]?.lineTotalBase.toFixed(2)}
-                  </td>
-                  <td className="py-2 pr-2 text-xs text-slate-500">
-                    Rec: {line.receivedQty} / Inv: {line.invoicedQty} / Ret: {line.returnedQty}
-                  </td>
-                  <td className="py-2 text-right">
-                    <button
-                      type="button"
-                      className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
-                      onClick={() => removeLine(index)}
-                      disabled={isReadOnly || form.lines.length <= 1}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <ClassicLineItemsTable<EditableLine>
+        title={t('purchases.poDetail.lineItems')}
+        rows={form.lines}
+        disabled={isReadOnly}
+        onRowChange={setLine}
+        onRowRemove={removeLine}
+        onRowAdd={addLine}
+        addLabel={t('purchases.poDetail.addLine')}
+        minTableWidth="1160px"
+        columns={[
+          {
+            id: 'item',
+            label: t('purchases.poDetail.itemColumn'),
+            kind: 'custom',
+            width: '260px',
+            render: (line, index) => (
+              <ItemSelector
+                value={line.itemId}
+                disabled={isReadOnly}
+                noBorder
+                placeholder={t('purchases.poDetail.selectItem')}
+                onChange={(item) => {
+                  if (!item) {
+                    setLine(index, { itemId: '', itemCode: undefined, itemName: undefined });
+                    return;
+                  }
+                  const defaultUom = getDefaultItemUomOption(item, 'purchase');
+                  const defaultTax = item.defaultPurchaseTaxCodeId
+                    ? purchaseTaxCodes.find((taxCode) => taxCode.id === item.defaultPurchaseTaxCodeId)
+                    : undefined;
+                  setLine(index, {
+                    itemId: item.id,
+                    itemCode: item.code,
+                    itemName: item.name,
+                    uomId: defaultUom?.uomId,
+                    uom: defaultUom?.code || item.purchaseUom || item.baseUom,
+                    taxCodeId: line.taxCodeId || defaultTax?.id,
+                  });
+                }}
+              />
+            ),
+          } as ColumnDef<EditableLine>,
+          { id: 'qty', label: t('purchases.poDetail.qtyColumn'), kind: 'number', width: '90px', accessor: (line) => line.orderedQty, setter: (value) => ({ orderedQty: Number(value) }) },
+          {
+            id: 'uom',
+            label: t('purchases.poDetail.uomColumn'),
+            kind: 'custom',
+            width: '95px',
+            render: (line, index) => (
+              <select
+                className="h-9 w-full border-0 bg-transparent px-2 text-xs uppercase outline-none disabled:opacity-60"
+                value={
+                  findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                  line.uomId ||
+                  line.uom
+                }
+                disabled={isReadOnly || !line.itemId}
+                onChange={(e) => {
+                  const selected = (uomOptionsByItemId[line.itemId] || []).find(
+                    (option) => (option.uomId || option.code) === e.target.value
+                  );
+                  setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                }}
+              >
+                <option value="">{line.itemId ? t('purchases.poDetail.uomSelect') : t('purchases.poDetail.uomNoItem')}</option>
+                {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                  <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                    {option.code}
+                  </option>
+                ))}
+              </select>
+            ),
+          },
+          { id: 'unitPrice', label: t('purchases.poDetail.unitPriceColumn'), kind: 'number', width: '115px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: Number(value) }) },
+          {
+            id: 'taxCode',
+            label: t('purchases.poDetail.taxCodeColumn'),
+            kind: 'select',
+            width: '150px',
+            accessor: (line) => line.taxCodeId || '',
+            setter: (value) => ({ taxCodeId: value || undefined }),
+            options: [
+              { value: '', label: t('purchases.poDetail.noTax') },
+              ...purchaseTaxCodes.map((taxCode) => ({ value: taxCode.id, label: `${taxCode.code} (${Math.round(taxCode.rate * 100)}%)` })),
+            ],
+          },
+          {
+            id: 'warehouse',
+            label: t('purchases.poDetail.warehouseColumn'),
+            kind: 'custom',
+            width: '190px',
+            render: (line, index) => (
+              <WarehouseSelector
+                value={line.warehouseId}
+                disabled={isReadOnly}
+                noBorder
+                placeholder={t('purchases.poDetail.warehousePlaceholder')}
+                onChange={(warehouse) => setLine(index, { warehouseId: warehouse?.id })}
+              />
+            ),
+          },
+          { id: 'lineTotal', label: t('purchases.poDetail.lineTotalColumn'), kind: 'computed', width: '115px', compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+          { id: 'tax', label: t('purchases.poDetail.taxColumn'), kind: 'computed', width: '100px', compute: (_line, index) => computedLines[index]?.taxAmountDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+          { id: 'base', label: t('purchases.poDetail.lineBaseColumn'), kind: 'computed', width: '110px', compute: (_line, index) => computedLines[index]?.lineTotalBase || 0 },
+          { id: 'statusQty', label: t('purchases.poDetail.statusQtyColumn'), kind: 'computed', width: '150px', align: 'left', compute: (line) => t('purchases.poDetail.statusQtyFormat', { received: line.receivedQty, invoiced: line.invoicedQty, returned: line.returnedQty }) },
+        ]}
+      />
 
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Vendor Notes</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('purchases.poDetail.vendorNotes')}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -906,7 +880,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Internal Notes</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('purchases.poDetail.internalNotes')}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -920,12 +894,12 @@ const PurchaseOrderDetailPage: React.FC = () => {
 
       {!isCreateMode && form.id && (
         <Card className="p-5">
-          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Linked Documents</h3>
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('purchases.poDetail.linkedDocuments')}</h3>
           <div className="grid gap-6 md:grid-cols-3">
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">Goods Receipts</div>
+              <div className="mb-2 text-sm font-medium text-slate-700">{t('purchases.poDetail.goodsReceipts')}</div>
               <div className="space-y-2">
-                {relatedGRNs.length === 0 && <div className="text-sm text-slate-500">No linked GRNs.</div>}
+                {relatedGRNs.length === 0 && <div className="text-sm text-slate-500">{t('purchases.poDetail.noLinkedGRNs')}</div>}
                 {relatedGRNs.map((grn) => (
                   <button
                     key={grn.id}
@@ -939,9 +913,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">Purchase Invoices</div>
+              <div className="mb-2 text-sm font-medium text-slate-700">{t('purchases.poDetail.purchaseInvoices')}</div>
               <div className="space-y-2">
-                {relatedPIs.length === 0 && <div className="text-sm text-slate-500">No linked invoices.</div>}
+                {relatedPIs.length === 0 && <div className="text-sm text-slate-500">{t('purchases.poDetail.noLinkedInvoices')}</div>}
                 {relatedPIs.map((invoice) => (
                   <button
                     key={invoice.id}
@@ -955,9 +929,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">Purchase Returns</div>
+              <div className="mb-2 text-sm font-medium text-slate-700">{t('purchases.poDetail.purchaseReturns')}</div>
               <div className="space-y-2">
-                {relatedReturns.length === 0 && <div className="text-sm text-slate-500">No linked returns.</div>}
+                {relatedReturns.length === 0 && <div className="text-sm text-slate-500">{t('purchases.poDetail.noLinkedReturns')}</div>}
                 {relatedReturns.map((entry) => (
                   <button
                     key={entry.id}

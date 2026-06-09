@@ -1,57 +1,59 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, RefreshCw, FileText } from 'lucide-react';
+import { Eye, Search } from 'lucide-react';
 import { clsx } from 'clsx';
-import { Card } from '../../../components/ui/Card';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { PageHeader } from '../../../components/ui/PageHeader';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
-import {
-  QuoteDTO,
-  QuoteStatus,
-  salesOperationalApi,
-} from '../../../api/salesOperationalApi';
+import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
+import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/types';
+import { QuoteDTO, QuoteStatus, salesOperationalApi } from '../../../api/salesOperationalApi';
 import { formatMoney } from '../../../utils/formatMoney';
 
-// ─── Status chip ──────────────────────────────────────────────────────────────
+const ALL_STATUSES: QuoteStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CONVERTED'];
 
-const STATUS_STYLES: Record<QuoteStatus, string> = {
-  DRAFT: 'bg-slate-100 text-slate-700',
-  SENT: 'bg-blue-100 text-blue-700',
-  ACCEPTED: 'bg-emerald-100 text-emerald-700',
-  REJECTED: 'bg-rose-100 text-rose-700',
-  EXPIRED: 'bg-amber-100 text-amber-700',
-  CONVERTED: 'bg-violet-100 text-violet-700',
-};
-
-const ALL_STATUSES: QuoteStatus[] = [
-  'DRAFT',
-  'SENT',
-  'ACCEPTED',
-  'REJECTED',
-  'EXPIRED',
-  'CONVERTED',
+const STATUS_OPTIONS: Array<{ label: string; value: QuoteStatus | 'ALL'; color: string }> = [
+  { label: 'All', value: 'ALL', color: 'bg-slate-400' },
+  { label: 'Draft', value: 'DRAFT', color: 'bg-slate-500' },
+  { label: 'Sent', value: 'SENT', color: 'bg-blue-500' },
+  { label: 'Accepted', value: 'ACCEPTED', color: 'bg-emerald-500' },
+  { label: 'Rejected', value: 'REJECTED', color: 'bg-rose-500' },
+  { label: 'Expired', value: 'EXPIRED', color: 'bg-amber-500' },
+  { label: 'Converted', value: 'CONVERTED', color: 'bg-violet-500' },
 ];
 
-const formatDate = (dateStr?: string): string => {
-  if (!dateStr) return '—';
-  return dateStr.slice(0, 10);
+const statusChipClasses = (status: QuoteStatus): string => {
+  switch (status) {
+    case 'DRAFT':
+      return 'bg-slate-100 text-slate-700 ring-slate-200';
+    case 'SENT':
+      return 'bg-blue-100 text-blue-700 ring-blue-200';
+    case 'ACCEPTED':
+      return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+    case 'REJECTED':
+      return 'bg-rose-100 text-rose-700 ring-rose-200';
+    case 'EXPIRED':
+      return 'bg-amber-100 text-amber-700 ring-amber-200';
+    case 'CONVERTED':
+      return 'bg-violet-100 text-violet-700 ring-violet-200';
+    default:
+      return 'bg-slate-100 text-slate-700 ring-slate-200';
+  }
 };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+const formatDate = (dateStr?: string): string => dateStr ? dateStr.slice(0, 10) : '-';
 
 const QuotationsPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
-
   const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'ALL'>('ALL');
-  const [customerFilter, setCustomerFilter] = useState<string>('');
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
   const [quotes, setQuotes] = useState<QuoteDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const hasFilters = statusFilter !== 'ALL' || !!customerFilter;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const load = async () => {
     try {
@@ -65,12 +67,7 @@ const QuotationsPage: React.FC = () => {
       setQuotes(Array.isArray(result) ? result : []);
     } catch (err: any) {
       console.error('Failed to load quotations', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          t('sales.quotesList.loadError')
-      );
+      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.quotesList.loadError'));
       setQuotes([]);
     } finally {
       setLoading(false);
@@ -79,158 +76,170 @@ const QuotationsPage: React.FC = () => {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, customerFilter]);
+  }, [statusFilter, customerFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const clearFilters = () => {
-    setStatusFilter('ALL');
-    setCustomerFilter('');
-  };
+  const filteredQuotes = useMemo(() => {
+    const term = searchFilter.trim().toLowerCase();
+    if (!term) return quotes;
+    return quotes.filter((quote) =>
+      [quote.quoteNumber, quote.customerName, quote.customerId, quote.status]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term)),
+    );
+  }, [quotes, searchFilter]);
 
-  const headerAction = useMemo(
-    () => (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={load}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          title={t('sales.quotesList.refresh')}
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {t('sales.quotesList.refresh')}
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/sales/quotes/new')}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-        >
-          <Plus size={14} />
-          {t('sales.quotesList.newQuote')}
-        </button>
-      </div>
-    ),
-    [loading, navigate, t]
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: quotes.length };
+    ALL_STATUSES.forEach((status) => {
+      counts[status] = quotes.filter((quote) => quote.status === status).length;
+    });
+    return counts;
+  }, [quotes]);
+
+  const pagedQuotes = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredQuotes.slice(start, start + pageSize);
+  }, [filteredQuotes, page, pageSize]);
+
+  const columns = useMemo<ColumnDefinition<QuoteDTO>[]>(
+    () => [
+      {
+        key: 'quoteNumber',
+        label: t('sales.quotesList.quoteNumber'),
+        width: '150px',
+        priority: 1,
+        sortable: true,
+        accessor: 'quoteNumber',
+        align: 'center',
+        render: (value, row) => (
+          <div className="flex items-center justify-center gap-2">
+            <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{value}</span>
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">v{row.version}</span>
+          </div>
+        ),
+      },
+      { key: 'customerName', label: t('sales.quotesList.customer'), width: '220px', priority: 1, sortable: true, accessor: 'customerName', align: 'center', render: (value) => <span className="font-medium text-slate-900 dark:text-slate-100">{value}</span> },
+      { key: 'quoteDate', label: t('sales.quotesList.quoteDate'), width: '130px', priority: 1, sortable: true, accessor: 'quoteDate', align: 'center', render: (value) => formatDate(value) },
+      { key: 'validUntil', label: t('sales.quotesList.validUntil'), width: '130px', priority: 2, sortable: true, accessor: 'validUntil', align: 'center', render: (value) => formatDate(value) },
+      { key: 'grandTotalDoc', label: t('sales.quotesList.grandTotal'), width: '140px', priority: 1, sortable: true, accessor: 'grandTotalDoc', align: 'right', render: (value, row) => <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{formatMoney(value, row.currency)}</span> },
+      {
+        key: 'status',
+        label: t('sales.quotesList.status'),
+        width: '130px',
+        priority: 1,
+        sortable: true,
+        accessor: 'status',
+        align: 'center',
+        render: (value) => (
+          <span className={clsx('whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset', statusChipClasses(value))}>
+            {String(t(`sales.quotesList.statuses.${value}`, value))}
+          </span>
+        ),
+      },
+    ],
+    [t],
   );
 
-  return (
-    <div className="space-y-6 p-4">
-      <PageHeader
-        title={t('sales.quotesList.title')}
-        subtitle={t('sales.quotesList.subtitle')}
-        action={headerAction}
-      />
+  const rowActions = useMemo<RowAction<QuoteDTO>[]>(
+    () => [
+      { key: 'open', label: t('actions.open', 'Open'), icon: Eye, onClick: (row) => navigate(`/sales/quotes/${row.id}`), primary: false },
+    ],
+    [navigate, t],
+  );
 
-      <Card className="p-4">
-        <div className="grid gap-2 md:grid-cols-3">
+  const hasActiveFilters = statusFilter !== 'ALL' || !!customerFilter || !!searchFilter;
+
+  return (
+    <OperationalListLayout<QuoteDTO>
+      title={t('sales.quotesList.title')}
+      subtitle={t('sales.quotesList.subtitle')}
+      newButtonLabel={t('sales.quotesList.newQuote')}
+      onNewClick={() => navigate('/sales/quotes/new')}
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      filters={
+        <div className="flex w-full flex-wrap items-center gap-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              value={localSearch}
+              onChange={(event) => setLocalSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  setSearchFilter(localSearch);
+                  setPage(1);
+                }
+              }}
+              placeholder="Quote #, customer, status..."
+              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="w-full lg:w-64">
+            <PartySelector
+              role="CUSTOMER"
+              value={customerFilter}
+              onChange={(party) => {
+                setCustomerFilter(party?.id ?? '');
+                setPage(1);
+              }}
+              placeholder={t('sales.quotesList.allCustomers')}
+            />
+          </div>
           <select
             value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(e.target.value as QuoteStatus | 'ALL')
-            }
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            onChange={(event) => {
+              setStatusFilter(event.target.value as QuoteStatus | 'ALL');
+              setPage(1);
+            }}
+            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 lg:w-40"
           >
             <option value="ALL">{t('sales.quotesList.allStatuses')}</option>
-            {ALL_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {t(`sales.quotesList.statuses.${s}`)}
-              </option>
+            {ALL_STATUSES.map((status) => (
+              <option key={status} value={status}>{t(`sales.quotesList.statuses.${status}`)}</option>
             ))}
           </select>
-          <PartySelector
-            role="CUSTOMER"
-            value={customerFilter}
-            onChange={(party) => setCustomerFilter(party?.id ?? '')}
-            placeholder={t('sales.quotesList.allCustomers')}
-          />
-          {hasFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              {t('sales.quotesList.clearFilters')}
-            </button>
-          )}
+          <button type="button" className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white" onClick={() => { setSearchFilter(localSearch); setPage(1); }}>
+            {t('actions.apply', 'Apply')}
+          </button>
         </div>
-      </Card>
-
-      <Card className="p-4">
-        {error && (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {!loading && quotes.length === 0 ? (
-          <EmptyState
-            icon={<FileText className="w-12 h-12" />}
-            title={t('sales.quotesList.emptyTitle')}
-            description={t('sales.quotesList.emptyDescription')}
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-600">
-                  <th className="py-2">{t('sales.quotesList.quoteNumber')}</th>
-                  <th className="py-2">{t('sales.quotesList.customer')}</th>
-                  <th className="py-2">{t('sales.quotesList.quoteDate')}</th>
-                  <th className="py-2">{t('sales.quotesList.validUntil')}</th>
-                  <th className="py-2 text-right">
-                    {t('sales.quotesList.grandTotal')}
-                  </th>
-                  <th className="py-2">{t('sales.quotesList.status')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotes.map((q) => (
-                  <tr
-                    key={q.id}
-                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
-                    onClick={() => navigate(`/sales/quotes/${q.id}`)}
-                  >
-                    <td className="py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-900">
-                          {q.quoteNumber}
-                        </span>
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                          v{q.version}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-2">{q.customerName}</td>
-                    <td className="py-2">{formatDate(q.quoteDate)}</td>
-                    <td className="py-2">{formatDate(q.validUntil)}</td>
-                    <td className="py-2 text-right">
-                      {formatMoney(q.grandTotalDoc, q.currency)}
-                    </td>
-                    <td className="py-2">
-                      <span
-                        className={clsx(
-                          'rounded-full px-2 py-1 text-xs font-medium',
-                          STATUS_STYLES[q.status] ?? 'bg-slate-100 text-slate-700'
-                        )}
-                      >
-                        {t(`sales.quotesList.statuses.${q.status}`, q.status)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {loading && (
-                  <tr>
-                    <td className="py-6 text-center text-slate-500" colSpan={6}>
-                      {t('sales.quotesList.loading')}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </div>
+      }
+      hasActiveFilters={hasActiveFilters}
+      onClearFilters={() => {
+        setStatusFilter('ALL');
+        setCustomerFilter('');
+        setLocalSearch('');
+        setSearchFilter('');
+        setPage(1);
+      }}
+      statusFilterConfig={{
+        options: STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label, color: option.color })),
+        activeValue: statusFilter,
+        onChange: (value) => {
+          setStatusFilter(value as QuoteStatus | 'ALL');
+          setPage(1);
+        },
+        counts: statusCounts,
+      }}
+      columns={columns}
+      data={pagedQuotes}
+      rowActions={rowActions}
+      onRowClick={(row) => navigate(`/sales/quotes/${row.id}`)}
+      emptyMessage={t('sales.quotesList.emptyTitle')}
+      pagination={{
+        page,
+        pageSize,
+        totalItems: filteredQuotes.length,
+        totalPages: Math.max(1, Math.ceil(filteredQuotes.length / pageSize)),
+        onPageChange: setPage,
+        onPageSizeChange: (nextSize) => {
+          setPageSize(nextSize);
+          setPage(1);
+        },
+        pageSizeOptions: [10, 25, 50, 100],
+      }}
+    />
   );
 };
 

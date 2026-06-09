@@ -291,6 +291,40 @@ Purchase Invoice now reuses the Sales Invoice page anatomy inside the scaffold, 
 
 These changes are UI/data-integrity improvements only. They do not change AP posting, tax calculation, inventory receipt valuation, settlement, approval, SoD enforcement, period-lock behavior, or ledger writes.
 
+## Native Purchases document table/list parity (2026-06-09)
+
+Purchase document line sections now share the configurable line table shell at `frontend/src/components/shared/ClassicLineItemsTable.tsx`. Purchase Invoice already used it; Purchase Order, Goods Receipt, and Purchase Return create/edit/view line sections now render through the same table chrome with document-specific columns.
+
+Goods Receipt draft/edit and Purchase Return saved/edit views now render through `DocumentDetailScaffold`, giving them the same compact topbar, badges, side rail, footer totals/actions, and workspace scroll behavior as Purchase Invoice and Purchase Order. Purchase Return create mode keeps its source-picking card flow for now, but its return line table uses the shared line shell.
+
+Operational Purchases lists now use `OperationalListLayout` across Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns. Goods Receipts and Purchase Returns were migrated from custom card/table pages to the shared list shell with inline filters, quick status pills, centered columns, row actions, and 25-row pagination.
+
+### Accounting impact
+
+These changes are UI/data-entry consistency only. They do not change PO commercial calculations, GRN receipt posting, PI/AP posting, Purchase Return reversals, tax, inventory valuation, settlement, approval, period-lock behavior, or ledger writes.
+
+## Shared document section contract (2026-06-09)
+
+The Purchases native document scaffold now defines fixed body sections instead of letting each page own a separate body structure: `control`, `header`, `lines`, `secondary`, `attachments`, and `custom`. The right rail is also structured as `info`, `readiness`, `settlement`, `totals`, and `custom`, and footer content is controlled by `totals` and `actions`.
+
+Each slot has a show/hide contract through `DocumentScaffoldSection`. This lets Purchase Invoice show settlement/footer totals while Goods Receipt can hide settlement and still keep the same document anatomy. Existing Purchases pages that still pass legacy `children` or `sideRail` are normalized through the scaffold's `custom` slot until their body regions are fully split into strict slots.
+
+Authoritative contract: [`docs/architecture/document-scaffold.md`](./document-scaffold.md).
+
+### Accounting impact
+
+This is layout architecture only. It does not change AP posting, tax, inventory valuation, GRN receipt posting, Purchase Return reversals, settlement, approval, period-lock, SoD, or ledger behavior.
+
+### Key files
+
+| Layer | File |
+|---|---|
+| Shared line table | `frontend/src/components/shared/ClassicLineItemsTable.tsx` |
+| Shared document scaffold | `frontend/src/components/shared/DocumentDetailScaffold.tsx` |
+| Goods Receipt list/detail | `frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx`, `frontend/src/modules/purchases/pages/GoodsReceiptDetailPage.tsx` |
+| Purchase Return list/detail | `frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx`, `frontend/src/modules/purchases/pages/PurchaseReturnDetailPage.tsx` |
+| Purchase Order detail | `frontend/src/modules/purchases/pages/PurchaseOrderDetailPage.tsx` |
+
 ## What Is NOT Implemented
 
 | Feature | Status |

@@ -8,13 +8,21 @@ import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterData
 import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
 import { sharedApi, PartyDTO, TaxCodeDTO } from '../../../api/sharedApi';
 import { PartySelector, ItemSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { errorHandler } from '../../../services/errorHandler';
-import { FileText, ChevronLeft, Plus, Trash2 } from 'lucide-react';
+import { FileText, ChevronLeft } from 'lucide-react';
+import {
+  DocumentHeaderField,
+  DocumentHeaderGrid,
+  documentHeaderControlClass,
+  documentHeaderLabelClass,
+  documentHeaderSelectorClass,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -579,13 +587,11 @@ const QuotationDetailPage: React.FC = () => {
           )}
 
           {/* Header fields */}
-          <Card className="p-5">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('sales.quoteDetail.customer', 'Customer')}
-                </label>
+          <Card className="overflow-visible p-0">
+            <DocumentHeaderGrid>
+              <DocumentHeaderField label={t('sales.quoteDetail.customer', 'Customer')}>
                 <PartySelector
+                  className={documentHeaderSelectorClass}
                   value={form.customerId}
                   disabled={isReadOnly}
                   role="CUSTOMER"
@@ -598,14 +604,11 @@ const QuotationDetailPage: React.FC = () => {
                     }))
                   }
                 />
-              </div>
+              </DocumentHeaderField>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('sales.quoteDetail.salesperson', 'Salesperson')}
-                </label>
+              <DocumentHeaderField label={t('sales.quoteDetail.salesperson', 'Salesperson')}>
                 <select
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={documentHeaderControlClass}
                   value={form.salespersonId ?? ''}
                   disabled={isReadOnly}
                   onChange={(e) =>
@@ -619,45 +622,38 @@ const QuotationDetailPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </DocumentHeaderField>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('sales.quoteDetail.quoteDate', 'Quote Date')}
-                </label>
+              <DocumentHeaderField label={t('sales.quoteDetail.quoteDate', 'Quote Date')}>
                 <DatePicker
+                  className="w-full"
+                  inputClassName={documentHeaderControlClass}
                   value={form.quoteDate}
                   disabled={isReadOnly}
                   onChange={(val) => setForm((prev) => ({ ...prev, quoteDate: val }))}
                 />
-              </div>
+              </DocumentHeaderField>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('sales.quoteDetail.validUntil', 'Valid Until')}
-                </label>
+              <DocumentHeaderField label={t('sales.quoteDetail.validUntil', 'Valid Until')}>
                 <DatePicker
+                  className="w-full"
+                  inputClassName={documentHeaderControlClass}
                   value={form.validUntil}
                   disabled={isReadOnly}
                   onChange={(val) => setForm((prev) => ({ ...prev, validUntil: val }))}
                 />
-              </div>
+              </DocumentHeaderField>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('sales.quoteDetail.currency', 'Currency')}
-                </label>
+              <DocumentHeaderField label={t('sales.quoteDetail.currency', 'Currency')}>
                 <CurrencySelector
+                  className={documentHeaderSelectorClass}
                   value={form.currency}
                   disabled={isReadOnly || saving || actionBusy}
                   onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
                 />
-              </div>
+              </DocumentHeaderField>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('sales.quoteDetail.exchangeRate', 'Exchange Rate')}
-                </label>
+              <DocumentHeaderField label={t('sales.quoteDetail.exchangeRate', 'Exchange Rate')}>
                 <CurrencyExchangeWidget
                   currency={form.currency}
                   baseCurrency={company?.baseCurrency || 'USD'}
@@ -666,16 +662,16 @@ const QuotationDetailPage: React.FC = () => {
                   disabled={isReadOnly || saving || actionBusy}
                   onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
                 />
-              </div>
-            </div>
+              </DocumentHeaderField>
+            </DocumentHeaderGrid>
 
-            <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <div className="px-3 pb-3">
+              <label className={documentHeaderLabelClass}>
                 {t('sales.quoteDetail.notes', 'Notes')}
               </label>
               <textarea
                 rows={3}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded border border-slate-300 bg-white px-2 py-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
                 value={form.notes}
                 disabled={isReadOnly}
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
@@ -684,179 +680,81 @@ const QuotationDetailPage: React.FC = () => {
             </div>
           </Card>
 
-          {/* Lines table */}
-          <Card className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.quoteDetail.lineItems', 'Line Items')}</h2>
-              {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={addLine}
-                  className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  <Plus size={14} /> {t('sales.quoteDetail.addLine', 'Add Line')}
-                </button>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="py-2 text-left">{t('sales.quoteDetail.colItem', 'Item')}</th>
-                    <th className="py-2 text-right">{t('sales.quoteDetail.colQty', 'Qty')}</th>
-                    <th className="py-2 text-left">{t('sales.quoteDetail.colUom', 'UOM')}</th>
-                    <th className="py-2 text-right">{t('sales.quoteDetail.colUnitPrice', 'Unit Price')}</th>
-                    <th className="py-2 text-left">{t('sales.quoteDetail.colDiscType', 'Disc. Type')}</th>
-                    <th className="py-2 text-right">{t('sales.quoteDetail.colDiscValue', 'Disc. Value')}</th>
-                    <th className="py-2 text-left">{t('sales.quoteDetail.colTaxCode', 'Tax Code')}</th>
-                    <th className="py-2 text-right">{t('sales.quoteDetail.colLineTotal', 'Line Total')}</th>
-                    <th className="py-2 text-right">{t('sales.quoteDetail.colTax', 'Tax')}</th>
-                    <th className="py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {form.lines.map((line, index) => (
-                    <tr
-                      key={line.lineId ?? `line-${index}`}
-                      className="border-b border-slate-100 dark:border-slate-800 align-top"
-                    >
-                      <td className="py-2 pr-2">
-                        {!isReadOnly ? (
-                          <div className="w-52">
-                            <ItemSelector
-                              value={line.itemId}
-                              onChange={(item) => {
-                                if (!item) {
-                                  setLine(index, { itemId: '', itemCode: '', itemName: '', uom: 'EA', uomId: undefined });
-                                  return;
-                                }
-                                const patch: Partial<EditableLine> = {
-                                  itemId: item.id,
-                                  itemCode: item.code,
-                                  itemName: item.name,
-                                  uom: item.salesUom || item.baseUom || 'EA',
-                                  uomId: item.salesUomId || item.baseUomId,
-                                };
-                                if (!line.taxCodeId && item.defaultSalesTaxCodeId) {
-                                  patch.taxCodeId = item.defaultSalesTaxCodeId;
-                                }
-                                setLine(index, patch);
-                              }}
-                            />
-                            {line.itemName && (
-                              <div className="mt-0.5 text-xs text-slate-400">{line.itemName}</div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-52">
-                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{line.itemCode}</div>
-                            {line.itemName && <div className="text-xs text-slate-400">{line.itemName}</div>}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          min={0.000001}
-                          step={0.000001}
-                          className="w-20 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-right bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50"
-                          value={line.quotedQty}
-                          disabled={isReadOnly}
-                          onChange={(e) => setLine(index, { quotedQty: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 uppercase bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50"
-                          value={line.uom}
-                          disabled={isReadOnly}
-                          onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          className="w-24 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-right bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50"
-                          value={line.unitPriceDoc}
-                          disabled={isReadOnly}
-                          onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-24 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50"
-                          value={line.discountType ?? ''}
-                          disabled={isReadOnly}
-                          onChange={(e) =>
-                            setLine(index, {
-                              discountType: (e.target.value as 'PERCENT' | 'AMOUNT') || undefined,
-                            })
-                          }
-                        >
-                          <option value="">{t('sales.quoteDetail.discNone', 'None')}</option>
-                          <option value="PERCENT">{t('sales.quoteDetail.discPercent', '%')}</option>
-                          <option value="AMOUNT">{t('sales.quoteDetail.discAmount', 'Amt')}</option>
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          className="w-20 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-right bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50"
-                          value={line.discountValue ?? ''}
-                          disabled={isReadOnly || !line.discountType}
-                          onChange={(e) =>
-                            setLine(index, {
-                              discountValue: e.target.value ? Number(e.target.value) : undefined,
-                            })
-                          }
-                          placeholder="0"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-36 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50"
-                          value={line.taxCodeId ?? ''}
-                          disabled={isReadOnly}
-                          onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
-                        >
-                          <option value="">{t('sales.quoteDetail.noTax', 'No Tax')}</option>
-                          {salesTaxCodes.map((tc) => (
-                            <option key={tc.id} value={tc.id}>
-                              {tc.code} ({Math.round(tc.rate * 100)}%)
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2 text-right whitespace-nowrap">
-                        {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
-                      </td>
-                      <td className="py-2 pr-2 text-right whitespace-nowrap">
-                        {form.currency} {computedLines[index]?.taxAmountDoc.toFixed(2)}
-                      </td>
-                      <td className="py-2 text-right">
-                        {!isReadOnly && (
-                          <button
-                            type="button"
-                            onClick={() => removeLine(index)}
-                            disabled={form.lines.length <= 1}
-                            className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors"
-                            title={t('sales.quoteDetail.removeLine', 'Remove line')}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          <ClassicLineItemsTable<EditableLine>
+            title={t('sales.quoteDetail.lineItems', 'Line Items')}
+            rows={form.lines}
+            disabled={isReadOnly}
+            onRowChange={setLine}
+            onRowRemove={!isReadOnly ? removeLine : undefined}
+            onRowAdd={!isReadOnly ? addLine : undefined}
+            addLabel={t('sales.quoteDetail.addLine', 'Add Line')}
+            minTableWidth="1120px"
+            columns={[
+              {
+                id: 'item',
+                label: t('sales.quoteDetail.colItem', 'Item'),
+                kind: 'custom',
+                width: '260px',
+                render: (line, index) => isReadOnly ? (
+                  <div className="flex h-9 items-center px-2 text-xs">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{line.itemCode}</span>
+                    {line.itemName && <span className="ml-1 text-slate-500">{line.itemName}</span>}
+                  </div>
+                ) : (
+                  <ItemSelector
+                    value={line.itemId}
+                    noBorder
+                    onChange={(item) => {
+                      if (!item) {
+                        setLine(index, { itemId: '', itemCode: '', itemName: '', uom: 'EA', uomId: undefined });
+                        return;
+                      }
+                      const patch: Partial<EditableLine> = {
+                        itemId: item.id,
+                        itemCode: item.code,
+                        itemName: item.name,
+                        uom: item.salesUom || item.baseUom || 'EA',
+                        uomId: item.salesUomId || item.baseUomId,
+                      };
+                      if (!line.taxCodeId && item.defaultSalesTaxCodeId) patch.taxCodeId = item.defaultSalesTaxCodeId;
+                      setLine(index, patch);
+                    }}
+                  />
+                ),
+              } as ColumnDef<EditableLine>,
+              { id: 'qty', label: t('sales.quoteDetail.colQty', 'Qty'), kind: 'number', width: '90px', accessor: (line) => line.quotedQty, setter: (value) => ({ quotedQty: Number(value) }) },
+              { id: 'uom', label: t('sales.quoteDetail.colUom', 'UOM'), kind: 'text', width: '90px', accessor: (line) => line.uom, setter: (value) => ({ uom: String(value).toUpperCase() }) },
+              { id: 'unitPrice', label: t('sales.quoteDetail.colUnitPrice', 'Unit Price'), kind: 'number', width: '115px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: Number(value) }) },
+              {
+                id: 'discountType',
+                label: t('sales.quoteDetail.colDiscType', 'Disc. Type'),
+                kind: 'select',
+                width: '115px',
+                accessor: (line) => line.discountType || '',
+                setter: (value) => ({ discountType: value || undefined }),
+                options: [
+                  { value: '', label: t('sales.quoteDetail.discNone', 'None') },
+                  { value: 'PERCENT', label: t('sales.quoteDetail.discPercent', '%') },
+                  { value: 'AMOUNT', label: t('sales.quoteDetail.discAmount', 'Amt') },
+                ],
+              },
+              { id: 'discountValue', label: t('sales.quoteDetail.colDiscValue', 'Disc. Value'), kind: 'number', width: '120px', accessor: (line) => line.discountValue ?? '', setter: (value) => ({ discountValue: value ? Number(value) : undefined }) },
+              {
+                id: 'taxCode',
+                label: t('sales.quoteDetail.colTaxCode', 'Tax Code'),
+                kind: 'select',
+                width: '150px',
+                accessor: (line) => line.taxCodeId || '',
+                setter: (value) => ({ taxCodeId: value || undefined }),
+                options: [
+                  { value: '', label: t('sales.quoteDetail.noTax', 'No Tax') },
+                  ...salesTaxCodes.map((taxCode) => ({ value: taxCode.id, label: `${taxCode.code} (${Math.round(taxCode.rate * 100)}%)` })),
+                ],
+              },
+              { id: 'lineTotal', label: t('sales.quoteDetail.colLineTotal', 'Line Total'), kind: 'computed', width: '120px', compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+              { id: 'tax', label: t('sales.quoteDetail.colTax', 'Tax'), kind: 'computed', width: '110px', compute: (_line, index) => computedLines[index]?.taxAmountDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+            ]}
+          />
 
           {/* Totals */}
           <Card className="p-5">

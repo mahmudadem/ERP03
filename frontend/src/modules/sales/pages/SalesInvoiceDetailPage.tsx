@@ -1983,10 +1983,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         }
         className="overflow-visible"
       >
-        <div className={clsx(
-          'grid gap-2 p-3',
-          isReadOnly ? 'grid-cols-2 md:grid-cols-4 xl:grid-cols-6' : 'grid-cols-[repeat(auto-fit,minmax(180px,1fr))]',
-        )}>
+        <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
           {isReadOnly ? (
             <>
               <Field label={t('sales.invoiceDetail.invoiceNo', 'Invoice No.')} value={invoice?.invoiceNumber || 'SI-DRAFT'} plain />

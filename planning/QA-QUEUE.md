@@ -10,6 +10,79 @@
 
 ## 🧪 Ready to Test
 
+### Sales - Sales Return Source Control Parity
+**Added by:** Codex (report 199)
+**What to test:**
+- Open `Sales -> Returns -> New Return`.
+- Confirm the top **Return Control** strip shows `After Invoice`, `Before Invoice`, and `Direct Return`.
+- Select `After Invoice`; expected header field is posted Sales Invoice.
+- Select `Before Invoice`; expected header field is posted Delivery Note.
+- Select `Direct Return`; expected header field is Customer.
+- Confirm the create-draft validation still requires the correct source/customer for the selected mode.
+- Repeat in Windows mode with a resized window.
+
+**Known limitations:**
+- This is UI/data-entry layout only. It does not change Sales Return posting, tax, AR reversal, credit-note/refund settlement, inventory receipt, COGS reversal, approval, period locks, audit, or ledger behavior.
+
+---
+
+### Sales/Purchases - Native Document Header Density
+**Added by:** Codex (report 198)
+**What to test:**
+- Open SI, PI, SO, DN, Quote, PO, GRN, SR, and PR create/edit/view screens.
+- Confirm the main header inputs use compact Sales Invoice sizing.
+- Confirm the header fits into the two-row/five-column rhythm on wide layouts.
+- Confirm Notes/Reason text areas sit below the compact header instead of stretching the header rows.
+- Repeat in Windows mode with resized windows and with long customer/vendor names.
+
+**Known limitations:**
+- This is layout-only. It does not change posting, tax, inventory valuation, settlement, approval, period locks, AP/AR, audit, or ledger behavior.
+- Some return/source flows still need a deeper business UX pass, especially raw source-ID entry in Purchase Return. This task only standardized density.
+
+---
+
+### Sales/Purchases - Sectioned Document Scaffold Contract
+**Added by:** Codex (report 197)
+**What to test:**
+- Open Sales Invoice, Purchase Invoice, Sales Order, Delivery Note, Sales Return, Purchase Order, Goods Receipt, Purchase Return, and Quotation pages.
+- Confirm the document anatomy stays consistent: controls/header at the top, line table in the main work area, secondary panels where applicable, right rail where applicable, and sticky footer actions where applicable.
+- Confirm sections can be absent without changing the whole page shell. Example: invoices can show settlement/totals while Delivery Note and Goods Receipt omit settlement.
+- Repeat representative pages in Classic and Windows mode, including narrow/resized windows.
+- Switch to Arabic/RTL and confirm rail edge buttons, drawers, and back direction still mirror correctly.
+
+**Known limitations:**
+- This is layout architecture only. It does not change posting, tax, settlement, inventory valuation, approval, period locks, AP/AR, audit, or ledger behavior.
+- Existing scaffold consumers are normalized through compatibility `custom` slots; the next visual cleanup pass should split all page bodies into direct `control`, `header`, `lines`, `secondary`, and `attachments` props.
+
+---
+
+### Sales/Purchases - Native Document Scaffold And List Parity
+**Added by:** Codex (report 196)
+**What to test:**
+- Open Sales -> Quotations.
+  - Expected: list uses the shared operational list layout with quick status pills, inline filters, centered columns, row actions, and pagination.
+  - Open or create a quote.
+  - Expected: line items use the same shared table style as invoices/orders; quote lifecycle buttons still appear in the quote header.
+- Open Sales Order, Delivery Note, and Sales Return create/edit/view pages.
+  - Expected: line tables match the Sales Invoice/Purchase Invoice table style while columns remain document-specific.
+  - Expected: existing save/post/confirm/deliver/return actions still work from the same document status rules.
+- Open Purchases -> Goods Receipts.
+  - Expected: list uses the shared operational list layout.
+  - Open or create a GRN.
+  - Expected: draft/edit page uses the shared document shell with right rail, sticky footer, shared line table, item selector, and warehouse selector.
+- Open Purchases -> Returns.
+  - Expected: list uses the shared operational list layout.
+  - Open a Purchase Return.
+  - Expected: saved/edit view uses the shared document shell with right rail, sticky footer, and shared line table.
+- Repeat representative pages in Classic and Windows mode.
+
+**Known limitations:**
+- This is UI/data-entry consistency only. It does not change posting, tax, inventory valuation, settlement, approval, period locks, AP/AR, or ledger behavior.
+- Quotation detail outer header is still page-local; only its list and line table were standardized in this slice.
+- Purchase Return create mode keeps its source-picking card flow; its return line table is standardized.
+
+---
+
 ### Sales/Purchases - Document UI Parity
 **Added by:** Codex (report 191)
 **What to test:**

@@ -795,6 +795,8 @@ Sales Order, Delivery Note, and Sales Return detail pages now render through the
 
 Document pages supply only their business-specific slots. Customer-facing Sales documents keep customer selectors and Sales flow controls; Delivery Notes keep stock delivery/warehouse quantity and cost summary; Sales Returns keep return context, credit-note/refund settlement, restocking-fee, source lines, GL Impact, and audit controls.
 
+Sales Return creation follows the same source-control split as Sales Invoice: the compact Control strip selects `AFTER_INVOICE`, `BEFORE_INVOICE`, or `DIRECT`, while the header below shows the matching posted Sales Invoice picker, posted Delivery Note picker, or direct customer picker. This is presentation and data-entry routing only; the existing return context payload remains authoritative for posting.
+
 ### Detail-page footer rules
 
 - Sales Order shows a sticky subtotal / tax / grand-total strip beside draft/confirm/downstream actions.
@@ -815,6 +817,43 @@ These changes are UI/layout only. They do not change Sales Order commercial calc
 | Frontend UI | `frontend/src/modules/sales/pages/DeliveryNoteDetailPage.tsx` |
 | Frontend UI | `frontend/src/modules/sales/pages/SalesReturnDetailPage.tsx` |
 | Shared UI | `frontend/src/components/shared/DocumentDetailScaffold.tsx` |
+
+---
+
+## Native Sales document table/list parity (2026-06-09)
+
+Sales document line sections now use the shared configurable line table shell at `frontend/src/components/shared/ClassicLineItemsTable.tsx`. Sales Invoice already used this table; Sales Order, Delivery Note, Sales Return direct-entry lines, and Quotation lines now use the same table chrome with document-specific column definitions.
+
+Operational Sales lists now use `OperationalListLayout` for the full document family: Quotations, Sales Orders, Delivery Notes, Sales Invoices, and Sales Returns. The list shell owns the shared header, refresh/new actions, inline filters, quick status pills where applicable, centered scan-friendly columns, row actions, and internal table pagination.
+
+Quotation detail still owns its quote lifecycle header/actions because quote send/accept/reject/revise/convert actions are more lifecycle-specific than SO/DN/SR actions. Its line table and list page are standardized, but a future visual-only pass can move the outer shell to `DocumentDetailScaffold` once quote action placement is reviewed.
+
+### Accounting impact
+
+These changes are UI/data-entry consistency only. They do not change quotation totals, Sales Order calculations, Delivery Note stock movement, Sales Return posting/settlement, tax calculation, approval, period-lock, AR, inventory valuation, or ledger writes.
+
+## Shared document section contract (2026-06-09)
+
+The Sales native document scaffold now defines fixed body sections instead of treating every page as a free-form body: `control`, `header`, `lines`, `secondary`, `attachments`, and `custom`. The rail also has fixed slots: `info`, `readiness`, `settlement`, `totals`, and `custom`. Footer content is controlled through `totals` and `actions` slots.
+
+Each section supports `show`, `preserveSpace`, `title`, `action`, `content`, and `className`, so Sales Invoice can show settlement/footer totals while Delivery Note can hide settlement and still keep the same page anatomy. Existing Sales pages that still pass legacy `children` or `sideRail` are normalized through the scaffold's `custom` slot until their inner regions are split into strict slots.
+
+Authoritative contract: [`docs/architecture/document-scaffold.md`](./document-scaffold.md).
+
+### Accounting impact
+
+This is layout architecture only. It does not change Sales posting, tax, settlement, AR, delivery costing, inventory valuation, approval, period-lock, audit, or ledger behavior.
+
+### Key files
+
+| Layer | File |
+|---|---|
+| Shared line table | `frontend/src/components/shared/ClassicLineItemsTable.tsx` |
+| Shared document scaffold | `frontend/src/components/shared/DocumentDetailScaffold.tsx` |
+| Quotation list/detail | `frontend/src/modules/sales/pages/QuotationsPage.tsx`, `frontend/src/modules/sales/pages/QuotationDetailPage.tsx` |
+| Sales Order detail | `frontend/src/modules/sales/pages/SalesOrderDetailPage.tsx` |
+| Delivery Note detail | `frontend/src/modules/sales/pages/DeliveryNoteDetailPage.tsx` |
+| Sales Return detail | `frontend/src/modules/sales/pages/SalesReturnDetailPage.tsx` |
 
 ---
 

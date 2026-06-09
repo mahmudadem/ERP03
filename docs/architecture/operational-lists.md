@@ -13,6 +13,9 @@ The following operational lists have been fully standardized:
 - **Purchase Orders List**: [PurchaseOrdersListPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/purchases/pages/PurchaseOrdersListPage.tsx)
 - **Delivery Notes List**: [DeliveryNotesListPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/sales/pages/DeliveryNotesListPage.tsx)
 - **Sales Returns List**: [SalesReturnsListPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/sales/pages/SalesReturnsListPage.tsx)
+- **Quotations List**: [QuotationsPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/sales/pages/QuotationsPage.tsx)
+- **Goods Receipts List**: [GoodsReceiptsListPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx)
+- **Purchase Returns List**: [PurchaseReturnsListPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx)
 
 ## Layout & Styling Standards
 
@@ -72,6 +75,7 @@ To maintain a professional, desktop-like app feel, operational list pages must n
 - Standardized list cells are center-aligned for scan consistency across document number, party, date, amount, currency, type/context, payment, status, creator, due date, and posted date.
 - Status/payment/context chips must use non-wrapping inline styling so long labels such as "Pending Approval" remain on one line.
 - Sales Returns follow the same pattern as Sales Invoices: shared customer selector, inline search/context/status/date filters, dynamic status pills, company-aware dates, row actions, default newest-first sorting, and 25-row pagination.
+- Quotations, Goods Receipts, and Purchase Returns now follow the same shared operational-list shell with quick status pills, inline filters, centered cells, row actions, and 25-row pagination.
 
 ## File Map & Architecture
 

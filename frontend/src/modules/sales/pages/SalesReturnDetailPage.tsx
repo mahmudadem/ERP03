@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreateSalesReturnPayload,
@@ -17,7 +18,8 @@ import { Card } from '../../../components/ui/Card';
 import { StatusChip } from '../../../components/ui/StatusChip';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import { FileText, Link2, Plus, Truck } from 'lucide-react';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { GlImpactModal } from '../components/GlImpactModal';
@@ -33,22 +35,17 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
-const reasonCodeLabels: Record<ReturnReasonCode, string> = {
-  DEFECTIVE: 'Defective',
-  WRONG_ITEM: 'Wrong Item',
-  CHANGED_MIND: 'Changed Mind',
-  OTHER: 'Other',
-};
-const settlementModeLabels: Record<ReturnSettlementMode, string> = {
-  CREDIT_NOTE: 'Credit Note',
-  REFUND: 'Refund',
-};
-
 const SalesReturnDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isCreateMode = !params.id || params.id === 'new';
+  const { t } = useTranslation();
+  const reasonCodeLabel = (code: ReturnReasonCode) => t('sales.returnDetail.reasonCode.' + code.toLowerCase());
+  const settlementModeLabel = (mode: ReturnSettlementMode) => t('sales.returnDetail.settlementMode.' + mode.toLowerCase());
+  const contextLabel = (ctx: ReturnContext) => t('sales.returnDetail.context.' + ctx.toLowerCase());
+  const statusLabel = (st: string) => t('sales.returnDetail.status.' + st.toLowerCase());
+  const restockingFeeTypeLabel = (type: RestockingFeeType) => t('sales.returnDetail.restockingFeeType.' + type.toLowerCase());
 
   const initialSalesInvoiceId = searchParams.get('salesInvoiceId') || '';
   const initialDeliveryNoteId = searchParams.get('deliveryNoteId') || '';
@@ -173,7 +170,7 @@ const SalesReturnDetailPage: React.FC = () => {
         err?.response?.data?.error?.message
           || err?.response?.data?.message
           || err?.message
-          || 'Failed to load sales return.'
+          || t('sales.returnDetail.loadFailed')
       );
     } finally {
       setLoading(false);
@@ -206,20 +203,20 @@ const SalesReturnDetailPage: React.FC = () => {
   const saveEdits = async () => {
     if (!salesReturn?.id) return;
     if (!returnDate) {
-      setError('Return date is required.');
+      setError(t('sales.returnDetail.returnDateRequired'));
       return;
     }
     if (!reason.trim()) {
-      setError('Reason is required.');
+      setError(t('sales.returnDetail.reasonRequired'));
       return;
     }
     const parsedRestockingValue = Number(restockingFeeValue || '0');
     if (Number.isNaN(parsedRestockingValue) || parsedRestockingValue < 0) {
-      setError('Restocking fee value must be a non-negative number.');
+      setError(t('sales.returnDetail.restockingFeeNonNegative'));
       return;
     }
     if (restockingFeeType === 'PERCENT' && parsedRestockingValue > 100) {
-      setError('Restocking fee percent cannot exceed 100.');
+      setError(t('sales.returnDetail.restockingFeePercentMax'));
       return;
     }
     const allowRestockingFee = salesReturn.returnContext !== 'BEFORE_INVOICE';
@@ -238,14 +235,14 @@ const SalesReturnDetailPage: React.FC = () => {
       });
       setSalesReturn(unwrap<SalesReturnDTO>(updated));
       setIsEditing(false);
-      toast.success('Return updated');
+      toast.success(t('sales.returnDetail.returnUpdated'));
     } catch (err: any) {
       console.error('Failed to update sales return', err);
       setError(
         err?.response?.data?.error?.message
           || err?.response?.data?.message
           || err?.message
-          || 'Failed to update sales return.'
+          || t('sales.returnDetail.updateFailed')
       );
     } finally {
       setBusy(false);
@@ -381,36 +378,36 @@ const SalesReturnDetailPage: React.FC = () => {
       setError(null);
 
       if (returnContext === 'AFTER_INVOICE' && !salesInvoiceId) {
-        setError('A posted sales invoice is required for AFTER_INVOICE returns.');
+        setError(t('sales.returnDetail.invoiceRequired'));
         return;
       }
       if (returnContext === 'BEFORE_INVOICE' && !deliveryNoteId) {
-        setError('A posted delivery note is required for BEFORE_INVOICE returns.');
+        setError(t('sales.returnDetail.deliveryNoteRequired'));
         return;
       }
       if (returnContext === 'DIRECT' && !customerId) {
-        setError('A customer is required for standalone returns.');
+        setError(t('sales.returnDetail.customerRequired'));
         return;
       }
       if (!returnDate) {
-        setError('Return date is required.');
+        setError(t('sales.returnDetail.returnDateRequired'));
         return;
       }
       if (!reason.trim()) {
-        setError('Reason is required.');
+        setError(t('sales.returnDetail.reasonRequired'));
         return;
       }
       const parsedRestockingValue = Number(restockingFeeValue || '0');
       if (Number.isNaN(parsedRestockingValue) || parsedRestockingValue < 0) {
-        setError('Restocking fee value must be a non-negative number.');
+        setError(t('sales.returnDetail.restockingFeeNonNegative'));
         return;
       }
       if (restockingFeeType === 'PERCENT' && parsedRestockingValue > 100) {
-        setError('Restocking fee percent cannot exceed 100.');
+        setError(t('sales.returnDetail.restockingFeePercentMax'));
         return;
       }
       if (returnContext === 'BEFORE_INVOICE' && parsedRestockingValue > 0) {
-        setError('Restocking fee can only be used for returns that affect invoiced value.');
+        setError(t('sales.returnDetail.restockingFeeBeforeInvoice'));
         return;
       }
 
@@ -424,12 +421,12 @@ const SalesReturnDetailPage: React.FC = () => {
             unitPriceDoc: line.unitPriceDoc,
           }));
         if (!payloadLines.length) {
-          setError('Select at least one line to return.');
+          setError(t('sales.returnDetail.selectOneLine'));
           return;
         }
         const bad = payloadLines.find((l) => !(l.returnQty && l.returnQty > 0));
         if (bad) {
-          setError('Each selected line must have a return quantity greater than 0.');
+          setError(t('sales.returnDetail.returnQtyPositive'));
           return;
         }
       } else if (returnContext === 'BEFORE_INVOICE') {
@@ -440,32 +437,32 @@ const SalesReturnDetailPage: React.FC = () => {
             returnQty: Number(lineSelections[line.lineId]?.returnQty || '0'),
           }));
         if (!payloadLines.length) {
-          setError('Select at least one line to return.');
+          setError(t('sales.returnDetail.selectOneLine'));
           return;
         }
         const bad = payloadLines.find((l) => !(l.returnQty && l.returnQty > 0));
         if (bad) {
-          setError('Each selected line must have a return quantity greater than 0.');
+          setError(t('sales.returnDetail.returnQtyPositive'));
           return;
         }
       } else if (returnContext === 'DIRECT') {
         if (!directLines.length) {
-          setError('Add at least one item line to the return.');
+          setError(t('sales.returnDetail.addOneLine'));
           return;
         }
         const missingItem = directLines.find((l) => !l.itemId);
         if (missingItem) {
-          setError('Every line must have an item selected.');
+          setError(t('sales.returnDetail.everyLineMustHaveItem'));
           return;
         }
         const badQty = directLines.find((l) => !(Number(l.returnQty) > 0));
         if (badQty) {
-          setError('Every line must have a return quantity greater than 0.');
+          setError(t('sales.returnDetail.everyLineReturnQtyPositive'));
           return;
         }
         const badPrice = directLines.find((l) => Number(l.unitPriceDoc) < 0 || Number.isNaN(Number(l.unitPriceDoc)));
         if (badPrice) {
-          setError('Unit price must be a non-negative number on every line.');
+          setError(t('sales.returnDetail.unitPriceNonNegative'));
           return;
         }
         payloadLines = directLines.map((l) => ({
@@ -497,14 +494,14 @@ const SalesReturnDetailPage: React.FC = () => {
 
       const created = await salesApi.createReturn(payload);
       const dto = unwrap<SalesReturnDTO>(created);
-      toast.success(`Draft return ${dto.returnNumber} created`);
+      toast.success(t('sales.returnDetail.draftReturnCreated', { number: dto.returnNumber }));
       navigate(`/sales/returns/${dto.id}`, { replace: true });
     } catch (err: any) {
       console.error('Failed to create sales return', err);
       const message = err?.response?.data?.error?.message
         || err?.response?.data?.message
         || err?.message
-        || 'Failed to create sales return draft.';
+        || t('sales.returnDetail.createFailed');
       setError(message);
       toast.error(message);
     } finally {
@@ -519,7 +516,7 @@ const SalesReturnDetailPage: React.FC = () => {
       setError(null);
       const posted = await salesApi.postReturn(salesReturn.id, periodLockOverrideReason);
       setSalesReturn(unwrap<SalesReturnDTO>(posted));
-      toast.success('Sales return posted');
+      toast.success(t('sales.returnDetail.returnPosted'));
     } catch (err: any) {
       const errorCode = err?.response?.data?.error?.code;
       if (errorCode === 'PERIOD_LOCKED') {
@@ -532,7 +529,7 @@ const SalesReturnDetailPage: React.FC = () => {
           setOverrideModalOpen(true);
           return;
         } else {
-          setError('This accounting period is closed and cannot be overridden.');
+          setError(t('sales.returnDetail.periodClosed'));
           return;
         }
       }
@@ -540,7 +537,7 @@ const SalesReturnDetailPage: React.FC = () => {
       const message = err?.response?.data?.error?.message
         || err?.response?.data?.message
         || err?.message
-        || 'Failed to post sales return.';
+        || t('sales.returnDetail.postFailed');
       setError(message);
       toast.error(message);
     } finally {
@@ -551,8 +548,8 @@ const SalesReturnDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Return</h1>
-        <Card className="p-6">Loading sales return...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.title')}</h1>
+        <Card className="p-6">{t('sales.returnDetail.loading')}</Card>
       </div>
     );
   }
@@ -561,38 +558,85 @@ const SalesReturnDetailPage: React.FC = () => {
     const draftFooterSummary = (
       <DocumentFooterTotalsStrip
         totals={[
-          { label: 'Mode', value: returnContext.replace('_', ' ') },
-          { label: 'Settlement', value: settlementModeLabels[settlementMode], tone: settlementMode === 'REFUND' ? 'amber' : 'blue' },
+          { label: t('sales.returnDetail.modeLabel'), value: contextLabel(returnContext) },
+          { label: t('sales.returnDetail.settlement'), value: settlementModeLabel(settlementMode), tone: settlementMode === 'REFUND' ? 'amber' : 'blue' },
         ]}
       />
     );
     const draftSideRail = (
       <>
-        <DocumentRailCard title="Return Draft">
+        <DocumentRailCard title={t('sales.returnDetail.returnDraft')}>
           <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-            <DocumentRailStat label="Context" value={returnContext.replace('_', ' ')} tone={returnContext === 'AFTER_INVOICE' ? 'blue' : returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'} />
-            <DocumentRailStat label="Settlement" value={settlementModeLabels[settlementMode]} tone={settlementMode === 'REFUND' ? 'amber' : 'blue'} />
-            <DocumentRailStat label="Return Date" value={returnDate || '-'} />
-            <DocumentRailStat label="Reason" value={reasonCodeLabels[reasonCode]} />
+            <DocumentRailStat label={t('sales.returnDetail.context')} value={contextLabel(returnContext)} tone={returnContext === 'AFTER_INVOICE' ? 'blue' : returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'} />
+            <DocumentRailStat label={t('sales.returnDetail.settlement')} value={settlementModeLabel(settlementMode)} tone={settlementMode === 'REFUND' ? 'amber' : 'blue'} />
+            <DocumentRailStat label={t('sales.returnDetail.returnDate')} value={returnDate || '-'} />
+            <DocumentRailStat label={t('sales.returnDetail.reason')} value={reasonCodeLabel(reasonCode)} />
           </div>
         </DocumentRailCard>
       </>
     );
+    const headerLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
+    const headerControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+
+    const renderReturnControlCard = () => (
+      <section className="shrink-0 rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/50">
+              {[
+                { mode: 'AFTER_INVOICE' as const, label: t('sales.returnDetail.mode.afterInvoice'), icon: FileText },
+                { mode: 'BEFORE_INVOICE' as const, label: t('sales.returnDetail.mode.beforeInvoice'), icon: Truck },
+                { mode: 'DIRECT' as const, label: t('sales.returnDetail.mode.directReturn'), icon: Plus },
+              ].map((option) => {
+                const Icon = option.icon;
+                const active = returnContext === option.mode;
+                return (
+                  <button
+                    key={option.mode}
+                    type="button"
+                    onClick={() => handleContextChange(option.mode)}
+                    disabled={busy}
+                    className={`inline-flex h-7 items-center gap-1.5 rounded px-2 text-[10px] font-black uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                      active
+                        ? 'bg-white text-blue-700 shadow-sm ring-1 ring-blue-200 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900'
+                        : 'text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-7 items-center gap-1.5 rounded border border-slate-200 bg-white px-2 text-[10px] font-black uppercase text-slate-500 disabled:cursor-default dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              {returnContext === 'DIRECT'
+                ? t('sales.returnDetail.directHeaderDriven')
+                : t('sales.returnDetail.pickSourceInHeader')}
+            </button>
+          </div>
+        </div>
+      </section>
+    );
 
     return (
       <DocumentDetailScaffold
-        title="New Sales Return"
-        subtitle="Customer return document with credit-note or refund settlement."
+        title={t('sales.returnDetail.createTitle')}
+        subtitle={t('sales.returnDetail.createSubtitle')}
         icon={FileText}
-        backLabel="Back to sales returns"
+        backLabel={t('sales.returnDetail.backToList')}
         onBack={() => navigate('/sales/returns')}
         badges={
           <DocumentPill tone={returnContext === 'AFTER_INVOICE' ? 'blue' : returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'}>
-            {returnContext.replace('_', ' ')}
+            {contextLabel(returnContext)}
           </DocumentPill>
         }
         sideRail={draftSideRail}
-        railTitle="Sales return side rail"
+        railTitle={t('sales.returnDetail.sideRailTitle')}
         footerSummary={draftFooterSummary}
         footerActions={
           <button
@@ -601,73 +645,27 @@ const SalesReturnDetailPage: React.FC = () => {
             onClick={createDraft}
             disabled={busy}
           >
-            {busy ? 'Creating...' : 'Create Draft Return'}
+            {busy ? t('sales.returnDetail.creating') : t('sales.returnDetail.createDraftReturn')}
           </button>
         }
       >
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Return Mode</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-                    returnContext === 'AFTER_INVOICE'
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-slate-300 text-slate-700'
-                  }`}
-                  onClick={() => handleContextChange('AFTER_INVOICE')}
-                  disabled={busy}
-                >
-                  After Invoice
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-                    returnContext === 'BEFORE_INVOICE'
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-slate-300 text-slate-700'
-                  }`}
-                  onClick={() => handleContextChange('BEFORE_INVOICE')}
-                  disabled={busy}
-                >
-                  Before Invoice
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-                    returnContext === 'DIRECT'
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-slate-300 text-slate-700'
-                  }`}
-                  onClick={() => handleContextChange('DIRECT')}
-                  disabled={busy}
-                >
-                  Direct Return
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Context</label>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium">
-                {returnContext}
-              </div>
-            </div>
+        {renderReturnControlCard()}
 
+        <Card className="overflow-visible p-0">
+          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
             {returnContext === 'AFTER_INVOICE' && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Posted Sales Invoice</label>
+                <label className={headerLabelClass}>{t('sales.returnDetail.postedSalesInvoice')}</label>
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className={headerControlClass}
                   value={salesInvoiceId}
                   onChange={(e) => handleSalesInvoiceChange(e.target.value)}
                   disabled={busy}
                 >
-                  <option value="">Select sales invoice</option>
+                  <option value="">{t('sales.returnDetail.selectSalesInvoice')}</option>
                   {salesInvoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
                       {invoice.invoiceNumber} - {invoice.customerName}
@@ -679,14 +677,14 @@ const SalesReturnDetailPage: React.FC = () => {
             
             {returnContext === 'BEFORE_INVOICE' && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Posted Delivery Note</label>
+                <label className={headerLabelClass}>{t('sales.returnDetail.postedDeliveryNote')}</label>
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className={headerControlClass}
                   value={deliveryNoteId}
                   onChange={(e) => handleDeliveryNoteChange(e.target.value)}
                   disabled={busy}
                 >
-                  <option value="">Select delivery note</option>
+                  <option value="">{t('sales.returnDetail.selectDeliveryNote')}</option>
                   {deliveryNotes.map((note) => (
                     <option key={note.id} value={note.id}>
                       {note.dnNumber} - {note.customerName}
@@ -698,95 +696,95 @@ const SalesReturnDetailPage: React.FC = () => {
 
             {returnContext === 'DIRECT' && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
+                <label className={headerLabelClass}>{t('sales.returnDetail.customer')}</label>
                 <PartySelector
                   role="CUSTOMER"
                   value={customerId}
                   onChange={(party) => setCustomerId(party?.id || '')}
                   disabled={busy}
-                  placeholder="Select customer..."
+                  placeholder={t('sales.returnDetail.selectCustomer')}
                 />
               </div>
             )}
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Return Date</label>
+              <label className={headerLabelClass}>{t('sales.returnDetail.returnDate')}</label>
               <DatePicker 
                 value={returnDate}
                 onChange={(val) => setReturnDate(val)}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Warehouse (optional)</label>
+              <label className={headerLabelClass}>{t('sales.returnDetail.warehouseOptional')}</label>
               <WarehouseSelector
                 value={warehouseId}
                 onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
                 disabled={busy}
                 warehouses={warehouses}
-                placeholder="Use source/default warehouse"
+                placeholder={t('sales.returnDetail.useSourceWarehouse')}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Settlement Mode</label>
+              <label className={headerLabelClass}>{t('sales.returnDetail.settlementModeLabel')}</label>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={headerControlClass}
                 value={settlementMode}
                 onChange={(e) => setSettlementMode(e.target.value as ReturnSettlementMode)}
                 disabled={busy}
               >
-                <option value="CREDIT_NOTE">Credit Note</option>
-                <option value="REFUND">Refund</option>
+                <option value="CREDIT_NOTE">{settlementModeLabel('CREDIT_NOTE')}</option>
+                <option value="REFUND">{settlementModeLabel('REFUND')}</option>
               </select>
             </div>
             {settlementMode === 'REFUND' && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Refund Account <span className="text-xs font-normal text-slate-400">(optional — overrides Sales Settings default)</span>
+                <label className={headerLabelClass}>
+                  {t('sales.returnDetail.refundAccount')} <span className="text-xs font-normal text-slate-400">{t('sales.returnDetail.refundAccountHint')}</span>
                 </label>
                 <AccountSelector
                   value={refundSettlementAccountId || undefined}
                   onChange={(account: any) => setRefundSettlementAccountId(account?.id || '')}
-                  placeholder="Use default from Sales Settings"
+                  placeholder={t('sales.returnDetail.defaultRefundAccount')}
                   allowedClassifications={['ASSET']}
-                  contextLabel="Cash/Bank (Asset)"
+                  contextLabel={t('sales.returnDetail.cashBankAsset')}
                 />
               </div>
             )}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Return Reason Code</label>
+              <label className={headerLabelClass}>{t('sales.returnDetail.returnReasonCode')}</label>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={headerControlClass}
                 value={reasonCode}
                 onChange={(e) => setReasonCode(e.target.value as ReturnReasonCode)}
                 disabled={busy}
               >
-                <option value="DEFECTIVE">Defective</option>
-                <option value="WRONG_ITEM">Wrong Item</option>
-                <option value="CHANGED_MIND">Changed Mind</option>
-                <option value="OTHER">Other</option>
+                <option value="DEFECTIVE">{reasonCodeLabel('DEFECTIVE')}</option>
+                <option value="WRONG_ITEM">{reasonCodeLabel('WRONG_ITEM')}</option>
+                <option value="CHANGED_MIND">{reasonCodeLabel('CHANGED_MIND')}</option>
+                <option value="OTHER">{reasonCodeLabel('OTHER')}</option>
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Restocking Fee Type</label>
+              <label className={headerLabelClass}>{t('sales.returnDetail.restockingFeeTypeLabel')}</label>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={headerControlClass}
                 value={restockingFeeType}
                 onChange={(e) => setRestockingFeeType(e.target.value as RestockingFeeType)}
                 disabled={busy}
               >
-                <option value="AMOUNT">Amount</option>
-                <option value="PERCENT">Percent</option>
+                <option value="AMOUNT">{t('sales.returnDetail.restockingFeeType.amount')}</option>
+                <option value="PERCENT">{t('sales.returnDetail.restockingFeeType.percent')}</option>
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Restocking Fee Value ({restockingFeeType === 'PERCENT' ? '%' : 'Amount'})
+              <label className={headerLabelClass}>
+                {t('sales.returnDetail.restockingFeeValue')} ({restockingFeeType === 'PERCENT' ? t('sales.returnDetail.restockingFeeType.percentUnit') : t('sales.returnDetail.restockingFeeType.amount')})
               </label>
               <input
                 type="number"
                 min={0}
                 step={restockingFeeType === 'PERCENT' ? '0.01' : '0.01'}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={headerControlClass}
                 value={restockingFeeValue}
                 onChange={(e) => setRestockingFeeValue(e.target.value)}
                 disabled={busy}
@@ -794,7 +792,7 @@ const SalesReturnDetailPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Reason</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.returnDetail.reason')}</label>
             <input
               type="text"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -803,7 +801,7 @@ const SalesReturnDetailPage: React.FC = () => {
             />
           </div>
           <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.returnDetail.notes')}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -813,28 +811,28 @@ const SalesReturnDetailPage: React.FC = () => {
           </div>
           <div className="mt-4 text-xs text-slate-500">
             {returnContext === 'DIRECT'
-              ? 'No source invoice or delivery note — build the return lines manually below.'
-              : 'Check the lines to return below and adjust quantities as needed. By default every source line is included with full quantity.'}
+              ? t('sales.returnDetail.directReturnHint')
+              : t('sales.returnDetail.sourceLinesHint')}
           </div>
         </Card>
 
         {returnContext === 'AFTER_INVOICE' && salesInvoiceId && (
           <Card className="p-5">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines to Return</h2>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.linesToReturn')}</h2>
             {selectedInvoiceLines.length === 0 ? (
-              <div className="text-sm text-slate-500">Selected invoice has no lines.</div>
+              <div className="text-sm text-slate-500">{t('sales.returnDetail.noInvoiceLines')}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200">
-                      <th className="py-2 text-left w-10">Return</th>
-                      <th className="py-2 text-left">Item</th>
-                      <th className="py-2 text-right">Invoiced Qty</th>
-                      <th className="py-2 text-left">UOM</th>
-                      <th className="py-2 text-right">Unit Price</th>
-                      <th className="py-2 text-right w-32">Return Qty</th>
-                      <th className="py-2 text-right">Line Total</th>
+                      <th className="py-2 text-left w-10">{t('sales.returnDetail.returnColumn')}</th>
+                      <th className="py-2 text-left">{t('sales.returnDetail.itemColumn')}</th>
+                      <th className="py-2 text-right">{t('sales.returnDetail.invoicedQtyColumn')}</th>
+                      <th className="py-2 text-left">{t('sales.returnDetail.uomColumn')}</th>
+                      <th className="py-2 text-right">{t('sales.returnDetail.unitPriceColumn')}</th>
+                      <th className="py-2 text-right w-32">{t('sales.returnDetail.returnQtyColumn')}</th>
+                      <th className="py-2 text-right">{t('sales.returnDetail.lineTotalColumn')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -881,19 +879,19 @@ const SalesReturnDetailPage: React.FC = () => {
 
         {returnContext === 'BEFORE_INVOICE' && deliveryNoteId && (
           <Card className="p-5">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines to Return</h2>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.linesToReturn')}</h2>
             {selectedDeliveryNoteLines.length === 0 ? (
-              <div className="text-sm text-slate-500">Selected delivery note has no lines.</div>
+              <div className="text-sm text-slate-500">{t('sales.returnDetail.noDeliveryNoteLines')}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200">
-                      <th className="py-2 text-left w-10">Return</th>
-                      <th className="py-2 text-left">Item</th>
-                      <th className="py-2 text-right">Delivered Qty</th>
-                      <th className="py-2 text-left">UOM</th>
-                      <th className="py-2 text-right w-32">Return Qty</th>
+                      <th className="py-2 text-left w-10">{t('sales.returnDetail.returnColumn')}</th>
+                      <th className="py-2 text-left">{t('sales.returnDetail.itemColumn')}</th>
+                      <th className="py-2 text-right">{t('sales.returnDetail.deliveredQtyColumn')}</th>
+                      <th className="py-2 text-left">{t('sales.returnDetail.uomColumn')}</th>
+                      <th className="py-2 text-right w-32">{t('sales.returnDetail.returnQtyColumn')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -937,103 +935,56 @@ const SalesReturnDetailPage: React.FC = () => {
         {returnContext === 'DIRECT' && (
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Lines to Return</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.linesToReturn')}</h2>
               <button
                 type="button"
                 onClick={addDirectLine}
                 disabled={busy}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
-                <Plus className="h-3.5 w-3.5" /> Add Line
+                <Plus className="h-3.5 w-3.5" /> {t('sales.returnDetail.addLine')}
               </button>
             </div>
             {directLines.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
-                No lines yet — click "Add Line" to start building the return.
+                {t('sales.returnDetail.noLinesYet')}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="py-2 text-left">Item</th>
-                      <th className="py-2 text-right w-28">Return Qty</th>
-                      <th className="py-2 text-left w-20">UOM</th>
-                      <th className="py-2 text-right w-32">Unit Price</th>
-                      <th className="py-2 text-right w-32">Line Total</th>
-                      <th className="py-2 text-left">Description</th>
-                      <th className="py-2 w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {directLines.map((line) => {
-                      const qty = Number(line.returnQty || '0');
-                      const price = Number(line.unitPriceDoc || '0');
-                      const lineTotal = qty * price;
-                      return (
-                        <tr key={line.key} className="border-b border-slate-100">
-                          <td className="py-2 pr-2 min-w-[260px]">
-                            <ItemSelector
-                              value={line.itemId || undefined}
-                              onChange={(item) => onDirectLineItemPick(line.key, item)}
-                              disabled={busy}
-                              placeholder="Select item..."
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              className="w-24 rounded border border-slate-300 px-2 py-1 text-right text-sm"
-                              value={line.returnQty}
-                              onChange={(e) => updateDirectLine(line.key, { returnQty: e.target.value })}
-                              disabled={busy}
-                            />
-                          </td>
-                          <td className="py-2 pr-2 text-slate-600">{line.uom || '-'}</td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              className="w-28 rounded border border-slate-300 px-2 py-1 text-right text-sm"
-                              value={line.unitPriceDoc}
-                              onChange={(e) => updateDirectLine(line.key, { unitPriceDoc: e.target.value })}
-                              disabled={busy}
-                            />
-                          </td>
-                          <td className="py-2 pr-2 text-right font-medium text-slate-700">{lineTotal.toFixed(2)}</td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="text"
-                              className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                              value={line.description}
-                              onChange={(e) => updateDirectLine(line.key, { description: e.target.value })}
-                              placeholder="Optional"
-                              disabled={busy}
-                            />
-                          </td>
-                          <td className="py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeDirectLine(line.key)}
-                              disabled={busy}
-                              className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                              title="Remove line"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ClassicLineItemsTable<DirectLine>
+                title={t('sales.returnDetail.linesToReturn')}
+                rows={directLines}
+                disabled={busy}
+                onRowChange={(index, patch) => updateDirectLine(directLines[index].key, patch)}
+                onRowRemove={(index) => removeDirectLine(directLines[index].key)}
+                onRowAdd={addDirectLine}
+                addLabel={t('sales.returnDetail.addLine')}
+                minTableWidth="920px"
+                columns={[
+                  {
+                    id: 'item',
+                    label: t('sales.returnDetail.itemColumn'),
+                    kind: 'custom',
+                    width: '280px',
+                    render: (line) => (
+                      <ItemSelector
+                        value={line.itemId || undefined}
+                        onChange={(item) => onDirectLineItemPick(line.key, item)}
+                        disabled={busy}
+                        noBorder
+                        placeholder={t('sales.returnDetail.selectItem')}
+                      />
+                    ),
+                  } as ColumnDef<DirectLine>,
+                  { id: 'returnQty', label: t('sales.returnDetail.returnQtyColumn'), kind: 'number', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: String(value) }) },
+                  { id: 'uom', label: t('sales.returnDetail.uomColumn'), kind: 'computed', width: '90px', align: 'left', compute: (line) => line.uom || '-' },
+                  { id: 'unitPrice', label: t('sales.returnDetail.unitPriceColumn'), kind: 'number', width: '120px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: String(value) }) },
+                  { id: 'lineTotal', label: t('sales.returnDetail.lineTotalColumn'), kind: 'computed', width: '130px', compute: (line) => Number(line.returnQty || '0') * Number(line.unitPriceDoc || '0') },
+                  { id: 'description', label: t('sales.returnDetail.descriptionColumn'), kind: 'text', width: '190px', accessor: (line) => line.description, setter: (value) => ({ description: value }) },
+                ]}
+              />
             )}
             <p className="mt-3 text-xs text-slate-500 italic">
-              Direct returns create their own revenue reversal and (for tracked items) stock receipt + COGS reversal entries. Make sure the unit price matches what the customer paid for the item.
+              {t('sales.returnDetail.directReturnInfo')}
             </p>
           </Card>
         )}
@@ -1045,8 +996,8 @@ const SalesReturnDetailPage: React.FC = () => {
   if (!salesReturn) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Return</h1>
-        <Card className="p-6 text-sm text-red-700">Sales return not found.</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.title')}</h1>
+        <Card className="p-6 text-sm text-red-700">{t('sales.returnDetail.notFound')}</Card>
       </div>
     );
   }
@@ -1058,39 +1009,39 @@ const SalesReturnDetailPage: React.FC = () => {
   const viewFooterSummary = (
     <DocumentFooterTotalsStrip
       totals={[
-        { label: 'Subtotal', value: `${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}` },
-        { label: 'Tax', value: `${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
-        { label: 'Settlement', value: `${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}`, tone: 'amber' },
-        { label: 'Grand', value: `${salesReturn.currency} ${salesReturn.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+        { label: t('sales.returnDetail.subtotal'), value: `${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}` },
+        { label: t('sales.returnDetail.tax'), value: `${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: t('sales.returnDetail.settlement'), value: `${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}`, tone: 'amber' },
+        { label: t('sales.returnDetail.grand'), value: `${salesReturn.currency} ${salesReturn.grandTotalDoc.toFixed(2)}`, tone: 'green' },
       ]}
     />
   );
   const viewSideRail = (
     <>
-      <DocumentRailCard title="Return Totals">
+      <DocumentRailCard title={t('sales.returnDetail.returnTotals')}>
         <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={`Subtotal (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}`} />
-          <DocumentRailStat label={`Tax (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`} tone="blue" />
-          <DocumentRailStat label="Net Settlement" value={`${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}`} tone="amber" />
-          <DocumentRailStat label="Lines" value={salesReturn.lines.length} />
+          <DocumentRailStat label={`${t('sales.returnDetail.subtotal')} (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}`} />
+          <DocumentRailStat label={`${t('sales.returnDetail.tax')} (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`} tone="blue" />
+          <DocumentRailStat label={t('sales.returnDetail.netSettlement')} value={`${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}`} tone="amber" />
+          <DocumentRailStat label={t('sales.returnDetail.lines')} value={salesReturn.lines.length} />
           <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.returnDetail.grandTotal')}</div>
             <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
               {salesReturn.currency} {salesReturn.grandTotalDoc.toFixed(2)}
             </div>
           </div>
         </div>
       </DocumentRailCard>
-      <DocumentRailCard title="Return Control">
+      <DocumentRailCard title={t('sales.returnDetail.returnControl')}>
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Source</div>
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.returnDetail.source')}</div>
             <div className="truncate font-black text-slate-900 dark:text-slate-100">{sourceLabel}</div>
           </div>
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">Settlement</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.returnDetail.settlement')}</span>
             <DocumentPill tone={salesReturn.settlementMode === 'REFUND' ? 'amber' : 'blue'}>
-              {settlementModeLabels[salesReturn.settlementMode] || salesReturn.settlementMode}
+              {settlementModeLabel(salesReturn.settlementMode)}
             </DocumentPill>
           </div>
         </div>
@@ -1102,22 +1053,22 @@ const SalesReturnDetailPage: React.FC = () => {
     <>
     <DocumentDetailScaffold
       title={salesReturn.returnNumber}
-      subtitle={`Customer: ${salesReturn.customerName}`}
+      subtitle={t('sales.returnDetail.subtitleWithName', { customerName: salesReturn.customerName })}
       icon={FileText}
-      backLabel="Back to sales returns"
+      backLabel={t('sales.returnDetail.backToList')}
       onBack={() => navigate('/sales/returns')}
       badges={
         <>
           <DocumentPill tone={salesReturn.returnContext === 'AFTER_INVOICE' ? 'blue' : salesReturn.returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'}>
-            {salesReturn.returnContext}
+            {contextLabel(salesReturn.returnContext)}
           </DocumentPill>
           <DocumentPill tone={salesReturn.status === 'POSTED' ? 'green' : salesReturn.status === 'CANCELLED' ? 'rose' : 'slate'}>
-            {salesReturn.status}
+            {statusLabel(salesReturn.status)}
           </DocumentPill>
         </>
       }
       sideRail={viewSideRail}
-      railTitle="Sales return side rail"
+      railTitle={t('sales.returnDetail.sideRailTitle')}
       footerSummary={viewFooterSummary}
       footerActions={
         <>
@@ -1126,7 +1077,7 @@ const SalesReturnDetailPage: React.FC = () => {
             className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
             onClick={() => navigate('/sales/returns')}
           >
-            Back to List
+            {t('sales.returnDetail.backToListButton')}
           </button>
           {salesReturn.status === 'DRAFT' && isEditing && (
             <>
@@ -1136,7 +1087,7 @@ const SalesReturnDetailPage: React.FC = () => {
                 onClick={saveEdits}
                 disabled={busy}
               >
-                {busy ? 'Saving...' : 'Save Changes'}
+                {busy ? t('sales.returnDetail.saving') : t('sales.returnDetail.saveChanges')}
               </button>
               <button
                 type="button"
@@ -1144,7 +1095,7 @@ const SalesReturnDetailPage: React.FC = () => {
                 onClick={cancelEdit}
                 disabled={busy}
               >
-                Cancel
+                {t('sales.returnDetail.cancel')}
               </button>
             </>
           )}
@@ -1155,7 +1106,7 @@ const SalesReturnDetailPage: React.FC = () => {
               onClick={beginEdit}
               disabled={busy}
             >
-              Edit
+              {t('sales.returnDetail.edit')}
             </button>
           )}
           {salesReturn.status === 'DRAFT' && !isEditing && (
@@ -1165,7 +1116,7 @@ const SalesReturnDetailPage: React.FC = () => {
               onClick={() => setPostConfirmOpen(true)}
               disabled={busy}
             >
-              {busy ? 'Posting...' : 'Post Return'}
+              {busy ? t('sales.returnDetail.posting') : t('sales.returnDetail.postReturn')}
             </button>
           )}
           {salesReturn.status === 'POSTED' && (
@@ -1174,7 +1125,7 @@ const SalesReturnDetailPage: React.FC = () => {
               className="rounded border border-violet-300 bg-white px-4 py-2 text-xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
               onClick={() => setGlImpactOpen(true)}
             >
-              GL Impact
+              {t('sales.returnDetail.glImpact')}
             </button>
           )}
           <button
@@ -1182,7 +1133,7 @@ const SalesReturnDetailPage: React.FC = () => {
             className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             onClick={() => setAuditModalOpen(true)}
           >
-            History
+            {t('sales.returnDetail.history')}
           </button>
         </>
       }
@@ -1191,14 +1142,14 @@ const SalesReturnDetailPage: React.FC = () => {
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       {isEditing ? (
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-3">
+        <Card className="overflow-visible p-0">
+          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Return Date</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.returnDetail.returnDate')}</label>
               <DatePicker value={returnDate} onChange={(val) => setReturnDate(val)} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Warehouse</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.returnDetail.warehouse')}</label>
               <WarehouseSelector
                 value={warehouseId}
                 onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
@@ -1207,31 +1158,31 @@ const SalesReturnDetailPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Settlement</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.returnDetail.settlement')}</label>
               <select
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 value={settlementMode}
                 onChange={(e) => setSettlementMode(e.target.value as ReturnSettlementMode)}
               >
-                {Object.entries(settlementModeLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                {(['CREDIT_NOTE', 'REFUND'] as ReturnSettlementMode[]).map((value) => (
+                  <option key={value} value={value}>{settlementModeLabel(value)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Reason Code</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.returnDetail.reasonCodeLabel')}</label>
               <select
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 value={reasonCode}
                 onChange={(e) => setReasonCode(e.target.value as ReturnReasonCode)}
               >
-                {Object.entries(reasonCodeLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                {(['DEFECTIVE', 'WRONG_ITEM', 'CHANGED_MIND', 'OTHER'] as ReturnReasonCode[]).map((value) => (
+                  <option key={value} value={value}>{reasonCodeLabel(value)}</option>
                 ))}
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Reason</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.returnDetail.reason')}</label>
               <input
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 value={reason}
@@ -1240,15 +1191,15 @@ const SalesReturnDetailPage: React.FC = () => {
             </div>
             {salesReturn.returnContext !== 'BEFORE_INVOICE' && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Restocking Fee</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.returnDetail.restockingFee')}</label>
                 <div className="flex gap-2">
                   <select
                     className="rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     value={restockingFeeType}
                     onChange={(e) => setRestockingFeeType(e.target.value as RestockingFeeType)}
                   >
-                    <option value="AMOUNT">Amount</option>
-                    <option value="PERCENT">Percent</option>
+                    <option value="AMOUNT">{t('sales.returnDetail.restockingFeeType.amount')}</option>
+                    <option value="PERCENT">{t('sales.returnDetail.restockingFeeType.percent')}</option>
                   </select>
                   <input
                     type="number"
@@ -1262,7 +1213,7 @@ const SalesReturnDetailPage: React.FC = () => {
               </div>
             )}
             <div className="md:col-span-3">
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Notes</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.returnDetail.notes')}</label>
               <textarea
                 rows={2}
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
@@ -1272,53 +1223,53 @@ const SalesReturnDetailPage: React.FC = () => {
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-500">
-            Editing header details only. Return lines are fixed once the draft is created.
+            {t('sales.returnDetail.editHint')}
           </p>
         </Card>
       ) : (
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-3">
+        <Card className="overflow-visible p-0">
+          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.returnDate')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{salesReturn.returnDate}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.warehouse')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
                 {warehouseLabelById[salesReturn.warehouseId] || salesReturn.warehouseId}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Reason</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.reason')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{salesReturn.reason}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Reason Code</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.reasonCodeLabel')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-                {reasonCodeLabels[salesReturn.reasonCode] || salesReturn.reasonCode}
+                {reasonCodeLabel(salesReturn.reasonCode)}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Settlement</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.settlement')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-                {settlementModeLabels[salesReturn.settlementMode] || salesReturn.settlementMode}
+                {settlementModeLabel(salesReturn.settlementMode)}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Restocking Fee</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.restockingFee')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-                {salesReturn.restockingFeeAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
-                {salesReturn.restockingFeeType ? ` (${salesReturn.restockingFeeType} ${salesReturn.restockingFeeValue})` : ''}
+                {salesReturn.restockingFeeAmountDoc?.toFixed(2) || t('sales.returnDetail.zeroAmount')} {salesReturn.currency}
+                {salesReturn.restockingFeeType ? ` (${restockingFeeTypeLabel(salesReturn.restockingFeeType)} ${salesReturn.restockingFeeValue})` : ''}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Net Settlement</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.netSettlement')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-                {salesReturn.netSettlementAmountDoc?.toFixed(2) || '0.00'} {salesReturn.currency}
+                {salesReturn.netSettlementAmountDoc?.toFixed(2) || t('sales.returnDetail.zeroAmount')} {salesReturn.currency}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Source Document</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.returnDetail.sourceDocument')}</div>
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{sourceLabel}</div>
             </div>
           </div>
@@ -1326,16 +1277,16 @@ const SalesReturnDetailPage: React.FC = () => {
       )}
 
       <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.lines')}</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Return Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Cost</th>
-                <th className="py-2 text-right">Line Cost</th>
+                <th className="py-2 text-left">{t('sales.returnDetail.itemColumn')}</th>
+                <th className="py-2 text-right">{t('sales.returnDetail.returnQtyColumn')}</th>
+                <th className="py-2 text-left">{t('sales.returnDetail.uomColumn')}</th>
+                <th className="py-2 text-right">{t('sales.returnDetail.unitCostColumn')}</th>
+                <th className="py-2 text-right">{t('sales.returnDetail.lineCostColumn')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1386,16 +1337,14 @@ const SalesReturnDetailPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={postConfirmOpen}
-        title="Post sales return?"
+        title={t('sales.returnDetail.confirm.title')}
         message={
           <>
-            This will post return <strong>{salesReturn.returnNumber}</strong> and create the related
-            GL, inventory, and {salesReturn.settlementMode === 'REFUND' ? 'refund' : 'credit note'} entries.
-            This action cannot be undone.
+            {t('sales.returnDetail.confirm.messagePrefix')} <strong>{salesReturn.returnNumber}</strong> {t('sales.returnDetail.confirm.messageSuffix', { settlementType: salesReturn.settlementMode === 'REFUND' ? t('sales.returnDetail.settlementMode.refund') : t('sales.returnDetail.settlementMode.creditNote') })} {t('sales.returnDetail.confirm.messageCannotUndo')}
           </>
         }
         tone="warning"
-        confirmLabel="Post Return"
+        confirmLabel={t('sales.returnDetail.confirm.confirmLabel')}
         isConfirming={busy}
         onCancel={() => setPostConfirmOpen(false)}
         onConfirm={() => {

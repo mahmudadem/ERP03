@@ -169,6 +169,11 @@ Purchase Orders and Purchase Invoices use the same document page skeleton as the
 - Purchase Invoice PO selection uses real Purchase Orders from the system instead of a raw typed ID. Selecting a PO loads its open lines into the bill.
 - The Vendor Invoice / Ref field is optional free text for the vendor's own invoice or bill reference; it is separate from the internal Purchase Order selector.
 - Purchase Invoice now follows the same inside-page structure as Sales Invoice: source controls at the top, compact header, line table, allocation grid placeholder, attachments/audit shortcuts, and a right rail for info, posting readiness, settlement, and totals.
+- Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns now share the same line-table style. The columns change by document type, but the row layout, add/remove controls, and scan pattern stay consistent.
+- Goods Receipts and Purchase Returns now use the same list layout as Purchase Invoices, with quick status filters, inline filters, centered columns, row actions, and pagination.
+- Goods Receipt draft/edit and Purchase Return saved/edit pages now use the same compact document shell with side rail and sticky footer actions.
+- Native purchase document pages now follow the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.
+- A section can be hidden when it does not apply. For example, Purchase Invoice can show settlement and footer totals, while Goods Receipt can omit settlement without changing the rest of the page structure.
 
 This layout does not change AP posting, tax, inventory valuation, approval, segregation-of-duties controls, period lock, or payment voucher behavior.
 

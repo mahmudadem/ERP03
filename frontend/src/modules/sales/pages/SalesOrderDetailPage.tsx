@@ -24,16 +24,21 @@ import toast from 'react-hot-toast';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { salesOperationalApi, PromotionEvaluationResult } from '../../../api/salesOperationalApi';
-import { FileText } from 'lucide-react';
+import { FileText, Gift } from 'lucide-react';
 import {
   DocumentDetailScaffold,
   DocumentFooterTotalsStrip,
+  DocumentHeaderField,
+  DocumentHeaderGrid,
   DocumentPill,
   DocumentRailCard,
   DocumentRailStat,
+  documentHeaderControlClass,
+  documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -331,7 +336,7 @@ const SalesOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load sales order.'
+          t('sales.soDetail.loadFailed')
       );
     } finally {
       setLoading(false);
@@ -445,7 +450,7 @@ const SalesOrderDetailPage: React.FC = () => {
           unitPriceDoc: 0,
           taxCodeId: sourceLine?.taxCodeId,
           warehouseId: sourceLine?.warehouseId,
-          description: `Free item (${s.ruleName})`,
+          description: t('sales.soDetail.freeItemDescription', { ruleName: s.ruleName }),
           deliveredQty: 0,
           invoicedQty: 0,
           returnedQty: 0,
@@ -491,17 +496,17 @@ const SalesOrderDetailPage: React.FC = () => {
   const hasVisibleSuggestions = visibleFreeGoods.length + visibleLineDiscounts.length > 0;
 
   const validateBeforeSave = (): string | null => {
-    if (!form.customerId) return 'Customer is required.';
-    if (!form.orderDate) return 'Order date is required.';
-    if (!form.currency.trim()) return 'Currency is required.';
-    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return 'Exchange rate must be greater than 0.';
-    if (!form.lines.length) return 'At least one line is required.';
+    if (!form.customerId) return t('sales.soDetail.customerRequired');
+    if (!form.orderDate) return t('sales.soDetail.orderDateRequired');
+    if (!form.currency.trim()) return t('sales.soDetail.currencyRequired');
+    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('sales.soDetail.exchangeRateRequired');
+    if (!form.lines.length) return t('sales.soDetail.atLeastOneLine');
 
     for (let i = 0; i < form.lines.length; i += 1) {
       const line = form.lines[i];
-      if (!line.itemId) return `Line ${i + 1}: item is required.`;
-      if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return `Line ${i + 1}: quantity must be greater than 0.`;
-      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return `Line ${i + 1}: unit price must be greater than or equal to 0.`;
+      if (!line.itemId) return t('sales.soDetail.lineItemRequired', { n: i + 1 });
+      if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return t('sales.soDetail.lineQuantityRequired', { n: i + 1 });
+      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('sales.soDetail.lineUnitPriceRequired', { n: i + 1 });
     }
 
     return null;
@@ -574,7 +579,7 @@ const SalesOrderDetailPage: React.FC = () => {
         )
       );
       if (promoNames.length > 0) {
-        toast.success(`Promotion applied: ${promoNames.join(', ')}`, { duration: 5000 });
+        toast.success(t('sales.soDetail.promotionApplied', { names: promoNames.join(', ') }), { duration: 5000 });
       }
 
       return saved;
@@ -584,7 +589,7 @@ const SalesOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to save sales order.'
+          t('sales.soDetail.saveFailed')
       );
       return null;
     } finally {
@@ -603,7 +608,7 @@ const SalesOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Action failed.'
+          t('sales.soDetail.actionFailed')
       );
     } finally {
       setActionBusy(false);
@@ -628,7 +633,7 @@ const SalesOrderDetailPage: React.FC = () => {
         const creditCheck = raw?.creditCheck ?? raw?.data?.creditCheck;
         if (creditCheck?.outcome === 'WARN') {
           setCreditWarnBanner(
-            `Order confirmed — customer is over their credit limit (warning). Limit: ${creditCheck.creditLimit ?? '—'}, Exposure: ${creditCheck.currentExposure ?? '—'}.`
+            t('sales.soDetail.creditWarnBanner', { creditLimit: creditCheck.creditLimit ?? '—', currentExposure: creditCheck.currentExposure ?? '—' })
           );
         }
       } catch (err: any) {
@@ -645,8 +650,8 @@ const SalesOrderDetailPage: React.FC = () => {
           if (!canOverrideCredit) {
             setError(
               salesSettings?.allowCreditOverride === false
-                ? 'Customer is over their credit limit. Overrides are disabled by company policy.'
-                : 'Customer is over their credit limit. You do not have permission to override.'
+                ? t('sales.soDetail.creditOverrideDisabled')
+                : t('sales.soDetail.creditOverrideNoPermission')
             );
             return;
           }
@@ -698,8 +703,8 @@ const SalesOrderDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Order</h1>
-        <Card className="p-6">Loading sales order...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.soDetail.title')}</h1>
+        <Card className="p-6">{t('sales.soDetail.loading')}</Card>
       </div>
     );
   }
@@ -707,9 +712,9 @@ const SalesOrderDetailPage: React.FC = () => {
   const footerSummary = (
     <DocumentFooterTotalsStrip
       totals={[
-        { label: 'Subtotal', value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
-        { label: 'Tax', value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
-        { label: 'Grand', value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+        { label: t('sales.soDetail.subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+        { label: t('sales.soDetail.tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: t('sales.soDetail.grand'), value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
       ]}
     />
   );
@@ -724,7 +729,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={saveOrder}
             disabled={saving || actionBusy}
           >
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('sales.soDetail.saving') : t('sales.soDetail.save')}
           </button>
           <button
             type="button"
@@ -732,7 +737,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={confirmOrder}
             disabled={saving || actionBusy}
           >
-            Confirm
+            {t('sales.soDetail.confirm')}
           </button>
         </>
       )}
@@ -745,7 +750,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={() => navigate(deliverGoodsHref)}
             disabled={!canDeliverGoods}
           >
-            Deliver Goods
+            {t('sales.soDetail.deliverGoods')}
           </button>
           <button
             type="button"
@@ -753,7 +758,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={() => navigate(createInvoiceHref)}
             disabled={!canCreateInvoice}
           >
-            Create Invoice
+            {t('sales.soDetail.createInvoice')}
           </button>
           <button
             type="button"
@@ -761,7 +766,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={cancelOrder}
             disabled={saving || actionBusy}
           >
-            Cancel
+            {t('sales.soDetail.cancel')}
           </button>
           <button
             type="button"
@@ -769,7 +774,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={closeOrder}
             disabled={saving || actionBusy}
           >
-            Close
+            {t('sales.soDetail.close')}
           </button>
         </>
       )}
@@ -782,7 +787,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={() => navigate(deliverGoodsHref)}
             disabled={!canDeliverGoods}
           >
-            Deliver Goods
+            {t('sales.soDetail.deliverGoods')}
           </button>
           <button
             type="button"
@@ -790,7 +795,7 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={() => navigate(createInvoiceHref)}
             disabled={!canCreateInvoice}
           >
-            Create Invoice
+            {t('sales.soDetail.createInvoice')}
           </button>
           <button
             type="button"
@@ -798,13 +803,13 @@ const SalesOrderDetailPage: React.FC = () => {
             onClick={closeOrder}
             disabled={saving || actionBusy}
           >
-            Close
+            {t('sales.soDetail.close')}
           </button>
         </>
       )}
 
       {(form.status === 'CLOSED' || form.status === 'CANCELLED') && (
-        <span className="text-xs font-semibold text-slate-500">This sales order is read-only in status: {form.status}.</span>
+        <span className="text-xs font-semibold text-slate-500">{t('sales.soDetail.readOnlyStatus', { status: form.status })}</span>
       )}
 
       <button
@@ -812,43 +817,43 @@ const SalesOrderDetailPage: React.FC = () => {
         className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
         onClick={() => setAuditModalOpen(true)}
       >
-        History
+        {t('sales.soDetail.history')}
       </button>
     </>
   );
 
   const sideRail = (
     <>
-      <DocumentRailCard title="Order Totals">
+      <DocumentRailCard title={t('sales.soDetail.orderTotals')}>
         <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={`Subtotal (${form.currency})`} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
-          <DocumentRailStat label="Subtotal Base" value={totals.subtotalBase.toFixed(2)} />
-          <DocumentRailStat label={`Tax (${form.currency})`} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
-          <DocumentRailStat label="Tax Base" value={totals.taxTotalBase.toFixed(2)} tone="blue" />
+          <DocumentRailStat label={t('sales.soDetail.subtotalWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
+          <DocumentRailStat label={t('sales.soDetail.subtotalBase')} value={totals.subtotalBase.toFixed(2)} />
+          <DocumentRailStat label={t('sales.soDetail.taxWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
+          <DocumentRailStat label={t('sales.soDetail.taxBase')} value={totals.taxTotalBase.toFixed(2)} tone="blue" />
           <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.soDetail.grandTotal')}</div>
             <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
               {form.currency} {totals.grandTotalDoc.toFixed(2)}
             </div>
-            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} base</div>
+            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} {t('sales.soDetail.baseSuffix')}</div>
           </div>
         </div>
       </DocumentRailCard>
 
-      <DocumentRailCard title="Order Status">
+      <DocumentRailCard title={t('sales.soDetail.orderStatus')}>
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">Lines</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.soDetail.linesCount')}</span>
             <span className="font-mono font-black text-slate-900 dark:text-slate-100">{form.lines.length}</span>
           </div>
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">Customer</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.soDetail.customer')}</span>
             <span className="max-w-[160px] truncate font-black text-slate-900 dark:text-slate-100">
               {form.customerName || customers.find((customer) => customer.id === form.customerId)?.displayName || '-'}
             </span>
           </div>
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">Workflow</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.soDetail.workflow')}</span>
             <DocumentPill tone={isDraft ? 'slate' : isConfirmed ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
               {form.status}
             </DocumentPill>
@@ -861,10 +866,10 @@ const SalesOrderDetailPage: React.FC = () => {
   return (
     <>
     <DocumentDetailScaffold
-      title={form.orderNumber || 'New Sales Order'}
-      subtitle="Commercial sales document. Inventory and accounting effects occur in later documents."
+      title={form.orderNumber || t('sales.soDetail.newTitle')}
+      subtitle={t('sales.soDetail.subtitle')}
       icon={FileText}
-      backLabel="Back to sales orders"
+      backLabel={t('sales.soDetail.backToList')}
       onBack={() => navigate('/sales/orders')}
       badges={
         <DocumentPill tone={form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : form.status === 'CANCELLED' ? 'rose' : 'slate'}>
@@ -872,7 +877,7 @@ const SalesOrderDetailPage: React.FC = () => {
         </DocumentPill>
       }
       sideRail={sideRail}
-      railTitle="Sales order side rail"
+      railTitle={t('sales.soDetail.sideRailTitle')}
       footerSummary={footerSummary}
       footerActions={footerActions}
     >
@@ -890,24 +895,24 @@ const SalesOrderDetailPage: React.FC = () => {
       {creditOverrideOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Credit Limit Exceeded</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.soDetail.creditLimitExceeded')}</h3>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              This customer is over their credit limit and the policy is set to <strong>BLOCK</strong>. You can override by providing a reason.
+              {t('sales.soDetail.creditOverrideDescription')}
             </p>
             {creditOverrideInfo && (
               <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
-                {creditOverrideInfo.limit !== undefined && <div>Credit Limit: <strong>{creditOverrideInfo.limit}</strong></div>}
-                {creditOverrideInfo.currentExposure !== undefined && <div>Current Exposure: <strong>{creditOverrideInfo.currentExposure}</strong></div>}
-                {creditOverrideInfo.orderAmount !== undefined && <div>This Order: <strong>{creditOverrideInfo.orderAmount}</strong></div>}
-                {creditOverrideInfo.projectedExposure !== undefined && <div>Projected Exposure: <strong>{creditOverrideInfo.projectedExposure}</strong></div>}
+                {creditOverrideInfo.limit !== undefined && <div>{t('sales.soDetail.creditLimitLabel')}<strong>{creditOverrideInfo.limit}</strong></div>}
+                {creditOverrideInfo.currentExposure !== undefined && <div>{t('sales.soDetail.currentExposureLabel')}<strong>{creditOverrideInfo.currentExposure}</strong></div>}
+                {creditOverrideInfo.orderAmount !== undefined && <div>{t('sales.soDetail.thisOrderLabel')}<strong>{creditOverrideInfo.orderAmount}</strong></div>}
+                {creditOverrideInfo.projectedExposure !== undefined && <div>{t('sales.soDetail.projectedExposureLabel')}<strong>{creditOverrideInfo.projectedExposure}</strong></div>}
               </div>
             )}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Override Reason <span className="text-red-500">*</span></label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.soDetail.overrideReasonLabel')} <span className="text-red-500">*</span></label>
               <textarea
                 rows={3}
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                placeholder="Explain why this credit limit override is approved…"
+                placeholder={t('sales.soDetail.overrideReasonPlaceholder')}
                 value={creditOverrideReason}
                 onChange={(e) => setCreditOverrideReason(e.target.value)}
               />
@@ -918,7 +923,7 @@ const SalesOrderDetailPage: React.FC = () => {
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 onClick={() => { setCreditOverrideOpen(false); setPendingConfirmOrderId(null); }}
               >
-                Cancel
+                {t('sales.soDetail.cancelOverride')}
               </button>
               <button
                 type="button"
@@ -926,18 +931,18 @@ const SalesOrderDetailPage: React.FC = () => {
                 disabled={!creditOverrideReason.trim() || actionBusy}
                 onClick={submitCreditOverride}
               >
-                {actionBusy ? 'Confirming…' : 'Confirm with Override'}
+                {actionBusy ? t('sales.soDetail.confirmingOverride') : t('sales.soDetail.confirmOverride')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <Card className="p-5">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
+      <Card className="overflow-visible p-0">
+        <DocumentHeaderGrid>
+          <DocumentHeaderField label={t('sales.soDetail.customerLabel')}>
             <PartySelector
+              className={documentHeaderSelectorClass}
               value={form.customerId}
               disabled={isReadOnly}
               onChange={(party) => {
@@ -949,55 +954,56 @@ const SalesOrderDetailPage: React.FC = () => {
                 }));
               }}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Salesperson</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('sales.soDetail.salesperson')}>
             <select
-              className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+              className={documentHeaderControlClass}
               value={form.salespersonId || ''}
               disabled={isReadOnly}
               onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
             >
-              <option value="">— None —</option>
+              <option value="">{t('sales.soDetail.salespersonNone')}</option>
               {salespersons.map((sp) => (
                 <option key={sp.id} value={sp.id}>{sp.name}</option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Order Date</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('sales.soDetail.orderDate')}>
             <DatePicker 
+              className="w-full"
+              inputClassName={documentHeaderControlClass}
               value={form.orderDate}
               disabled={isReadOnly}
               onChange={(val) => setForm((prev) => ({ ...prev, orderDate: val }))}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Expected Delivery</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('sales.soDetail.expectedDelivery')}>
             <DatePicker
+              className="w-full"
+              inputClassName={documentHeaderControlClass}
               value={form.expectedDeliveryDate}
               disabled={isReadOnly}
               onChange={(val) => setForm((prev) => ({ ...prev, expectedDeliveryDate: val }))}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Promised Delivery Date</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('sales.soDetail.promisedDeliveryDate')}>
             <DatePicker
+              className="w-full"
+              inputClassName={documentHeaderControlClass}
               value={form.promisedDate}
               disabled={isReadOnly}
               onChange={(val) => setForm((prev) => ({ ...prev, promisedDate: val }))}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('sales.soDetail.currencyLabel')}>
             <CurrencySelector
+              className={documentHeaderSelectorClass}
               value={form.currency}
               onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
               disabled={isReadOnly || saving || actionBusy}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Exchange Rate</label>
+          </DocumentHeaderField>
+          <DocumentHeaderField label={t('sales.soDetail.exchangeRateLabel')}>
             <CurrencyExchangeWidget
               currency={form.currency}
               baseCurrency={company?.baseCurrency || 'USD'}
@@ -1006,14 +1012,15 @@ const SalesOrderDetailPage: React.FC = () => {
               onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
               disabled={isReadOnly || saving || actionBusy}
             />
-          </div>
-        </div>
+          </DocumentHeaderField>
+        </DocumentHeaderGrid>
       </Card>
 
       {isDraft && hasVisibleSuggestions && (
         <Card className="p-4 border-emerald-200 bg-emerald-50/40">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-800">
-            🎁 Available promotions
+            <Gift className="h-4 w-4" />
+            {t('sales.soDetail.availablePromotions')}
           </div>
           <div className="space-y-2">
             {visibleFreeGoods.map((s) => {
@@ -1023,11 +1030,11 @@ const SalesOrderDetailPage: React.FC = () => {
                 <div key={`free-${s.ruleId}-${s.sourceLineId}`} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm border border-emerald-100">
                   <div>
                     <span className="font-semibold">{s.ruleName}</span>
-                    <span className="ml-2 text-slate-600">— add free <strong>{s.qty}× {label}</strong></span>
+                    <span className="ml-2 text-slate-600">{t('sales.soDetail.addFreeGoods', { qty: s.qty, label })}</span>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700" onClick={() => applyFreeGoodsSuggestion(s)}>Apply</button>
-                    <button type="button" className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50" onClick={() => dismissFreeGoodsSuggestion(s)}>Skip</button>
+                    <button type="button" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700" onClick={() => applyFreeGoodsSuggestion(s)}>{t('sales.soDetail.applyPromotion')}</button>
+                    <button type="button" className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50" onClick={() => dismissFreeGoodsSuggestion(s)}>{t('sales.soDetail.skipPromotion')}</button>
                   </div>
                 </div>
               );
@@ -1036,11 +1043,11 @@ const SalesOrderDetailPage: React.FC = () => {
               <div key={`disc-${s.ruleId}-${s.lineId}`} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm border border-emerald-100">
                 <div>
                   <span className="font-semibold">{s.ruleName}</span>
-                  <span className="ml-2 text-slate-600">— apply <strong>{s.discountPct}%</strong> discount to this line</span>
+                  <span className="ml-2 text-slate-600">{t('sales.soDetail.applyLineDiscount', { pct: s.discountPct })}</span>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700" onClick={() => applyLineDiscountSuggestion(s)}>Apply</button>
-                  <button type="button" className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50" onClick={() => dismissLineDiscountSuggestion(s)}>Skip</button>
+                  <button type="button" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700" onClick={() => applyLineDiscountSuggestion(s)}>{t('sales.soDetail.applyPromotion')}</button>
+                  <button type="button" className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50" onClick={() => dismissLineDiscountSuggestion(s)}>{t('sales.soDetail.skipPromotion')}</button>
                 </div>
               </div>
             ))}
@@ -1048,151 +1055,117 @@ const SalesOrderDetailPage: React.FC = () => {
         </Card>
       )}
 
-      <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-            onClick={addLine}
-            disabled={isReadOnly}
-          >
-            Add Line
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Price</th>
-                <th className="py-2 text-left">Tax Code</th>
-                <th className="py-2 text-right">Line Total</th>
-                <th className="py-2 text-right">Tax</th>
-                <th className="py-2 text-right">Line Base</th>
-                <th className="py-2 text-left">Status Qty</th>
-                <th className="py-2 text-right" />
-              </tr>
-            </thead>
-            <tbody>
-              {form.lines.map((line, index) => (
-                <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                  <td className="py-2 pr-2">
-                    <select
-                      className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
-                      value={line.itemId}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { itemId: e.target.value })}
-                    >
-                      <option value="">Select item</option>
-                      {items.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.code} - {item.name}
-                        </option>
-                      ))}
-                    </select>
-                    {(line.itemCode || line.itemName) && (
-                      <div className="mt-1 text-xs text-slate-500">
-                        {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
-                      </div>
-                    )}
-                    {line.appliedPromotionName && (
-                      <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                        🎁 {line.appliedPromotionName}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2 pr-2">
-                    <input
-                      type="number"
-                      min={0.000001}
-                      step={0.000001}
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                      value={line.orderedQty}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { orderedQty: Number(e.target.value) })}
-                    />
-                  </td>
-                  <td className="py-2 pr-2">
-                    <select
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                      value={findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId || line.uomId || line.uom}
-                      disabled={isReadOnly || !line.itemId}
-                      onChange={(e) => {
-                        const selected = (uomOptionsByItemId[line.itemId] || []).find((option) => (option.uomId || option.code) === e.target.value);
-                        setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                      }}
-                    >
-                      <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                      {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                        <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                          {option.code}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-2 pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                      value={line.unitPriceDoc}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
-                    />
-                  </td>
-                  <td className="py-2 pr-2">
-                    <select
-                      className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
-                      value={line.taxCodeId || ''}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
-                    >
-                      <option value="">No Tax</option>
-                      {salesTaxCodes.map((taxCode) => (
-                        <option key={taxCode.id} value={taxCode.id}>
-                          {taxCode.code} ({Math.round(taxCode.rate * 100)}%)
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-2 pr-2 text-right">
-                    {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
-                  </td>
-                  <td className="py-2 pr-2 text-right">
-                    {form.currency} {computedLines[index]?.taxAmountDoc.toFixed(2)}
-                  </td>
-                  <td className="py-2 pr-2 text-right">
-                    {computedLines[index]?.lineTotalBase.toFixed(2)}
-                  </td>
-                  <td className="py-2 pr-2 text-xs text-slate-500">
-                    Del: {line.deliveredQty} / Inv: {line.invoicedQty} / Ret: {line.returnedQty}
-                  </td>
-                  <td className="py-2 text-right">
-                    <button
-                      type="button"
-                      className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
-                      onClick={() => removeLine(index)}
-                      disabled={isReadOnly || form.lines.length <= 1}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <ClassicLineItemsTable<EditableLine>
+        title={t('sales.orders.detail.lineItems', 'Line Items')}
+        rows={form.lines}
+        disabled={isReadOnly}
+        onRowChange={setLine}
+        onRowRemove={removeLine}
+        onRowAdd={addLine}
+        addLabel={t('sales.orders.detail.addLine', 'Add Line')}
+        minTableWidth="1160px"
+        columns={[
+          {
+            id: 'item',
+            label: t('sales.orders.detail.columns.item', 'Item'),
+            kind: 'custom',
+            width: '260px',
+            render: (line, index) => (
+              <div className="space-y-1">
+                <ItemSelector
+                  value={line.itemId}
+                  disabled={isReadOnly}
+                  noBorder
+                  placeholder={t('sales.orders.detail.columns.selectItem', 'Select item')}
+                  onChange={(item) => {
+                    if (!item) {
+                      setLine(index, { itemId: '', itemCode: undefined, itemName: undefined });
+                      return;
+                    }
+                    const defaultUom = getDefaultItemUomOption(item, 'sales');
+                    const defaultTax = item.defaultSalesTaxCodeId
+                      ? salesTaxCodes.find((taxCode) => taxCode.id === item.defaultSalesTaxCodeId)
+                      : undefined;
+                    setLine(index, {
+                      itemId: item.id,
+                      itemCode: item.code,
+                      itemName: item.name,
+                      uomId: defaultUom?.uomId,
+                      uom: defaultUom?.code || item.salesUom || item.baseUom,
+                      taxCodeId: line.taxCodeId || defaultTax?.id,
+                    });
+                  }}
+                />
+                {line.appliedPromotionName && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                    <Gift className="h-3 w-3" /> {line.appliedPromotionName}
+                  </div>
+                )}
+              </div>
+            ),
+          } as ColumnDef<EditableLine>,
+          { id: 'qty', label: t('sales.orders.detail.columns.qty', 'Qty'), kind: 'number', width: '90px', accessor: (line) => line.orderedQty, setter: (value) => ({ orderedQty: Number(value) }) },
+          {
+            id: 'uom',
+            label: t('sales.orders.detail.columns.uom', 'UOM'),
+            kind: 'custom',
+            width: '95px',
+            render: (line, index) => (
+              <select
+                className="h-9 w-full border-0 bg-transparent px-2 text-xs uppercase outline-none disabled:opacity-60"
+                value={findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId || line.uomId || line.uom}
+                disabled={isReadOnly || !line.itemId}
+                onChange={(e) => {
+                  const selected = (uomOptionsByItemId[line.itemId] || []).find((option) => (option.uomId || option.code) === e.target.value);
+                  setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                }}
+              >
+                <option value="">{line.itemId ? t('sales.orders.detail.columns.selectUom', 'Select') : t('sales.orders.detail.columns.noItem', 'No item')}</option>
+                {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                  <option key={option.uomId || option.code} value={option.uomId || option.code}>{option.code}</option>
+                ))}
+              </select>
+            ),
+          },
+          { id: 'unitPrice', label: t('sales.orders.detail.columns.unitPrice', 'Unit Price'), kind: 'number', width: '115px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: Number(value) }) },
+          {
+            id: 'taxCode',
+            label: t('sales.orders.detail.columns.taxCode', 'Tax Code'),
+            kind: 'select',
+            width: '150px',
+            accessor: (line) => line.taxCodeId || '',
+            setter: (value) => ({ taxCodeId: value || undefined }),
+            options: [
+              { value: '', label: t('sales.orders.detail.columns.noTax', 'No Tax') },
+              ...salesTaxCodes.map((taxCode) => ({ value: taxCode.id, label: t('sales.soDetail.taxCodeFormat', { code: taxCode.code, rate: Math.round(taxCode.rate * 100) }) })),
+            ],
+          },
+          {
+            id: 'warehouse',
+            label: t('sales.orders.detail.columns.warehouse', 'Warehouse'),
+            kind: 'custom',
+            width: '190px',
+            render: (line, index) => (
+              <WarehouseSelector
+                value={line.warehouseId}
+                disabled={isReadOnly}
+                noBorder
+                placeholder={t('sales.orders.detail.columns.selectWarehouse', 'Warehouse')}
+                onChange={(warehouse) => setLine(index, { warehouseId: warehouse?.id })}
+              />
+            ),
+          },
+          { id: 'lineTotal', label: t('sales.orders.detail.columns.lineTotal', 'Line Total'), kind: 'computed', width: '115px', compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+          { id: 'tax', label: t('sales.orders.detail.columns.tax', 'Tax'), kind: 'computed', width: '100px', compute: (_line, index) => computedLines[index]?.taxAmountDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+          { id: 'base', label: t('sales.orders.detail.columns.lineBase', 'Line Base'), kind: 'computed', width: '110px', compute: (_line, index) => computedLines[index]?.lineTotalBase || 0 },
+          { id: 'statusQty', label: t('sales.orders.detail.columns.statusQty', 'Status Qty'), kind: 'computed', width: '150px', align: 'left', compute: (line) => t('sales.soDetail.statusQtyFormat', { deliveredQty: line.deliveredQty, invoicedQty: line.invoicedQty, returnedQty: line.returnedQty }) },
+        ]}
+      />
 
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Customer Notes</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.soDetail.customerNotes')}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -1202,7 +1175,7 @@ const SalesOrderDetailPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Internal Notes</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.soDetail.internalNotes')}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -1229,7 +1202,7 @@ const SalesOrderDetailPage: React.FC = () => {
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-200">
-                        <th className="py-2 text-left">Item</th>
+                        <th className="py-2 text-left">{t('sales.soDetail.fulfillmentItemHeader')}</th>
                         <th className="py-2 text-right">{t('fulfillment.ordered')}</th>
                         <th className="py-2 text-right">{t('fulfillment.delivered')}</th>
                         <th className="py-2 text-right">{t('fulfillment.invoiced')}</th>
@@ -1243,7 +1216,7 @@ const SalesOrderDetailPage: React.FC = () => {
                         return (
                           <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100">
                             <td className="py-2">
-                              {line.itemCode || line.itemName || `Line ${index + 1}`}
+                              {line.itemCode || line.itemName || t('sales.soDetail.fulfillmentLineFallback', { n: index + 1 })}
                               {(line.itemCode && line.itemName) && (
                                 <div className="text-xs text-slate-500">{line.itemName}</div>
                               )}
@@ -1287,10 +1260,10 @@ const SalesOrderDetailPage: React.FC = () => {
       )}
 
       <Card className="p-5">
-        <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Linked Documents</h3>
+        <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.soDetail.linkedDocuments')}</h3>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Delivery Notes</div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('sales.soDetail.deliveryNotes')}</div>
             <div className="space-y-2">
               {linkedDNs.map((dn) => (
                 <button
@@ -1303,11 +1276,11 @@ const SalesOrderDetailPage: React.FC = () => {
                   <span className="text-xs text-slate-500">{dn.status}</span>
                 </button>
               ))}
-              {!linkedDNs.length && <div className="text-sm text-slate-500">No linked delivery notes.</div>}
+              {!linkedDNs.length && <div className="text-sm text-slate-500">{t('sales.soDetail.noDeliveryNotes')}</div>}
             </div>
           </div>
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sales Invoices</div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('sales.soDetail.salesInvoices')}</div>
             <div className="space-y-2">
               {linkedSIs.map((si) => (
                 <button
@@ -1320,11 +1293,11 @@ const SalesOrderDetailPage: React.FC = () => {
                   <span className="text-xs text-slate-500">{si.status}</span>
                 </button>
               ))}
-              {!linkedSIs.length && <div className="text-sm text-slate-500">No linked sales invoices.</div>}
+              {!linkedSIs.length && <div className="text-sm text-slate-500">{t('sales.soDetail.noSalesInvoices')}</div>}
             </div>
           </div>
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sales Returns</div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('sales.soDetail.salesReturns')}</div>
             <div className="space-y-2">
               {linkedSRs.map((sr) => (
                 <button
@@ -1337,7 +1310,7 @@ const SalesOrderDetailPage: React.FC = () => {
                   <span className="text-xs text-slate-500">{sr.status}</span>
                 </button>
               ))}
-              {!linkedSRs.length && <div className="text-sm text-slate-500">No linked sales returns.</div>}
+              {!linkedSRs.length && <div className="text-sm text-slate-500">{t('sales.soDetail.noSalesReturns')}</div>}
             </div>
           </div>
         </div>

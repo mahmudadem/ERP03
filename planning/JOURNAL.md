@@ -2,6 +2,81 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-09 (Tue) — Sales Return Source Control Parity
+
+**Task:** Move Sales Return source mode choices into a Sales Invoice-style control strip.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/199-sales-return-source-control-parity.md](./done/199-sales-return-source-control-parity.md).
+
+**What changed:**
+- Updated `SalesReturnDetailPage.tsx` so `After Invoice`, `Before Invoice`, and `Direct Return` live in a compact **Return Control** strip above the header form.
+- Kept the source-specific input in the header below the control strip: posted Sales Invoice for `AFTER_INVOICE`, posted Delivery Note for `BEFORE_INVOICE`, and Customer selector for `DIRECT`.
+- Added English/Arabic/Turkish labels for the SI-style source helper indicator.
+- Updated Sales architecture and user-guide docs.
+
+**Accounting boundary:** UI/data-entry layout only. No Sales Return posting, tax, AR reversal, credit-note/refund settlement, inventory receipt, COGS reversal, approval, period-lock, audit, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed.
+
+**Time spent:** ~0.5h.
+
+**Next:** Manual QA `Sales -> Returns -> New Return` in Classic and Windows mode: switch After Invoice / Before Invoice / Direct Return and confirm the header picker changes correctly.
+
+## 2026-06-09 (Tue) — Native Document Header Density Standard
+
+**Task:** Make document header inputs match the Sales Invoice compact density by default: two rows, five columns on wide layouts, h-9 controls, compact labels, and no oversized page-local header inputs.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/198-document-header-density-standard.md](./done/198-document-header-density-standard.md).
+
+**What changed:**
+- Added `DocumentHeaderGrid`, `DocumentHeaderField`, `documentHeaderLabelClass`, `documentHeaderControlClass`, and `documentHeaderSelectorClass` to `DocumentDetailScaffold`.
+- Updated SI and PI to use the same five-column header grid.
+- Tightened SO, DN, Quote, PO, GRN, SR, and PR main header cards toward the same compact grid/input sizing.
+- Documented the density rule in `docs/architecture/document-scaffold.md`.
+
+**Accounting boundary:** Layout only. No posting, tax, settlement, inventory valuation, approval, period-lock, AP/AR, audit, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, `check:sod-approve`, TypeScript, and Vite build.
+
+**Manual QA needed:** Classic + Windows visual pass for real document data, especially long customer/vendor names and resized windows.
+
+## 2026-06-09 (Tue) — Sectioned Native Document Scaffold Contract
+
+**Task:** Make the shared native document scaffold define fixed named sections, with show/hide flags, so document pages share one anatomy while supplying different inputs, actions, rail data, and footer content.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/197-sectioned-document-scaffold-contract.md](./done/197-sectioned-document-scaffold-contract.md).
+
+**What changed:**
+- Added body slots to `DocumentDetailScaffold`: `control`, `header`, `lines`, `secondary`, `attachments`, and `custom`.
+- Added rail slots: `info`, `readiness`, `settlement`, `totals`, and `custom`.
+- Added footer slots: `totals` and `actions`.
+- Added `DocumentScaffoldSection` with `show`, `preserveSpace`, `title`, `action`, `content`, and `className`.
+- Normalized legacy `children` and `sideRail` consumers through `custom` slots so existing document pages stay compatible while future cleanup splits page content into strict slots.
+- Added the architecture contract at `docs/architecture/document-scaffold.md` and updated Sales/Purchases architecture docs and user guides.
+
+**Accounting boundary:** Layout architecture only. No posting, settlement, tax, AP/AR, inventory valuation, approval, period-lock, audit, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, `check:sod-approve`, TypeScript, and Vite build.
+
+**Manual QA needed:** Classic + Windows mode visual pass for SI, PI, SO, DN, SR, PO, GRN, PR, and Quotes; then progressively split remaining legacy `custom` content into strict page slots during the next UI cleanup pass.
+
+## 2026-06-09 (Tue) — Native Document Scaffold/List Parity
+
+**Task:** Make the remaining native Sales/Purchases document pages and related list pages look and behave like the SI/PI standard, with shared line tables, shared rails/footers where safe, and standardized operational lists.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/196-native-document-scaffold-parity.md](./done/196-native-document-scaffold-parity.md).
+
+**Checkpoint first:** Per Mahmud's instruction, committed the pre-existing dirty state before new work: `65b8400c` — `fix(ui): checkpoint native invoice reference labels [ACTIVE-194]`.
+
+**What changed:**
+- Extended `ClassicLineItemsTable` with optional section title/header action, max body height, and min table width.
+- Migrated line tables for SO, DN, SR direct-entry lines, Quotations, PO, GRN, and PR to the shared table shell.
+- Migrated Goods Receipt draft/edit and Purchase Return saved/edit surfaces to `DocumentDetailScaffold` with side rail and sticky footer actions.
+- Migrated Quotations, Goods Receipts, and Purchase Returns lists to `OperationalListLayout` / `DataTable`.
+- Updated architecture docs, user guides, QA queue, priorities, and ACTIVE.
+
+**Accounting boundary:** UI/data-entry consistency only. No posting, tax, inventory valuation, settlement, approval, period-lock, AP/AR, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, `check:sod-approve`, TypeScript, and Vite build.
+
+**Manual QA needed:** Classic + Windows mode pass for Quotes, SO, DN, SR, PO, GRN, PR, SI, and PI. Known caveat: Quotation detail outer lifecycle header remains page-local; its list and line table are standardized.
+
 ## 2026-06-09 (Tue) — Settlement: approval-boundary preservation + pay-later dialog
 
 **Task:** Settlement QA on a Financial-Approval tenant — "paid invoices always post as deferred, payment never reaches the ledger." Diagnose + fix, document the voucher-model decision, and fix the record-payment button.

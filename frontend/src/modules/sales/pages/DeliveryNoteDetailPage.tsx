@@ -13,7 +13,8 @@ import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { StatusChip } from '../../../components/ui/StatusChip';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
@@ -22,9 +23,13 @@ import { Truck } from 'lucide-react';
 import {
   DocumentDetailScaffold,
   DocumentFooterTotalsStrip,
+  DocumentHeaderField,
+  DocumentHeaderGrid,
   DocumentPill,
   DocumentRailCard,
   DocumentRailStat,
+  documentHeaderControlClass,
+  documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -238,7 +243,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load sales order lines.'
+          t('sales.dnDetail.loadSOLinesFailed')
       );
     } finally {
       setOrderLineLoading(false);
@@ -284,7 +289,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load delivery note.'
+          t('sales.dnDetail.loadFailed')
       );
     } finally {
       setLoading(false);
@@ -345,28 +350,28 @@ const DeliveryNoteDetailPage: React.FC = () => {
   };
 
   const validateBeforeSave = (): string | null => {
-    if (!form.deliveryDate) return 'Delivery date is required.';
-    if (!form.warehouseId) return 'Warehouse is required.';
-    if (!form.salesOrderId && !form.customerId) return 'Customer is required when sales order is not provided.';
+    if (!form.deliveryDate) return t('sales.dnDetail.deliveryDateRequired');
+    if (!form.warehouseId) return t('sales.dnDetail.warehouseRequired');
+    if (!form.salesOrderId && !form.customerId) return t('sales.dnDetail.customerRequired');
 
     if (!form.salesOrderId) {
-      if (!form.lines.length) return 'At least one line is required for direct delivery notes.';
+      if (!form.lines.length) return t('sales.dnDetail.minLinesRequired');
       for (let i = 0; i < form.lines.length; i += 1) {
         const line = form.lines[i];
-        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (!line.itemId) return t('sales.dnDetail.lineItemRequired', { n: i + 1 });
         if (Number.isNaN(line.deliveredQty) || line.deliveredQty <= 0) {
-          return `Line ${i + 1}: delivered quantity must be greater than 0.`;
+          return t('sales.dnDetail.lineQtyPositive', { n: i + 1 });
         }
       }
     } else if (form.lines.length > 0) {
       for (let i = 0; i < form.lines.length; i += 1) {
         const line = form.lines[i];
-        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (!line.itemId) return t('sales.dnDetail.lineItemRequired', { n: i + 1 });
         if (Number.isNaN(line.deliveredQty) || line.deliveredQty <= 0) {
-          return `Line ${i + 1}: delivered quantity must be greater than 0.`;
+          return t('sales.dnDetail.lineQtyPositive', { n: i + 1 });
         }
         if (line.maxDeliverableQty !== undefined && line.deliveredQty > line.maxDeliverableQty + 0.000001) {
-          return `Line ${i + 1}: delivered quantity cannot exceed the open Sales Order quantity.`;
+          return t('sales.dnDetail.lineQtyExceedsSO', { n: i + 1 });
         }
       }
     }
@@ -423,7 +428,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to create delivery note draft.'
+          t('sales.dnDetail.createFailed')
       );
     } finally {
       setBusy(false);
@@ -449,7 +454,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
           setOverrideModalOpen(true);
           return;
         } else {
-          setError('This accounting period is closed and cannot be overridden.');
+          setError(t('sales.dnDetail.periodLockedHard'));
           return;
         }
       }
@@ -458,7 +463,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to post delivery note.'
+          t('sales.dnDetail.postFailed')
       );
     } finally {
       setBusy(false);
@@ -516,8 +521,8 @@ const DeliveryNoteDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Delivery Note</h1>
-        <Card className="p-6">Loading delivery note...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.dnDetail.pageTitle')}</h1>
+        <Card className="p-6">{t('sales.dnDetail.loading')}</Card>
       </div>
     );
   }
@@ -526,20 +531,20 @@ const DeliveryNoteDetailPage: React.FC = () => {
     const draftFooterSummary = (
       <DocumentFooterTotalsStrip
         totals={[
-          { label: 'Draft', value: `${form.lines.length} lines` },
-          { label: 'Source', value: form.salesOrderId ? 'From SO' : 'Direct', tone: form.salesOrderId ? 'blue' : 'slate' },
+          { label: t('sales.dnDetail.draftLabel'), value: t('sales.dnDetail.linesCount', { count: form.lines.length }) },
+          { label: t('sales.dnDetail.source'), value: form.salesOrderId ? t('sales.dnDetail.fromSO') : t('sales.dnDetail.direct'), tone: form.salesOrderId ? 'blue' : 'slate' },
         ]}
       />
     );
 
     const draftSideRail = (
       <>
-        <DocumentRailCard title="Delivery Draft">
+        <DocumentRailCard title={t('sales.dnDetail.deliveryDraftTitle')}>
           <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-            <DocumentRailStat label="Lines" value={form.lines.length} />
-            <DocumentRailStat label="Source" value={form.salesOrderId ? 'Sales Order' : 'Direct'} tone={form.salesOrderId ? 'blue' : 'slate'} />
-            <DocumentRailStat label="Delivery Date" value={form.deliveryDate || '-'} />
-            <DocumentRailStat label="Warehouse" value={warehouseLabelById[form.warehouseId] || form.warehouseId || '-'} />
+            <DocumentRailStat label={t('sales.dnDetail.linesLabel')} value={form.lines.length} />
+            <DocumentRailStat label={t('sales.dnDetail.source')} value={form.salesOrderId ? t('sales.dnDetail.salesOrderLabel') : t('sales.dnDetail.direct')} tone={form.salesOrderId ? 'blue' : 'slate'} />
+            <DocumentRailStat label={t('sales.dnDetail.deliveryDate')} value={form.deliveryDate || '-'} />
+            <DocumentRailStat label={t('sales.dnDetail.warehouse')} value={warehouseLabelById[form.warehouseId] || form.warehouseId || '-'} />
           </div>
         </DocumentRailCard>
       </>
@@ -548,13 +553,13 @@ const DeliveryNoteDetailPage: React.FC = () => {
     return (
       <DocumentDetailScaffold
         title={isEditing ? t('sales.dnDetail.editTitle', 'Edit Delivery Note') : t('sales.dnDetail.newTitle', 'New Delivery Note')}
-        subtitle="Stock delivery document. Posting can move inventory and, in perpetual mode, COGS."
+        subtitle={t('sales.dnDetail.subtitle')}
         icon={Truck}
-        backLabel="Back to delivery notes"
+        backLabel={t('sales.dnDetail.backToList')}
         onBack={() => (isEditing ? cancelEdit() : navigate('/sales/delivery-notes'))}
-        badges={isEditing && deliveryNote ? <DocumentPill tone="slate">{deliveryNote.status}</DocumentPill> : <DocumentPill tone="slate">Draft</DocumentPill>}
+        badges={isEditing && deliveryNote ? <DocumentPill tone="slate">{deliveryNote.status}</DocumentPill> : <DocumentPill tone="slate">{t('sales.dnDetail.draftBadge')}</DocumentPill>}
         sideRail={draftSideRail}
-        railTitle="Delivery note side rail"
+        railTitle={t('sales.dnDetail.sideRailTitle')}
         footerSummary={draftFooterSummary}
         footerActions={
           <>
@@ -588,18 +593,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order (optional unless SO is required for stock items)</label>
+        <Card className="overflow-visible p-0">
+          <DocumentHeaderGrid>
+            <DocumentHeaderField label={t('sales.dnDetail.salesOrderFieldLabel')}>
               <div className="flex gap-2">
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
+                  className={documentHeaderControlClass}
                   value={form.salesOrderId}
                   disabled={isEditing}
                   onChange={(e) => handleSalesOrderChange(e.target.value)}
                 >
-                  <option value="">No sales order</option>
+                  <option value="">{t('sales.dnDetail.noSalesOrder')}</option>
                   {salesOrders.map((order) => (
                     <option key={order.id} value={order.id}>
                       {order.orderNumber} - {order.customerName}
@@ -608,17 +612,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
                 </select>
                 <button
                   type="button"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium disabled:opacity-50"
+                  className="h-9 shrink-0 rounded border border-slate-300 bg-white px-2 text-[10px] font-black uppercase tracking-wide text-slate-700 disabled:opacity-50"
                   onClick={() => loadSalesOrderLines(form.salesOrderId)}
                   disabled={busy || orderLineLoading || !form.salesOrderId.trim() || isEditing}
                 >
-                  {orderLineLoading ? 'Loading...' : 'Load SO Lines'}
+                  {orderLineLoading ? t('sales.dnDetail.loadingLines') : t('sales.dnDetail.loadSOLines')}
                 </button>
               </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Customer (standalone)</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.customerStandalone')}>
               <PartySelector 
+                className={documentHeaderSelectorClass}
                 value={form.customerId}
                 disabled={!!form.salesOrderId}
                 onChange={(party) => {
@@ -628,43 +632,44 @@ const DeliveryNoteDetailPage: React.FC = () => {
                   }));
                 }}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Delivery Date</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.deliveryDate')}>
               <DatePicker
+                className="w-full"
+                inputClassName={documentHeaderControlClass}
                 value={form.deliveryDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, deliveryDate: val }))}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Promised Delivery Date</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.promisedDeliveryDate')}>
               <DatePicker
+                className="w-full"
+                inputClassName={documentHeaderControlClass}
                 value={form.promisedDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, promisedDate: val }))}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Warehouse</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.warehouse')}>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={documentHeaderControlClass}
                 value={form.warehouseId}
                 onChange={(e) => setForm((prev) => ({ ...prev, warehouseId: e.target.value }))}
               >
-                <option value="">Select warehouse</option>
+                <option value="">{t('sales.dnDetail.selectWarehouse')}</option>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.code} - {warehouse.name}
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
+            </DocumentHeaderField>
+          </DocumentHeaderGrid>
 
-          <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+          <div className="px-3 pb-3">
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('sales.dnDetail.notes')}</label>
             <textarea
               rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded border border-slate-300 bg-white px-2 py-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
               value={form.notes}
               onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             />
@@ -672,131 +677,117 @@ const DeliveryNoteDetailPage: React.FC = () => {
 
           {settings?.requireSOForStockItems && !form.salesOrderId && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-              This company requires a Sales Order reference for stock-item delivery flow.
+              {t('sales.dnDetail.requiresSOWarning')}
             </div>
           )}
 
           <div className="mt-4 text-xs text-slate-500">
-            When a Sales Order is selected, lines can be loaded from the order or pre-filled by server rules.
+            {t('sales.dnDetail.soHint')}
           </div>
         </Card>
 
         {(!form.salesOrderId || form.lines.length > 0) && (
-          <Card className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-              {!form.salesOrderId && (
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-                  onClick={addLine}
-                  disabled={busy}
-                >
-                  Add Item
-                </button>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="py-2 text-left">Item</th>
-                    <th className="py-2 text-right">Delivered Qty</th>
-                    <th className="py-2 text-left">UOM</th>
-                    <th className="py-2 text-left">Warehouse</th>
-                    <th className="py-2 text-right" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {form.lines.map((line, index) => (
-                    <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
-                          value={line.itemId}
-                          disabled={!!form.salesOrderId}
-                          onChange={(e) => setLine(index, { itemId: e.target.value })}
-                        >
-                          <option value="">Select item</option>
-                          {items.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.code} - {item.name}
-                            </option>
-                          ))}
-                        </select>
-                        {(line.itemCode || line.itemName) && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          min={0.000001}
-                          max={line.maxDeliverableQty}
-                          step={0.000001}
-                          className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                          value={line.deliveredQty}
-                          onChange={(e) => setLine(index, { deliveredQty: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                          value={
-                            findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                            line.uomId ||
-                            line.uom
-                          }
-                          disabled={!line.itemId || !!form.salesOrderId}
-                          onChange={(e) => {
-                            const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                              (option) => (option.uomId || option.code) === e.target.value
-                            );
-                            setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                          }}
-                        >
-                          <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                          {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                            <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                              {option.code}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-                          value={line.warehouseId || ''}
-                          disabled={busy}
-                          onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
-                        >
-                          <option value="">Select Warehouse</option>
-                          {warehouses.map((warehouse) => (
-                            <option key={warehouse.id} value={warehouse.id}>
-                              {warehouse.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 text-right">
-                        <button
-                          type="button"
-                          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
-                          onClick={() => removeLine(index)}
-                          disabled={busy || form.lines.length <= 1}
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          <ClassicLineItemsTable<EditableLine>
+            title={t('sales.dnDetail.lineItemsTitle')}
+            rows={form.lines}
+            disabled={busy}
+            onRowChange={setLine}
+            onRowRemove={removeLine}
+            onRowAdd={!form.salesOrderId ? addLine : undefined}
+            addLabel={t('sales.dnDetail.addItem')}
+            minTableWidth="820px"
+            columns={[
+              {
+                id: 'item',
+                label: t('sales.dnDetail.itemColumn'),
+                kind: 'custom',
+                width: '280px',
+                render: (line, index) => (
+                  <ItemSelector
+                    value={line.itemId}
+                    disabled={!!form.salesOrderId || busy}
+                    noBorder
+                    placeholder={t('sales.dnDetail.selectItem')}
+                    trackInventoryOnly
+                    onChange={(item) => {
+                      if (!item) {
+                        setLine(index, { itemId: '', itemCode: undefined, itemName: undefined });
+                        return;
+                      }
+                      const defaultUom = getDefaultItemUomOption(item, 'sales');
+                      setLine(index, {
+                        itemId: item.id,
+                        itemCode: item.code,
+                        itemName: item.name,
+                        uomId: defaultUom?.uomId,
+                        uom: defaultUom?.code || item.salesUom || item.baseUom,
+                      });
+                    }}
+                  />
+                ),
+              } as ColumnDef<EditableLine>,
+              {
+                id: 'deliveredQty',
+                label: t('sales.dnDetail.deliveredQtyColumn'),
+                kind: 'number',
+                width: '130px',
+                accessor: (line) => line.deliveredQty,
+                setter: (value) => ({ deliveredQty: Number(value) }),
+              },
+              {
+                id: 'uom',
+                label: t('sales.dnDetail.uomColumn'),
+                kind: 'custom',
+                width: '110px',
+                render: (line, index) => (
+                  <select
+                    className="h-9 w-full border-0 bg-transparent px-2 text-xs uppercase outline-none disabled:opacity-60"
+                    value={
+                      findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                      line.uomId ||
+                      line.uom
+                    }
+                    disabled={!line.itemId || !!form.salesOrderId || busy}
+                    onChange={(e) => {
+                      const selected = (uomOptionsByItemId[line.itemId] || []).find(
+                        (option) => (option.uomId || option.code) === e.target.value
+                      );
+                      setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                    }}
+                  >
+                    <option value="">{line.itemId ? t('sales.dnDetail.selectUom') : t('sales.dnDetail.noItem')}</option>
+                    {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                      <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                        {option.code}
+                      </option>
+                    ))}
+                  </select>
+                ),
+              },
+              {
+                id: 'warehouse',
+                label: t('sales.dnDetail.warehouseColumn'),
+                kind: 'custom',
+                width: '220px',
+                render: (line, index) => (
+                  <WarehouseSelector
+                    value={line.warehouseId}
+                    disabled={busy}
+                    noBorder
+                    placeholder={t('sales.dnDetail.selectWarehouseColumn')}
+                    onChange={(warehouse) => setLine(index, { warehouseId: warehouse?.id })}
+                  />
+                ),
+              },
+              {
+                id: 'max',
+                label: t('sales.dnDetail.openQtyColumn'),
+                kind: 'computed',
+                width: '110px',
+                compute: (line) => line.maxDeliverableQty ?? '',
+              },
+            ]}
+          />
         )}
 
       </DocumentDetailScaffold>
@@ -806,8 +797,8 @@ const DeliveryNoteDetailPage: React.FC = () => {
   if (!deliveryNote) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Delivery Note</h1>
-        <Card className="p-6 text-sm text-red-700">Delivery note not found.</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.dnDetail.pageTitle')}</h1>
+        <Card className="p-6 text-sm text-red-700">{t('sales.dnDetail.notFound')}</Card>
       </div>
     );
   }
@@ -819,30 +810,30 @@ const DeliveryNoteDetailPage: React.FC = () => {
   const viewFooterSummary = (
     <DocumentFooterTotalsStrip
       totals={[
-        { label: 'Lines', value: deliveryNote.lines.length },
-        { label: 'Qty', value: deliveredQtyTotal.toFixed(2), tone: 'blue' },
-        { label: 'Cost Base', value: lineCostBaseTotal.toFixed(2), tone: 'green' },
+        { label: t('sales.dnDetail.linesLabel'), value: deliveryNote.lines.length },
+        { label: t('sales.dnDetail.qtyLabel'), value: deliveredQtyTotal.toFixed(2), tone: 'blue' },
+        { label: t('sales.dnDetail.costBaseLabel'), value: lineCostBaseTotal.toFixed(2), tone: 'green' },
       ]}
     />
   );
   const viewSideRail = (
     <>
-      <DocumentRailCard title="Delivery Summary">
+      <DocumentRailCard title={t('sales.dnDetail.deliverySummaryTitle')}>
         <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label="Lines" value={deliveryNote.lines.length} />
-          <DocumentRailStat label="Delivered Qty" value={deliveredQtyTotal.toFixed(2)} tone="blue" />
-          <DocumentRailStat label="Cost Base" value={lineCostBaseTotal.toFixed(2)} tone="green" />
-          <DocumentRailStat label="Warehouse" value={warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-'} />
+          <DocumentRailStat label={t('sales.dnDetail.linesLabel')} value={deliveryNote.lines.length} />
+          <DocumentRailStat label={t('sales.dnDetail.deliveredQtyLabel')} value={deliveredQtyTotal.toFixed(2)} tone="blue" />
+          <DocumentRailStat label={t('sales.dnDetail.costBaseLabel')} value={lineCostBaseTotal.toFixed(2)} tone="green" />
+          <DocumentRailStat label={t('sales.dnDetail.warehouse')} value={warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-'} />
         </div>
       </DocumentRailCard>
-      <DocumentRailCard title="Source">
+      <DocumentRailCard title={t('sales.dnDetail.sourceTitle')}>
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Customer</div>
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.dnDetail.customerLabel')}</div>
             <div className="truncate font-black text-slate-900 dark:text-slate-100">{deliveryNote.customerName}</div>
           </div>
           <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Sales Order</div>
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.dnDetail.salesOrderLabel')}</div>
             <div className="truncate font-black text-slate-900 dark:text-slate-100">
               {deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '-'}
             </div>
@@ -856,9 +847,9 @@ const DeliveryNoteDetailPage: React.FC = () => {
     <>
     <DocumentDetailScaffold
       title={deliveryNote.dnNumber}
-      subtitle={`Customer: ${deliveryNote.customerName}${deliveryNote.salesOrderId ? ` | SO: ${salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId}` : ''}`}
+      subtitle={t('sales.dnDetail.viewSubtitle', { customerName: deliveryNote.customerName, soRef: deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '' })}
       icon={Truck}
-      backLabel="Back to delivery notes"
+      backLabel={t('sales.dnDetail.backToList')}
       onBack={() => navigate('/sales/delivery-notes')}
       badges={
         <DocumentPill tone={deliveryNote.status === 'POSTED' ? 'green' : deliveryNote.status === 'CANCELLED' ? 'rose' : 'slate'}>
@@ -866,7 +857,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         </DocumentPill>
       }
       sideRail={viewSideRail}
-      railTitle="Delivery note side rail"
+      railTitle={t('sales.dnDetail.sideRailTitle')}
       footerSummary={viewFooterSummary}
       footerActions={
         <>
@@ -875,7 +866,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
             className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
             onClick={() => navigate('/sales/delivery-notes')}
           >
-            Back to List
+            {t('sales.dnDetail.backToListButton')}
           </button>
           {deliveryNote.status === 'DRAFT' && (
             <button
@@ -903,7 +894,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
               className="rounded border border-amber-300 bg-amber-50/50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100/50"
               onClick={() => navigate(createReturnHref)}
             >
-              Create Return
+              {t('sales.dnDetail.createReturn')}
             </button>
           )}
           {deliveryNote.status === 'POSTED' && (
@@ -912,7 +903,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
               className="rounded border border-violet-300 bg-white px-4 py-2 text-xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
               onClick={() => setGlImpactOpen(true)}
             >
-              GL Impact
+              {t('sales.dnDetail.glImpact')}
             </button>
           )}
           <button
@@ -920,7 +911,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
             className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             onClick={() => setAuditModalOpen(true)}
           >
-            History
+            {t('sales.dnDetail.history')}
           </button>
         </>
       }
@@ -931,17 +922,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Delivery Date</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.dnDetail.deliveryDate')}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{deliveryNote.deliveryDate}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.dnDetail.warehouse')}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Created</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.dnDetail.created')}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {new Date(deliveryNote.createdAt).toLocaleString()}
             </div>
@@ -965,17 +956,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
           : false;
         return (
           <Card className="p-5">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.dnDetail.linesHeading')}</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="py-2 text-left">Item</th>
+                    <th className="py-2 text-left">{t('sales.dnDetail.itemColumn')}</th>
                     {linkedSO && <th className="py-2 text-right">{t('fulfillment.ordered')}</th>}
-                    <th className="py-2 text-right">Delivered Qty</th>
-                    <th className="py-2 text-left">UOM</th>
-                    <th className="py-2 text-right">Unit Cost (Base)</th>
-                    <th className="py-2 text-right">Line Cost (Base)</th>
+                    <th className="py-2 text-right">{t('sales.dnDetail.deliveredQtyColumn')}</th>
+                    <th className="py-2 text-left">{t('sales.dnDetail.uomColumn')}</th>
+                    <th className="py-2 text-right">{t('sales.dnDetail.unitCostBaseColumn')}</th>
+                    <th className="py-2 text-right">{t('sales.dnDetail.lineCostBaseColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
