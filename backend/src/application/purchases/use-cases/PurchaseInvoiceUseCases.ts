@@ -9,6 +9,7 @@ import { PurchaseSettings } from '../../../domain/purchases/entities/PurchaseSet
 import {
   DocumentSource,
   PaymentStatus,
+  PendingSettlement,
   PurchaseInvoice,
   PurchaseInvoiceLine,
 } from '../../../domain/purchases/entities/PurchaseInvoice';
@@ -840,6 +841,9 @@ export class PostPurchaseInvoiceUseCase {
         pi.status = 'POSTED';
         pi.postedAt = new Date();
         pi.updatedAt = new Date();
+        // A successful post consumes any settlement preserved while parked for
+        // approval — clear it so it can never be replayed twice.
+        pi.pendingSettlement = null;
         await this.purchaseInvoiceRepo.update(pi, transaction);
 
         if (po) {
@@ -850,6 +854,13 @@ export class PostPurchaseInvoiceUseCase {
       });
     } catch (err: any) {
       if (err instanceof PostingError && err.appError.code === 'APPROVAL_REQUIRED') {
+        // Preserve the settlement entered at post time so it is replayed when an
+        // accountant approves the invoice. Without this, the cash payment is silently
+        // dropped across the approval boundary and the invoice posts on credit.
+        const parkedSettlement: PendingSettlement | null =
+          settlementInput && settlementInput.settlementMode !== 'DEFERRED'
+            ? (settlementInput as PendingSettlement)
+            : null;
         await this.transactionManager.runTransaction(async (tx) => {
           const latestPi = await this.purchaseInvoiceRepo.getById(companyId, pi.id);
           if (!latestPi) throw new Error('Purchase invoice not found during parking');
@@ -857,10 +868,12 @@ export class PostPurchaseInvoiceUseCase {
             throw new Error(`Cannot park purchase invoice. Expected DRAFT, but current status is ${latestPi.status}`);
           }
           latestPi.status = 'PENDING_APPROVAL';
+          latestPi.pendingSettlement = parkedSettlement;
           latestPi.updatedAt = new Date();
           await this.purchaseInvoiceRepo.update(latestPi, tx);
         });
         pi.status = 'PENDING_APPROVAL';
+        pi.pendingSettlement = parkedSettlement;
         pi.updatedAt = new Date();
         return pi;
       }
@@ -1421,8 +1434,14 @@ export class ApprovePurchaseInvoiceUseCase {
     if (pi.status !== 'PENDING_APPROVAL') {
       throw new Error('Only purchase invoices pending approval can be approved');
     }
+    // Replay the settlement entered at post time (preserved on the invoice while
+    // parked). An explicit settlementInput on the approval request takes precedence;
+    // otherwise honour the stored intent so the cash payment is not lost across the
+    // approval boundary. The post clears pendingSettlement on success.
+    const effectiveSettlement: SettlementInput | undefined =
+      settlementInput ?? (pi.pendingSettlement ? (pi.pendingSettlement as SettlementInput) : undefined);
     // Re-enter the real post with approvalContext set (bypasses the gate).
-    return this.postUseCase.execute(companyId, id, true, settlementInput, { approvedBy: actor.userId });
+    return this.postUseCase.execute(companyId, id, true, effectiveSettlement, { approvedBy: actor.userId });
   }
 }
 

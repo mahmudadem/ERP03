@@ -12,6 +12,7 @@ import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import {
   DocumentSource,
   PaymentStatus,
+  PendingSettlement,
   SalesDiscountType,
   SalesInvoice,
   SalesInvoiceCharge,
@@ -1501,6 +1502,9 @@ export class PostSalesInvoiceUseCase {
       si.status = 'POSTED';
       si.postedAt = new Date();
       si.updatedAt = new Date();
+      // A successful post consumes any settlement that was preserved while parked
+      // for approval — clear it so it can never be replayed twice.
+      si.pendingSettlement = null;
       await this.salesInvoiceRepo.update(si, transaction);
     };
 
@@ -1515,6 +1519,13 @@ export class PostSalesInvoiceUseCase {
         if (externalTransaction) {
           throw err;
         }
+        // Preserve the settlement entered at post time so it is replayed when an
+        // accountant approves the invoice. Without this, the cash receipt is silently
+        // dropped across the approval boundary and the invoice posts on credit.
+        const parkedSettlement: PendingSettlement | null =
+          settlementInput && settlementInput.settlementMode !== 'DEFERRED'
+            ? (settlementInput as PendingSettlement)
+            : null;
         await this.transactionManager.runTransaction(async (tx) => {
           const latestSi = await this.salesInvoiceRepo.getById(companyId, si.id);
           if (!latestSi) throw new Error('Sales invoice not found during parking');
@@ -1522,10 +1533,12 @@ export class PostSalesInvoiceUseCase {
             throw new Error(`Cannot park sales invoice. Expected DRAFT, but current status is ${latestSi.status}`);
           }
           latestSi.status = 'PENDING_APPROVAL';
+          latestSi.pendingSettlement = parkedSettlement;
           latestSi.updatedAt = new Date();
           await this.salesInvoiceRepo.update(latestSi, tx);
         });
         si.status = 'PENDING_APPROVAL';
+        si.pendingSettlement = parkedSettlement;
         si.updatedAt = new Date();
         return si;
       }
@@ -2011,6 +2024,12 @@ export class ApproveSalesInvoiceUseCase {
     if (si.status !== 'PENDING_APPROVAL') {
       throw new Error('Only sales invoices pending approval can be approved');
     }
+    // Replay the settlement the salesperson entered at post time (preserved on the
+    // invoice while parked). An explicit settlementInput on the approval request
+    // takes precedence; otherwise honour the stored intent so the cash receipt is
+    // not lost across the approval boundary. The post clears pendingSettlement on success.
+    const effectiveSettlement: SettlementInput | undefined =
+      settlementInput ?? (si.pendingSettlement ? (si.pendingSettlement as SettlementInput) : undefined);
     // Re-enter the post flow with approvalContext set. This bypasses the
     // approval gate and runs the full, real post (ledger + stock + settlement)
     // exactly as a normal post would — nothing about posting is duplicated.
@@ -2019,7 +2038,7 @@ export class ApproveSalesInvoiceUseCase {
       si,
       true,
       undefined,
-      settlementInput,
+      effectiveSettlement,
       periodLockOverride,
       actor,
       { approvedBy: actor.userId }

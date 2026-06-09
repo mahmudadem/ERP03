@@ -1,4 +1,4 @@
-import { PostPurchaseInvoiceUseCase, SettlementInput } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
+import { PostPurchaseInvoiceUseCase, ApprovePurchaseInvoiceUseCase, SettlementInput } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
 import { PurchaseInvoice } from '../../../domain/purchases/entities/PurchaseInvoice';
 
 const buildPostedInvoice = (grandTotalBase = 100) =>
@@ -196,5 +196,31 @@ describe('PostPurchaseInvoiceUseCase — Settlement Modes', () => {
     );
 
     expect(deps.purchaseInvoiceRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('approve replays the settlement preserved while parked for approval, then clears it', async () => {
+    // Mirror of the sales case: the buyer posted with a CASH_FULL settlement, the post was
+    // parked as PENDING_APPROVAL, and the settlement intent was preserved on the invoice.
+    // Approving it must replay that settlement (not post on credit) and clear pendingSettlement.
+    const invoice = buildPostedInvoice(100);
+    invoice.status = 'PENDING_APPROVAL';
+    invoice.pendingSettlement = {
+      settlementMode: 'CASH_FULL',
+      receivablePayableAccountId: 'AP-1',
+      settlements: [{ settlementAccountId: 'CASH-1', amountBase: 100, paymentMethod: 'CASH', paymentDate: '2026-05-02' }],
+    };
+    const deps = makeDeps(invoice);
+    const postUseCase = buildUseCase(deps);
+    const approveUseCase = new ApprovePurchaseInvoiceUseCase(deps.purchaseInvoiceRepo as any, postUseCase);
+
+    // Approve WITHOUT passing an explicit settlement — the stored intent must be honoured.
+    const result = await approveUseCase.execute('cmp-1', invoice.id, { userId: 'u-approver' });
+
+    expect(result.status).toBe('POSTED');
+    expect(result.paymentStatus).toBe('PAID');
+    expect(result.paidAmountBase).toBe(100);
+    expect(result.outstandingAmountBase).toBe(0);
+    expect(result.pendingSettlement).toBeNull();
+    expect(deps.paymentHistoryRepo.create).toHaveBeenCalled();
   });
 });

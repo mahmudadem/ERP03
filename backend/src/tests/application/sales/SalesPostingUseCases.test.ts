@@ -801,6 +801,96 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
   });
 
+  it('A1b) PostSI preserves the entered settlement on the parked invoice (not lost across the approval boundary)', async () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const stockItem = makeItem('stock-appr-pend', {
+      trackInventory: true,
+      cogsAccountId: 'COGS-700',
+      inventoryAssetAccountId: 'INV-700',
+      revenueAccountId: 'REV-700',
+    });
+    const si = makeSI({ id: 'si-appr-pend', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
+
+    const inventoryService = makeInventoryService();
+    const invoiceStore = new Map([[si.id, si]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
+    };
+    const mockTxManager = {
+      runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => {
+        try {
+          return await operation({ id: 'txn-1' });
+        } catch (err) {
+          inventoryService.writeStockMovement.mockClear();
+          voucherRepo.save.mockClear();
+          ledgerRepo.recordForVoucher.mockClear();
+          throw err;
+        }
+      }),
+    };
+
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => { invoiceStore.set(entity.id, entity); }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
+      ),
+      undefined,
+      mockTxManager as any
+    );
+
+    const settlementInput = {
+      settlementMode: 'CASH_FULL' as const,
+      receivablePayableAccountId: 'AR-1',
+      settlements: [{ amountBase: 30, paymentMethod: 'CASH' as const, paymentDate: '2026-05-02' }],
+    };
+    const result = await useCase.execute(COMPANY_ID, si.id, true, undefined, settlementInput);
+
+    expect(result.status).toBe('PENDING_APPROVAL');
+    // The settlement intent is preserved verbatim so the approver can replay it.
+    expect(result.pendingSettlement).toEqual(settlementInput);
+    // And it is persisted on the parked invoice, not just the returned entity.
+    expect(invoiceStore.get(si.id)?.pendingSettlement).toEqual(settlementInput);
+    // Still no financial effect while parked.
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+  });
+
   it('A2) ApproveSalesInvoiceUseCase runs the real post on a PENDING_APPROVAL invoice', async () => {
     const settings = makeSettings('SIMPLE');
     const customer = makeCustomer();

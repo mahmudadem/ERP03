@@ -2,6 +2,28 @@ export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
 
+/**
+ * Settlement the user entered at post time, preserved on the invoice when posting
+ * is parked for accounting approval. Replayed when the invoice is approved so the
+ * cash payment is not lost across the approval boundary. Structurally compatible
+ * with the application-layer `SettlementInput` (kept domain-local to avoid an
+ * application→domain import). See docs/architecture/purchases.md (approval + settlement).
+ */
+export interface PendingSettlementRow {
+  settlementAccountId?: string;
+  amountBase: number;
+  paymentMethod?: string;
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
+}
+
+export interface PendingSettlement {
+  settlementMode: 'DEFERRED' | 'CASH_FULL' | 'MULTI';
+  receivablePayableAccountId?: string;
+  settlements: PendingSettlementRow[];
+}
+
 export interface PurchaseInvoiceLine {
   lineId: string;
   lineNo: number;
@@ -90,6 +112,8 @@ export interface PurchaseInvoiceProps {
   createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  /** Settlement preserved while parked for approval; replayed on approve, cleared on post. */
+  pendingSettlement?: PendingSettlement | null;
 }
 
 const PI_STATUSES: PIStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'POSTED', 'CANCELLED'];
@@ -145,6 +169,7 @@ export class PurchaseInvoice {
   readonly createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  pendingSettlement?: PendingSettlement | null;
 
   constructor(props: PurchaseInvoiceProps) {
     if (!props.id?.trim()) throw new Error('PurchaseInvoice id is required');
@@ -215,6 +240,7 @@ export class PurchaseInvoice {
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this.postedAt = props.postedAt;
+    this.pendingSettlement = props.pendingSettlement ?? null;
   }
 
   private normalizeLine(line: PurchaseInvoiceLine, index: number): PurchaseInvoiceLine {
@@ -305,6 +331,7 @@ export class PurchaseInvoice {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       postedAt: this.postedAt,
+      pendingSettlement: this.pendingSettlement ?? null,
     };
   }
 
@@ -344,6 +371,7 @@ export class PurchaseInvoice {
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       postedAt: data.postedAt ? toDate(data.postedAt) : undefined,
+      pendingSettlement: data.pendingSettlement ?? null,
     });
   }
 }

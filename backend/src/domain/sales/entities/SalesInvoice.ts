@@ -85,6 +85,28 @@ export interface SalesInvoiceAttachment {
   uploadedBy: string;
 }
 
+/**
+ * Settlement the user entered at post time, preserved on the invoice when posting
+ * is parked for accounting approval. Replayed when the invoice is approved so the
+ * cash receipt is not lost across the approval boundary. Structurally compatible
+ * with the application-layer `SettlementInput` (kept domain-local to avoid an
+ * application→domain import). See docs/architecture/sales.md (approval + settlement).
+ */
+export interface PendingSettlementRow {
+  settlementAccountId?: string;
+  amountBase: number;
+  paymentMethod?: string;
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
+}
+
+export interface PendingSettlement {
+  settlementMode: 'DEFERRED' | 'CASH_FULL' | 'MULTI';
+  receivablePayableAccountId?: string;
+  settlements: PendingSettlementRow[];
+}
+
 export interface SalesInvoiceProps {
   id: string;
   companyId: string;
@@ -125,6 +147,8 @@ export interface SalesInvoiceProps {
   updatedAt: Date;
   postedAt?: Date;
   appliedPromotions?: AppliedPromotionInfo[];
+  /** Settlement preserved while parked for approval; replayed on approve, cleared on post. */
+  pendingSettlement?: PendingSettlement | null;
 }
 
 const SI_STATUSES: SIStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'POSTED', 'CANCELLED'];
@@ -275,6 +299,7 @@ export class SalesInvoice {
   updatedAt: Date;
   postedAt?: Date;
   appliedPromotions?: AppliedPromotionInfo[];
+  pendingSettlement?: PendingSettlement | null;
 
   constructor(props: SalesInvoiceProps) {
     const id = toStringRef(props.id);
@@ -384,6 +409,7 @@ export class SalesInvoice {
     this.updatedAt = props.updatedAt;
     this.postedAt = props.postedAt;
     this.appliedPromotions = props.appliedPromotions;
+    this.pendingSettlement = props.pendingSettlement ?? null;
   }
 
   private normalizeLine(line: SalesInvoiceLine, index: number): SalesInvoiceLine {
@@ -555,6 +581,7 @@ export class SalesInvoice {
       updatedAt: this.updatedAt,
       postedAt: this.postedAt,
       appliedPromotions: this.appliedPromotions,
+      pendingSettlement: this.pendingSettlement ?? null,
     };
   }
 
@@ -612,6 +639,7 @@ export class SalesInvoice {
       updatedAt: toDate(data.updatedAt),
       postedAt: data.postedAt ? toDate(data.postedAt) : undefined,
       appliedPromotions: data.appliedPromotions,
+      pendingSettlement: data.pendingSettlement ?? null,
     });
   }
 }
