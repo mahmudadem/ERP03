@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowRight, LucideIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Lock, LucideIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export type DocumentPillTone = 'slate' | 'blue' | 'green' | 'amber' | 'rose' | 'red' | 'violet';
@@ -15,12 +15,15 @@ const pillToneClasses: Record<DocumentPillTone, string> = {
   violet: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300',
 };
 
-type ScaffoldRailState = {
+export type DocumentScaffoldRailState = {
   showInlineRail: boolean;
   railDrawerOpen: boolean;
 };
 
+type ScaffoldRailState = DocumentScaffoldRailState;
+
 export type DocumentScaffoldBodySlot =
+  | 'banner'
   | 'control'
   | 'header'
   | 'lines'
@@ -46,9 +49,14 @@ export type DocumentScaffoldSection = {
   className?: string;
 };
 
+export type DocumentScaffoldFooterSection = Omit<DocumentScaffoldSection, 'content'> & {
+  /** Footer content may be a function of the rail state so totals can show only when the rail is hidden (Sales Invoice behavior). */
+  content?: React.ReactNode | ((state: DocumentScaffoldRailState) => React.ReactNode);
+};
+
 export type DocumentScaffoldSections = Partial<Record<DocumentScaffoldBodySlot, DocumentScaffoldSection>>;
 export type DocumentScaffoldRailSections = Partial<Record<DocumentScaffoldRailSlot, DocumentScaffoldSection>>;
-export type DocumentScaffoldFooterSections = Partial<Record<DocumentScaffoldFooterSlot, DocumentScaffoldSection>>;
+export type DocumentScaffoldFooterSections = Partial<Record<DocumentScaffoldFooterSlot, DocumentScaffoldFooterSection>>;
 
 export const documentHeaderLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
 export const documentHeaderControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900 dark:disabled:text-slate-500';
@@ -76,10 +84,11 @@ const renderScaffoldBodySection = (
       key={slot}
       data-document-section={slot}
       className={clsx(
+        slot === 'banner' && 'shrink-0',
         slot === 'control' && 'shrink-0',
         slot === 'header' && 'shrink-0',
-        slot === 'lines' && 'min-h-[210px] flex-none 2xl:flex-[1.2]',
-        slot === 'secondary' && 'min-h-[150px] flex-none 2xl:flex-[0.55]',
+        slot === 'lines' && 'flex min-h-[210px] flex-none flex-col 2xl:flex-[1.2]',
+        slot === 'secondary' && 'flex min-h-[150px] flex-none flex-col gap-1.5 2xl:flex-[0.55]',
         slot === 'attachments' && 'flex-none',
         slot === 'custom' && 'flex-none',
         section?.className,
@@ -157,8 +166,9 @@ export function DocumentField({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-0.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+      <span className="mb-0.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 select-none">
         {label}
+        {locked && <Lock className="h-3 w-3 text-slate-400" />}
       </span>
       <div
         className={clsx(
@@ -488,27 +498,82 @@ export function DocumentFooterTotalsStrip({
   totals: Array<{ label: string; value: React.ReactNode; tone?: 'slate' | 'blue' | 'green' | 'amber' | 'rose' }>;
 }) {
   const toneClasses = {
-    slate: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100',
-    blue: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
-    green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-    amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
+    slate: 'text-slate-950 dark:text-slate-100',
+    blue: 'text-blue-700 dark:text-blue-400',
+    green: 'text-emerald-700 dark:text-emerald-400',
+    amber: 'text-amber-700 dark:text-amber-400',
+    rose: 'text-rose-600 dark:text-rose-400',
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-      {totals.map((total) => (
-        <div
-          key={total.label}
+    <div className="flex justify-start">
+      <div className="grid min-w-[min(100%,430px)] auto-cols-fr grid-flow-col gap-5 rounded-lg border border-slate-300 bg-slate-100 px-5 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        {totals.map((total) => (
+          <div key={total.label} className="min-w-0">
+            <div className="truncate text-[8px] font-black uppercase text-slate-400 dark:text-slate-500">
+              {total.label}
+            </div>
+            <div className={clsx('mt-0.5 truncate font-mono text-[13px] font-black leading-none', toneClasses[total.tone || 'slate'])}>
+              {total.value}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function DocumentNoticeBanner({
+  tone = 'amber',
+  children,
+}: {
+  tone?: 'amber' | 'blue';
+  children: React.ReactNode;
+}) {
+  const toneClasses = {
+    amber: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300',
+    blue: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-300',
+  };
+  return (
+    <div className={clsx('rounded-lg border px-3 py-1.5 text-xs', toneClasses[tone])}>
+      {children}
+    </div>
+  );
+}
+
+export function DocumentStatusBanner({
+  tone = 'success',
+  title,
+  hint,
+  pills,
+}: {
+  tone?: 'success' | 'warning';
+  title: React.ReactNode;
+  hint?: React.ReactNode;
+  pills?: React.ReactNode;
+}) {
+  const isWarning = tone === 'warning';
+  const ToneIcon = isWarning ? AlertTriangle : CheckCircle2;
+  return (
+    <div
+      className={clsx(
+        'grid shrink-0 gap-2 rounded-lg border px-3 py-2 text-xs lg:grid-cols-[minmax(0,1fr)_auto]',
+        isWarning
+          ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300'
+          : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300',
+      )}
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <ToneIcon
           className={clsx(
-            'rounded-md px-2 py-1 font-mono font-black',
-            toneClasses[total.tone || 'slate'],
+            'h-4 w-4 shrink-0',
+            isWarning ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
           )}
-        >
-          <span className="mr-1 font-sans text-[9px] uppercase tracking-wide opacity-70">{total.label}</span>
-          {total.value}
-        </div>
-      ))}
+        />
+        <span className="font-black">{title}</span>
+        {hint && <span>{hint}</span>}
+      </div>
+      {pills && <div className="flex flex-wrap items-center gap-1.5">{pills}</div>}
     </div>
   );
 }
@@ -565,9 +630,10 @@ export function DocumentDetailScaffold({
   const BackIcon = isRtl ? ArrowRight : ArrowLeft;
   const RailOpenIcon = isRtl ? PanelLeftOpen : PanelRightOpen;
   const RailCloseIcon = isRtl ? PanelLeftClose : PanelRightClose;
-  const bodySlots = ['control', 'header', 'lines', 'secondary', 'attachments', 'custom'] as const;
+  const bodySlots = ['banner', 'control', 'header', 'lines', 'secondary', 'attachments', 'custom'] as const;
   const railSlots = ['info', 'readiness', 'settlement', 'totals', 'custom'] as const;
   const bodySections = sections ?? {
+    banner: { show: false },
     control: { show: false },
     header: { show: false },
     lines: { show: false },
@@ -604,21 +670,21 @@ export function DocumentDetailScaffold({
   const railUsesDrawer = hasRail && (forceRailDrawer || railAutoCollapsed);
   const showInlineRail = hasRail && !railUsesDrawer && railPinned;
   const railState = { showInlineRail, railDrawerOpen };
-  const footerTotalsSection = footerSections?.totals;
-  const footerActionsSection = footerSections?.actions;
+  const resolveFooterSectionContent = (section?: DocumentScaffoldFooterSection): React.ReactNode => {
+    if (!section || section.show === false) return null;
+    const content = typeof section.content === 'function' ? section.content(railState) : section.content;
+    if (!section.preserveSpace && !isRenderable(content)) return null;
+    return content;
+  };
   const renderedFooterSummary =
     footerSections
-      ? shouldRenderScaffoldSection(footerTotalsSection)
-        ? footerTotalsSection?.content
-        : null
+      ? resolveFooterSectionContent(footerSections.totals)
       : typeof footerSummary === 'function'
         ? footerSummary(railState)
         : footerSummary;
   const renderedFooterActions =
     footerSections
-      ? shouldRenderScaffoldSection(footerActionsSection)
-        ? footerActionsSection?.content
-        : null
+      ? resolveFooterSectionContent(footerSections.actions)
       : typeof footerActions === 'function'
         ? footerActions(railState)
         : footerActions;
@@ -711,7 +777,7 @@ export function DocumentDetailScaffold({
         isWindow && 'w-full',
       )}
     >
-      <div className="flex-none flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex-none flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2.5 shadow-sm animate-fade-in dark:border-slate-800 dark:bg-slate-900">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
