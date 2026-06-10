@@ -1303,7 +1303,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             onRowRemove={(index) => removeLine(index)}
             onRowsChange={(lines) => setForm((prev) => ({ ...prev, lines }))}
             createEmptyRow={createEmptyLine}
-            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.invoicedQty || line.unitPriceDoc || line.taxCodeId || line.warehouseId)}
+            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId)}
             onRowAdd={addLine}
             addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
             columns={[
@@ -1882,7 +1882,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           rows={invoice.lines}
           disabled
           onRowChange={() => undefined}
-          isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.invoicedQty || line.unitPriceDoc || line.taxCodeId || line.warehouseId)}
+          isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId)}
           addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
           columns={[
             {

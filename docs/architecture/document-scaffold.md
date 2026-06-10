@@ -68,7 +68,7 @@ This keeps Sales Invoice, Purchase Invoice, Sales Order, Delivery Note, Quotatio
 
 `frontend/src/components/shared/ClassicLineItemsTable.tsx` is the required line-grid surface for native document pages. It owns behavior that must not be reimplemented page-by-page:
 
-- row right-click context menu: copy, paste, delete, insert row, highlight
+- row right-click context menu: copy, paste, delete, insert row, highlight, explicit row color
 - table context menu from the empty `#` header cell: copy, paste, clean, export, import, UI selector
 - resizable columns saved in `localStorage` per `tableId`
 - per-table local preferences for classic/web skin, row coloring, text size, and number font
@@ -78,6 +78,8 @@ This keeps Sales Invoice, Purchase Invoice, Sales Order, Delivery Note, Quotatio
 - optional read-only/view filtering of blank rows when the page supplies `isRowFilled`
 
 Every native document table must pass a stable `tableId` so local column widths and UI preferences do not leak across document types.
+
+Pages that use `minEditRows` or auto-append must make `isRowFilled` ignore default numeric placeholders such as quantity `1` or price `0`. A blank working line is only filled when it has real business content such as item, description, warehouse, account, tax, or another selected reference. This prevents placeholder rows from triggering endless auto-append loops. This contract is enforced at every native document table consumer, not only the page where a regression is first noticed.
 
 ## Accounting Boundary
 

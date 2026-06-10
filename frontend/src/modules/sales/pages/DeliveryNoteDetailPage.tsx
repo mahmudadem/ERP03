@@ -696,7 +696,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
             onRowRemove={!form.salesOrderId ? removeLine : undefined}
             onRowsChange={!form.salesOrderId ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
             createEmptyRow={createEmptyLine}
-            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.deliveredQty || line.warehouseId)}
+            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.warehouseId)}
             onRowAdd={!form.salesOrderId ? addLine : undefined}
             addLabel={t('sales.dnDetail.addItem')}
             minTableWidth="820px"

@@ -295,6 +295,8 @@ These changes are UI/data-integrity improvements only. They do not change AP pos
 
 Purchase document line sections now share the configurable line table shell at `frontend/src/components/shared/ClassicLineItemsTable.tsx`. Purchase Invoice already used it; Purchase Order, Goods Receipt, and Purchase Return create/edit/view line sections now render through the same table chrome with document-specific columns.
 
+Native purchase document line tables treat default numeric placeholders as blank for the shared table's `isRowFilled` contract. A row with only default quantity, price, or cost is not business content, so it must not trigger the table auto-append behavior.
+
 Goods Receipt draft/edit and Purchase Return saved/edit views now render through `DocumentDetailScaffold`, giving them the same compact topbar, badges, side rail, footer totals/actions, and workspace scroll behavior as Purchase Invoice and Purchase Order. Purchase Return create mode keeps its source-picking card flow for now, but its return line table uses the shared line shell.
 
 Operational Purchases lists now use `OperationalListLayout` across Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns. Goods Receipts and Purchase Returns were migrated from custom card/table pages to the shared list shell with inline filters, quick status pills, centered columns, row actions, and 25-row pagination.

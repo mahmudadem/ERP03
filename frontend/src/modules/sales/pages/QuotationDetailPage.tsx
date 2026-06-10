@@ -689,7 +689,7 @@ const QuotationDetailPage: React.FC = () => {
             onRowRemove={!isReadOnly ? removeLine : undefined}
             onRowsChange={!isReadOnly ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
             createEmptyRow={createEmptyLine}
-            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.quotedQty || line.unitPriceDoc || line.discountValue)}
+            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description)}
             onRowAdd={!isReadOnly ? addLine : undefined}
             addLabel={t('sales.quoteDetail.addLine', 'Add Line')}
             minTableWidth="1120px"

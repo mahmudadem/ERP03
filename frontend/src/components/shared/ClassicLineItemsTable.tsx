@@ -16,7 +16,7 @@
  * export/import, local table skin preferences, and optional 25-line edit mode.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Clipboard, Copy, Download, Eraser, Palette, Plus, Settings2, Trash2, Upload } from 'lucide-react';
+import { Check, Clipboard, Copy, Download, Eraser, Palette, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -106,6 +106,7 @@ type TableSkin = 'classic' | 'web';
 type AlternatingRows = 'none' | 'soft' | 'strong';
 type TableTextSize = 'compact' | 'normal' | 'large';
 type NumberFont = 'mono' | 'tabular' | 'sans';
+type RowColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet';
 
 type TablePreferences = {
   skin: TableSkin;
@@ -201,6 +202,22 @@ const parseColumnWidth = (width: string | undefined): number => {
   return Number.isFinite(parsed) ? parsed : 140;
 };
 
+const rowColorClasses: Record<RowColor, string> = {
+  amber: 'bg-amber-100/80 dark:bg-amber-950/30',
+  blue: 'bg-blue-100/75 dark:bg-blue-950/30',
+  green: 'bg-emerald-100/75 dark:bg-emerald-950/30',
+  rose: 'bg-rose-100/75 dark:bg-rose-950/30',
+  violet: 'bg-violet-100/75 dark:bg-violet-950/30',
+};
+
+const rowColorSwatches: Array<{ color: RowColor; className: string; labelKey: string; fallback: string }> = [
+  { color: 'amber', className: 'bg-amber-300 ring-amber-500', labelKey: 'lineItemsTable.menu.rowColorAmber', fallback: 'Amber' },
+  { color: 'blue', className: 'bg-blue-300 ring-blue-500', labelKey: 'lineItemsTable.menu.rowColorBlue', fallback: 'Blue' },
+  { color: 'green', className: 'bg-emerald-300 ring-emerald-500', labelKey: 'lineItemsTable.menu.rowColorGreen', fallback: 'Green' },
+  { color: 'rose', className: 'bg-rose-300 ring-rose-500', labelKey: 'lineItemsTable.menu.rowColorRose', fallback: 'Rose' },
+  { color: 'violet', className: 'bg-violet-300 ring-violet-500', labelKey: 'lineItemsTable.menu.rowColorViolet', fallback: 'Violet' },
+];
+
 /**
  * Generic Classic line-items table.
  */
@@ -234,6 +251,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
   const showRemove = !!onRowRemove;
   const storageKey = `erp03.lineItemsTable.${tableId}.preferences`;
   const highlightStorageKey = `erp03.lineItemsTable.${tableId}.highlights`;
+  const rowColorStorageKey = `erp03.lineItemsTable.${tableId}.rowColors`;
   const widthStorageKey = `erp03.lineItemsTable.${tableId}.columnWidths`;
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [preferences, setPreferences] = useState<TablePreferences>(() => safeReadPreferences(storageKey));
@@ -254,6 +272,14 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
       return new Set(JSON.parse(window.localStorage.getItem(highlightStorageKey) || '[]'));
     } catch {
       return new Set();
+    }
+  });
+  const [rowColors, setRowColors] = useState<Record<number, RowColor>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(rowColorStorageKey) || '{}');
+    } catch {
+      return {};
     }
   });
 
@@ -283,6 +309,11 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(highlightStorageKey, JSON.stringify(Array.from(highlightedRows)));
   }, [highlightStorageKey, highlightedRows]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(rowColorStorageKey, JSON.stringify(rowColors));
+  }, [rowColorStorageKey, rowColors]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -375,6 +406,22 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     closeContextMenu();
   };
 
+  const setRowColor = (rowIndex: number, color: RowColor | null) => {
+    setRowColors((current) => {
+      const next = { ...current };
+      if (color) next[rowIndex] = color;
+      else delete next[rowIndex];
+      return next;
+    });
+    setHighlightedRows((current) => {
+      if (color || !current.has(rowIndex)) return current;
+      const next = new Set(current);
+      next.delete(rowIndex);
+      return next;
+    });
+    closeContextMenu();
+  };
+
   const copyTable = async () => {
     await navigator.clipboard?.writeText(JSON.stringify(rows.filter(rowIsFilled), null, 2));
     toast.success(t('lineItemsTable.toast.tableCopied', 'Table copied'));
@@ -399,6 +446,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     if (disabled || !createEmptyRow || !onRowsChange) return;
     updateRows(Array.from({ length: minEditRows }, createEmptyRow));
     setHighlightedRows(new Set());
+    setRowColors({});
     toast.success(t('lineItemsTable.toast.tableCleaned', 'Table cleaned'));
     closeContextMenu();
   };
@@ -551,7 +599,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
           }}
         />
         <div
-          className="fixed z-[91] w-52 rounded-lg border border-slate-200 bg-white py-1.5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+          className="fixed z-[91] w-52 rounded-md border border-slate-200 bg-white py-1.5 shadow-md dark:border-slate-800 dark:bg-slate-900"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           {contextMenu.type === 'row' ? (
@@ -568,6 +616,30 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
               <button type="button" onClick={() => toggleHighlight(contextMenu.rowIndex)} className={menuButtonClass}>
                 <Palette className="h-3.5 w-3.5" /> {highlightedRows.has(contextMenu.rowIndex) ? t('lineItemsTable.menu.removeHighlight', 'Remove highlight') : t('lineItemsTable.menu.highlight', 'Highlight')}
               </button>
+              <div className="px-3 py-2">
+                <div className="mb-1.5 text-[10px] font-black uppercase tracking-wide text-slate-400">
+                  {t('lineItemsTable.menu.rowColor', 'Row color')}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {rowColorSwatches.map((swatch) => (
+                    <button
+                      key={swatch.color}
+                      type="button"
+                      onClick={() => setRowColor(contextMenu.rowIndex, swatch.color)}
+                      className={`h-5 w-5 rounded-sm ring-offset-1 ring-offset-white transition ${swatch.className} ${rowColors[contextMenu.rowIndex] === swatch.color ? 'ring-2' : 'ring-0 hover:ring-1'} dark:ring-offset-slate-900`}
+                      title={t(swatch.labelKey, swatch.fallback)}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setRowColor(contextMenu.rowIndex, null)}
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    title={t('lineItemsTable.menu.clearRowColor', 'Clear row color')}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
               <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
               <button type="button" onClick={() => deleteRow(contextMenu.rowIndex)} disabled={!canEditRows || !onRowRemove} className={dangerMenuButtonClass}>
                 <Trash2 className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.delete', 'Delete')}
@@ -744,6 +816,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
             ) : (
               visibleEntries.map(({ row, rowIndex }, displayIndex) => {
                 const isHighlighted = highlightedRows.has(rowIndex);
+                const rowColorClass = rowColors[rowIndex] ? rowColorClasses[rowColors[rowIndex]] : '';
                 const alternatingClass =
                   preferences.alternatingRows === 'none'
                     ? ''
@@ -759,7 +832,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                     event.preventDefault();
                     setContextMenu({ type: 'row', x: event.clientX, y: event.clientY, rowIndex });
                   }}
-                  className={`${alternatingClass} ${isHighlighted ? 'bg-amber-100/80 dark:bg-amber-950/30' : ''} hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-colors duration-100 border-b border-slate-100 dark:border-slate-800`}
+                  className={`${alternatingClass} ${isHighlighted ? rowColorClasses.amber : ''} ${rowColorClass} hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-colors duration-100 border-b border-slate-100 dark:border-slate-800`}
                 >
                   {showRowNumbers && (
                     <td className="p-2 text-slate-500 dark:text-slate-400 text-[11px] font-medium text-center border-r border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/20">

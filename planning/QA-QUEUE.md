@@ -10,6 +10,23 @@
 
 ## 🧪 Ready to Test
 
+### Sales/Purchases - Shared Line Table Auto-Append Regression Fix
+**Added by:** Codex (report 201)
+**What to test:**
+- Open `Sales -> Delivery Notes -> New Delivery Note` in Direct mode.
+- Expected: the line table shows a stable working grid and does not keep adding rows by itself.
+- Open `Sales -> Returns -> New Return`, select `Direct Return`.
+- Expected: the form opens without an infinite error/render loop, and the direct return line table stays stable.
+- Repeat the same stability check on Sales Orders, Quotations, Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns.
+- Right-click a row in DN or SR direct lines, choose a row color swatch, reload, and confirm the local row color persists for that table.
+- Right-click the row again and clear the row color.
+- Confirm the context menu shadow is subtle and does not look like a heavy floating card.
+
+**Known limitations:**
+- This is UI/local-preference behavior only. It does not change document totals, Delivery Note stock movement, Goods Receipt receipt behavior, Sales Return/Purchase Return posting, tax, AR/AP, refund/credit-note settlement, inventory valuation, approval, period locks, audit, backend DTOs, or ledger behavior.
+
+---
+
 ### Sales/Purchases - Native Document Shared Table And Action Tray
 **Added by:** Codex (report 200)
 **What to test:**

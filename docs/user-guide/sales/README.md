@@ -225,9 +225,9 @@ Sales Invoices remain the reference layout for Sales documents. Sales Orders, De
 
 - Sales document lists use the same list layout with quick status filters, inline filters, centered columns, row actions, and pagination.
 - Line item tables use the same compact grid style across invoices, orders, delivery notes, returns, and quotations.
-- Users can right-click a line to copy, paste, insert, delete, or highlight it when the document is editable.
+- Users can right-click a line to copy, paste, insert, delete, highlight it, or choose a line color when the document is editable.
 - Users can click/right-click the `#` header cell to copy, paste, clean, export, import, or open the table UI selector.
-- Column widths, row coloring, table layout style, text size, and number font are saved locally for the current user and document table.
+- Column widths, line colors, row coloring, table layout style, text size, and number font are saved locally for the current user and document table.
 - Side rails and sticky footers keep totals/status/actions visible on Sales Orders, Delivery Notes, Sales Invoices, and Sales Returns.
 - Native document pages now share the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.
 - A section can be hidden when it does not apply. For example, Sales Invoice can show settlement and footer totals, while Delivery Note can omit settlement without changing the rest of the page structure.

@@ -672,7 +672,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   unitCostDoc: 0,
                   lineId: `new-${Date.now()}`,
                 })}
-                isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.returnQty || line.unitCostDoc)}
+                isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName)}
                 onRowAdd={addLine}
                 addLabel="Add Item"
                 minTableWidth="980px"
@@ -1098,7 +1098,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
           unitCostDoc: 0,
           lineId: `new-${Date.now()}`,
         })}
-        isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.returnQty || line.unitCostDoc)}
+        isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName)}
         minTableWidth="760px"
         columns={[
           {

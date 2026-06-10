@@ -824,6 +824,8 @@ These changes are UI/layout only. They do not change Sales Order commercial calc
 
 Sales document line sections now use the shared configurable line table shell at `frontend/src/components/shared/ClassicLineItemsTable.tsx`. Sales Invoice already used this table; Sales Order, Delivery Note, Sales Return direct-entry lines, and Quotation lines now use the same table chrome with document-specific column definitions.
 
+Native Sales document line tables treat default numeric placeholders as blank for the shared table's `isRowFilled` contract. A row with only default quantity, price, or discount is not business content, so it must not trigger the table auto-append behavior. Row right-click actions also support explicit local-only row colors in addition to the original highlight action.
+
 Operational Sales lists now use `OperationalListLayout` for the full document family: Quotations, Sales Orders, Delivery Notes, Sales Invoices, and Sales Returns. The list shell owns the shared header, refresh/new actions, inline filters, quick status pills where applicable, centered scan-friendly columns, row actions, and internal table pagination.
 
 Quotation detail still owns its quote lifecycle header/actions because quote send/accept/reject/revise/convert actions are more lifecycle-specific than SO/DN/SR actions. Its line table and list page are standardized, but a future visual-only pass can move the outer shell to `DocumentDetailScaffold` once quote action placement is reviewed.

@@ -954,7 +954,7 @@ const SalesReturnDetailPage: React.FC = () => {
               onRowRemove={(index) => removeDirectLine(directLines[index].key)}
               onRowsChange={setDirectLines}
               createEmptyRow={newDirectLine}
-              isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.returnQty || line.unitPriceDoc)}
+              isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description)}
               onRowAdd={addDirectLine}
               addLabel={t('sales.returnDetail.addLine')}
               minTableWidth="920px"

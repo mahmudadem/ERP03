@@ -2793,3 +2793,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Not verified:** Authenticated visual QA was not completed because the in-app Browser tool was not exposed and Playwright is not installed. Dev server was started at `http://127.0.0.1:5173/` for smoke-check preparation.
 - **Time spent:** about 1.8 hours.
 - **Next:** Task 167 Slice 2 - Apex route coverage/wildcard handling, settings/profile shell decision, and authenticated English/Arabic RTL visual QA before any main tenant-shell cutover. Estimated 2-3 hours.
+### Session: 2026-06-10 (Shared Line Table Auto-Append Regression Sweep)
+
+- **Goal:** Fix Delivery Note rows increasing automatically, Sales Return direct form infinite render/error loop, add selectable line colors, soften the shared row context menu shadow, and sweep all other shared table consumers for the same numeric-default auto-append bug.
+- **What was done:** Corrected DN, direct SR, SO, Quote, PO, GRN, PI, and PR `isRowFilled` predicates so default numeric placeholders do not count as real line content for the shared table's auto-append behavior. Added explicit local-only row color swatches and clear-color action to `ClassicLineItemsTable`. Reduced the shared table context-menu shadow.
+- **Accounting impact:** UI/local-preference behavior only. No document totals, Delivery Note stock movement, Goods Receipt receipt behavior, Sales/Purchase Return posting, tax, AR/AP, refund/credit-note settlement, inventory valuation, approval, period-lock, audit, backend DTO, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing bundle/browser-data warnings. Scoped `git diff --check` passed for touched frontend files.
+- **Docs:** Updated `docs/architecture/document-scaffold.md`, `docs/architecture/sales.md`, Sales/Purchases user guides, `planning/QA-QUEUE.md`, `planning/ACTIVE.md`, and added [201-dn-sr-line-table-regression-fix.md](./done/201-dn-sr-line-table-regression-fix.md).
+- **Time spent:** ~0.9h.
+- **Next:** Manual QA DN/SR/SO/Quote/PO/GRN/PI/PR create/edit line tables in Classic and Windows mode, then continue native document table QA.

@@ -768,7 +768,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         onRowRemove={!isReadOnly ? removeLine : undefined}
         onRowsChange={!isReadOnly ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
         createEmptyRow={createEmptyLine}
-        isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.orderedQty || line.unitPriceDoc || line.taxCodeId || line.warehouseId)}
+        isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId)}
         onRowAdd={!isReadOnly ? addLine : undefined}
         addLabel={t('purchases.poDetail.addLine')}
         minTableWidth="1160px"
