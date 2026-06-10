@@ -49,6 +49,24 @@ Each slot uses the same `DocumentScaffoldSection` contract:
 
 Footer sections additionally accept `content` as a function of the rail state (`{ showInlineRail, railDrawerOpen }`). This is how the Sales Invoice behavior — footer totals strip only when the side rail is hidden, a short status line otherwise — is expressed through the named slots. Purchase Invoice uses this today.
 
+## Standard Rail Card Interiors
+
+The interiors of rail cards are standardized through four content primitives extracted from the
+Sales Invoice rail design. Document pages must compose these instead of hand-writing rail markup:
+
+- `DocumentRailFocus` — focused entity box (code / title / subtitle) plus an optional blue help
+  note. Used for invoice-style Info cards (SI, PI).
+- `DocumentRailKeyValueList` — label/value rows (value may be a `DocumentPill`). Used for status,
+  source, and fact cards (SO, DN, SR, GRN, PR Info/Status cards).
+- `DocumentRailChecklist` — readiness rows with `ok` (green), `warn` (red), or `info` (slate)
+  states. Used for Posting Readiness / Document Status checks (SI, PI, GRN).
+- `DocumentRailTotals` — light label/value rows plus the dark Grand Total box with the emerald
+  value and optional base-currency footer line. Used for every Totals card; documents without a
+  money grand total put their key quantity in the dark box (e.g. DN cost base, GRN received qty).
+
+`DocumentRailStat` remains for dense stat tiles inside document-specific cards (e.g. the PI
+settlement card) but is no longer the default rail language.
+
 ## Adoption Status (Task 202, 2026-06-10)
 
 All scaffold consumers now use the strict named slots: Purchase Invoice (draft + view), Sales Order, Delivery Note (draft + view), Sales Return (draft + view), Purchase Order, Goods Receipt (draft + view — the posted view newly adopted the scaffold), and Purchase Return. Migrating to named slots also fixed the rail layout at `2xl` width: each rail card is now a direct grid child, matching the Sales Invoice 4-row rail template.

@@ -25,6 +25,7 @@
 - Open a Purchase Return saved view: header grid, lines, totals summary, rail Info -> Document Status -> Totals; Unpost dialog still works.
 - On every document: hide the rail, restore it from the edge button, shrink the window below ~1280px and confirm the rail becomes an edge drawer. Repeat a sample in Arabic/RTL (drawer mirrors to the left).
 - On a very wide (2xl) screen, rail cards should fill the column height in the Sales Invoice rhythm instead of compressing into the top quarter.
+- **Rail interiors (added same day):** on SO, PO, DN, SR, GRN, and PR, each rail Totals card now looks like the Sales Invoice Totals card — light label/value rows ending in the dark Grand Total box with the green number — and status/source cards use the same key-value row style. Sections that do not apply to a document (e.g. Settlement on Sales Order) stay hidden by design.
 - Full QA script: [done/202-document-scaffold-true-template-adoption-phases-1-3.md](./done/202-document-scaffold-true-template-adoption-phases-1-3.md).
 
 **Known limitations:**

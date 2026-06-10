@@ -71,6 +71,20 @@ All remaining consumers migrated to strict named slots; **zero** legacy
 - Rail cards were mapped to template slots (status→`info`, totals→`totals`), so totals now
   consistently render last in the rail on every document, like SI.
 
+## Follow-up slice — standard rail card interiors (`ea4f26c0`, same day)
+
+Owner QA noticed the SO rail looked different from SI even after Phase 3 (different card
+interiors, and SO legitimately hides Settlement/Readiness). Fixed the leftover half: four
+interior primitives extracted from the SI rail — `DocumentRailFocus`, `DocumentRailKeyValueList`,
+`DocumentRailChecklist`, `DocumentRailTotals` (light rows + dark Grand Total box) — and consumed
+by PI, SO, DN, SR, PO, GRN, and PR rail cards. Every Totals card now ends in the SI dark box
+(documents without a money total put their key figure there: DN cost base, GRN received qty).
+Typecheck + production build green.
+
+**Extra QA step:** open SO/PO/DN/SR/GRN/PR and confirm each rail Totals card now looks like the
+SI Totals card (light rows + dark Grand Total box) and status/source cards use the same
+key-value row style; sections that do not apply (e.g. Settlement on SO) stay hidden.
+
 ## Not done (intentional)
 
 - **Phase 4 — Sales Invoice rebuild** onto the template: waits for settlement/over-payment

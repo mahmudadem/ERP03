@@ -19,6 +19,8 @@
 
 **Verification:** frontend typecheck after each phase; production build after Phases 2 and 3 (check:reports / check:no-confirm / check:sod-approve included) — all green. Legacy-usage grep sweep clean.
 
+**Follow-up same day (`ea4f26c0`):** owner QA noticed SO's rail still looked unlike SI. Standardized the rail card *interiors* too: new template primitives `DocumentRailFocus` / `DocumentRailKeyValueList` / `DocumentRailChecklist` / `DocumentRailTotals` (SI light rows + dark Grand Total box), consumed by PI, SO, DN, SR, PO, GRN, PR. Typecheck + build green.
+
 **Next:** Manual QA per [QA-QUEUE.md](./QA-QUEUE.md) (report 202 script), settlement QA (report 194), then Task 202 Phase 4 — rebuild Sales Invoice on the template.
 
 ## 2026-06-09 (Tue) — Native Document Shared Table And Action Tray
