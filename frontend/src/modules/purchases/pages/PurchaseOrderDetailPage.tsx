@@ -19,9 +19,9 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { FileText } from 'lucide-react';
 import {
   DocumentDetailScaffold,
@@ -823,28 +823,16 @@ const PurchaseOrderDetailPage: React.FC = () => {
             kind: 'custom',
             width: '95px',
             render: (line, index) => (
-              <select
-                className="h-9 w-full border-0 bg-transparent px-2 text-xs uppercase outline-none disabled:opacity-60"
-                value={
-                  findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                  line.uomId ||
-                  line.uom
-                }
+              <UomSelector
+                item={itemById[line.itemId]}
+                itemId={line.itemId}
+                valueId={line.uomId}
+                valueCode={line.uom}
+                usage="purchase"
                 disabled={isReadOnly || !line.itemId}
-                onChange={(e) => {
-                  const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                    (option) => (option.uomId || option.code) === e.target.value
-                  );
-                  setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                }}
-              >
-                <option value="">{line.itemId ? t('purchases.poDetail.uomSelect') : t('purchases.poDetail.uomNoItem')}</option>
-                {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                  <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                    {option.code}
-                  </option>
-                ))}
-              </select>
+                noBorder
+                onChange={(selected) => setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' })}
+              />
             ),
           },
           { id: 'unitPrice', label: t('purchases.poDetail.unitPriceColumn'), kind: 'number', width: '115px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: Number(value) }) },

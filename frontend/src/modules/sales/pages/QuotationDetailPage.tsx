@@ -7,7 +7,7 @@ import { QuoteDTO, QuoteLineDTO, QuoteStatus, salesOperationalApi } from '../../
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
 import { sharedApi, PartyDTO, TaxCodeDTO } from '../../../api/sharedApi';
-import { PartySelector, ItemSelector } from '../../../components/shared/selectors';
+import { PartySelector, ItemSelector, UomSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
@@ -727,7 +727,26 @@ const QuotationDetailPage: React.FC = () => {
                 ),
               } as ColumnDef<EditableLine>,
               { id: 'qty', label: t('sales.quoteDetail.colQty', 'Qty'), kind: 'number', width: '90px', accessor: (line) => line.quotedQty, setter: (value) => ({ quotedQty: Number(value) }) },
-              { id: 'uom', label: t('sales.quoteDetail.colUom', 'UOM'), kind: 'text', width: '90px', accessor: (line) => line.uom, setter: (value) => ({ uom: String(value).toUpperCase() }) },
+              {
+                id: 'uom',
+                label: t('sales.quoteDetail.colUom', 'UOM'),
+                kind: 'custom',
+                width: '90px',
+                render: (line, index) => isReadOnly ? (
+                  <div className="flex h-9 items-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">{line.uom}</div>
+                ) : (
+                  <UomSelector
+                    item={itemById[line.itemId]}
+                    itemId={line.itemId}
+                    valueId={line.uomId}
+                    valueCode={line.uom}
+                    usage="sales"
+                    disabled={!line.itemId}
+                    noBorder
+                    onChange={(selected) => setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' })}
+                  />
+                ),
+              },
               { id: 'unitPrice', label: t('sales.quoteDetail.colUnitPrice', 'Unit Price'), kind: 'number', width: '115px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: Number(value) }) },
               {
                 id: 'discountType',

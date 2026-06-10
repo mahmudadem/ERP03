@@ -106,13 +106,17 @@ type TableSkin = 'classic' | 'web';
 type AlternatingRows = 'none' | 'soft' | 'strong';
 type TableTextSize = 'compact' | 'normal' | 'large';
 type NumberFont = 'mono' | 'tabular' | 'sans';
-type RowColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet';
+type TableFont = 'apex' | 'system' | 'mono';
+type RowColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'white';
 
 type TablePreferences = {
   skin: TableSkin;
   alternatingRows: AlternatingRows;
   textSize: TableTextSize;
   numberFont: NumberFont;
+  tableFont: TableFont;
+  lineColor1: RowColor;
+  lineColor2: RowColor;
 };
 
 const defaultPreferences: TablePreferences = {
@@ -120,6 +124,9 @@ const defaultPreferences: TablePreferences = {
   alternatingRows: 'soft',
   textSize: 'compact',
   numberFont: 'mono',
+  tableFont: 'apex',
+  lineColor1: 'blue',
+  lineColor2: 'green',
 };
 
 type ContextMenuState =
@@ -196,6 +203,12 @@ const numberFontClasses: Record<NumberFont, string> = {
   sans: 'font-sans',
 };
 
+const tableFontClasses: Record<TableFont, string> = {
+  apex: 'font-sans',
+  system: '[font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif]',
+  mono: 'font-mono',
+};
+
 const parseColumnWidth = (width: string | undefined): number => {
   if (!width) return 140;
   const parsed = Number.parseInt(width, 10);
@@ -208,6 +221,7 @@ const rowColorClasses: Record<RowColor, string> = {
   green: 'bg-emerald-100/75 dark:bg-emerald-950/30',
   rose: 'bg-rose-100/75 dark:bg-rose-950/30',
   violet: 'bg-violet-100/75 dark:bg-violet-950/30',
+  white: 'bg-white dark:bg-slate-900',
 };
 
 const rowColorSwatches: Array<{ color: RowColor; className: string; labelKey: string; fallback: string }> = [
@@ -216,7 +230,17 @@ const rowColorSwatches: Array<{ color: RowColor; className: string; labelKey: st
   { color: 'green', className: 'bg-emerald-300 ring-emerald-500', labelKey: 'lineItemsTable.menu.rowColorGreen', fallback: 'Green' },
   { color: 'rose', className: 'bg-rose-300 ring-rose-500', labelKey: 'lineItemsTable.menu.rowColorRose', fallback: 'Rose' },
   { color: 'violet', className: 'bg-violet-300 ring-violet-500', labelKey: 'lineItemsTable.menu.rowColorViolet', fallback: 'Violet' },
+  { color: 'white', className: 'bg-white ring-slate-300 dark:bg-slate-800 dark:ring-slate-600', labelKey: 'lineItemsTable.menu.rowColorWhite', fallback: 'White' },
 ];
+
+const rowColorSoftClasses: Record<RowColor, string> = {
+  amber: 'bg-amber-50/70 dark:bg-amber-950/20',
+  blue: 'bg-blue-50/70 dark:bg-blue-950/20',
+  green: 'bg-emerald-50/70 dark:bg-emerald-950/20',
+  rose: 'bg-rose-50/70 dark:bg-rose-950/20',
+  violet: 'bg-violet-50/70 dark:bg-violet-950/20',
+  white: 'bg-white dark:bg-slate-950',
+};
 
 /**
  * Generic Classic line-items table.
@@ -511,6 +535,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
 
       case 'computed': {
         const raw = col.compute ? col.compute(row, rowIndex) : '';
+        const isBlankPlaceholderZero = !rowIsFilled(row) && (raw === 0 || raw === '0' || raw === '0.00');
         const formatted = col.formatter
           ? col.formatter(raw)
           : typeof raw === 'number'
@@ -518,7 +543,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
             : String(raw ?? '');
         return (
           <div className="px-3 py-2 h-9 flex items-center justify-end text-xs font-mono font-bold text-slate-900 dark:text-slate-100 bg-slate-50/40 dark:bg-slate-900/30">
-            {formatted}
+            {isBlankPlaceholderZero ? '' : formatted}
           </div>
         );
       }
@@ -539,10 +564,11 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
 
       case 'number': {
         const value = col.accessor ? col.accessor(row) : '';
+        const isBlankPlaceholderZero = !rowIsFilled(row) && (value === 0 || value === '0');
         return (
           <input
             type="number"
-            value={value ?? ''}
+            value={isBlankPlaceholderZero ? '' : value ?? ''}
             placeholder=""
             disabled={disabled}
             step="any"
@@ -714,6 +740,33 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
               <PreferenceButton active={preferences.numberFont === 'tabular'} onClick={() => setPreference('numberFont', 'tabular')} label={t('lineItemsTable.preferences.tabular', 'Tabular')} />
               <PreferenceButton active={preferences.numberFont === 'sans'} onClick={() => setPreference('numberFont', 'sans')} label={t('lineItemsTable.preferences.sans', 'Sans')} />
             </PreferenceGroup>
+            <PreferenceGroup label={t('lineItemsTable.preferences.tableFont', 'Table font')}>
+              <PreferenceButton active={preferences.tableFont === 'apex'} onClick={() => setPreference('tableFont', 'apex')} label={t('lineItemsTable.preferences.apexFont', 'Apex / Inter')} />
+              <PreferenceButton active={preferences.tableFont === 'system'} onClick={() => setPreference('tableFont', 'system')} label={t('lineItemsTable.preferences.system', 'System')} />
+              <PreferenceButton active={preferences.tableFont === 'mono'} onClick={() => setPreference('tableFont', 'mono')} label={t('lineItemsTable.preferences.mono', 'Mono')} />
+            </PreferenceGroup>
+            <PreferenceGroup label={t('lineItemsTable.preferences.lineColor1', 'Line color 1')}>
+              {rowColorSwatches.map((swatch) => (
+                <ColorPreferenceButton
+                  key={swatch.color}
+                  active={preferences.lineColor1 === swatch.color}
+                  className={swatch.className}
+                  label={t(swatch.labelKey, swatch.fallback)}
+                  onClick={() => setPreference('lineColor1', swatch.color)}
+                />
+              ))}
+            </PreferenceGroup>
+            <PreferenceGroup label={t('lineItemsTable.preferences.lineColor2', 'Line color 2')}>
+              {rowColorSwatches.map((swatch) => (
+                <ColorPreferenceButton
+                  key={swatch.color}
+                  active={preferences.lineColor2 === swatch.color}
+                  className={swatch.className}
+                  label={t(swatch.labelKey, swatch.fallback)}
+                  onClick={() => setPreference('lineColor2', swatch.color)}
+                />
+              ))}
+            </PreferenceGroup>
           </div>
         </div>
       </div>
@@ -722,7 +775,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
 
   return (
     <div
-      className={`border border-slate-200 dark:border-slate-800 rounded overflow-hidden shadow-sm bg-white dark:bg-slate-950 ${preferences.skin === 'web' ? 'rounded-md' : ''} ${className}`}
+      className={`border border-slate-200 dark:border-slate-800 rounded overflow-hidden shadow-sm bg-white dark:bg-slate-950 ${tableFontClasses[preferences.tableFont]} ${preferences.skin === 'web' ? 'rounded-md' : ''} ${className}`}
     >
       <input
         ref={importInputRef}
@@ -821,10 +874,14 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                   preferences.alternatingRows === 'none'
                     ? ''
                     : preferences.alternatingRows === 'strong' && displayIndex % 2 === 1
-                      ? 'bg-slate-100/70 dark:bg-slate-900/70'
+                      ? rowColorClasses[preferences.lineColor2]
+                      : preferences.alternatingRows === 'strong'
+                        ? rowColorClasses[preferences.lineColor1]
                       : preferences.alternatingRows === 'soft' && displayIndex % 2 === 1
-                        ? 'bg-slate-50/60 dark:bg-slate-900/35'
-                        : '';
+                        ? rowColorSoftClasses[preferences.lineColor2]
+                        : preferences.alternatingRows === 'soft'
+                          ? rowColorSoftClasses[preferences.lineColor1]
+                          : '';
                 return (
                 <tr
                   key={rowIndex}
@@ -910,6 +967,35 @@ function PreferenceButton({ active, label, onClick }: { active: boolean; label: 
           : 'text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100'
       }`}
     >
+      {active && <Check className="h-3 w-3" />}
+      {label}
+    </button>
+  );
+}
+
+function ColorPreferenceButton({
+  active,
+  className,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  className: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className={`inline-flex h-7 items-center gap-1 rounded px-2 text-[10px] font-black uppercase tracking-wide transition-colors ${
+        active
+          ? 'bg-white text-blue-700 shadow-sm ring-1 ring-blue-200 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900'
+          : 'text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100'
+      }`}
+    >
+      <span className={`h-3.5 w-3.5 rounded-sm ${className}`} />
       {active && <Check className="h-3 w-3" />}
       {label}
     </button>

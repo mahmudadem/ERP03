@@ -101,8 +101,17 @@ This keeps Sales Invoice, Purchase Invoice, Sales Order, Delivery Note, Quotatio
 - table context menu from the empty `#` header cell: copy, paste, clean, export, import, UI selector
 - resizable columns saved in `localStorage` per `tableId`
 - per-table local preferences for classic/web skin, row coloring, text size, and number font
+- per-table line color 1 / line color 2 preferences, plus table font selection. The default
+  table font is the Apex/app sans font (`Inter` through the app font variable); mono remains
+  available for code-like workspaces and number cells can still use a separate number font.
 - blank visual cells until values are entered; input placeholder text is suppressed in the table
+- numeric zero placeholders render blank on empty working rows. Once a row has real business
+  content, zero remains visible as an intentional value.
 - borderless custom selector cells, with callers expected to pass shared selectors using `noBorder`
+- item UOM cells must use `frontend/src/components/shared/selectors/UomSelector.tsx`. The selector
+  can default from the selected item's sales or purchase UOM, but it only offers UOMs defined on
+  that item (base, sales, purchase, and active item conversions). It has refresh and item-card
+  navigation for maintenance; it must not create global UOMs from document lines.
 - optional 25-line edit-mode working grid when the page supplies `createEmptyRow` and `onRowsChange`
 - optional read-only/view filtering of blank rows when the page supplies `isRowFilled`
 

@@ -2603,6 +2603,18 @@ Also recorded a Phase E follow-up: role-gate the Override Period Lock button, ad
 - Backend `tsc --noEmit`: ✅ clean
 - Frontend `tsc --noEmit`: ✅ clean
 - 19 new tests: ✅ all passing
+### Session: 2026-06-10 (Shared Line Table UOM Selector and Settings Polish)
+
+- **Goal:** Polish the shared native document line table: hide numeric zero placeholders on empty working rows, add table-level line color/font options, and replace page-local UOM dropdown/free-text cells with a shared item-scoped UOM selector.
+- **What was done:** Updated `ClassicLineItemsTable` so empty rows show blank numeric cells until the row has real business content. Added table font selection plus Line Color 1 / Line Color 2 settings. Added shared `UomSelector` with item-default UOM population, editable input, multi-match picker modal, refresh, and item-card link. Wired it into Sales Invoice, Sales Order, Delivery Note, Quotation, Purchase Invoice, Purchase Order, Goods Receipt, and Purchase Return line tables.
+- **Accounting impact:** UI/data-entry only. No posting, tax, UOM conversion math, inventory valuation, AR/AP, settlement, approval, period-lock, audit, backend DTO, repository, or ledger behavior changed. UOM choices are intentionally constrained to UOMs defined on the selected item; no new UOM creation is allowed from document lines.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Docs:** Updated `docs/architecture/document-scaffold.md`, Sales/Purchases user guides, `planning/QA-QUEUE.md`, `planning/ACTIVE.md`, and added [203-shared-line-table-uom-and-settings.md](./done/203-shared-line-table-uom-and-settings.md).
+- **Time spent:** ~1.8h.
+- **Next:** Manual QA report 203 in Classic and Windows mode, then continue the existing native document QA queue before further table-wide changes.
+
+---
+
 - Full suite: 1197 pass / 3 fail (pre-existing) / 18 skip — 0 regressions
 
 **Time spent:** ~2 hours

@@ -227,7 +227,9 @@ Sales Invoices remain the reference layout for Sales documents. Sales Orders, De
 - Line item tables use the same compact grid style across invoices, orders, delivery notes, returns, and quotations.
 - Users can right-click a line to copy, paste, insert, delete, highlight it, or choose a line color when the document is editable.
 - Users can click/right-click the `#` header cell to copy, paste, clean, export, import, or open the table UI selector.
-- Column widths, line colors, row coloring, table layout style, text size, and number font are saved locally for the current user and document table.
+- Column widths, line colors, row coloring, table layout style, text size, table font, number font, and the two alternating line colors are saved locally for the current user and document table.
+- Empty numeric cells stay blank on new working rows instead of showing `0` placeholders. A zero appears only after the row has real line content.
+- UOM cells use an item-aware selector. After you select an item, the default sales UOM fills in automatically. If you need another UOM, edit the cell and choose from the UOMs already defined on that item; use the item-card link in the selector popup to maintain item UOMs.
 - Side rails and sticky footers keep totals/status/actions visible on Sales Orders, Delivery Notes, Sales Invoices, and Sales Returns.
 - Native document pages now share the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.
 - A section can be hidden when it does not apply. For example, Sales Invoice can show settlement and footer totals, while Delivery Note can omit settlement without changing the rest of the page structure.

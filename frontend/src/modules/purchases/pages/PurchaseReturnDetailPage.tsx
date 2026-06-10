@@ -7,11 +7,11 @@ import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyCurrencies } from '../../accounting/hooks/useCompanyCurrencies';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { FileText } from 'lucide-react';
 import {
   DocumentDetailScaffold,
@@ -714,23 +714,16 @@ const PurchaseReturnDetailPage: React.FC = () => {
                     kind: 'custom',
                     width: '100px',
                     render: (line) => (
-                      <select
-                        className="h-9 w-full border-0 bg-transparent px-2 text-xs uppercase outline-none disabled:opacity-60"
-                        value={
-                          findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                          line.uomId ||
-                          line.uom
-                        }
+                      <UomSelector
+                        item={itemById[line.itemId]}
+                        itemId={line.itemId}
+                        valueId={line.uomId}
+                        valueCode={line.uom}
+                        usage="purchase"
                         disabled={!line.itemId}
-                        onChange={(e) => handleUomChange(line.lineId, line.itemId, e.target.value)}
-                      >
-                        <option value="">{line.itemId ? 'Select' : 'No item'}</option>
-                        {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                          <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                            {option.code}
-                          </option>
-                        ))}
-                      </select>
+                        noBorder
+                        onChange={(selected) => handleUomChange(line.lineId, line.itemId, selected?.uomId || selected?.code || '')}
+                      />
                     ),
                   },
                   { id: 'unitCost', label: 'Unit Price', kind: 'number', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }) },
@@ -1156,32 +1149,22 @@ const PurchaseReturnDetailPage: React.FC = () => {
             kind: 'custom',
             width: '110px',
             render: (line, index) => isEditMode ? (
-              <select
-                className="h-9 w-full border-0 bg-transparent px-2 text-xs uppercase outline-none disabled:opacity-60"
-                value={
-                  findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                  line.uomId ||
-                  line.uom
-                }
+              <UomSelector
+                item={itemById[line.itemId]}
+                itemId={line.itemId}
+                valueId={line.uomId}
+                valueCode={line.uom}
+                usage="purchase"
                 disabled={!line.itemId}
-                onChange={(e) => {
-                  const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                    (option) => (option.uomId || option.code) === e.target.value
-                  );
+                noBorder
+                onChange={(selected) => {
                   setEditLines((prev) =>
                     prev.map((entry, i) =>
                       i === index ? { ...entry, uomId: selected?.uomId, uom: selected?.code || '' } : entry
                     )
                   );
                 }}
-              >
-                <option value="">{line.itemId ? 'Select' : 'No item'}</option>
-                {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                  <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                    {option.code}
-                  </option>
-                ))}
-              </select>
+              />
             ) : (
               <div className="flex h-9 items-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">{line.uom}</div>
             ),

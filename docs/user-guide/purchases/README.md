@@ -172,7 +172,9 @@ Purchase Orders and Purchase Invoices use the same document page skeleton as the
 - Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns now share the same line-table style. The columns change by document type, but the row layout, add/remove controls, and scan pattern stay consistent.
 - Editable purchase document lines support row right-click actions: copy, paste, insert, delete, highlight, and line color.
 - Clicking or right-clicking the `#` header cell opens table actions: copy, paste, clean, export, import, and the table UI selector.
-- Column widths, line colors, row coloring, table layout style, text size, and number font are saved locally for the current user and document table.
+- Column widths, line colors, row coloring, table layout style, text size, table font, number font, and the two alternating line colors are saved locally for the current user and document table.
+- Empty numeric cells stay blank on new working rows instead of showing `0` placeholders. A zero appears only after the row has real line content.
+- UOM cells use an item-aware selector. After you select an item, the default purchase UOM fills in automatically. If you need another UOM, edit the cell and choose from the UOMs already defined on that item; use the item-card link in the selector popup to maintain item UOMs.
 - Goods Receipts and Purchase Returns now use the same list layout as Purchase Invoices, with quick status filters, inline filters, centered columns, row actions, and pagination.
 - Goods Receipt draft/edit and Purchase Return saved/edit pages now use the same compact document shell with side rail and sticky footer actions.
 - Native purchase document pages now follow the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.

@@ -13,9 +13,9 @@ import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { StatusChip } from '../../../components/ui/StatusChip';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
@@ -758,28 +758,16 @@ const DeliveryNoteDetailPage: React.FC = () => {
                 kind: 'custom',
                 width: '110px',
                 render: (line, index) => (
-                  <select
-                    className="h-9 w-full border-0 bg-transparent px-2 text-xs uppercase outline-none disabled:opacity-60"
-                    value={
-                      findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                      line.uomId ||
-                      line.uom
-                    }
+                  <UomSelector
+                    item={itemById[line.itemId]}
+                    itemId={line.itemId}
+                    valueId={line.uomId}
+                    valueCode={line.uom}
+                    usage="sales"
                     disabled={!line.itemId || !!form.salesOrderId || busy}
-                    onChange={(e) => {
-                      const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                        (option) => (option.uomId || option.code) === e.target.value
-                      );
-                      setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                    }}
-                  >
-                    <option value="">{line.itemId ? t('sales.dnDetail.selectUom') : t('sales.dnDetail.noItem')}</option>
-                    {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                      <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                        {option.code}
-                      </option>
-                    ))}
-                  </select>
+                    noBorder
+                    onChange={(selected) => setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' })}
+                  />
                 ),
               },
               {

@@ -10,6 +10,18 @@
 
 ## 🧪 Ready to Test
 
+### Native Documents — Shared Line Table UOM and Settings Polish
+**Added by:** Codex (report 203)
+**What to test:**
+- Open Sales Invoice, Sales Order, Delivery Note, Quotation, Purchase Invoice, Purchase Order, Goods Receipt, and Purchase Return in Classic and Windows mode.
+- Select an item on a new line and confirm the default sales/purchase UOM fills automatically.
+- Edit the UOM cell. If there is one match, it should select directly; if there are multiple item UOMs, the selector modal should open.
+- In the modal, confirm only item-defined UOMs are available, the refresh button reloads item UOMs, and the item-card link opens the item.
+- Open table settings from the `#` header and confirm table font plus Line Color 1 / Line Color 2 persist after reload.
+- Confirm untouched empty rows show blank numeric cells instead of `0` placeholders.
+
+---
+
 ### Sales/Purchases - Document Template True Adoption (Phases 1-3)
 **Added by:** Claude (report 202)
 **What to test:**

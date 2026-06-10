@@ -20,12 +20,12 @@ import { errorHandler } from '../../../services/errorHandler';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { PartySelector, ItemSelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { clsx } from 'clsx';
 import {
   AlertTriangle,
@@ -1320,31 +1320,17 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 kind: 'custom',
                 width: '90px',
                 render: (row, index) => {
-                  const opts = uomOptionsByItemId[row.itemId] || [];
-                  const value =
-                    findItemUomOption(opts, row.uomId, row.uom)?.uomId || row.uomId || row.uom || '';
                   return (
-                    <select
-                      value={value}
+                    <UomSelector
+                      item={itemById[row.itemId]}
+                      itemId={row.itemId}
+                      valueId={row.uomId}
+                      valueCode={row.uom}
+                      usage="purchase"
                       disabled={busy || !row.itemId}
-                      onChange={(e) => {
-                        const selected = opts.find(
-                          (option) => (option.uomId || option.code) === e.target.value,
-                        );
-                        setLine(index, {
-                          uomId: selected?.uomId,
-                          uom: selected?.code || '',
-                        });
-                      }}
-                      className="w-full h-9 px-2 bg-transparent border-0 outline-none text-xs uppercase text-slate-900 dark:text-slate-100 focus:bg-blue-50/40 dark:focus:bg-blue-950/20 appearance-none cursor-pointer"
-                    >
-                      <option value="">{row.itemId ? t('purchases.invoiceDetail.columns.select', 'Select') : t('purchases.invoiceDetail.columns.noItem', 'No item')}</option>
-                      {opts.map((option) => (
-                        <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                          {option.code}
-                        </option>
-                      ))}
-                    </select>
+                      noBorder
+                      onChange={(selected) => setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' })}
+                    />
                   );
                 },
               },
