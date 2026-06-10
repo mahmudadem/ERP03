@@ -3481,7 +3481,11 @@
         "subtotal": "Ara Toplam",
         "tax": "Vergi",
         "grand": "Genel Toplam",
-        "outstanding": "Ödenmemiş"
+        "outstanding": "Ödenmemiş",
+        "draftWorking": "Taslak satınalma faturası düzenleniyor.",
+        "draftSaved": "Taslak kaydedildi. Düzenlemek için Taslağı Düzenle'yi kullanın.",
+        "postedReadonly": "Kaydedilmiş belge salt okunurdur.",
+        "pendingApprovalReadonly": "Fatura, muhasebe onayı beklenirken kilitlidir."
       },
       "rail": {
         "info": "Bilgi",

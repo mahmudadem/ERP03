@@ -49,10 +49,9 @@ import {
   DocumentFooterTotalsStrip,
   DocumentHeaderGrid,
   DocumentIconButton,
-  DocumentLinesRegion,
   DocumentPill,
-  DocumentRailCard,
   DocumentRailStat,
+  DocumentScaffoldRailSections,
   DocumentSecondaryPanel,
   DocumentSegmentButton,
   DocumentSegmentedGroup,
@@ -937,12 +936,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         ]}
       />
     );
-    const draftSideRail = (
-      <>
-        <DocumentRailCard
-          title={t('purchases.invoiceDetail.rail.info', 'Info')}
-          action={<DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>}
-        >
+    const draftRailSections: DocumentScaffoldRailSections = {
+      info: {
+        title: t('purchases.invoiceDetail.rail.info', 'Info'),
+        action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>,
+        content: (
+          <>
           <div className="flex min-h-[132px] flex-col gap-2 overflow-auto p-2.5 text-xs">
             <div className="rounded border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
               <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">
@@ -959,9 +958,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               {t('purchases.invoiceDetail.rail.helpDraft', 'Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.')}
             </div>
           </div>
-        </DocumentRailCard>
-
-        <DocumentRailCard title={t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness')}>
+          </>
+        ),
+      },
+      readiness: {
+        title: t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
+        content: (
           <div className="space-y-1.5 p-2.5 text-xs">
             <div className={clsx(
               'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
@@ -996,19 +998,25 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               <span>{t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active')}</span>
             </div>
           </div>
-        </DocumentRailCard>
-
-        <SettlementBlock
-          variant="summary"
-          module="purchases"
-          mode={settlementMode}
-          rows={settlementRows}
-          partyAccountId={apAccountId}
-          partyAccountLabel={selectedVendorName || apAccountId}
-          outstandingBase={totals.grandTotalBase}
-        />
-
-        <DocumentRailCard title={t('purchases.invoiceDetail.rail.totalsTitle', 'Totals')} action={<DocumentPill tone="slate">{form.currency}</DocumentPill>}>
+        ),
+      },
+      settlement: {
+        content: (
+          <SettlementBlock
+            variant="summary"
+            module="purchases"
+            mode={settlementMode}
+            rows={settlementRows}
+            partyAccountId={apAccountId}
+            partyAccountLabel={selectedVendorName || apAccountId}
+            outstandingBase={totals.grandTotalBase}
+          />
+        ),
+      },
+      totals: {
+        title: t('purchases.invoiceDetail.rail.totalsTitle', 'Totals'),
+        action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
+        content: (
           <div className="space-y-1.5 p-2.5">
             <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
               <span className="font-bold text-slate-500">{t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal')}</span>
@@ -1031,9 +1039,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               )}
             </div>
           </div>
-        </DocumentRailCard>
-      </>
-    );
+        ),
+      },
+    };
 
     return (
       <DocumentDetailScaffold
@@ -1048,10 +1056,21 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             {activeSourceMode === 'po' && <DocumentPill tone="blue">{t('purchases.invoiceDetail.fromPOPill', 'From PO')}</DocumentPill>}
           </>
         }
-        sideRail={draftSideRail}
+        railSections={draftRailSections}
         railTitle={t('purchases.invoiceDetail.railTitle', 'Purchase invoice side rail')}
-        footerSummary={draftFooterSummary}
-        footerActions={
+        footerSections={{
+          totals: {
+            content: ({ showInlineRail, railDrawerOpen }) =>
+              showInlineRail || railDrawerOpen ? (
+                <div className="text-xs text-slate-500">
+                  {t('purchases.invoiceDetail.footer.draftWorking', 'Editing draft purchase invoice.')}
+                </div>
+              ) : (
+                draftFooterSummary
+              ),
+          },
+          actions: {
+            content: (
           <>
             <button
               type="button"
@@ -1086,11 +1105,17 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               </button>
             )}
           </>
-        }
-      >
-
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+            ),
+          },
+        }}
+        sections={{
+          banner: {
+            content: error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            ) : null,
+          },
+          control: {
+            content: (
         <DocumentControlPanel>
           <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1160,10 +1185,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
           </div>
         </DocumentControlPanel>
-
-        <DocumentCompactCard
-          title={activeSourceMode === 'po' ? t('purchases.invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('purchases.invoiceDetail.header.directBill', 'Header - Direct Bill')}
-          action={
+            ),
+          },
+          header: {
+            title: activeSourceMode === 'po' ? t('purchases.invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('purchases.invoiceDetail.header.directBill', 'Header - Direct Bill'),
+            cardClassName: 'overflow-visible',
+            action: (
             <div className="flex items-center gap-1.5">
               <DocumentPill tone={activeSourceMode === 'po' ? 'blue' : 'slate'}>
                 {activeSourceMode === 'po' ? t('purchases.invoiceDetail.fromPOPill', 'From PO') : t('purchases.invoiceDetail.sourceDirect', 'Direct')}
@@ -1176,9 +1203,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 </DocumentPill>
               )}
             </div>
-          }
-          className="overflow-visible"
-        >
+            ),
+            content: (
           <DocumentHeaderGrid>
             {activeSourceMode === 'po' ? (
               <>
@@ -1292,9 +1318,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               />
             </div>
           </DocumentHeaderGrid>
-        </DocumentCompactCard>
-
-        <DocumentLinesRegion>
+            ),
+          },
+          lines: {
+            content: (
           <ClassicLineItemsTable<EditableLine>
             tableId="purchases.invoice.lines"
             rows={form.lines}
@@ -1432,8 +1459,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             minRows={1}
             className="flex-1 [&>div:first-child]:h-full [&>div:first-child]:max-h-none"
           />
-        </DocumentLinesRegion>
-
+            ),
+          },
+          secondary: {
+            content: (
         <DocumentSecondaryPanel
           title={t('purchases.invoiceDetail.allocation.title', 'Account Ledger & Purchase Taxes Allocation Grid')}
           action={
@@ -1451,7 +1480,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             description={t('purchases.invoiceDetail.allocation.emptyDescription', 'Real AP, inventory, and tax allocation controls are not shown until the controlled allocation contract is implemented.')}
           />
         </DocumentSecondaryPanel>
-
+            ),
+          },
+          attachments: {
+            content: (
         <div className="grid gap-2 md:grid-cols-2">
           <DocumentCompactCard
             title={t('purchases.invoices.attachments.title', 'Attachments')}
@@ -1520,7 +1552,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
           </DocumentCompactCard>
         </div>
-
+            ),
+          },
+          custom: {
+            content: (
         <SettlementBlock
           module="purchases"
           mode={settlementMode}
@@ -1535,8 +1570,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           currencyCode={form.currency}
           onValidityChange={setSettlementValidity}
         />
-
-      </DocumentDetailScaffold>
+            ),
+          },
+        }}
+      />
     );
   }
 
@@ -1589,12 +1626,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       ]}
     />
   );
-  const viewSideRail = (
-    <>
-      <DocumentRailCard
-        title={t('purchases.invoiceDetail.rail.info', 'Info')}
-        action={<DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>}
-      >
+  const viewRailSections: DocumentScaffoldRailSections = {
+    info: {
+      title: t('purchases.invoiceDetail.rail.info', 'Info'),
+      action: <DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>,
+      content: (
+        <>
         <div className="flex min-h-[132px] flex-col gap-2 overflow-auto p-2.5 text-xs">
           <div className="rounded border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
             <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">
@@ -1611,9 +1648,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             {t('purchases.invoiceDetail.rail.helpView', 'Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.')}
           </div>
         </div>
-      </DocumentRailCard>
-
-      <DocumentRailCard title={invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.docStatusTitle', 'Document Status') : t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness')}>
+        </>
+      ),
+    },
+    readiness: {
+      title: invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.docStatusTitle', 'Document Status') : t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
+      content: (
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className={clsx(
             'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
@@ -1638,16 +1678,17 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             <span>{t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active')}</span>
           </div>
         </div>
-      </DocumentRailCard>
-
-      <DocumentRailCard
-        title={t('purchases.invoiceDetail.rail.settlementTitle', 'Settlement')}
-        action={
+      ),
+    },
+    settlement: {
+      title: t('purchases.invoiceDetail.rail.settlementTitle', 'Settlement'),
+      action: (
           <DocumentPill tone={invoice.paymentStatus === 'PAID' ? 'green' : invoice.paymentStatus === 'PARTIALLY_PAID' ? 'amber' : 'slate'}>
             {invoice.paymentStatus === 'UNPAID' ? t('purchases.invoiceDetail.rail.settlementCredit', 'Credit') : invoice.paymentStatus}
           </DocumentPill>
-        }
-      >
+      ),
+      content: (
+        <>
         <div className="grid grid-cols-2 gap-1.5 border-b border-slate-100 p-2 dark:border-slate-800">
           <DocumentRailStat label={t('purchases.invoiceDetail.rail.settlementPaid', 'Paid')} value={invoice.paidAmountBase.toFixed(2)} tone="green" />
           <DocumentRailStat label={t('purchases.invoiceDetail.rail.settlementRemaining', 'Remaining')} value={invoice.outstandingAmountBase.toFixed(2)} tone={invoice.outstandingAmountBase > 0 ? 'amber' : 'green'} />
@@ -1659,9 +1700,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </DocumentRailCard>
-
-      <DocumentRailCard title={t('purchases.invoiceDetail.rail.totalsTitle', 'Totals')} action={<DocumentPill tone="slate">{invoice.currency}</DocumentPill>}>
+        </>
+      ),
+    },
+    totals: {
+      title: t('purchases.invoiceDetail.rail.totalsTitle', 'Totals'),
+      action: <DocumentPill tone="slate">{invoice.currency}</DocumentPill>,
+      content: (
         <div className="space-y-1.5 p-2.5">
           <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
             <span className="font-bold text-slate-500">{t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal')}</span>
@@ -1684,9 +1729,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             )}
           </div>
         </div>
-      </DocumentRailCard>
-    </>
-  );
+      ),
+    },
+  };
 
   return (
     <>
@@ -1709,10 +1754,25 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           {invoice.purchaseOrderId && <DocumentPill tone="blue">{t('purchases.invoiceDetail.fromPOPill', 'From PO')}</DocumentPill>}
         </>
       }
-      sideRail={viewSideRail}
+      railSections={viewRailSections}
       railTitle={t('purchases.invoiceDetail.railTitle', 'Purchase invoice side rail')}
-      footerSummary={viewFooterSummary}
-      footerActions={
+      footerSections={{
+        totals: {
+          content: ({ showInlineRail, railDrawerOpen }) =>
+            showInlineRail || railDrawerOpen ? (
+              <div className="text-xs text-slate-500">
+                {invoice.status === 'PENDING_APPROVAL'
+                  ? t('purchases.invoiceDetail.footer.pendingApprovalReadonly', 'Invoice is locked while waiting for accounting approval.')
+                  : invoice.status === 'POSTED'
+                    ? t('purchases.invoiceDetail.footer.postedReadonly', 'Posted document is read-only.')
+                    : t('purchases.invoiceDetail.footer.draftSaved', 'Saved draft. Use Edit Draft to modify.')}
+              </div>
+            ) : (
+              viewFooterSummary
+            ),
+        },
+        actions: {
+          content: (
         <>
           <button
             type="button"
@@ -1781,26 +1841,33 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </button>
           )}
         </>
-      }
-    >
-
-      {/*
-        SoD: a Purchase Invoice in PENDING_APPROVAL is awaiting accounting approval. Purchases-side
-        cannot Approve its own postings. The accountant clears the parked state from the Approval
-        Center. See docs/architecture/posting-authority.md §4.1.
-      */}
-      {invoice.status === 'PENDING_APPROVAL' && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <div className="font-semibold mb-0.5">{t('purchases.invoiceDetail.pendingApproval.title', '⏳ Awaiting accounting approval')}</div>
-          <div className="text-amber-800">
-            {t('purchases.invoiceDetail.pendingApproval.body1', 'This invoice was submitted and is waiting for accounting to approve the ledger effect.')}
-            {' '}{t('purchases.invoiceDetail.pendingApproval.body2', 'You cannot edit it while it is pending. The decision will appear here when it is made.')}
-          </div>
-        </div>
-      )}
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+          ),
+        },
+      }}
+      sections={{
+        banner: {
+          content: (invoice.status === 'PENDING_APPROVAL' || error) ? (
+            <div className="grid gap-2">
+              {/*
+                SoD: a Purchase Invoice in PENDING_APPROVAL is awaiting accounting approval. Purchases-side
+                cannot Approve its own postings. The accountant clears the parked state from the Approval
+                Center. See docs/architecture/posting-authority.md §4.1.
+              */}
+              {invoice.status === 'PENDING_APPROVAL' && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <div className="font-semibold mb-0.5">{t('purchases.invoiceDetail.pendingApproval.title', '⏳ Awaiting accounting approval')}</div>
+                  <div className="text-amber-800">
+                    {t('purchases.invoiceDetail.pendingApproval.body1', 'This invoice was submitted and is waiting for accounting to approve the ledger effect.')}
+                    {' '}{t('purchases.invoiceDetail.pendingApproval.body2', 'You cannot edit it while it is pending. The decision will appear here when it is made.')}
+                  </div>
+                </div>
+              )}
+              {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+            </div>
+          ) : null,
+        },
+        control: {
+          content: (
       <DocumentControlPanel>
         <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1846,10 +1913,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           </div>
         </div>
       </DocumentControlPanel>
-
-      <DocumentCompactCard
-        title={invoice.purchaseOrderId ? t('purchases.invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('purchases.invoiceDetail.header.directBill', 'Header - Direct Bill')}
-        action={
+          ),
+        },
+        header: {
+          title: invoice.purchaseOrderId ? t('purchases.invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('purchases.invoiceDetail.header.directBill', 'Header - Direct Bill'),
+          action: (
           <div className="flex items-center gap-1.5">
             <DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? t('purchases.invoiceDetail.fromPOPill', 'From PO') : t('purchases.invoiceDetail.sourceDirect', 'Direct')}</DocumentPill>
             <DocumentPill tone="slate">{invoice.currency}</DocumentPill>
@@ -1860,8 +1928,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               </DocumentPill>
             )}
           </div>
-        }
-      >
+          ),
+          content: (
         <DocumentHeaderGrid>
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.invoiceNo', 'Invoice No.')} value={invoice.invoiceNumber} plain />
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.source', 'Source')} value={invoice.purchaseOrderId || t('purchases.invoiceDetail.viewHeader.direct', 'Direct')} plain />
@@ -1874,9 +1942,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.paymentTerms', 'Payment Terms')} value={`${invoice.paymentTermsDays}${t('purchases.invoiceDetail.viewHeader.days', ' days')}`} plain />
           <DocumentField label={t('purchases.invoiceDetail.viewHeader.directInvoicing', 'Direct Invoicing')} value={settings ? (settings.allowDirectInvoicing ? t('purchases.invoiceDetail.viewHeader.enabled', 'Enabled') : t('purchases.invoiceDetail.viewHeader.disabled', 'Disabled')) : '-'} plain />
         </DocumentHeaderGrid>
-      </DocumentCompactCard>
-
-      <DocumentLinesRegion>
+          ),
+        },
+        lines: {
+          content: (
         <ClassicLineItemsTable<PurchaseInvoiceLineDTO>
           tableId="purchases.invoice.view.lines"
           rows={invoice.lines}
@@ -1908,8 +1977,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           minRows={1}
           className="flex-1 [&>div:first-child]:h-full [&>div:first-child]:max-h-none"
         />
-      </DocumentLinesRegion>
-
+          ),
+        },
+        secondary: {
+          content: (
       <DocumentSecondaryPanel
         title={t('purchases.invoiceDetail.allocation.title', 'Account Ledger & Purchase Taxes Allocation Grid')}
         action={
@@ -1927,7 +1998,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           description={t('purchases.invoiceDetail.allocation.emptyDescription', 'Real AP, inventory, and tax allocation controls are not shown until the controlled allocation contract is implemented.')}
         />
       </DocumentSecondaryPanel>
-
+          ),
+        },
+        attachments: {
+          content: (
       <div className="grid gap-2 md:grid-cols-2">
         <DocumentCompactCard
           title={t('purchases.invoices.attachments.title', 'Attachments')}
@@ -2003,8 +2077,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           </div>
         </DocumentCompactCard>
       </div>
-
-    </DocumentDetailScaffold>
+          ),
+        },
+      }}
+    />
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}

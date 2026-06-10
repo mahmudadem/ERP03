@@ -3404,7 +3404,11 @@
         "subtotal": "Subtotal",
         "tax": "Tax",
         "grand": "Grand",
-        "outstanding": "Outstanding"
+        "outstanding": "Outstanding",
+        "draftWorking": "Editing draft purchase invoice.",
+        "draftSaved": "Saved draft. Use Edit Draft to modify.",
+        "postedReadonly": "Posted document is read-only.",
+        "pendingApprovalReadonly": "Invoice is locked while waiting for accounting approval."
       },
       "rail": {
         "info": "Info",

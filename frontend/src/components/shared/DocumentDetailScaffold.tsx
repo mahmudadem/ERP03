@@ -47,6 +47,8 @@ export type DocumentScaffoldSection = {
   action?: React.ReactNode;
   content?: React.ReactNode;
   className?: string;
+  /** Extra classes for the card wrapper rendered when `title` is set (e.g. 'overflow-visible' for dropdown-heavy headers). */
+  cardClassName?: string;
 };
 
 export type DocumentScaffoldFooterSection = Omit<DocumentScaffoldSection, 'content'> & {
@@ -95,7 +97,7 @@ const renderScaffoldBodySection = (
       )}
     >
       {section?.title ? (
-        <DocumentCompactCard title={section.title} action={section.action}>
+        <DocumentCompactCard title={section.title} action={section.action} className={section.cardClassName}>
           {section.content}
         </DocumentCompactCard>
       ) : (
@@ -398,19 +400,17 @@ export function DocumentSecondaryPanel({
   className?: string;
 }) {
   return (
-    <div className={clsx('flex min-h-[150px] flex-none flex-col gap-1.5 2xl:flex-[0.55]', className)}>
-      <div className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-2 py-1.5 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className={clsx('h-4 w-1 rounded-full', accentClassName)} />
-            <span className="truncate text-[11px] font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
-              {title}
-            </span>
-          </div>
-          {action}
+    <div className={clsx('overflow-hidden rounded border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950', className)}>
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-2 py-1.5 dark:border-slate-800 dark:bg-slate-950">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={clsx('h-4 w-1 rounded-full', accentClassName)} />
+          <span className="truncate text-[11px] font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
+            {title}
+          </span>
         </div>
-        {children}
+        {action}
       </div>
+      {children}
     </div>
   );
 }
