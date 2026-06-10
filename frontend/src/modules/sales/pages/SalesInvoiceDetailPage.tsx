@@ -42,18 +42,14 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
-import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { PartySelector, ItemSelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
 import { todayLocalIso } from '../../../utils/dateUtils';
 import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
   FileImage,
   FileSpreadsheet,
   FileText,
@@ -61,18 +57,34 @@ import {
   Info,
   Link2,
   Loader2,
-  Lock,
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
   Paperclip,
   ShieldCheck,
   Truck,
   Upload,
-  X,
 } from 'lucide-react';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import {
+  DocumentCompactCard,
+  DocumentControlPanel,
+  DocumentDetailScaffold,
+  DocumentEmptyPanel,
+  DocumentField,
+  DocumentFooterTotalsStrip,
+  DocumentHeaderGrid,
+  DocumentIconButton,
+  DocumentNoticeBanner,
+  DocumentPill,
+  DocumentRailChecklist,
+  DocumentRailFocus,
+  DocumentRailTotals,
+  DocumentSecondaryPanel,
+  DocumentSegmentButton,
+  DocumentSegmentedGroup,
+  DocumentStatusBanner,
+  documentHeaderControlClass,
+  documentHeaderLabelClass,
+  documentHeaderSelectorClass,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -199,89 +211,6 @@ const createEmptyLine = (): EditableLine => ({
   description: '',
 });
 
-function Field({
-  label,
-  value,
-  muted,
-  locked,
-  plain,
-}: {
-  label: string;
-  value: string;
-  muted?: boolean;
-  locked?: boolean;
-  plain?: boolean;
-}) {
-  return (
-    <label className="min-w-0 block">
-      <span className="mb-0.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 select-none">
-        {label}
-        {locked && <Lock className="h-3 w-3 text-slate-400" />}
-      </span>
-      <div
-        className={clsx(
-          'flex min-w-0 items-center rounded px-2 text-xs font-semibold',
-          plain ? 'h-8' : 'h-9',
-          plain
-            ? 'border border-transparent bg-transparent px-0 text-slate-900 dark:text-slate-100'
-            : locked
-            ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400'
-            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100',
-          !plain && 'border shadow-sm'
-        )}
-      >
-        <span className="truncate">{value}</span>
-      </div>
-    </label>
-  );
-}
-
-function CompactCard({
-  title,
-  children,
-  action,
-  className,
-}: {
-  title: string;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={clsx('shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col', className)}>
-      <div className="flex h-8 items-center justify-between border-b border-slate-150 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 px-3 shrink-0">
-        {title ? (
-          <h2 className="text-[10px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-350">{title}</h2>
-        ) : (
-          <span />
-        )}
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Pill({
-  children,
-  tone = 'slate',
-}: {
-  children: React.ReactNode;
-  tone?: 'slate' | 'blue' | 'green' | 'amber' | 'red';
-}) {
-  const tones = {
-    slate: 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
-    blue: 'border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300',
-    green: 'border-emerald-250 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300',
-    amber: 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300',
-    red: 'border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300',
-  };
-  return (
-    <span className={clsx('inline-flex h-5 items-center gap-1 rounded-full border px-2 text-[9px] font-black uppercase tracking-wide', tones[tone])}>
-      {children}
-    </span>
-  );
-}
 
 export interface SalesInvoiceDetailProps {
   invoiceId?: string;
@@ -296,7 +225,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   onClose,
   onSaved,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { company } = useCompanyAccess();
   const { hasPermission, isOwner } = useRBAC();
   const { salesSettings } = useDocumentPolicies();
@@ -308,10 +237,6 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const isCreateMode = !resolvedId || resolvedId === 'new';
   const { uiMode } = useUserPreferences();
   const isWindowsMode = uiMode === 'windows';
-  const isRtl = i18n.dir() === 'rtl';
-  const BackIcon = isRtl ? ArrowRight : ArrowLeft;
-  const RailOpenIcon = isRtl ? PanelLeftOpen : PanelRightOpen;
-  const RailCloseIcon = isRtl ? PanelLeftClose : PanelRightClose;
 
   const canOverrideCredit =
     salesSettings?.allowCreditOverride !== false &&
@@ -418,10 +343,6 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'so' | 'dn'>('direct');
   const [attachmentsPanelOpen, setAttachmentsPanelOpen] = useState(false);
-  const [railPinned, setRailPinned] = useState(true);
-  const [railDrawerOpen, setRailDrawerOpen] = useState(false);
-  const [railAutoCollapsed, setRailAutoCollapsed] = useState(false);
-
   const [railFocus, setRailFocus] = useState<RailFocus>(() => ({
     kind: 'account',
     title: 'AR - Customer Balance',
@@ -437,30 +358,6 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     setArAccountId('');
     setSettlementRows([]);
   }, [resolvedId]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const media = window.matchMedia('(max-width: 1279px)');
-    const syncRailMode = () => {
-      setRailAutoCollapsed(media.matches);
-      if (media.matches || isWindow || isWindowsMode) {
-        setRailDrawerOpen(false);
-      }
-    };
-
-    syncRailMode();
-    media.addEventListener('change', syncRailMode);
-    return () => media.removeEventListener('change', syncRailMode);
-  }, [isWindow, isWindowsMode]);
-
-  const railUsesDrawer = isWindow || isWindowsMode || railAutoCollapsed;
-  const showInlineRail = !railUsesDrawer && railPinned;
-
-  useEffect(() => {
-    if (!railUsesDrawer) {
-      setRailDrawerOpen(false);
-    }
-  }, [railUsesDrawer]);
 
   const isReadOnly = !isCreateMode && !(invoice?.status === 'DRAFT');
   const invoiceStatus = invoice?.status || form.status || (isCreateMode ? 'DRAFT' : undefined);
@@ -739,28 +636,20 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         kind: 'custom',
         width: '64px',
         render: (row, index, onChange) => {
-          const opts = uomOptionsByItemId[row.itemId] || [];
-          const val = findItemUomOption(opts, row.uomId, row.uom)?.uomId || row.uomId || row.uom || '';
           if (isReadOnly) {
             return <div className="text-center text-xs text-slate-800 dark:text-slate-200 uppercase">{row.uom || '—'}</div>;
           }
           return (
-            <select
-              value={val}
+            <UomSelector
+              item={itemById[row.itemId]}
+              itemId={row.itemId}
+              valueId={row.uomId}
+              valueCode={row.uom}
+              usage="sales"
               disabled={busy || !row.itemId}
-              onChange={(e) => {
-                const selected = opts.find((o) => (o.uomId || o.code) === e.target.value);
-                onChange({ uomId: selected?.uomId, uom: selected?.code || '' });
-              }}
-              className="w-full h-8 bg-transparent border-0 outline-none text-xs uppercase text-slate-900 dark:text-slate-100 focus:bg-blue-50/40 dark:focus:bg-blue-950/20 appearance-none cursor-pointer"
-            >
-              <option value="">{row.itemId ? t('sales.invoiceDetail.selectUomShort', 'Select') : '—'}</option>
-              {opts.map((option) => (
-                <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                  {option.code}
-                </option>
-              ))}
-            </select>
+              noBorder
+              onChange={(selected) => onChange({ uomId: selected?.uomId, uom: selected?.code || '' })}
+            />
           );
         },
       },
@@ -1955,46 +1844,46 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     const selectedSalesOrder = form.salesOrderId ? salesOrders.find((order) => order.id === form.salesOrderId) : undefined;
     const selectedWarehouseName = form.warehouseId ? warehouses.find((warehouse) => warehouse.id === form.warehouseId)?.name || form.warehouseId : '—';
     const selectedSalespersonName = form.salespersonId ? salespersons.find((sp) => sp.id === form.salespersonId)?.name || '—' : '—';
-    const headerLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
+    const headerLabelClass = documentHeaderLabelClass;
     const headerFieldWrapperClass = 'min-w-0';
-    const headerControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
-    const headerSelectorClass = 'h-9 [&>input]:h-9 [&>input]:rounded [&>input]:border-slate-300 [&>input]:py-0 [&>input]:text-xs dark:[&>input]:border-slate-700';
+    const headerControlClass = documentHeaderControlClass;
+    const headerSelectorClass = documentHeaderSelectorClass;
 
     return (
-      <CompactCard
+      <DocumentCompactCard
         title={activeSourceMode === 'so'
           ? t('sales.invoiceDetail.headerFromSO', 'Header - From Sales Order')
           : t('sales.invoiceDetail.headerDirect', 'Header - Direct Invoice')}
         action={
           <div className="flex items-center gap-1.5">
-            <Pill tone={activeSourceMode === 'so' ? 'blue' : 'slate'}>
+            <DocumentPill tone={activeSourceMode === 'so' ? 'blue' : 'slate'}>
               {activeSourceMode === 'so'
                 ? t('sales.invoiceDetail.sourceFromSO', 'From SO')
                 : t('sales.invoiceDetail.sourceDirect', 'Direct')}
-            </Pill>
-            <Pill tone="slate">{form.currency}</Pill>
+            </DocumentPill>
+            <DocumentPill tone="slate">{form.currency}</DocumentPill>
             {invoice?.status === 'POSTED' && (
-              <Pill tone="green">
+              <DocumentPill tone="green">
                 <ShieldCheck className="h-3 w-3" />
                 {t('sales.invoiceDetail.postedStatus', 'Policy OK')}
-              </Pill>
+              </DocumentPill>
             )}
           </div>
         }
         className="overflow-visible"
       >
-        <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
+        <DocumentHeaderGrid>
           {isReadOnly ? (
             <>
-              <Field label={t('sales.invoiceDetail.invoiceNo', 'Invoice No.')} value={invoice?.invoiceNumber || 'SI-DRAFT'} plain />
-              <Field label={t('sales.invoiceDetail.source', 'Source')} value={form.salesOrderId ? salesOrderLabelById[form.salesOrderId] || form.salesOrderId : t('sales.invoiceDetail.sourceDirect', 'Direct')} plain />
-              <Field label={t('sales.invoiceDetail.customer', 'Customer')} value={customerNameById[form.customerId] || form.customerName || '—'} plain />
-              <Field label={t('sales.invoiceDetail.invoiceDate', 'Invoice Date')} value={form.invoiceDate} plain />
-              <Field label={t('sales.invoiceDetail.currency', 'Currency')} value={form.currency} plain />
-              <Field label={t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')} value={String(form.exchangeRate || 1)} plain />
-              {activeSourceMode === 'direct' && <Field label={t('sales.invoiceDetail.mainWarehouse', 'Main Warehouse')} value={selectedWarehouseName} plain />}
-              <Field label={t('sales.invoiceDetail.salesperson', 'Salesperson')} value={selectedSalespersonName} plain />
-              <Field label={t('sales.invoiceDetail.customerInvoiceNumber', 'Customer PO / Ref')} value={form.customerInvoiceNumber || '—'} plain />
+              <DocumentField label={t('sales.invoiceDetail.invoiceNo', 'Invoice No.')} value={invoice?.invoiceNumber || 'SI-DRAFT'} plain />
+              <DocumentField label={t('sales.invoiceDetail.source', 'Source')} value={form.salesOrderId ? salesOrderLabelById[form.salesOrderId] || form.salesOrderId : t('sales.invoiceDetail.sourceDirect', 'Direct')} plain />
+              <DocumentField label={t('sales.invoiceDetail.customer', 'Customer')} value={customerNameById[form.customerId] || form.customerName || '—'} plain />
+              <DocumentField label={t('sales.invoiceDetail.invoiceDate', 'Invoice Date')} value={form.invoiceDate} plain />
+              <DocumentField label={t('sales.invoiceDetail.currency', 'Currency')} value={form.currency} plain />
+              <DocumentField label={t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')} value={String(form.exchangeRate || 1)} plain />
+              {activeSourceMode === 'direct' && <DocumentField label={t('sales.invoiceDetail.mainWarehouse', 'Main Warehouse')} value={selectedWarehouseName} plain />}
+              <DocumentField label={t('sales.invoiceDetail.salesperson', 'Salesperson')} value={selectedSalespersonName} plain />
+              <DocumentField label={t('sales.invoiceDetail.customerInvoiceNumber', 'Customer PO / Ref')} value={form.customerInvoiceNumber || '—'} plain />
             </>
           ) : (
             <>
@@ -2030,7 +1919,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                     </select>
                   </div>
                   <div className={headerFieldWrapperClass}>
-                    <Field
+                    <DocumentField
                       label={t('sales.invoiceDetail.customer', 'Customer')}
                       value={selectedSalesOrder?.customerName || customerNameById[form.customerId] || form.customerName || '—'}
                       locked
@@ -2133,44 +2022,33 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
               </div>
             </>
           )}
-        </div>
-      </CompactCard>
+        </DocumentHeaderGrid>
+      </DocumentCompactCard>
     );
   };
 
   const renderSourceAndControlsCard = () => {
     return (
-      <section className="shrink-0 rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <DocumentControlPanel>
         <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/50">
+            <DocumentSegmentedGroup>
               {[
                 { mode: 'direct' as const, label: t('sales.invoiceDetail.sourceDirect', 'Direct'), icon: FileText },
                 { mode: 'so' as const, label: t('sales.invoiceDetail.sourceFromSO', 'From SO'), icon: Link2 },
                 { mode: 'dn' as const, label: t('sales.invoiceDetail.sourceFromDN', 'From DN'), icon: Truck },
-              ].map((option) => {
-                const Icon = option.icon;
-                const active = activeSourceMode === option.mode;
-                return (
-                  <button
-                    key={option.mode}
-                    type="button"
-                    onClick={() => void setSourceMode(option.mode)}
-                    disabled={isReadOnly}
-                    className={clsx(
-                      'inline-flex h-7 items-center gap-1.5 rounded px-2 text-[10px] font-black uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-                      active
-                        ? 'bg-white text-blue-700 shadow-sm ring-1 ring-blue-200 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900'
-                        : 'text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100',
-                    )}
-                    title={option.mode === 'dn' ? t('sales.invoiceDetail.deliveryNoteSourceNotReady', 'Delivery Note source loading is not connected on this invoice page yet.') : option.label}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
+              ].map((option) => (
+                <DocumentSegmentButton
+                  key={option.mode}
+                  active={activeSourceMode === option.mode}
+                  disabled={isReadOnly}
+                  icon={option.icon}
+                  label={option.label}
+                  title={option.mode === 'dn' ? t('sales.invoiceDetail.deliveryNoteSourceNotReady', 'Delivery Note source loading is not connected on this invoice page yet.') : option.label}
+                  onClick={() => void setSourceMode(option.mode)}
+                />
+              ))}
+            </DocumentSegmentedGroup>
             <button
               type="button"
               disabled
@@ -2184,14 +2062,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-1.5 rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/50">
-            <button
-              type="button"
-              onClick={() => setAttachmentsPanelOpen(true)}
-              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+            <DocumentIconButton
               title={t('sales.invoiceDetail.uploadAttachment', 'Upload attachment')}
+              onClick={() => setAttachmentsPanelOpen(true)}
             >
               <Paperclip className="h-3.5 w-3.5" />
-            </button>
+            </DocumentIconButton>
             <button
               type="button"
               onClick={() => setAuditModalOpen(true)}
@@ -2206,40 +2082,32 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             >
               <History className="h-3.5 w-3.5" />
             </button>
-            <button
-              type="button"
-              onClick={downloadLinesCsv}
-              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+            <DocumentIconButton
               title={t('sales.invoiceDetail.downloadExcel', 'Download Excel')}
+              onClick={downloadLinesCsv}
             >
               <FileSpreadsheet className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => showImportNotReady(t('sales.invoiceDetail.fileImportNotReady', 'File import is not connected yet.'))}
-              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+            </DocumentIconButton>
+            <DocumentIconButton
               title={t('sales.invoiceDetail.uploadFromFile', 'Upload from file')}
+              onClick={() => showImportNotReady(t('sales.invoiceDetail.fileImportNotReady', 'File import is not connected yet.'))}
             >
               <Upload className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => showImportNotReady(t('sales.invoiceDetail.imageReadNotReady', 'Image reading is not connected yet.'))}
-              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+            </DocumentIconButton>
+            <DocumentIconButton
               title={t('sales.invoiceDetail.readFromImage', 'Read from image')}
+              onClick={() => showImportNotReady(t('sales.invoiceDetail.imageReadNotReady', 'Image reading is not connected yet.'))}
             >
               <FileImage className="h-3.5 w-3.5" />
-            </button>
+            </DocumentIconButton>
           </div>
         </div>
-
-      </section>
+      </DocumentControlPanel>
     );
   };
 
   const renderLinesTable = () => {
     return (
-      <div className="flex min-h-[210px] flex-none flex-col 2xl:flex-[1.2]">
         <ClassicLineItemsTable<EditableLine>
           tableId="sales.invoice.lines"
           rows={form.lines}
@@ -2255,21 +2123,14 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           minRows={1}
           className="flex-1 [&>div:first-child]:max-h-none [&>div:first-child]:h-full"
         />
-      </div>
     );
   };
 
   const renderChargesSection = () => {
     return (
-      <div className="flex min-h-[150px] flex-none flex-col gap-1.5 2xl:flex-[0.55]">
-        <div className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-2 py-1.5 dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="h-4 w-1 rounded-full bg-indigo-500" />
-              <span className="truncate text-[11px] font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
-                {t('sales.invoiceDetail.allocation.title', 'Account Ledger & Financial Taxes Allocation Grid')}
-              </span>
-            </div>
+      <DocumentSecondaryPanel
+        title={t('sales.invoiceDetail.allocation.title', 'Account Ledger & Financial Taxes Allocation Grid')}
+        action={
             <button
               type="button"
               onClick={() => showImportNotReady(t('sales.invoiceDetail.taxPresetNotReady', 'Tax preset automation is not connected yet.'))}
@@ -2277,136 +2138,72 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             >
               {t('sales.invoiceDetail.allocation.applyTaxPreset', 'Apply Tax Preset')}
             </button>
-          </div>
-          <div className="flex min-h-[110px] items-center justify-center bg-slate-50/70 px-4 py-5 text-center dark:bg-slate-900/40">
-            <div className="max-w-xl">
-              <div className="text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">
-                {t('sales.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
-              </div>
-              <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                {t(
-                  'sales.invoiceDetail.allocation.emptyDescription',
-                  'Real ledger and tax allocation controls are not shown until the controlled allocation contract is implemented.'
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+      >
+        <DocumentEmptyPanel
+          title={t('sales.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
+          description={t(
+            'sales.invoiceDetail.allocation.emptyDescription',
+            'Real ledger and tax allocation controls are not shown until the controlled allocation contract is implemented.'
+          )}
+        />
+      </DocumentSecondaryPanel>
     );
   };
 
-  const renderInfoCard = () => {
-    return (
-      <section className="min-h-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="flex h-8 items-center justify-between border-b border-slate-150 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 px-3">
-          <h2 className="text-[10px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-350">
-            {t('sales.invoiceDetail.info', 'Info')}
-          </h2>
-          <Pill tone={railFocus.kind === 'item' ? 'blue' : 'slate'}>
-            {railFocus.kind === 'item' ? t('sales.invoiceDetail.item', 'Item') : t('sales.invoiceDetail.account', 'Account')}
-          </Pill>
-        </div>
-        <div className="flex h-[calc(100%-2rem)] min-h-0 flex-col gap-2 overflow-auto p-2.5 text-xs">
-          <div className="rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-2">
-            <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">{railFocus.code}</div>
-            <div className="mt-0.5 truncate text-sm font-black text-slate-900 dark:text-slate-100">{railFocus.title}</div>
-            <div className="truncate text-[10px] font-semibold text-slate-500">{railFocus.subtitle}</div>
-          </div>
-          <div className="rounded border border-blue-50 dark:border-blue-950/20 bg-blue-50/50 dark:bg-blue-950/10 px-2 py-1.5 text-[11px] leading-relaxed text-blue-700 dark:text-blue-350">
-            {railFocus.note}
-          </div>
-        </div>
-      </section>
-    );
-  };
+  const renderInfoContent = () => (
+    <DocumentRailFocus
+      code={railFocus.code}
+      title={railFocus.title}
+      subtitle={railFocus.subtitle}
+      note={railFocus.note}
+    />
+  );
 
-  const renderPostingReadiness = () => {
+  const renderPostingReadinessContent = () => {
     const isBalanced = totals.grandTotalDoc >= 0;
     const hasCustomer = !!form.customerId;
     const hasLines = filledLines(form.lines).length > 0;
     const taxCodeResolved = filledLines(form.lines).every(l => !l.taxCodeId || taxById[l.taxCodeId]);
 
     return (
-      <section className="min-h-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="flex h-8 items-center justify-between border-b border-slate-150 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 px-3">
-          <h2 className="text-[10px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-350">
-            {isLedgerPosted ? t('sales.invoiceDetail.documentStatus', 'Document Status') : t('sales.invoiceDetail.postingReadiness', 'Posting Readiness')}
-          </h2>
-        </div>
-        <div className="h-[calc(100%-2rem)] space-y-1.5 overflow-auto p-2.5 text-xs">
-          <div className={clsx(
-            "flex items-center gap-2 rounded border px-2 py-1.5 font-bold",
-            hasCustomer && hasLines && isBalanced
-              ? "border-emerald-100 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-350"
-              : "border-red-100 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-350"
-          )}>
-            {hasCustomer && hasLines && isBalanced ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-            ) : (
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-            )}
-            <span>{isLedgerPosted ? t('sales.invoiceDetail.ledgerVoucherCreated', 'Ledger voucher created') : t('sales.invoiceDetail.balancedPostingPreview', 'Balanced posting preview')}</span>
-          </div>
-
-          <div className={clsx(
-            "flex items-center gap-2 rounded border px-2 py-1.5 font-bold",
-            taxCodeResolved
-              ? "border-emerald-100 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-350"
-              : "border-red-100 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-350"
-          )}>
-            {taxCodeResolved ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-            ) : (
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-            )}
-            <span>{isLedgerPosted ? t('sales.invoiceDetail.taxLinesPosted', 'Tax lines posted') : t('sales.invoiceDetail.taxAccountResolved', 'Tax accounts resolved')}</span>
-          </div>
-
-          {invoice?.status !== 'POSTED' && (
-            <div className="flex items-center gap-2 rounded border border-slate-250 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 px-2 py-1.5 text-slate-650 dark:text-slate-350 font-bold">
-              <Info className="h-4 w-4 shrink-0" />
-              <span>{t('sales.invoiceDetail.creditChecksActive', 'Credit policy active')}</span>
-            </div>
-          )}
-        </div>
-      </section>
+      <DocumentRailChecklist
+        items={[
+          {
+            state: hasCustomer && hasLines && isBalanced ? 'ok' : 'warn',
+            label: isLedgerPosted ? t('sales.invoiceDetail.ledgerVoucherCreated', 'Ledger voucher created') : t('sales.invoiceDetail.balancedPostingPreview', 'Balanced posting preview'),
+          },
+          {
+            state: taxCodeResolved ? 'ok' : 'warn',
+            label: isLedgerPosted ? t('sales.invoiceDetail.taxLinesPosted', 'Tax lines posted') : t('sales.invoiceDetail.taxAccountResolved', 'Tax accounts resolved'),
+          },
+          ...(invoice?.status !== 'POSTED'
+            ? [{ state: 'info' as const, label: t('sales.invoiceDetail.creditChecksActive', 'Credit policy active') }]
+            : []),
+        ]}
+      />
     );
   };
 
-  const renderTotalsCard = () => {
+  const renderTotalsContent = () => {
     const showBaseCurrency = form.currency !== (company?.baseCurrency || 'USD');
     return (
-      <section className="shrink-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="flex h-8 items-center justify-between border-b border-slate-150 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 px-3">
-          <h2 className="text-[10px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-350">
-            {t('sales.invoiceDetail.totals', 'Totals')}
-          </h2>
-          <Pill tone="slate">{form.currency}</Pill>
-        </div>
-        <div className="space-y-1.5 p-2.5">
-          <div className="flex items-center justify-between rounded border border-slate-100 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-900/30 px-2 py-1 text-xs">
-            <span className="font-bold text-slate-500">{t('sales.invoiceDetail.subtotal', 'Subtotal')}</span>
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
-          </div>
-
-          <div className="flex items-center justify-between rounded border border-slate-100 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-900/30 px-2 py-1 text-xs">
-            <span className="font-bold text-slate-500">{t('sales.invoiceDetail.tax', 'Tax')}</span>
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
-          </div>
-
-          <div className="rounded-lg border border-slate-950 bg-slate-900 dark:bg-slate-950 px-3 py-2 text-white shadow-md">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.invoiceDetail.grandTotal', 'Grand Total')}</div>
-            <div className="mt-0.5 text-right font-mono text-xl font-black text-emerald-400">{form.currency} {totals.grandTotalDoc.toFixed(2)}</div>
-            {showBaseCurrency && (
-              <div className="mt-1.5 border-t border-white/10 pt-1 flex justify-between text-[10px] font-bold text-slate-300">
-                <span>{t('sales.invoiceDetail.grandTotalBase', 'Grand Total (Base)')}</span>
-                <span className="font-mono">{company?.baseCurrency || 'USD'} {totals.grandTotalBase.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      <DocumentRailTotals
+        rows={[
+          { label: t('sales.invoiceDetail.subtotal', 'Subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+          { label: t('sales.invoiceDetail.tax', 'Tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
+        ]}
+        grand={{
+          label: t('sales.invoiceDetail.grandTotal', 'Grand Total'),
+          value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`,
+          ...(showBaseCurrency
+            ? {
+                subLabel: t('sales.invoiceDetail.grandTotalBase', 'Grand Total (Base)'),
+                subValue: `${company?.baseCurrency || 'USD'} ${totals.grandTotalBase.toFixed(2)}`,
+              }
+            : {}),
+        }}
+      />
     );
   };
 
@@ -2416,39 +2213,24 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       maximumFractionDigits: 2,
     }).format(value);
 
-    const footerTotals = [
-      {
-        label: t('sales.invoiceDetail.footerTotals.subtotal', 'Subtotal'),
-        value: totals.subtotalDoc,
-        tone: 'text-slate-950 dark:text-slate-100',
-      },
-      {
-        label: t('sales.invoiceDetail.footerTotals.taxAmount', 'Tax Amount'),
-        value: totals.taxTotalDoc,
-        tone: 'text-slate-950 dark:text-slate-100',
-      },
-      {
-        label: t('sales.invoiceDetail.footerTotals.grandTotal', 'Grand Total ({{currency}})', { currency: form.currency }),
-        value: totals.grandTotalDoc,
-        tone: 'text-rose-600 dark:text-rose-400',
-      },
-    ];
-
     return (
-      <div className="flex justify-start">
-        <div className="grid min-w-[min(100%,430px)] grid-cols-3 gap-5 rounded-lg border border-slate-300 bg-slate-100 px-5 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          {footerTotals.map((item) => (
-            <div key={item.label} className="min-w-0">
-              <div className="truncate text-[8px] font-black uppercase text-slate-400 dark:text-slate-500">
-                {item.label}
-              </div>
-              <div className={clsx('mt-0.5 truncate font-mono text-[13px] font-black leading-none', item.tone)}>
-                {formatFooterMoney(item.value)} {form.currency}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <DocumentFooterTotalsStrip
+        totals={[
+          {
+            label: t('sales.invoiceDetail.footerTotals.subtotal', 'Subtotal'),
+            value: `${formatFooterMoney(totals.subtotalDoc)} ${form.currency}`,
+          },
+          {
+            label: t('sales.invoiceDetail.footerTotals.taxAmount', 'Tax Amount'),
+            value: `${formatFooterMoney(totals.taxTotalDoc)} ${form.currency}`,
+          },
+          {
+            label: t('sales.invoiceDetail.footerTotals.grandTotal', 'Grand Total ({{currency}})', { currency: form.currency }),
+            value: `${formatFooterMoney(totals.grandTotalDoc)} ${form.currency}`,
+            tone: 'rose',
+          },
+        ]}
+      />
     );
   };
 
@@ -2456,169 +2238,56 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     if (!invoice || invoice.status === 'DRAFT') return null;
 
     const editPolicy = accountingPolicy?.allowPeriodLockOverride ? 'flexible' : 'rigid';
-    const bannerToneClass = isPendingAccountingApproval
-      ? 'border-amber-250 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300'
-      : 'border-emerald-205 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-305';
-    const bannerIconClass = isPendingAccountingApproval
-      ? 'text-amber-600 dark:text-amber-400'
-      : 'text-emerald-600 dark:text-emerald-400';
 
     return (
-      <div className={clsx('grid shrink-0 gap-2 rounded-lg border px-3 py-2 text-xs lg:grid-cols-[minmax(0,1fr)_auto]', bannerToneClass)}>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {isPendingAccountingApproval ? (
-            <AlertTriangle className={clsx('h-4 w-4 shrink-0', bannerIconClass)} />
-          ) : (
-            <CheckCircle2 className={clsx('h-4 w-4 shrink-0', bannerIconClass)} />
-          )}
-          <span className="font-black">
-            {isPendingAccountingApproval
-              ? t('sales.invoiceDetail.pendingApprovalView', 'Waiting for accounting approval')
-              : t('sales.invoiceDetail.postedView', 'Posted document view')}
-          </span>
-          <span>
-            {isPendingAccountingApproval
-              ? t('sales.invoiceDetail.pendingApprovalViewHint', 'The invoice is locked until Accounting approves and posts it.')
-              : t('sales.invoiceDetail.postedViewHint', 'Inputs are plain values; only legal ledger actions remain.')}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Pill tone="green">{invoice.invoiceNumber}</Pill>
-          <Pill tone="slate">{t('sales.invoiceDetail.editPolicy', 'Edit Policy: {{policy}}', { policy: editPolicy })}</Pill>
-          {isLedgerPosted && <Pill tone="blue">{t('sales.invoiceDetail.approvedTag', 'Ledger posted')}</Pill>}
-          {isPendingAccountingApproval && <Pill tone="amber">{t('sales.invoiceDetail.awaitingAccountingTag', 'Awaiting accounting')}</Pill>}
-        </div>
-      </div>
+      <DocumentStatusBanner
+        tone={isPendingAccountingApproval ? 'warning' : 'success'}
+        title={isPendingAccountingApproval
+          ? t('sales.invoiceDetail.pendingApprovalView', 'Waiting for accounting approval')
+          : t('sales.invoiceDetail.postedView', 'Posted document view')}
+        hint={isPendingAccountingApproval
+          ? t('sales.invoiceDetail.pendingApprovalViewHint', 'The invoice is locked until Accounting approves and posts it.')
+          : t('sales.invoiceDetail.postedViewHint', 'Inputs are plain values; only legal ledger actions remain.')}
+        pills={
+          <>
+            <DocumentPill tone="green">{invoice.invoiceNumber}</DocumentPill>
+            <DocumentPill tone="slate">{t('sales.invoiceDetail.editPolicy', 'Edit Policy: {{policy}}', { policy: editPolicy })}</DocumentPill>
+            {isLedgerPosted && <DocumentPill tone="blue">{t('sales.invoiceDetail.approvedTag', 'Ledger posted')}</DocumentPill>}
+            {isPendingAccountingApproval && <DocumentPill tone="amber">{t('sales.invoiceDetail.awaitingAccountingTag', 'Awaiting accounting')}</DocumentPill>}
+          </>
+        }
+      />
     );
   };
 
-  const renderRailContent = () => (
-    <>
-      {renderInfoCard()}
-      {renderPostingReadiness()}
-      <SettlementBlock
-        variant="summary"
-        module="sales"
-        mode={settlementMode}
-        rows={settlementRows}
-        partyAccountId={arAccountId}
-        partyAccountLabel={customerNameById[form.customerId] || form.customerName || arAccountId}
-        outstandingBase={isReadOnly ? (invoice?.outstandingAmountBase ?? 0) : totals.grandTotalBase}
-        recordedBase={isReadOnly ? (invoice?.paidAmountBase ?? 0) : undefined}
-      />
-      {renderTotalsCard()}
-    </>
-  );
-
-  const showRailFromEdge = () => {
-    if (railUsesDrawer) {
-      setRailDrawerOpen(true);
-    } else {
-      setRailPinned(true);
-    }
-  };
-
-  const renderRailEdgeButton = () => (
-    <button
-      type="button"
-      onClick={showRailFromEdge}
-      title={t('sales.invoiceDetail.rail.show', 'Show invoice side rail')}
-      className={clsx(
-        'absolute top-1/2 z-30 flex h-24 w-6 -translate-y-1/2 items-center justify-center border border-slate-250 bg-white text-slate-600 shadow-md transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
-        isRtl
-          ? 'left-0 rounded-r-md border-l-0'
-          : 'right-0 rounded-l-md border-r-0',
-      )}
-    >
-      <RailOpenIcon className="h-4 w-4" />
-      <span className="sr-only">{t('sales.invoiceDetail.rail.show', 'Show invoice side rail')}</span>
-    </button>
-  );
-
-  const renderRailDrawer = () => (
-    <div
-      className={clsx(
-        'absolute inset-0 z-40 flex bg-slate-950/20 backdrop-blur-[1px]',
-        isRtl ? 'justify-start' : 'justify-end',
-      )}
-    >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label={t('sales.invoiceDetail.rail.close', 'Close invoice side rail')}
-        onClick={() => setRailDrawerOpen(false)}
-      />
-      <aside
-        className={clsx(
-          'relative z-10 flex h-full w-[min(360px,92vw)] flex-col bg-slate-50 shadow-2xl dark:bg-slate-950',
-          isRtl
-            ? 'border-r border-slate-200 dark:border-slate-800'
-            : 'border-l border-slate-200 dark:border-slate-800',
-        )}
-      >
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex min-w-0 items-center gap-2">
-            <RailOpenIcon className="h-4 w-4 text-slate-500" />
-            <span className="truncate text-xs font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">
-              {t('sales.invoiceDetail.rail.title', 'Invoice side rail')}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setRailDrawerOpen(false)}
-            title={t('sales.invoiceDetail.rail.close', 'Close invoice side rail')}
-            className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-750"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto p-2">
-          {renderRailContent()}
-        </div>
-      </aside>
-    </div>
-  );
-
   // ─── Main render ──────────────────────────────────────────────────────────
   return (
-    <div className={clsx("relative flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950", isWindow && "w-full")}>
-      {/* Top Header Bar */}
-      <div className="flex-none flex items-center justify-between px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            className="rounded border border-slate-205 dark:border-slate-700 p-1.5 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-950 dark:hover:text-slate-100 transition-colors"
-            onClick={() => {
-              if (isWindow && onClose) onClose();
-              else navigate('/sales/invoices');
-            }}
-          >
-            <BackIcon className="h-4 w-4" />
-          </button>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4.5 w-4.5 text-blue-650" />
-              <h1 className="truncate text-sm font-black tracking-wide text-slate-950 dark:text-slate-100">
-                {isCreateMode ? t('sales.invoiceDetail.newTitle', 'New Sales Invoice') : invoice?.invoiceNumber}
-              </h1>
-              <Pill tone={statusPillTone}>{statusPillLabel}</Pill>
-              {isPendingAccountingApproval && (
-                <button
-                  type="button"
-                  title={t('sales.invoiceDetail.pendingApprovalBanner.description', 'This invoice is waiting for approval in Accounting Approval Center.')}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                </button>
-              )}
-              {form.salesOrderId && <Pill tone="blue">{t('sales.invoiceDetail.linkedOrder', 'From SO')}</Pill>}
-            </div>
-          </div>
-        </div>
-
-        {/* Header tools / preview toggle */}
-        <div className="flex items-center gap-2">
-          {!isReadOnly && !isCreateMode && (
+    <>
+      <DocumentDetailScaffold
+        title={isCreateMode ? t('sales.invoiceDetail.newTitle', 'New Sales Invoice') : invoice?.invoiceNumber || ''}
+        icon={FileText}
+        backLabel={isWindow ? t('common.close', 'Close') : t('sales.invoiceDetail.backToList', 'Back to List')}
+        onBack={() => {
+          if (isWindow && onClose) onClose();
+          else navigate('/sales/invoices');
+        }}
+        badges={
+          <>
+            <DocumentPill tone={statusPillTone}>{statusPillLabel}</DocumentPill>
+            {isPendingAccountingApproval && (
+              <button
+                type="button"
+                title={t('sales.invoiceDetail.pendingApprovalBanner.description', 'This invoice is waiting for approval in Accounting Approval Center.')}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {form.salesOrderId && <DocumentPill tone="blue">{t('sales.invoiceDetail.linkedOrder', 'From SO')}</DocumentPill>}
+          </>
+        }
+        headerTools={
+          !isReadOnly && !isCreateMode ? (
             <button
               type="button"
               onClick={openCloneRecurringModal}
@@ -2627,96 +2296,95 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
               <History className="h-3.5 w-3.5" />
               {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* Banners strip */}
-      {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
-        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-250 bg-amber-50 dark:bg-amber-955/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300">
-          {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked. Select a Sales Order.')}
-        </div>
-      )}
-
-      {/* The main workspace container: 2 columns */}
-      <div
-        className={clsx(
-          'grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto overflow-x-hidden p-2',
-          showInlineRail && 'xl:grid-cols-[minmax(0,1fr)_304px] 2xl:overflow-hidden',
-        )}
-      >
-        {/* Left Column: Form components */}
-        <section className={clsx('flex min-h-0 flex-col gap-2', isRtl ? 'pl-1' : 'pr-1', !isWindow && '2xl:overflow-y-auto')}>
-          {renderPostedBanner()}
-          {renderSourceAndControlsCard()}
-          {renderDocumentHeaderCard()}
-          {renderLinesTable()}
-          {renderChargesSection()}
-          {!isReadOnly && (
-            <SettlementBlock
-              module="sales"
-              mode={settlementMode}
-              onModeChange={setSettlementMode}
-              rows={settlementRows}
-              onRowsChange={setSettlementRows}
-              partyAccountId={arAccountId}
-              partyAccountLabel={customerNameById[form.customerId] || form.customerName || arAccountId}
-              outstandingBase={totals.grandTotalBase}
-              paymentMethodConfigs={enabledPaymentMethodConfigs}
-              allowOverpayment={(settings as any)?.allowOverpayment === true}
-              currencyCode={form.currency}
-              onValidityChange={setSettlementValidity}
-            />
-          )}
-        </section>
-
-        {/* Right Rail Column */}
-        {showInlineRail && (
-          <aside className="relative grid min-h-0 auto-rows-min gap-2 2xl:grid-rows-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] 2xl:overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setRailPinned(false)}
-              title={t('sales.invoiceDetail.rail.hide', 'Hide invoice side rail')}
-              className={clsx(
-                'absolute top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-250 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
-                isRtl ? '-right-3' : '-left-3',
-              )}
-            >
-              <RailCloseIcon className="h-4 w-4" />
-              <span className="sr-only">{t('sales.invoiceDetail.rail.hide', 'Hide invoice side rail')}</span>
-            </button>
-            {renderRailContent()}
-          </aside>
-        )}
-      </div>
-
-      {!showInlineRail && renderRailEdgeButton()}
-      {railDrawerOpen && renderRailDrawer()}
-
-      {/* Sticky Bottom Actions Footer */}
-      <footer
-        className={clsx(
-          'z-20 shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-4 py-3 shadow-[0_-8px_20px_rgba(15,23,42,0.06)] backdrop-blur',
-          !isWindow && '2xl:sticky 2xl:bottom-0',
-        )}
-      >
-        <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="min-w-0">
-            {!showInlineRail && !railDrawerOpen ? (
-              <div className="flex justify-start">
-                {renderFooterTotalsStrip()}
-              </div>
-            ) : (
-              <div className="text-xs text-slate-500">
-                {isPendingAccountingApproval
-                  ? t('sales.invoiceDetail.pendingApprovalReadonly', 'Invoice is locked while waiting for accounting approval.')
-                  : isReadOnly
-                    ? t('sales.invoiceDetail.postedReadonly', 'Posted document is read-only.')
-                    : t('sales.invoiceDetail.draftWorking', 'Editing draft sales invoice.')}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          ) : undefined
+        }
+        banner={
+          isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed ? (
+            <DocumentNoticeBanner>
+              {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked. Select a Sales Order.')}
+            </DocumentNoticeBanner>
+          ) : undefined
+        }
+        sections={{
+          banner: { content: renderPostedBanner() },
+          control: { content: renderSourceAndControlsCard() },
+          header: { content: renderDocumentHeaderCard() },
+          lines: { content: renderLinesTable() },
+          secondary: { content: renderChargesSection() },
+          custom: {
+            content: !isReadOnly ? (
+              <SettlementBlock
+                module="sales"
+                mode={settlementMode}
+                onModeChange={setSettlementMode}
+                rows={settlementRows}
+                onRowsChange={setSettlementRows}
+                partyAccountId={arAccountId}
+                partyAccountLabel={customerNameById[form.customerId] || form.customerName || arAccountId}
+                outstandingBase={totals.grandTotalBase}
+                paymentMethodConfigs={enabledPaymentMethodConfigs}
+                allowOverpayment={(settings as any)?.allowOverpayment === true}
+                currencyCode={form.currency}
+                onValidityChange={setSettlementValidity}
+              />
+            ) : null,
+          },
+        }}
+        railSections={{
+          info: {
+            title: t('sales.invoiceDetail.info', 'Info'),
+            action: (
+              <DocumentPill tone={railFocus.kind === 'item' ? 'blue' : 'slate'}>
+                {railFocus.kind === 'item' ? t('sales.invoiceDetail.item', 'Item') : t('sales.invoiceDetail.account', 'Account')}
+              </DocumentPill>
+            ),
+            content: renderInfoContent(),
+          },
+          readiness: {
+            title: isLedgerPosted ? t('sales.invoiceDetail.documentStatus', 'Document Status') : t('sales.invoiceDetail.postingReadiness', 'Posting Readiness'),
+            content: renderPostingReadinessContent(),
+          },
+          settlement: {
+            content: (
+              <SettlementBlock
+                variant="summary"
+                module="sales"
+                mode={settlementMode}
+                rows={settlementRows}
+                partyAccountId={arAccountId}
+                partyAccountLabel={customerNameById[form.customerId] || form.customerName || arAccountId}
+                outstandingBase={isReadOnly ? (invoice?.outstandingAmountBase ?? 0) : totals.grandTotalBase}
+                recordedBase={isReadOnly ? (invoice?.paidAmountBase ?? 0) : undefined}
+              />
+            ),
+          },
+          totals: {
+            title: t('sales.invoiceDetail.totals', 'Totals'),
+            action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
+            content: renderTotalsContent(),
+          },
+        }}
+        railTitle={t('sales.invoiceDetail.rail.title', 'Invoice side rail')}
+        forceRailDrawer={isWindow || isWindowsMode}
+        isWindow={isWindow}
+        footerSections={{
+          totals: {
+            content: ({ showInlineRail, railDrawerOpen }) =>
+              !showInlineRail && !railDrawerOpen ? (
+                renderFooterTotalsStrip()
+              ) : (
+                <div className="text-xs text-slate-500">
+                  {isPendingAccountingApproval
+                    ? t('sales.invoiceDetail.pendingApprovalReadonly', 'Invoice is locked while waiting for accounting approval.')
+                    : isReadOnly
+                      ? t('sales.invoiceDetail.postedReadonly', 'Posted document is read-only.')
+                      : t('sales.invoiceDetail.draftWorking', 'Editing draft sales invoice.')}
+                </div>
+              ),
+          },
+          actions: {
+            content: (
+              <>
             <button
               type="button"
               className="rounded border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
@@ -2811,9 +2479,11 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                 </button>
               </>
             )}
-          </div>
-        </div>
-      </footer>
+              </>
+            ),
+          },
+        }}
+      />
 
       {/* Modals */}
       {invoice && (
@@ -3027,7 +2697,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       </Modal>
 
       {confirmDialog}
-    </div>
+    </>
   );
 };
 
