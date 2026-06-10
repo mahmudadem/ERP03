@@ -35,8 +35,8 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailCard,
   DocumentRailStat,
+  DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
@@ -822,9 +822,10 @@ const SalesOrderDetailPage: React.FC = () => {
     </>
   );
 
-  const sideRail = (
-    <>
-      <DocumentRailCard title={t('sales.soDetail.orderTotals')}>
+  const railSections: DocumentScaffoldRailSections = {
+    totals: {
+      title: t('sales.soDetail.orderTotals'),
+      content: (
         <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
           <DocumentRailStat label={t('sales.soDetail.subtotalWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
           <DocumentRailStat label={t('sales.soDetail.subtotalBase')} value={totals.subtotalBase.toFixed(2)} />
@@ -838,9 +839,11 @@ const SalesOrderDetailPage: React.FC = () => {
             <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} {t('sales.soDetail.baseSuffix')}</div>
           </div>
         </div>
-      </DocumentRailCard>
-
-      <DocumentRailCard title={t('sales.soDetail.orderStatus')}>
+      ),
+    },
+    info: {
+      title: t('sales.soDetail.orderStatus'),
+      content: (
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
             <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.soDetail.linesCount')}</span>
@@ -859,9 +862,9 @@ const SalesOrderDetailPage: React.FC = () => {
             </DocumentPill>
           </div>
         </div>
-      </DocumentRailCard>
-    </>
-  );
+      ),
+    },
+  };
 
   return (
     <>
@@ -876,68 +879,29 @@ const SalesOrderDetailPage: React.FC = () => {
           {form.status}
         </DocumentPill>
       }
-      sideRail={sideRail}
+      railSections={railSections}
       railTitle={t('sales.soDetail.sideRailTitle')}
-      footerSummary={footerSummary}
-      footerActions={footerActions}
-    >
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-      {creditWarnBanner && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start justify-between gap-2">
-          <span>{creditWarnBanner}</span>
-          <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
-        </div>
-      )}
-
-      {/* Credit Override Dialog */}
-      {creditOverrideOpen && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.soDetail.creditLimitExceeded')}</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              {t('sales.soDetail.creditOverrideDescription')}
-            </p>
-            {creditOverrideInfo && (
-              <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
-                {creditOverrideInfo.limit !== undefined && <div>{t('sales.soDetail.creditLimitLabel')}<strong>{creditOverrideInfo.limit}</strong></div>}
-                {creditOverrideInfo.currentExposure !== undefined && <div>{t('sales.soDetail.currentExposureLabel')}<strong>{creditOverrideInfo.currentExposure}</strong></div>}
-                {creditOverrideInfo.orderAmount !== undefined && <div>{t('sales.soDetail.thisOrderLabel')}<strong>{creditOverrideInfo.orderAmount}</strong></div>}
-                {creditOverrideInfo.projectedExposure !== undefined && <div>{t('sales.soDetail.projectedExposureLabel')}<strong>{creditOverrideInfo.projectedExposure}</strong></div>}
-              </div>
-            )}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.soDetail.overrideReasonLabel')} <span className="text-red-500">*</span></label>
-              <textarea
-                rows={3}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                placeholder={t('sales.soDetail.overrideReasonPlaceholder')}
-                value={creditOverrideReason}
-                onChange={(e) => setCreditOverrideReason(e.target.value)}
-              />
+      footerSections={{
+        totals: { content: footerSummary },
+        actions: { content: footerActions },
+      }}
+      sections={{
+        banner: {
+          content: (error || creditWarnBanner) ? (
+            <div className="grid gap-2">
+              {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+              {creditWarnBanner && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start justify-between gap-2">
+                  <span>{creditWarnBanner}</span>
+                  <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
+                </div>
+              )}
             </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                onClick={() => { setCreditOverrideOpen(false); setPendingConfirmOrderId(null); }}
-              >
-                {t('sales.soDetail.cancelOverride')}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
-                disabled={!creditOverrideReason.trim() || actionBusy}
-                onClick={submitCreditOverride}
-              >
-                {actionBusy ? t('sales.soDetail.confirmingOverride') : t('sales.soDetail.confirmOverride')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+          ) : null,
+        },
+        header: {
+          content: (
+            <>
       <Card className="overflow-visible p-0">
         <DocumentHeaderGrid>
           <DocumentHeaderField label={t('sales.soDetail.customerLabel')}>
@@ -1054,7 +1018,11 @@ const SalesOrderDetailPage: React.FC = () => {
           </div>
         </Card>
       )}
-
+            </>
+          ),
+        },
+        lines: {
+          content: (
       <ClassicLineItemsTable<EditableLine>
         tableId="sales.order.lines"
         title={t('sales.orders.detail.lineItems', 'Line Items')}
@@ -1165,7 +1133,10 @@ const SalesOrderDetailPage: React.FC = () => {
           { id: 'statusQty', label: t('sales.orders.detail.columns.statusQty', 'Status Qty'), kind: 'computed', width: '150px', align: 'left', compute: (line) => t('sales.soDetail.statusQtyFormat', { deliveredQty: line.deliveredQty, invoicedQty: line.invoicedQty, returnedQty: line.returnedQty }) },
         ]}
       />
-
+          ),
+        },
+        secondary: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
@@ -1190,7 +1161,11 @@ const SalesOrderDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
-
+          ),
+        },
+        custom: {
+          content: (
+            <>
       {!isDraft && (
         <Card className="p-5">
           <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -1319,8 +1294,58 @@ const SalesOrderDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
+            </>
+          ),
+        },
+      }}
+    />
 
-    </DocumentDetailScaffold>
+      {/* Credit Override Dialog */}
+      {creditOverrideOpen && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.soDetail.creditLimitExceeded')}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {t('sales.soDetail.creditOverrideDescription')}
+            </p>
+            {creditOverrideInfo && (
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                {creditOverrideInfo.limit !== undefined && <div>{t('sales.soDetail.creditLimitLabel')}<strong>{creditOverrideInfo.limit}</strong></div>}
+                {creditOverrideInfo.currentExposure !== undefined && <div>{t('sales.soDetail.currentExposureLabel')}<strong>{creditOverrideInfo.currentExposure}</strong></div>}
+                {creditOverrideInfo.orderAmount !== undefined && <div>{t('sales.soDetail.thisOrderLabel')}<strong>{creditOverrideInfo.orderAmount}</strong></div>}
+                {creditOverrideInfo.projectedExposure !== undefined && <div>{t('sales.soDetail.projectedExposureLabel')}<strong>{creditOverrideInfo.projectedExposure}</strong></div>}
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('sales.soDetail.overrideReasonLabel')} <span className="text-red-500">*</span></label>
+              <textarea
+                rows={3}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                placeholder={t('sales.soDetail.overrideReasonPlaceholder')}
+                value={creditOverrideReason}
+                onChange={(e) => setCreditOverrideReason(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => { setCreditOverrideOpen(false); setPendingConfirmOrderId(null); }}
+              >
+                {t('sales.soDetail.cancelOverride')}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+                disabled={!creditOverrideReason.trim() || actionBusy}
+                onClick={submitCreditOverride}
+              >
+                {actionBusy ? t('sales.soDetail.confirmingOverride') : t('sales.soDetail.confirmOverride')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <RecordAuditModal
         isOpen={auditModalOpen}

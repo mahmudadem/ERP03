@@ -22,8 +22,8 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailCard,
   DocumentRailStat,
+  DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
@@ -514,16 +514,21 @@ const GoodsReceiptDetailPage: React.FC = () => {
 
   if (isCreateMode || isEditMode) {
     const receivedQtyTotal = form.lines.reduce((sum, line) => sum + (Number(line.receivedQty) || 0), 0);
-    const draftSideRail = (
-      <>
-        <DocumentRailCard title="Info" action={<DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>}>
+    const draftRailSections: DocumentScaffoldRailSections = {
+      info: {
+        title: 'Info',
+        action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
+        content: (
           <div className="grid gap-2 p-2.5">
             <DocumentRailStat label="Lines" value={form.lines.length} />
             <DocumentRailStat label="Received Qty" value={receivedQtyTotal.toFixed(2)} tone="green" />
             <DocumentRailStat label="Warehouse" value={form.warehouseId || '-'} />
           </div>
-        </DocumentRailCard>
-        <DocumentRailCard title="Document Status">
+        ),
+      },
+      readiness: {
+        title: 'Document Status',
+        content: (
           <div className="space-y-1.5 p-2.5 text-xs font-bold text-slate-600 dark:text-slate-300">
             <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
               Draft receipt. Posting will update inventory receipt state through the existing purchase flow.
@@ -534,15 +539,18 @@ const GoodsReceiptDetailPage: React.FC = () => {
               </div>
             )}
           </div>
-        </DocumentRailCard>
-        <DocumentRailCard title="Totals">
+        ),
+      },
+      totals: {
+        title: 'Totals',
+        content: (
           <div className="grid gap-2 p-2.5">
             <DocumentRailStat label="Received Qty" value={receivedQtyTotal.toFixed(2)} tone="green" />
             <DocumentRailStat label="Receipt Date" value={form.receiptDate || '-'} />
           </div>
-        </DocumentRailCard>
-      </>
-    );
+        ),
+      },
+    };
 
     return (
       <DocumentDetailScaffold
@@ -552,17 +560,21 @@ const GoodsReceiptDetailPage: React.FC = () => {
         backLabel={isEditMode ? 'Cancel edit' : 'Back to goods receipts'}
         onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
         badges={<DocumentPill tone="slate">Draft</DocumentPill>}
-        sideRail={draftSideRail}
+        railSections={draftRailSections}
         railTitle="Goods receipt side rail"
-        footerSummary={
+        footerSections={{
+          totals: {
+            content: (
           <DocumentFooterTotalsStrip
             totals={[
               { label: 'Lines', value: form.lines.length },
               { label: 'Received', value: receivedQtyTotal.toFixed(2), tone: 'green' },
             ]}
           />
-        }
-        footerActions={
+            ),
+          },
+          actions: {
+            content: (
           <button
             type="button"
             className="rounded bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
@@ -571,11 +583,17 @@ const GoodsReceiptDetailPage: React.FC = () => {
           >
             {busy ? 'Saving...' : (isCreateMode ? 'Create Draft GRN' : 'Update Draft')}
           </button>
-        }
-      >
-
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+            ),
+          },
+        }}
+        sections={{
+          banner: {
+            content: error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            ) : null,
+          },
+          header: {
+            content: (
         <Card className="overflow-visible p-0">
           <DocumentHeaderGrid>
             <DocumentHeaderField label="PO Reference">
@@ -631,7 +649,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
             If PO is provided, lines are pre-filled from open stock lines using server-side rules.
           </div>
         </Card>
-
+            ),
+          },
+          lines: {
+            content: (
         <ClassicLineItemsTable<EditableLine>
           tableId="purchases.goodsReceipt.lines"
           title="Line Items"
@@ -735,8 +756,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
             },
           ]}
         />
-
-      </DocumentDetailScaffold>
+            ),
+          },
+        }}
+      />
     );
   }
 
@@ -756,23 +779,127 @@ const GoodsReceiptDetailPage: React.FC = () => {
     grn.purchaseOrderId ? `&purchaseOrderId=${encodeURIComponent(grn.purchaseOrderId)}` : ''
   }`;
 
-  return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{grn.grnNumber}</h1>
-          <p className="text-sm text-slate-600">
-            Vendor: <span className="font-medium">{grn.vendorName}</span>
-            {grn.purchaseOrderId ? ` • PO: ${linkedPO?.orderNumber || grn.purchaseOrderId}` : ''}
-          </p>
+  const viewReceivedQtyTotal = grn.lines.reduce((sum, line) => sum + (line.receivedQty || 0), 0);
+  const viewRailSections: DocumentScaffoldRailSections = {
+    info: {
+      title: 'Info',
+      action: <DocumentPill tone={grn.purchaseOrderId ? 'blue' : 'slate'}>{grn.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
+      content: (
+        <div className="space-y-1.5 p-2.5 text-xs">
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Vendor</div>
+            <div className="truncate font-black text-slate-900 dark:text-slate-100">{grn.vendorName}</div>
+          </div>
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Purchase Order</div>
+            <div className="truncate font-black text-slate-900 dark:text-slate-100">
+              {grn.purchaseOrderId ? linkedPO?.orderNumber || grn.purchaseOrderId : '-'}
+            </div>
+          </div>
         </div>
-        <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
+      ),
+    },
+    totals: {
+      title: 'Totals',
+      content: (
+        <div className="grid gap-2 p-2.5">
+          <DocumentRailStat label="Lines" value={grn.lines.length} />
+          <DocumentRailStat label="Received Qty" value={viewReceivedQtyTotal.toFixed(2)} tone="green" />
+          <DocumentRailStat label="Receipt Date" value={grn.receiptDate || '-'} />
+        </div>
+      ),
+    },
+  };
+
+  return (
+    <>
+    <DocumentDetailScaffold
+      title={grn.grnNumber}
+      subtitle={`Vendor: ${grn.vendorName}${grn.purchaseOrderId ? ` | PO: ${linkedPO?.orderNumber || grn.purchaseOrderId}` : ''}`}
+      icon={Truck}
+      backLabel="Back to goods receipts"
+      onBack={() => navigate('/purchases/goods-receipts')}
+      badges={
+        <DocumentPill tone={grn.status === 'POSTED' ? 'green' : grn.status === 'CANCELLED' ? 'rose' : 'slate'}>
           {grn.status}
-        </span>
-      </div>
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+        </DocumentPill>
+      }
+      railSections={viewRailSections}
+      railTitle="Goods receipt side rail"
+      footerSections={{
+        totals: {
+          content: (
+            <DocumentFooterTotalsStrip
+              totals={[
+                { label: 'Lines', value: grn.lines.length },
+                { label: 'Received', value: viewReceivedQtyTotal.toFixed(2), tone: 'green' },
+              ]}
+            />
+          ),
+        },
+        actions: {
+          content: (
+            <>
+              <button
+                type="button"
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                onClick={() => navigate('/purchases/goods-receipts')}
+              >
+                Back to List
+              </button>
+              {grn.status === 'DRAFT' && (
+                <button
+                  type="button"
+                  className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                  onClick={toggleEdit}
+                  disabled={busy}
+                >
+                  Edit Draft
+                </button>
+              )}
+              {grn.status === 'DRAFT' && (
+                <button
+                  type="button"
+                  className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                  onClick={postDraft}
+                  disabled={busy}
+                >
+                  {busy ? 'Posting...' : 'Post GRN'}
+                </button>
+              )}
+              {grn.status === 'POSTED' && (
+                <button
+                  type="button"
+                  className="rounded border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => navigate(createReturnHref)}
+                  disabled={!canCreateReturn}
+                >
+                  Create Return
+                </button>
+              )}
+              {grn.status === 'POSTED' && (
+                <button
+                  type="button"
+                  className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                  onClick={() => setUnpostConfirmOpen(true)}
+                  disabled={busy || hasLinkedInvoiceLine}
+                  title={hasLinkedInvoiceLine ? "Cannot unpost because this GRN is linked to a PI" : ""}
+                >
+                  {busy ? 'Unposting...' : 'Unpost GRN'}
+                </button>
+              )}
+            </>
+          ),
+        },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
@@ -793,7 +920,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
-
+          ),
+        },
+        lines: {
+          content: (
       <Card className="p-5">
         <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
         <div className="overflow-x-auto">
@@ -821,57 +951,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
           </table>
         </div>
       </Card>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => navigate('/purchases/goods-receipts')}
-        >
-          Back to List
-        </button>
-        {grn.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            onClick={toggleEdit}
-            disabled={busy}
-          >
-            Edit Draft
-          </button>
-        )}
-        {grn.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={postDraft}
-            disabled={busy}
-          >
-            {busy ? 'Posting...' : 'Post GRN'}
-          </button>
-        )}
-        {grn.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => navigate(createReturnHref)}
-            disabled={!canCreateReturn}
-          >
-            Create Return
-          </button>
-        )}
-        {grn.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-            onClick={() => setUnpostConfirmOpen(true)}
-            disabled={busy || hasLinkedInvoiceLine}
-            title={hasLinkedInvoiceLine ? "Cannot unpost because this GRN is linked to a PI" : ""}
-          >
-            {busy ? 'Unposting...' : 'Unpost GRN'}
-          </button>
-        )}
-      </div>
+          ),
+        },
+      }}
+    />
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
@@ -884,7 +967,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         onConfirm={unpostGRN}
         onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
       />
-    </div>
+    </>
   );
 };
 

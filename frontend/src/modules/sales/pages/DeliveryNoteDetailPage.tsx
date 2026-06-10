@@ -26,8 +26,8 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailCard,
   DocumentRailStat,
+  DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
@@ -537,18 +537,19 @@ const DeliveryNoteDetailPage: React.FC = () => {
       />
     );
 
-    const draftSideRail = (
-      <>
-        <DocumentRailCard title={t('sales.dnDetail.deliveryDraftTitle')}>
+    const draftRailSections: DocumentScaffoldRailSections = {
+      info: {
+        title: t('sales.dnDetail.deliveryDraftTitle'),
+        content: (
           <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
             <DocumentRailStat label={t('sales.dnDetail.linesLabel')} value={form.lines.length} />
             <DocumentRailStat label={t('sales.dnDetail.source')} value={form.salesOrderId ? t('sales.dnDetail.salesOrderLabel') : t('sales.dnDetail.direct')} tone={form.salesOrderId ? 'blue' : 'slate'} />
             <DocumentRailStat label={t('sales.dnDetail.deliveryDate')} value={form.deliveryDate || '-'} />
             <DocumentRailStat label={t('sales.dnDetail.warehouse')} value={warehouseLabelById[form.warehouseId] || form.warehouseId || '-'} />
           </div>
-        </DocumentRailCard>
-      </>
-    );
+        ),
+      },
+    };
 
     return (
       <DocumentDetailScaffold
@@ -558,10 +559,12 @@ const DeliveryNoteDetailPage: React.FC = () => {
         backLabel={t('sales.dnDetail.backToList')}
         onBack={() => (isEditing ? cancelEdit() : navigate('/sales/delivery-notes'))}
         badges={isEditing && deliveryNote ? <DocumentPill tone="slate">{deliveryNote.status}</DocumentPill> : <DocumentPill tone="slate">{t('sales.dnDetail.draftBadge')}</DocumentPill>}
-        sideRail={draftSideRail}
+        railSections={draftRailSections}
         railTitle={t('sales.dnDetail.sideRailTitle')}
-        footerSummary={draftFooterSummary}
-        footerActions={
+        footerSections={{
+          totals: { content: draftFooterSummary },
+          actions: {
+            content: (
           <>
             <button
               type="button"
@@ -588,11 +591,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
               </button>
             )}
           </>
-        }
-      >
-
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+            ),
+          },
+        }}
+        sections={{
+          banner: {
+            content: error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            ) : null,
+          },
+          header: {
+            content: (
         <Card className="overflow-visible p-0">
           <DocumentHeaderGrid>
             <DocumentHeaderField label={t('sales.dnDetail.salesOrderFieldLabel')}>
@@ -685,8 +694,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
             {t('sales.dnDetail.soHint')}
           </div>
         </Card>
-
-        {(!form.salesOrderId || form.lines.length > 0) && (
+            ),
+          },
+          lines: {
+            content: (!form.salesOrderId || form.lines.length > 0) ? (
           <ClassicLineItemsTable<EditableLine>
             tableId="sales.deliveryNote.lines"
             title={t('sales.dnDetail.lineItemsTitle')}
@@ -792,9 +803,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
               },
             ]}
           />
-        )}
-
-      </DocumentDetailScaffold>
+            ) : null,
+          },
+        }}
+      />
     );
   }
 
@@ -820,17 +832,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
       ]}
     />
   );
-  const viewSideRail = (
-    <>
-      <DocumentRailCard title={t('sales.dnDetail.deliverySummaryTitle')}>
-        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={t('sales.dnDetail.linesLabel')} value={deliveryNote.lines.length} />
-          <DocumentRailStat label={t('sales.dnDetail.deliveredQtyLabel')} value={deliveredQtyTotal.toFixed(2)} tone="blue" />
-          <DocumentRailStat label={t('sales.dnDetail.costBaseLabel')} value={lineCostBaseTotal.toFixed(2)} tone="green" />
-          <DocumentRailStat label={t('sales.dnDetail.warehouse')} value={warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-'} />
-        </div>
-      </DocumentRailCard>
-      <DocumentRailCard title={t('sales.dnDetail.sourceTitle')}>
+  const viewRailSections: DocumentScaffoldRailSections = {
+    info: {
+      title: t('sales.dnDetail.sourceTitle'),
+      content: (
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
             <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.dnDetail.customerLabel')}</div>
@@ -843,9 +848,20 @@ const DeliveryNoteDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </DocumentRailCard>
-    </>
-  );
+      ),
+    },
+    totals: {
+      title: t('sales.dnDetail.deliverySummaryTitle'),
+      content: (
+        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
+          <DocumentRailStat label={t('sales.dnDetail.linesLabel')} value={deliveryNote.lines.length} />
+          <DocumentRailStat label={t('sales.dnDetail.deliveredQtyLabel')} value={deliveredQtyTotal.toFixed(2)} tone="blue" />
+          <DocumentRailStat label={t('sales.dnDetail.costBaseLabel')} value={lineCostBaseTotal.toFixed(2)} tone="green" />
+          <DocumentRailStat label={t('sales.dnDetail.warehouse')} value={warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-'} />
+        </div>
+      ),
+    },
+  };
 
   return (
     <>
@@ -860,10 +876,12 @@ const DeliveryNoteDetailPage: React.FC = () => {
           {deliveryNote.status}
         </DocumentPill>
       }
-      sideRail={viewSideRail}
+      railSections={viewRailSections}
       railTitle={t('sales.dnDetail.sideRailTitle')}
-      footerSummary={viewFooterSummary}
-      footerActions={
+      footerSections={{
+        totals: { content: viewFooterSummary },
+        actions: {
+          content: (
         <>
           <button
             type="button"
@@ -918,11 +936,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
             {t('sales.dnDetail.history')}
           </button>
         </>
-      }
-    >
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+          ),
+        },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
@@ -943,8 +967,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
-
-      {(() => {
+          ),
+        },
+        lines: {
+          content: (() => {
         const linkedSO = deliveryNote.salesOrderId
           ? salesOrders.find((so) => so.id === deliveryNote.salesOrderId)
           : null;
@@ -1023,9 +1049,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
             )}
           </Card>
         );
-      })()}
-
-    </DocumentDetailScaffold>
+      })(),
+        },
+      }}
+    />
 
       <GlImpactModal
         isOpen={glImpactOpen}

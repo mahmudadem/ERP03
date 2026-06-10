@@ -28,9 +28,12 @@ import { RecordAuditModal } from '../components/RecordAuditModal';
 import {
   DocumentDetailScaffold,
   DocumentFooterTotalsStrip,
+  DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailCard,
   DocumentRailStat,
+  DocumentScaffoldRailSections,
+  documentHeaderControlClass,
+  documentHeaderLabelClass,
 } from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -563,20 +566,21 @@ const SalesReturnDetailPage: React.FC = () => {
         ]}
       />
     );
-    const draftSideRail = (
-      <>
-        <DocumentRailCard title={t('sales.returnDetail.returnDraft')}>
+    const draftRailSections: DocumentScaffoldRailSections = {
+      info: {
+        title: t('sales.returnDetail.returnDraft'),
+        content: (
           <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
             <DocumentRailStat label={t('sales.returnDetail.context')} value={contextLabel(returnContext)} tone={returnContext === 'AFTER_INVOICE' ? 'blue' : returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'} />
             <DocumentRailStat label={t('sales.returnDetail.settlement')} value={settlementModeLabel(settlementMode)} tone={settlementMode === 'REFUND' ? 'amber' : 'blue'} />
             <DocumentRailStat label={t('sales.returnDetail.returnDate')} value={returnDate || '-'} />
             <DocumentRailStat label={t('sales.returnDetail.reason')} value={reasonCodeLabel(reasonCode)} />
           </div>
-        </DocumentRailCard>
-      </>
-    );
-    const headerLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
-    const headerControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+        ),
+      },
+    };
+    const headerLabelClass = documentHeaderLabelClass;
+    const headerControlClass = documentHeaderControlClass;
 
     const renderReturnControlCard = () => (
       <section className="shrink-0 rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -635,10 +639,12 @@ const SalesReturnDetailPage: React.FC = () => {
             {contextLabel(returnContext)}
           </DocumentPill>
         }
-        sideRail={draftSideRail}
+        railSections={draftRailSections}
         railTitle={t('sales.returnDetail.sideRailTitle')}
-        footerSummary={draftFooterSummary}
-        footerActions={
+        footerSections={{
+          totals: { content: draftFooterSummary },
+          actions: {
+            content: (
           <button
             type="button"
             className="rounded bg-slate-800 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700"
@@ -647,15 +653,22 @@ const SalesReturnDetailPage: React.FC = () => {
           >
             {busy ? t('sales.returnDetail.creating') : t('sales.returnDetail.createDraftReturn')}
           </button>
-        }
-      >
-
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        {renderReturnControlCard()}
-
+            ),
+          },
+        }}
+        sections={{
+          banner: {
+            content: error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            ) : null,
+          },
+          control: {
+            content: renderReturnControlCard(),
+          },
+          header: {
+            content: (
         <Card className="overflow-visible p-0">
-          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
+          <DocumentHeaderGrid>
             {returnContext === 'AFTER_INVOICE' && (
               <div>
                 <label className={headerLabelClass}>{t('sales.returnDetail.postedSalesInvoice')}</label>
@@ -790,7 +803,7 @@ const SalesReturnDetailPage: React.FC = () => {
                 disabled={busy}
               />
             </div>
-          </div>
+          </DocumentHeaderGrid>
           <div className="mt-4">
             <label className="mb-1 block text-sm font-medium text-slate-700">{t('sales.returnDetail.reason')}</label>
             <input
@@ -815,7 +828,11 @@ const SalesReturnDetailPage: React.FC = () => {
               : t('sales.returnDetail.sourceLinesHint')}
           </div>
         </Card>
-
+            ),
+          },
+          lines: {
+            content: (
+              <>
         {returnContext === 'AFTER_INVOICE' && salesInvoiceId && (
           <Card className="p-5">
             <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.linesToReturn')}</h2>
@@ -986,8 +1003,11 @@ const SalesReturnDetailPage: React.FC = () => {
             </p>
           </Card>
         )}
-
-      </DocumentDetailScaffold>
+              </>
+            ),
+          },
+        }}
+      />
     );
   }
 
@@ -1014,9 +1034,10 @@ const SalesReturnDetailPage: React.FC = () => {
       ]}
     />
   );
-  const viewSideRail = (
-    <>
-      <DocumentRailCard title={t('sales.returnDetail.returnTotals')}>
+  const viewRailSections: DocumentScaffoldRailSections = {
+    totals: {
+      title: t('sales.returnDetail.returnTotals'),
+      content: (
         <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
           <DocumentRailStat label={`${t('sales.returnDetail.subtotal')} (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}`} />
           <DocumentRailStat label={`${t('sales.returnDetail.tax')} (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`} tone="blue" />
@@ -1029,8 +1050,11 @@ const SalesReturnDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </DocumentRailCard>
-      <DocumentRailCard title={t('sales.returnDetail.returnControl')}>
+      ),
+    },
+    info: {
+      title: t('sales.returnDetail.returnControl'),
+      content: (
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
             <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.returnDetail.source')}</div>
@@ -1043,9 +1067,9 @@ const SalesReturnDetailPage: React.FC = () => {
             </DocumentPill>
           </div>
         </div>
-      </DocumentRailCard>
-    </>
-  );
+      ),
+    },
+  };
 
   return (
     <>
@@ -1065,10 +1089,12 @@ const SalesReturnDetailPage: React.FC = () => {
           </DocumentPill>
         </>
       }
-      sideRail={viewSideRail}
+      railSections={viewRailSections}
       railTitle={t('sales.returnDetail.sideRailTitle')}
-      footerSummary={viewFooterSummary}
-      footerActions={
+      footerSections={{
+        totals: { content: viewFooterSummary },
+        actions: {
+          content: (
         <>
           <button
             type="button"
@@ -1134,12 +1160,17 @@ const SalesReturnDetailPage: React.FC = () => {
             {t('sales.returnDetail.history')}
           </button>
         </>
-      }
-    >
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-      {isEditing ? (
+          ),
+        },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: isEditing ? (
         <Card className="overflow-visible p-0">
           <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
@@ -1272,8 +1303,10 @@ const SalesReturnDetailPage: React.FC = () => {
             </div>
           </div>
         </Card>
-      )}
-
+      ),
+        },
+        lines: {
+          content: (
       <Card className="p-5">
         <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.returnDetail.lines')}</h2>
         <div className="overflow-x-auto">
@@ -1301,8 +1334,10 @@ const SalesReturnDetailPage: React.FC = () => {
           </table>
         </div>
       </Card>
-
-    </DocumentDetailScaffold>
+          ),
+        },
+      }}
+    />
 
       <GlImpactModal
         isOpen={glImpactOpen}

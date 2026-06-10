@@ -29,8 +29,8 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailCard,
   DocumentRailStat,
+  DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
@@ -642,9 +642,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
     </>
   );
 
-  const sideRail = (
-    <>
-      <DocumentRailCard title={t('purchases.poDetail.orderTotals')}>
+  const railSections: DocumentScaffoldRailSections = {
+    totals: {
+      title: t('purchases.poDetail.orderTotals'),
+      content: (
         <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
           <DocumentRailStat label={t('purchases.poDetail.subtotalWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
           <DocumentRailStat label={t('purchases.poDetail.subtotalBase')} value={totals.subtotalBase.toFixed(2)} />
@@ -658,9 +659,11 @@ const PurchaseOrderDetailPage: React.FC = () => {
             <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} {t('purchases.poDetail.baseSuffix')}</div>
           </div>
         </div>
-      </DocumentRailCard>
-
-      <DocumentRailCard title={t('purchases.poDetail.procurementStatus')}>
+      ),
+    },
+    info: {
+      title: t('purchases.poDetail.procurementStatus'),
+      content: (
         <div className="space-y-1.5 p-2.5 text-xs">
           <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
             <span className="font-bold text-slate-600 dark:text-slate-300">{t('purchases.poDetail.linesCount')}</span>
@@ -679,9 +682,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
             </DocumentPill>
           </div>
         </div>
-      </DocumentRailCard>
-    </>
-  );
+      ),
+    },
+  };
 
   return (
     <DocumentDetailScaffold
@@ -695,14 +698,20 @@ const PurchaseOrderDetailPage: React.FC = () => {
           {form.status}
         </DocumentPill>
       }
-      sideRail={sideRail}
+      railSections={railSections}
       railTitle={t('purchases.poDetail.sideRailTitle')}
-      footerSummary={footerSummary}
-      footerActions={footerActions}
-    >
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+      footerSections={{
+        totals: { content: footerSummary },
+        actions: { content: footerActions },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: (
       <Card className="overflow-visible p-0">
         <DocumentHeaderGrid>
           <DocumentHeaderField label={t('purchases.poDetail.vendorLabel')}>
@@ -758,7 +767,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
           </DocumentHeaderField>
         </DocumentHeaderGrid>
       </Card>
-
+          ),
+        },
+        lines: {
+          content: (
       <ClassicLineItemsTable<EditableLine>
         tableId="purchases.order.lines"
         title={t('purchases.poDetail.lineItems')}
@@ -870,7 +882,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
           { id: 'statusQty', label: t('purchases.poDetail.statusQtyColumn'), kind: 'computed', width: '150px', align: 'left', compute: (line) => t('purchases.poDetail.statusQtyFormat', { received: line.receivedQty, invoiced: line.invoicedQty, returned: line.returnedQty }) },
         ]}
       />
-
+          ),
+        },
+        secondary: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
@@ -895,8 +910,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
-
-      {!isCreateMode && form.id && (
+          ),
+        },
+        custom: {
+          content: !isCreateMode && form.id ? (
         <Card className="p-5">
           <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('purchases.poDetail.linkedDocuments')}</h3>
           <div className="grid gap-6 md:grid-cols-3">
@@ -950,9 +967,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
             </div>
           </div>
         </Card>
-      )}
-
-    </DocumentDetailScaffold>
+          ) : null,
+        },
+      }}
+    />
   );
 };
 

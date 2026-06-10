@@ -16,9 +16,10 @@ import { FileText } from 'lucide-react';
 import {
   DocumentDetailScaffold,
   DocumentFooterTotalsStrip,
+  DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailCard,
   DocumentRailStat,
+  DocumentScaffoldRailSections,
 } from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
@@ -926,30 +927,39 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const activeGrandTotal = isEditMode
     ? editLines.reduce((s, l) => s + l.returnQty * l.unitCostDoc, 0)
     : purchaseReturn.grandTotalDoc;
-  const viewSideRail = (
-    <>
-      <DocumentRailCard title="Info" action={<DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>}>
+  const viewRailSections: DocumentScaffoldRailSections = {
+    info: {
+      title: 'Info',
+      action: <DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>,
+      content: (
         <div className="grid gap-2 p-2.5">
           <DocumentRailStat label="Vendor" value={purchaseReturn.vendorName || purchaseReturn.vendorId || '-'} />
           <DocumentRailStat label="Return Date" value={isEditMode ? editReturnDate : purchaseReturn.returnDate} />
           <DocumentRailStat label="Warehouse" value={isEditMode ? editWarehouseId : purchaseReturn.warehouseId || '-'} />
         </div>
-      </DocumentRailCard>
-      <DocumentRailCard title="Document Status">
+      ),
+    },
+    readiness: {
+      title: 'Document Status',
+      content: (
         <div className="grid gap-2 p-2.5">
           <DocumentRailStat label="Status" value={purchaseReturn.status} tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'} />
           <DocumentRailStat label="Lines" value={(isEditMode ? editLines : purchaseReturn.lines).length} />
         </div>
-      </DocumentRailCard>
-      <DocumentRailCard title="Totals" action={<DocumentPill tone="slate">{purchaseReturn.currency}</DocumentPill>}>
+      ),
+    },
+    totals: {
+      title: 'Totals',
+      action: <DocumentPill tone="slate">{purchaseReturn.currency}</DocumentPill>,
+      content: (
         <div className="grid gap-2 p-2.5">
           <DocumentRailStat label="Subtotal" value={`${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}`} />
           <DocumentRailStat label="Tax" value={`${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}`} tone="blue" />
           <DocumentRailStat label="Grand Total" value={`${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}`} tone="green" />
         </div>
-      </DocumentRailCard>
-    </>
-  );
+      ),
+    },
+  };
 
   const footerActions = isEditMode ? (
     <button
@@ -996,6 +1006,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
   );
 
   return (
+    <>
     <DocumentDetailScaffold
       title={purchaseReturn.returnNumber}
       subtitle={`Vendor: ${purchaseReturn.vendorName || purchaseReturn.vendorId || '-'}`}
@@ -1009,9 +1020,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
           {isEditMode && <DocumentPill tone="amber">Editing</DocumentPill>}
         </>
       }
-      sideRail={viewSideRail}
+      railSections={viewRailSections}
       railTitle="Purchase return side rail"
-      footerSummary={
+      footerSections={{
+        totals: {
+          content: (
         <DocumentFooterTotalsStrip
           totals={[
             { label: 'Subtotal', value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
@@ -1019,14 +1032,20 @@ const PurchaseReturnDetailPage: React.FC = () => {
             { label: 'Grand', value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}`, tone: 'green' },
           ]}
         />
-      }
-      footerActions={footerActions}
-    >
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+          ),
+        },
+        actions: { content: footerActions },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: (
       <Card className="overflow-visible p-0">
-        <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
+        <DocumentHeaderGrid>
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
             {isEditMode ? (
@@ -1074,9 +1093,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
               <textarea rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
             </div>
           )}
-        </div>
+        </DocumentHeaderGrid>
       </Card>
-
+          ),
+        },
+        lines: {
+          content: (
       <ClassicLineItemsTable<any>
         tableId="purchases.return.view.lines"
         title="Lines"
@@ -1154,7 +1176,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
           { id: 'lineTotal', label: 'Line Total', kind: 'computed', width: '130px', compute: (line) => (line.returnQty || 0) * (line.unitCostDoc || 0) },
         ]}
       />
-
+          ),
+        },
+        secondary: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-2 text-sm md:grid-cols-2">
           <div className="flex justify-between">
@@ -1181,6 +1206,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
+          ),
+        },
+      }}
+    />
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
@@ -1193,7 +1222,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         onConfirm={unpostReturn}
         onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
       />
-    </DocumentDetailScaffold>
+    </>
   );
 };
 
