@@ -26,7 +26,8 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailStat,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
   DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
@@ -541,12 +542,14 @@ const DeliveryNoteDetailPage: React.FC = () => {
       info: {
         title: t('sales.dnDetail.deliveryDraftTitle'),
         content: (
-          <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-            <DocumentRailStat label={t('sales.dnDetail.linesLabel')} value={form.lines.length} />
-            <DocumentRailStat label={t('sales.dnDetail.source')} value={form.salesOrderId ? t('sales.dnDetail.salesOrderLabel') : t('sales.dnDetail.direct')} tone={form.salesOrderId ? 'blue' : 'slate'} />
-            <DocumentRailStat label={t('sales.dnDetail.deliveryDate')} value={form.deliveryDate || '-'} />
-            <DocumentRailStat label={t('sales.dnDetail.warehouse')} value={warehouseLabelById[form.warehouseId] || form.warehouseId || '-'} />
-          </div>
+          <DocumentRailKeyValueList
+            items={[
+              { label: t('sales.dnDetail.linesLabel'), value: form.lines.length },
+              { label: t('sales.dnDetail.source'), value: form.salesOrderId ? t('sales.dnDetail.salesOrderLabel') : t('sales.dnDetail.direct') },
+              { label: t('sales.dnDetail.deliveryDate'), value: form.deliveryDate || '-' },
+              { label: t('sales.dnDetail.warehouse'), value: warehouseLabelById[form.warehouseId] || form.warehouseId || '-' },
+            ]}
+          />
         ),
       },
     };
@@ -836,29 +839,28 @@ const DeliveryNoteDetailPage: React.FC = () => {
     info: {
       title: t('sales.dnDetail.sourceTitle'),
       content: (
-        <div className="space-y-1.5 p-2.5 text-xs">
-          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.dnDetail.customerLabel')}</div>
-            <div className="truncate font-black text-slate-900 dark:text-slate-100">{deliveryNote.customerName}</div>
-          </div>
-          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.dnDetail.salesOrderLabel')}</div>
-            <div className="truncate font-black text-slate-900 dark:text-slate-100">
-              {deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '-'}
-            </div>
-          </div>
-        </div>
+        <DocumentRailKeyValueList
+          items={[
+            { label: t('sales.dnDetail.customerLabel'), value: deliveryNote.customerName },
+            { label: t('sales.dnDetail.salesOrderLabel'), value: deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '-' },
+          ]}
+        />
       ),
     },
     totals: {
       title: t('sales.dnDetail.deliverySummaryTitle'),
       content: (
-        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={t('sales.dnDetail.linesLabel')} value={deliveryNote.lines.length} />
-          <DocumentRailStat label={t('sales.dnDetail.deliveredQtyLabel')} value={deliveredQtyTotal.toFixed(2)} tone="blue" />
-          <DocumentRailStat label={t('sales.dnDetail.costBaseLabel')} value={lineCostBaseTotal.toFixed(2)} tone="green" />
-          <DocumentRailStat label={t('sales.dnDetail.warehouse')} value={warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-'} />
-        </div>
+        <DocumentRailTotals
+          rows={[
+            { label: t('sales.dnDetail.linesLabel'), value: deliveryNote.lines.length },
+            { label: t('sales.dnDetail.deliveredQtyLabel'), value: deliveredQtyTotal.toFixed(2) },
+            { label: t('sales.dnDetail.warehouse'), value: warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-' },
+          ]}
+          grand={{
+            label: t('sales.dnDetail.costBaseLabel'),
+            value: lineCostBaseTotal.toFixed(2),
+          }}
+        />
       ),
     },
   };

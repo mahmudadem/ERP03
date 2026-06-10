@@ -30,7 +30,8 @@ import {
   DocumentFooterTotalsStrip,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailStat,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
   DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderLabelClass,
@@ -570,12 +571,14 @@ const SalesReturnDetailPage: React.FC = () => {
       info: {
         title: t('sales.returnDetail.returnDraft'),
         content: (
-          <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-            <DocumentRailStat label={t('sales.returnDetail.context')} value={contextLabel(returnContext)} tone={returnContext === 'AFTER_INVOICE' ? 'blue' : returnContext === 'BEFORE_INVOICE' ? 'amber' : 'slate'} />
-            <DocumentRailStat label={t('sales.returnDetail.settlement')} value={settlementModeLabel(settlementMode)} tone={settlementMode === 'REFUND' ? 'amber' : 'blue'} />
-            <DocumentRailStat label={t('sales.returnDetail.returnDate')} value={returnDate || '-'} />
-            <DocumentRailStat label={t('sales.returnDetail.reason')} value={reasonCodeLabel(reasonCode)} />
-          </div>
+          <DocumentRailKeyValueList
+            items={[
+              { label: t('sales.returnDetail.context'), value: contextLabel(returnContext) },
+              { label: t('sales.returnDetail.settlement'), value: settlementModeLabel(settlementMode) },
+              { label: t('sales.returnDetail.returnDate'), value: returnDate || '-' },
+              { label: t('sales.returnDetail.reason'), value: reasonCodeLabel(reasonCode) },
+            ]}
+          />
         ),
       },
     };
@@ -1035,38 +1038,40 @@ const SalesReturnDetailPage: React.FC = () => {
     />
   );
   const viewRailSections: DocumentScaffoldRailSections = {
-    totals: {
-      title: t('sales.returnDetail.returnTotals'),
-      content: (
-        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={`${t('sales.returnDetail.subtotal')} (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}`} />
-          <DocumentRailStat label={`${t('sales.returnDetail.tax')} (${salesReturn.currency})`} value={`${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}`} tone="blue" />
-          <DocumentRailStat label={t('sales.returnDetail.netSettlement')} value={`${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}`} tone="amber" />
-          <DocumentRailStat label={t('sales.returnDetail.lines')} value={salesReturn.lines.length} />
-          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.returnDetail.grandTotal')}</div>
-            <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
-              {salesReturn.currency} {salesReturn.grandTotalDoc.toFixed(2)}
-            </div>
-          </div>
-        </div>
-      ),
-    },
     info: {
       title: t('sales.returnDetail.returnControl'),
       content: (
-        <div className="space-y-1.5 p-2.5 text-xs">
-          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.returnDetail.source')}</div>
-            <div className="truncate font-black text-slate-900 dark:text-slate-100">{sourceLabel}</div>
-          </div>
-          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.returnDetail.settlement')}</span>
-            <DocumentPill tone={salesReturn.settlementMode === 'REFUND' ? 'amber' : 'blue'}>
-              {settlementModeLabel(salesReturn.settlementMode)}
-            </DocumentPill>
-          </div>
-        </div>
+        <DocumentRailKeyValueList
+          items={[
+            { label: t('sales.returnDetail.source'), value: sourceLabel },
+            {
+              label: t('sales.returnDetail.settlement'),
+              value: (
+                <DocumentPill tone={salesReturn.settlementMode === 'REFUND' ? 'amber' : 'blue'}>
+                  {settlementModeLabel(salesReturn.settlementMode)}
+                </DocumentPill>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    totals: {
+      title: t('sales.returnDetail.returnTotals'),
+      action: <DocumentPill tone="slate">{salesReturn.currency}</DocumentPill>,
+      content: (
+        <DocumentRailTotals
+          rows={[
+            { label: `${t('sales.returnDetail.subtotal')} (${salesReturn.currency})`, value: `${salesReturn.currency} ${salesReturn.subtotalDoc.toFixed(2)}` },
+            { label: `${t('sales.returnDetail.tax')} (${salesReturn.currency})`, value: `${salesReturn.currency} ${salesReturn.taxTotalDoc.toFixed(2)}` },
+            { label: t('sales.returnDetail.netSettlement'), value: `${salesReturn.currency} ${(salesReturn.netSettlementAmountDoc || 0).toFixed(2)}` },
+            { label: t('sales.returnDetail.lines'), value: salesReturn.lines.length },
+          ]}
+          grand={{
+            label: t('sales.returnDetail.grandTotal'),
+            value: `${salesReturn.currency} ${salesReturn.grandTotalDoc.toFixed(2)}`,
+          }}
+        />
       ),
     },
   };

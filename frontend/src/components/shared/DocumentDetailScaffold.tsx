@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Lock, LucideIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Info, Lock, LucideIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export type DocumentPillTone = 'slate' | 'blue' | 'green' | 'amber' | 'rose' | 'red' | 'violet';
@@ -488,6 +488,132 @@ export function DocumentRailStat({
     <div className="rounded border border-slate-100 bg-slate-50/70 px-2 py-1 dark:border-slate-800 dark:bg-slate-900/40">
       <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{label}</div>
       <div className={clsx('truncate font-mono text-xs font-black', valueClass)}>{value}</div>
+    </div>
+  );
+}
+
+/** SI-standard rail Info interior: focused entity box plus an optional blue help note. */
+export function DocumentRailFocus({
+  code,
+  title,
+  subtitle,
+  note,
+  className,
+}: {
+  code: React.ReactNode;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  note?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={clsx('flex min-h-[132px] flex-col gap-2 overflow-auto p-2.5 text-xs', className)}>
+      <div className="rounded border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
+        <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">{code}</div>
+        <div className="mt-0.5 truncate text-sm font-black text-slate-900 dark:text-slate-100">{title}</div>
+        {subtitle !== undefined && (
+          <div className="truncate text-[10px] font-semibold text-slate-500">{subtitle}</div>
+        )}
+      </div>
+      {note && (
+        <div className="rounded border border-blue-50 bg-blue-50/50 px-2 py-1.5 text-[11px] leading-relaxed text-blue-700 dark:border-blue-950/20 dark:bg-blue-950/10 dark:text-blue-300">
+          {note}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** SI-standard rail key/value rows (Order Status, Source, Document Status style cards). */
+export function DocumentRailKeyValueList({
+  items,
+  className,
+}: {
+  items: Array<{ label: string; value: React.ReactNode }>;
+  className?: string;
+}) {
+  return (
+    <div className={clsx('space-y-1.5 p-2.5 text-xs', className)}>
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40"
+        >
+          <span className="shrink-0 font-bold text-slate-600 dark:text-slate-300">{item.label}</span>
+          <span className="min-w-0 truncate text-right font-black text-slate-900 dark:text-slate-100">{item.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** SI-standard rail readiness/status checklist rows (green ok, red warn, slate info). */
+export function DocumentRailChecklist({
+  items,
+  className,
+}: {
+  items: Array<{ state: 'ok' | 'warn' | 'info'; label: React.ReactNode }>;
+  className?: string;
+}) {
+  return (
+    <div className={clsx('space-y-1.5 p-2.5 text-xs', className)}>
+      {items.map((item, index) => (
+        <div
+          key={index}
+          className={clsx(
+            'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
+            item.state === 'ok' && 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300',
+            item.state === 'warn' && 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
+            item.state === 'info' && 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300',
+          )}
+        >
+          {item.state === 'ok' ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          ) : item.state === 'warn' ? (
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+          ) : (
+            <Info className="h-4 w-4 shrink-0" />
+          )}
+          <span>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** SI-standard rail Totals interior: light label/value rows plus the dark Grand Total box. */
+export function DocumentRailTotals({
+  rows,
+  grand,
+  className,
+}: {
+  rows?: Array<{ label: string; value: React.ReactNode }>;
+  grand?: { label: string; value: React.ReactNode; subLabel?: string; subValue?: React.ReactNode };
+  className?: string;
+}) {
+  return (
+    <div className={clsx('space-y-1.5 p-2.5', className)}>
+      {(rows || []).map((row) => (
+        <div
+          key={row.label}
+          className="flex items-center justify-between gap-2 rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30"
+        >
+          <span className="font-bold text-slate-500">{row.label}</span>
+          <span className="min-w-0 truncate font-mono font-bold text-slate-800 dark:text-slate-200">{row.value}</span>
+        </div>
+      ))}
+      {grand && (
+        <div className="rounded-lg border border-slate-950 bg-slate-900 px-3 py-2 text-white shadow-md dark:bg-slate-950">
+          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{grand.label}</div>
+          <div className="mt-0.5 text-right font-mono text-xl font-black text-emerald-400">{grand.value}</div>
+          {grand.subLabel !== undefined && (
+            <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1 text-[10px] font-bold text-slate-300">
+              <span>{grand.subLabel}</span>
+              <span className="font-mono">{grand.subValue}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -29,7 +29,8 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailStat,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
   DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
@@ -643,45 +644,43 @@ const PurchaseOrderDetailPage: React.FC = () => {
   );
 
   const railSections: DocumentScaffoldRailSections = {
-    totals: {
-      title: t('purchases.poDetail.orderTotals'),
-      content: (
-        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={t('purchases.poDetail.subtotalWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
-          <DocumentRailStat label={t('purchases.poDetail.subtotalBase')} value={totals.subtotalBase.toFixed(2)} />
-          <DocumentRailStat label={t('purchases.poDetail.taxWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
-          <DocumentRailStat label={t('purchases.poDetail.taxBase')} value={totals.taxTotalBase.toFixed(2)} tone="blue" />
-          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('purchases.poDetail.grandTotal')}</div>
-            <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
-              {form.currency} {totals.grandTotalDoc.toFixed(2)}
-            </div>
-            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} {t('purchases.poDetail.baseSuffix')}</div>
-          </div>
-        </div>
-      ),
-    },
     info: {
       title: t('purchases.poDetail.procurementStatus'),
       content: (
-        <div className="space-y-1.5 p-2.5 text-xs">
-          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">{t('purchases.poDetail.linesCount')}</span>
-            <span className="font-mono font-black text-slate-900 dark:text-slate-100">{form.lines.length}</span>
-          </div>
-          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">{t('purchases.poDetail.vendor')}</span>
-            <span className="max-w-[160px] truncate font-black text-slate-900 dark:text-slate-100">
-              {form.vendorName || '-'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">{t('purchases.poDetail.workflow')}</span>
-            <DocumentPill tone={isDraft ? 'slate' : form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
-              {form.status}
-            </DocumentPill>
-          </div>
-        </div>
+        <DocumentRailKeyValueList
+          items={[
+            { label: t('purchases.poDetail.linesCount'), value: form.lines.length },
+            { label: t('purchases.poDetail.vendor'), value: form.vendorName || '-' },
+            {
+              label: t('purchases.poDetail.workflow'),
+              value: (
+                <DocumentPill tone={isDraft ? 'slate' : form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
+                  {form.status}
+                </DocumentPill>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    totals: {
+      title: t('purchases.poDetail.orderTotals'),
+      action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
+      content: (
+        <DocumentRailTotals
+          rows={[
+            { label: t('purchases.poDetail.subtotalWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+            { label: t('purchases.poDetail.subtotalBase'), value: totals.subtotalBase.toFixed(2) },
+            { label: t('purchases.poDetail.taxWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
+            { label: t('purchases.poDetail.taxBase'), value: totals.taxTotalBase.toFixed(2) },
+          ]}
+          grand={{
+            label: t('purchases.poDetail.grandTotal'),
+            value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`,
+            subLabel: t('purchases.poDetail.baseSuffix'),
+            subValue: totals.grandTotalBase.toFixed(2),
+          }}
+        />
       ),
     },
   };

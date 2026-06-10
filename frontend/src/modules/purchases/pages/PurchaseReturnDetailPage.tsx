@@ -18,7 +18,8 @@ import {
   DocumentFooterTotalsStrip,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailStat,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
   DocumentScaffoldRailSections,
 } from '../../../components/shared/DocumentDetailScaffold';
 
@@ -932,31 +933,44 @@ const PurchaseReturnDetailPage: React.FC = () => {
       title: 'Info',
       action: <DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>,
       content: (
-        <div className="grid gap-2 p-2.5">
-          <DocumentRailStat label="Vendor" value={purchaseReturn.vendorName || purchaseReturn.vendorId || '-'} />
-          <DocumentRailStat label="Return Date" value={isEditMode ? editReturnDate : purchaseReturn.returnDate} />
-          <DocumentRailStat label="Warehouse" value={isEditMode ? editWarehouseId : purchaseReturn.warehouseId || '-'} />
-        </div>
+        <DocumentRailKeyValueList
+          items={[
+            { label: 'Vendor', value: purchaseReturn.vendorName || purchaseReturn.vendorId || '-' },
+            { label: 'Return Date', value: isEditMode ? editReturnDate : purchaseReturn.returnDate },
+            { label: 'Warehouse', value: isEditMode ? editWarehouseId : purchaseReturn.warehouseId || '-' },
+          ]}
+        />
       ),
     },
     readiness: {
       title: 'Document Status',
       content: (
-        <div className="grid gap-2 p-2.5">
-          <DocumentRailStat label="Status" value={purchaseReturn.status} tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'} />
-          <DocumentRailStat label="Lines" value={(isEditMode ? editLines : purchaseReturn.lines).length} />
-        </div>
+        <DocumentRailKeyValueList
+          items={[
+            {
+              label: 'Status',
+              value: (
+                <DocumentPill tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'}>
+                  {purchaseReturn.status}
+                </DocumentPill>
+              ),
+            },
+            { label: 'Lines', value: (isEditMode ? editLines : purchaseReturn.lines).length },
+          ]}
+        />
       ),
     },
     totals: {
       title: 'Totals',
       action: <DocumentPill tone="slate">{purchaseReturn.currency}</DocumentPill>,
       content: (
-        <div className="grid gap-2 p-2.5">
-          <DocumentRailStat label="Subtotal" value={`${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}`} />
-          <DocumentRailStat label="Tax" value={`${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}`} tone="blue" />
-          <DocumentRailStat label="Grand Total" value={`${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}`} tone="green" />
-        </div>
+        <DocumentRailTotals
+          rows={[
+            { label: 'Subtotal', value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
+            { label: 'Tax', value: `${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}` },
+          ]}
+          grand={{ label: 'Grand Total', value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}` }}
+        />
       ),
     },
   };

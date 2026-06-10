@@ -50,7 +50,10 @@ import {
   DocumentHeaderGrid,
   DocumentIconButton,
   DocumentPill,
+  DocumentRailChecklist,
+  DocumentRailFocus,
   DocumentRailStat,
+  DocumentRailTotals,
   DocumentScaffoldRailSections,
   DocumentSecondaryPanel,
   DocumentSegmentButton,
@@ -941,63 +944,24 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         title: t('purchases.invoiceDetail.rail.info', 'Info'),
         action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>,
         content: (
-          <>
-          <div className="flex min-h-[132px] flex-col gap-2 overflow-auto p-2.5 text-xs">
-            <div className="rounded border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
-              <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">
-                {form.purchaseOrderId ? selectedPurchaseOrder?.orderNumber || form.purchaseOrderId : t('purchases.invoiceDetail.rail.directBill', 'Direct bill')}
-              </div>
-              <div className="mt-0.5 truncate text-sm font-black text-slate-900 dark:text-slate-100">
-                {selectedVendorName}
-              </div>
-              <div className="truncate text-[10px] font-semibold text-slate-500">
-                {form.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
-              </div>
-            </div>
-            <div className="rounded border border-blue-50 bg-blue-50/50 px-2 py-1.5 text-[11px] leading-relaxed text-blue-700 dark:border-blue-950/20 dark:bg-blue-950/10 dark:text-blue-300">
-              {t('purchases.invoiceDetail.rail.helpDraft', 'Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.')}
-            </div>
-          </div>
-          </>
+          <DocumentRailFocus
+            code={form.purchaseOrderId ? selectedPurchaseOrder?.orderNumber || form.purchaseOrderId : t('purchases.invoiceDetail.rail.directBill', 'Direct bill')}
+            title={selectedVendorName}
+            subtitle={form.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
+            note={t('purchases.invoiceDetail.rail.helpDraft', 'Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.')}
+          />
         ),
       },
       readiness: {
         title: t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
         content: (
-          <div className="space-y-1.5 p-2.5 text-xs">
-            <div className={clsx(
-              'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
-              draftHasVendor && draftHasLines && draftBalanced
-                ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
-                : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
-            )}>
-              {draftHasVendor && draftHasLines && draftBalanced ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-              )}
-              <span>{t('purchases.invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview')}</span>
-            </div>
-
-            <div className={clsx(
-              'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
-              draftTaxResolved
-                ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
-                : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
-            )}>
-              {draftTaxResolved ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-              )}
-              <span>{t('purchases.invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved')}</span>
-            </div>
-
-            <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
-              <Info className="h-4 w-4 shrink-0" />
-              <span>{t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active')}</span>
-            </div>
-          </div>
+          <DocumentRailChecklist
+            items={[
+              { state: draftHasVendor && draftHasLines && draftBalanced ? 'ok' : 'warn', label: t('purchases.invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview') },
+              { state: draftTaxResolved ? 'ok' : 'warn', label: t('purchases.invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved') },
+              { state: 'info', label: t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active') },
+            ]}
+          />
         ),
       },
       settlement: {
@@ -1017,28 +981,22 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         title: t('purchases.invoiceDetail.rail.totalsTitle', 'Totals'),
         action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
         content: (
-          <div className="space-y-1.5 p-2.5">
-            <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
-              <span className="font-bold text-slate-500">{t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal')}</span>
-              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
-              <span className="font-bold text-slate-500">{t('purchases.invoiceDetail.rail.totalsTax', 'Tax')}</span>
-              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
-            </div>
-            <div className="rounded-lg border border-slate-950 bg-slate-900 px-3 py-2 text-white shadow-md dark:bg-slate-950">
-              <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('purchases.invoiceDetail.rail.totalsGrandTotal', 'Grand Total')}</div>
-              <div className="mt-0.5 text-right font-mono text-xl font-black text-emerald-400">
-                {form.currency} {totals.grandTotalDoc.toFixed(2)}
-              </div>
-              {form.currency !== baseCurrency && (
-                <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1 text-[10px] font-bold text-slate-300">
-                  <span>{t('purchases.invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)')}</span>
-                  <span className="font-mono">{baseCurrency} {totals.grandTotalBase.toFixed(2)}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <DocumentRailTotals
+            rows={[
+              { label: t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+              { label: t('purchases.invoiceDetail.rail.totalsTax', 'Tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
+            ]}
+            grand={{
+              label: t('purchases.invoiceDetail.rail.totalsGrandTotal', 'Grand Total'),
+              value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`,
+              ...(form.currency !== baseCurrency
+                ? {
+                    subLabel: t('purchases.invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)'),
+                    subValue: `${baseCurrency} ${totals.grandTotalBase.toFixed(2)}`,
+                  }
+                : {}),
+            }}
+          />
         ),
       },
     };
@@ -1631,53 +1589,24 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       title: t('purchases.invoiceDetail.rail.info', 'Info'),
       action: <DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>,
       content: (
-        <>
-        <div className="flex min-h-[132px] flex-col gap-2 overflow-auto p-2.5 text-xs">
-          <div className="rounded border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="truncate text-[9px] font-black uppercase tracking-wide text-slate-500">
-              {invoice.purchaseOrderId || invoice.invoiceNumber}
-            </div>
-            <div className="mt-0.5 truncate text-sm font-black text-slate-900 dark:text-slate-100">
-              {viewVendorName}
-            </div>
-            <div className="truncate text-[10px] font-semibold text-slate-500">
-              {invoice.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
-            </div>
-          </div>
-          <div className="rounded border border-blue-50 bg-blue-50/50 px-2 py-1.5 text-[11px] leading-relaxed text-blue-700 dark:border-blue-950/20 dark:bg-blue-950/10 dark:text-blue-300">
-            {t('purchases.invoiceDetail.rail.helpView', 'Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.')}
-          </div>
-        </div>
-        </>
+        <DocumentRailFocus
+          code={invoice.purchaseOrderId || invoice.invoiceNumber}
+          title={viewVendorName}
+          subtitle={invoice.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
+          note={t('purchases.invoiceDetail.rail.helpView', 'Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.')}
+        />
       ),
     },
     readiness: {
       title: invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.docStatusTitle', 'Document Status') : t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
       content: (
-        <div className="space-y-1.5 p-2.5 text-xs">
-          <div className={clsx(
-            'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
-            viewPostingOk
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
-              : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
-          )}>
-            {viewPostingOk ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
-            <span>{invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.readinessLedgerCreated', 'Ledger voucher created') : t('purchases.invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview')}</span>
-          </div>
-          <div className={clsx(
-            'flex items-center gap-2 rounded border px-2 py-1.5 font-bold',
-            viewTaxResolved
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300'
-              : 'border-red-100 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
-          )}>
-            {viewTaxResolved ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
-            <span>{invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.readinessTaxLinesPosted', 'Purchase tax lines posted') : t('purchases.invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved')}</span>
-          </div>
-          <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
-            <Info className="h-4 w-4 shrink-0" />
-            <span>{t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active')}</span>
-          </div>
-        </div>
+        <DocumentRailChecklist
+          items={[
+            { state: viewPostingOk ? 'ok' : 'warn', label: invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.readinessLedgerCreated', 'Ledger voucher created') : t('purchases.invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview') },
+            { state: viewTaxResolved ? 'ok' : 'warn', label: invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.readinessTaxLinesPosted', 'Purchase tax lines posted') : t('purchases.invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved') },
+            { state: 'info', label: t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active') },
+          ]}
+        />
       ),
     },
     settlement: {
@@ -1707,28 +1636,22 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       title: t('purchases.invoiceDetail.rail.totalsTitle', 'Totals'),
       action: <DocumentPill tone="slate">{invoice.currency}</DocumentPill>,
       content: (
-        <div className="space-y-1.5 p-2.5">
-          <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
-            <span className="font-bold text-slate-500">{t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal')}</span>
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{invoice.currency} {invoice.subtotalDoc.toFixed(2)}</span>
-          </div>
-          <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/40 px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900/30">
-            <span className="font-bold text-slate-500">{t('purchases.invoiceDetail.rail.totalsTax', 'Tax')}</span>
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{invoice.currency} {invoice.taxTotalDoc.toFixed(2)}</span>
-          </div>
-          <div className="rounded-lg border border-slate-950 bg-slate-900 px-3 py-2 text-white shadow-md dark:bg-slate-950">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('purchases.invoiceDetail.rail.totalsGrandTotal', 'Grand Total')}</div>
-            <div className="mt-0.5 text-right font-mono text-xl font-black text-emerald-400">
-              {invoice.currency} {invoice.grandTotalDoc.toFixed(2)}
-            </div>
-            {invoice.currency !== viewBaseCurrency && (
-              <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1 text-[10px] font-bold text-slate-300">
-                <span>{t('purchases.invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)')}</span>
-                <span className="font-mono">{viewBaseCurrency} {invoice.grandTotalBase.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
-        </div>
+        <DocumentRailTotals
+          rows={[
+            { label: t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal'), value: `${invoice.currency} ${invoice.subtotalDoc.toFixed(2)}` },
+            { label: t('purchases.invoiceDetail.rail.totalsTax', 'Tax'), value: `${invoice.currency} ${invoice.taxTotalDoc.toFixed(2)}` },
+          ]}
+          grand={{
+            label: t('purchases.invoiceDetail.rail.totalsGrandTotal', 'Grand Total'),
+            value: `${invoice.currency} ${invoice.grandTotalDoc.toFixed(2)}`,
+            ...(invoice.currency !== viewBaseCurrency
+              ? {
+                  subLabel: t('purchases.invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)'),
+                  subValue: `${viewBaseCurrency} ${invoice.grandTotalBase.toFixed(2)}`,
+                }
+              : {}),
+          }}
+        />
       ),
     },
   };

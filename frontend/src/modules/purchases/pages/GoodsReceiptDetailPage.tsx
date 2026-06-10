@@ -22,7 +22,9 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailStat,
+  DocumentRailChecklist,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
   DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
@@ -519,35 +521,38 @@ const GoodsReceiptDetailPage: React.FC = () => {
         title: 'Info',
         action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
         content: (
-          <div className="grid gap-2 p-2.5">
-            <DocumentRailStat label="Lines" value={form.lines.length} />
-            <DocumentRailStat label="Received Qty" value={receivedQtyTotal.toFixed(2)} tone="green" />
-            <DocumentRailStat label="Warehouse" value={form.warehouseId || '-'} />
-          </div>
+          <DocumentRailKeyValueList
+            items={[
+              { label: 'Lines', value: form.lines.length },
+              { label: 'Received Qty', value: receivedQtyTotal.toFixed(2) },
+              { label: 'Warehouse', value: form.warehouseId || '-' },
+            ]}
+          />
         ),
       },
       readiness: {
         title: 'Document Status',
         content: (
-          <div className="space-y-1.5 p-2.5 text-xs font-bold text-slate-600 dark:text-slate-300">
-            <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-              Draft receipt. Posting will update inventory receipt state through the existing purchase flow.
-            </div>
-            {form.purchaseOrderId && (
-              <div className="rounded border border-blue-100 bg-blue-50 px-2 py-1.5 text-blue-700 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-300">
-                Source PO lines can be loaded into this receipt.
-              </div>
-            )}
-          </div>
+          <DocumentRailChecklist
+            items={[
+              { state: 'info', label: 'Draft receipt. Posting will update inventory receipt state through the existing purchase flow.' },
+              ...(form.purchaseOrderId
+                ? [{ state: 'info' as const, label: 'Source PO lines can be loaded into this receipt.' }]
+                : []),
+            ]}
+          />
         ),
       },
       totals: {
         title: 'Totals',
         content: (
-          <div className="grid gap-2 p-2.5">
-            <DocumentRailStat label="Received Qty" value={receivedQtyTotal.toFixed(2)} tone="green" />
-            <DocumentRailStat label="Receipt Date" value={form.receiptDate || '-'} />
-          </div>
+          <DocumentRailTotals
+            rows={[
+              { label: 'Lines', value: form.lines.length },
+              { label: 'Receipt Date', value: form.receiptDate || '-' },
+            ]}
+            grand={{ label: 'Received Qty', value: receivedQtyTotal.toFixed(2) }}
+          />
         ),
       },
     };
@@ -785,28 +790,24 @@ const GoodsReceiptDetailPage: React.FC = () => {
       title: 'Info',
       action: <DocumentPill tone={grn.purchaseOrderId ? 'blue' : 'slate'}>{grn.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
       content: (
-        <div className="space-y-1.5 p-2.5 text-xs">
-          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Vendor</div>
-            <div className="truncate font-black text-slate-900 dark:text-slate-100">{grn.vendorName}</div>
-          </div>
-          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Purchase Order</div>
-            <div className="truncate font-black text-slate-900 dark:text-slate-100">
-              {grn.purchaseOrderId ? linkedPO?.orderNumber || grn.purchaseOrderId : '-'}
-            </div>
-          </div>
-        </div>
+        <DocumentRailKeyValueList
+          items={[
+            { label: 'Vendor', value: grn.vendorName },
+            { label: 'Purchase Order', value: grn.purchaseOrderId ? linkedPO?.orderNumber || grn.purchaseOrderId : '-' },
+          ]}
+        />
       ),
     },
     totals: {
       title: 'Totals',
       content: (
-        <div className="grid gap-2 p-2.5">
-          <DocumentRailStat label="Lines" value={grn.lines.length} />
-          <DocumentRailStat label="Received Qty" value={viewReceivedQtyTotal.toFixed(2)} tone="green" />
-          <DocumentRailStat label="Receipt Date" value={grn.receiptDate || '-'} />
-        </div>
+        <DocumentRailTotals
+          rows={[
+            { label: 'Lines', value: grn.lines.length },
+            { label: 'Receipt Date', value: grn.receiptDate || '-' },
+          ]}
+          grand={{ label: 'Received Qty', value: viewReceivedQtyTotal.toFixed(2) }}
+        />
       ),
     },
   };

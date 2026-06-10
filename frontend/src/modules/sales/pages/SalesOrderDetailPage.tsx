@@ -35,7 +35,8 @@ import {
   DocumentHeaderField,
   DocumentHeaderGrid,
   DocumentPill,
-  DocumentRailStat,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
   DocumentScaffoldRailSections,
   documentHeaderControlClass,
   documentHeaderSelectorClass,
@@ -823,45 +824,43 @@ const SalesOrderDetailPage: React.FC = () => {
   );
 
   const railSections: DocumentScaffoldRailSections = {
-    totals: {
-      title: t('sales.soDetail.orderTotals'),
-      content: (
-        <div className="grid grid-cols-2 gap-1.5 p-2 text-xs">
-          <DocumentRailStat label={t('sales.soDetail.subtotalWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.subtotalDoc.toFixed(2)}`} />
-          <DocumentRailStat label={t('sales.soDetail.subtotalBase')} value={totals.subtotalBase.toFixed(2)} />
-          <DocumentRailStat label={t('sales.soDetail.taxWithCurrency', { currency: form.currency })} value={`${form.currency} ${totals.taxTotalDoc.toFixed(2)}`} tone="blue" />
-          <DocumentRailStat label={t('sales.soDetail.taxBase')} value={totals.taxTotalBase.toFixed(2)} tone="blue" />
-          <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('sales.soDetail.grandTotal')}</div>
-            <div className="truncate font-mono text-sm font-black text-slate-900 dark:text-slate-100">
-              {form.currency} {totals.grandTotalDoc.toFixed(2)}
-            </div>
-            <div className="truncate font-mono text-[10px] text-slate-500">{totals.grandTotalBase.toFixed(2)} {t('sales.soDetail.baseSuffix')}</div>
-          </div>
-        </div>
-      ),
-    },
     info: {
       title: t('sales.soDetail.orderStatus'),
       content: (
-        <div className="space-y-1.5 p-2.5 text-xs">
-          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.soDetail.linesCount')}</span>
-            <span className="font-mono font-black text-slate-900 dark:text-slate-100">{form.lines.length}</span>
-          </div>
-          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.soDetail.customer')}</span>
-            <span className="max-w-[160px] truncate font-black text-slate-900 dark:text-slate-100">
-              {form.customerName || customers.find((customer) => customer.id === form.customerId)?.displayName || '-'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40">
-            <span className="font-bold text-slate-600 dark:text-slate-300">{t('sales.soDetail.workflow')}</span>
-            <DocumentPill tone={isDraft ? 'slate' : isConfirmed ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
-              {form.status}
-            </DocumentPill>
-          </div>
-        </div>
+        <DocumentRailKeyValueList
+          items={[
+            { label: t('sales.soDetail.linesCount'), value: form.lines.length },
+            { label: t('sales.soDetail.customer'), value: form.customerName || customers.find((customer) => customer.id === form.customerId)?.displayName || '-' },
+            {
+              label: t('sales.soDetail.workflow'),
+              value: (
+                <DocumentPill tone={isDraft ? 'slate' : isConfirmed ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
+                  {form.status}
+                </DocumentPill>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    totals: {
+      title: t('sales.soDetail.orderTotals'),
+      action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
+      content: (
+        <DocumentRailTotals
+          rows={[
+            { label: t('sales.soDetail.subtotalWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+            { label: t('sales.soDetail.subtotalBase'), value: totals.subtotalBase.toFixed(2) },
+            { label: t('sales.soDetail.taxWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
+            { label: t('sales.soDetail.taxBase'), value: totals.taxTotalBase.toFixed(2) },
+          ]}
+          grand={{
+            label: t('sales.soDetail.grandTotal'),
+            value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`,
+            subLabel: t('sales.soDetail.baseSuffix'),
+            subValue: totals.grandTotalBase.toFixed(2),
+          }}
+        />
       ),
     },
   };
