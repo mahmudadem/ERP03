@@ -38,11 +38,17 @@
 - On every document: hide the rail, restore it from the edge button, shrink the window below ~1280px and confirm the rail becomes an edge drawer. Repeat a sample in Arabic/RTL (drawer mirrors to the left).
 - On a very wide (2xl) screen, rail cards should fill the column height in the Sales Invoice rhythm instead of compressing into the top quarter.
 - **Rail interiors (added same day):** on SO, PO, DN, SR, GRN, and PR, each rail Totals card now looks like the Sales Invoice Totals card — light label/value rows ending in the dark Grand Total box with the green number — and status/source cards use the same key-value row style. Sections that do not apply to a document (e.g. Settlement on Sales Order) stay hidden by design.
+- **Phase 4 (added same day, owner-directed): Sales Invoice itself now runs on the template.** Open `Sales -> Invoices -> New Sales Invoice` and a posted invoice:
+  - Confirm the page looks and behaves as before: status banner (posted/pending), source control strip, compact header, line table, allocation grid, settlement block, sticky footer.
+  - Rail order Info -> Posting Readiness -> Settlement -> Totals; hide/restore the rail; footer totals strip appears only while the rail is hidden.
+  - The Clone to Recurring button now sits in the standard top action tray chrome.
+  - Repeat in Windows mode (rail becomes an edge drawer) and in Arabic/RTL (drawer and back arrow mirror) — this behavior is now template-driven on SI.
+  - **Important:** settlement QA (report 194 scripts A–D + over-payment scenario) was NOT run before this rebuild. Run it on the rebuilt page; if a settlement step fails, note it may be either the settlement code or the rebuild.
 - Full QA script: [done/202-document-scaffold-true-template-adoption-phases-1-3.md](./done/202-document-scaffold-true-template-adoption-phases-1-3.md).
 
 **Known limitations:**
 - UI/layout only; no posting, tax, settlement, AP/AR, inventory, approval, period-lock, audit, or ledger behavior changed.
-- Sales Invoice itself is rebuilt onto the template in Phase 4, after the settlement QA (report 194) passes. Quotation intentionally stays page-local.
+- Quotation intentionally stays page-local (owner decision).
 
 ---
 

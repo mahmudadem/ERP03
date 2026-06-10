@@ -1,4 +1,4 @@
-# Task 202 — Document Scaffold True Template Adoption (Phases 1–3)
+# Task 202 — Document Scaffold True Template Adoption (Phases 1–4)
 
 **Date:** 2026-06-10
 **Agent:** Claude (Fable 5)
@@ -85,10 +85,43 @@ Typecheck + production build green.
 SI Totals card (light rows + dark Grand Total box) and status/source cards use the same
 key-value row style; sections that do not apply (e.g. Settlement on SO) stay hidden.
 
+## Phase 4 — Sales Invoice rebuilt on the template (`73245f21`, owner-directed same day)
+
+The owner instructed Phase 4 to proceed without waiting for settlement QA ("commit and do it").
+`SalesInvoiceDetailPage.tsx` now mounts `DocumentDetailScaffold` with strict named slots:
+
+- Body: `banner` (posted/pending status via `DocumentStatusBanner`), `control`
+  (`DocumentControlPanel` + `DocumentSegmentedGroup`/`DocumentSegmentButton`/
+  `DocumentIconButton`), `header` (`DocumentCompactCard` + `DocumentHeaderGrid` + shared header
+  classes), `lines`, `secondary` (`DocumentSecondaryPanel` + `DocumentEmptyPanel`), `custom`
+  (editable settlement block).
+- Rail: `info` (`DocumentRailFocus`), `readiness` (`DocumentRailChecklist`), `settlement`
+  (summary block), `totals` (`DocumentRailTotals`).
+- Footer: rail-state-aware totals via `footerSections` (totals strip only when the rail is
+  hidden — now implemented by the template, not page code); governance warning via
+  `DocumentNoticeBanner` in the scaffold `banner` prop.
+- **Deleted** the page's duplicated shell: rail pin/drawer/auto-collapse state, matchMedia
+  breakpoint effect, edge button, drawer, sticky footer, topbar markup, and the local
+  `Pill`/`Field`/`CompactCard` components (~330 net lines removed; 622 deletions).
+
+Note: settlement QA (report 194) had NOT been run before this rebuild, against the original
+sequencing plan but per explicit owner instruction. If settlement QA now fails, re-test against
+commit `ea4f26c0` (pre-rebuild) to attribute the failure.
+
+**Extra QA steps for SI:** open `Sales -> Invoices -> New Sales Invoice` and a posted invoice;
+confirm anatomy (banner → source controls → header → lines → allocation → settlement → sticky
+footer), rail order Info → Posting Readiness → Settlement → Totals, footer totals appearing only
+when the rail is hidden, the Clone-to-Recurring button now sitting in the standard top action
+tray, Windows-mode drawer behavior, and Arabic/RTL mirroring (now template-driven).
+
+## Parallel work note
+
+Task 203 (shared line-table UOM selector + table settings, parallel session) landed in the same
+working tree and was checkpointed as `5b727763` before the Phase 4 commit; SI's UOM cell change
+from Task 203 rides in the Phase 4 commit because both edits touch the same file.
+
 ## Not done (intentional)
 
-- **Phase 4 — Sales Invoice rebuild** onto the template: waits for settlement/over-payment
-  manual QA (report 194) to pass first, per owner decision.
 - **Quotation**: stays page-local (owner decision).
 - Legacy scaffold props kept (owner decision); documented as legacy-compat only in
   [docs/architecture/document-scaffold.md](../../docs/architecture/document-scaffold.md).

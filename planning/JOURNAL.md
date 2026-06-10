@@ -21,6 +21,8 @@
 
 **Follow-up same day (`ea4f26c0`):** owner QA noticed SO's rail still looked unlike SI. Standardized the rail card *interiors* too: new template primitives `DocumentRailFocus` / `DocumentRailKeyValueList` / `DocumentRailChecklist` / `DocumentRailTotals` (SI light rows + dark Grand Total box), consumed by PI, SO, DN, SR, PO, GRN, PR. Typecheck + build green.
 
+**Phase 4 same day (`73245f21`, owner-directed):** Sales Invoice itself rebuilt on the template with strict named slots; deleted its duplicated shell (rail state, drawer, edge button, sticky footer, topbar, local Pill/Field/CompactCard) — 622 deletions / 292 insertions. Settlement QA (report 194) was NOT run first, per explicit owner instruction; if it fails, retest against `ea4f26c0` to attribute. Parallel-session Task 203 (UOM selector) checkpointed as `5b727763` before the Phase 4 commit. Typecheck + production build green.
+
 **Next:** Manual QA per [QA-QUEUE.md](./QA-QUEUE.md) (report 202 script), settlement QA (report 194), then Task 202 Phase 4 — rebuild Sales Invoice on the template.
 
 ## 2026-06-09 (Tue) — Native Document Shared Table And Action Tray

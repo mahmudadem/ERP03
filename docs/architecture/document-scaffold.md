@@ -67,14 +67,17 @@ Sales Invoice rail design. Document pages must compose these instead of hand-wri
 `DocumentRailStat` remains for dense stat tiles inside document-specific cards (e.g. the PI
 settlement card) but is no longer the default rail language.
 
-## Adoption Status (Task 202, 2026-06-10)
+## Adoption Status (Task 202, 2026-06-10 — COMPLETE)
 
-All scaffold consumers now use the strict named slots: Purchase Invoice (draft + view), Sales Order, Delivery Note (draft + view), Sales Return (draft + view), Purchase Order, Goods Receipt (draft + view — the posted view newly adopted the scaffold), and Purchase Return. Migrating to named slots also fixed the rail layout at `2xl` width: each rail card is now a direct grid child, matching the Sales Invoice 4-row rail template.
+Every native Sales/Purchases document page now uses the strict named slots, **including Sales
+Invoice itself** (Phase 4): SI, PI (draft + view), SO, DN (draft + view), SR (draft + view), PO,
+GRN (draft + view), and PR. The Sales Invoice page no longer carries a page-local copy of the
+shell — its rail state, drawer, edge button, sticky footer, topbar, and local Pill/Field/
+CompactCard components were deleted in favor of the template. The scaffold is the single source
+of truth for the document shell.
 
-Still outstanding:
-
-- **Sales Invoice** is the reference design but still renders its own page-local copy of the shell (Task 202 Phase 4 — rebuild after settlement QA passes).
-- **Quotation** intentionally stays page-local (owner decision, 2026-06-10).
+The only exclusion is **Quotation**, which intentionally stays page-local (owner decision,
+2026-06-10).
 
 ## Compatibility Rule
 
