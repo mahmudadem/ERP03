@@ -1,7 +1,9 @@
 # Task 202 — Document Scaffold: True Template Adoption
 
 **Created:** 2026-06-10 (audit by Claude, decisions by Mahmud)
-**Status:** Planned — not started
+**Status:** Phases 1–3 DONE (2026-06-10, commits `f6ee6ea4`, `a193ddd4`, `fa683ad8`; report
+[done/202-document-scaffold-true-template-adoption-phases-1-3.md](../done/202-document-scaffold-true-template-adoption-phases-1-3.md)).
+Phase 4 (Sales Invoice rebuild) pending — precondition: settlement QA (report 194) passes.
 **Branch context:** `feat/overpayment-credit-balance`
 
 ## Why this task exists (audit result)

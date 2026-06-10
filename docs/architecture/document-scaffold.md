@@ -8,12 +8,13 @@
 
 The scaffold exposes named body slots in this order:
 
-1. `control` - source controls, mode selectors, linked-document selectors, and command controls.
-2. `header` - party, date, currency, warehouse, salesperson, and document header inputs.
-3. `lines` - the shared line-items table region.
-4. `secondary` - allocation, settlement, audit preview, warnings, or other secondary workspaces.
-5. `attachments` - document evidence and communication entry points when a page needs them.
-6. `custom` - compatibility slot for older pages while they are being split into stricter sections.
+1. `banner` - posted/pending-approval status banners, governance notices, and inline error strips.
+2. `control` - source controls, mode selectors, linked-document selectors, and command controls.
+3. `header` - party, date, currency, warehouse, salesperson, and document header inputs.
+4. `lines` - the shared line-items table region.
+5. `secondary` - allocation, settlement, audit preview, warnings, or other secondary workspaces.
+6. `attachments` - document evidence and communication entry points when a page needs them.
+7. `custom` - trailing document-specific content (for example the editable settlement block on invoices, or linked-document panels).
 
 The right rail exposes named slots in this order:
 
@@ -36,20 +37,30 @@ Each slot uses the same `DocumentScaffoldSection` contract:
 {
   show?: boolean;
   preserveSpace?: boolean;
-  title?: string;
+  title?: string;          // when set, body slots render inside DocumentCompactCard, rail slots inside DocumentRailCard
   action?: React.ReactNode;
   content?: React.ReactNode;
-  className?: string;
+  className?: string;      // applied to the slot wrapper
+  cardClassName?: string;  // applied to the card rendered for a titled slot (e.g. 'overflow-visible' for dropdown-heavy headers)
 }
 ```
 
 `show: false` hides a section. `preserveSpace: true` keeps an intentionally empty section in the static layout when a page has no content for that slot yet. This allows Delivery Notes, Sales Orders, Purchase Orders, Goods Receipts, Purchase Returns, Sales Returns, Sales Invoices, and Purchase Invoices to keep the same page anatomy while showing different controls and data.
 
+Footer sections additionally accept `content` as a function of the rail state (`{ showInlineRail, railDrawerOpen }`). This is how the Sales Invoice behavior — footer totals strip only when the side rail is hidden, a short status line otherwise — is expressed through the named slots. Purchase Invoice uses this today.
+
+## Adoption Status (Task 202, 2026-06-10)
+
+All scaffold consumers now use the strict named slots: Purchase Invoice (draft + view), Sales Order, Delivery Note (draft + view), Sales Return (draft + view), Purchase Order, Goods Receipt (draft + view — the posted view newly adopted the scaffold), and Purchase Return. Migrating to named slots also fixed the rail layout at `2xl` width: each rail card is now a direct grid child, matching the Sales Invoice 4-row rail template.
+
+Still outstanding:
+
+- **Sales Invoice** is the reference design but still renders its own page-local copy of the shell (Task 202 Phase 4 — rebuild after settlement QA passes).
+- **Quotation** intentionally stays page-local (owner decision, 2026-06-10).
+
 ## Compatibility Rule
 
-Older consumers that still pass `children` or `sideRail` are normalized through the same scaffold pipeline as `custom` sections. This keeps the shell, rail behavior, RTL mirroring, drawer behavior, and sticky footer consistent while individual pages are progressively split into strict `control` / `header` / `lines` / `secondary` slots.
-
-New or materially edited native document pages should use `sections`, `railSections`, and `footerSections` directly. Do not add new page-local document shells.
+The legacy `children` / `sideRail` / `footerSummary` / `footerActions` props still exist by owner decision (2026-06-10: keep the escape hatch), and are normalized through the same scaffold pipeline as `custom` sections. They are **legacy-compat only**: no module page uses them anymore, and new or materially edited native document pages MUST use `sections`, `railSections`, and `footerSections` directly. Do not add new page-local document shells, and do not pass document bodies through `children`.
 
 ## Header Density Standard
 

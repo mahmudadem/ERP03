@@ -10,6 +10,29 @@
 
 ## 🧪 Ready to Test
 
+### Sales/Purchases - Document Template True Adoption (Phases 1-3)
+**Added by:** Claude (report 202)
+**What to test:**
+- Open `Purchases -> Invoices -> New Bill` (the pilot page).
+  - Expected body order: source control strip, compact header card, line table, allocation grid placeholder, attachments/audit cards, settlement block, sticky footer.
+  - Expected rail order: Info, Posting Readiness, Settlement, Totals.
+  - With the side rail visible, the footer left side shows a short status text; hide the rail with its round button and the footer switches to the boxed Subtotal/Tax/Grand totals strip (same behavior as Sales Invoice).
+  - Confirm the Vendor dropdown is not clipped by the header card edge.
+- Open a posted Purchase Invoice and confirm the same anatomy read-only, with Outstanding in the footer strip when the rail is hidden.
+- Check the footer totals strip on SO, DN, SR, PO, GRN, and PR: it now renders as one bordered box with small uppercase labels and mono values, visually matching the Sales Invoice footer.
+- Open Sales Order: confirm the credit-override dialog still opens and works when confirming an order over the customer's credit limit.
+- Open a posted/saved Goods Receipt: it now uses the shared document template (topbar with back button and status pill, Info/Totals side rail, sticky footer with actions). Confirm Post/Unpost/Create Return actions still work, including the Unpost confirmation dialog.
+- Open a Purchase Return saved view: header grid, lines, totals summary, rail Info -> Document Status -> Totals; Unpost dialog still works.
+- On every document: hide the rail, restore it from the edge button, shrink the window below ~1280px and confirm the rail becomes an edge drawer. Repeat a sample in Arabic/RTL (drawer mirrors to the left).
+- On a very wide (2xl) screen, rail cards should fill the column height in the Sales Invoice rhythm instead of compressing into the top quarter.
+- Full QA script: [done/202-document-scaffold-true-template-adoption-phases-1-3.md](./done/202-document-scaffold-true-template-adoption-phases-1-3.md).
+
+**Known limitations:**
+- UI/layout only; no posting, tax, settlement, AP/AR, inventory, approval, period-lock, audit, or ledger behavior changed.
+- Sales Invoice itself is rebuilt onto the template in Phase 4, after the settlement QA (report 194) passes. Quotation intentionally stays page-local.
+
+---
+
 ### Sales/Purchases - Shared Line Table Auto-Append Regression Fix
 **Added by:** Codex (report 201)
 **What to test:**

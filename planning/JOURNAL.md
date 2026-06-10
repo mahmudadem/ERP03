@@ -2,6 +2,25 @@
 
 > Append new entries at the top. One entry per work session.
 
+## 2026-06-10 (Wed) — Document Scaffold True Template Adoption (Task 202, Phases 1–3)
+
+**Task:** Audit + fix: make all native Sales/Purchases document pages actually run on the shared `DocumentDetailScaffold` named sections instead of the legacy escape hatch.
+**Agent:** Claude (Fable 5). **Branch:** `feat/overpayment-credit-balance`. **Plan:** [tasks/202-document-scaffold-true-template-adoption.md](./tasks/202-document-scaffold-true-template-adoption.md). **Report:** [done/202-document-scaffold-true-template-adoption-phases-1-3.md](./done/202-document-scaffold-true-template-adoption-phases-1-3.md).
+
+**Audit verdict (start of session):** the template existed (Task 197) but zero pages used its named slots — all 8 consumers passed free-form `children`/`sideRail`; Sales Invoice (the reference) never used the template at all and carries its own duplicated shell; Quotation had no shell. Owner decisions: template first → PI pilot → rollout → SI last; Quotation excluded; keep the legacy props as convention.
+
+**What changed:**
+- Phase 1 (`f6ee6ea4`): template self-parity with SI — footer totals strip redesigned to SI's boxed grid, rail-state-aware footer slots, new `banner` body slot + `DocumentStatusBanner`/`DocumentNoticeBanner`, lines/secondary slot flex fixes, `DocumentField` lock icon, `cardClassName` passthrough. Confirmed SI's odd shades (`slate-205` etc.) are dead Tailwind classes — not copied.
+- Phase 2 (`a193ddd4`): Purchase Invoice (draft + view) on strict named slots; SI's rail-aware footer behavior adopted; new EN/AR/TR footer status keys. Migration fixed the 2xl rail grid bug (cards were collapsing into one custom slot).
+- Phase 3 (`fa683ad8`): SO, DN, SR, PO, GRN, PR migrated; GRN **posted view** newly adopted the scaffold (was a plain page); SR/PR headers adopted `DocumentHeaderGrid`; SO credit-override + PR unpost dialogs moved out of the body flow. Zero legacy scaffold usage remains in `frontend/src/modules`.
+- Docs: [docs/architecture/document-scaffold.md](../docs/architecture/document-scaffold.md) updated (banner slot, footer function content, adoption status, legacy-compat rule).
+
+**Accounting boundary:** UI/layout only. No posting, tax, settlement, AP/AR, inventory valuation, approval, period-lock, audit, DTO, or ledger behavior changed.
+
+**Verification:** frontend typecheck after each phase; production build after Phases 2 and 3 (check:reports / check:no-confirm / check:sod-approve included) — all green. Legacy-usage grep sweep clean.
+
+**Next:** Manual QA per [QA-QUEUE.md](./QA-QUEUE.md) (report 202 script), settlement QA (report 194), then Task 202 Phase 4 — rebuild Sales Invoice on the template.
+
 ## 2026-06-09 (Tue) — Native Document Shared Table And Action Tray
 
 **Task:** Task 200 — make the shared line-items table and top action tray part of the native document scaffold/template across Sales and Purchases.
