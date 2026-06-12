@@ -392,12 +392,15 @@ export const routesConfig: AppRoute[] = [
   // Legacy path from Phase 2 — superseded by the unified Voucher Designer.
   { path: '/purchases/settings/voucher-types', label: 'Voucher Designer', component: lazy(() => import('../modules/purchases/pages/PurchaseVoucherDesignerPage')), section: 'INVENTORY', requiredModule: 'purchase', hideInMenu: true },
 
+  // Specific Purchase Master Routes — MUST come BEFORE dynamic :formCode routes
+  { path: '/purchases/vendors', label: 'Vendors', component: VendorsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/vendors/:id', label: 'Vendor Detail', component: VendorDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+
   // Dynamic Purchase Documents (designed in Forms Designer)
   { path: '/purchases/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/:formCode/new', label: 'New Document', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/:formCode/:id', label: 'Document Detail', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
-  { path: '/purchases/vendors', label: 'Vendors', component: VendorsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
-  { path: '/purchases/vendors/:id', label: 'Vendor Detail', component: VendorDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+
   
   // TOOLS
   { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },

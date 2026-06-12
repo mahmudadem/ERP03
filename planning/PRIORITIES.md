@@ -6,11 +6,41 @@
 
 ---
 
-## 🔴 Current Priority (work this first)
+## 🧊 FEATURE FREEZE IN EFFECT (declared 2026-06-13, CTO audit — overrides everything below)
 
-**Task 132 main-shell chrome polish** — owner decision on 2026-06-13: stop Apex tenant-shell cutover work. The main shell remains the production shell. Keep only the Apex accordion-sidebar visual language and apply it to the main shell's existing accordion mode without changing sidebar behavior, permissions, route sources, workflow hiding, or tenant/module filtering.
+**v1 is feature-complete. No new features, no UI polish, no refactors until the pilot ships.**
+Full reasoning: [planning/CTO-AUDIT-2026-06-13.md](./CTO-AUDIT-2026-06-13.md) (Arabic: [CTO-AUDIT-2026-06-13.ar.md](./CTO-AUDIT-2026-06-13.ar.md)).
 
-Concrete next step: continue main-shell chrome polish and native QA from the current production shell. Do **not** implement the Apex feature flag/cutover path unless the owner explicitly reopens that strategy.
+What IS allowed during the freeze:
+1. Fixes for failures found by the [golden-path QA scripts](./qa/golden-paths/README.md)
+2. The ship-plan items below (CI, deployment, scheduler, email, monitoring)
+3. P0 accounting-correctness bugs (always)
+
+What is NOT allowed: any task that adds to the QA surface — new UI polish (including the remaining Task 132 chrome work), new selectors, new table features, new AI features, new master-data conveniences. If an owner request arrives that looks like a feature, log it for post-pilot and continue.
+
+### The ship plan (work top-down)
+
+| Phase | Item | Status |
+|-------|------|--------|
+| 1 | Commit + merge mega-branch to `main`, tag `v0.9-alpha` | 🔶 in progress (2026-06-13) |
+| 1 | CI pipeline (`.github/workflows/ci.yml`) | ✅ created 2026-06-13 |
+| 1 | Golden-path QA scripts replace QA-QUEUE | ✅ created 2026-06-13 — **owner must run them** |
+| 1 | Fix golden-path findings | ⬜ after owner's QA pass |
+| 2 | Deploy to real Firebase project (hosting config + functions + rules + indexes) | ⬜ |
+| 2 | Sentry + scheduled Firestore backups + helmet/rate-limit | ⬜ |
+| 3 | Scheduled Tasks Engine ([spec](./tasks/scheduled-tasks-engine.md)) | ⬜ |
+| 3 | Email invoice delivery (sender-accounts abstraction) | ⬜ |
+| 4 | Pilot: 1–3 real companies on staging | ⬜ |
+
+Notes:
+- **Shell decision is settled (owner, 2026-06-13): the main shell IS the production shell; Apex cutover is dead.** Apex visual-language backports are chrome polish ⇒ frozen until post-pilot.
+- SQL drift-control architecture test (every Firestore repo ⇒ Prisma twin, AI-repo allowlist) joins CI **when feature work resumes** — not needed during the freeze. See audit §8.
+
+---
+
+## 🔴 Previous Priority (superseded by the freeze — kept for context)
+
+**Task 132 main-shell chrome polish** — owner decision on 2026-06-13: stop Apex tenant-shell cutover work. The main shell remains the production shell. Keep only the Apex accordion-sidebar visual language and apply it to the main shell's existing accordion mode without changing sidebar behavior, permissions, route sources, workflow hiding, or tenant/module filtering. **Frozen until post-pilot.**
 
 ---
 

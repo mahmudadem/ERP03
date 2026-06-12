@@ -104,10 +104,11 @@ describe('AiModelCertificationUseCase', () => {
       post: jest.fn(),
       get: jest.fn(),
     } as any;
+    let certificationId = 0;
     const mockEngine = {
       run: jest.fn().mockImplementation((input: any, provider?: any) => {
         const base = {
-          id: `cert-${Date.now()}`,
+          id: `cert-${++certificationId}`,
           scope: input.scope,
           tenantId: input.tenantId,
           providerId: input.profile?.providerId || 'openai',

@@ -3317,3 +3317,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated `docs/architecture/document-scaffold.md`, Sales/Purchases user guides, and added [207-native-document-new-form-guard.md](./done/207-native-document-new-form-guard.md).
 - **Time spent:** ~1.2h.
 - **Next:** Manual QA the New button in Classic and Windows mode on SI/SO/DN/SR/PI/PO/GRN/PR saved/edit: blank form opens directly, dirty form warns, Cancel preserves data, Confirm opens a clear form.
+
+### Session: 2026-06-13 (Feature Freeze Ship Package Prep)
+
+- **Goal:** Prepare the v0.9-alpha stabilization package after the CTO audit declared feature freeze.
+- **What was done:** Reviewed the freeze/ship-plan planning updates, added the GitHub Actions CI workflow, created the five golden-path QA scripts plus `planning/qa/findings.md`, and retired `planning/QA-QUEUE.md` as the active QA surface. Tightened the Sales/Purchases QA scripts so inventory checks reconcile to stock movements instead of relying on a brittle hardcoded quantity.
+- **Detours:** Fixed a pre-existing `SidebarItem.tsx` JSX syntax break while preserving the intended child sidebar icon addition. Fixed `AiModelCertificationUseCase.test.ts` test isolation by replacing `Date.now()` ids in the fake certification engine with deterministic incrementing ids.
+- **Accounting/ERP impact:** No production posting, ledger, tax, inventory valuation, AR/AP, approval, period-lock, settlement, tenant isolation, or runtime business behavior changed. The golden paths add manual accounting reconciliation gates before deployment.
+- **Verification:** `npm --prefix backend run build` passed; `npm --prefix backend test` passed (146 suites, 1,365 tests, 18 skipped); `npm --prefix frontend run typecheck` passed; `npm --prefix frontend run build` passed with existing bundle/Browserslist warnings.
+- **Time spent:** ~0.8h.
+- **Next:** Commit the ship package after owner approval, then merge to `main`, tag `v0.9-alpha`, push, and run golden paths 01–05 on a fresh tenant.

@@ -275,6 +275,26 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           })()}
         </div>
       )}
+
+      {/* Sub-link icon (child items in accordion mode) */}
+      {isChild && !isFlyout && finalIcon && (
+        <div className={clsx(
+          "pointer-events-none flex items-center justify-center shrink-0 transition-colors duration-200",
+          "w-4 h-4",
+          isSolidActive
+            ? useApexAccordionLook ? "text-blue-500" : "text-primary-300"
+            : useApexAccordionLook
+              ? "text-slate-400 group-hover:text-slate-500"
+              : "text-[var(--app-sidebar-muted)]"
+        )}>
+          {React.cloneElement(finalIcon as React.ReactElement, {
+            className: clsx(
+              (finalIcon as React.ReactElement).props.className,
+              "w-3.5 h-3.5 transition-colors duration-200"
+            )
+          })}
+        </div>
+      )}
       
       {/* Label — only shown when sidebar is expanded */}
       {(isOpen || isFlyout) && (

@@ -60,7 +60,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
       {!isWindow && (
         <div className="flex-none flex items-center justify-between border-b bg-white px-6 py-6 dark:border-slate-800 dark:bg-slate-900 shadow-sm z-20">
           <div className="flex items-center gap-4">
-             <div className="rounded-lg bg-indigo-600 p-2.5 text-white shadow-lg shadow-indigo-100 dark:shadow-none">
+             <div className="rounded-lg bg-indigo-600 p-2.5 text-white">
                 <Icon size={24} />
              </div>
              <div>
@@ -94,7 +94,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
         {/* Sidebar Navigation / Mobile Tab Bar */}
         <div className={clsx(
-            "flex-none bg-white dark:bg-slate-900/50 border-r md:border-r border-b md:border-b-0 dark:border-slate-800 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto z-10 custom-scroll shadow-sm md:shadow-none",
+            "flex-none bg-white dark:bg-slate-900 border-r md:border-r border-b md:border-b-0 dark:border-slate-800 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto z-10 custom-scroll",
             isWindow ? "md:w-56" : "md:w-60"
         )}>
           <nav className="flex flex-row md:flex-col p-1.5 md:p-2 space-x-1 md:space-x-0 md:space-y-0.5 min-w-full md:min-w-0">
@@ -105,7 +105,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                 className={clsx(
                     "flex-none md:w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 text-[10px] md:text-[11px] font-bold transition-all rounded-lg whitespace-nowrap",
                     activeTab === tab.id 
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none" 
+                        ? "bg-blue-600 text-white" 
                         : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
                 )}
             >
@@ -119,7 +119,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
         </div>
 
         {/* Form Content Wrapper */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900/20 relative overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 relative overflow-hidden">
           <main className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scroll">
             <div className="mx-auto max-w-4xl pb-24">
               {error && (
@@ -133,7 +133,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
           </main>
 
           {/* 3. STICKY FOOTER (Always Visible) */}
-          <div className="flex-none border-t bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 md:px-8 py-3 dark:border-slate-800 z-30 flex flex-row justify-between items-center shadow-[0_-4px_12_rgba(0,0,0,0.05)]">
+          <div className="flex-none border-t bg-white dark:bg-slate-900 px-4 md:px-8 py-3 dark:border-slate-800 z-30 flex flex-row justify-between items-center">
              <div className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400 font-mono font-medium uppercase tracking-tighter">
                 <History size={12} /> {isNew ? 'Master Entry' : `Sync: ${updatedAt ? new Date(updatedAt).toLocaleDateString() : 'Active'}`}
              </div>
@@ -149,7 +149,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                 <button 
                     disabled={saving || !canEdit}
                     onClick={onSave}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg text-[11px] font-bold shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all uppercase tracking-normal"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg text-[11px] font-bold hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all uppercase tracking-normal"
                 >
                     {saving ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-b-white" /> : <Save size={14} />}
                     {isNew ? 'SAVE NEW RECORD' : 'UPDATE MASTER RECORD'}

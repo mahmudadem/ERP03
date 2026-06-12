@@ -1,5 +1,13 @@
 # ERP03 — QA Queue
 
+> ## ⛔ SUPERSEDED (2026-06-13, CTO audit / Phase 1)
+> **This per-feature queue is retired.** It is replaced by the five end-to-end
+> [golden-path QA scripts](./qa/golden-paths/README.md), which cover the flows
+> these items live inside. Do NOT add new items here — during the feature freeze
+> no new QA-surface work is allowed, and any post-freeze feature carries its QA
+> inside its own done-report. The items below remain as reference detail for
+> debugging golden-path failures.
+
 > Items in this list are **built and ready for Mahmud to manually test**.
 > Agents add items here when a feature is complete.
 > Mahmud checks them off after testing and marks Pass ✅ or Fail ❌ (with notes).
