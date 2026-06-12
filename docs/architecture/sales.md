@@ -235,6 +235,8 @@ If an invoice contains a discount, `SalesSettings.defaultSalesExpenseAccountId` 
 
 Voucher metadata always includes `sourceModule='sales'`, `sourceType=<doctype>`, `sourceId=<docId>` so the ledger can be traced back to the originating document.
 
+**Allocation grid UI (shared):** the whole-invoice charges/discounts grid and its add/edit modal are rendered by the shared `components/shared/DocumentChargesAllocation.tsx` (`DocumentChargesAllocation` + `DocumentChargeModal`), used by both Sales Invoice and Purchase Invoice. The component is purely presentational — each page keeps its own charge state, totals math, and posting payload, and passes display-ready rows plus the modal state and callbacks. The page resolves each row's GL-account label to `CODE — Name` (via `useAccounts().getAccountById`) so rows loaded from the server display the account name instead of a raw account id. Per-module differences (i18n namespace, allowed GL classifications, context labels) are props.
+
 ## Inventory Integration
 
 Sales calls the inventory contract `ISalesInventoryService`:
@@ -873,15 +875,18 @@ This is layout architecture only. It does not change Sales posting, tax, settlem
 
 ## Sales Hub Redesign (2026-06-12)
 
-The Sales module dashboard page (`/sales`) has been refactored into a high-density, performant, and visual module hub.
+The Sales module dashboard page (`/sales`) has been refactored into a high-density, performant, and visual split-layout overview module.
 
 ### Core Features
 
-1. **Premium Page Header**: Features a logical layered icon container, a contextual "Module Dashboard" pill, and inline date/time of the last updated cache timestamp.
-2. **Interactive Quick Links**: Dynamic tiles to jump directly into child pages (Invoices, Orders, Delivery Notes, Quotations, Returns) with visual counters.
-3. **Interactive Document Pipeline**: Shows active counts per status for each document type. Clicking a status badge (e.g. `DRAFT`) routes to the list page with `location.state.statusFilter` pre-applied. The list pages (`SalesInvoicesListPage`, `SalesOrdersListPage`, `DeliveryNotesListPage`, `SalesReturnsListPage`) sync filter states on mount and update dynamically.
-4. **Summary & settings panel**: Displays core workflow settings (e.g. Simple vs. Operational mode, sequence formats, and operational flags) in a key-value layout.
-5. **Caching & TTLs**: Uses a module-level in-memory cache to prevent redundant API fetches. Sales settings cache is set to 5 minutes, while document arrays have a 60-second TTL. Individual section titles have a `RefreshCw` button to selectively force-refetch that data stream without reloading the entire page.
+1. **Clean Outlined KPI Cards**: Replaced large circle icons with text-focused cards showing big numbers, smaller currency suffixes (e.g. `SYP`), custom status subtexts, and HSL color-coded dot badges with thin left vertical border accents.
+2. **Main Workspace Layout**:
+   * **Left Column (Main Tables)**: Displays separate **Recent Sales Orders (SO)** and **Recent Sales Invoices (INV)** tables. Each table shows up to 5 of the most recent documents with high-density columns: Number, Date, Customer, Currency, Raw Total, Created By, Created At, Approved At, and Status.
+   * **Right Column (Sidebar)**:
+     * **Quick Navigation**: A compact 2-column grid of links to major document list pages and settings.
+     * **Recent Activity**: A high-density timeline feed showing the 5 most recent activities (SO, INV, Returns) with creator details, formatted amounts, and status badges.
+     * **Top Client Accounts**: Clean outlined cards showing dual-language customer names, balances, and thin bottom-aligned progress lines showing their share of total revenue.
+3. **Caching & TTLs**: Uses a module-level in-memory cache to prevent redundant API fetches. Sales settings cache is set to 5 minutes, while document arrays have a 60-second TTL. Individual sections support cache refreshing.
 
 ---
 

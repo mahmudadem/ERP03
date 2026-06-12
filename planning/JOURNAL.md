@@ -2,6 +2,49 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-12 — Allocation grid GL display, document-specific row colors, shared charges component (report 215)
+
+**Context:** Owner-delegated follow-ups from the SI/PI charges work (209/210): "do those while I go and come back."
+
+**What was done:**
+- **GL Account column fix (SI + PI):** the allocation grid showed raw account ids for charge rows loaded
+  from the server (only in-session rows had a label). Added `useAccounts()` to both pages; `accountLabelFor`
+  now resolves the id to `CODE — Name` via `getAccountById`, falling back to the id only if unresolved.
+- **Row colors → document-specific:** `ClassicLineItemsTable` `rowColors` is now in-memory only (removed the
+  `localStorage` read/persist + key), matching `highlightedRows`. Reverses the Task 201/214 "persisted
+  per-table preference" call per owner request — colors no longer bleed across all documents of a type.
+- **Shared `DocumentChargesAllocation` component:** extracted the ~400 duplicated lines of allocation grid +
+  charge/discount modal into `components/shared/DocumentChargesAllocation.tsx` (`DocumentChargesAllocation` +
+  `DocumentChargeModal`). Purely presentational — pages keep state/math/posting and pass display rows +
+  callbacks; per-module diffs (i18n namespace, GL classifications, context labels) are props. Removed the
+  now-orphaned imports from both pages.
+
+**Accounting boundary:** UI only — no posting/tax/AR-AP/settlement/ledger change; charge state, totals math,
+and `buildPayload` charge maps untouched.
+**Verification:** `tsc --noEmit` clean; `npm run build` green.
+**Report:** [done/215-allocation-grid-gl-display-rowcolor-shared-component.md](./done/215-allocation-grid-gl-display-rowcolor-shared-component.md).
+**Manual QA needed:** report 215 script (GL display on reopen, row-color isolation across documents, SI/PI charge parity).
+
+### Session: 2026-06-12 — Sales Hub Split-Column Layout Polish & Reorganization (Task 213 Follow-up)
+
+**Context:** Owner requested reorganizing the Sales Overview page to match the classic split-column design (separate SO/INV tables, Top Clients sidebar), while keeping Quick Links, the Recent Activity log, and the new metadata columns.
+
+**What was done:**
+- **Reorganized Grid Layout**: Split page content below the KPIs into a left-column for main lists and a right-column (sidebar) for metadata and summaries.
+- **Dedicated Orders & Invoices Tables**: Removed the unified recent activity list and implemented separate lists for **Recent Sales Orders (SO)** and **Recent Sales Invoices (INV)**, showing all 9 columns of requested metadata (Created By, Created At, Approved At, Currency, etc.) in a high-density, horizontal scroll format.
+- **KPI Card Polish**: Updated the KPI card component to match the screenshot style: text-focused styling with a currency suffix, left HSL accent lines, and color-coded status dots (Total Revenue → green dot, Outstanding AR → red dot, Overdue → red dot, Pending → slate dot).
+- **Sidebar Integration**:
+  - Moved **Quick Navigation** to a compact 2-column sidebar grid.
+  - Built a compact **Recent Activity feed** timeline widget featuring document icons, creator details, formatted amounts, and status badges.
+  - Implemented card-based **Top Client Accounts** showing dual-language customer names, balances, and nested bottom progress lines.
+- **Verification**: Ran `tsc --noEmit` and `npm run build` with zero compiler/bundler errors.
+
+**Files changed:**
+- `frontend/src/modules/sales/pages/SalesHomePage.tsx`
+- `docs/architecture/sales.md`
+- `docs/user-guide/sales/sales-hub.md`
+- `planning/done/213-sales-hub-redesign.md`
+
 ### Session: 2026-06-12 (Shared line-table: numeric math, no-negatives, per-document highlight — report 214)
 
 **Context:** Owner requests on the shared `ClassicLineItemsTable` (SI/PI/SO/DN/Quote/GRN/PR):

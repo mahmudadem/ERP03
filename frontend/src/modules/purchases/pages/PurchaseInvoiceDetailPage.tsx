@@ -16,13 +16,14 @@ import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useAccounts } from '../../../context/AccountsContext';
 import { errorHandler } from '../../../services/errorHandler';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { PartySelector, ItemSelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import { DocumentChargesAllocation, DocumentChargeModal, ChargeAllocationRow } from '../../../components/shared/DocumentChargesAllocation';
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
@@ -38,17 +39,13 @@ import {
   Info,
   Link2,
   Paperclip,
-  Pencil,
-  Plus,
   ShieldCheck,
-  Trash2,
   Upload,
 } from 'lucide-react';
 import {
   DocumentCompactCard,
   DocumentControlPanel,
   DocumentDetailScaffold,
-  DocumentEmptyPanel,
   DocumentField,
   DocumentFooterTotalsStrip,
   DocumentHeaderGrid,
@@ -59,7 +56,6 @@ import {
   DocumentRailStat,
   DocumentRailTotals,
   DocumentScaffoldRailSections,
-  DocumentSecondaryPanel,
   DocumentSegmentButton,
   DocumentSegmentedGroup,
   documentHeaderControlClass,
@@ -164,6 +160,7 @@ const createEmptyForm = (purchaseOrderId = '', vendorId = ''): EditableForm => (
 
 const PurchaseInvoiceDetailPage: React.FC = () => {
   const { company } = useCompanyAccess();
+  const { getAccountById } = useAccounts();
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
@@ -638,217 +635,59 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const renderAllocationGrid = (readOnly: boolean) => {
     const baseCurrency = company?.baseCurrency || 'USD';
     const showBase = form.currency !== baseCurrency;
-    const hasCharges = form.charges.length > 0;
-    const accountLabelFor = (charge: EditableCharge) =>
-      charge.accountLabel
-      || charge.accountId
-      || (charge.kind === 'DISCOUNT'
+    const accountLabelFor = (charge: EditableCharge) => {
+      // Rows added in this session carry a display label; rows loaded from the
+      // server only carry the account id, so resolve it to "CODE — Name" here.
+      if (charge.accountLabel) return charge.accountLabel;
+      if (charge.accountId) {
+        const acc = getAccountById(charge.accountId);
+        if (acc) return `${acc.code} — ${acc.name}`;
+        return charge.accountId;
+      }
+      return charge.kind === 'DISCOUNT'
         ? t('purchases.invoiceDetail.charges.defaultDiscountAccount', 'Default discount account')
-        : t('purchases.invoiceDetail.charges.defaultAccount', 'Default expense account'));
+        : t('purchases.invoiceDetail.charges.defaultAccount', 'Default expense account');
+    };
+    const rows: ChargeAllocationRow[] = form.charges.map((charge, index) => ({
+      key: charge.chargeId || String(index),
+      kind: charge.kind,
+      name: charge.name,
+      accountLabel: accountLabelFor(charge),
+      amountDoc: charge.amountDoc || 0,
+      amountBase: roundMoney((charge.amountDoc || 0) * (form.exchangeRate || 0)),
+    }));
 
     return (
-      <DocumentSecondaryPanel
-        title={t('purchases.invoiceDetail.allocation.title', 'Account Ledger & Purchase Taxes Allocation Grid')}
-        action={
-          !readOnly ? (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => openChargeModal('CHARGE')}
-                disabled={busy}
-                className="inline-flex h-6 items-center gap-1 rounded border border-emerald-300 px-2 text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-              >
-                <Plus className="h-3 w-3" />
-                {t('purchases.invoiceDetail.charges.addCharge', 'Add Charge')}
-              </button>
-              <button
-                type="button"
-                onClick={() => openChargeModal('DISCOUNT')}
-                disabled={busy}
-                className="inline-flex h-6 items-center gap-1 rounded border border-rose-300 px-2 text-[10px] font-black uppercase tracking-wide text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/30"
-              >
-                <Plus className="h-3 w-3" />
-                {t('purchases.invoiceDetail.charges.addDiscount', 'Add Discount')}
-              </button>
-            </div>
-          ) : undefined
-        }
-      >
-        {!hasCharges ? (
-          <DocumentEmptyPanel
-            title={t('purchases.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
-            description={
-              readOnly
-                ? t('purchases.invoiceDetail.charges.emptyReadOnly', 'This bill has no whole-invoice charges or discounts.')
-                : t('purchases.invoiceDetail.charges.emptyDescription', 'Use Add Charge or Add Discount to apply a whole-invoice charge (e.g. freight/landed cost) or discount. Each posts to its own GL account and adjusts the bill totals.')
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
-                  <th className="px-2 py-1.5 text-left font-black">{t('purchases.invoiceDetail.charges.col.type', 'Type')}</th>
-                  <th className="px-2 py-1.5 text-left font-black">{t('purchases.invoiceDetail.charges.col.description', 'Description')}</th>
-                  <th className="px-2 py-1.5 text-left font-black">{t('purchases.invoiceDetail.charges.col.account', 'GL Account')}</th>
-                  <th className="px-2 py-1.5 text-right font-black">{t('purchases.invoiceDetail.charges.col.amount', 'Amount')} ({form.currency})</th>
-                  {!readOnly && <th className="w-16 px-1 py-1.5" />}
-                </tr>
-              </thead>
-              <tbody>
-                {form.charges.map((charge, index) => {
-                  const isDiscount = charge.kind === 'DISCOUNT';
-                  const amountBase = roundMoney((charge.amountDoc || 0) * (form.exchangeRate || 0));
-                  return (
-                    <tr key={charge.chargeId || index} className="border-b border-slate-100 align-middle dark:border-slate-800/60">
-                      <td className="px-2 py-1.5">
-                        <span
-                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
-                            isDiscount
-                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
-                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                          }`}
-                        >
-                          {isDiscount ? t('purchases.invoiceDetail.charges.discount', 'Discount') : t('purchases.invoiceDetail.charges.charge', 'Charge')}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 font-semibold text-slate-800 dark:text-slate-200">{charge.name || '—'}</td>
-                      <td className="px-2 py-1.5 text-slate-600 dark:text-slate-300">{accountLabelFor(charge)}</td>
-                      <td className="px-2 py-1.5 text-right">
-                        <span className={`font-mono font-bold ${isDiscount ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
-                          {isDiscount ? '−' : ''}{(charge.amountDoc || 0).toFixed(2)}
-                        </span>
-                        {showBase && (
-                          <div className="mt-0.5 text-[10px] text-slate-400">
-                            {isDiscount ? '−' : ''}{baseCurrency} {amountBase.toFixed(2)}
-                          </div>
-                        )}
-                      </td>
-                      {!readOnly && (
-                        <td className="px-1 py-1.5">
-                          <div className="flex items-center justify-end gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => openChargeModal(charge.kind || 'CHARGE', index)}
-                              disabled={busy}
-                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-slate-800"
-                              aria-label={t('purchases.invoiceDetail.charges.edit', 'Edit')}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeCharge(index)}
-                              disabled={busy}
-                              className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-950/40"
-                              aria-label={t('purchases.invoiceDetail.charges.remove', 'Remove')}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </DocumentSecondaryPanel>
+      <DocumentChargesAllocation
+        tns="purchases.invoiceDetail"
+        rows={rows}
+        currency={form.currency}
+        baseCurrency={baseCurrency}
+        showBase={showBase}
+        isReadOnly={readOnly}
+        busy={busy}
+        onAddCharge={() => openChargeModal('CHARGE')}
+        onAddDiscount={() => openChargeModal('DISCOUNT')}
+        onEditRow={(index) => openChargeModal(form.charges[index]?.kind || 'CHARGE', index)}
+        onRemoveRow={removeCharge}
+      />
     );
   };
 
-  const renderChargeModal = () => {
-    if (!chargeModal) return null;
-    const isDiscount = chargeModal.kind === 'DISCOUNT';
-    const canSave = chargeModal.description.trim().length > 0 && (chargeModal.amount || 0) > 0;
-    return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={closeChargeModal}>
-        <div
-          className="w-full max-w-md overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className={`flex items-center justify-between border-b px-4 py-3 ${isDiscount ? 'border-rose-200 dark:border-rose-900' : 'border-emerald-200 dark:border-emerald-900'}`}>
-            <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
-              {chargeModal.editIndex !== null
-                ? (isDiscount ? t('purchases.invoiceDetail.charges.editDiscount', 'Edit Discount') : t('purchases.invoiceDetail.charges.editCharge', 'Edit Charge'))
-                : (isDiscount ? t('purchases.invoiceDetail.charges.addDiscount', 'Add Discount') : t('purchases.invoiceDetail.charges.addCharge', 'Add Charge'))}
-            </h3>
-            <span className={`rounded px-2 py-0.5 text-[10px] font-black uppercase ${isDiscount ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'}`}>
-              {isDiscount ? t('purchases.invoiceDetail.charges.discount', 'Discount') : t('purchases.invoiceDetail.charges.charge', 'Charge')}
-            </span>
-          </div>
-          <div className="space-y-3 p-4">
-            <div>
-              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t('purchases.invoiceDetail.charges.modal.account', 'GL Account')}
-              </label>
-              <AccountSelector
-                value={chargeModal.accountId || undefined}
-                onChange={(account: any) =>
-                  setChargeModal((prev) => prev ? { ...prev, accountId: account?.id || '', accountLabel: account ? `${account.code} — ${account.name}` : '' } : prev)
-                }
-                placeholder={isDiscount
-                  ? t('purchases.invoiceDetail.charges.modal.discountAccountPlaceholder', 'Discount-received account')
-                  : t('purchases.invoiceDetail.charges.modal.chargeAccountPlaceholder', 'Expense / landed-cost account')}
-                allowedClassifications={isDiscount ? ['REVENUE', 'EXPENSE'] : ['EXPENSE', 'ASSET']}
-                contextLabel={isDiscount ? 'Discount' : 'Expense'}
-              />
-              <p className="mt-1 text-[10px] text-slate-400">
-                {t('purchases.invoiceDetail.charges.modal.accountHint', 'Defaults from Purchase Settings. Charge debits this account; discount credits it.')}
-              </p>
-            </div>
-            <div>
-              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t('purchases.invoiceDetail.charges.modal.amount', 'Amount')} ({form.currency})
-              </label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                autoFocus
-                value={chargeModal.amount || ''}
-                onChange={(e) => setChargeModal((prev) => prev ? { ...prev, amount: parseFloat(e.target.value) || 0 } : prev)}
-                className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-right font-mono text-sm text-slate-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t('purchases.invoiceDetail.charges.modal.description', 'Description')}
-              </label>
-              <input
-                type="text"
-                value={chargeModal.description}
-                onChange={(e) => setChargeModal((prev) => prev ? { ...prev, description: e.target.value } : prev)}
-                placeholder={isDiscount
-                  ? t('purchases.invoiceDetail.charges.modal.discountDescPlaceholder', 'e.g. Volume discount')
-                  : t('purchases.invoiceDetail.charges.modal.chargeDescPlaceholder', 'e.g. Freight')}
-                className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
-            <button
-              type="button"
-              onClick={closeChargeModal}
-              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              {t('common.cancel', 'Cancel')}
-            </button>
-            <button
-              type="button"
-              onClick={saveChargeModal}
-              disabled={!canSave}
-              className={`rounded px-3 py-1.5 text-xs font-black uppercase tracking-wide text-white disabled:opacity-40 ${isDiscount ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-            >
-              {t('common.save', 'Save')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const renderChargeModal = () => (
+    <DocumentChargeModal
+      tns="purchases.invoiceDetail"
+      state={chargeModal}
+      currency={form.currency}
+      onChange={setChargeModal}
+      onClose={closeChargeModal}
+      onSave={saveChargeModal}
+      chargeClassifications={['EXPENSE', 'ASSET']}
+      discountClassifications={['REVENUE', 'EXPENSE']}
+      chargeContextLabel="Expense"
+      discountContextLabel="Discount"
+    />
+  );
 
   const validateBeforeSave = (): string | null => {
     if (!form.vendorId) return t('purchases.invoiceDetail.validation.vendorRequired', 'Vendor is required.');

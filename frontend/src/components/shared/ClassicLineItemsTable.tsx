@@ -316,7 +316,6 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
   // available via the row right-click context menu when onRowRemove is set.
   const showRemove = false;
   const storageKey = `erp03.lineItemsTable.${tableId}.preferences`;
-  const rowColorStorageKey = `erp03.lineItemsTable.${tableId}.rowColors`;
   const widthStorageKey = `erp03.lineItemsTable.${tableId}.columnWidths`;
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
@@ -333,19 +332,13 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
   const [showPreferences, setShowPreferences] = useState(false);
   const [prefsTab, setPrefsTab] = useState<'layout' | 'typography' | 'columns'>('layout');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  // Row highlight is a transient, per-document marker — NOT persisted to
-  // localStorage. Persisting it by row index under a shared tableId made the
-  // same rows appear highlighted across every document of that type; keeping it
-  // in component state scopes it to the open document and resets on navigation.
+  // Row highlight and row color are transient, per-document markers — NOT
+  // persisted to localStorage. Persisting them by row index under a shared
+  // tableId made the same rows appear highlighted/colored across every document
+  // of that type; keeping them in component state scopes them to the open
+  // document and resets on navigation.
   const [highlightedRows, setHighlightedRows] = useState<Set<number>>(() => new Set());
-  const [rowColors, setRowColors] = useState<Record<number, RowColor>>(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      return JSON.parse(window.localStorage.getItem(rowColorStorageKey) || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [rowColors, setRowColors] = useState<Record<number, RowColor>>(() => ({}));
 
   // Effective column order: persisted preference first, with new (unseen)
   // columns appended in their original order so adding columns later still
@@ -409,12 +402,8 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     window.localStorage.setItem(storageKey, JSON.stringify(preferences));
   }, [preferences, storageKey]);
 
-  // (Row highlight is intentionally in-memory only — see highlightedRows above.)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(rowColorStorageKey, JSON.stringify(rowColors));
-  }, [rowColorStorageKey, rowColors]);
+  // (Row highlight and row color are intentionally in-memory only — see
+  // highlightedRows / rowColors above.)
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
