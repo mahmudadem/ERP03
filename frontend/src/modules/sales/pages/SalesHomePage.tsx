@@ -117,19 +117,17 @@ interface QuickLinkProps {
   icon: React.ReactNode;
   label: string;
   sublabel?: string;
-  to: string;
-  color: string;
   onClick: () => void;
 }
 
-const QuickLinkTile = ({ icon, label, sublabel, color, onClick }: QuickLinkProps) => (
+const QuickLinkTile = ({ icon, label, sublabel, onClick }: QuickLinkProps) => (
   <button
     type="button"
     onClick={onClick}
-    className="group flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700/60"
+    className="group flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-all duration-150 hover:border-slate-300 hover:bg-slate-50/50 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700/60"
   >
     <div
-      className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-transform duration-150 group-hover:scale-105 ${color}`}
+      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 dark:bg-slate-700/50 dark:text-slate-400 dark:group-hover:bg-indigo-950/40 dark:group-hover:text-indigo-400 transition-colors duration-150"
     >
       {icon}
     </div>
@@ -658,10 +656,10 @@ const SalesHomePage: React.FC = () => {
   }
 
   const TYPE_BADGE: Record<string, string> = {
-    Invoice: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
-    Order: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-    Return: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-    Delivery: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+    Invoice: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
+    Order: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
+    Return: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
+    Delivery: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -725,42 +723,32 @@ const SalesHomePage: React.FC = () => {
         <SectionHeader title="Quick Links" />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
           <QuickLinkTile
-            icon={<FileText size={14} className="text-violet-600" />}
+            icon={<FileText size={14} />}
             label="Invoices"
             sublabel={loadingInvoices ? '…' : `${invoices.length} total`}
-            color="bg-violet-50 dark:bg-violet-900/30"
-            to="/sales/invoices"
             onClick={() => navigate('/sales/invoices')}
           />
           <QuickLinkTile
-            icon={<ShoppingCart size={14} className="text-blue-600" />}
+            icon={<ShoppingCart size={14} />}
             label="Orders"
             sublabel={loadingOrders ? '…' : `${orders.length} total`}
-            color="bg-blue-50 dark:bg-blue-900/30"
-            to="/sales/orders"
             onClick={() => navigate('/sales/orders')}
           />
           <QuickLinkTile
-            icon={<Truck size={14} className="text-teal-600" />}
+            icon={<Truck size={14} />}
             label="Delivery Notes"
             sublabel={loadingDNs ? '…' : `${deliveryNotes.length} total`}
-            color="bg-teal-50 dark:bg-teal-900/30"
-            to="/sales/delivery-notes"
             onClick={() => navigate('/sales/delivery-notes')}
           />
           <QuickLinkTile
-            icon={<ClipboardList size={14} className="text-amber-600" />}
+            icon={<ClipboardList size={14} />}
             label="Quotations"
-            color="bg-amber-50 dark:bg-amber-900/30"
-            to="/sales/quotes"
             onClick={() => navigate('/sales/quotes')}
           />
           <QuickLinkTile
-            icon={<RotateCcw size={14} className="text-orange-600" />}
+            icon={<RotateCcw size={14} />}
             label="Returns"
             sublabel={loadingReturns ? '…' : `${returns.length} total`}
-            color="bg-orange-50 dark:bg-orange-900/30"
-            to="/sales/returns"
             onClick={() => navigate('/sales/returns')}
           />
         </div>
@@ -777,24 +765,23 @@ const SalesHomePage: React.FC = () => {
           <KPICard
             label="Total Revenue"
             value={formatCurrency(totalRevenue)}
-            icon={<DollarSign size={20} className="text-emerald-600" />}
-            iconBg="bg-emerald-50 dark:bg-emerald-900/30"
+            icon={<DollarSign size={20} className="text-slate-500 dark:text-slate-400" />}
+            iconBg="bg-slate-50 dark:bg-slate-800/60"
             loading={loadingInvoices}
             subtext={`${postedInvoices.length} posted invoices`}
-            accent="success"
           />
           <KPICard
             label="Outstanding AR"
             value={formatCurrency(outstandingAR)}
-            icon={<TrendingUp size={20} className="text-blue-600" />}
-            iconBg="bg-blue-50 dark:bg-blue-900/30"
+            icon={<TrendingUp size={20} className="text-slate-500 dark:text-slate-400" />}
+            iconBg="bg-slate-50 dark:bg-slate-800/60"
             loading={loadingInvoices}
           />
           <KPICard
             label="Overdue Invoices"
             value={String(overdueInvoices)}
-            icon={<AlertCircle size={20} className="text-red-500" />}
-            iconBg="bg-red-50 dark:bg-red-900/30"
+            icon={<AlertCircle size={20} className={overdueInvoices > 0 ? "text-red-500" : "text-slate-500 dark:text-slate-400"} />}
+            iconBg={overdueInvoices > 0 ? "bg-red-50 dark:bg-red-950/20" : "bg-slate-50 dark:bg-slate-800/60"}
             loading={loadingInvoices}
             accent={overdueInvoices > 0 ? 'danger' : 'normal'}
             subtext={overdueInvoices > 0 ? 'Require immediate action' : 'All current'}
@@ -802,8 +789,8 @@ const SalesHomePage: React.FC = () => {
           <KPICard
             label="Pending Approval"
             value={String(pendingApproval)}
-            icon={<Clock size={20} className="text-amber-500" />}
-            iconBg="bg-amber-50 dark:bg-amber-900/30"
+            icon={<Clock size={20} className={pendingApproval > 0 ? "text-amber-500" : "text-slate-500 dark:text-slate-400"} />}
+            iconBg={pendingApproval > 0 ? "bg-amber-50 dark:bg-amber-950/20" : "bg-slate-50 dark:bg-slate-800/60"}
             loading={loadingInvoices}
             accent={pendingApproval > 0 ? 'warning' : 'normal'}
           />
@@ -992,14 +979,14 @@ const SalesHomePage: React.FC = () => {
                   <div className="relative min-w-0 flex-1 overflow-hidden rounded-lg">
                     {/* Bar */}
                     <div
-                      className="absolute inset-y-0 left-0 rounded-lg bg-emerald-50 transition-all duration-500 dark:bg-emerald-900/20"
+                      className="absolute inset-y-0 left-0 rounded-lg bg-slate-100 transition-all duration-500 dark:bg-slate-800/65"
                       style={{ width: `${pct}%` }}
                     />
                     <div className="relative flex items-center justify-between px-3 py-2">
                       <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
                         {c.name}
                       </span>
-                      <span className="font-mono text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                      <span className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">
                         {formatCurrency(c.total)}
                       </span>
                     </div>
