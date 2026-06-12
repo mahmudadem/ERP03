@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -19,6 +19,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { companyModulesApi } from '../../../api/companyModules';
+import { listUsers, CompanyUser } from '../../../api/companyAdmin';
 import {
   DeliveryNoteDTO,
   SalesInvoiceDTO,
@@ -353,6 +354,7 @@ const SalesHomePage: React.FC = () => {
   const [orders, setOrders] = useState<SalesOrderDTO[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNoteDTO[]>([]);
   const [returns, setReturns] = useState<SalesReturnDTO[]>([]);
+  const [users, setUsers] = useState<CompanyUser[]>([]);
 
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
@@ -486,12 +488,17 @@ const SalesHomePage: React.FC = () => {
 
       const showOps = shouldShowOperationalDocuments(resolveSalesWorkflowMode(s));
 
-      await Promise.all([
+      const [_, __, ___, ____, usrRes] = await Promise.all([
         fetchInvoices(),
         fetchReturns(),
         showOps ? fetchOrders() : Promise.resolve(),
         showOps ? fetchDNs() : Promise.resolve(),
+        listUsers().catch(() => null),
       ]);
+
+      if (usrRes) {
+        setUsers(unwrap<CompanyUser[]>(usrRes) || []);
+      }
 
       setLastRefreshed(new Date());
     } catch (err: any) {
@@ -553,6 +560,18 @@ const SalesHomePage: React.FC = () => {
     color: STATUS_COLORS[s] ?? 'bg-slate-100 text-slate-600',
   })).filter((s) => s.count > 0);
 
+  const userById = useMemo(
+    () =>
+      users.reduce<Record<string, { name: string; email: string }>>((acc, u) => {
+        acc[u.userId] = {
+          name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+          email: u.email,
+        };
+        return acc;
+      }, {}),
+    [users]
+  );
+
   // Recent activity: mix SI + SO, sorted by updatedAt desc, top 8
   interface ActivityItem {
     id: string;
@@ -561,6 +580,11 @@ const SalesHomePage: React.FC = () => {
     type: 'Invoice' | 'Order' | 'Return' | 'Delivery';
     status: string;
     amount: number | null;
+    currency: string;
+    createdBy: string;
+    createdAt: string;
+    approvedAt?: string;
+    date: string;
     updatedAt: string;
     route: string;
   }
@@ -572,7 +596,12 @@ const SalesHomePage: React.FC = () => {
       customer: i.customerName,
       type: 'Invoice',
       status: i.status,
-      amount: i.grandTotalBase,
+      amount: i.grandTotalDoc,
+      currency: i.currency,
+      createdBy: i.createdBy,
+      createdAt: i.createdAt,
+      approvedAt: i.postedAt,
+      date: i.invoiceDate || i.createdAt.split('T')[0],
       updatedAt: i.updatedAt || i.createdAt,
       route: `/sales/invoices/${i.id}`,
     })),
@@ -583,7 +612,12 @@ const SalesHomePage: React.FC = () => {
           customer: o.customerName,
           type: 'Order',
           status: o.status,
-          amount: o.grandTotalBase,
+          amount: o.grandTotalDoc,
+          currency: o.currency,
+          createdBy: o.createdBy,
+          createdAt: o.createdAt,
+          approvedAt: o.confirmedAt,
+          date: o.orderDate || o.createdAt.split('T')[0],
           updatedAt: o.updatedAt || o.createdAt,
           route: `/sales/orders/${o.id}`,
         }))
@@ -594,7 +628,12 @@ const SalesHomePage: React.FC = () => {
       customer: r.customerName,
       type: 'Return',
       status: r.status,
-      amount: r.grandTotalBase,
+      amount: r.grandTotalDoc,
+      currency: r.currency,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt,
+      approvedAt: r.postedAt,
+      date: r.createdAt.split('T')[0],
       updatedAt: r.updatedAt || r.createdAt,
       route: `/sales/returns/${r.id}`,
     })),
@@ -896,6 +935,7 @@ const SalesHomePage: React.FC = () => {
             </button>
           }
         />
+        <div className="border-b border-slate-200/60 dark:border-slate-700/60 mb-3" />
         {loadingInvoices && recentActivity.length === 0 ? (
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
@@ -904,46 +944,65 @@ const SalesHomePage: React.FC = () => {
           <div className="py-6 text-center text-sm text-slate-400">No activity yet.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs text-left">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-700">
-                  <th className="pb-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">Number</th>
-                  <th className="pb-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">Customer</th>
-                  <th className="pb-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">Type</th>
-                  <th className="pb-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
-                  <th className="pb-2 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400">Amount</th>
-                  <th className="pb-2 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400">Date &amp; Time</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800">
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Number</th>
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Customer</th>
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Type</th>
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
+                  <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
+                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
+                  <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {recentActivity.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="group cursor-pointer rounded-lg transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    onClick={() => navigate(item.route)}
-                  >
-                    <td className="py-2 pr-3 font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">
-                      {item.number}
-                    </td>
-                    <td className="py-2 pr-3 text-xs text-slate-600 dark:text-slate-300">
-                      {item.customer}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${TYPE_BADGE[item.type] ?? ''}`}>
-                        {item.type}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <StatusBadge status={item.status} />
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono text-xs text-slate-700 dark:text-slate-200">
-                      {item.amount !== null ? formatCurrency(item.amount) : '—'}
-                    </td>
-                    <td className="py-2 text-right text-[11px] text-slate-400">
-                      {formatDateTime(item.updatedAt)}
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                {recentActivity.map((item) => {
+                  const creatorName = userById[item.createdBy]?.name || item.createdBy;
+                  return (
+                    <tr
+                      key={item.id}
+                      className="group cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                      onClick={() => navigate(item.route)}
+                    >
+                      <td className="py-2 pr-3 font-mono font-bold text-slate-800 dark:text-slate-100">
+                        {item.number}
+                      </td>
+                      <td className="py-2 pr-3 text-slate-500 font-mono">
+                        {item.date}
+                      </td>
+                      <td className="py-2 pr-3 font-semibold text-slate-700 dark:text-slate-200">
+                        {item.customer}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[item.type] ?? ''}`}>
+                          {item.type}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 font-mono text-slate-500">
+                        {item.currency}
+                      </td>
+                      <td className="py-2 pr-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100">
+                        {item.amount !== null ? formatCurrency(item.amount) : '—'}
+                      </td>
+                      <td className="py-2 pr-3 text-slate-600 dark:text-slate-300 truncate max-w-[120px]" title={creatorName}>
+                        {creatorName}
+                      </td>
+                      <td className="py-2 pr-3 text-slate-400 font-mono text-[10px]">
+                        {formatDateTime(item.createdAt)}
+                      </td>
+                      <td className="py-2 pr-3 text-slate-400 font-mono text-[10px]">
+                        {item.approvedAt ? formatDateTime(item.approvedAt) : '—'}
+                      </td>
+                      <td className="py-2 text-right">
+                        <StatusBadge status={item.status} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
