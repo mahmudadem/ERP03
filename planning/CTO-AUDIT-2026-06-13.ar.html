@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تقرير التدقيق الشامل — مشروع ERP03</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a202c;
+    --muted: #4a5568;
+    --accent: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --danger: #b91c1c;
+    --danger-soft: #fef2f2;
+    --ok: #047857;
+    --ok-soft: #ecfdf5;
+    --warn: #b45309;
+    --warn-soft: #fffbeb;
+    --line: #e2e8f0;
+    --bg: #f7f8fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.9;
+  }
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 48px 56px 64px;
+    box-shadow: 0 2px 24px rgba(0,0,0,.06);
+  }
+  header.report {
+    border-bottom: 4px solid var(--accent);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+  header.report h1 {
+    font-size: 30px;
+    font-weight: 900;
+    margin: 0 0 14px;
+    color: var(--accent);
+  }
+  .meta {
+    background: var(--accent-soft);
+    border-right: 4px solid var(--accent);
+    border-radius: 6px;
+    padding: 14px 20px;
+    font-size: 15px;
+    color: var(--muted);
+  }
+  .meta div { margin: 2px 0; }
+  .meta strong { color: var(--ink); }
+  h2 {
+    font-size: 23px;
+    font-weight: 900;
+    margin: 44px 0 14px;
+    padding: 8px 14px;
+    background: var(--accent-soft);
+    border-right: 5px solid var(--accent);
+    border-radius: 6px;
+  }
+  h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 26px 0 8px;
+    color: var(--accent);
+  }
+  p { margin: 10px 0; }
+  ul, ol { padding-right: 26px; padding-left: 0; margin: 10px 0; }
+  li { margin: 6px 0; }
+  .verdict {
+    background: var(--danger-soft);
+    border: 1px solid #fecaca;
+    border-right: 5px solid var(--danger);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .callout {
+    background: var(--warn-soft);
+    border: 1px solid #fde68a;
+    border-right: 5px solid var(--warn);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin: 14px 0;
+    font-weight: 600;
+  }
+  .good {
+    background: var(--ok-soft);
+    border: 1px solid #a7f3d0;
+    border-right: 5px solid var(--ok);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin: 14px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 15.5px;
+  }
+  th {
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 14px;
+    text-align: right;
+    font-weight: 700;
+  }
+  td {
+    border: 1px solid var(--line);
+    padding: 10px 14px;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+  code, .en {
+    direction: ltr;
+    unicode-bidi: embed;
+    font-family: Consolas, 'JetBrains Mono', monospace;
+    background: #f1f5f9;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: .88em;
+    color: #0f172a;
+  }
+  .num { font-weight: 900; color: var(--accent); }
+  footer.report {
+    margin-top: 48px;
+    border-top: 2px solid var(--line);
+    padding-top: 16px;
+    font-size: 14px;
+    color: var(--muted);
+    text-align: center;
+  }
+  @media print {
+    body { background: #fff; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h2 { page-break-after: avoid; }
+    table, .verdict, .callout, .good { page-break-inside: avoid; }
+  }
+  @media (max-width: 700px) {
+    .page { padding: 24px 18px 40px; }
+    body { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="report">
+  <h1>تقرير التدقيق الشامل — مشروع ERP03</h1>
+  <div class="meta">
+    <div><strong>المُعِدّ:</strong> المدير التقني (CTO — Claude)</div>
+    <div><strong>التاريخ:</strong> 13 حزيران/يونيو 2026</div>
+    <div><strong>نطاق التدقيق:</strong> الرؤية (VISION)، ملفات التخطيط (ACTIVE / PRIORITIES / JOURNAL / الخطة الرئيسية / تدقيق الجاهزية)، وثائق البنية المعمارية لكل الوحدات الأساسية، قائمة فحص الجودة (QA-QUEUE)، حالة <span class="en">Git</span>، والشيفرة المصدرية نفسها.</div>
+    <div><strong>النسخة الإنكليزية:</strong> <span class="en">CTO-AUDIT-2026-06-13.md</span></div>
+  </div>
+</header>
+
+<h2>١. الخلاصة التنفيذية</h2>
+
+<div class="verdict">
+أنت لا تفتقد ميزات. لقد أنجزت الجزء الأصعب (٨٠٪) من نظام ERP حقيقي — محرك المحاسبة متين فعلاً — لكن المشروع عالق منذ أسابيع في وضع «البناء والتلميع»، بينما الأمور التي تحوِّل الشيفرة إلى منتج (النشر، الفحوصات الآلية، عميل تجريبي حقيقي) لا تزال عند الصفر.
+</div>
+
+<p>سبب شعورك بالإرهاق أن العمل صار يولِّد مزيداً من العمل بدلاً من أن يتقارب نحو نهاية. الحل ليس ميزة جديدة؛ الحل هو <strong>إعلان تجميد النسخة الأولى وإطلاق تجربة حقيقية مع عميل حقيقي.</strong></p>
+
+<h2>٢. ما الذي بنيتَه فعلاً (ويحقّ لك الفخر به)</h2>
+
+<ul>
+  <li>حوالي <span class="num">٣٥٠,٠٠٠</span> سطر <span class="en">TypeScript</span> (أكثر من ١,٢٠٠ ملف في الخلفية و٦٠٠ ملف في الواجهة)، و<span class="num">٢١٧</span> تقرير إنجاز، ونظام تخطيط وتوثيق أفضل من كثير من الفرق الاحترافية التي رأيتها.</li>
+  <li><strong>نواة المحاسبة حقيقية وليست نموذجاً تجريبياً:</strong>
+    <ul>
+      <li>بوابة ترحيل واحدة (<span class="en">PostingGateway</span>) هي الباب الوحيد إلى دفتر الأستاذ، ويفرضها اختبار معماري.</li>
+      <li>أقفال الفترات المحاسبية (<span class="en">Period Locks</span>) موحّدة.</li>
+      <li>سير موافقات مركزي قبل الترحيل.</li>
+      <li>أرباح/خسائر فروق صرف العملات عند التسوية.</li>
+      <li>مفاتيح منع التكرار (<span class="en">Idempotency Keys</span>) على نقاط الترحيل.</li>
+      <li>منع المخزون السالب، وسجل تدقيق للترحيل (<span class="en">PostingLog</span>).</li>
+      <li>حسابات ذمم فرعية لكل عميل/مورّد، تقارير أعمار الديون، كشوف الحساب، حدود الائتمان، تعدد العملات.</li>
+    </ul>
+  </li>
+  <li><strong>جميع نتائج تدقيق الجاهزية الاثنتا عشرة (P0) أُغلقت</strong> (الحزم PR1 حتى PR6)، وقواعد أمان <span class="en">Firestore</span> الإنتاجية موجودة بمبدأ «الرفض افتراضياً».</li>
+  <li><span class="num">١,٣٦٥</span> اختبار خلفية في <span class="num">١٤٦</span> مجموعة، <strong>كلها ناجحة</strong> (بتاريخ ١٢ يونيو).</li>
+  <li><strong>المبيعات والمشتريات مكتملتان وظيفياً لنسخة أولى:</strong> سلاسل المستندات كاملة (طلب ← تسليم ← فاتورة ← مرتجع)، التسويات والدفعات، الرسوم والخصومات على مستوى الفاتورة والسطر، قوائم الأسعار، العروض الترويجية، المرفقات، الإرسال عبر <span class="en">WhatsApp</span> و<span class="en">Telegram</span>، التقارير، وسجل التدقيق.</li>
+</ul>
+
+<div class="good">
+قياساً على قائمة الإطلاق في <span class="en">VISION.md</span> (محاسبة + مخزون + مبيعات + مشتريات تعمل من البداية للنهاية): <strong>أنت عملياً عند خط نهاية مرحلة البناء — لكن لم يعلن أحد ذلك رسمياً، وهذا جزء من المشكلة.</strong>
+</div>
+
+<h2>٣. لماذا أنت مُرهَق — التشخيص</h2>
+
+<p>أربعة أسباب ملموسة ومرئية:</p>
+
+<h3>١) عنق زجاجة فحص الجودة</h3>
+<p>قائمة <span class="en">QA-QUEUE</span> فيها <strong>حوالي ٤٠ ميزة غير مفحوصة</strong>. الوكلاء (الذكاء الاصطناعي) ينتجون أسرع مما يستطيع إنسان واحد أن يتحقق، ولا يوجد <strong>أي اختبار آلي للواجهة الأمامية (صفر اختبار)</strong> ولا اختبارات شاملة (<span class="en">E2E</span>) — فكل تغيير في الواجهة يحتاج عينيك أنت شخصياً. معيارك الخاص «كل ميزة تعمل من البداية للنهاية قبل الانتقال للتالية» يُنتهَك بنيوياً.</p>
+
+<h3>٢) الانجراف نحو تلميع بلا نهاية</h3>
+<p>آخر ثلاثة أسابيع من سجل العمل كلها تقريباً تجميل: خطوط جداول، ألوان صفوف، كثافة ترويسات، إعادة تصميم لوحات. التلميع عمل مريح ولا ينتهي أبداً. بينما الأولوية المعلنة (فحص قطع شل <span class="en">Apex</span> — مقدَّر بساعتين إلى أربع ساعات فقط) مؤجَّلة منذ ٥ يونيو.</p>
+
+<h3>٣) دين هيكلي يتراكم بصمت</h3>
+<p>الفرع الحالي متقدّم على <code>main</code> بـ <span class="num">١٤٩ commit</span> — شهور من العمل على فرع واحد باسم مضلِّل، مع نحو ٢٠ فرعاً قديماً مهجوراً، <strong>ولا يوجد CI</strong> يُبقي أي شيء أخضر بشكل موثوق. دمج خاطئ واحد قد يكلّفك أسبوعاً.</p>
+
+<h3>٤) لا يوجد خط نهاية معرَّف</h3>
+<p>النظام <strong>لم يُنشَر أبداً</strong> — لا إعداد استضافة (<span class="en">hosting</span>) في <span class="en">firebase.json</span>، لا مراقبة أخطاء، لا نسخ احتياطي، وكل شيء يعمل على المحاكيات المحلية. رؤيتك تقول إن الهدف «التحقق من الفكرة ثم التسليم لمهندسين محترفين» — والتحقق يتطلب <strong>شركة حقيقية تستخدم النظام</strong>. هذا المَعلَم بلا تاريخ، فيستمر البناء إلى ما لا نهاية.</p>
+
+<h2>٤. قائمة الفجوات</h2>
+
+<h3>أ) عوائق إطلاق — يجب وجودها قبل أي عميل تجريبي</h3>
+
+<table>
+  <tr><th>الفجوة</th><th>الحالة</th><th>الجهد التقديري</th></tr>
+  <tr><td><strong>النشر</strong> (استضافة + دوال سحابية تعمل في السحابة)</td><td>لم يحدث أبداً؛ لا يوجد إعداد استضافة أصلاً</td><td>٢–٣ أيام</td></tr>
+  <tr><td><strong>CI</strong> (فحص أنواع + اختبارات + بناء عند كل تغيير)</td><td>غير موجود</td><td>يوم واحد</td></tr>
+  <tr><td><strong>محرك المهام المجدولة</strong></td><td>مصنَّف «أولوية عالية» في خطتك منذ شهور؛ الفواتير الدورية تحتاج زراً يدوياً حالياً</td><td>٢–٣ أيام</td></tr>
+  <tr><td><strong>إرسال الفواتير بالبريد الإلكتروني</strong></td><td>مؤجَّل؛ يوجد <span class="en">WhatsApp/Telegram</span> فقط — البريد أساسي لأي عمل فوترة</td><td>٢–٣ أيام</td></tr>
+  <tr><td><strong>مراقبة الأخطاء + النسخ الاحتياطي</strong></td><td>غير موجود (لا <span class="en">Sentry</span>، لا تصدير <span class="en">Firestore</span> مجدول)</td><td>يوم واحد</td></tr>
+  <tr><td><strong>فحص «المسارات الذهبية»</strong> على مستأجر جديد نظيف</td><td>قائمة من ٤٠ بنداً لم تُفحَص</td><td>عدة أيام</td></tr>
+</table>
+
+<h3>ب) مهم لكن لا يمنع التجربة</h3>
+<ul>
+  <li><strong>تقوية API</strong> (<span class="en">helmet</span> + تحديد معدل الطلبات) — يوم واحد.</li>
+  <li><strong>خلل نطاق إعادة تقييم العملات (مهمة 183):</strong> إعادة التقييم تشمل حالياً <strong>كل</strong> الحسابات بالعملات الأجنبية بما فيها المخزون (وهي حسابات غير نقدية لا يجوز إعادة تقييمها) — خطر محاسبي حقيقي يجب إصلاحه قبل أي عميل متعدد العملات.</li>
+  <li><strong>عكس المستندات المرحَّلة</strong> كميزة من الدرجة الأولى (مهمة 179 — المرحلة صفر فقط منجزة).</li>
+  <li><strong>قرار <span class="en">Apex</span> مقابل الشل القديم</strong> — حمل واجهتين بالتوازي ضريبة مستمرة؛ يجب الحسم مرة واحدة.</li>
+</ul>
+
+<h3>ج) مؤجَّل عن حق (وقد أجّلته فعلاً — قرارات صحيحة)</h3>
+<p>الفوترة والاشتراكات (<span class="en">Stripe</span>)، المطابقة الثلاثية (<span class="en">PO/GRN/PI</span>)، طلبات عروض الأسعار (<span class="en">RFQ</span>)، تكلفة <span class="en">FIFO</span>، مصمم النماذج v2، وحدات <span class="en">CRM/HR/POS</span>/التصنيع/المشاريع، الانتقال إلى <span class="en">SQL</span>.</p>
+
+<h2>٥. ما الذي يجب إيقافه فوراً</h2>
+<ul>
+  <li>أي تلميع إضافي لواجهات المبيعات/المشتريات.</li>
+  <li>أي ميزات جديدة لمساعد الذكاء الاصطناعي (استثمار كبير منتهٍ — اتركه كما هو).</li>
+  <li>أي «تحسينات» جديدة على البيانات الرئيسية.</li>
+</ul>
+<div class="callout">السبب: كل بند من هذه يضيف إلى قائمة فحص لا تستطيع أنت وحدك تصريفها.</div>
+
+<h2>٦. التوصية — خطة الأسابيع الأربعة إلى الستة القادمة</h2>
+
+<div class="callout">إعادة تأطير: المَعلَم القادم ليس ميزة. إنه شركة حقيقية واحدة تدير دفاترها على نسخة منشورة من النظام.</div>
+
+<h3>المرحلة ١ — التثبيت (الأسبوع الأول)</h3>
+<ol>
+  <li><strong>تجميد الميزات</strong> (وقف كل أعمال التلميع).</li>
+  <li><strong>دمج الفرع الضخم في <code>main</code></strong> بعد نجاح الفحص والاختبارات والبناء، ووسمه <code>v0.9-alpha</code>.</li>
+  <li><strong>إنشاء CI على <span class="en">GitHub Actions</span>:</strong> فحص أنواع + اختبارات الخلفية + بناء الواجهة عند كل تغيير، ويُمنع الدمج عند الفشل. هذه الخطوة وحدها تحوِّل جيش الوكلاء من «ينتج عملاً غير متحقَّق منه» إلى «ينتج عملاً متحقَّقاً منه».</li>
+  <li><strong>تصريف قائمة الفحص بذكاء:</strong> بدل فحص ٤٠ ميزة صغيرة واحدةً واحدة، اضغطها في <strong>سيناريو «مسار ذهبي» واحد لكل وحدة</strong> (تسجيل ← إنشاء شركة ← دليل حسابات ← صنف ← شراء ← بيع ← دفع ← تقارير)، شغِّله مرة واحدة على مستأجر جديد نظيف، سجِّل الأعطال، ثم احذف القائمة.</li>
+</ol>
+
+<h3>المرحلة ٢ — النشر (الأسبوع الثاني)</h3>
+<ol start="5">
+  <li><strong>النشر على مشروع <span class="en">Firebase</span> الحقيقي (<span class="en">erp-03</span>):</strong> استضافة، دوال، قواعد أمان، فهارس.</li>
+  <li><strong>إضافة مراقبة الأخطاء (<span class="en">Sentry</span>)</strong> + نسخ <span class="en">Firestore</span> احتياطية مجدولة.</li>
+  <li><strong>تقوية API:</strong> إضافة <span class="en">helmet</span> وتحديد معدل الطلبات.</li>
+  <li><strong>فحص مسار «التسجيل حتى أول فاتورة» في السحابة</strong> — وليس على المحاكي.</li>
+</ol>
+
+<h3>المرحلة ٣ — إغلاق فجوتَي الميزات الحقيقيتين (الأسبوعان ٣–٤)</h3>
+<ol start="9">
+  <li><strong>بناء محرك المهام المجدولة</strong> (المواصفة جاهزة عندك أصلاً) — لتعمل الفواتير والقيود الدورية تلقائياً.</li>
+  <li><strong>إرسال الفواتير بالبريد الإلكتروني</strong> — يندرج تحت بنية حسابات المرسِلين الموجودة أصلاً.</li>
+  <li>إصلاح ما كشفه فحص المسارات الذهبية.</li>
+  <li><strong>حسم قرار <span class="en">Apex</span>:</strong> شغِّل فحص القطع (٢–٤ ساعات) مرة واحدة؛ إن نجح فاقطع إلى <span class="en">Apex</span>، وإن فشل فجمِّده للنسخة الثانية وأطلِق بالشل القديم. في الحالتين: توقف عن حمل الاثنين معاً.</li>
+</ol>
+
+<h3>المرحلة ٤ — التجربة الحقيقية (الأسبوعان ٥–٦)</h3>
+<ol start="13">
+  <li><strong>ضع شركة إلى ثلاث شركات حقيقية ودودة على النظام مجاناً، وراقبهم.</strong></li>
+  <li>نصف وعدك «بسيط للأعمال البسيطة» <strong>غير مثبَت</strong> — معظم الجهد الأخير ذهب للواجهة الاحترافية الكثيفة. <strong>اختبار الحسم:</strong> هل يستطيع صاحب محل صغير الانتقال من التسجيل إلى فاتورة مطبوعة خلال ١٠ دقائق دون مكالمة معك؟</li>
+  <li>هذه الإجابة — وليس مزيداً من الشيفرة — هي ما يتحقق من الفكرة، <strong>وهي الغاية المعلنة لهذا المشروع كله.</strong></li>
+</ol>
+
+<h2>٧. ثلاثة أسئلة لك</h2>
+<ol>
+  <li><strong>من هو العميل التجريبي الأول؟</strong> اللغتان العربية والتركية في النظام توحيان بشركات تجارية في سوريا/تركيا — هل لديك شركة أو اثنتان في ذهنك، وفي أي بلد؟ (هذا يحدد هل تدخل الفوترة الإلكترونية الضريبية — مثل نظام <span class="en">GİB</span> التركي — في خارطة الطريق.)</li>
+  <li><strong>هل مشروع <span class="en">Firebase</span> باسم «<span class="en">erp-03</span>» مشروع إنتاجي حقيقي مفعَّل الفوترة</strong>، أم مجرد إعداد مبدئي؟ (يحدد هل المرحلة الثانية مجرد إعدادات أم بناء من الصفر.)</li>
+  <li><strong>كم ساعة أسبوعياً تستطيع تخصيصها شخصياً لفحص الجودة؟</strong> (يحدد مدى استثمارنا في اختبارات شاملة آلية <span class="en">E2E</span> مقابل السيناريوهات اليدوية.)</li>
+</ol>
+
+<h2>٨. اختيار قاعدة البيانات — هل Firebase مناسب لنظام ERP؟</h2>
+
+<p style="color:var(--muted);font-size:14px;margin-top:-6px">(أُضيف بطلب المالك — 13 يونيو 2026)</p>
+
+<div class="verdict">
+الجواب المختصر: قلقك في محله، والنهج المختار (<span class="en">Firestore</span> الآن، <span class="en">SQL</span> لاحقاً) هو النهج الصحيح — لكن مخرج الطوارئ الذي تعتمد عليه يصدأ بصمت.
+</div>
+
+<h3>لماذا <span class="en">Firestore</span> خيار غير معتاد لنظام ERP؟</h3>
+
+<p>المحاسبة بالقيد المزدوج هي أكثر أعباء العمل «علائقية» في عالم البرمجيات. نقاط ضعف <span class="en">Firestore</span> المحددة لهذا المنتج:</p>
+
+<ul>
+  <li><strong>لا روابط (<span class="en">Joins</span>) ولا تجميع (<span class="en">GROUP BY</span>):</strong> ميزان المراجعة وقائمة الدخل وأعمار الديون وكشوف الحساب كلها تجميعات فوق صفوف كثيرة. الشيفرة اليوم تجلب المصفوفات وتجمعها في الواجهة — وهذا مسجَّل أصلاً في خطتك كمشكلة قابلية توسّع.</li>
+  <li><strong>نموذج التكلفة:</strong> <span class="en">Firestore</span> يحاسبك على كل قراءة مستند. كل تشغيل لتقرير يعيد قراءة آلاف مستندات دفتر الأستاذ؛ نفس الاستعلام على <span class="en">SQL</span> مجاني عملياً على خادم بـ 25 دولاراً شهرياً.</li>
+  <li><strong>لا تكامل على مستوى قاعدة البيانات:</strong> لا مفاتيح أجنبية ولا قيود فريدة. كل التكامل على مستوى التطبيق (مبنيّ جيداً هنا، لكن قاعدة البيانات لن تلتقط ما يفوته التطبيق).</li>
+  <li><strong>تزاحم الكتابة:</strong> الترقيم التسلسلي للسندات يعتمد على مستندات عدّادات (~كتابة واحدة في الثانية لكل مستند) — نقطة اختناق كلاسيكية في <span class="en">Firestore</span>.</li>
+  <li><strong>توقعات المدققين وأدوات التحليل:</strong> المحاسبون والمدققون يتوقعون تصدير <span class="en">SQL</span> واتصال أدوات <span class="en">BI</span>؛ مع <span class="en">Firestore</span> تحتاج خطوط <span class="en">BigQuery</span> لذلك.</li>
+</ul>
+
+<h3>لماذا كان الاختيار صحيحاً مع ذلك لهذه المرحلة؟</h3>
+
+<ul>
+  <li>لمؤسس منفرد غير تقني، <span class="en">Firebase</span> ألغى تخصصاً تشغيلياً كاملاً (إدارة قاعدة بيانات، نسخ احتياطي، توسّع) — وهذا ربما وفّر شهوراً من البقاء.</li>
+  <li>على مقياس التجربة (١–٣ شركات)، لا تظهر أيٌّ من القيود أعلاه، والتكلفة شبه صفر.</li>
+  <li><strong>والبنية تحوّطت بشكل صحيح — أبعد بكثير من ادعاء «سنهاجر لاحقاً» المعتاد:</strong> نمط المستودعات مفروض باختبارات حدود، ومخطط <span class="en">Prisma</span> من <span class="num">٢,٢٠٧</span> أسطر يضم <span class="num">٩٥</span> نموذجاً، و<span class="num">٨٢</span> تنفيذ مستودع <span class="en">Prisma</span>، ومفتاح تبديل حقيقي <code>DB_TYPE=FIRESTORE|SQL</code> في حاوية الحقن.</li>
+</ul>
+
+<h3>نتائج التدقيق الجديدة حول مسار SQL</h3>
+
+<ol>
+  <li><strong>مسار SQL لم يُختبَر أبداً.</strong> دليل التبديل الخاص بمشروعك نفسه يقول: «البنية مكتملة، <strong>غير مختبَرة</strong> — لم تُشغَّل أبداً على قاعدة بيانات حقيقية؛ صفر اختبارات تكامل SQL». مسار هجرة غير مختبَر هو أمنية، وليس خطة.</li>
+  <li><strong>المسار ينجرف.</strong> قست مباشرة: <span class="num">١١٠</span> مستودعات <span class="en">Firestore</span> مقابل <span class="num">٨٢</span> مستودع <span class="en">Prisma</span> — <strong>٢٩ مستودعاً بلا نظير SQL.</strong> والقائمة الناقصة هي بالضبط ميزات الشهرين الأخيرين: سجل الترحيل (<span class="en">PostingLog</span>)، مفاتيح منع التكرار، سجل تدقيق التغييرات، تجاوز قفل الفترة، عروض الأسعار، قوائم الأسعار، العروض الترويجية، المندوبين، قوالب الفواتير الدورية، مجموعات العملاء/الموردين، قوائم أسعار الشراء، العمولات، تجاوزات الائتمان، إعدادات الاتصالات، مكتبة الحقول، إضافة إلى مستودعات الذكاء الاصطناعي الثلاثة عشر كلها. <strong>كل أسبوع من الميزات الجديدة يوسّع الفجوة.</strong></li>
+  <li><strong>دليل التبديل قديم</strong> (آخر تحديث 2026-04-20؛ يقول «٧٤ نموذجاً / ٨٥ مستودعاً» — والواقع تجاوزه).</li>
+</ol>
+
+<h3>الحكم</h3>
+
+<ol>
+  <li><strong>لا تهاجر الآن.</strong> الهجرة الآن تنسف خطة «أطلِق التجربة»، و<span class="en">Firestore</span> كافٍ تماماً على مقياس التجربة.</li>
+  <li><strong>ضع مسار SQL تحت مراقبة الانجراف (~يوم واحد):</strong> اختبار معماري يُفشِل CI عندما يوجد مستودع <span class="en">Firestore</span> بلا نظير <span class="en">Prisma</span>، مع قائمة استثناءات صريحة للمناطق المقصود بقاؤها على <span class="en">Firestore</span>. أضِف هذا إلى المرحلة ١ (أسبوع CI) من الخطة.</li>
+  <li><strong>حدّد الاستثناءات صراحة (موضَّح بعد سؤال المالك):</strong> استثنِ مستودعات الذكاء الاصطناعي الثلاثة عشر من مراقبة الانجراف <strong>الآن فقط</strong> — فهي لا تحتاج مرايا SQL ما دامت <span class="en">Firestore</span> هي قاعدة بيانات الإنتاج. لكن الحالة النهائية هي <strong>قاعدة بيانات واحدة بصرامة</strong>: عند الهجرة تُكتَب مرايا <span class="en">Prisma</span> لمستودعات الذكاء الاصطناعي أيضاً (عمل <span class="en">CRUD</span> آلي، أيام لا أسابيع) وتنتقل <strong>كل</strong> البيانات إلى SQL. سجل الدردشات القديم بيانات محادثة قابلة للتصرف وليست سجلات تجارية — أرشِفه أو احذفه عند الهجرة بدل نقله. النمط الهجين الدائم (بيانات تجارية في SQL ودردشات في <span class="en">Firestore</span>) نمط صناعي مشروع لكنه يعني تشغيل مخزنَي بيانات إلى الأبد؛ رفضناه لصالح بساطة التسليم.</li>
+  <li><strong>حدّد محفّزات هجرة صريحة</strong> بدل «يوماً ما»: اللحظة الطبيعية هي <strong>التسليم للمهندسين المحترفين</strong> (سيريدون <span class="en">Postgres</span>)، أو أول عميل يؤلم حجمُ تقاريره أو تكلفتها — أيهما أسبق. <span class="en">Postgres</span> المُدار (<span class="en">Supabase / Cloud SQL</span>) يحافظ على ميزة «بلا تشغيل»، فالهجرة لا تعني خسارة ما جعل <span class="en">Firebase</span> جذاباً. و<span class="en">Firebase</span> للمصادقة والإشعارات يبقى في الحالتين (مصمَّم هكذا أصلاً).</li>
+</ol>
+
+<h2>٩. الحكم النهائي بجملة واحدة</h2>
+
+<div class="verdict">
+توقَّف عن البناء، ادمج، انشُر، وضَع مستخدماً حقيقياً على النظام — الشيفرة استحقت ذلك منذ أسابيع.
+</div>
+
+<footer class="report">
+تقرير التدقيق — مشروع ERP03 — 13 يونيو 2026 — أُعدّ بواسطة المدير التقني (Claude)
+</footer>
+
+</div>
+</body>
+</html>
