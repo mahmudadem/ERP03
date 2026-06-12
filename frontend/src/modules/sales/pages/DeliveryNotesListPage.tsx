@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Eye, Printer, RefreshCw, Filter, RotateCcw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -34,8 +34,13 @@ const statusChipClasses = (status: DNStatus): string => {
 
 const DeliveryNotesListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation('common');
-  const [statusFilter, setStatusFilter] = useState<DNStatusFilter>('ALL');
+
+  const stateStatus = (location.state as any)?.statusFilter;
+  const initialStatus = stateStatus && STATUS_VALUES.includes(stateStatus) ? stateStatus : 'ALL';
+
+  const [statusFilter, setStatusFilter] = useState<DNStatusFilter>(initialStatus);
   const [warehouseFilter, setWarehouseFilter] = useState<string>('ALL');
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
   const [searchFilter, setSearchFilter] = useState<string>('');
@@ -43,12 +48,23 @@ const DeliveryNotesListPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<string>('');
 
   // Local state buffers for filters
-  const [localStatus, setLocalStatus] = useState<DNStatusFilter>('ALL');
+  const [localStatus, setLocalStatus] = useState<DNStatusFilter>(initialStatus);
   const [localWarehouse, setLocalWarehouse] = useState<string>('ALL');
   const [localCustomer, setLocalCustomer] = useState<string>('ALL');
   const [localSearch, setLocalSearch] = useState<string>('');
   const [localDateFrom, setLocalDateFrom] = useState<string>('');
   const [localDateTo, setLocalDateTo] = useState<string>('');
+
+  useEffect(() => {
+    const sStatus = (location.state as any)?.statusFilter;
+    if (sStatus && STATUS_VALUES.includes(sStatus)) {
+      setStatusFilter(sStatus);
+      setLocalStatus(sStatus);
+      try {
+        window.history.replaceState({ ...location.state, statusFilter: undefined }, '');
+      } catch (e) {}
+    }
+  }, [location.state]);
 
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNoteDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);

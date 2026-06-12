@@ -62,7 +62,7 @@ interface EditableForm {
 
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
-  deliveredQty: 1,
+  deliveredQty: 0,
   uomId: undefined,
   uom: '',
   warehouseId: undefined,
@@ -528,6 +528,28 @@ const DeliveryNoteDetailPage: React.FC = () => {
     );
   }
 
+  const hasUnsavedDocumentChanges = (() => {
+    if (!(isCreateMode || isEditing)) return false;
+    const hasLines = form.lines.some((line) =>
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.deliveredQty || line.uomId || line.uom)
+    );
+    return Boolean(
+      form.salesOrderId ||
+      form.customerId ||
+      form.promisedDate ||
+      form.notes.trim() ||
+      hasLines
+    );
+  })();
+
+  const openNewDeliveryNoteForm = () => {
+    setDeliveryNote(null);
+    setForm(createEmptyForm('', '', ''));
+    setIsEditing(false);
+    setError(null);
+    navigate('/sales/delivery-notes/new');
+  };
+
   if (isCreateMode || isEditing) {
     const draftFooterSummary = (
       <DocumentFooterTotalsStrip
@@ -564,6 +586,12 @@ const DeliveryNoteDetailPage: React.FC = () => {
         badges={isEditing && deliveryNote ? <DocumentPill tone="slate">{deliveryNote.status}</DocumentPill> : <DocumentPill tone="slate">{t('sales.dnDetail.draftBadge')}</DocumentPill>}
         railSections={draftRailSections}
         railTitle={t('sales.dnDetail.sideRailTitle')}
+        newAction={{
+          label: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+          title: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewDeliveryNoteForm,
+        }}
         footerSections={{
           totals: { content: draftFooterSummary },
           actions: {
@@ -729,7 +757,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
                     trackInventoryOnly
                     onChange={(item) => {
                       if (!item) {
-                        setLine(index, { itemId: '', itemCode: undefined, itemName: undefined });
+                        const empty = createEmptyLine();
+                        setLine(index, {
+                          itemId: empty.itemId,
+                          itemCode: empty.itemCode,
+                          itemName: empty.itemName,
+                          deliveredQty: empty.deliveredQty,
+                          uomId: empty.uomId,
+                          uom: empty.uom,
+                          warehouseId: empty.warehouseId,
+                          description: empty.description,
+                        });
                         return;
                       }
                       const defaultUom = getDefaultItemUomOption(item, 'sales');
@@ -866,6 +904,12 @@ const DeliveryNoteDetailPage: React.FC = () => {
           {deliveryNote.status}
         </DocumentPill>
       }
+      newAction={{
+        label: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+        title: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+        hasUnsavedChanges: false,
+        onNew: openNewDeliveryNoteForm,
+      }}
       railSections={viewRailSections}
       railTitle={t('sales.dnDetail.sideRailTitle')}
       footerSections={{

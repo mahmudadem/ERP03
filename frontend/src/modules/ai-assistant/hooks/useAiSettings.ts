@@ -348,6 +348,14 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
       }
       const result = await aiAssistantApi.updateSettings(payload);
       setSettings(result.config);
+      setIsEnabled(result.config.isEnabled);
+      setShowFloatingAssistant(result.config.showFloatingAssistant !== false);
+      window.dispatchEvent(new CustomEvent('ai-widget-preferences-updated', {
+        detail: {
+          isEnabled: result.config.isEnabled,
+          showFloatingAssistant: result.config.showFloatingAssistant !== false,
+        },
+      }));
       setApiKey('');
       const usage = await aiAssistantApi.getUsageAnalytics(50);
       setUsageAnalytics(usage);

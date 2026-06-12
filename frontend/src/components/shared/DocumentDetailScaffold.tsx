@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Info, Lock, LucideIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, FilePlus2, Info, Lock, LucideIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import { clsx } from 'clsx';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 export type DocumentPillTone = 'slate' | 'blue' | 'green' | 'amber' | 'rose' | 'red' | 'violet';
 
@@ -59,6 +60,17 @@ export type DocumentScaffoldFooterSection = Omit<DocumentScaffoldSection, 'conte
 export type DocumentScaffoldSections = Partial<Record<DocumentScaffoldBodySlot, DocumentScaffoldSection>>;
 export type DocumentScaffoldRailSections = Partial<Record<DocumentScaffoldRailSlot, DocumentScaffoldSection>>;
 export type DocumentScaffoldFooterSections = Partial<Record<DocumentScaffoldFooterSlot, DocumentScaffoldFooterSection>>;
+
+export type DocumentScaffoldNewAction = {
+  label?: string;
+  title?: string;
+  confirmTitle?: string;
+  confirmMessage?: React.ReactNode;
+  confirmLabel?: string;
+  hasUnsavedChanges?: boolean;
+  disabled?: boolean;
+  onNew: () => void;
+};
 
 export const documentHeaderLabelClass = 'mb-1 block text-[10px] font-bold uppercase text-slate-500';
 export const documentHeaderControlClass = 'h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900 dark:disabled:text-slate-500';
@@ -711,6 +723,7 @@ export function DocumentDetailScaffold({
   backLabel,
   onBack,
   badges,
+  newAction,
   headerTools,
   banner,
   children,
@@ -732,6 +745,7 @@ export function DocumentDetailScaffold({
   backLabel: string;
   onBack: () => void;
   badges?: React.ReactNode;
+  newAction?: DocumentScaffoldNewAction;
   headerTools?: React.ReactNode;
   banner?: React.ReactNode;
   children?: React.ReactNode;
@@ -751,6 +765,7 @@ export function DocumentDetailScaffold({
   const [railPinned, setRailPinned] = useState(defaultRailPinned);
   const [railDrawerOpen, setRailDrawerOpen] = useState(false);
   const [railAutoCollapsed, setRailAutoCollapsed] = useState(false);
+  const [newConfirmOpen, setNewConfirmOpen] = useState(false);
   const isRtl = i18n.dir() === 'rtl';
   const railLabel = railTitle ?? t('documentDetail.sideRail', 'Document side rail');
   const BackIcon = isRtl ? ArrowRight : ArrowLeft;
@@ -828,6 +843,37 @@ export function DocumentDetailScaffold({
       setRailPinned(true);
     }
   };
+
+  const runNewAction = () => {
+    if (!newAction || newAction.disabled) return;
+    if (newAction.hasUnsavedChanges) {
+      setNewConfirmOpen(true);
+      return;
+    }
+    newAction.onNew();
+  };
+
+  const confirmNewAction = () => {
+    setNewConfirmOpen(false);
+    newAction?.onNew();
+  };
+
+  const renderedHeaderTools = (
+    <>
+      {newAction && (
+        <DocumentIconButton
+          title={newAction.title ?? newAction.label ?? t('documentDetail.newDocument', 'New document')}
+          onClick={runNewAction}
+          disabled={newAction.disabled}
+        >
+          <FilePlus2 className="h-3.5 w-3.5" />
+          <span className="sr-only">{newAction.label ?? t('documentDetail.newDocument', 'New document')}</span>
+        </DocumentIconButton>
+      )}
+      {headerTools}
+    </>
+  );
+  const hasHeaderTools = !!newAction || isRenderable(headerTools);
 
   const renderRailEdgeButton = () => {
     if (!hasRail || !showRailEdgeButton || showInlineRail) return null;
@@ -924,7 +970,7 @@ export function DocumentDetailScaffold({
             {subtitle && <div className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</div>}
           </div>
         </div>
-        {isRenderable(headerTools) && <DocumentActionTray>{headerTools}</DocumentActionTray>}
+        {hasHeaderTools && <DocumentActionTray>{renderedHeaderTools}</DocumentActionTray>}
       </div>
 
       {banner && <div className="mx-3 mt-2 shrink-0">{banner}</div>}
@@ -971,6 +1017,20 @@ export function DocumentDetailScaffold({
           <div className="flex flex-wrap items-center justify-end gap-2">{renderedFooterActions}</div>
         </div>
       </footer>
+
+      <ConfirmDialog
+        isOpen={newConfirmOpen}
+        title={newAction?.confirmTitle ?? t('documentDetail.newConfirmTitle', 'Discard unsaved changes?')}
+        message={
+          newAction?.confirmMessage ??
+          t('documentDetail.newConfirmMessage', 'This form has unsaved changes. Opening a new clear form will lose the data you entered. Continue?')
+        }
+        confirmLabel={newAction?.confirmLabel ?? t('documentDetail.newConfirmAction', 'Open New Form')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        tone="warning"
+        onConfirm={confirmNewAction}
+        onCancel={() => setNewConfirmOpen(false)}
+      />
     </div>
   );
 }

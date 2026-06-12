@@ -203,6 +203,13 @@ const makePI = (input: {
   unitPriceDoc: number;
   taxCodeId?: string;
   warehouseId?: string;
+  charges?: Array<{
+    chargeId?: string;
+    kind?: 'CHARGE' | 'DISCOUNT';
+    name: string;
+    amountDoc: number;
+    accountId?: string;
+  }>;
 }): PurchaseInvoice =>
   new PurchaseInvoice({
     id: input.id,
@@ -218,6 +225,13 @@ const makePI = (input: {
     dueDate: '2026-02-11',
     currency: (input.currency ?? 'USD').toUpperCase(),
     exchangeRate: input.exchangeRate ?? 1,
+    charges: (input.charges || []).map((c, i) => ({
+      chargeId: c.chargeId || `pi-chg-${i + 1}`,
+      kind: c.kind,
+      name: c.name,
+      amountDoc: c.amountDoc,
+      accountId: c.accountId,
+    })),
     lines: [
       {
         lineId: 'pi-line-1',
@@ -622,6 +636,77 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(piVoucher.lines.some((l: any) => l.accountId === 'EXP-500' && l.side === 'Debit')).toBe(true);
     expect(piVoucher.totalDebit).toBeCloseTo(piVoucher.totalCredit, 2);
     expect(piCredits[0].creditAmount).toBeCloseTo(piVoucher.totalCredit, 2);
+  });
+
+  it('6b) PostPI applies whole-invoice CHARGE (debit) + DISCOUNT (credit): adjusts the bill and stays balanced', async () => {
+    const settings = makeSettings('CONTROLLED');
+    const vendor = makeVendor();
+    const serviceItem = makeItem('svc-6b', { trackInventory: false, type: 'SERVICE', cogsAccountId: 'EXP-500' });
+    const po = makePO({ id: 'po-6b', item: serviceItem, orderedQty: 10, receivedQty: 0, invoicedQty: 0 });
+    const pi = makePI({
+      id: 'pi-6b',
+      item: serviceItem,
+      purchaseOrderId: po.id,
+      poLineId: 'po-line-1',
+      invoicedQty: 3,
+      unitPriceDoc: 20, // line = 60, no tax
+      charges: [
+        { chargeId: 'chg-frt', kind: 'CHARGE', name: 'Freight', amountDoc: 10, accountId: 'EXP-FREIGHT' },
+        { chargeId: 'chg-disc', kind: 'DISCOUNT', name: 'Volume discount', amountDoc: 5, accountId: 'INC-DISC' },
+      ],
+    });
+
+    const inventoryService = makeInventoryService();
+    const savedVouchers: any[] = [];
+    const voucherRepo = { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+    const invoiceRepoStore = new Map([[pi.id, pi]]);
+    const invoiceRepo = {
+      getById: jest.fn(async (_companyId: string, id: string) => invoiceRepoStore.get(id) ?? null),
+      update: jest.fn(async (entity: PurchaseInvoice) => { invoiceRepoStore.set(entity.id, entity); }),
+    };
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      invoiceRepo as any,
+      { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => serviceItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, pi.id);
+    // 60 line + 10 charge − 5 discount = 65; no tax.
+    expect(posted.subtotalDoc).toBe(65);
+    expect(posted.taxTotalDoc).toBe(0);
+    expect(posted.grandTotalDoc).toBe(65);
+
+    const piVoucher = savedVouchers[0];
+    const debits = piVoucher.lines.filter((l: any) => l.side === 'Debit');
+    const credits = piVoucher.lines.filter((l: any) => l.side === 'Credit');
+    // Line expense debit 60, freight charge debit 10; discount credit 5; AP credit 65.
+    expect(debits.some((l: any) => l.accountId === 'EXP-500' && l.debitAmount === 60)).toBe(true);
+    expect(debits.some((l: any) => l.accountId === 'EXP-FREIGHT' && l.debitAmount === 10)).toBe(true);
+    expect(credits.some((l: any) => l.accountId === 'INC-DISC' && l.creditAmount === 5)).toBe(true);
+    expect(credits.some((l: any) => l.creditAmount === 65)).toBe(true); // AP
+    // Balanced: debits 60+10 = 70; credits 5 + 65 = 70.
+    expect(piVoucher.totalDebit).toBeCloseTo(70, 2);
+    expect(piVoucher.totalCredit).toBeCloseTo(70, 2);
   });
 
   it('7) PostPI (SIMPLE standalone): creates inventory movement + GL voucher', async () => {

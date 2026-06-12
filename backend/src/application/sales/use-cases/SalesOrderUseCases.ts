@@ -76,6 +76,10 @@ export interface SalesOrderLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc: number;
+  /** Optional line-level trade discount. PERCENT applies to grossLineTotal,
+   *  AMOUNT is a flat discount in document currency. */
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   /** When true, `unitPriceDoc` already includes tax. The entity splits the
    *  gross into net + tax so totals match the user's input expectation. */
   priceIsInclusive?: boolean;
@@ -395,6 +399,9 @@ export class CreateSalesOrderUseCase {
       invoicedQty: 0,
       returnedQty: 0,
       unitPriceDoc: lineInput.unitPriceDoc,
+      // Discount forwarded; entity recomputes gross/discount/lineTotal/tax.
+      discountType: lineInput.discountType,
+      discountValue: lineInput.discountValue,
       lineTotalDoc,
       unitPriceBase,
       lineTotalBase,
@@ -549,6 +556,8 @@ export class UpdateSalesOrderUseCase {
       invoicedQty: currentLine?.invoicedQty ?? 0,
       returnedQty: currentLine?.returnedQty ?? 0,
       unitPriceDoc: lineInput.unitPriceDoc,
+      discountType: lineInput.discountType ?? currentLine?.discountType,
+      discountValue: lineInput.discountValue ?? currentLine?.discountValue,
       lineTotalDoc,
       unitPriceBase,
       lineTotalBase,

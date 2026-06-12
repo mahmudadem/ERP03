@@ -5,3 +5,6 @@ export * from './PartySelector';
 export * from './PartyAccountSelector';
 export * from './AccountSelectorSimple';
 export * from './DatePicker';
+export * from './CurrencySelector';
+export * from './TaxCodeSelector';
+export * from './DiscountTypeSelector';

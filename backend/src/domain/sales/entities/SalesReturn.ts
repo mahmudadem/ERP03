@@ -3,6 +3,7 @@ export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 export type ReturnSettlementMode = 'CREDIT_NOTE' | 'REFUND';
 export type ReturnReasonCode = 'DEFECTIVE' | 'WRONG_ITEM' | 'CHANGED_MIND' | 'OTHER';
 export type RestockingFeeType = 'PERCENT' | 'AMOUNT';
+export type SalesReturnDiscountType = 'PERCENT' | 'AMOUNT';
 
 export interface SalesReturnLine {
   lineId: string;
@@ -17,7 +18,13 @@ export interface SalesReturnLine {
   uomId?: string;
   uom: string;
   unitPriceDoc?: number;
+  grossLineTotalDoc?: number;
+  discountType?: SalesReturnDiscountType;
+  discountValue?: number;
+  discountAmountDoc?: number;
   unitPriceBase?: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   unitCostBase: number;
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
@@ -82,7 +89,34 @@ const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DI
 const RETURN_SETTLEMENT_MODES: ReturnSettlementMode[] = ['CREDIT_NOTE', 'REFUND'];
 const RETURN_REASON_CODES: ReturnReasonCode[] = ['DEFECTIVE', 'WRONG_ITEM', 'CHANGED_MIND', 'OTHER'];
 const RESTOCKING_FEE_TYPES: RestockingFeeType[] = ['PERCENT', 'AMOUNT'];
+const SR_DISCOUNT_TYPES: SalesReturnDiscountType[] = ['PERCENT', 'AMOUNT'];
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const normalizeSRDiscountType = (value: any): SalesReturnDiscountType | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const token = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return SR_DISCOUNT_TYPES.includes(token as SalesReturnDiscountType)
+    ? (token as SalesReturnDiscountType)
+    : undefined;
+};
+
+const calculateSRDiscountAmountDoc = (
+  grossLineTotalDoc: number,
+  discountType: SalesReturnDiscountType | undefined,
+  discountValue: number,
+  explicitDiscountAmountDoc: number | undefined,
+): number => {
+  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
+    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
+  }
+  if (discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
+  }
+  if (discountType === 'AMOUNT') {
+    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
+  }
+  return 0;
+};
 
 const toDate = (value: any): Date => {
   if (!value) return new Date();
@@ -234,16 +268,30 @@ export class SalesReturn {
 
     const taxRate = Number.isNaN(line.taxRate) ? 0 : line.taxRate;
     const priceIsInclusive = line.priceIsInclusive === true;
-    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const discountType = normalizeSRDiscountType(line.discountType);
+    const discountValueRaw = Number(line.discountValue);
+    const discountValue = Number.isNaN(discountValueRaw) ? 0 : discountValueRaw;
+    const explicitDiscountDoc =
+      line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
     const grossLineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc ?? 0));
     const grossLineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase ?? 0));
-    const netLineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
-    const netLineTotalBase = roundMoney(grossLineTotalBase / divisor);
+    const discountAmountDoc = calculateSRDiscountAmountDoc(
+      grossLineTotalDoc,
+      discountType,
+      discountValue,
+      explicitDiscountDoc,
+    );
+    const discountAmountBase = roundMoney(discountAmountDoc * (line.fxRateCCYToBase || 1));
+    const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+    const postDiscountBase = roundMoney(grossLineTotalBase - discountAmountBase);
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const netLineTotalDoc = roundMoney(postDiscountDoc / divisor);
+    const netLineTotalBase = roundMoney(postDiscountBase / divisor);
     const defaultTaxAmountDoc = priceIsInclusive
-      ? roundMoney(grossLineTotalDoc - netLineTotalDoc)
+      ? roundMoney(postDiscountDoc - netLineTotalDoc)
       : roundMoney(netLineTotalDoc * taxRate);
     const defaultTaxAmountBase = priceIsInclusive
-      ? roundMoney(grossLineTotalBase - netLineTotalBase)
+      ? roundMoney(postDiscountBase - netLineTotalBase)
       : roundMoney(netLineTotalBase * taxRate);
 
     return {
@@ -259,7 +307,13 @@ export class SalesReturn {
       uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
+      grossLineTotalDoc,
+      discountType,
+      discountValue: discountType ? discountValue : undefined,
+      discountAmountDoc,
       unitPriceBase: line.unitPriceBase,
+      grossLineTotalBase,
+      discountAmountBase,
       unitCostBase: roundMoney(line.unitCostBase || 0),
       fxRateMovToBase: line.fxRateMovToBase || 1,
       fxRateCCYToBase: line.fxRateCCYToBase || 1,
@@ -282,13 +336,15 @@ export class SalesReturn {
     // user-entered gross was already split inside the line.
     const netDoc = (line: SalesReturnLine): number => {
       const gross = roundMoney(line.returnQty * (line.unitPriceDoc ?? 0));
+      const postDisc = roundMoney(gross - (line.discountAmountDoc ?? 0));
       const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
-      return roundMoney(gross / divisor);
+      return roundMoney(postDisc / divisor);
     };
     const netBase = (line: SalesReturnLine): number => {
       const gross = roundMoney(line.returnQty * (line.unitPriceBase ?? 0));
+      const postDisc = roundMoney(gross - (line.discountAmountBase ?? 0));
       const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
-      return roundMoney(gross / divisor);
+      return roundMoney(postDisc / divisor);
     };
 
     this.subtotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + netDoc(line), 0));

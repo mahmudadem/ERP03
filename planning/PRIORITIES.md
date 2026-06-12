@@ -92,6 +92,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Task 197 - Sectioned native document scaffold contract | 2026-06-09 | ✅ Done |
 | Codex | Task 198 - Native document header density standard | 2026-06-09 | ✅ Done |
 | Codex | Task 200 - Native document table and section parity | 2026-06-09 | ✅ Done |
+| Antigravity | Exchange Rate Redesign Side-by-Side Verification | 2026-06-12 | ✅ Done |
 
 
 **How to use:**

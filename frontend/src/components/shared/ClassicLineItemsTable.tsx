@@ -16,7 +16,7 @@
  * export/import, local table skin preferences, and optional 25-line edit mode.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Clipboard, Copy, Download, Eraser, Palette, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Clipboard, Copy, Download, Eraser, Palette, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -55,6 +55,14 @@ export interface ColumnDef<T> {
   // --- For kind: 'custom' ---
   /** Render anything inside the cell (typically a selector with noBorder). */
   render?: (row: T, index: number, onChange: (patch: Partial<T>) => void) => React.ReactNode;
+
+  // --- For kind: 'computed' (optional) ---
+  /**
+   * If provided, the computed cell becomes editable. When the user commits a
+   * new value, the returned patch is merged into the row — typically to
+   * back-solve a source field (e.g. unit price from line total).
+   */
+  solveFromTotal?: (value: number, row: T, index: number) => Partial<T>;
 }
 
 export interface ClassicLineItemsTableProps<T> {
@@ -68,6 +76,16 @@ export interface ClassicLineItemsTableProps<T> {
   rows: T[];
   /** Called when the user edits a cell. */
   onRowChange: (rowIndex: number, patch: Partial<T>) => void;
+  /**
+   * Stable React key for a row. STRONGLY recommended when rows contain stateful
+   * inputs (item/uom/tax pickers, numeric cells): without it rows are keyed by
+   * array index, so when the rows array shifts (auto-append, minimum-row
+   * padding, deletes) React reuses a stateful input instance across two
+   * different data rows. A picker bound to a filled row then leaks its selected
+   * item onto the empty row it gets reused for, producing "ghost" duplicate
+   * lines. Return a per-row id that survives `{...row, ...patch}` edits.
+   */
+  getRowKey?: (row: T, index: number) => React.Key;
   /** Optional row removal. When omitted, no trash column is rendered. */
   onRowRemove?: (rowIndex: number) => void;
   /** Optional full-row replacement. Enables paste/import/clean/minimum edit rows. */
@@ -117,6 +135,8 @@ type TablePreferences = {
   tableFont: TableFont;
   lineColor1: RowColor;
   lineColor2: RowColor;
+  /** Persisted column order by column id. New columns appear at the end. */
+  columnOrder?: string[];
 };
 
 const defaultPreferences: TablePreferences = {
@@ -151,6 +171,21 @@ const formatNumber = (value: any, decimals: number): string => {
   const n = Number(value);
   if (Number.isNaN(n)) return String(value);
   return n.toFixed(decimals);
+};
+
+/**
+ * Display a number with at least `minDecimals` decimals, but preserve any
+ * extra precision the user typed. 25 → "25.00", 25.5 → "25.50",
+ * 25.575 → "25.575".
+ */
+const formatMinDecimals = (value: any, minDecimals = 2): string => {
+  if (value === null || value === undefined || value === '') return '';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  const text = String(n);
+  const dotIdx = text.indexOf('.');
+  const naturalDecimals = dotIdx === -1 ? 0 : text.length - dotIdx - 1;
+  return n.toFixed(Math.max(minDecimals, naturalDecimals));
 };
 
 const safeReadPreferences = (storageKey: string): TablePreferences => {
@@ -205,7 +240,7 @@ const numberFontClasses: Record<NumberFont, string> = {
 
 const tableFontClasses: Record<TableFont, string> = {
   apex: 'font-sans',
-  system: '[font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif]',
+  system: '[font-family:var(--app-font-family),ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif]',
   mono: 'font-mono',
 };
 
@@ -215,13 +250,26 @@ const parseColumnWidth = (width: string | undefined): number => {
   return Number.isFinite(parsed) ? parsed : 140;
 };
 
-const rowColorClasses: Record<RowColor, string> = {
-  amber: 'bg-amber-100/80 dark:bg-amber-950/30',
-  blue: 'bg-blue-100/75 dark:bg-blue-950/30',
-  green: 'bg-emerald-100/75 dark:bg-emerald-950/30',
-  rose: 'bg-rose-100/75 dark:bg-rose-950/30',
-  violet: 'bg-violet-100/75 dark:bg-violet-950/30',
-  white: 'bg-white dark:bg-slate-900',
+// Inline-style backgrounds. Tailwind utility ordering can make stacked bg-*
+// classes unpredictable; inline style guarantees the row color paints.
+// Tailwind 100-scale * opacity
+const rowColorStrongRgb: Record<RowColor, string> = {
+  amber: 'rgba(254, 243, 199, 0.80)',
+  blue: 'rgba(219, 234, 254, 0.75)',
+  green: 'rgba(209, 250, 229, 0.75)',
+  rose: 'rgba(255, 228, 230, 0.75)',
+  violet: 'rgba(237, 233, 254, 0.75)',
+  white: 'rgba(255, 255, 255, 1)',
+};
+
+// Tailwind 50-scale * opacity
+const rowColorSoftRgb: Record<RowColor, string> = {
+  amber: 'rgba(255, 251, 235, 0.70)',
+  blue: 'rgba(239, 246, 255, 0.70)',
+  green: 'rgba(236, 253, 245, 0.70)',
+  rose: 'rgba(255, 241, 242, 0.70)',
+  violet: 'rgba(245, 243, 255, 0.70)',
+  white: 'rgba(255, 255, 255, 1)',
 };
 
 const rowColorSwatches: Array<{ color: RowColor; className: string; labelKey: string; fallback: string }> = [
@@ -233,15 +281,6 @@ const rowColorSwatches: Array<{ color: RowColor; className: string; labelKey: st
   { color: 'white', className: 'bg-white ring-slate-300 dark:bg-slate-800 dark:ring-slate-600', labelKey: 'lineItemsTable.menu.rowColorWhite', fallback: 'White' },
 ];
 
-const rowColorSoftClasses: Record<RowColor, string> = {
-  amber: 'bg-amber-50/70 dark:bg-amber-950/20',
-  blue: 'bg-blue-50/70 dark:bg-blue-950/20',
-  green: 'bg-emerald-50/70 dark:bg-emerald-950/20',
-  rose: 'bg-rose-50/70 dark:bg-rose-950/20',
-  violet: 'bg-violet-50/70 dark:bg-violet-950/20',
-  white: 'bg-white dark:bg-slate-950',
-};
-
 /**
  * Generic Classic line-items table.
  */
@@ -252,6 +291,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     columns,
     rows,
     onRowChange,
+    getRowKey,
     onRowRemove,
     onRowsChange,
     createEmptyRow,
@@ -272,12 +312,14 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     minTableWidth = '600px',
   } = props;
 
-  const showRemove = !!onRowRemove;
+  // The trailing trash column is intentionally hidden; row deletion stays
+  // available via the row right-click context menu when onRowRemove is set.
+  const showRemove = false;
   const storageKey = `erp03.lineItemsTable.${tableId}.preferences`;
-  const highlightStorageKey = `erp03.lineItemsTable.${tableId}.highlights`;
   const rowColorStorageKey = `erp03.lineItemsTable.${tableId}.rowColors`;
   const widthStorageKey = `erp03.lineItemsTable.${tableId}.columnWidths`;
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
   const [preferences, setPreferences] = useState<TablePreferences>(() => safeReadPreferences(storageKey));
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     if (typeof window === 'undefined') return {};
@@ -289,15 +331,13 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
   });
   const [resizing, setResizing] = useState<ResizeState | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [prefsTab, setPrefsTab] = useState<'layout' | 'typography' | 'columns'>('layout');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [highlightedRows, setHighlightedRows] = useState<Set<number>>(() => {
-    if (typeof window === 'undefined') return new Set();
-    try {
-      return new Set(JSON.parse(window.localStorage.getItem(highlightStorageKey) || '[]'));
-    } catch {
-      return new Set();
-    }
-  });
+  // Row highlight is a transient, per-document marker — NOT persisted to
+  // localStorage. Persisting it by row index under a shared tableId made the
+  // same rows appear highlighted across every document of that type; keeping it
+  // in component state scopes it to the open document and resets on navigation.
+  const [highlightedRows, setHighlightedRows] = useState<Set<number>>(() => new Set());
   const [rowColors, setRowColors] = useState<Record<number, RowColor>>(() => {
     if (typeof window === 'undefined') return {};
     try {
@@ -306,6 +346,46 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
       return {};
     }
   });
+
+  // Effective column order: persisted preference first, with new (unseen)
+  // columns appended in their original order so adding columns later still
+  // shows up without losing the user's prior arrangement.
+  const orderedColumns = useMemo(() => {
+    const order = preferences.columnOrder || [];
+    const byId = new Map(columns.map((col) => [col.id, col] as const));
+    const seen = new Set<string>();
+    const result: ColumnDef<T>[] = [];
+    for (const id of order) {
+      const col = byId.get(id);
+      if (col && !seen.has(id)) {
+        result.push(col);
+        seen.add(id);
+      }
+    }
+    for (const col of columns) {
+      if (!seen.has(col.id)) {
+        result.push(col);
+        seen.add(col.id);
+      }
+    }
+    return result;
+  }, [columns, preferences.columnOrder]);
+
+  const moveColumn = (columnId: string, delta: -1 | 1) => {
+    setPreferences((current) => {
+      const baseOrder = orderedColumns.map((col) => col.id);
+      const idx = baseOrder.indexOf(columnId);
+      const target = idx + delta;
+      if (idx < 0 || target < 0 || target >= baseOrder.length) return current;
+      const next = baseOrder.slice();
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return { ...current, columnOrder: next };
+    });
+  };
+
+  const resetColumnOrder = () => {
+    setPreferences((current) => ({ ...current, columnOrder: undefined }));
+  };
 
   const rowIsFilled = (row: T): boolean => {
     if (isRowFilled) return isRowFilled(row);
@@ -329,10 +409,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     window.localStorage.setItem(storageKey, JSON.stringify(preferences));
   }, [preferences, storageKey]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(highlightStorageKey, JSON.stringify(Array.from(highlightedRows)));
-  }, [highlightStorageKey, highlightedRows]);
+  // (Row highlight is intentionally in-memory only — see highlightedRows above.)
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -476,9 +553,9 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
   };
 
   const exportCsv = () => {
-    const headers = columns.map((column) => column.label);
+    const headers = orderedColumns.map((column) => column.label);
     const body = rows.filter(rowIsFilled).map((row, rowIndex) =>
-      columns.map((column) => {
+      orderedColumns.map((column) => {
         if (column.kind === 'computed') {
           const value = column.compute ? column.compute(row, rowIndex) : '';
           return csvEscape(column.formatter ? column.formatter(value) : value);
@@ -510,7 +587,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
         const [, ...dataLines] = lines;
         const imported = dataLines.map((line) => {
           const cells = parseCsvLine(line);
-          return columns.reduce<Record<string, unknown>>((row, column, index) => {
+          return orderedColumns.reduce<Record<string, unknown>>((row, column, index) => {
             row[column.id] = cells[index] ?? '';
             return row;
           }, {}) as T;
@@ -526,6 +603,40 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     }
   };
 
+  // Enter inside an editable table cell advances focus to the next editable
+  // cell, wrapping from the last cell of a row to the first cell of the next
+  // row (and from the last cell of the table back to the first). Native
+  // inputs/selects handle Enter on bubble — any in-cell handler that calls
+  // preventDefault still allows the event to reach us here.
+  const handleTbodyKeyDown = (event: React.KeyboardEvent<HTMLTableSectionElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
+    const target = event.target as HTMLElement;
+    const tag = target.tagName;
+    if (tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') return;
+    if ((target as HTMLInputElement).type === 'button') return;
+    const tbody = tbodyRef.current;
+    if (!tbody) return;
+    const focusables = Array.from(
+      tbody.querySelectorAll<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]):not([type="button"]), select:not([disabled]), textarea:not([disabled])',
+      ),
+    ).filter((el) => el.offsetParent !== null);
+    const idx = focusables.indexOf(target);
+    if (idx < 0) return;
+    event.preventDefault();
+    const next = focusables[(idx + 1) % focusables.length];
+    if (!next) return;
+    next.focus();
+    // Bring the new target's row into view so rows beyond the visible window
+    // aren't visually skipped. block: 'nearest' avoids jarring jumps when the
+    // target is already on-screen.
+    const nextRow = next.closest('tr');
+    nextRow?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (next instanceof HTMLInputElement && next.type !== 'checkbox' && next.type !== 'radio') {
+      try { next.select(); } catch { /* noop */ }
+    }
+  };
+
   const renderCell = (row: T, rowIndex: number, col: ColumnDef<T>): React.ReactNode => {
     const cellOnChange = rowChangeFor(rowIndex);
 
@@ -536,13 +647,30 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
       case 'computed': {
         const raw = col.compute ? col.compute(row, rowIndex) : '';
         const isBlankPlaceholderZero = !rowIsFilled(row) && (raw === 0 || raw === '0' || raw === '0.00');
+        const numericValue = typeof raw === 'number' ? raw : Number(raw);
+
+        // Back-solving cells: editable, type a total → row patch applied.
+        if (col.solveFromTotal && !disabled) {
+          return (
+            <NumericCell
+              value={isBlankPlaceholderZero ? '' : numericValue}
+              align={col.align ?? 'right'}
+              textSizeClass={textSizeClasses[preferences.textSize]}
+              numberFontClass={numberFontClasses[preferences.numberFont]}
+              computedBg
+              onCommit={(n) => cellOnChange(col.solveFromTotal!(n, row, rowIndex))}
+            />
+          );
+        }
+
         const formatted = col.formatter
           ? col.formatter(raw)
           : typeof raw === 'number'
-            ? formatNumber(raw, col.decimals ?? 2)
+            ? formatMinDecimals(raw, col.decimals ?? 2)
             : String(raw ?? '');
+        const justify = col.align === 'left' ? 'justify-start' : col.align === 'center' ? 'justify-center' : 'justify-end';
         return (
-          <div className="px-3 py-2 h-9 flex items-center justify-end text-xs font-mono font-bold text-slate-900 dark:text-slate-100 bg-slate-50/40 dark:bg-slate-900/30">
+          <div className={`px-3 py-2 h-9 flex items-center font-bold text-slate-900 dark:text-slate-100 bg-slate-50/40 dark:bg-slate-900/30 ${textSizeClasses[preferences.textSize]} ${numberFontClasses[preferences.numberFont]} ${alignClass(col.align)} ${justify}`}>
             {isBlankPlaceholderZero ? '' : formatted}
           </div>
         );
@@ -556,6 +684,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
             value={value ?? ''}
             placeholder=""
             disabled={disabled}
+            onFocus={(event) => { try { event.currentTarget.select(); } catch { /* noop */ } }}
             onChange={(e) => col.setter && cellOnChange(col.setter(e.target.value))}
             className={`w-full h-9 px-2 bg-transparent border-0 outline-none ${textSizeClasses[preferences.textSize]} text-slate-900 dark:text-slate-100 focus:bg-blue-50/40 dark:focus:bg-blue-950/20 ${alignClass(col.align)}`}
           />
@@ -564,21 +693,14 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
 
       case 'number': {
         const value = col.accessor ? col.accessor(row) : '';
-        const isBlankPlaceholderZero = !rowIsFilled(row) && (value === 0 || value === '0');
         return (
-          <input
-            type="number"
-            value={isBlankPlaceholderZero ? '' : value ?? ''}
-            placeholder=""
+          <NumericCell
+            value={value}
+            align={col.align ?? 'right'}
+            textSizeClass={textSizeClasses[preferences.textSize]}
+            numberFontClass={numberFontClasses[preferences.numberFont]}
             disabled={disabled}
-            step="any"
-            onChange={(e) => {
-              if (!col.setter) return;
-              const raw = e.target.value;
-              const num = raw === '' ? 0 : Number(raw);
-              cellOnChange(col.setter(num));
-            }}
-            className={`w-full h-9 px-2 bg-transparent border-0 outline-none ${textSizeClasses[preferences.textSize]} ${numberFontClasses[preferences.numberFont]} text-slate-900 dark:text-slate-100 focus:bg-blue-50/40 dark:focus:bg-blue-950/20 ${alignClass(col.align)}`}
+            onCommit={(n) => { if (col.setter) cellOnChange(col.setter(n)); }}
           />
         );
       }
@@ -704,6 +826,12 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     const setPreference = <K extends keyof TablePreferences>(key: K, value: TablePreferences[K]) =>
       setPreferences((current) => ({ ...current, [key]: value }));
 
+    const tabs: Array<{ id: typeof prefsTab; label: string }> = [
+      { id: 'layout', label: t('lineItemsTable.preferences.tabLayout', 'Layout & Colors') },
+      { id: 'typography', label: t('lineItemsTable.preferences.tabTypography', 'Typography') },
+      { id: 'columns', label: t('lineItemsTable.preferences.tabColumns', 'Columns') },
+    ];
+
     return (
       <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/40 p-4">
         <div className="w-full max-w-lg overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
@@ -720,53 +848,133 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
               {t('lineItemsTable.preferences.done', 'Done')}
             </button>
           </div>
+
+          <div role="tablist" className="flex border-b border-slate-200 bg-slate-50/60 px-2 dark:border-slate-800 dark:bg-slate-900/60">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                role="tab"
+                type="button"
+                aria-selected={prefsTab === tab.id}
+                onClick={() => setPrefsTab(tab.id)}
+                className={`-mb-px border-b-2 px-3 py-2 text-[11px] font-black uppercase tracking-wide transition-colors ${
+                  prefsTab === tab.id
+                    ? 'border-blue-500 text-blue-700 dark:border-blue-400 dark:text-blue-300'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
           <div className="grid gap-4 p-4 text-xs">
-            <PreferenceGroup label={t('lineItemsTable.preferences.layout', 'Layout')}>
-              <PreferenceButton active={preferences.skin === 'classic'} onClick={() => setPreference('skin', 'classic')} label={t('lineItemsTable.preferences.classic', 'Classic')} />
-              <PreferenceButton active={preferences.skin === 'web'} onClick={() => setPreference('skin', 'web')} label={t('lineItemsTable.preferences.web', 'Web')} />
-            </PreferenceGroup>
-            <PreferenceGroup label={t('lineItemsTable.preferences.rowColoring', 'Row coloring')}>
-              <PreferenceButton active={preferences.alternatingRows === 'none'} onClick={() => setPreference('alternatingRows', 'none')} label={t('lineItemsTable.preferences.none', 'None')} />
-              <PreferenceButton active={preferences.alternatingRows === 'soft'} onClick={() => setPreference('alternatingRows', 'soft')} label={t('lineItemsTable.preferences.soft', 'Soft')} />
-              <PreferenceButton active={preferences.alternatingRows === 'strong'} onClick={() => setPreference('alternatingRows', 'strong')} label={t('lineItemsTable.preferences.strong', 'Strong')} />
-            </PreferenceGroup>
-            <PreferenceGroup label={t('lineItemsTable.preferences.textSize', 'Text size')}>
-              <PreferenceButton active={preferences.textSize === 'compact'} onClick={() => setPreference('textSize', 'compact')} label={t('lineItemsTable.preferences.compact', 'Compact')} />
-              <PreferenceButton active={preferences.textSize === 'normal'} onClick={() => setPreference('textSize', 'normal')} label={t('lineItemsTable.preferences.normal', 'Normal')} />
-              <PreferenceButton active={preferences.textSize === 'large'} onClick={() => setPreference('textSize', 'large')} label={t('lineItemsTable.preferences.large', 'Large')} />
-            </PreferenceGroup>
-            <PreferenceGroup label={t('lineItemsTable.preferences.numbersFont', 'Numbers font')}>
-              <PreferenceButton active={preferences.numberFont === 'mono'} onClick={() => setPreference('numberFont', 'mono')} label={t('lineItemsTable.preferences.mono', 'Mono')} />
-              <PreferenceButton active={preferences.numberFont === 'tabular'} onClick={() => setPreference('numberFont', 'tabular')} label={t('lineItemsTable.preferences.tabular', 'Tabular')} />
-              <PreferenceButton active={preferences.numberFont === 'sans'} onClick={() => setPreference('numberFont', 'sans')} label={t('lineItemsTable.preferences.sans', 'Sans')} />
-            </PreferenceGroup>
-            <PreferenceGroup label={t('lineItemsTable.preferences.tableFont', 'Table font')}>
-              <PreferenceButton active={preferences.tableFont === 'apex'} onClick={() => setPreference('tableFont', 'apex')} label={t('lineItemsTable.preferences.apexFont', 'Apex / Inter')} />
-              <PreferenceButton active={preferences.tableFont === 'system'} onClick={() => setPreference('tableFont', 'system')} label={t('lineItemsTable.preferences.system', 'System')} />
-              <PreferenceButton active={preferences.tableFont === 'mono'} onClick={() => setPreference('tableFont', 'mono')} label={t('lineItemsTable.preferences.mono', 'Mono')} />
-            </PreferenceGroup>
-            <PreferenceGroup label={t('lineItemsTable.preferences.lineColor1', 'Line color 1')}>
-              {rowColorSwatches.map((swatch) => (
-                <ColorPreferenceButton
-                  key={swatch.color}
-                  active={preferences.lineColor1 === swatch.color}
-                  className={swatch.className}
-                  label={t(swatch.labelKey, swatch.fallback)}
-                  onClick={() => setPreference('lineColor1', swatch.color)}
-                />
-              ))}
-            </PreferenceGroup>
-            <PreferenceGroup label={t('lineItemsTable.preferences.lineColor2', 'Line color 2')}>
-              {rowColorSwatches.map((swatch) => (
-                <ColorPreferenceButton
-                  key={swatch.color}
-                  active={preferences.lineColor2 === swatch.color}
-                  className={swatch.className}
-                  label={t(swatch.labelKey, swatch.fallback)}
-                  onClick={() => setPreference('lineColor2', swatch.color)}
-                />
-              ))}
-            </PreferenceGroup>
+            {prefsTab === 'layout' && (
+              <>
+                <PreferenceGroup label={t('lineItemsTable.preferences.layout', 'Layout')}>
+                  <PreferenceButton active={preferences.skin === 'classic'} onClick={() => setPreference('skin', 'classic')} label={t('lineItemsTable.preferences.classic', 'Classic')} />
+                  <PreferenceButton active={preferences.skin === 'web'} onClick={() => setPreference('skin', 'web')} label={t('lineItemsTable.preferences.web', 'Web')} />
+                </PreferenceGroup>
+                <PreferenceGroup label={t('lineItemsTable.preferences.rowColoring', 'Row coloring')}>
+                  <PreferenceButton active={preferences.alternatingRows === 'none'} onClick={() => setPreference('alternatingRows', 'none')} label={t('lineItemsTable.preferences.none', 'None')} />
+                  <PreferenceButton active={preferences.alternatingRows === 'soft'} onClick={() => setPreference('alternatingRows', 'soft')} label={t('lineItemsTable.preferences.soft', 'Soft')} />
+                  <PreferenceButton active={preferences.alternatingRows === 'strong'} onClick={() => setPreference('alternatingRows', 'strong')} label={t('lineItemsTable.preferences.strong', 'Strong')} />
+                </PreferenceGroup>
+                <PreferenceGroup label={t('lineItemsTable.preferences.lineColor1', 'Line color 1')}>
+                  {rowColorSwatches.map((swatch) => (
+                    <ColorPreferenceButton
+                      key={swatch.color}
+                      active={preferences.lineColor1 === swatch.color}
+                      className={swatch.className}
+                      label={t(swatch.labelKey, swatch.fallback)}
+                      onClick={() => setPreference('lineColor1', swatch.color)}
+                    />
+                  ))}
+                </PreferenceGroup>
+                <PreferenceGroup label={t('lineItemsTable.preferences.lineColor2', 'Line color 2')}>
+                  {rowColorSwatches.map((swatch) => (
+                    <ColorPreferenceButton
+                      key={swatch.color}
+                      active={preferences.lineColor2 === swatch.color}
+                      className={swatch.className}
+                      label={t(swatch.labelKey, swatch.fallback)}
+                      onClick={() => setPreference('lineColor2', swatch.color)}
+                    />
+                  ))}
+                </PreferenceGroup>
+              </>
+            )}
+
+            {prefsTab === 'typography' && (
+              <>
+                <PreferenceGroup label={t('lineItemsTable.preferences.textSize', 'Text size')}>
+                  <PreferenceButton active={preferences.textSize === 'compact'} onClick={() => setPreference('textSize', 'compact')} label={t('lineItemsTable.preferences.compact', 'Compact')} />
+                  <PreferenceButton active={preferences.textSize === 'normal'} onClick={() => setPreference('textSize', 'normal')} label={t('lineItemsTable.preferences.normal', 'Normal')} />
+                  <PreferenceButton active={preferences.textSize === 'large'} onClick={() => setPreference('textSize', 'large')} label={t('lineItemsTable.preferences.large', 'Large')} />
+                </PreferenceGroup>
+                <PreferenceGroup label={t('lineItemsTable.preferences.numbersFont', 'Numbers font')}>
+                  <PreferenceButton active={preferences.numberFont === 'mono'} onClick={() => setPreference('numberFont', 'mono')} label={t('lineItemsTable.preferences.mono', 'Mono')} />
+                  <PreferenceButton active={preferences.numberFont === 'tabular'} onClick={() => setPreference('numberFont', 'tabular')} label={t('lineItemsTable.preferences.tabular', 'Tabular')} />
+                  <PreferenceButton active={preferences.numberFont === 'sans'} onClick={() => setPreference('numberFont', 'sans')} label={t('lineItemsTable.preferences.sans', 'Sans')} />
+                </PreferenceGroup>
+                <PreferenceGroup label={t('lineItemsTable.preferences.tableFont', 'Table font')}>
+                  <PreferenceButton active={preferences.tableFont === 'apex'} onClick={() => setPreference('tableFont', 'apex')} label={t('lineItemsTable.preferences.apexFont', 'Apex / Inter')} />
+                  <PreferenceButton active={preferences.tableFont === 'system'} onClick={() => setPreference('tableFont', 'system')} label={t('lineItemsTable.preferences.system', 'System')} />
+                  <PreferenceButton active={preferences.tableFont === 'mono'} onClick={() => setPreference('tableFont', 'mono')} label={t('lineItemsTable.preferences.mono', 'Mono')} />
+                </PreferenceGroup>
+              </>
+            )}
+
+            {prefsTab === 'columns' && (
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                    {t('lineItemsTable.preferences.columnOrder', 'Column order')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={resetColumnOrder}
+                    disabled={!preferences.columnOrder}
+                    className="text-[10px] font-bold uppercase tracking-wide text-slate-500 hover:text-slate-900 disabled:opacity-40 dark:hover:text-slate-100"
+                  >
+                    {t('lineItemsTable.preferences.resetOrder', 'Reset')}
+                  </button>
+                </div>
+                <ol className="flex max-h-[420px] flex-col gap-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950">
+                  {orderedColumns.map((col, idx) => (
+                    <li
+                      key={col.id}
+                      className="flex items-center gap-2 rounded bg-white px-2 py-1.5 dark:bg-slate-900"
+                    >
+                      <span className="w-5 shrink-0 text-center font-mono text-[10px] font-bold text-slate-500">
+                        {idx + 1}
+                      </span>
+                      <span className="flex-1 truncate text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                        {col.label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(col.id, -1)}
+                        disabled={idx === 0}
+                        title={t('lineItemsTable.preferences.moveUp', 'Move up')}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30 dark:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                      >
+                        <ArrowUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(col.id, 1)}
+                        disabled={idx === orderedColumns.length - 1}
+                        title={t('lineItemsTable.preferences.moveDown', 'Move down')}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30 dark:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                      >
+                        <ArrowDown className="h-3 w-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -775,7 +983,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
 
   return (
     <div
-      className={`border border-slate-200 dark:border-slate-800 rounded overflow-hidden shadow-sm bg-white dark:bg-slate-950 ${tableFontClasses[preferences.tableFont]} ${preferences.skin === 'web' ? 'rounded-md' : ''} ${className}`}
+      className={`flex flex-col border border-slate-200 dark:border-slate-800 rounded overflow-hidden shadow-sm bg-white dark:bg-slate-950 ${tableFontClasses[preferences.tableFont]} ${preferences.skin === 'web' ? 'rounded-md' : ''} ${className}`}
     >
       <input
         ref={importInputRef}
@@ -808,7 +1016,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
         </div>
       )}
       <div
-        className="overflow-y-auto overflow-x-auto [&_input::placeholder]:text-transparent [&_input::placeholder]:opacity-0"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-auto [&_input::placeholder]:text-transparent [&_input::placeholder]:opacity-0"
         style={{ maxHeight: maxBodyHeight }}
       >
         <table className="w-full text-sm border-collapse" style={{ minWidth: minTableWidth }}>
@@ -829,7 +1037,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                   #
                 </th>
               )}
-              {columns.map((col) => (
+              {orderedColumns.map((col) => (
                 <th
                   key={col.id}
                   className={`relative p-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide border-r border-slate-200 dark:border-slate-800 ${alignClass(col.align)}`}
@@ -856,11 +1064,11 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
             </tr>
           </thead>
 
-          <tbody>
+          <tbody ref={tbodyRef} onKeyDown={handleTbodyKeyDown}>
             {visibleEntries.length === 0 ? (
               <tr>
                 <td
-                  colSpan={(showRowNumbers ? 1 : 0) + columns.length + (showRemove ? 1 : 0)}
+                  colSpan={(showRowNumbers ? 1 : 0) + orderedColumns.length + (showRemove ? 1 : 0)}
                   className="px-3 py-6 text-center text-xs text-slate-500 dark:text-slate-400"
                 >
                   {emptyMessage}
@@ -869,40 +1077,41 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
             ) : (
               visibleEntries.map(({ row, rowIndex }, displayIndex) => {
                 const isHighlighted = highlightedRows.has(rowIndex);
-                const rowColorClass = rowColors[rowIndex] ? rowColorClasses[rowColors[rowIndex]] : '';
-                const alternatingClass =
-                  preferences.alternatingRows === 'none'
-                    ? ''
-                    : preferences.alternatingRows === 'strong' && displayIndex % 2 === 1
-                      ? rowColorClasses[preferences.lineColor2]
-                      : preferences.alternatingRows === 'strong'
-                        ? rowColorClasses[preferences.lineColor1]
-                      : preferences.alternatingRows === 'soft' && displayIndex % 2 === 1
-                        ? rowColorSoftClasses[preferences.lineColor2]
-                        : preferences.alternatingRows === 'soft'
-                          ? rowColorSoftClasses[preferences.lineColor1]
-                          : '';
+                const manualRowColor = rowColors[rowIndex];
+                const alternatingBg = (() => {
+                  if (preferences.alternatingRows === 'none') return undefined;
+                  const which = displayIndex % 2 === 1 ? preferences.lineColor2 : preferences.lineColor1;
+                  return preferences.alternatingRows === 'strong'
+                    ? rowColorStrongRgb[which]
+                    : rowColorSoftRgb[which];
+                })();
+                const rowBg = manualRowColor
+                  ? rowColorStrongRgb[manualRowColor]
+                  : isHighlighted
+                    ? rowColorStrongRgb.amber
+                    : alternatingBg;
                 return (
                 <tr
-                  key={rowIndex}
+                  key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     setContextMenu({ type: 'row', x: event.clientX, y: event.clientY, rowIndex });
                   }}
-                  className={`${alternatingClass} ${isHighlighted ? rowColorClasses.amber : ''} ${rowColorClass} hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-colors duration-100 border-b border-slate-100 dark:border-slate-800`}
+                  style={rowBg ? { backgroundColor: rowBg } : undefined}
+                  className={`hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-colors duration-100 border-b border-slate-100 dark:border-slate-800`}
                 >
                   {showRowNumbers && (
                     <td className="p-2 text-slate-500 dark:text-slate-400 text-[11px] font-medium text-center border-r border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/20">
                       {displayIndex + 1}
                     </td>
                   )}
-                  {columns.map((col) => (
+                  {orderedColumns.map((col) => (
                     <td
                       key={col.id}
                       className="p-0 border-r border-slate-100 dark:border-slate-800 align-middle"
                       style={{ width: `${getColumnWidth(col)}px`, minWidth: `${getColumnWidth(col)}px` }}
                     >
-                      <div className="p-0.5">{renderCell(row, rowIndex, col)}</div>
+                      <div className={`p-0.5 ${textSizeClasses[preferences.textSize]}`}>{renderCell(row, rowIndex, col)}</div>
                     </td>
                   ))}
                   {showRemove && (
@@ -999,6 +1208,162 @@ function ColorPreferenceButton({
       {active && <Check className="h-3 w-3" />}
       {label}
     </button>
+  );
+}
+
+/** Characters a numeric cell accepts: digits, decimal point, the four operators,
+ *  parentheses and whitespace. Anything else (letters, symbols) is stripped on input. */
+const NUMERIC_CELL_ALLOWED = /[^0-9.+\-*/()\s]/g;
+
+/**
+ * Safely evaluate a basic arithmetic expression typed into a numeric cell —
+ * e.g. "5+5" → 10, "5*5" → 25, "100-5" → 95, "(2+3)*4" → 20. Supports + - * /
+ * and parentheses with correct precedence. Uses a small shunting-yard parser
+ * (no eval/Function). Returns null for invalid/incomplete input. A lone "-5"
+ * evaluates to -5 (callers clamp negatives to 0).
+ */
+function evaluateNumericExpression(input: string): number | null {
+  const expr = input.trim();
+  // Non-global test (NUMERIC_CELL_ALLOWED is /g/ and stateful — only use it for replace()).
+  if (expr === '' || /[^0-9.+\-*/()\s]/.test(expr)) return null;
+  const tokens = expr.match(/(\d+\.?\d*|\.\d+|[+\-*/()])/g);
+  if (!tokens) return null;
+
+  const prec: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2 };
+  const output: string[] = [];
+  const ops: string[] = [];
+  let prev: 'num' | 'op' | 'open' | 'close' | null = null;
+
+  for (const tk of tokens) {
+    if (/^[\d.]/.test(tk)) {
+      output.push(tk);
+      prev = 'num';
+    } else if (tk === '(') {
+      ops.push(tk);
+      prev = 'open';
+    } else if (tk === ')') {
+      while (ops.length && ops[ops.length - 1] !== '(') output.push(ops.pop() as string);
+      if (!ops.length) return null;
+      ops.pop();
+      prev = 'close';
+    } else {
+      // Unary +/- at the start or after another operator/open paren → treat as (0 ± x).
+      if ((tk === '-' || tk === '+') && (prev === null || prev === 'op' || prev === 'open')) {
+        output.push('0');
+      }
+      while (ops.length && ops[ops.length - 1] !== '(' && prec[ops[ops.length - 1]] >= prec[tk]) {
+        output.push(ops.pop() as string);
+      }
+      ops.push(tk);
+      prev = 'op';
+    }
+  }
+  while (ops.length) {
+    const op = ops.pop() as string;
+    if (op === '(') return null;
+    output.push(op);
+  }
+
+  const stack: number[] = [];
+  for (const tk of output) {
+    if (/^[\d.]/.test(tk)) {
+      stack.push(parseFloat(tk));
+      continue;
+    }
+    const b = stack.pop();
+    const a = stack.pop();
+    if (a === undefined || b === undefined) return null;
+    let r: number;
+    if (tk === '+') r = a + b;
+    else if (tk === '-') r = a - b;
+    else if (tk === '*') r = a * b;
+    else r = b === 0 ? NaN : a / b;
+    stack.push(r);
+  }
+  if (stack.length !== 1) return null;
+  const result = stack[0];
+  if (!Number.isFinite(result)) return null;
+  // Trim binary-float noise (e.g. 0.1+0.2) while preserving real precision.
+  return Math.round(result * 1e6) / 1e6;
+}
+
+/**
+ * NumericCell — text input that shows min 2 decimals (preserves extra
+ * precision) when unfocused, and the raw editable value when focused.
+ *
+ * Rules:
+ *  - Value 0 or empty → cell renders blank (visually). The underlying value
+ *    stays 0, so math doesn't break.
+ *  - On focus with a non-zero value → input shows the raw number and the
+ *    content is selected, so the user can immediately overwrite.
+ *  - On focus with 0/empty → input stays blank, ready to type.
+ *  - On blur, empty draft commits as 0; otherwise the parsed number commits.
+ */
+function NumericCell({
+  value,
+  align,
+  textSizeClass,
+  numberFontClass,
+  disabled,
+  computedBg,
+  onCommit,
+}: {
+  value: number | string | null | undefined;
+  align: 'left' | 'right' | 'center';
+  textSizeClass: string;
+  numberFontClass: string;
+  disabled?: boolean;
+  computedBg?: boolean;
+  onCommit: (n: number) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState<string>('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const isEmpty = value === '' || value === null || value === undefined;
+  const numeric = isEmpty ? 0 : Number(value);
+  const showAsBlank = isEmpty || numeric === 0;
+  const displayed = focused ? draft : showAsBlank ? '' : formatMinDecimals(numeric);
+  const alignTextClass = align === 'right' ? 'text-right' : align === 'left' ? 'text-left' : 'text-center';
+
+  // Re-select after React swaps the value on focus. A synchronous select()
+  // inside onFocus gets clobbered by the displayed-value change on the next
+  // render; running it from an effect after the render preserves the highlight.
+  useEffect(() => {
+    if (!focused) return;
+    const el = inputRef.current;
+    if (el && el.value.length > 0) {
+      try { el.select(); } catch { /* noop */ }
+    }
+  }, [focused]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      value={displayed}
+      disabled={disabled}
+      onFocus={() => {
+        setFocused(true);
+        setDraft(showAsBlank ? '' : String(numeric));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        const trimmed = draft.trim();
+        if (trimmed === '') {
+          onCommit(0);
+          return;
+        }
+        // Evaluate as arithmetic (5+5 → 10, 100-5 → 95). Invalid/incomplete input
+        // reverts to the previous value; negatives are clamped to 0 (no negatives).
+        const evaluated = evaluateNumericExpression(trimmed);
+        const next = evaluated === null ? numeric : evaluated;
+        onCommit(Math.max(0, Number.isFinite(next) ? next : 0));
+      }}
+      onChange={(event) => setDraft(event.target.value.replace(NUMERIC_CELL_ALLOWED, ''))}
+      className={`w-full h-9 px-2 bg-transparent border-0 outline-none ${textSizeClass} ${numberFontClass} ${computedBg ? 'font-bold bg-slate-50/40 dark:bg-slate-900/30' : ''} text-slate-900 dark:text-slate-100 focus:bg-blue-50/40 dark:focus:bg-blue-950/20 ${alignTextClass}`}
+    />
   );
 }
 

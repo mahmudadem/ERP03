@@ -9,6 +9,7 @@ import {
   getDefaultItemUomOption,
   ManagedUomOption,
 } from '../../../modules/inventory/utils/uomOptions';
+import { useSelectorModalFocus } from './useSelectorModalFocus';
 
 interface UomSelectorProps {
   item?: InventoryItemDTO | null;
@@ -43,8 +44,14 @@ export function UomSelector({
   const [inputValue, setInputValue] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { modalRef, handleKeyDown: handleFocusTrapKeyDown } = useSelectorModalFocus(
+    modalOpen,
+    () => setModalOpen(false),
+    inputRef
+  );
 
   const effectiveItemId = item?.id || itemId || '';
   const options = useMemo(() => buildItemUomOptions(currentItem, conversions), [conversions, currentItem]);
@@ -98,16 +105,18 @@ export function UomSelector({
     if (defaultUom) onChange(defaultUom);
   }, [currentItem, onChange, selected, usage, valueCode]);
 
-  const selectOption = (option: ManagedUomOption) => {
+  const selectOption = (option: ManagedUomOption, { refocus = true }: { refocus?: boolean } = {}) => {
     onChange(option);
     setInputValue(option.code);
     setModalOpen(false);
-    inputRef.current?.focus();
+    if (refocus) inputRef.current?.focus();
   };
 
   const openPicker = (seed = inputValue) => {
     if (!currentItem) return;
     setModalSearch(seed);
+    const index = matches.findIndex((option) => selected?.code === option.code);
+    setHighlightedIndex(Math.max(0, index));
     setModalOpen(true);
   };
 
@@ -121,7 +130,7 @@ export function UomSelector({
     const fuzzyMatches = options.filter((option) => normalize(option.code).includes(query) || normalize(option.label).includes(query));
     const nextMatches = exactMatches.length ? exactMatches : fuzzyMatches;
     if (nextMatches.length === 1) {
-      selectOption(nextMatches[0]);
+      selectOption(nextMatches[0], { refocus: false });
       return;
     }
     openPicker(query);
@@ -139,7 +148,8 @@ export function UomSelector({
           disabled={disabled || !effectiveItemId}
           placeholder={placeholder || t('uomSelector.placeholder', 'UOM')}
           onChange={(event) => setInputValue(normalize(event.target.value))}
-          onFocus={() => {
+          onFocus={(event) => {
+            try { event.currentTarget.select(); } catch { /* noop */ }
             if (options.length > 1) void loadItemUoms();
           }}
           onBlur={resolveInput}
@@ -153,10 +163,10 @@ export function UomSelector({
               openPicker();
             }
           }}
-          className={`h-9 w-full bg-transparent px-2 pr-8 text-xs uppercase text-slate-900 outline-none transition-colors dark:text-slate-100 ${
+          className={`h-9 w-full bg-transparent px-2 pr-8 uppercase text-slate-900 outline-none transition-colors dark:text-slate-100 ${
             noBorder
-              ? 'border-0 focus:bg-blue-50/40 dark:focus:bg-blue-950/20'
-              : 'rounded border border-slate-200 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900'
+              ? 'border-0 [font-size:inherit] [font-family:inherit] focus:bg-blue-50/40 dark:focus:bg-blue-950/20'
+              : 'text-xs rounded border border-slate-200 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900'
           } ${!effectiveItemId ? 'cursor-not-allowed text-transparent' : ''}`}
         />
         {!disabled && effectiveItemId && (
@@ -176,16 +186,43 @@ export function UomSelector({
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" onClick={() => setModalOpen(false)} />
           <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="pointer-events-auto flex max-h-[480px] w-full max-w-md flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div
+              ref={modalRef}
+              tabIndex={-1}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setHighlightedIndex((prev) => Math.min(prev + 1, Math.max(matches.length - 1, 0)));
+                  return;
+                }
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+                  return;
+                }
+                if (event.key === 'Enter' && matches[highlightedIndex]) {
+                  event.preventDefault();
+                  selectOption(matches[highlightedIndex]);
+                  return;
+                }
+                handleFocusTrapKeyDown(event);
+              }}
+              className="pointer-events-auto flex max-h-[480px] w-full max-w-md flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+            >
               <div className="flex items-center gap-2 border-b border-slate-100 p-3 dark:border-slate-800">
                 <Search className="h-4 w-4 text-slate-400" />
                 <input
                   autoFocus
                   value={modalSearch}
-                  onChange={(event) => setModalSearch(event.target.value)}
+                  onChange={(event) => {
+                    setModalSearch(event.target.value);
+                    setHighlightedIndex(0);
+                  }}
                   onKeyDown={(event) => {
-                    if (event.key === 'Escape') setModalOpen(false);
-                    if (event.key === 'Enter' && matches.length === 1) selectOption(matches[0]);
+                    if (event.key === 'Enter' && matches.length === 1) {
+                      event.preventDefault();
+                      selectOption(matches[0]);
+                    }
                   }}
                   className="min-w-0 flex-1 border-0 bg-transparent text-sm uppercase outline-none"
                   placeholder={t('uomSelector.searchPlaceholder', 'Search item UOMs')}
@@ -229,13 +266,14 @@ export function UomSelector({
                     {t('uomSelector.noMatches', 'No UOM matches this item. Edit the item card to maintain UOMs.')}
                   </div>
                 ) : (
-                  matches.map((option) => (
+                  matches.map((option, index) => (
                     <button
                       key={option.uomId || option.code}
                       type="button"
                       onClick={() => selectOption(option)}
+                      onMouseEnter={() => setHighlightedIndex(index)}
                       className={`flex w-full cursor-pointer items-center justify-between rounded px-4 py-3 text-left transition-colors ${
-                        selected?.code === option.code
+                        selected?.code === option.code || highlightedIndex === index
                           ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-200'
                           : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
                       }`}

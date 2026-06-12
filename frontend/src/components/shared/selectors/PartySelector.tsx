@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, RefreshCw, User, Mail, Phone, CreditCard } from 'lucide-react';
 import { sharedApi, PartyDTO, PartyRole } from '../../../api/sharedApi';
 import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
+import { useSelectorModalFocus } from './useSelectorModalFocus';
+import PartyMasterCard from '../../../modules/shared/components/PartyMasterCard';
 
 interface PartySelectorProps {
   value?: string;
@@ -76,6 +78,16 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
+  const { modalRef, handleKeyDown: handleFocusTrapKeyDown } = useSelectorModalFocus(
+    showModal,
+    () => setShowModal(false),
+    inputRef
+  );
+  const { modalRef: createModalRef, handleKeyDown: handleCreateFocusTrapKeyDown } = useSelectorModalFocus(
+    showCreateModal,
+    () => setShowCreateModal(false),
+    inputRef
+  );
 
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
@@ -224,6 +236,17 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
        return;
     }
 
+    const fuzzyMatches = allParties.filter(p => {
+      const compound = `${p.code} - ${p.displayName}`.toLowerCase();
+      return compound.includes(query) || p.email?.toLowerCase().includes(query);
+    });
+
+    if (fuzzyMatches.length === 1) {
+      handleSelect(fuzzyMatches[0]);
+      if (externalBlur) externalBlur();
+      return;
+    }
+
     // If typing manually, open modal if not matched
     setHighlightedIndex(0);
     setModalSearch(inputValue);
@@ -259,12 +282,6 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
   };
 
   const handleOpenCreateModal = () => {
-    setCreateError('');
-    const seed = buildCreateSeed(modalSearch || inputValue, currencyOptions[0]?.code || 'USD');
-    setCreateForm({
-      ...seed,
-      role: role ? role : seed.role,
-    });
     setShowModal(false);
     setShowCreateModal(true);
   };
@@ -318,13 +335,15 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          onFocus={(e) => { try { e.currentTarget.select(); } catch { /* noop */ } }}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder || (role === 'CUSTOMER' ? 'Select customer...' : role === 'VENDOR' ? 'Select vendor...' : 'Select customer or vendor...')}
           disabled={disabled}
-          className={`w-full text-xs transition-all duration-200
-            ${noBorder ? 'border-none bg-transparent p-1 pl-8' : 'rounded-lg border border-slate-200 bg-white p-2 pl-8 pr-10 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}
-            focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none
+          className={`w-full transition-all duration-200 outline-none
+            ${noBorder
+              ? 'border-0 bg-transparent p-1 pl-8 [font-size:inherit] [font-family:inherit] focus:bg-blue-50/40 dark:focus:bg-blue-950/20'
+              : 'text-xs rounded-lg border border-slate-200 bg-white p-2 pl-8 pr-10 hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:border-slate-800 dark:bg-slate-900'}
             ${disabled ? 'cursor-not-allowed opacity-50 bg-slate-50' : ''}`}
         />
         {!disabled && (
@@ -346,7 +365,31 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
         <>
           <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setShowModal(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="pointer-events-auto flex max-h-[500px] w-full max-w-lg flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+            <div
+              ref={modalRef}
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (e.target !== modalInputRef.current) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightedIndex((prev) => Math.min(prev + 1, Math.max(searchResults.length - 1, 0)));
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+                    return;
+                  }
+                  if (e.key === 'Enter' && searchResults[highlightedIndex]) {
+                    e.preventDefault();
+                    handleSelect(searchResults[highlightedIndex]);
+                    return;
+                  }
+                }
+                handleFocusTrapKeyDown(e);
+              }}
+              className="pointer-events-auto flex max-h-[500px] w-full max-w-lg flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
+            >
               <div className="flex items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800 bg-slate-50/50">
                 <Search size={18} className="text-slate-400" />
                 <input
@@ -360,11 +403,11 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
                     setHighlightedIndex(0);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') setHighlightedIndex((prev) => Math.min(prev + 1, searchResults.length - 1));
+                    if (e.key === 'ArrowDown') setHighlightedIndex((prev) => Math.min(prev + 1, Math.max(searchResults.length - 1, 0)));
                     if (e.key === 'ArrowUp') setHighlightedIndex((prev) => Math.max(prev - 1, 0));
                     if (e.key === 'Enter' && searchResults[highlightedIndex]) handleSelect(searchResults[highlightedIndex]);
                     if (e.key === 'Enter' && searchResults.length === 0 && modalSearch.trim()) handleOpenCreateModal();
-                    if (e.key === 'Escape') setShowModal(false);
+                    if (['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) e.stopPropagation();
                   }}
                 />
                 <button
@@ -454,132 +497,23 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
       {showCreateModal && (
         <>
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-[4px]" onClick={() => setShowCreateModal(false)} />
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
-            <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 dark:border-slate-800 bg-slate-50/50">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Create New Party</h3>
-                  <p className="mt-1 text-xs text-slate-500">Add a new customer or vendor quickly.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="rounded-full p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form className="grid gap-5 p-6 md:grid-cols-2" onSubmit={handleCreateParty}>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500">Code</label>
-                  <input
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                    value={createForm.code}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, code: e.target.value.toUpperCase() }))}
-                    placeholder="COMP-001"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500">Display Name</label>
-                  <input
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                    value={createForm.displayName}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, displayName: e.target.value }))}
-                    placeholder="Full Business Name"
-                    required
-                  />
-                </div>
-
-                {!role && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-500">Primary Role</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['CUSTOMER', 'VENDOR', 'BOTH'] as const).map((r) => (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setCreateForm(prev => ({ ...prev, role: r }))}
-                          className={`rounded-xl border py-2 text-[10px] font-black uppercase tracking-widest transition-all
-                            ${createForm.role === r
-                              ? 'bg-slate-900 border-slate-900 text-white shadow-md'
-                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                        >
-                          {r}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500">Default Currency</label>
-                  <select
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                    value={createForm.defaultCurrency}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, defaultCurrency: e.target.value }))}
-                  >
-                    {currencyOptions.map((currency) => (
-                      <option key={currency.code} value={currency.code}>
-                        {currency.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500">Email Address (Optional)</label>
-                  <div className="relative">
-                    <Mail size={14} className="absolute left-3.5 top-3.5 text-slate-400" />
-                    <input
-                      type="email"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 pl-10 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                      value={createForm.email}
-                      onChange={(e) => setCreateForm((current) => ({ ...current, email: e.target.value }))}
-                      placeholder="info@company.com"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500">Phone Number (Optional)</label>
-                  <div className="relative">
-                    <Phone size={14} className="absolute left-3.5 top-3.5 text-slate-400" />
-                    <input
-                      type="tel"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 pl-10 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                      value={createForm.phone}
-                      onChange={(e) => setCreateForm((current) => ({ ...current, phone: e.target.value }))}
-                      placeholder="+1 234..."
-                    />
-                  </div>
-                </div>
-
-                {createError && (
-                  <div className="md:col-span-2 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-100 px-4 py-3 text-xs font-bold text-rose-600">
-                    <X size={14} /> {createError}
-                  </div>
-                )}
-
-                <div className="md:col-span-2 flex justify-end gap-3 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreating}
-                    className="rounded-xl bg-slate-900 px-8 py-2.5 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-60 shadow-lg shadow-slate-900/20 transition-all active:scale-95"
-                  >
-                    {isCreating ? 'Creating...' : 'Create Party'}
-                  </button>
-                </div>
-              </form>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              ref={createModalRef}
+              tabIndex={-1}
+              onKeyDown={handleCreateFocusTrapKeyDown}
+              className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-950"
+            >
+              <PartyMasterCard
+                partyId="new"
+                isWindow
+                role={role || 'CUSTOMER'}
+                onClose={() => setShowCreateModal(false)}
+                onSaved={(party) => {
+                  handleSelect(party);
+                  void loadAllParties(true);
+                }}
+              />
             </div>
           </div>
         </>

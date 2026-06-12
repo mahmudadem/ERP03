@@ -7,7 +7,7 @@ import { QuoteDTO, QuoteLineDTO, QuoteStatus, salesOperationalApi } from '../../
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
 import { sharedApi, PartyDTO, TaxCodeDTO } from '../../../api/sharedApi';
-import { PartySelector, ItemSelector, UomSelector } from '../../../components/shared/selectors';
+import { PartySelector, ItemSelector, UomSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
@@ -70,9 +70,10 @@ const createEmptyLine = (): EditableLine => ({
   itemId: '',
   itemCode: '',
   itemName: '',
-  quotedQty: 1,
+  quotedQty: 0,
   uom: 'EA',
   unitPriceDoc: 0,
+  discountType: undefined,
   discountValue: undefined,
   taxCodeId: undefined,
   description: '',
@@ -710,7 +711,20 @@ const QuotationDetailPage: React.FC = () => {
                     noBorder
                     onChange={(item) => {
                       if (!item) {
-                        setLine(index, { itemId: '', itemCode: '', itemName: '', uom: 'EA', uomId: undefined });
+                        const empty = createEmptyLine();
+                        setLine(index, {
+                          itemId: empty.itemId,
+                          itemCode: empty.itemCode,
+                          itemName: empty.itemName,
+                          quotedQty: empty.quotedQty,
+                          uomId: empty.uomId,
+                          uom: empty.uom,
+                          unitPriceDoc: empty.unitPriceDoc,
+                          discountType: empty.discountType,
+                          discountValue: empty.discountValue,
+                          taxCodeId: empty.taxCodeId,
+                          description: empty.description,
+                        });
                         return;
                       }
                       const patch: Partial<EditableLine> = {
@@ -751,30 +765,61 @@ const QuotationDetailPage: React.FC = () => {
               {
                 id: 'discountType',
                 label: t('sales.quoteDetail.colDiscType', 'Disc. Type'),
-                kind: 'select',
-                width: '115px',
-                accessor: (line) => line.discountType || '',
-                setter: (value) => ({ discountType: value || undefined }),
-                options: [
-                  { value: '', label: t('sales.quoteDetail.discNone', 'None') },
-                  { value: 'PERCENT', label: t('sales.quoteDetail.discPercent', '%') },
-                  { value: 'AMOUNT', label: t('sales.quoteDetail.discAmount', 'Amt') },
-                ],
+                kind: 'custom',
+                width: '64px',
+                render: (line, index) => (
+                  <DiscountTypeSelector
+                    noBorder
+                    value={line.discountType}
+                    currencyCode={form.currency}
+                    disabled={isReadOnly || !line.itemId}
+                    onChange={(next) => setLine(index, { discountType: next || undefined, discountValue: undefined })}
+                  />
+                ),
               },
-              { id: 'discountValue', label: t('sales.quoteDetail.colDiscValue', 'Disc. Value'), kind: 'number', width: '120px', accessor: (line) => line.discountValue ?? '', setter: (value) => ({ discountValue: value ? Number(value) : undefined }) },
+              { id: 'discountValue', label: t('sales.quoteDetail.colDiscValue', 'Disc. Value'), kind: 'number', width: '90px', accessor: (line) => line.discountValue ?? '', setter: (value) => ({ discountValue: value ? Number(value) : undefined }) },
               {
                 id: 'taxCode',
                 label: t('sales.quoteDetail.colTaxCode', 'Tax Code'),
-                kind: 'select',
-                width: '150px',
-                accessor: (line) => line.taxCodeId || '',
-                setter: (value) => ({ taxCodeId: value || undefined }),
-                options: [
-                  { value: '', label: t('sales.quoteDetail.noTax', 'No Tax') },
-                  ...salesTaxCodes.map((taxCode) => ({ value: taxCode.id, label: `${taxCode.code} (${Math.round(taxCode.rate * 100)}%)` })),
-                ],
+                kind: 'custom',
+                width: '120px',
+                render: (line, index) => (
+                  <TaxCodeSelector
+                    noBorder
+                    options={salesTaxCodes.map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate }))}
+                    valueId={line.taxCodeId}
+                    disabled={isReadOnly || !line.itemId}
+                    emptySetupMessage={t(
+                      'sales.quoteDetail.taxCodeEmptyHint',
+                      'No sales tax codes set up. Create one with scope SALES or BOTH to use it here.',
+                    )}
+                    onChange={(option) => setLine(index, { taxCodeId: option?.id })}
+                  />
+                ),
               },
-              { id: 'lineTotal', label: t('sales.quoteDetail.colLineTotal', 'Line Total'), kind: 'computed', width: '120px', compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+              {
+                id: 'lineTotal',
+                label: t('sales.quoteDetail.colLineTotal', 'Line Total'),
+                kind: 'computed',
+                width: '120px',
+                compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0,
+                formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}`,
+                solveFromTotal: (value, line) => {
+                  const q = Number(line.quotedQty || 0);
+                  if (q <= 0 || !Number.isFinite(value)) return { unitPriceDoc: 0 };
+                  const dt = line.discountType;
+                  const dv = Number(line.discountValue || 0);
+                  if (dt === 'PERCENT') {
+                    const factor = 1 - dv / 100;
+                    if (factor <= 0) return { unitPriceDoc: 0 };
+                    return { unitPriceDoc: value / (q * factor) };
+                  }
+                  if (dt === 'AMOUNT') {
+                    return { unitPriceDoc: (value + dv) / q };
+                  }
+                  return { unitPriceDoc: value / q };
+                },
+              },
               { id: 'tax', label: t('sales.quoteDetail.colTax', 'Tax'), kind: 'computed', width: '110px', compute: (_line, index) => computedLines[index]?.taxAmountDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
             ]}
           />

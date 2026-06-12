@@ -7,6 +7,7 @@ export type POStatus =
   | 'CANCELLED';
 
 export type POItemType = 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
+export type PurchaseOrderDiscountType = 'PERCENT' | 'AMOUNT';
 
 export interface PurchaseOrderLine {
   lineId: string;
@@ -23,8 +24,15 @@ export interface PurchaseOrderLine {
   invoicedQty: number;
   returnedQty: number;
   unitPriceDoc: number;
+  /** Pre-discount line extension (orderedQty × unitPriceDoc), doc currency. */
+  grossLineTotalDoc?: number;
+  discountType?: PurchaseOrderDiscountType;
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxRate: number;
@@ -62,8 +70,35 @@ export interface PurchaseOrderProps {
 }
 
 const PO_STATUSES: POStatus[] = ['DRAFT', 'CONFIRMED', 'PARTIALLY_RECEIVED', 'FULLY_RECEIVED', 'CLOSED', 'CANCELLED'];
+const PO_DISCOUNT_TYPES: PurchaseOrderDiscountType[] = ['PERCENT', 'AMOUNT'];
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const normalizePODiscountType = (value: any): PurchaseOrderDiscountType | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const token = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return PO_DISCOUNT_TYPES.includes(token as PurchaseOrderDiscountType)
+    ? (token as PurchaseOrderDiscountType)
+    : undefined;
+};
+
+const calculatePODiscountAmountDoc = (
+  grossLineTotalDoc: number,
+  discountType: PurchaseOrderDiscountType | undefined,
+  discountValue: number,
+  explicitDiscountAmountDoc: number | undefined,
+): number => {
+  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
+    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
+  }
+  if (discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
+  }
+  if (discountType === 'AMOUNT') {
+    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
+  }
+  return 0;
+};
 
 const toDate = (value: any): Date => {
   if (!value) return new Date();
@@ -153,8 +188,23 @@ export class PurchaseOrder {
     }
 
     const normalizedTaxRate = line.taxRate ?? 0;
-    const lineTotalDoc = roundMoney(line.orderedQty * line.unitPriceDoc);
+    const discountType = normalizePODiscountType(line.discountType);
+    const discountValueRaw = Number(line.discountValue);
+    const discountValue = Number.isNaN(discountValueRaw) ? 0 : discountValueRaw;
+    const explicitDiscountDoc =
+      line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
+
+    const grossLineTotalDoc = roundMoney(line.orderedQty * line.unitPriceDoc);
+    const discountAmountDoc = calculatePODiscountAmountDoc(
+      grossLineTotalDoc,
+      discountType,
+      discountValue,
+      explicitDiscountDoc,
+    );
+    const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
     const unitPriceBase = roundMoney(line.unitPriceDoc * this.exchangeRate);
+    const grossLineTotalBase = roundMoney(grossLineTotalDoc * this.exchangeRate);
+    const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
     const taxAmountDoc = roundMoney(lineTotalDoc * normalizedTaxRate);
     const taxAmountBase = roundMoney(lineTotalBase * normalizedTaxRate);
@@ -174,8 +224,14 @@ export class PurchaseOrder {
       invoicedQty: line.invoicedQty ?? 0,
       returnedQty: line.returnedQty ?? 0,
       unitPriceDoc: line.unitPriceDoc,
+      grossLineTotalDoc,
+      discountType,
+      discountValue: discountType ? discountValue : undefined,
+      discountAmountDoc,
       lineTotalDoc,
       unitPriceBase,
+      grossLineTotalBase,
+      discountAmountBase,
       lineTotalBase,
       taxCodeId: line.taxCodeId,
       taxRate: normalizedTaxRate,

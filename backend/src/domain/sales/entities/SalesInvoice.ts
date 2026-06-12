@@ -4,6 +4,13 @@ export type SIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
 export type SalesDiscountType = 'PERCENT' | 'AMOUNT';
+/**
+ * Whole-invoice adjustment kind. A CHARGE adds to the invoice total and credits its
+ * account (e.g. freight billed to the customer); a DISCOUNT subtracts from the total
+ * and debits its account (e.g. an invoice-wide discount). Both are flat, tax-free
+ * adjustments entered from the allocation grid — they never re-prorate line tax.
+ */
+export type SalesChargeKind = 'CHARGE' | 'DISCOUNT';
 
 export interface SalesInvoiceLine {
   lineId: string;
@@ -62,6 +69,8 @@ export interface SalesInvoiceLine {
 
 export interface SalesInvoiceCharge {
   chargeId: string;
+  /** CHARGE (adds, credits its account) or DISCOUNT (subtracts, debits its account). Defaults to CHARGE. */
+  kind?: SalesChargeKind;
   code?: string;
   name: string;
   amountDoc: number;
@@ -363,7 +372,7 @@ export class SalesInvoice {
 
     this.subtotalDoc = roundMoney(
       this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
-      + this.charges.reduce((sum, charge) => sum + charge.amountDoc, 0)
+      + this.charges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -charge.amountDoc : charge.amountDoc), 0)
     );
     this.taxTotalDoc = roundMoney(
       this.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0)
@@ -372,7 +381,7 @@ export class SalesInvoice {
     this.grandTotalDoc = roundMoney(this.subtotalDoc + this.taxTotalDoc);
     this.subtotalBase = roundMoney(
       this.lines.reduce((sum, line) => sum + line.lineTotalBase, 0)
-      + this.charges.reduce((sum, charge) => sum + (charge.amountBase || 0), 0)
+      + this.charges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -(charge.amountBase || 0) : (charge.amountBase || 0)), 0)
     );
     this.taxTotalBase = roundMoney(
       this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0)
@@ -509,8 +518,11 @@ export class SalesInvoice {
     const chargeId = toStringRef(charge.chargeId);
     const name = toDisplayText(charge.name);
     const amountDocRaw = Number(charge.amountDoc);
+    const kind: SalesChargeKind = toStringRef(charge.kind).toUpperCase() === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE';
+    // Whole-invoice adjustments are flat and tax-free: a DISCOUNT carries no tax code
+    // or tax amount (it never re-prorates line VAT). CHARGES preserve any tax fields.
     const taxRateRaw = Number(charge.taxRate);
-    const taxRate = Number.isNaN(taxRateRaw) ? 0 : taxRateRaw;
+    const taxRate = kind === 'DISCOUNT' ? 0 : (Number.isNaN(taxRateRaw) ? 0 : taxRateRaw);
 
     if (!chargeId) throw new Error(`SalesInvoice charge ${index + 1}: chargeId is required`);
     if (!name) throw new Error(`SalesInvoice charge ${index + 1}: name is required`);
@@ -520,17 +532,22 @@ export class SalesInvoice {
 
     const amountDoc = roundMoney(amountDocRaw);
     const amountBase = roundMoney(charge.amountBase !== undefined ? Number(charge.amountBase) : amountDoc * this.exchangeRate);
-    const taxAmountDoc = roundMoney(charge.taxAmountDoc !== undefined ? Number(charge.taxAmountDoc) : amountDoc * taxRate);
-    const taxAmountBase = roundMoney(charge.taxAmountBase !== undefined ? Number(charge.taxAmountBase) : amountBase * taxRate);
+    const taxAmountDoc = kind === 'DISCOUNT'
+      ? 0
+      : roundMoney(charge.taxAmountDoc !== undefined ? Number(charge.taxAmountDoc) : amountDoc * taxRate);
+    const taxAmountBase = kind === 'DISCOUNT'
+      ? 0
+      : roundMoney(charge.taxAmountBase !== undefined ? Number(charge.taxAmountBase) : amountBase * taxRate);
 
     return {
       chargeId,
+      kind,
       code: toOptionalStringRef(charge.code),
       name,
       amountDoc,
       amountBase,
-      taxCodeId: toOptionalStringRef(charge.taxCodeId),
-      taxCode: toOptionalDisplayText(charge.taxCode),
+      taxCodeId: kind === 'DISCOUNT' ? undefined : toOptionalStringRef(charge.taxCodeId),
+      taxCode: kind === 'DISCOUNT' ? undefined : toOptionalDisplayText(charge.taxCode),
       taxRate,
       taxAmountDoc,
       taxAmountBase,

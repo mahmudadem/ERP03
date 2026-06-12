@@ -105,6 +105,7 @@ export default {
       },
       fontFamily: {
         sans: ['var(--app-font-family)', 'Inter', 'Cairo', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],

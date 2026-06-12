@@ -179,6 +179,7 @@ Purchase Orders and Purchase Invoices use the same document page skeleton as the
 - Goods Receipt draft/edit and Purchase Return saved/edit pages now use the same compact document shell with side rail and sticky footer actions.
 - Native purchase document pages now follow the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.
 - A section can be hidden when it does not apply. For example, Purchase Invoice can show settlement and footer totals, while Goods Receipt can omit settlement without changing the rest of the page structure.
+- The top action tray includes a **New** document button on scaffold-backed Purchase documents. If you entered unsaved data, the system asks for confirmation before opening a clear form so you do not lose work by accident.
 
 This layout does not change AP posting, tax, inventory valuation, approval, segregation-of-duties controls, period lock, or payment voucher behavior.
 

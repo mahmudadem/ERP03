@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, X, Eye, Printer, Filter, RotateCcw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -58,21 +58,37 @@ const statusChipClasses = (status: SOStatus): string => {
 
 const SalesOrdersListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation('common');
   const [orders, setOrders] = useState<SalesOrderDTO[]>([]);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
-  const [statusFilter, setStatusFilter] = useState<SOStatusFilter>('ALL');
+
+  const stateStatus = (location.state as any)?.statusFilter;
+  const initialStatus = stateStatus && STATUS_VALUES.includes(stateStatus) ? stateStatus : 'ALL';
+
+  const [statusFilter, setStatusFilter] = useState<SOStatusFilter>(initialStatus);
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
   // Local state buffers for filters
-  const [localStatus, setLocalStatus] = useState<SOStatusFilter>('ALL');
+  const [localStatus, setLocalStatus] = useState<SOStatusFilter>(initialStatus);
   const [localCustomer, setLocalCustomer] = useState<string>('ALL');
   const [localSearch, setLocalSearch] = useState<string>('');
   const [localDateFrom, setLocalDateFrom] = useState<string>('');
   const [localDateTo, setLocalDateTo] = useState<string>('');
+
+  useEffect(() => {
+    const sStatus = (location.state as any)?.statusFilter;
+    if (sStatus && STATUS_VALUES.includes(sStatus)) {
+      setStatusFilter(sStatus);
+      setLocalStatus(sStatus);
+      try {
+        window.history.replaceState({ ...location.state, statusFilter: undefined }, '');
+      } catch (e) {}
+    }
+  }, [location.state]);
 
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(false);

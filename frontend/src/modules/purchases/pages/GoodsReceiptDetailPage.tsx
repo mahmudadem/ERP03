@@ -514,6 +514,27 @@ const GoodsReceiptDetailPage: React.FC = () => {
     );
   }
 
+  const hasUnsavedDocumentChanges = (() => {
+    if (!(isCreateMode || isEditMode)) return false;
+    const hasLines = form.lines.some((line) =>
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.uomId || line.uom)
+    );
+    return Boolean(
+      form.purchaseOrderId ||
+      form.vendorId ||
+      form.notes.trim() ||
+      hasLines
+    );
+  })();
+
+  const openNewGoodsReceiptForm = () => {
+    setGrn(null);
+    setForm(createEmptyForm('', '', ''));
+    setIsEditMode(false);
+    setError(null);
+    navigate('/purchases/goods-receipts/new');
+  };
+
   if (isCreateMode || isEditMode) {
     const receivedQtyTotal = form.lines.reduce((sum, line) => sum + (Number(line.receivedQty) || 0), 0);
     const draftRailSections: DocumentScaffoldRailSections = {
@@ -567,6 +588,12 @@ const GoodsReceiptDetailPage: React.FC = () => {
         badges={<DocumentPill tone="slate">Draft</DocumentPill>}
         railSections={draftRailSections}
         railTitle="Goods receipt side rail"
+        newAction={{
+          label: 'New Goods Receipt',
+          title: 'New Goods Receipt',
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewGoodsReceiptForm,
+        }}
         footerSections={{
           totals: {
             content: (
@@ -813,6 +840,12 @@ const GoodsReceiptDetailPage: React.FC = () => {
           {grn.status}
         </DocumentPill>
       }
+      newAction={{
+        label: 'New Goods Receipt',
+        title: 'New Goods Receipt',
+        hasUnsavedChanges: false,
+        onNew: openNewGoodsReceiptForm,
+      }}
       railSections={viewRailSections}
       railTitle="Goods receipt side rail"
       footerSections={{

@@ -1,5 +1,6 @@
 export type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
+export type PurchaseReturnDiscountType = 'PERCENT' | 'AMOUNT';
 
 export interface PurchaseReturnLine {
   lineId: string;
@@ -14,7 +15,14 @@ export interface PurchaseReturnLine {
   uomId?: string;
   uom: string;
   unitCostDoc: number;
+  /** Pre-discount line extension (returnQty × unitCostDoc), doc currency. */
+  grossLineTotalDoc?: number;
+  discountType?: PurchaseReturnDiscountType;
+  discountValue?: number;
+  discountAmountDoc?: number;
+  discountAmountBase?: number;
   unitCostBase: number;
+  grossLineTotalBase?: number;
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
   taxCodeId?: string;
@@ -64,7 +72,34 @@ export interface PurchaseReturnProps {
 
 const PR_STATUSES: PRStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DIRECT'];
+const PR_DISCOUNT_TYPES: PurchaseReturnDiscountType[] = ['PERCENT', 'AMOUNT'];
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const normalizePRDiscountType = (value: any): PurchaseReturnDiscountType | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const token = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return PR_DISCOUNT_TYPES.includes(token as PurchaseReturnDiscountType)
+    ? (token as PurchaseReturnDiscountType)
+    : undefined;
+};
+
+const calculatePRDiscountAmountDoc = (
+  grossLineTotalDoc: number,
+  discountType: PurchaseReturnDiscountType | undefined,
+  discountValue: number,
+  explicitDiscountAmountDoc: number | undefined,
+): number => {
+  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
+    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
+  }
+  if (discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
+  }
+  if (discountType === 'AMOUNT') {
+    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
+  }
+  return 0;
+};
 
 const toDate = (value: any): Date => {
   if (!value) return new Date();
@@ -143,13 +178,15 @@ export class PurchaseReturn {
     // user-entered gross was already split inside the line.
     const netDoc = (line: PurchaseReturnLine): number => {
       const gross = roundMoney(line.returnQty * line.unitCostDoc);
+      const postDisc = roundMoney(gross - (line.discountAmountDoc ?? 0));
       const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
-      return roundMoney(gross / divisor);
+      return roundMoney(postDisc / divisor);
     };
     const netBase = (line: PurchaseReturnLine): number => {
       const gross = roundMoney(line.returnQty * line.unitCostBase);
+      const postDisc = roundMoney(gross - (line.discountAmountBase ?? 0));
       const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
-      return roundMoney(gross / divisor);
+      return roundMoney(postDisc / divisor);
     };
 
     this.subtotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + netDoc(line), 0));
@@ -190,16 +227,30 @@ export class PurchaseReturn {
       : roundMoney(line.unitCostBase);
     const taxRate = Number.isNaN(line.taxRate) ? 0 : line.taxRate;
     const priceIsInclusive = line.priceIsInclusive === true;
-    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const discountType = normalizePRDiscountType(line.discountType);
+    const discountValueRaw = Number(line.discountValue);
+    const discountValue = Number.isNaN(discountValueRaw) ? 0 : discountValueRaw;
+    const explicitDiscountDoc =
+      line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
     const grossLineTotalDoc = roundMoney(line.returnQty * line.unitCostDoc);
     const grossLineTotalBase = roundMoney(line.returnQty * unitCostBase);
-    const netLineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
-    const netLineTotalBase = roundMoney(grossLineTotalBase / divisor);
+    const discountAmountDoc = calculatePRDiscountAmountDoc(
+      grossLineTotalDoc,
+      discountType,
+      discountValue,
+      explicitDiscountDoc,
+    );
+    const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
+    const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+    const postDiscountBase = roundMoney(grossLineTotalBase - discountAmountBase);
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const netLineTotalDoc = roundMoney(postDiscountDoc / divisor);
+    const netLineTotalBase = roundMoney(postDiscountBase / divisor);
     const defaultTaxAmountDoc = priceIsInclusive
-      ? roundMoney(grossLineTotalDoc - netLineTotalDoc)
+      ? roundMoney(postDiscountDoc - netLineTotalDoc)
       : roundMoney(netLineTotalDoc * taxRate);
     const defaultTaxAmountBase = priceIsInclusive
-      ? roundMoney(grossLineTotalBase - netLineTotalBase)
+      ? roundMoney(postDiscountBase - netLineTotalBase)
       : roundMoney(netLineTotalBase * taxRate);
     const taxAmountDoc = roundMoney(
       line.taxAmountDoc !== undefined ? line.taxAmountDoc : defaultTaxAmountDoc
@@ -221,7 +272,13 @@ export class PurchaseReturn {
       uomId: line.uomId,
       uom: line.uom,
       unitCostDoc: line.unitCostDoc,
+      grossLineTotalDoc,
+      discountType,
+      discountValue: discountType ? discountValue : undefined,
+      discountAmountDoc,
+      discountAmountBase,
       unitCostBase,
+      grossLineTotalBase,
       fxRateMovToBase: line.fxRateMovToBase || this.exchangeRate,
       fxRateCCYToBase: line.fxRateCCYToBase || this.exchangeRate,
       taxCodeId: line.taxCodeId,

@@ -13,10 +13,59 @@
 
 **Latest shared table polish report (2026-06-10):** [203-shared-line-table-uom-and-settings.md](./done/203-shared-line-table-uom-and-settings.md).
 
+**Latest line-table feature sweep + line discount (2026-06-11):** [204-line-table-feature-sweep-and-purchase-line-discount.md](./done/204-line-table-feature-sweep-and-purchase-line-discount.md).
+
+**Latest discount display fix (2026-06-12):** [205-discount-type-currency-label.md](./done/205-discount-type-currency-label.md). Shared line discount type selectors now show the active document currency code (for example `SYP`) for amount discounts instead of a hardcoded `$`. Frontend typecheck passed.
+
+**Latest shared selector contract hardening (2026-06-12):** [206-shared-selector-contract-hardening.md](./done/206-shared-selector-contract-hardening.md). Item/Party/Warehouse/UOM/Account/Tax/Discount/Currency selector keyboard and modal focus behavior were standardized; Item/Party/Warehouse `+` now opens native master cards; `CurrencySelector` is exported through shared selectors; `AccountSelectorSimple` now wraps the rich `AccountSelector`; Receipt Voucher and Sales Invoice recurring dates were fixed. Frontend typecheck passed.
+
+**Latest native document New-form guard (2026-06-12):** [207-native-document-new-form-guard.md](./done/207-native-document-new-form-guard.md). `DocumentDetailScaffold` now owns the standard top-tray New document action and shared confirmation modal. Scaffold-backed SI/SO/DN/SR/PI/PO/GRN and saved/edit PR pass page-specific dirty checks so the warning appears only when actual entered data would be lost. Frontend typecheck passed. **Boundary:** Quotation and Purchase Return create remain page-local scaffold outliers; move them onto the scaffold before adding New-button behavior there.
+
 
 **Deferred to v2 (preserved as roadmap, no code removed):** [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md), [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md).
 
+**Deferred backlog (owner-requested 2026-06-12):** [tasks/per-item-promotions-from-item-card.md](./tasks/per-item-promotions-from-item-card.md) — manage promotions from the **Item Card** (per-item) in addition to the existing system-wide Promotions page; both write to the same promotion-rule store. Logged during Task 204 line-discount QA, alongside discovering that the "ghost line" was a free-goods promotion (now badged `FREE • PROMO`).
+
 ## 👉 Next agent — start here
+
+**Sales Hub Page Redesign — DONE (2026-06-12, report 213).** Refactored the Sales module overview dashboard into a high-density, interactive hub. Redesigned page header typography, layout, icons, status badges, and metadata details. Configured the status badges in the Document Pipeline to act as clickable buttons routing to the corresponding list page with pre-applied status filters. Modified list pages (Sales Invoices, Sales Orders, Delivery Notes, and Sales Returns) to initialize status filter from router state and sync on updates. In-memory caching and per-section refresh buttons are fully supported. Frontend typecheck passes cleanly. Report: [done/213-sales-hub-redesign.md](./done/213-sales-hub-redesign.md).
+
+**Jest `uuid` ESM shim — DONE (2026-06-12, report 211).** `uuid@14` is ESM-only; ts-jest's CJS runtime
+couldn't parse it, silently breaking every suite that imported a uuid-using file (e.g. RecurringInvoice's
+23 tests never ran). Added `backend/src/tests/shims/uuidShim.ts` + `moduleNameMapper` in `jest.config.js`.
+**Full backend suite now green: 146 suites, 1365 tests, 0 failures.** Report:
+[done/211-jest-uuid-esm-shim-test-infra.md](./done/211-jest-uuid-esm-shim-test-infra.md).
+
+**Purchase Invoice Charges & Discounts — DONE (2026-06-12, report 210). PI now matches SI.** Mirrored the
+SI allocation-grid charges/discounts onto Purchase Invoice full-stack. PI gained the whole `charges[]`
+concept (domain/DTO/validator/use-cases) plus the UI (Add Charge/Add Discount modal + grid). GL sides are
+flipped for purchases: **CHARGE debits** its account (default purchase-expense; freight/landed cost),
+**DISCOUNT credits** its account; AP nets both so the voucher balances (test `6b`). Backend + frontend
+typecheck, frontend build, and `jest PurchasePostingUseCases` (15/15) green; browser-verified on
+`/purchases/invoices/new`. Report: [done/210-purchase-invoice-charges-discounts-parity.md](./done/210-purchase-invoice-charges-discounts-parity.md).
+**Optional follow-up:** a dedicated "Purchase Discounts Received" settings account (today discounts credit
+the purchase-expense account, net method).
+
+**Sales Invoice whole-invoice Charges & Discounts — DONE (2026-06-12, report 209).** The allocation
+grid is now functional: **Add Charge** / **Add Discount** buttons open one modal (GL account defaulted
+from settings, amount, description); saved rows show in the grid and feed the totals. `SalesInvoiceCharge`
+gained `kind: CHARGE | DISCOUNT` — charges credit their account (default revenue) and add to the total;
+discounts debit the Sales Discount account (`defaultSalesExpenseAccountId`) and subtract. Flat & tax-free
+by owner decision (no line-VAT re-proration). Posting reuses the existing `chargeCredits`/`discountDebits`
+buckets so the voucher balances automatically (proven by new test `10d`). Backend+frontend typecheck,
+frontend build, and `jest SalesPostingUseCases` (23/23) all green. Report:
+[done/209-sales-invoice-charges-discounts-allocation-grid.md](./done/209-sales-invoice-charges-discounts-allocation-grid.md).
+QA script in [QA-QUEUE.md](./QA-QUEUE.md). **Next: mirror this onto Purchase Invoice** (PI has no charges
+at all today — full-stack work).
+
+**Sales Invoice Layout, Fonts, and Translation Fixes (2026-06-12).** Completed font fallbacks (Cairo fallback for Arabic system/mono), swapped Currency and Exchange Rate order in RTL mode, cleaned up duplicate selectors/widgets/locales, added footer "New" button with dirty confirmation check, translated sidebar tooltips/title, and resolved Turkish question marks encoding. Doc updates at docs/architecture/sales.md, docs/user-guide/sales/exchange-rate-and-new-button.md, and done report at 208-sales-invoice-translation-and-layout-fixes.md. Frontend build and typecheck green.
+
+**Sidebar full translation sweep completed (2026-06-12).** All static sidebar menu labels are now fully translated in Arabic, Turkish, and English. Root causes: (1) `"Products & Services"` was never in `labelKeyMap` — it always rendered in English; (2) `"Tools"` group was mapped to `sidebar.tools` but that key was missing from all locale files; (3) ~30 more labels (all Sales, Purchases, and Inventory sub-items) were in the map but missing keys in some locales. Fixed in: `useSidebarConfig.ts` (added `productsAndServices`, `formsManagement`, `'UI Lab 🎨'`, Goods Receipts, Purchase Invoices/Returns, AP/AR Aging, Vendor/Customer Statement, Analytics, Groups, Opening Stock, Adjustments, Transfers, Stock Levels, Movements, Low Stock Alerts, Unsettled Costs, Inventory Valuation, Categories, UOM Master), plus `tools`, `home`, `search`, `uiLab` added to en/ar/tr locale files. Frontend typecheck green (zero errors). **Remaining untranslatable:** dynamic form names (e.g. "Sales Invoice (Direct) - Copy") come from Firestore `form.name` — need `nameAr`/`nameTr` DB fields as a separate feature (v2).
+
+**Next Priority:** Proceed with **Task 167 Slice 3D** — add the Apex tenant-shell feature flag and run full role/module/empty-tenant cutover QA (estimated 2-4 hours). Check role-based navigations, company setting footer actions, empty tenant displays, and Arabic RTL visual rendering inside the candidate shell.
+
+
+**Line table feature sweep + purchase/SO/SR line discount completed (2026-06-11, Task 204).** Shared `ClassicLineItemsTable` gained Enter-key cell navigation (with scroll-into-view), min-2-decimal numeric display with extra precision preserved, blank-on-zero, auto-select-on-focus, an editable `solveFromTotal` computed-cell API, settings-modal column reorder + table font + alternating row colors, JetBrains Mono wiring, and chrome cleanups (trash column removed, row colors switched to inline RGBA). Per-page parity: new typable `TaxCodeSelector` (with empty-state setup-link CTA) and `DiscountTypeSelector` (combobox + modal fallback) replace native `<select>` across SI/SO/Quotation/PI/PO; both are auto-disabled on rows without an item. Item-clear now resets the whole row; default qty is `0`; SI rail Totals enlarged and shows Subtotal/Discount/Tax/Grand Total (always with Grand Total Base); operational-workflow banner became a header icon-button → modal. **Vertical-slice line discount added to PI/PO/PR (purchases were missing it) and to SO/SR (sales side mirror).** Domain entities apply discount **before tax** so the taxable base is post-discount (EU VAT Art. 79(a) — standard trade-discount treatment); inclusive-tax + discount splits correctly. PR/SR inherit discount from source PI/SI line. DTOs, validators, use-cases, frontend API types, page columns, save/load mappers and back-solve helpers all updated end-to-end. **15 domain tests** added (PI/PO/PR PERCENT, AMOUNT, clamp-at-gross, inclusive-with-discount, round-trip, zero-discount equivalence) — all passing. Report: [done/204-line-table-feature-sweep-and-purchase-line-discount.md](./done/204-line-table-feature-sweep-and-purchase-line-discount.md). Backend + frontend typecheck green. **Accounting boundary:** engine math is the source of truth — use-cases only forward `discountType`/`discountValue`; server-recomputed values are what posts to the ledger. **Out of scope (intentional):** GoodsReceipt (qty-only doc); cash/settlement discount (separate post-invoice mechanism); end-user docs and `docs/architecture/*` updates (separate follow-up). **Manual QA needed:** the 7-page QA script in 204's report (line discount math on each document type, back-solve from Line Total / Net, SR/PR discount inheritance from source).
 
 **Shared line table UOM/settings polish completed (2026-06-10, Task 203).** `ClassicLineItemsTable` now hides numeric zero placeholders on empty working rows, adds table font selection, and adds Line Color 1 / Line Color 2 settings for alternating row colors. New shared `UomSelector` is wired into SI, SO, DN, Quote, PI, PO, GRN, and PR line tables; it defaults from the selected item and only allows item-defined UOMs, with refresh and item-card navigation. Report: [done/203-shared-line-table-uom-and-settings.md](./done/203-shared-line-table-uom-and-settings.md). Frontend typecheck passed. **Accounting boundary:** UI/data-entry only; no posting, tax, inventory valuation, UOM conversion math, AR/AP, settlement, approval, period-lock, audit, backend DTO, repository, or ledger behavior changed. **Manual QA needed:** QA-QUEUE report 203 script in Classic + Windows mode.
 

@@ -233,5 +233,6 @@ Sales Invoices remain the reference layout for Sales documents. Sales Orders, De
 - Side rails and sticky footers keep totals/status/actions visible on Sales Orders, Delivery Notes, Sales Invoices, and Sales Returns.
 - Native document pages now share the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.
 - A section can be hidden when it does not apply. For example, Sales Invoice can show settlement and footer totals, while Delivery Note can omit settlement without changing the rest of the page structure.
+- The top action tray includes a **New** document button on scaffold-backed Sales documents. If you entered unsaved data, the system asks for confirmation before opening a clear form so you do not lose work by accident.
 
 This is a layout and data-entry consistency improvement only. It does not change posting, tax, settlement, inventory, approval, or ledger behavior.

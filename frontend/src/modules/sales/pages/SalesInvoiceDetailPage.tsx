@@ -20,7 +20,7 @@ import { communicationsApi, CommunicationsSettingsDTO } from '../../../api/commu
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
-import { accountingApi, AccountingPolicyConfig } from '../../../api/accountingApi';
+import { accountingApi, AccountingPolicyConfig, RateDeviationWarning } from '../../../api/accountingApi';
 import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusChip } from '../../../components/ui/StatusChip';
@@ -42,7 +42,7 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
-import { PartySelector, ItemSelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { PartySelector, ItemSelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
 import { GlImpactModal } from '../components/GlImpactModal';
@@ -50,6 +50,7 @@ import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
 import { todayLocalIso } from '../../../utils/dateUtils';
 import {
+  AlertTriangle,
   FileImage,
   FileSpreadsheet,
   FileText,
@@ -58,7 +59,11 @@ import {
   Link2,
   Loader2,
   Paperclip,
+  Pencil,
+  Plus,
+  RefreshCw,
   ShieldCheck,
+  Trash2,
   Truck,
   Upload,
 } from 'lucide-react';
@@ -72,11 +77,9 @@ import {
   DocumentFooterTotalsStrip,
   DocumentHeaderGrid,
   DocumentIconButton,
-  DocumentNoticeBanner,
   DocumentPill,
   DocumentRailChecklist,
   DocumentRailFocus,
-  DocumentRailTotals,
   DocumentSecondaryPanel,
   DocumentSegmentButton,
   DocumentSegmentedGroup,
@@ -92,6 +95,9 @@ const todayIso = todayLocalIso;
 const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
 
 interface EditableLine {
+  /** Stable client-side row id for React keys. Survives `{...row, ...patch}`
+   *  edits, so the line table never reuses a stateful cell across rows. */
+  _uid?: string;
   lineId?: string;
   soLineId?: string;
   dnLineId?: string;
@@ -108,15 +114,23 @@ interface EditableLine {
   priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
+  /** Set on server-generated promotion free-goods lines so the grid can badge
+   *  them as intentional free items rather than accidental duplicates. */
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
 }
 
 interface EditableCharge {
   chargeId?: string;
+  /** CHARGE adds to the invoice total; DISCOUNT subtracts from it. Defaults to CHARGE. */
+  kind?: 'CHARGE' | 'DISCOUNT';
   code?: string;
   name: string;
   amountDoc: number;
   taxCodeId?: string;
   revenueAccountId?: string;
+  /** Display-only label for the chosen GL account (code/name), kept for the grid; not sent to the API. */
+  accountLabel?: string;
   description?: string;
 }
 
@@ -198,9 +212,16 @@ const salesInvoiceReferenceCache = new Map<string, SalesInvoiceReferenceCacheEnt
 
 const getPerfTime = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
+let lineUidSeq = 0;
+const nextLineUid = (): string => `ln_${Date.now().toString(36)}_${(lineUidSeq++).toString(36)}`;
+
+let chargeUidSeq = 0;
+const nextChargeId = (): string => `chg_${Date.now().toString(36)}_${(chargeUidSeq++).toString(36)}`;
+
 const createEmptyLine = (): EditableLine => ({
+  _uid: nextLineUid(),
   itemId: '',
-  invoicedQty: 1,
+  invoicedQty: 0,
   uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
@@ -210,6 +231,331 @@ const createEmptyLine = (): EditableLine => ({
   warehouseId: undefined,
   description: '',
 });
+
+interface CurrencyExchangeFieldPremiumProps {
+  currency: string;
+  value?: number;
+  baseCurrency?: string;
+  voucherDate?: string;
+  onChange?: (rate: number) => void;
+  disabled?: boolean;
+}
+
+export const CurrencyExchangeFieldPremium: React.FC<CurrencyExchangeFieldPremiumProps> = ({
+  currency = '',
+  value,
+  baseCurrency = '',
+  voucherDate,
+  onChange,
+  disabled = false
+}) => {
+  const { t } = useTranslation('accounting');
+  const [suggestedRate, setSuggestedRate] = useState<number | null>(null);
+  const [rateSource, setRateSource] = useState<string>('NONE');
+  const [loading, setLoading] = useState(false);
+  const [manualRate, setManualRate] = useState<number | undefined>(value);
+  const [warnings, setWarnings] = useState<RateDeviationWarning[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingRate, setPendingRate] = useState<number | null>(null);
+
+  const [parityText, setParityText] = useState<string>('');
+  const [equivalentText, setEquivalentText] = useState<string>('');
+  const [isParityFocused, setIsParityFocused] = useState(false);
+  const [isEquivalentFocused, setIsEquivalentFocused] = useState(false);
+
+  const prevCurrencyRef = useRef<string>(currency);
+  const isInitialMountRef = useRef(true);
+
+  const fetchSystemRate = async (forceApply: boolean) => {
+    const c1 = currency?.toUpperCase().trim() || '';
+    const c2 = baseCurrency?.toUpperCase().trim() || '';
+
+    if (!c1 || !c2) { setLoading(false); return; }
+
+    if (c1 === c2) {
+      setSuggestedRate(1);
+      setRateSource('SAME_CURRENCY');
+      setLoading(false);
+      if (forceApply || !disabled && (value === undefined || value === null || Number(value) <= 0)) {
+        setManualRate(1);
+        onChange?.(1);
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await accountingApi.getSuggestedRate(c1, c2, voucherDate);
+      setSuggestedRate(response.rate);
+      setRateSource(response.source);
+
+      const resolvedRate = response.rate;
+      const noMeaningfulValue =
+        value === undefined || value === null || Number(value) <= 0 ||
+        (Number(value) === 1 && c1 !== c2);
+
+      if (!disabled && resolvedRate !== null && (forceApply || noMeaningfulValue)) {
+        setManualRate(resolvedRate as number);
+        onChange?.(resolvedRate as number);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch exchange rate:', error);
+      setSuggestedRate(null);
+      setRateSource('ERROR');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      const currencyChanged = currency !== prevCurrencyRef.current;
+      prevCurrencyRef.current = currency;
+      const forceApply = !isInitialMountRef.current && currencyChanged;
+      isInitialMountRef.current = false;
+      if (!mounted) return;
+      await fetchSystemRate(forceApply);
+    };
+    run();
+    return () => { mounted = false; };
+  }, [currency, baseCurrency, voucherDate]);
+
+  useEffect(() => {
+    const effectiveRate = value ?? manualRate ?? suggestedRate ?? 1;
+    if (value !== undefined && value !== manualRate) {
+      setManualRate(value);
+    }
+    
+    if (!isParityFocused) {
+      setParityText(effectiveRate.toFixed(4));
+    }
+    if (!isEquivalentFocused && effectiveRate > 0) {
+      const eq = 1 / effectiveRate;
+      setEquivalentText(eq.toFixed(8).replace(/\.?0+$/, ''));
+    }
+  }, [value, manualRate, suggestedRate, isParityFocused, isEquivalentFocused]);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkDeviation = async () => {
+      if (!manualRate || manualRate <= 0 || currency === baseCurrency) {
+        setWarnings([]);
+        return;
+      }
+      try {
+        const response = await accountingApi.checkRateDeviation(currency, baseCurrency, manualRate);
+        if (mounted) setWarnings(response.warnings);
+      } catch {
+        // ignore
+      }
+    };
+    const timer = setTimeout(checkDeviation, 500);
+    return () => { mounted = false; clearTimeout(timer); };
+  }, [manualRate, currency, baseCurrency]);
+
+  const handleParityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setParityText(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed > 0) {
+      const eq = 1 / parsed;
+      setEquivalentText(eq.toFixed(8).replace(/\.?0+$/, ''));
+      setManualRate(parsed);
+      onChange?.(parsed);
+    }
+  };
+
+  const handleEquivalentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEquivalentText(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed > 0) {
+      const par = 1 / parsed;
+      setParityText(par.toFixed(4));
+      setManualRate(par);
+      onChange?.(par);
+    }
+  };
+
+  const handleParityBlur = () => {
+    setIsParityFocused(false);
+    const effective = manualRate ?? suggestedRate ?? 1;
+    setParityText(effective.toFixed(4));
+    checkDeviationOnBlur(effective);
+  };
+
+  const handleEquivalentBlur = () => {
+    setIsEquivalentFocused(false);
+    const effective = manualRate ?? suggestedRate ?? 1;
+    const eq = 1 / effective;
+    setEquivalentText(eq.toFixed(8).replace(/\.?0+$/, ''));
+    checkDeviationOnBlur(effective);
+  };
+
+  const checkDeviationOnBlur = (rateToCheck: number) => {
+    if (rateToCheck <= 0 || currency === baseCurrency) return;
+    const percentageWarning = warnings.find(w => w.type === 'PERCENTAGE_DEVIATION');
+    const deviationPercentage = percentageWarning?.percentageDeviation
+      ? Math.abs(percentageWarning.percentageDeviation * 100) : 0;
+
+    if (deviationPercentage >= 10) {
+      setPendingRate(rateToCheck);
+      setShowConfirmModal(true);
+    }
+  };
+
+  const handleStatusClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (disabled) return;
+    if (hasOverride) {
+      setManualRate(undefined);
+      if (suggestedRate) onChange?.(suggestedRate);
+    } else {
+      fetchSystemRate(true);
+    }
+  };
+
+  const handleConfirmRate = () => {
+    if (pendingRate !== null) {
+      setManualRate(pendingRate);
+      onChange?.(pendingRate);
+    }
+    setShowConfirmModal(false);
+    setPendingRate(null);
+  };
+
+  const handleCancelRate = () => {
+    setShowConfirmModal(false);
+    setPendingRate(null);
+    const effective = value ?? suggestedRate ?? 1;
+    setManualRate(effective);
+  };
+
+  const hasOverride = manualRate !== undefined && suggestedRate !== null && manualRate !== suggestedRate;
+  const isMissingRate = (manualRate === undefined || manualRate === null || manualRate <= 0) && suggestedRate === null && currency !== baseCurrency;
+
+  const getStatusTooltip = () => {
+    if (loading) return t('currencyExchangeWidget.tooltips.fetchingRate', 'Fetching rate...');
+    if (warnings.length > 0) return warnings.map(w => w.message).join('\n');
+    if (rateSource === 'SAME_CURRENCY') return t('currencyExchangeWidget.tooltips.sameCurrency', 'Same Currency');
+    if (hasOverride) return t('currencyExchangeWidget.tooltips.manualOverride', 'Manual override (Click status dot to reset)');
+    if (rateSource === 'EXACT_DATE') return t('currencyExchangeWidget.tooltips.systemRateForDate', 'System rate for date');
+    return t('currencyExchangeWidget.tooltips.systemRateLastKnown', 'System rate');
+  };
+
+  const getStatusIcon = () => {
+    if (loading) return <Loader2 className="w-3.5 h-3.5 animate-spin" />;
+    return <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500 ease-in-out" />;
+  };
+
+  if (currency === baseCurrency) {
+    return (
+      <div 
+        className={clsx(
+          "flex items-center justify-between h-9 w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded overflow-hidden select-none",
+          disabled && "opacity-75 cursor-not-allowed"
+        )}
+        title={t('currencyExchangeWidget.baseCurrencyParity', 'Base Currency Parity')}
+      >
+        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap px-2.5">
+          {t('currencyExchangeWidget.baseCurrencyParityFormat', '1 {{currency}} = 1.0000 {{baseCurrency}} (Base Currency Parity)', { currency, baseCurrency })}
+        </span>
+        <div className="h-full px-2.5 flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0 border-l border-slate-300 dark:border-slate-700">
+          <ShieldCheck className="w-4 h-4" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className={clsx(
+          "flex items-center h-9 w-full border rounded overflow-hidden transition-all bg-white dark:bg-slate-800",
+          warnings.length > 0 ? 'border-amber-400 ring-1 ring-amber-100 dark:border-amber-500 dark:ring-amber-950/20' :
+          hasOverride ? 'border-blue-400 ring-1 ring-blue-50 dark:border-blue-500 dark:ring-blue-950/20' :
+          isMissingRate ? 'border-red-400 ring-1 ring-red-50 dark:border-red-500 dark:ring-red-950/20' :
+          'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600',
+          disabled && 'opacity-75 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50'
+        )}
+      >
+        <div className="flex-1 flex items-center pl-2.5 h-full min-w-0 relative border-e border-slate-300 dark:border-slate-700">
+          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none lowercase tracking-wide mr-1 shrink-0">
+            {t('currencyExchangeWidget.labels.parity', 'parity')}:
+          </span>
+          <input
+            type="text"
+            value={parityText}
+            onChange={handleParityChange}
+            onFocus={() => setIsParityFocused(true)}
+            onBlur={handleParityBlur}
+            disabled={disabled}
+            placeholder={loading ? '…' : (suggestedRate?.toFixed(4) || '0.00')}
+            className="w-full h-full pr-1.5 text-left text-xs font-semibold bg-transparent outline-none text-slate-900 dark:text-slate-100 min-w-0"
+          />
+        </div>
+
+        <div className="flex-1 flex items-center pl-2.5 h-full min-w-0 relative border-e border-slate-300 dark:border-slate-700">
+          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none lowercase tracking-wide mr-1 shrink-0">
+            {t('currencyExchangeWidget.labels.equivalent', 'equivalent')}:
+          </span>
+          <input
+            type="text"
+            value={equivalentText}
+            onChange={handleEquivalentChange}
+            onFocus={() => setIsEquivalentFocused(true)}
+            onBlur={handleEquivalentBlur}
+            disabled={disabled}
+            placeholder={loading ? '…' : (suggestedRate ? (1 / suggestedRate).toFixed(6) : '0.00')}
+            className="w-full h-full pr-1.5 text-left text-xs font-semibold bg-transparent outline-none text-slate-900 dark:text-slate-100 min-w-0"
+          />
+        </div>
+
+        <div 
+          className={clsx(
+            "flex items-center justify-center px-2.5 h-full select-none cursor-pointer shrink-0 group transition-colors",
+            warnings.length > 0 ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-500/20" :
+            hasOverride ? "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 hover:bg-blue-500/20" :
+            isMissingRate ? "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-500/20" :
+            "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 hover:bg-emerald-500/20"
+          )}
+          onClick={handleStatusClick}
+          title={getStatusTooltip()}
+        >
+          {getStatusIcon()}
+        </div>
+      </div>
+
+      {showConfirmModal && pendingRate !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={handleCancelRate}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 max-w-sm mx-4 border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <h3 className="font-bold text-sm">{t('currencyExchangeWidget.modal.title', 'Rate Deviation Warning')}</h3>
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+              {t('currencyExchangeWidget.modal.body', 'The rate you entered deviates significantly from the system rate. Do you wish to confirm?')}
+            </p>
+            {warnings.map((w, i) => (
+              <div key={i} className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded mb-3">
+                {w.message}
+              </div>
+            ))}
+            <div className="flex justify-end gap-2">
+              <button onClick={handleCancelRate} className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded text-gray-700">
+                {t('currencyExchangeWidget.modal.cancel', 'Cancel')}
+              </button>
+              <button onClick={handleConfirmRate} className="px-3 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded">
+                {t('currencyExchangeWidget.modal.confirm', 'Confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 
 export interface SalesInvoiceDetailProps {
@@ -225,8 +571,9 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   onClose,
   onSaved,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { company } = useCompanyAccess();
+  const isRtl = i18n.dir() === 'rtl';
   const { hasPermission, isOwner } = useRBAC();
   const { salesSettings } = useDocumentPolicies();
   const { confirm, confirmDialog } = useConfirm();
@@ -265,7 +612,10 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const filledLines = (lines: EditableLine[]): EditableLine[] => lines.filter((l) => !!l.itemId);
   const hasLineContent = (line: EditableLine | undefined): boolean => {
     if (!line) return false;
-    return Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.unitPriceDoc || line.discountValue);
+    return Boolean(
+      line.itemId || line.itemCode || line.itemName || line.description ||
+      line.unitPriceDoc || line.discountValue || line.invoicedQty
+    );
   };
 
   const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
@@ -311,10 +661,19 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [glImpactOpen, setGlImpactOpen] = useState(false);
+  const [chargeModal, setChargeModal] = useState<{
+    kind: 'CHARGE' | 'DISCOUNT';
+    editIndex: number | null;
+    accountId: string;
+    accountLabel: string;
+    amount: number;
+    description: string;
+  } | null>(null);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
   const [pendingPeriodLockRetry, setPendingPeriodLockRetry] = useState<((reason: string) => void) | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [showOperationalWarning, setShowOperationalWarning] = useState(false);
   const [cloneRecurringOpen, setCloneRecurringOpen] = useState(false);
   const [cloneRecurringBusy, setCloneRecurringBusy] = useState(false);
   const [cloneRecurringName, setCloneRecurringName] = useState('');
@@ -363,6 +722,27 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const invoiceStatus = invoice?.status || form.status || (isCreateMode ? 'DRAFT' : undefined);
   const isPendingAccountingApproval = invoiceStatus === 'PENDING_APPROVAL';
   const isLedgerPosted = invoiceStatus === 'POSTED';
+  const hasUnsavedDocumentChanges = useMemo(() => {
+    if (isReadOnly) return false;
+    const hasLines = form.lines.some(hasLineContent);
+    const hasCharges = form.charges.some((charge) =>
+      Boolean(charge.name.trim() || charge.amountDoc || charge.taxCodeId || charge.revenueAccountId || charge.description?.trim())
+    );
+    const hasSettlement = settlementMode !== 'DEFERRED' || arAccountId.trim() || settlementRows.some((row) =>
+      Boolean(row.settlementAccountId || row.amountBase || row.paymentMethod || row.reference.trim() || row.notes.trim())
+    );
+    return Boolean(
+      form.salesOrderId ||
+      form.customerId ||
+      form.customerInvoiceNumber.trim() ||
+      form.dueDate ||
+      form.warehouseId ||
+      form.notes.trim() ||
+      hasLines ||
+      hasCharges ||
+      hasSettlement
+    );
+  }, [arAccountId, form, isReadOnly, settlementMode, settlementRows]);
   const statusPillTone = isLedgerPosted ? 'green' : isPendingAccountingApproval ? 'amber' : 'slate';
   const statusPillLabel = isLedgerPosted
     ? t('sales.invoiceDetail.postedStatusPill', 'Posted')
@@ -372,6 +752,35 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const canCreateReceipt = invoice?.status === 'POSTED' && (invoice?.outstandingAmountBase || 0) > 0;
   const createReturnHref = invoice ? `/sales/returns/new?salesInvoiceId=${encodeURIComponent(invoice.id)}${invoice.salesOrderId ? `&salesOrderId=${encodeURIComponent(invoice.salesOrderId)}` : ''}` : '';
+
+  const openNewInvoiceForm = () => {
+    setInvoice(null);
+    setForm(createEmptyForm('', ''));
+    setAttachments([]);
+    setSettlementMode('DEFERRED');
+    setArAccountId('');
+    setSettlementRows([]);
+    setTemplateTouched(false);
+    setError(null);
+    navigate('/sales/invoices/new');
+  };
+
+  const handleNewInvoiceClick = async () => {
+    if (hasUnsavedDocumentChanges) {
+      const confirmed = await confirm({
+        title: t('documentDetail.newConfirmTitle', 'Discard unsaved changes?'),
+        message: t('documentDetail.newConfirmMessage', 'You have unsaved changes. Are you sure you want to discard them and open a new document?'),
+        confirmLabel: t('documentDetail.newConfirmAction', 'Open New Form'),
+        cancelLabel: t('common.cancel', 'Cancel'),
+        tone: 'warning',
+      });
+      if (confirmed) {
+        openNewInvoiceForm();
+      }
+    } else {
+      openNewInvoiceForm();
+    }
+  };
 
   // Pay-later entry point (Task 184 Finding 5): record a receipt against this posted invoice
   // via the invoice-aware dialog → recordPayment endpoint (posts the linked receipt voucher,
@@ -507,6 +916,40 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     [taxCodes]
   );
 
+  /**
+   * Back-solve unit price from a target Line Total (gross) or Net the user
+   * types into a computed cell, given the row's current qty/discount/tax.
+   * Mirrors the forward math in computedLines: same discount handling,
+   * same inclusive/exclusive branching.
+   */
+  const solveUnitPriceFromTotal = (
+    target: number,
+    field: 'lineGross' | 'net',
+    row: EditableLine,
+  ): number => {
+    const q = Number(row.invoicedQty || 0);
+    if (q <= 0 || !Number.isFinite(target)) return 0;
+    const taxCode = row.taxCodeId ? taxById[row.taxCodeId] : undefined;
+    const taxRate = taxCode?.rate ?? 0;
+    const inclusive = row.priceIsInclusive !== undefined
+      ? row.priceIsInclusive === true
+      : taxCode?.priceIsInclusive === true;
+    const postDisc = field === 'lineGross'
+      ? (inclusive ? target : target / (1 + taxRate))
+      : (inclusive ? target * (1 + taxRate) : target);
+    const dt = row.discountType;
+    const dv = Number(row.discountValue || 0);
+    if (dt === 'PERCENT') {
+      const factor = 1 - dv / 100;
+      if (factor <= 0) return 0;
+      return postDisc / (q * factor);
+    }
+    if (dt === 'AMOUNT') {
+      return (postDisc + dv) / q;
+    }
+    return postDisc / q;
+  };
+
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
       const taxCode = line.taxCodeId ? taxById[line.taxCodeId] : undefined;
@@ -540,23 +983,26 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const computedCharges = useMemo(() => {
     return form.charges.map((charge) => {
-      const taxRate = charge.taxCodeId ? taxById[charge.taxCodeId]?.rate ?? 0 : 0;
+      const kind = charge.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE';
+      // Whole-invoice adjustments are flat and tax-free; discounts never carry tax.
+      const taxRate = kind === 'CHARGE' && charge.taxCodeId ? taxById[charge.taxCodeId]?.rate ?? 0 : 0;
       const amountDoc = roundMoney(charge.amountDoc || 0);
       const amountBase = roundMoney(amountDoc * (form.exchangeRate || 0));
       const taxAmountDoc = roundMoney(amountDoc * taxRate);
       const taxAmountBase = roundMoney(amountBase * taxRate);
-      return { amountDoc, amountBase, taxAmountDoc, taxAmountBase };
+      return { kind, amountDoc, amountBase, taxAmountDoc, taxAmountBase };
     });
   }, [form.charges, form.exchangeRate, taxById]);
 
   const totals = useMemo(() => {
+    // CHARGE adjustments add to the subtotal; DISCOUNT adjustments subtract.
     const subtotalDoc = roundMoney(
       computedLines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
-      + computedCharges.reduce((sum, charge) => sum + charge.amountDoc, 0)
+      + computedCharges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -charge.amountDoc : charge.amountDoc), 0)
     );
     const subtotalBase = roundMoney(
       computedLines.reduce((sum, line) => sum + line.lineTotalBase, 0)
-      + computedCharges.reduce((sum, charge) => sum + charge.amountBase, 0)
+      + computedCharges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -charge.amountBase : charge.amountBase), 0)
     );
     const taxTotalDoc = roundMoney(
       computedLines.reduce((sum, line) => sum + line.taxAmountDoc, 0)
@@ -566,12 +1012,19 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       computedLines.reduce((sum, line) => sum + line.taxAmountBase, 0)
       + computedCharges.reduce((sum, charge) => sum + charge.taxAmountBase, 0)
     );
+    // The rail "Discount" line reflects both per-line discounts and whole-invoice DISCOUNT adjustments.
+    const discountTotalDoc = roundMoney(
+      computedLines.reduce((sum, line) => sum + line.discountAmountDoc, 0)
+      + computedCharges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? charge.amountDoc : 0), 0)
+    );
+    const discountTotalBase = roundMoney(discountTotalDoc * (form.exchangeRate || 0));
     return {
       subtotalDoc, subtotalBase, taxTotalDoc, taxTotalBase,
+      discountTotalDoc, discountTotalBase,
       grandTotalDoc: roundMoney(subtotalDoc + taxTotalDoc),
       grandTotalBase: roundMoney(subtotalBase + taxTotalBase),
     };
-  }, [computedCharges, computedLines]);
+  }, [computedCharges, computedLines, form.exchangeRate]);
 
   const lineColumns = useMemo<ColumnDef<EditableLine>[]>(() => {
     const showBaseCurrency = form.currency !== (company?.baseCurrency || 'USD');
@@ -582,16 +1035,38 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         kind: 'custom',
         width: '220px',
         render: (row, index, onChange) => {
+          const freeGoodBadge = row.appliedPromotionId ? (
+            <span
+              title={t('sales.invoiceDetail.freeGoodTooltip', 'Free item added by promotion: {{name}}', { name: row.appliedPromotionName || '' })}
+              className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+            >
+              {t('sales.invoiceDetail.freeGoodBadge', 'Free • Promo')}
+            </span>
+          ) : null;
           if (isReadOnly) {
             return (
-              <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                {row.itemCode ? `${row.itemCode} - ${row.itemName}` : row.itemName || '—'}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                  {row.itemCode ? `${row.itemCode} - ${row.itemName}` : row.itemName || '—'}
+                </span>
+                {freeGoodBadge}
+              </div>
+            );
+          }
+          if (row.appliedPromotionId) {
+            return (
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                  {row.itemCode ? `${row.itemCode} - ${row.itemName}` : row.itemName || '—'}
+                </span>
+                {freeGoodBadge}
               </div>
             );
           }
           return (
-            <div className="flex flex-col w-full p-1 gap-1">
+            <div className="flex flex-col w-full gap-1">
               <ItemSelector
+                noBorder
                 value={row.itemId}
                 onChange={(item) => {
                   if (item) {
@@ -607,13 +1082,23 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                     });
                     focusLine(item.id);
                   } else {
+                    // Clearing the item resets the entire row to defaults so
+                    // qty/price/discount/tax don't linger from the previous item.
+                    const empty = createEmptyLine();
                     onChange({
-                      itemId: '',
-                      itemCode: '',
-                      itemName: '',
-                      uomId: undefined,
-                      uom: '',
-                      taxCodeId: undefined,
+                      itemId: empty.itemId,
+                      itemCode: empty.itemCode,
+                      itemName: empty.itemName,
+                      invoicedQty: empty.invoicedQty,
+                      uomId: empty.uomId,
+                      uom: empty.uom,
+                      unitPriceDoc: empty.unitPriceDoc,
+                      discountType: empty.discountType,
+                      discountValue: empty.discountValue,
+                      taxCodeId: empty.taxCodeId,
+                      priceIsInclusive: undefined,
+                      warehouseId: empty.warehouseId,
+                      description: empty.description,
                     });
                   }
                 }}
@@ -664,15 +1149,26 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       {
         id: 'discountType',
         label: t('sales.invoiceDetail.col.discountType', 'Discount Type'),
-        kind: 'select',
-        width: '86px',
-        accessor: (row) => row.discountType || '',
-        setter: (value) => ({ discountType: (value || undefined) as any, discountValue: 0 }),
-        options: [
-          { value: '', label: t('sales.invoiceDetail.noDiscount', 'No Discount') },
-          { value: 'PERCENT', label: t('sales.invoiceDetail.discountPercent', 'Percent') },
-          { value: 'AMOUNT', label: t('sales.invoiceDetail.discountAmount', 'Amount') },
-        ],
+        kind: 'custom',
+        width: '64px',
+        render: (row, _index, onChange) => {
+          if (isReadOnly) {
+            return (
+              <div className="text-center text-xs text-slate-800 dark:text-slate-200">
+                {row.discountType === 'PERCENT' ? '%' : row.discountType === 'AMOUNT' ? form.currency : '—'}
+              </div>
+            );
+          }
+          return (
+            <DiscountTypeSelector
+              noBorder
+              value={row.discountType}
+              currencyCode={form.currency}
+              disabled={busy || !row.itemId}
+              onChange={(next) => onChange({ discountType: next || undefined, discountValue: 0 })}
+            />
+          );
+        },
       },
       {
         id: 'discountValue',
@@ -687,7 +1183,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         label: t('sales.invoiceDetail.col.taxCode', 'Tax Code'),
         kind: 'custom',
         width: '100px',
-        render: (row, index, onChange) => {
+        render: (row, _index, onChange) => {
           if (isReadOnly) {
             return (
               <div className="text-xs text-slate-800 dark:text-slate-200">
@@ -695,32 +1191,18 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
               </div>
             );
           }
-          const tc = row.taxCodeId ? taxById[row.taxCodeId] : undefined;
-          const effective = row.priceIsInclusive !== undefined ? row.priceIsInclusive : tc?.priceIsInclusive === true;
           return (
-            <div className="flex flex-col p-1 gap-0.5">
-              <select
-                className="w-full border-0 bg-transparent text-xs outline-none text-slate-900 dark:text-slate-100 focus:bg-blue-50/40 dark:focus:bg-blue-950/20 cursor-pointer"
-                value={row.taxCodeId || ''}
-                onChange={(e) => onChange({ taxCodeId: e.target.value || undefined })}
-              >
-                <option value="">{t('sales.invoiceDetail.noTax', 'No Tax')}</option>
-                {salesTaxCodes.map((taxCode) => (
-                  <option key={taxCode.id} value={taxCode.id}>{taxCode.code} ({Math.round(taxCode.rate * 100)}%)</option>
-                ))}
-              </select>
-              {row.taxCodeId && (
-                <label className="flex items-center gap-1 text-[10px] text-slate-500 select-none">
-                  <input
-                    type="checkbox"
-                    className="h-3 w-3 rounded border-slate-300 dark:border-slate-700 text-primary-600 focus:ring-primary-500"
-                    checked={effective}
-                    onChange={(e) => onChange({ priceIsInclusive: e.target.checked })}
-                  />
-                  <span className="truncate">{t('sales.invoiceDetail.taxInclusive', 'Tax-incl.')}</span>
-                </label>
+            <TaxCodeSelector
+              noBorder
+              options={salesTaxCodes.map((tax) => ({ id: tax.id, code: tax.code, name: tax.name, rate: tax.rate }))}
+              valueId={row.taxCodeId}
+              disabled={busy || !row.itemId}
+              emptySetupMessage={t(
+                'sales.invoiceDetail.taxCodeEmptyHint',
+                'No sales tax codes set up. Create one with scope SALES or BOTH to use it here.',
               )}
-            </div>
+              onChange={(option) => onChange({ taxCodeId: option?.id })}
+            />
           );
         },
       },
@@ -737,6 +1219,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         kind: 'computed',
         width: '90px',
         compute: (row, index) => computedLines[index]?.lineGrossDoc ?? 0,
+        solveFromTotal: (value, row) => ({ unitPriceDoc: solveUnitPriceFromTotal(value, 'lineGross', row) }),
       },
       {
         id: 'net',
@@ -744,6 +1227,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         kind: 'computed',
         width: '82px',
         compute: (row, index) => computedLines[index]?.lineTotalDoc ?? 0,
+        solveFromTotal: (value, row) => ({ unitPriceDoc: solveUnitPriceFromTotal(value, 'net', row) }),
       },
       {
         id: 'taxAmt',
@@ -769,6 +1253,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const toEditableLinesFromLinkedSource = (source: InvoiceableLinkedSalesSourceDTO): EditableLine[] => {
     return source.lines.map((line) => ({
+      _uid: nextLineUid(),
       soLineId: line.soLineId,
       dnLineId: line.dnLineId,
       itemId: line.itemId,
@@ -967,6 +1452,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       warehouseId: loaded.lines?.find((line) => line.warehouseId)?.warehouseId,
       notes: loaded.notes || '',
       lines: padLinesToMin((loaded.lines || []).map((l) => ({
+        _uid: l.lineId || nextLineUid(),
         lineId: l.lineId,
         soLineId: l.soLineId,
         dnLineId: l.dnLineId,
@@ -983,9 +1469,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         priceIsInclusive: (l as any).priceIsInclusive,
         warehouseId: l.warehouseId,
         description: l.description,
+        appliedPromotionId: (l as any).appliedPromotionId,
+        appliedPromotionName: (l as any).appliedPromotionName,
       }))),
       charges: ((loaded as any).charges || []).map((c: any) => ({
         chargeId: c.chargeId,
+        kind: c.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE',
         code: c.code,
         name: c.name,
         amountDoc: c.amountDoc,
@@ -1199,6 +1688,59 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       return { ...prev, lines: padLinesToMin(prev.lines.filter((_, idx) => idx !== index)) };
     });
   };
+
+  // Whole-invoice charge/discount entry runs through a single modal opened from the
+  // allocation grid header. Saving upserts a row into form.charges; totals + posting
+  // pick it up via computedCharges and the buildPayload charge maps.
+  const openChargeModal = (kind: 'CHARGE' | 'DISCOUNT', editIndex: number | null = null) => {
+    if (isReadOnly) return;
+    if (editIndex !== null) {
+      const existing = form.charges[editIndex];
+      setChargeModal({
+        kind: existing.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE',
+        editIndex,
+        accountId: existing.revenueAccountId || '',
+        accountLabel: existing.accountLabel || '',
+        amount: existing.amountDoc || 0,
+        description: existing.name || '',
+      });
+      return;
+    }
+    const defaultAccount = kind === 'DISCOUNT' ? settings?.defaultSalesExpenseAccountId : settings?.defaultRevenueAccountId;
+    setChargeModal({
+      kind,
+      editIndex: null,
+      accountId: defaultAccount || '',
+      accountLabel: '',
+      amount: 0,
+      description: '',
+    });
+  };
+  const closeChargeModal = () => setChargeModal(null);
+  const saveChargeModal = () => {
+    if (!chargeModal) return;
+    const description = chargeModal.description.trim();
+    const amount = roundMoney(chargeModal.amount || 0);
+    if (!description || amount <= 0) return; // guarded by the disabled save button too
+    const entry: EditableCharge = {
+      chargeId: chargeModal.editIndex !== null ? form.charges[chargeModal.editIndex]?.chargeId || nextChargeId() : nextChargeId(),
+      kind: chargeModal.kind,
+      name: description,
+      amountDoc: amount,
+      revenueAccountId: chargeModal.accountId || undefined,
+      accountLabel: chargeModal.accountLabel || undefined,
+    };
+    setForm((prev) => {
+      const charges = [...prev.charges];
+      if (chargeModal.editIndex !== null) charges[chargeModal.editIndex] = entry;
+      else charges.push(entry);
+      return { ...prev, charges };
+    });
+    setChargeModal(null);
+  };
+  const removeCharge = (index: number) => {
+    setForm((prev) => ({ ...prev, charges: prev.charges.filter((_, idx) => idx !== index) }));
+  };
   const validateBeforeSave = (): string | null => {
     if (!form.customerId) return t('sales.invoiceDetail.validation.customerRequired', 'Customer is required.');
     if (!form.invoiceDate) return t('sales.invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
@@ -1261,10 +1803,11 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
     charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
       chargeId: charge.chargeId,
+      kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
       code: charge.code || undefined,
       name: charge.name,
       amountDoc: charge.amountDoc,
-      taxCodeId: charge.taxCodeId || undefined,
+      taxCodeId: charge.kind === 'DISCOUNT' ? undefined : (charge.taxCodeId || undefined),
       revenueAccountId: charge.revenueAccountId || undefined,
       description: charge.description || undefined,
     })),
@@ -1285,10 +1828,11 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
     charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
       chargeId: charge.chargeId,
+      kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
       code: charge.code || undefined,
       name: charge.name,
       amountDoc: charge.amountDoc,
-      taxCodeId: charge.taxCodeId || undefined,
+      taxCodeId: charge.kind === 'DISCOUNT' ? undefined : (charge.taxCodeId || undefined),
       revenueAccountId: charge.revenueAccountId || undefined,
       description: charge.description || undefined,
     })),
@@ -1955,28 +2499,57 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                   onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))}
                 />
               </div>
-              <div className={headerFieldWrapperClass}>
-                <label className={headerLabelClass}>{t('sales.invoiceDetail.currency', 'Currency')}</label>
-                <CurrencySelector
-                  className={headerSelectorClass}
-                  value={form.currency}
-                  onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
-                  disabled={busy || activeSourceMode === 'so'}
-                />
-              </div>
-              <div className={headerFieldWrapperClass}>
-                <label className={headerLabelClass}>{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
-                <div className="[&>div]:h-9 [&>div]:rounded">
-                  <CurrencyExchangeWidget
-                    currency={form.currency}
-                    baseCurrency={company?.baseCurrency || 'USD'}
-                    voucherDate={form.invoiceDate}
-                    value={form.exchangeRate}
-                    onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
-                    disabled={busy || activeSourceMode === 'so'}
-                  />
-                </div>
-              </div>
+              {isRtl ? (
+                <>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
+                    <div>
+                      <CurrencyExchangeFieldPremium
+                        currency={form.currency}
+                        baseCurrency={company?.baseCurrency || 'USD'}
+                        voucherDate={form.invoiceDate}
+                        value={form.exchangeRate}
+                        onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+                        disabled={busy || activeSourceMode === 'so'}
+                      />
+                    </div>
+                  </div>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.currency', 'Currency')}</label>
+                    <CurrencySelector
+                      className={headerSelectorClass}
+                      value={form.currency}
+                      onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
+                      disabled={busy || activeSourceMode === 'so'}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.currency', 'Currency')}</label>
+                    <CurrencySelector
+                      className={headerSelectorClass}
+                      value={form.currency}
+                      onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
+                      disabled={busy || activeSourceMode === 'so'}
+                    />
+                  </div>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
+                    <div>
+                      <CurrencyExchangeFieldPremium
+                        currency={form.currency}
+                        baseCurrency={company?.baseCurrency || 'USD'}
+                        voucherDate={form.invoiceDate}
+                        value={form.exchangeRate}
+                        onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+                        disabled={busy || activeSourceMode === 'so'}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               {activeSourceMode === 'direct' && (
                 <div className={headerFieldWrapperClass}>
                   <label className={headerLabelClass}>{t('sales.invoiceDetail.mainWarehouse', 'Main Warehouse')}</label>
@@ -2113,6 +2686,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           rows={form.lines}
           columns={lineColumns}
           disabled={isReadOnly || busy}
+          getRowKey={(row, index) => row._uid ?? row.lineId ?? index}
           onRowChange={(index, patch) => setLine(index, patch)}
           onRowRemove={!isReadOnly ? removeLine : undefined}
           onRowsChange={!isReadOnly ? (lines) => setForm((prev) => ({ ...prev, lines: padLinesToMin(lines) })) : undefined}
@@ -2121,33 +2695,224 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           onRowAdd={!isReadOnly ? addLine : undefined}
           addLabel={t('sales.invoiceDetail.addItem', 'Add Line')}
           minRows={1}
-          className="flex-1 [&>div:first-child]:max-h-none [&>div:first-child]:h-full"
+          maxBodyHeight="none"
+          className="flex-1 min-h-0"
         />
     );
   };
 
   const renderChargesSection = () => {
+    const baseCurrency = company?.baseCurrency || 'USD';
+    const showBase = form.currency !== baseCurrency;
+    const hasCharges = form.charges.length > 0;
+    const accountLabelFor = (charge: EditableCharge) =>
+      charge.accountLabel
+      || charge.revenueAccountId
+      || (charge.kind === 'DISCOUNT'
+        ? t('sales.invoiceDetail.charges.defaultDiscountAccount', 'Default discount account')
+        : t('sales.invoiceDetail.charges.defaultAccount', 'Default revenue account'));
+
     return (
       <DocumentSecondaryPanel
         title={t('sales.invoiceDetail.allocation.title', 'Account Ledger & Financial Taxes Allocation Grid')}
         action={
-            <button
-              type="button"
-              onClick={() => showImportNotReady(t('sales.invoiceDetail.taxPresetNotReady', 'Tax preset automation is not connected yet.'))}
-              className="hidden h-6 items-center rounded border border-emerald-300 px-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 md:inline-flex"
-            >
-              {t('sales.invoiceDetail.allocation.applyTaxPreset', 'Apply Tax Preset')}
-            </button>
+          !isReadOnly ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => openChargeModal('CHARGE')}
+                disabled={busy}
+                className="inline-flex h-6 items-center gap-1 rounded border border-emerald-300 px-2 text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+              >
+                <Plus className="h-3 w-3" />
+                {t('sales.invoiceDetail.charges.addCharge', 'Add Charge')}
+              </button>
+              <button
+                type="button"
+                onClick={() => openChargeModal('DISCOUNT')}
+                disabled={busy}
+                className="inline-flex h-6 items-center gap-1 rounded border border-rose-300 px-2 text-[10px] font-black uppercase tracking-wide text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/30"
+              >
+                <Plus className="h-3 w-3" />
+                {t('sales.invoiceDetail.charges.addDiscount', 'Add Discount')}
+              </button>
+            </div>
+          ) : undefined
         }
       >
-        <DocumentEmptyPanel
-          title={t('sales.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
-          description={t(
-            'sales.invoiceDetail.allocation.emptyDescription',
-            'Real ledger and tax allocation controls are not shown until the controlled allocation contract is implemented.'
-          )}
-        />
+        {!hasCharges ? (
+          <DocumentEmptyPanel
+            title={t('sales.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
+            description={
+              isReadOnly
+                ? t('sales.invoiceDetail.charges.emptyReadOnly', 'This invoice has no whole-invoice charges or discounts.')
+                : t('sales.invoiceDetail.charges.emptyDescription', 'Use Add Charge or Add Discount to apply a whole-invoice charge (e.g. freight) or discount. Each posts to its own GL account and adjusts the invoice totals.')
+            }
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+                  <th className="px-2 py-1.5 text-left font-black">{t('sales.invoiceDetail.charges.col.type', 'Type')}</th>
+                  <th className="px-2 py-1.5 text-left font-black">{t('sales.invoiceDetail.charges.col.description', 'Description')}</th>
+                  <th className="px-2 py-1.5 text-left font-black">{t('sales.invoiceDetail.charges.col.account', 'GL Account')}</th>
+                  <th className="px-2 py-1.5 text-right font-black">{t('sales.invoiceDetail.charges.col.amount', 'Amount')} ({form.currency})</th>
+                  {!isReadOnly && <th className="w-16 px-1 py-1.5" />}
+                </tr>
+              </thead>
+              <tbody>
+                {form.charges.map((charge, index) => {
+                  const computed = computedCharges[index];
+                  const isDiscount = charge.kind === 'DISCOUNT';
+                  return (
+                    <tr key={charge.chargeId || index} className="border-b border-slate-100 align-middle dark:border-slate-800/60">
+                      <td className="px-2 py-1.5">
+                        <span
+                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
+                            isDiscount
+                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                          }`}
+                        >
+                          {isDiscount ? t('sales.invoiceDetail.charges.discount', 'Discount') : t('sales.invoiceDetail.charges.charge', 'Charge')}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 font-semibold text-slate-800 dark:text-slate-200">{charge.name || '—'}</td>
+                      <td className="px-2 py-1.5 text-slate-600 dark:text-slate-300">{accountLabelFor(charge)}</td>
+                      <td className="px-2 py-1.5 text-right">
+                        <span className={`font-mono font-bold ${isDiscount ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                          {isDiscount ? '−' : ''}{(charge.amountDoc || 0).toFixed(2)}
+                        </span>
+                        {showBase && (
+                          <div className="mt-0.5 text-[10px] text-slate-400">
+                            {isDiscount ? '−' : ''}{baseCurrency} {(computed?.amountBase ?? 0).toFixed(2)}
+                          </div>
+                        )}
+                      </td>
+                      {!isReadOnly && (
+                        <td className="px-1 py-1.5">
+                          <div className="flex items-center justify-end gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => openChargeModal(charge.kind || 'CHARGE', index)}
+                              disabled={busy}
+                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-slate-800"
+                              aria-label={t('sales.invoiceDetail.charges.edit', 'Edit')}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeCharge(index)}
+                              disabled={busy}
+                              className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-950/40"
+                              aria-label={t('sales.invoiceDetail.charges.remove', 'Remove')}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </DocumentSecondaryPanel>
+    );
+  };
+
+  const renderChargeModal = () => {
+    if (!chargeModal) return null;
+    const isDiscount = chargeModal.kind === 'DISCOUNT';
+    const canSave = chargeModal.description.trim().length > 0 && (chargeModal.amount || 0) > 0;
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={closeChargeModal}>
+        <div
+          className="w-full max-w-md overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={`flex items-center justify-between border-b px-4 py-3 ${isDiscount ? 'border-rose-200 dark:border-rose-900' : 'border-emerald-200 dark:border-emerald-900'}`}>
+            <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
+              {chargeModal.editIndex !== null
+                ? (isDiscount ? t('sales.invoiceDetail.charges.editDiscount', 'Edit Discount') : t('sales.invoiceDetail.charges.editCharge', 'Edit Charge'))
+                : (isDiscount ? t('sales.invoiceDetail.charges.addDiscount', 'Add Discount') : t('sales.invoiceDetail.charges.addCharge', 'Add Charge'))}
+            </h3>
+            <span className={`rounded px-2 py-0.5 text-[10px] font-black uppercase ${isDiscount ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'}`}>
+              {isDiscount ? t('sales.invoiceDetail.charges.discount', 'Discount') : t('sales.invoiceDetail.charges.charge', 'Charge')}
+            </span>
+          </div>
+          <div className="space-y-3 p-4">
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t('sales.invoiceDetail.charges.modal.account', 'GL Account')}
+              </label>
+              <AccountSelector
+                value={chargeModal.accountId || undefined}
+                onChange={(account: any) =>
+                  setChargeModal((prev) => prev ? { ...prev, accountId: account?.id || '', accountLabel: account ? `${account.code} — ${account.name}` : '' } : prev)
+                }
+                placeholder={isDiscount
+                  ? t('sales.invoiceDetail.charges.modal.discountAccountPlaceholder', 'Discount account')
+                  : t('sales.invoiceDetail.charges.modal.chargeAccountPlaceholder', 'Revenue / charge account')}
+                allowedClassifications={isDiscount ? ['EXPENSE', 'REVENUE'] : ['REVENUE']}
+                contextLabel={isDiscount ? 'Discount' : 'Income'}
+              />
+              <p className="mt-1 text-[10px] text-slate-400">
+                {t('sales.invoiceDetail.charges.modal.accountHint', 'Defaults from Sales Settings. Charge credits this account; discount debits it.')}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t('sales.invoiceDetail.charges.modal.amount', 'Amount')} ({form.currency})
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                autoFocus
+                value={chargeModal.amount || ''}
+                onChange={(e) => setChargeModal((prev) => prev ? { ...prev, amount: parseFloat(e.target.value) || 0 } : prev)}
+                className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-right font-mono text-sm text-slate-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t('sales.invoiceDetail.charges.modal.description', 'Description')}
+              </label>
+              <input
+                type="text"
+                value={chargeModal.description}
+                onChange={(e) => setChargeModal((prev) => prev ? { ...prev, description: e.target.value } : prev)}
+                placeholder={isDiscount
+                  ? t('sales.invoiceDetail.charges.modal.discountDescPlaceholder', 'e.g. Year-end discount')
+                  : t('sales.invoiceDetail.charges.modal.chargeDescPlaceholder', 'e.g. Freight')}
+                className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+            <button
+              type="button"
+              onClick={closeChargeModal}
+              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={saveChargeModal}
+              disabled={!canSave}
+              className={`rounded px-3 py-1.5 text-xs font-black uppercase tracking-wide text-white disabled:opacity-40 ${isDiscount ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+              {t('common.save', 'Save')}
+            </button>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -2186,24 +2951,52 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   };
 
   const renderTotalsContent = () => {
-    const showBaseCurrency = form.currency !== (company?.baseCurrency || 'USD');
+    const baseCurrency = company?.baseCurrency || 'USD';
+    const showBaseRow = form.currency !== baseCurrency;
+    const fmt = (n: number) => n.toFixed(2);
+    const rows: Array<{ label: string; value: string; tone?: 'rose' }> = [
+      { label: t('sales.invoiceDetail.subtotal', 'Subtotal'), value: `${form.currency} ${fmt(totals.subtotalDoc)}` },
+      { label: t('sales.invoiceDetail.discountTotal', 'Discount'), value: `${form.currency} ${fmt(totals.discountTotalDoc)}`, tone: 'rose' },
+      { label: t('sales.invoiceDetail.tax', 'Tax'), value: `${form.currency} ${fmt(totals.taxTotalDoc)}` },
+    ];
     return (
-      <DocumentRailTotals
-        rows={[
-          { label: t('sales.invoiceDetail.subtotal', 'Subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
-          { label: t('sales.invoiceDetail.tax', 'Tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
-        ]}
-        grand={{
-          label: t('sales.invoiceDetail.grandTotal', 'Grand Total'),
-          value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`,
-          ...(showBaseCurrency
-            ? {
-                subLabel: t('sales.invoiceDetail.grandTotalBase', 'Grand Total (Base)'),
-                subValue: `${company?.baseCurrency || 'USD'} ${totals.grandTotalBase.toFixed(2)}`,
-              }
-            : {}),
-        }}
-      />
+      <div className="space-y-2 p-3">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between gap-2 rounded border border-slate-100 bg-slate-50/50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/40"
+          >
+            <span className="font-bold text-slate-500 dark:text-slate-400">{row.label}</span>
+            <span
+              className={`min-w-0 truncate font-mono font-bold ${
+                row.tone === 'rose'
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-slate-800 dark:text-slate-200'
+              }`}
+            >
+              {row.value}
+            </span>
+          </div>
+        ))}
+        <div className="rounded-lg border border-slate-950 bg-slate-900 px-4 py-3 text-white shadow-md dark:bg-slate-950">
+          <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+            {t('sales.invoiceDetail.grandTotal', 'Grand Total')}
+          </div>
+          <div className="mt-1 text-right font-mono text-2xl font-black leading-tight text-emerald-400">
+            {form.currency} {fmt(totals.grandTotalDoc)}
+          </div>
+          <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2 text-xs font-bold">
+            <span className="text-slate-300">
+              {showBaseRow
+                ? t('sales.invoiceDetail.grandTotalBase', 'Grand Total (Base)')
+                : t('sales.invoiceDetail.grandTotalInBase', 'In base currency')}
+            </span>
+            <span className="font-mono text-slate-100">
+              {baseCurrency} {fmt(totals.grandTotalBase)}
+            </span>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -2283,6 +3076,20 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                 <Info className="h-3.5 w-3.5" />
               </button>
             )}
+            {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
+              <button
+                type="button"
+                onClick={() => setShowOperationalWarning(true)}
+                title={t(
+                  'sales.governance.operationalWarning',
+                  'Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.',
+                )}
+                aria-label={t('sales.governance.operationalWarningLabel', 'Operational workflow blocked')}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/40"
+              >
+                <AlertTriangle className="h-3 w-3" />
+              </button>
+            )}
             {form.salesOrderId && <DocumentPill tone="blue">{t('sales.invoiceDetail.linkedOrder', 'From SO')}</DocumentPill>}
           </>
         }
@@ -2298,13 +3105,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             </button>
           ) : undefined
         }
-        banner={
-          isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed ? (
-            <DocumentNoticeBanner>
-              {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked. Select a Sales Order.')}
-            </DocumentNoticeBanner>
-          ) : undefined
-        }
+        newAction={{
+          label: t('sales.invoiceDetail.newInvoice', 'New Invoice'),
+          title: t('sales.invoiceDetail.newInvoice', 'New Invoice'),
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewInvoiceForm,
+        }}
         sections={{
           banner: { content: renderPostedBanner() },
           control: { content: renderSourceAndControlsCard() },
@@ -2394,6 +3200,13 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
               }}
             >
               {isWindow ? t('common.close', 'Close') : t('sales.invoiceDetail.backToList', 'Back to List')}
+            </button>
+            <button
+              type="button"
+              className="rounded border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+              onClick={handleNewInvoiceClick}
+            >
+              {t('sidebar.new', 'New')}
             </button>
 
             {isReadOnly && invoice?.status === 'POSTED' && (
@@ -2577,6 +3390,9 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         />
       )}
 
+      {/* Whole-invoice charge / discount modal (allocation grid) */}
+      {renderChargeModal()}
+
       {/* Credit override modal */}
       {creditOverrideOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
@@ -2623,6 +3439,23 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         </div>
       )}
 
+      {/* Operational workflow warning modal */}
+      <Modal
+        isOpen={showOperationalWarning}
+        onClose={() => setShowOperationalWarning(false)}
+        title={t('sales.governance.operationalWarningTitle', 'Direct invoicing blocked')}
+      >
+        <div className="flex items-start gap-2 text-sm">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <p className="text-slate-700 dark:text-slate-200">
+            {t(
+              'sales.governance.operationalWarning',
+              'Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.',
+            )}
+          </p>
+        </div>
+      </Modal>
+
       {/* Clone to recurring modal */}
       <Modal isOpen={cloneRecurringOpen} onClose={() => setCloneRecurringOpen(false)} title={t('sales.recurring.cloneModal.title', 'Clone Invoice to Recurring Template')}>
         <div className="space-y-4">
@@ -2666,13 +3499,19 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           <div className="grid gap-3 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.startDate', 'Start Date *')}</label>
-              <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringStartDate} onChange={(e) => setCloneRecurringStartDate(e.target.value)} />
+              <DatePicker
+                value={cloneRecurringStartDate}
+                onChange={setCloneRecurringStartDate}
+                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.endDate', 'End Date')}</label>
-              <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringEndDate} onChange={(e) => setCloneRecurringEndDate(e.target.value)} />
+              <DatePicker
+                value={cloneRecurringEndDate}
+                onChange={setCloneRecurringEndDate}
+                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.maxOccurrences', 'Max Occurrences')}</label>

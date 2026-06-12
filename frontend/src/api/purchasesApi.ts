@@ -69,8 +69,14 @@ export interface PurchaseOrderLineDTO {
   invoicedQty: number;
   returnedQty: number;
   unitPriceDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxRate: number;
@@ -158,12 +164,19 @@ export interface PurchaseInvoiceLineDTO {
   uomId?: string;
   uom: string;
   unitPriceDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -223,6 +236,18 @@ export interface PurchaseInvoiceAttachmentDTO {
   uploadedBy: string;
 }
 
+export interface PurchaseInvoiceChargeDTO {
+  chargeId: string;
+  /** CHARGE adds to the bill total (debits its account); DISCOUNT subtracts (credits its account). */
+  kind?: 'CHARGE' | 'DISCOUNT';
+  code?: string;
+  name: string;
+  amountDoc: number;
+  amountBase?: number;
+  accountId?: string;
+  description?: string;
+}
+
 export interface PurchaseInvoiceDTO {
   id: string;
   companyId: string;
@@ -240,6 +265,7 @@ export interface PurchaseInvoiceDTO {
   currency: string;
   exchangeRate: number;
   lines: PurchaseInvoiceLineDTO[];
+  charges?: PurchaseInvoiceChargeDTO[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -273,12 +299,19 @@ export interface PurchaseReturnLineDTO {
   uomId?: string;
   uom: string;
   unitCostDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
+  discountAmountBase?: number;
   unitCostBase: number;
+  grossLineTotalBase?: number;
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   accountId?: string;
@@ -353,6 +386,8 @@ export interface PurchaseOrderLineInputDTO {
   uomId?: string;
   uom?: string;
   unitPriceDoc: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -437,11 +472,24 @@ export interface PurchaseInvoiceLineInputDTO {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   /** When true, `unitPriceDoc` already includes tax. Mirrors backend
    *  PurchaseInvoiceLineInput.priceIsInclusive. */
   priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
+  description?: string;
+}
+
+export interface PurchaseInvoiceChargeInputDTO {
+  chargeId?: string;
+  /** CHARGE adds to the bill (debits its account); DISCOUNT subtracts (credits its account). Defaults to CHARGE. */
+  kind?: 'CHARGE' | 'DISCOUNT';
+  code?: string;
+  name: string;
+  amountDoc: number;
+  accountId?: string;
   description?: string;
 }
 
@@ -460,6 +508,7 @@ export interface CreatePurchaseInvoicePayload {
   currency?: string;
   exchangeRate?: number;
   lines?: PurchaseInvoiceLineInputDTO[];
+  charges?: PurchaseInvoiceChargeInputDTO[];
   notes?: string;
   settlementInput?: SettlementInputPayload;
 }
@@ -478,6 +527,7 @@ export interface UpdatePurchaseInvoicePayload {
   currency?: string;
   exchangeRate?: number;
   lines?: PurchaseInvoiceLineInputDTO[];
+  charges?: PurchaseInvoiceChargeInputDTO[];
   notes?: string;
   settlementInput?: SettlementInputPayload;
 }
@@ -514,6 +564,8 @@ export interface PurchaseReturnLineInputDTO {
   itemId?: string;
   returnQty?: number;
   unitCostDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   uomId?: string;
   uom?: string;
   accountId?: string;

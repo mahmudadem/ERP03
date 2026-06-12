@@ -14,6 +14,7 @@ import { useRBAC } from '../../../../api/rbac/useRBAC';
 import { AccountForm } from '../AccountForm';
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
 import { createPortal } from 'react-dom';
+import { useSelectorModalFocus } from '../../../../components/shared/selectors/useSelectorModalFocus';
 
 export type AccountClassification = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
 
@@ -91,6 +92,11 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   const [classificationFilterDisabled, setClassificationFilterDisabled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
+  const { modalRef, handleKeyDown: handleFocusTrapKeyDown } = useSelectorModalFocus(
+    showModal,
+    () => setShowModal(false),
+    inputRef
+  );
   const effectiveScope = scopeOverride ?? scope;
   const baseAccounts = providedAccounts || (effectiveScope === 'all' ? contextAccounts : validAccounts);
   const classificationFilterActive = !!(allowedClassifications && allowedClassifications.length > 0) && !classificationFilterDisabled;
@@ -298,6 +304,9 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
         setShowModal(false);
         inputRef.current?.focus();
         break;
+      default:
+        handleFocusTrapKeyDown(e);
+        break;
     }
   };
 
@@ -359,11 +368,12 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
           type="text"
           value={inputValue}
           onChange={handleInputChange}
+          onFocus={(e) => { try { e.currentTarget.select(); } catch { /* noop */ } }}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder || t('accountSelector.placeholder', 'Account code...')}
           disabled={disabled}
-          className={`w-full text-xs transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : `p-2 pr-16 border rounded bg-[var(--color-bg-primary)] ${classificationMismatch ? 'border-amber-400 ring-1 ring-amber-200' : 'border-[var(--color-border)]'}`}
+          className={`w-full transition-colors duration-200 ${noBorder ? 'border-0 bg-transparent p-1 [font-size:inherit] [font-family:inherit] focus:bg-blue-50/40 dark:focus:bg-blue-950/20' : `text-xs p-2 pr-16 border rounded bg-[var(--color-bg-primary)] ${classificationMismatch ? 'border-amber-400 ring-1 ring-amber-200' : 'border-[var(--color-border)]'}`}
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
             ${disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}`}
         />
@@ -407,7 +417,15 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
           
           {/* Modal */}
           <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
-            <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[var(--color-border)] w-full max-w-lg max-h-[500px] pointer-events-auto flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div
+              ref={modalRef}
+              tabIndex={-1}
+              onKeyDown={(event) => {
+                if (event.target === modalInputRef.current) return;
+                handleModalKeyDown(event);
+              }}
+              className="bg-[var(--color-bg-primary)] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[var(--color-border)] w-full max-w-lg max-h-[500px] pointer-events-auto flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            >
               {/* Header */}
               <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                 <div className="flex items-center gap-3">

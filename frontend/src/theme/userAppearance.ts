@@ -324,11 +324,11 @@ const densityVars: Record<UserAppearanceDensity, Record<string, string>> = {
 };
 
 const fontVars: Record<UserAppearanceFont, string> = {
-  system: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  system: 'ui-sans-serif, "Cairo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   inter: '"Inter", "Cairo", ui-sans-serif, system-ui, sans-serif',
   roboto: '"Roboto", "Cairo", ui-sans-serif, system-ui, sans-serif',
   outfit: '"Outfit", "Cairo", ui-sans-serif, system-ui, sans-serif',
-  mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  mono: 'ui-monospace, "Cairo", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
   cairo: '"Cairo", "Inter", ui-sans-serif, system-ui, sans-serif',
 };
 

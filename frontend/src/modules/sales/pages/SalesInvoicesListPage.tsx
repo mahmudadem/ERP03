@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Eye, Printer, Trash2, Filter, RotateCcw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -105,7 +105,11 @@ const SalesInvoicesListPage: React.FC = () => {
     [company?.fiscalYearStart, defaultDateTo]
   );
 
-  const [statusFilter, setStatusFilter] = useState<SIStatusFilter>('ALL');
+  const location = useLocation();
+  const stateStatus = (location.state as any)?.statusFilter;
+  const initialStatus = stateStatus && STATUS_VALUES.includes(stateStatus) ? stateStatus : 'ALL';
+
+  const [statusFilter, setStatusFilter] = useState<SIStatusFilter>(initialStatus);
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
   const [personaFilter, setPersonaFilter] = useState<string>('ALL');
@@ -114,13 +118,24 @@ const SalesInvoicesListPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<string>(defaultDateTo);
 
   // Local state buffers for filters
-  const [localStatus, setLocalStatus] = useState<SIStatusFilter>('ALL');
+  const [localStatus, setLocalStatus] = useState<SIStatusFilter>(initialStatus);
   const [localPayment, setLocalPayment] = useState<PaymentFilter>('ALL');
   const [localCustomer, setLocalCustomer] = useState<string>('ALL');
   const [localPersona, setLocalPersona] = useState<string>('ALL');
   const [localSearch, setLocalSearch] = useState<string>('');
   const [localDateFrom, setLocalDateFrom] = useState<string>(defaultDateFromFallback);
   const [localDateTo, setLocalDateTo] = useState<string>(defaultDateTo);
+
+  useEffect(() => {
+    const sStatus = (location.state as any)?.statusFilter;
+    if (sStatus && STATUS_VALUES.includes(sStatus)) {
+      setStatusFilter(sStatus);
+      setLocalStatus(sStatus);
+      try {
+        window.history.replaceState({ ...location.state, statusFilter: undefined }, '');
+      } catch (e) {}
+    }
+  }, [location.state]);
 
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoiceDTO[]>([]);

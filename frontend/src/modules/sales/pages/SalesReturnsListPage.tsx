@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Eye, Filter, Printer, RotateCcw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -37,23 +37,38 @@ const statusChipClasses = (status: SRStatus): string => {
 
 const SalesReturnsListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation('common');
   const { settings: companySettings } = useCompanySettings();
   const defaultDateTo = useMemo(() => getCompanyToday(companySettings), [companySettings]);
 
-  const [statusFilter, setStatusFilter] = useState<SRStatusFilter>('ALL');
+  const stateStatus = (location.state as any)?.statusFilter;
+  const initialStatus = stateStatus && STATUS_VALUES.includes(stateStatus) ? stateStatus : 'ALL';
+
+  const [statusFilter, setStatusFilter] = useState<SRStatusFilter>(initialStatus);
   const [contextFilter, setContextFilter] = useState<ContextFilter>('ALL');
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>(defaultDateTo);
 
-  const [localStatus, setLocalStatus] = useState<SRStatusFilter>('ALL');
+  const [localStatus, setLocalStatus] = useState<SRStatusFilter>(initialStatus);
   const [localContext, setLocalContext] = useState<ContextFilter>('ALL');
   const [localCustomer, setLocalCustomer] = useState<string>('ALL');
   const [localSearch, setLocalSearch] = useState<string>('');
   const [localDateFrom, setLocalDateFrom] = useState<string>('');
   const [localDateTo, setLocalDateTo] = useState<string>(defaultDateTo);
+
+  useEffect(() => {
+    const sStatus = (location.state as any)?.statusFilter;
+    if (sStatus && STATUS_VALUES.includes(sStatus)) {
+      setStatusFilter(sStatus);
+      setLocalStatus(sStatus);
+      try {
+        window.history.replaceState({ ...location.state, statusFilter: undefined }, '');
+      } catch (e) {}
+    }
+  }, [location.state]);
 
   const [returns, setReturns] = useState<SalesReturnDTO[]>([]);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);

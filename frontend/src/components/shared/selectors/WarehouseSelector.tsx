@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, RefreshCw, Warehouse as WarehouseIcon } from 'lucide-react';
 import { inventoryApi, InventoryWarehouseDTO } from '../../../api/inventoryApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
+import { useSelectorModalFocus } from './useSelectorModalFocus';
+import WarehouseMasterCard from '../../../modules/inventory/components/WarehouseMasterCard';
 
 interface WarehouseSelectorProps {
   value?: string;  // Warehouse ID or Code
@@ -61,6 +63,16 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
   const [allWarehouses, setAllWarehouses] = useState<InventoryWarehouseDTO[]>(providedWarehouses || []);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
+  const { modalRef, handleKeyDown: handleFocusTrapKeyDown } = useSelectorModalFocus(
+    showModal,
+    () => setShowModal(false),
+    inputRef
+  );
+  const { modalRef: createModalRef, handleKeyDown: handleCreateFocusTrapKeyDown } = useSelectorModalFocus(
+    showCreateModal,
+    () => setShowCreateModal(false),
+    inputRef
+  );
   const canCreate = hasPermission('inventory.warehouses.manage');
 
   // Forward the ref
@@ -181,9 +193,14 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
     if (matches.length === 1) {
       handleSelect(matches[0]);
     } else {
-      setModalSearch(inputValue.trim());
-      setHighlightedIndex(0);
-      setShowModal(true);
+      const fuzzyMatches = getFilteredWarehouses(inputValue);
+      if (fuzzyMatches.length === 1) {
+        handleSelect(fuzzyMatches[0]);
+      } else {
+        setModalSearch(inputValue.trim());
+        setHighlightedIndex(0);
+        setShowModal(true);
+      }
     }
 
     if (externalBlur) externalBlur();
@@ -196,6 +213,11 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
         if (exactMatch) {
           onChange(exactMatch);
           setInputValue(`${exactMatch.code} - ${exactMatch.name}`);
+          if (externalKeyDown) externalKeyDown(e);
+        } else if (getFilteredWarehouses(inputValue).length === 1) {
+          const [match] = getFilteredWarehouses(inputValue);
+          onChange(match);
+          setInputValue(`${match.code} - ${match.name}`);
           if (externalKeyDown) externalKeyDown(e);
         } else {
           e.preventDefault();
@@ -237,8 +259,6 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
   const handleOpenCreateModal = () => {
     if (!canCreate) return;
 
-    setCreateError('');
-    setCreateForm(buildCreateSeed(modalSearch || inputValue));
     setShowModal(false);
     setShowCreateModal(true);
   };
@@ -294,13 +314,15 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          onFocus={(e) => { try { e.currentTarget.select(); } catch { /* noop */ } }}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full text-xs transition-all duration-200 
-            ${noBorder ? 'p-1 pl-8 border-none bg-transparent' : 'p-2 pl-8 pr-16 border border-slate-200 rounded-lg bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'} 
-            focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none
+          className={`w-full transition-all duration-200 outline-none
+            ${noBorder
+              ? 'border-0 bg-transparent p-1 pl-8 [font-size:inherit] [font-family:inherit] focus:bg-blue-50/40 dark:focus:bg-blue-950/20'
+              : 'text-xs p-2 pl-8 pr-16 border border-slate-200 rounded-lg bg-white hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:border-slate-800 dark:bg-slate-900'}
             ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50' : ''}`}
         />
         {!disabled && (
@@ -323,7 +345,31 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
         <>
           <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40" onClick={() => setShowModal(false)} />
           <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[450px] pointer-events-auto flex flex-col">
+            <div
+              ref={modalRef}
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (e.target !== modalInputRef.current) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightedIndex((prev) => Math.min(prev + 1, Math.max(filtered.length - 1, 0)));
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+                    return;
+                  }
+                  if (e.key === 'Enter' && filtered[highlightedIndex]) {
+                    e.preventDefault();
+                    handleSelect(filtered[highlightedIndex]);
+                    return;
+                  }
+                }
+                handleFocusTrapKeyDown(e);
+              }}
+              className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[450px] pointer-events-auto flex flex-col"
+            >
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                 <Search size={18} className="text-slate-400" />
                 <input
@@ -337,11 +383,11 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
                     setHighlightedIndex(0);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') setHighlightedIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+                    if (e.key === 'ArrowDown') setHighlightedIndex((prev) => Math.min(prev + 1, Math.max(filtered.length - 1, 0)));
                     if (e.key === 'ArrowUp') setHighlightedIndex((prev) => Math.max(prev - 1, 0));
                     if (e.key === 'Enter' && filtered[highlightedIndex]) handleSelect(filtered[highlightedIndex]);
                     if (e.key === 'Enter' && filtered.length === 0 && modalSearch.trim() && canCreate) handleOpenCreateModal();
-                    if (e.key === 'Escape') setShowModal(false);
+                    if (['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) e.stopPropagation();
                   }}
                 />
                 <button
@@ -415,96 +461,23 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
       {showCreateModal && (
         <>
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" onClick={() => setShowCreateModal(false)} />
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
-            <div className="pointer-events-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Create New Warehouse</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Create the warehouse here and it will be selected automatically.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form className="grid gap-4 p-5 md:grid-cols-2" onSubmit={handleCreateWarehouse}>
-                <label className="text-sm">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Code</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.code}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, code: e.target.value.toUpperCase() }))}
-                    placeholder="MAIN"
-                    required
-                  />
-                </label>
-
-                <label className="text-sm">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Name</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.name}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, name: e.target.value }))}
-                    placeholder="Main Warehouse"
-                    required
-                  />
-                </label>
-
-                <label className="text-sm md:col-span-2">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Parent Warehouse</div>
-                  <select
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.parentId}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, parentId: e.target.value }))}
-                  >
-                    <option value="">Top-Level Warehouse</option>
-                    {allWarehouses.map((warehouse) => (
-                      <option key={warehouse.id} value={warehouse.id}>
-                        {warehouse.code} - {warehouse.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="text-sm md:col-span-2">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Address</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.address}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, address: e.target.value }))}
-                    placeholder="Optional location or address"
-                  />
-                </label>
-
-                {createError && (
-                  <div className="md:col-span-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {createError}
-                  </div>
-                )}
-
-                <div className="md:col-span-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreating}
-                    className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                  >
-                    {isCreating ? 'Creating...' : 'Create Warehouse'}
-                  </button>
-                </div>
-              </form>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              ref={createModalRef}
+              tabIndex={-1}
+              onKeyDown={handleCreateFocusTrapKeyDown}
+              className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-slate-950"
+            >
+              <WarehouseMasterCard
+                warehouseId="new"
+                isWindow
+                onClose={() => setShowCreateModal(false)}
+                onSaved={(warehouse) => {
+                  setAllWarehouses((current) => [warehouse, ...current.filter((entry) => entry.id !== warehouse.id)]);
+                  handleSelect(warehouse);
+                  void fetchWarehouses(false);
+                }}
+              />
             </div>
           </div>
         </>

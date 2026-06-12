@@ -20,7 +20,8 @@ import { errorHandler } from '../../../services/errorHandler';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector, ItemSelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { PartySelector, ItemSelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
@@ -37,7 +38,10 @@ import {
   Info,
   Link2,
   Paperclip,
+  Pencil,
+  Plus,
   ShieldCheck,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import {
@@ -93,10 +97,25 @@ interface EditableLine {
   uomId?: string;
   uom: string;
   unitPriceDoc: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   taxCodeId?: string;
   /** Per-line inclusive override. When undefined, the tax code's default applies. */
   priceIsInclusive?: boolean;
   warehouseId?: string;
+  description?: string;
+}
+
+interface EditableCharge {
+  chargeId?: string;
+  /** CHARGE adds to the bill total; DISCOUNT subtracts from it. Defaults to CHARGE. */
+  kind?: 'CHARGE' | 'DISCOUNT';
+  code?: string;
+  name: string;
+  amountDoc: number;
+  accountId?: string;
+  /** Display-only label for the chosen GL account (code/name); not sent to the API. */
+  accountLabel?: string;
   description?: string;
 }
 
@@ -111,14 +130,20 @@ interface EditableForm {
   exchangeRate: number;
   notes: string;
   lines: EditableLine[];
+  charges: EditableCharge[];
 }
+
+let piChargeUidSeq = 0;
+const nextPiChargeId = (): string => `chg_${Date.now().toString(36)}_${(piChargeUidSeq++).toString(36)}`;
 
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
-  invoicedQty: 1,
+  invoicedQty: 0,
   uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
+  discountType: undefined,
+  discountValue: 0,
   taxCodeId: undefined,
   warehouseId: undefined,
   description: '',
@@ -134,6 +159,7 @@ const createEmptyForm = (purchaseOrderId = '', vendorId = ''): EditableForm => (
   exchangeRate: 1,
   notes: '',
   lines: [createEmptyLine()],
+  charges: [],
 });
 
 const PurchaseInvoiceDetailPage: React.FC = () => {
@@ -163,6 +189,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chargeModal, setChargeModal] = useState<{
+    kind: 'CHARGE' | 'DISCOUNT';
+    editIndex: number | null;
+    accountId: string;
+    accountLabel: string;
+    amount: number;
+    description: string;
+  } | null>(null);
   const [attachments, setAttachments] = useState<PurchaseInvoiceAttachmentDTO[]>([]);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentDeletingId, setAttachmentDeletingId] = useState<string | null>(null);
@@ -220,36 +254,73 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     [taxCodes]
   );
 
+  /**
+   * Back-solve unit cost from a target Line Total (gross) or Net, mirroring
+   * the SI back-solve. Handles line-level discount (PERCENT or AMOUNT) and
+   * inclusive/exclusive tax — same math as the backend's normalizeLine.
+   */
+  const solveUnitCostFromTotal = (
+    target: number,
+    field: 'lineGross' | 'net',
+    row: EditableLine,
+  ): number => {
+    const q = Number(row.invoicedQty || 0);
+    if (q <= 0 || !Number.isFinite(target)) return 0;
+    const taxCode = row.taxCodeId ? taxById[row.taxCodeId] : undefined;
+    const taxRate = taxCode?.rate ?? 0;
+    const inclusive =
+      row.priceIsInclusive !== undefined
+        ? row.priceIsInclusive === true
+        : taxCode?.priceIsInclusive === true;
+    const postDisc = field === 'lineGross'
+      ? (inclusive ? target : target / (1 + taxRate))
+      : (inclusive ? target * (1 + taxRate) : target);
+    const dt = row.discountType;
+    const dv = Number(row.discountValue || 0);
+    if (dt === 'PERCENT') {
+      const factor = 1 - dv / 100;
+      if (factor <= 0) return 0;
+      return postDisc / (q * factor);
+    }
+    if (dt === 'AMOUNT') {
+      return (postDisc + dv) / q;
+    }
+    return postDisc / q;
+  };
+
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
       const taxCode = line.taxCodeId ? taxById[line.taxCodeId] : undefined;
       const taxRate = taxCode?.rate ?? 0;
-      // Honour the inclusive flag — line-level override (set via API) wins,
-      // otherwise inherit from the tax code's default. Same shape as the SI
-      // detail page and the entity's normalizeLine.
       const effectiveInclusive =
-        (line as any).priceIsInclusive !== undefined
-          ? (line as any).priceIsInclusive === true
+        line.priceIsInclusive !== undefined
+          ? line.priceIsInclusive === true
           : taxCode?.priceIsInclusive === true;
       const divisor = effectiveInclusive ? 1 + taxRate : 1;
-      // Raw qty × unit extension — needed only to derive Net (lineTotalDoc) for
-      // inclusive lines. NOT displayed; the LINE TOTAL column is Net + Tax.
-      const lineExtensionDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
-      const lineExtensionBase = roundMoney(lineExtensionDoc * (form.exchangeRate || 0));
-      const lineTotalDoc = roundMoney(lineExtensionDoc / divisor);
-      const lineTotalBase = roundMoney(lineExtensionBase / divisor);
+      const grossLineTotalDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
+      const discountValue = Number(line.discountValue || 0);
+      const discountAmountDoc = line.discountType === 'PERCENT'
+        ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))))
+        : line.discountType === 'AMOUNT'
+          ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, discountValue)))
+          : 0;
+      const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+      const postDiscountBase = roundMoney(postDiscountDoc * (form.exchangeRate || 0));
+      const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
+      const lineTotalBase = roundMoney(postDiscountBase / divisor);
       const taxAmountDoc = effectiveInclusive
-        ? roundMoney(lineExtensionDoc - lineTotalDoc)
+        ? roundMoney(postDiscountDoc - lineTotalDoc)
         : roundMoney(lineTotalDoc * taxRate);
       const taxAmountBase = effectiveInclusive
-        ? roundMoney(lineExtensionBase - lineTotalBase)
+        ? roundMoney(postDiscountBase - lineTotalBase)
         : roundMoney(lineTotalBase * taxRate);
-      // `lineGrossDoc` is what the customer pays for this line — Net + Tax —
-      // matching SI's convention. Always == lineTotalDoc + taxAmountDoc.
+      // `lineGrossDoc` is what the vendor charges for this line — Net + Tax.
       const lineGrossDoc = roundMoney(lineTotalDoc + taxAmountDoc);
       const lineGrossBase = roundMoney(lineTotalBase + taxAmountBase);
 
       return {
+        grossLineTotalDoc,
+        discountAmountDoc,
         lineGrossDoc,
         lineGrossBase,
         lineTotalDoc,
@@ -261,8 +332,15 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   }, [form.exchangeRate, form.lines, taxById]);
 
   const totals = useMemo(() => {
-    const subtotalDoc = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
-    const subtotalBase = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalBase, 0));
+    // Whole-invoice CHARGE adds to the subtotal; DISCOUNT subtracts. Both are tax-free.
+    const chargeSubtotalDoc = form.charges.reduce(
+      (sum, c) => sum + (c.kind === 'DISCOUNT' ? -(c.amountDoc || 0) : (c.amountDoc || 0)), 0);
+    const chargeSubtotalBase = roundMoney(chargeSubtotalDoc * (form.exchangeRate || 0));
+    const discountTotalDoc = form.charges.reduce(
+      (sum, c) => sum + (c.kind === 'DISCOUNT' ? (c.amountDoc || 0) : 0), 0);
+
+    const subtotalDoc = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalDoc, 0) + chargeSubtotalDoc);
+    const subtotalBase = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalBase, 0) + chargeSubtotalBase);
     const taxTotalDoc = roundMoney(computedLines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
     const taxTotalBase = roundMoney(computedLines.reduce((sum, line) => sum + line.taxAmountBase, 0));
 
@@ -271,10 +349,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       subtotalBase,
       taxTotalDoc,
       taxTotalBase,
+      discountTotalDoc: roundMoney(discountTotalDoc),
       grandTotalDoc: roundMoney(subtotalDoc + taxTotalDoc),
       grandTotalBase: roundMoney(subtotalBase + taxTotalBase),
     };
-  }, [computedLines]);
+  }, [computedLines, form.charges, form.exchangeRate]);
 
   const toEditableLinesFromPurchaseOrder = (po: PurchaseOrderDTO): EditableLine[] => {
     return po.lines
@@ -506,6 +585,271 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     });
   };
 
+  // Whole-invoice charge/discount entry via a single modal opened from the allocation grid.
+  const openChargeModal = (kind: 'CHARGE' | 'DISCOUNT', editIndex: number | null = null) => {
+    if (editIndex !== null) {
+      const existing = form.charges[editIndex];
+      setChargeModal({
+        kind: existing.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE',
+        editIndex,
+        accountId: existing.accountId || '',
+        accountLabel: existing.accountLabel || '',
+        amount: existing.amountDoc || 0,
+        description: existing.name || '',
+      });
+      return;
+    }
+    setChargeModal({
+      kind,
+      editIndex: null,
+      // Both default to the purchase expense account; the server credits it for discounts.
+      accountId: settings?.defaultPurchaseExpenseAccountId || '',
+      accountLabel: '',
+      amount: 0,
+      description: '',
+    });
+  };
+  const closeChargeModal = () => setChargeModal(null);
+  const saveChargeModal = () => {
+    if (!chargeModal) return;
+    const description = chargeModal.description.trim();
+    const amount = roundMoney(chargeModal.amount || 0);
+    if (!description || amount <= 0) return;
+    const entry: EditableCharge = {
+      chargeId: chargeModal.editIndex !== null ? form.charges[chargeModal.editIndex]?.chargeId || nextPiChargeId() : nextPiChargeId(),
+      kind: chargeModal.kind,
+      name: description,
+      amountDoc: amount,
+      accountId: chargeModal.accountId || undefined,
+      accountLabel: chargeModal.accountLabel || undefined,
+    };
+    setForm((prev) => {
+      const charges = [...prev.charges];
+      if (chargeModal.editIndex !== null) charges[chargeModal.editIndex] = entry;
+      else charges.push(entry);
+      return { ...prev, charges };
+    });
+    setChargeModal(null);
+  };
+  const removeCharge = (index: number) => {
+    setForm((prev) => ({ ...prev, charges: prev.charges.filter((_, idx) => idx !== index) }));
+  };
+
+  const renderAllocationGrid = (readOnly: boolean) => {
+    const baseCurrency = company?.baseCurrency || 'USD';
+    const showBase = form.currency !== baseCurrency;
+    const hasCharges = form.charges.length > 0;
+    const accountLabelFor = (charge: EditableCharge) =>
+      charge.accountLabel
+      || charge.accountId
+      || (charge.kind === 'DISCOUNT'
+        ? t('purchases.invoiceDetail.charges.defaultDiscountAccount', 'Default discount account')
+        : t('purchases.invoiceDetail.charges.defaultAccount', 'Default expense account'));
+
+    return (
+      <DocumentSecondaryPanel
+        title={t('purchases.invoiceDetail.allocation.title', 'Account Ledger & Purchase Taxes Allocation Grid')}
+        action={
+          !readOnly ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => openChargeModal('CHARGE')}
+                disabled={busy}
+                className="inline-flex h-6 items-center gap-1 rounded border border-emerald-300 px-2 text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+              >
+                <Plus className="h-3 w-3" />
+                {t('purchases.invoiceDetail.charges.addCharge', 'Add Charge')}
+              </button>
+              <button
+                type="button"
+                onClick={() => openChargeModal('DISCOUNT')}
+                disabled={busy}
+                className="inline-flex h-6 items-center gap-1 rounded border border-rose-300 px-2 text-[10px] font-black uppercase tracking-wide text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/30"
+              >
+                <Plus className="h-3 w-3" />
+                {t('purchases.invoiceDetail.charges.addDiscount', 'Add Discount')}
+              </button>
+            </div>
+          ) : undefined
+        }
+      >
+        {!hasCharges ? (
+          <DocumentEmptyPanel
+            title={t('purchases.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
+            description={
+              readOnly
+                ? t('purchases.invoiceDetail.charges.emptyReadOnly', 'This bill has no whole-invoice charges or discounts.')
+                : t('purchases.invoiceDetail.charges.emptyDescription', 'Use Add Charge or Add Discount to apply a whole-invoice charge (e.g. freight/landed cost) or discount. Each posts to its own GL account and adjusts the bill totals.')
+            }
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+                  <th className="px-2 py-1.5 text-left font-black">{t('purchases.invoiceDetail.charges.col.type', 'Type')}</th>
+                  <th className="px-2 py-1.5 text-left font-black">{t('purchases.invoiceDetail.charges.col.description', 'Description')}</th>
+                  <th className="px-2 py-1.5 text-left font-black">{t('purchases.invoiceDetail.charges.col.account', 'GL Account')}</th>
+                  <th className="px-2 py-1.5 text-right font-black">{t('purchases.invoiceDetail.charges.col.amount', 'Amount')} ({form.currency})</th>
+                  {!readOnly && <th className="w-16 px-1 py-1.5" />}
+                </tr>
+              </thead>
+              <tbody>
+                {form.charges.map((charge, index) => {
+                  const isDiscount = charge.kind === 'DISCOUNT';
+                  const amountBase = roundMoney((charge.amountDoc || 0) * (form.exchangeRate || 0));
+                  return (
+                    <tr key={charge.chargeId || index} className="border-b border-slate-100 align-middle dark:border-slate-800/60">
+                      <td className="px-2 py-1.5">
+                        <span
+                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
+                            isDiscount
+                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                          }`}
+                        >
+                          {isDiscount ? t('purchases.invoiceDetail.charges.discount', 'Discount') : t('purchases.invoiceDetail.charges.charge', 'Charge')}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 font-semibold text-slate-800 dark:text-slate-200">{charge.name || '—'}</td>
+                      <td className="px-2 py-1.5 text-slate-600 dark:text-slate-300">{accountLabelFor(charge)}</td>
+                      <td className="px-2 py-1.5 text-right">
+                        <span className={`font-mono font-bold ${isDiscount ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                          {isDiscount ? '−' : ''}{(charge.amountDoc || 0).toFixed(2)}
+                        </span>
+                        {showBase && (
+                          <div className="mt-0.5 text-[10px] text-slate-400">
+                            {isDiscount ? '−' : ''}{baseCurrency} {amountBase.toFixed(2)}
+                          </div>
+                        )}
+                      </td>
+                      {!readOnly && (
+                        <td className="px-1 py-1.5">
+                          <div className="flex items-center justify-end gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => openChargeModal(charge.kind || 'CHARGE', index)}
+                              disabled={busy}
+                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-slate-800"
+                              aria-label={t('purchases.invoiceDetail.charges.edit', 'Edit')}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeCharge(index)}
+                              disabled={busy}
+                              className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-950/40"
+                              aria-label={t('purchases.invoiceDetail.charges.remove', 'Remove')}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </DocumentSecondaryPanel>
+    );
+  };
+
+  const renderChargeModal = () => {
+    if (!chargeModal) return null;
+    const isDiscount = chargeModal.kind === 'DISCOUNT';
+    const canSave = chargeModal.description.trim().length > 0 && (chargeModal.amount || 0) > 0;
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={closeChargeModal}>
+        <div
+          className="w-full max-w-md overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={`flex items-center justify-between border-b px-4 py-3 ${isDiscount ? 'border-rose-200 dark:border-rose-900' : 'border-emerald-200 dark:border-emerald-900'}`}>
+            <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
+              {chargeModal.editIndex !== null
+                ? (isDiscount ? t('purchases.invoiceDetail.charges.editDiscount', 'Edit Discount') : t('purchases.invoiceDetail.charges.editCharge', 'Edit Charge'))
+                : (isDiscount ? t('purchases.invoiceDetail.charges.addDiscount', 'Add Discount') : t('purchases.invoiceDetail.charges.addCharge', 'Add Charge'))}
+            </h3>
+            <span className={`rounded px-2 py-0.5 text-[10px] font-black uppercase ${isDiscount ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'}`}>
+              {isDiscount ? t('purchases.invoiceDetail.charges.discount', 'Discount') : t('purchases.invoiceDetail.charges.charge', 'Charge')}
+            </span>
+          </div>
+          <div className="space-y-3 p-4">
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t('purchases.invoiceDetail.charges.modal.account', 'GL Account')}
+              </label>
+              <AccountSelector
+                value={chargeModal.accountId || undefined}
+                onChange={(account: any) =>
+                  setChargeModal((prev) => prev ? { ...prev, accountId: account?.id || '', accountLabel: account ? `${account.code} — ${account.name}` : '' } : prev)
+                }
+                placeholder={isDiscount
+                  ? t('purchases.invoiceDetail.charges.modal.discountAccountPlaceholder', 'Discount-received account')
+                  : t('purchases.invoiceDetail.charges.modal.chargeAccountPlaceholder', 'Expense / landed-cost account')}
+                allowedClassifications={isDiscount ? ['REVENUE', 'EXPENSE'] : ['EXPENSE', 'ASSET']}
+                contextLabel={isDiscount ? 'Discount' : 'Expense'}
+              />
+              <p className="mt-1 text-[10px] text-slate-400">
+                {t('purchases.invoiceDetail.charges.modal.accountHint', 'Defaults from Purchase Settings. Charge debits this account; discount credits it.')}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t('purchases.invoiceDetail.charges.modal.amount', 'Amount')} ({form.currency})
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                autoFocus
+                value={chargeModal.amount || ''}
+                onChange={(e) => setChargeModal((prev) => prev ? { ...prev, amount: parseFloat(e.target.value) || 0 } : prev)}
+                className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-right font-mono text-sm text-slate-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t('purchases.invoiceDetail.charges.modal.description', 'Description')}
+              </label>
+              <input
+                type="text"
+                value={chargeModal.description}
+                onChange={(e) => setChargeModal((prev) => prev ? { ...prev, description: e.target.value } : prev)}
+                placeholder={isDiscount
+                  ? t('purchases.invoiceDetail.charges.modal.discountDescPlaceholder', 'e.g. Volume discount')
+                  : t('purchases.invoiceDetail.charges.modal.chargeDescPlaceholder', 'e.g. Freight')}
+                className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+            <button
+              type="button"
+              onClick={closeChargeModal}
+              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={saveChargeModal}
+              disabled={!canSave}
+              className={`rounded px-3 py-1.5 text-xs font-black uppercase tracking-wide text-white disabled:opacity-40 ${isDiscount ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+              {t('common.save', 'Save')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const validateBeforeSave = (): string | null => {
     if (!form.vendorId) return t('purchases.invoiceDetail.validation.vendorRequired', 'Vendor is required.');
     if (!form.invoiceDate) return t('purchases.invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
@@ -549,6 +893,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       uomId: line.uomId,
       uom: line.uom || item?.purchaseUom || item?.baseUom || 'EA',
       unitPriceDoc: line.unitPriceDoc,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
       taxCodeId: line.taxCodeId || undefined,
       priceIsInclusive: effectiveInclusive,
       warehouseId: line.warehouseId || undefined,
@@ -615,6 +961,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
         lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
+          chargeId: charge.chargeId,
+          kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
+          name: charge.name,
+          amountDoc: charge.amountDoc,
+          accountId: charge.accountId || undefined,
+        })),
         notes: form.notes || undefined,
       };
 
@@ -678,6 +1031,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
         lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
+          chargeId: charge.chargeId,
+          kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
+          name: charge.name,
+          amountDoc: charge.amountDoc,
+          accountId: charge.accountId || undefined,
+        })),
         notes: form.notes || undefined,
         settlementInput,
       };
@@ -721,9 +1081,20 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         uomId: l.uomId,
         uom: l.uom,
         unitPriceDoc: l.unitPriceDoc,
+        discountType: l.discountType,
+        discountValue: l.discountValue,
+        priceIsInclusive: l.priceIsInclusive,
         taxCodeId: l.taxCodeId,
         warehouseId: l.warehouseId,
         description: l.description,
+      })),
+      charges: (invoice.charges || []).map((c) => ({
+        chargeId: c.chargeId,
+        kind: c.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
+        code: c.code,
+        name: c.name,
+        amountDoc: c.amountDoc,
+        accountId: c.accountId,
       })),
     });
     setRequestedSourceMode(invoice.purchaseOrderId ? 'po' : 'direct');
@@ -907,6 +1278,40 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     );
   }
 
+  const hasUnsavedDocumentChanges = (() => {
+    if (!(isCreateMode || isEditMode)) return false;
+    const hasLines = form.lines.some((line) =>
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId || line.invoicedQty || line.unitPriceDoc || line.discountValue)
+    );
+    const hasSettlement = settlementMode !== 'DEFERRED' || apAccountId.trim() || settlementRows.some((row) =>
+      Boolean(row.settlementAccountId || row.amountBase || row.paymentMethod || row.reference.trim() || row.notes.trim())
+    );
+    return Boolean(
+      form.purchaseOrderId ||
+      form.vendorId ||
+      form.vendorInvoiceNumber.trim() ||
+      form.dueDate ||
+      form.notes.trim() ||
+      hasLines ||
+      hasSettlement ||
+      pendingAttachmentFiles.length
+    );
+  })();
+
+  const openNewInvoiceForm = () => {
+    setInvoice(null);
+    setForm(createEmptyForm('', ''));
+    setRequestedSourceMode('direct');
+    setAttachments([]);
+    setPendingAttachmentFiles([]);
+    setSettlementMode('DEFERRED');
+    setApAccountId('');
+    setSettlementRows([]);
+    setIsEditMode(false);
+    setError(null);
+    navigate('/purchases/invoices/new');
+  };
+
   if (isCreateMode || isEditMode) {
     const baseCurrency = company?.baseCurrency || 'USD';
     const activeSourceMode = form.purchaseOrderId || requestedSourceMode === 'po' ? 'po' : 'direct';
@@ -1002,6 +1407,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     };
 
     return (
+      <>
       <DocumentDetailScaffold
         title={isCreateMode ? t('purchases.invoiceDetail.createTitle', 'New Purchase Invoice') : t('purchases.invoiceDetail.editTitle', 'Edit {{number}}', { number: invoice?.invoiceNumber })}
         subtitle={t('purchases.invoiceDetail.subtitle', 'Vendor bill document. Posting creates AP and purchase/inventory entries.')}
@@ -1016,6 +1422,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         }
         railSections={draftRailSections}
         railTitle={t('purchases.invoiceDetail.railTitle', 'Purchase invoice side rail')}
+        newAction={{
+          label: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
+          title: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewInvoiceForm,
+        }}
         footerSections={{
           totals: {
             content: ({ showInlineRail, railDrawerOpen }) =>
@@ -1300,7 +1712,29 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 render: (row, index) => (
                   <ItemSelector
                     value={row.itemId}
-                    onChange={(item) => setLine(index, { itemId: item?.id || '' })}
+                    onChange={(item) => {
+                      if (item) {
+                        setLine(index, { itemId: item.id, itemCode: item.code, itemName: item.name });
+                      } else {
+                        // Clearing item resets the whole row.
+                        const empty = createEmptyLine();
+                        setLine(index, {
+                          itemId: empty.itemId,
+                          itemCode: empty.itemCode,
+                          itemName: empty.itemName,
+                          invoicedQty: empty.invoicedQty,
+                          uomId: empty.uomId,
+                          uom: empty.uom,
+                          unitPriceDoc: empty.unitPriceDoc,
+                          discountType: empty.discountType,
+                          discountValue: empty.discountValue,
+                          taxCodeId: empty.taxCodeId,
+                          priceIsInclusive: undefined,
+                          warehouseId: empty.warehouseId,
+                          description: empty.description,
+                        });
+                      }
+                    }}
                     noBorder
                     disabled={busy}
                   />
@@ -1343,19 +1777,46 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 setter: (value) => ({ unitPriceDoc: Number(value) }),
               },
               {
+                id: 'discountType',
+                label: t('purchases.invoiceDetail.columns.discountType', 'Discount Type'),
+                kind: 'custom',
+                width: '64px',
+                render: (row, _index, onChange) => (
+                  <DiscountTypeSelector
+                    noBorder
+                    value={row.discountType}
+                    currencyCode={form.currency}
+                    disabled={busy || !row.itemId}
+                    onChange={(next) => onChange({ discountType: next || undefined, discountValue: 0 })}
+                  />
+                ),
+              },
+              {
+                id: 'discountValue',
+                label: t('purchases.invoiceDetail.columns.discount', 'Discount'),
+                kind: 'number',
+                width: '70px',
+                accessor: (row) => row.discountValue || 0,
+                setter: (value) => ({ discountValue: Number(value) }),
+              },
+              {
                 id: 'taxCode',
                 label: t('purchases.invoiceDetail.columns.taxCode', 'Tax Code'),
-                kind: 'select',
-                width: '140px',
-                accessor: (row) => row.taxCodeId || '',
-                setter: (value) => ({ taxCodeId: value || undefined }),
-                options: [
-                  { value: '', label: t('purchases.invoiceDetail.columns.noTax', 'No Tax') },
-                  ...purchaseTaxCodes.map((tc) => ({
-                    value: tc.id,
-                    label: `${tc.code} (${Math.round(tc.rate * 100)}%)`,
-                  })),
-                ],
+                kind: 'custom',
+                width: '120px',
+                render: (row, index) => (
+                  <TaxCodeSelector
+                    noBorder
+                    options={purchaseTaxCodes.map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate }))}
+                    valueId={row.taxCodeId}
+                    disabled={busy || !row.itemId}
+                    emptySetupMessage={t(
+                      'purchases.invoiceDetail.taxCodeEmptyHint',
+                      'No purchase tax codes set up. Create one with scope PURCHASE or BOTH to use it here.',
+                    )}
+                    onChange={(option) => setLine(index, { taxCodeId: option?.id })}
+                  />
+                ),
               },
               {
                 id: 'warehouse',
@@ -1377,6 +1838,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 kind: 'computed',
                 width: '110px',
                 compute: (_row, index) => computedLines[index]?.lineGrossDoc ?? 0,
+                solveFromTotal: (value, row) => ({ unitPriceDoc: solveUnitCostFromTotal(value, 'lineGross', row) }),
               },
               {
                 id: 'net',
@@ -1384,6 +1846,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 kind: 'computed',
                 width: '100px',
                 compute: (_row, index) => computedLines[index]?.lineTotalDoc ?? 0,
+                solveFromTotal: (value, row) => ({ unitPriceDoc: solveUnitCostFromTotal(value, 'net', row) }),
               },
               {
                 id: 'tax',
@@ -1406,25 +1869,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             ),
           },
           secondary: {
-            content: (
-        <DocumentSecondaryPanel
-          title={t('purchases.invoiceDetail.allocation.title', 'Account Ledger & Purchase Taxes Allocation Grid')}
-          action={
-            <button
-              type="button"
-              onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.allocation.taxPresetNotConnected', 'Purchase tax preset automation is not connected yet.'))}
-              className="hidden h-6 items-center rounded border border-emerald-300 px-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 md:inline-flex"
-            >
-              {t('purchases.invoiceDetail.allocation.applyTaxPreset', 'Apply Tax Preset')}
-            </button>
-          }
-        >
-          <DocumentEmptyPanel
-            title={t('purchases.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
-            description={t('purchases.invoiceDetail.allocation.emptyDescription', 'Real AP, inventory, and tax allocation controls are not shown until the controlled allocation contract is implemented.')}
-          />
-        </DocumentSecondaryPanel>
-            ),
+            content: renderAllocationGrid(false),
           },
           attachments: {
             content: (
@@ -1518,6 +1963,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           },
         }}
       />
+      {renderChargeModal()}
+      </>
     );
   }
 
@@ -1663,6 +2110,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           {invoice.purchaseOrderId && <DocumentPill tone="blue">{t('purchases.invoiceDetail.fromPOPill', 'From PO')}</DocumentPill>}
         </>
       }
+      newAction={{
+        label: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
+        title: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
+        hasUnsavedChanges: false,
+        onNew: openNewInvoiceForm,
+      }}
       railSections={viewRailSections}
       railTitle={t('purchases.invoiceDetail.railTitle', 'Purchase invoice side rail')}
       footerSections={{
@@ -1889,25 +2342,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           ),
         },
         secondary: {
-          content: (
-      <DocumentSecondaryPanel
-        title={t('purchases.invoiceDetail.allocation.title', 'Account Ledger & Purchase Taxes Allocation Grid')}
-        action={
-          <button
-            type="button"
-            onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.allocation.taxPresetNotConnected', 'Purchase tax preset automation is not connected yet.'))}
-            className="hidden h-6 items-center rounded border border-emerald-300 px-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 md:inline-flex"
-          >
-            {t('purchases.invoiceDetail.allocation.applyTaxPreset', 'Apply Tax Preset')}
-          </button>
-        }
-      >
-        <DocumentEmptyPanel
-          title={t('purchases.invoiceDetail.allocation.emptyTitle', 'No allocation rows')}
-          description={t('purchases.invoiceDetail.allocation.emptyDescription', 'Real AP, inventory, and tax allocation controls are not shown until the controlled allocation contract is implemented.')}
-        />
-      </DocumentSecondaryPanel>
-          ),
+          content: renderAllocationGrid(true),
         },
         attachments: {
           content: (
@@ -2041,6 +2476,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         fetchPayments={() => purchasesApi.getPaymentHistory(invoice.id)}
         onClose={() => setPaymentHistoryOpen(false)}
       />
+      {renderChargeModal()}
     </>
   );
 };

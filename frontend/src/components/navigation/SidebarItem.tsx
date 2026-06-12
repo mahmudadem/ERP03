@@ -64,8 +64,20 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   };
   
   const active = path ? isActive(path) : false;
-  const isAnyChildActive = hasChildren && children.some(child => child.path && isActive(child.path));
-  const isSolidActive = active || (isAnyChildActive && !isExpanded && !isSubmenusMode && isOpen);
+
+  // Deep recursive descendant check.
+  // isAnyChildActive is true when ANY descendant at ANY depth is the active route.
+  // This gives grandparent / great-grandparent items the soft "ancestor" tint.
+  const checkDeepActive = (items: any[]): boolean =>
+    items.some((child: any) =>
+      (child.path && isActive(child.path)) ||
+      (child.children?.length && checkDeepActive(child.children))
+    );
+  const isAnyChildActive = hasChildren ? checkDeepActive(children!) : false;
+
+  // RULE: only the EXACT current-route item gets a solid/strong highlight.
+  // Every ancestor node (parent, grandparent…) gets the soft tint via isAnyChildActive.
+  const isSolidActive = active;
 
   // Auto-expand for classic mode
   React.useEffect(() => {
@@ -126,12 +138,12 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   const itemContent = (
     <div className={clsx(
       "flex items-center rounded-[var(--radius-md)] w-full transition-colors duration-300 ease-out group relative outline-none",
-      // Layout switching: Row when open/flyout, Col when shrunk
+      // Layout: row when expanded, centered column when shrunk (no label below so just center the icon)
       (isOpen || isFlyout) 
         ? isCompact 
           ? "flex-row gap-2 px-2.5 py-1"
           : "flex-row gap-3 px-3 py-2" 
-        : "flex-col gap-1.5 px-2 py-3 justify-center items-center",
+        : "px-1 py-2.5 justify-center items-center",
       
       isCompact
         ? "compact-sidebar-item"
@@ -163,7 +175,10 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           : isContrastSidebar
             ? "text-[var(--app-sidebar-muted)] hover:bg-white/10 hover:text-[var(--app-sidebar-text)]"
             : "text-[var(--app-sidebar-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--app-sidebar-text)]",
-      isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
+      // Flyout child base layout; split hover based on active state to avoid overriding the active background on hover
+      isFlyout && "px-4 py-2.5 rounded-none",
+      isFlyout && !isSolidActive && "hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400",
+      isFlyout && isSolidActive && "hover:bg-primary-700 dark:hover:bg-primary-400/20",
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).
           Inverted active state fills the row with primary, so the indicator is
@@ -197,7 +212,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
             ? isCompact 
               ? "w-5 h-5"
               : "w-6 h-6" 
-            : "w-10 h-10 mb-1",
+            : "w-8 h-8",
           // Icon pill state matches the row state:
           //   - row solid blue (direct active OR collapsed-parent-with-active-child) → pill is bg-white/20
           //   - row tinted (expanded parent with active child) → pill is bg-primary-100 / text-primary-700
@@ -240,13 +255,12 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         </div>
       )}
       
-      {/* Label */}
-      <span className={clsx(
-        "pointer-events-none whitespace-nowrap truncate",
-        (isOpen || isFlyout) ? "flex-1 text-sm" : "text-[9px] font-black uppercase tracking-tighter text-center w-full px-1"
-      )}>
-        {label}
-      </span>
+      {/* Label — only shown when sidebar is expanded */}
+      {(isOpen || isFlyout) && (
+        <span className="pointer-events-none whitespace-nowrap truncate flex-1 text-sm">
+          {label}
+        </span>
+      )}
 
       {/* Badge */}
       {badge && (isOpen || isFlyout) && (
@@ -282,7 +296,10 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <button className={clsx("w-full outline-none group", isRtl ? "text-right" : "text-left")}>
+        <button
+          className={clsx("w-full outline-none group", isRtl ? "text-right" : "text-left")}
+          title={!isOpen ? label : undefined}
+        >
           {itemContent}
         </button>
 

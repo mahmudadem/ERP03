@@ -24,7 +24,7 @@ import toast from 'react-hot-toast';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { ItemSelector, PartySelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { salesOperationalApi, PromotionEvaluationResult } from '../../../api/salesOperationalApi';
@@ -55,6 +55,8 @@ interface EditableLine {
   uomId?: string;
   uom: string;
   unitPriceDoc: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -85,10 +87,12 @@ interface EditableForm {
 
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
-  orderedQty: 1,
+  orderedQty: 0,
   uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
+  discountType: undefined,
+  discountValue: 0,
   taxCodeId: undefined,
   warehouseId: undefined,
   description: '',
@@ -184,12 +188,21 @@ const SalesOrderDetailPage: React.FC = () => {
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
       const taxRate = line.taxCodeId ? taxById[line.taxCodeId]?.rate ?? 0 : 0;
-      const lineTotalDoc = roundMoney((line.orderedQty || 0) * (line.unitPriceDoc || 0));
+      const grossLineTotalDoc = roundMoney((line.orderedQty || 0) * (line.unitPriceDoc || 0));
+      const discountValue = Number(line.discountValue || 0);
+      const discountAmountDoc = line.discountType === 'PERCENT'
+        ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))))
+        : line.discountType === 'AMOUNT'
+          ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, discountValue)))
+          : 0;
+      const lineTotalDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
       const lineTotalBase = roundMoney(lineTotalDoc * (form.exchangeRate || 0));
       const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
       const taxAmountBase = roundMoney(lineTotalBase * taxRate);
 
       return {
+        grossLineTotalDoc,
+        discountAmountDoc,
         lineTotalDoc,
         lineTotalBase,
         taxAmountDoc,
@@ -237,6 +250,8 @@ const SalesOrderDetailPage: React.FC = () => {
       uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
       taxCodeId: line.taxCodeId,
       warehouseId: line.warehouseId,
       description: line.description,
@@ -385,6 +400,21 @@ const SalesOrderDetailPage: React.FC = () => {
   const isDraft = form.status === 'DRAFT';
   const isConfirmed = form.status === 'CONFIRMED';
   const isReadOnly = !isDraft;
+  const hasUnsavedDocumentChanges = useMemo(() => {
+    if (isReadOnly) return false;
+    const hasLines = form.lines.some((line) =>
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId || line.orderedQty || line.unitPriceDoc || line.discountValue)
+    );
+    return Boolean(
+      form.customerId ||
+      form.salespersonId ||
+      form.expectedDeliveryDate ||
+      form.promisedDate ||
+      form.notes.trim() ||
+      form.internalNotes.trim() ||
+      hasLines
+    );
+  }, [form, isReadOnly]);
   const canDeliverGoods = Boolean(form.id) && ['CONFIRMED', 'PARTIALLY_DELIVERED'].includes(form.status);
   const canCreateInvoice = Boolean(form.id)
     && ['CONFIRMED', 'PARTIALLY_DELIVERED', 'FULLY_DELIVERED', 'CLOSED'].includes(form.status);
@@ -394,6 +424,13 @@ const SalesOrderDetailPage: React.FC = () => {
   const createInvoiceHref = form.id
     ? `/sales/invoices/new?salesOrderId=${encodeURIComponent(form.id)}&customerId=${encodeURIComponent(form.customerId)}`
     : '';
+
+  const openNewOrderForm = () => {
+    setForm(createEmptyForm());
+    setError(null);
+    setCreditWarnBanner(null);
+    navigate('/sales/orders/new');
+  };
 
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
@@ -523,6 +560,8 @@ const SalesOrderDetailPage: React.FC = () => {
       uomId: line.uomId,
       uom: line.uom || item?.salesUom || item?.baseUom || 'EA',
       unitPriceDoc: line.unitPriceDoc,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
       taxCodeId: line.taxCodeId || undefined,
       warehouseId: line.warehouseId || undefined,
       description: line.description || undefined,
@@ -880,6 +919,12 @@ const SalesOrderDetailPage: React.FC = () => {
       }
       railSections={railSections}
       railTitle={t('sales.soDetail.sideRailTitle')}
+      newAction={{
+        label: t('sales.soDetail.newOrder', 'New Order'),
+        title: t('sales.soDetail.newOrder', 'New Order'),
+        hasUnsavedChanges: hasUnsavedDocumentChanges,
+        onNew: openNewOrderForm,
+      }}
       footerSections={{
         totals: { content: footerSummary },
         actions: { content: footerActions },
@@ -1050,7 +1095,22 @@ const SalesOrderDetailPage: React.FC = () => {
                   placeholder={t('sales.orders.detail.columns.selectItem', 'Select item')}
                   onChange={(item) => {
                     if (!item) {
-                      setLine(index, { itemId: '', itemCode: undefined, itemName: undefined });
+                      // Clearing item resets the whole row to defaults.
+                      const empty = createEmptyLine();
+                      setLine(index, {
+                        itemId: empty.itemId,
+                        itemCode: empty.itemCode,
+                        itemName: empty.itemName,
+                        orderedQty: empty.orderedQty,
+                        uomId: empty.uomId,
+                        uom: empty.uom,
+                        unitPriceDoc: empty.unitPriceDoc,
+                        discountType: empty.discountType,
+                        discountValue: empty.discountValue,
+                        taxCodeId: empty.taxCodeId,
+                        warehouseId: empty.warehouseId,
+                        description: empty.description,
+                      });
                       return;
                     }
                     const defaultUom = getDefaultItemUomOption(item, 'sales');
@@ -1096,16 +1156,46 @@ const SalesOrderDetailPage: React.FC = () => {
           },
           { id: 'unitPrice', label: t('sales.orders.detail.columns.unitPrice', 'Unit Price'), kind: 'number', width: '115px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: Number(value) }) },
           {
+            id: 'discountType',
+            label: t('sales.orders.detail.columns.discountType', 'Discount Type'),
+            kind: 'custom',
+            width: '64px',
+            render: (line, index) => (
+              <DiscountTypeSelector
+                noBorder
+                value={line.discountType}
+                currencyCode={form.currency}
+                disabled={isReadOnly || !line.itemId}
+                onChange={(next) => setLine(index, { discountType: next || undefined, discountValue: 0 })}
+              />
+            ),
+          },
+          {
+            id: 'discountValue',
+            label: t('sales.orders.detail.columns.discount', 'Discount'),
+            kind: 'number',
+            width: '70px',
+            accessor: (line) => line.discountValue || 0,
+            setter: (value) => ({ discountValue: Number(value) }),
+          },
+          {
             id: 'taxCode',
             label: t('sales.orders.detail.columns.taxCode', 'Tax Code'),
-            kind: 'select',
-            width: '150px',
-            accessor: (line) => line.taxCodeId || '',
-            setter: (value) => ({ taxCodeId: value || undefined }),
-            options: [
-              { value: '', label: t('sales.orders.detail.columns.noTax', 'No Tax') },
-              ...salesTaxCodes.map((taxCode) => ({ value: taxCode.id, label: t('sales.soDetail.taxCodeFormat', { code: taxCode.code, rate: Math.round(taxCode.rate * 100) }) })),
-            ],
+            kind: 'custom',
+            width: '120px',
+            render: (line, index) => (
+              <TaxCodeSelector
+                noBorder
+                options={salesTaxCodes.map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate }))}
+                valueId={line.taxCodeId}
+                disabled={isReadOnly || !line.itemId}
+                emptySetupMessage={t(
+                  'sales.orders.detail.taxCodeEmptyHint',
+                  'No sales tax codes set up. Create one with scope SALES or BOTH to use it here.',
+                )}
+                onChange={(option) => setLine(index, { taxCodeId: option?.id })}
+              />
+            ),
           },
           {
             id: 'warehouse',
@@ -1122,7 +1212,31 @@ const SalesOrderDetailPage: React.FC = () => {
               />
             ),
           },
-          { id: 'lineTotal', label: t('sales.orders.detail.columns.lineTotal', 'Line Total'), kind: 'computed', width: '115px', compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+          {
+            id: 'lineTotal',
+            label: t('sales.orders.detail.columns.lineTotal', 'Line Total'),
+            kind: 'computed',
+            width: '115px',
+            compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0,
+            formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}`,
+            // SO Line Total is post-discount net (pre-tax). Back-solve unit
+            // price using qty + discount.
+            solveFromTotal: (value, line) => {
+              const q = Number(line.orderedQty || 0);
+              if (q <= 0 || !Number.isFinite(value)) return { unitPriceDoc: 0 };
+              const dt = line.discountType;
+              const dv = Number(line.discountValue || 0);
+              if (dt === 'PERCENT') {
+                const factor = 1 - dv / 100;
+                if (factor <= 0) return { unitPriceDoc: 0 };
+                return { unitPriceDoc: value / (q * factor) };
+              }
+              if (dt === 'AMOUNT') {
+                return { unitPriceDoc: (value + dv) / q };
+              }
+              return { unitPriceDoc: value / q };
+            },
+          },
           { id: 'tax', label: t('sales.orders.detail.columns.tax', 'Tax'), kind: 'computed', width: '100px', compute: (_line, index) => computedLines[index]?.taxAmountDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
           { id: 'base', label: t('sales.orders.detail.columns.lineBase', 'Line Base'), kind: 'computed', width: '110px', compute: (_line, index) => computedLines[index]?.lineTotalBase || 0 },
           { id: 'statusQty', label: t('sales.orders.detail.columns.statusQty', 'Status Qty'), kind: 'computed', width: '150px', align: 'left', compute: (line) => t('sales.soDetail.statusQtyFormat', { deliveredQty: line.deliveredQty, invoicedQty: line.invoicedQty, returnedQty: line.returnedQty }) },

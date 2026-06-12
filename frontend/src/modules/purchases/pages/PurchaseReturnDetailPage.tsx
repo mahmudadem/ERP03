@@ -7,7 +7,7 @@ import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { ItemSelector, PartySelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyCurrencies } from '../../accounting/hooks/useCompanyCurrencies';
@@ -372,6 +372,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: l.itemId,
           returnQty: l.returnQty,
           unitCostDoc: l.unitCostDoc,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
           uomId: l.uomId,
           uom: l.uom,
           description: l.description,
@@ -403,6 +405,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
       uomId: undefined,
       uom: '',
       unitCostDoc: 0,
+      discountType: undefined,
+      discountValue: 0,
       lineId: `new-${Date.now()}`
     }]);
   };
@@ -501,6 +505,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: l.itemId,
           returnQty: l.returnQty,
           unitCostDoc: l.unitCostDoc,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
           uomId: l.uomId,
           uom: l.uom,
           accountId: l.accountId,
@@ -530,6 +536,53 @@ const PurchaseReturnDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  const hasUnsavedDocumentChanges = (() => {
+    if (!isEditMode || !purchaseReturn) return false;
+    const baselineLines = purchaseReturn.lines.map(l => ({
+      ...l,
+      returnQty: l.returnQty,
+      uomId: l.uomId,
+      uom: l.uom,
+      unitCostDoc: l.unitCostDoc,
+      accountId: l.accountId,
+      description: l.description,
+    }));
+    return (
+      editReturnDate !== purchaseReturn.returnDate ||
+      editWarehouseId !== (purchaseReturn.warehouseId || '') ||
+      editReason !== (purchaseReturn.reason || '') ||
+      editNotes !== (purchaseReturn.notes || '') ||
+      JSON.stringify(editLines) !== JSON.stringify(baselineLines)
+    );
+  })();
+
+  const openNewPurchaseReturnForm = () => {
+    setPurchaseReturn(null);
+    setVendorId('');
+    setPurchaseInvoiceId('');
+    setGoodsReceiptId('');
+    setPurchaseOrderId('');
+    setReturnDate(todayIso());
+    setCurrency('USD');
+    setExchangeRate(1);
+    setWarehouseId('');
+    setReason('');
+    setNotes('');
+    setSelectedLines([{
+      itemId: '',
+      itemName: '',
+      itemCode: '',
+      returnQty: 0,
+      uomId: undefined,
+      uom: '',
+      unitCostDoc: 0,
+      lineId: `new-${Date.now()}`
+    }]);
+    setIsEditMode(false);
+    setError(null);
+    navigate('/purchases/returns/new');
+  };
 
   if (isCreateMode) {
     return (
@@ -672,6 +725,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   uomId: undefined,
                   uom: '',
                   unitCostDoc: 0,
+                  discountType: undefined,
+                  discountValue: 0,
                   lineId: `new-${Date.now()}`,
                 })}
                 isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName)}
@@ -727,7 +782,39 @@ const PurchaseReturnDetailPage: React.FC = () => {
                     ),
                   },
                   { id: 'unitCost', label: 'Unit Price', kind: 'number', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }) },
-                  { id: 'total', label: 'Total', kind: 'computed', width: '120px', compute: (line) => (line.returnQty || 0) * (line.unitCostDoc || 0) },
+                  {
+                    id: 'discountType',
+                    label: 'Discount Type',
+                    kind: 'custom',
+                    width: '64px',
+                    render: (line, index) => (
+                      <DiscountTypeSelector
+                        noBorder
+                        value={line.discountType}
+                        currencyCode={currency}
+                        onChange={(next) => setSelectedLines((prev) => prev.map((l, i) =>
+                          i === index ? { ...l, discountType: next || undefined, discountValue: 0 } : l,
+                        ))}
+                      />
+                    ),
+                  },
+                  { id: 'discountValue', label: 'Discount', kind: 'number', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }) },
+                  {
+                    id: 'total',
+                    label: 'Total',
+                    kind: 'computed',
+                    width: '120px',
+                    compute: (line) => {
+                      const gross = (line.returnQty || 0) * (line.unitCostDoc || 0);
+                      const dv = Number(line.discountValue || 0);
+                      const discount = line.discountType === 'PERCENT'
+                        ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                        : line.discountType === 'AMOUNT'
+                          ? Math.max(0, Math.min(dv, gross))
+                          : 0;
+                      return gross - discount;
+                    },
+                  },
                 ]}
               />
             </div>
@@ -1027,6 +1114,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
           {isEditMode && <DocumentPill tone="amber">Editing</DocumentPill>}
         </>
       }
+      newAction={{
+        label: 'New Return',
+        title: 'New Return',
+        hasUnsavedChanges: hasUnsavedDocumentChanges,
+        onNew: openNewPurchaseReturnForm,
+      }}
       railSections={viewRailSections}
       railTitle="Purchase return side rail"
       footerSections={{
@@ -1125,10 +1218,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
           uomId: undefined,
           uom: '',
           unitCostDoc: 0,
+          discountType: undefined,
+          discountValue: 0,
           lineId: `new-${Date.now()}`,
         })}
         isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName)}
-        minTableWidth="760px"
+        minTableWidth="900px"
         columns={[
           {
             id: 'item',
@@ -1170,7 +1265,43 @@ const PurchaseReturnDetailPage: React.FC = () => {
             ),
           },
           { id: 'unitCost', label: 'Unit Cost', kind: isEditMode ? 'number' : 'computed', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }), compute: (line) => line.unitCostDoc },
-          { id: 'lineTotal', label: 'Line Total', kind: 'computed', width: '130px', compute: (line) => (line.returnQty || 0) * (line.unitCostDoc || 0) },
+          {
+            id: 'discountType',
+            label: 'Discount Type',
+            kind: 'custom',
+            width: '64px',
+            render: (line, index) => isEditMode ? (
+              <DiscountTypeSelector
+                noBorder
+                value={line.discountType}
+                currencyCode={purchaseReturn.currency}
+                onChange={(next) => setEditLines((prev) => prev.map((entry, i) =>
+                  i === index ? { ...entry, discountType: next || undefined, discountValue: 0 } : entry,
+                ))}
+              />
+            ) : (
+              <div className="flex h-9 items-center justify-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">
+                {line.discountType === 'PERCENT' ? '%' : line.discountType === 'AMOUNT' ? purchaseReturn.currency : '—'}
+              </div>
+            ),
+          },
+          { id: 'discountValue', label: 'Discount', kind: isEditMode ? 'number' : 'computed', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }), compute: (line) => line.discountValue || 0 },
+          {
+            id: 'lineTotal',
+            label: 'Line Total',
+            kind: 'computed',
+            width: '130px',
+            compute: (line) => {
+              const gross = (line.returnQty || 0) * (line.unitCostDoc || 0);
+              const dv = Number(line.discountValue || 0);
+              const discount = line.discountType === 'PERCENT'
+                ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                : line.discountType === 'AMOUNT'
+                  ? Math.max(0, Math.min(dv, gross))
+                  : 0;
+              return gross - discount;
+            },
+          },
         ]}
       />
           ),
@@ -1183,7 +1314,16 @@ const PurchaseReturnDetailPage: React.FC = () => {
             <span className="text-slate-600">Subtotal</span>
             <span className="font-medium">
               {purchaseReturn.currency} {isEditMode
-                ? editLines.reduce((s, l) => s + l.returnQty * l.unitCostDoc, 0).toFixed(2)
+                ? editLines.reduce((s, l) => {
+                    const gross = (l.returnQty || 0) * (l.unitCostDoc || 0);
+                    const dv = Number(l.discountValue || 0);
+                    const disc = l.discountType === 'PERCENT'
+                      ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                      : l.discountType === 'AMOUNT'
+                        ? Math.max(0, Math.min(dv, gross))
+                        : 0;
+                    return s + (gross - disc);
+                  }, 0).toFixed(2)
                 : purchaseReturn.subtotalDoc.toFixed(2)}
             </span>
           </div>
@@ -1197,7 +1337,16 @@ const PurchaseReturnDetailPage: React.FC = () => {
             <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total</span>
             <span className="font-semibold text-slate-900 dark:text-slate-100">
               {purchaseReturn.currency} {isEditMode
-                ? editLines.reduce((s, l) => s + l.returnQty * l.unitCostDoc, 0).toFixed(2)
+                ? editLines.reduce((s, l) => {
+                    const gross = (l.returnQty || 0) * (l.unitCostDoc || 0);
+                    const dv = Number(l.discountValue || 0);
+                    const disc = l.discountType === 'PERCENT'
+                      ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                      : l.discountType === 'AMOUNT'
+                        ? Math.max(0, Math.min(dv, gross))
+                        : 0;
+                    return s + (gross - disc);
+                  }, 0).toFixed(2)
                 : purchaseReturn.grandTotalDoc.toFixed(2)}
             </span>
           </div>

@@ -55,14 +55,17 @@ export const AppShell: React.FC = () => {
 
   // Sync sidebar state with pinned preference and breakpoint
   React.useEffect(() => {
-    if (sidebarPinned && isDesktop) {
-      setIsSidebarOpen(true);
-    }
-    if (!isDesktop) {
+    if (isDesktop) {
+      setIsSidebarOpen(sidebarPinned);
+    } else {
       // Always close sidebar when on mobile — it hides off-screen via transform
       setIsSidebarOpen(false);
     }
   }, [sidebarPinned, isDesktop]);
+
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen(prev => !prev);
+  };
 
   const handleGlobalPrint = (idOrVoucher: string | any, formType?: any) => {
     if (typeof idOrVoucher === 'string') {
@@ -134,16 +137,16 @@ export const AppShell: React.FC = () => {
           <PageTitleManager />
 
           {/* TopBar spans 100% width of the viewport */}
-          <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+          <TopBar onMenuClick={handleToggleSidebar} />
 
           {/* Main workspace area below TopBar */}
           <div className="flex-1 flex relative overflow-hidden" style={shellStyle}>
             {/* Sidebar — floats on top or docks below TopBar */}
             <Sidebar
               isOpen={isSidebarOpen}
-              onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+              onToggle={handleToggleSidebar}
               onNavigate={() => {
-                if (!sidebarPinned && !isDesktop) {
+                if (!isDesktop || !sidebarPinned) {
                   setIsSidebarOpen(false);
                 }
               }}

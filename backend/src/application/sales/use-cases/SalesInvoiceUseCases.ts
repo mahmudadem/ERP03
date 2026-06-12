@@ -134,6 +134,8 @@ export interface SalesInvoiceLineInput {
 
 export interface SalesInvoiceChargeInput {
   chargeId?: string;
+  /** CHARGE adds to the total and credits its account; DISCOUNT subtracts and debits its account. Defaults to CHARGE. */
+  kind?: 'CHARGE' | 'DISCOUNT';
   code?: string;
   name: string;
   amountDoc: number;
@@ -511,11 +513,13 @@ export class CreateSalesInvoiceUseCase {
     const charges: SalesInvoiceCharge[] = [];
     for (let i = 0; i < (input.charges || []).length; i += 1) {
       const sourceCharge = input.charges![i];
+      const chargeKind: 'CHARGE' | 'DISCOUNT' = sourceCharge.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE';
       let taxRate = 0;
       let taxCode: string | undefined;
       let taxCodeId: string | undefined;
 
-      if (sourceCharge.taxCodeId) {
+      // Whole-invoice DISCOUNT adjustments are flat and tax-free; only CHARGES resolve a tax code.
+      if (chargeKind === 'CHARGE' && sourceCharge.taxCodeId) {
         const selectedTaxCode = await this.taxCodeRepo.getById(input.companyId, sourceCharge.taxCodeId);
         if (!selectedTaxCode) throw new Error(`Tax code not found: ${sourceCharge.taxCodeId}`);
         assertValidSalesTaxCode(selectedTaxCode, sourceCharge.taxCodeId);
@@ -530,8 +534,15 @@ export class CreateSalesInvoiceUseCase {
         taxRate,
       });
 
+      // Default GL account by kind: charges fall back to the revenue account, discounts
+      // to the configured Sales Discount account (same one line discounts post to).
+      const defaultChargeAccount = chargeKind === 'DISCOUNT'
+        ? settings.defaultSalesExpenseAccountId
+        : settings.defaultRevenueAccountId;
+
       charges.push({
         chargeId: sourceCharge.chargeId || randomUUID(),
+        kind: chargeKind,
         code: sourceCharge.code,
         name: sourceCharge.name,
         amountDoc: roundMoney(sourceCharge.amountDoc),
@@ -541,7 +552,7 @@ export class CreateSalesInvoiceUseCase {
         taxRate,
         taxAmountDoc: chargeAmounts.taxAmountDoc,
         taxAmountBase: chargeAmounts.taxAmountBase,
-        revenueAccountId: sourceCharge.revenueAccountId || settings.defaultRevenueAccountId,
+        revenueAccountId: sourceCharge.revenueAccountId || defaultChargeAccount,
         description: sourceCharge.description,
       });
     }
@@ -771,10 +782,11 @@ export class CreateSalesInvoiceUseCase {
           }
         }
 
-        // Recompute SI totals from all (potentially modified) lines + charges
+        // Recompute SI totals from all (potentially modified) lines + charges.
+        // DISCOUNT-kind adjustments subtract from the subtotal; CHARGES add.
         si.subtotalDoc = roundMoney(
           si.lines.reduce((sum, l) => sum + l.lineTotalDoc, 0)
-          + si.charges.reduce((sum, c) => sum + c.amountDoc, 0)
+          + si.charges.reduce((sum, c) => sum + (c.kind === 'DISCOUNT' ? -c.amountDoc : c.amountDoc), 0)
         );
         si.taxTotalDoc = roundMoney(
           si.lines.reduce((sum, l) => sum + l.taxAmountDoc, 0)
@@ -783,7 +795,7 @@ export class CreateSalesInvoiceUseCase {
         si.grandTotalDoc = roundMoney(si.subtotalDoc + si.taxTotalDoc);
         si.subtotalBase = roundMoney(
           si.lines.reduce((sum, l) => sum + l.lineTotalBase, 0)
-          + si.charges.reduce((sum, c) => sum + (c.amountBase || 0), 0)
+          + si.charges.reduce((sum, c) => sum + (c.kind === 'DISCOUNT' ? -(c.amountBase || 0) : (c.amountBase || 0)), 0)
         );
         si.taxTotalBase = roundMoney(
           si.lines.reduce((sum, l) => sum + l.taxAmountBase, 0)
@@ -1299,7 +1311,12 @@ export class PostSalesInvoiceUseCase {
     }
     const chargeResolvedAccounts = new Map<string, ResolvedChargeAccount>();
     for (const charge of si.charges || []) {
-      const revenueId = await resolveAccountCached(charge.revenueAccountId || settings.defaultRevenueAccountId);
+      // A DISCOUNT adjustment posts to the Sales Discount account (throws if unconfigured,
+      // same guard as line discounts); a CHARGE posts to its revenue account.
+      const fallbackAccount = charge.kind === 'DISCOUNT'
+        ? this.resolveSalesDiscountAccount(settings)
+        : settings.defaultRevenueAccountId;
+      const revenueId = await resolveAccountCached(charge.revenueAccountId || fallbackAccount);
       let taxId: string | undefined;
       if ((charge.taxAmountBase || 0) > 0 && charge.taxCodeId) {
         const chargeTaxCode = taxCodesMap.get(charge.taxCodeId);
@@ -1360,8 +1377,14 @@ export class PostSalesInvoiceUseCase {
           const revenueCreditBase = roundMoney(line.grossLineTotalBase / inclusiveDivisor);
           this.addToBucket(revenueCredits, accounts.revenueId, revenueCreditBase, revenueCreditDoc);
           if ((line.discountAmountBase || 0) > 0 && resolvedDiscountAccountId) {
-            const discountDebitDoc = roundMoney((line.discountAmountDoc || 0) / inclusiveDivisor);
-            const discountDebitBase = roundMoney((line.discountAmountBase || 0) / inclusiveDivisor);
+            // Plug rounding residue into discount so the per-line journal balances:
+            //   (lineTotalBase + tax) + discount = revenue + tax   (per line, ex-tax net basis)
+            //   → discount = revenue − lineTotalBase
+            // Algebraically equivalent to discountAmountBase/divisor but built from
+            // the same already-rounded values the other voucher lines use, so
+            // 1/(1+t)-style ratios on inclusive lines can't leak ±0.01 against AR.
+            const discountDebitBase = roundMoney(revenueCreditBase - (line.lineTotalBase || 0));
+            const discountDebitDoc = roundMoney(revenueCreditDoc - (line.lineTotalDoc || 0));
             this.addToBucket(discountDebits, resolvedDiscountAccountId, discountDebitBase, discountDebitDoc);
           }
           if (line.taxAmountBase > 0 && accounts.taxId) {
@@ -1380,6 +1403,13 @@ export class PostSalesInvoiceUseCase {
         this.freezeChargeTaxSnapshotSync(charge, si.exchangeRate, charge.taxCodeId ? taxCodesMap.get(charge.taxCodeId) : undefined);
         const accounts = chargeResolvedAccounts.get(charge.chargeId);
         if (!accounts) continue;
+        if (charge.kind === 'DISCOUNT') {
+          // Whole-invoice discount: debit its account (joins the line-discount bucket).
+          // The AR debit already nets this out because the entity subtracted it from
+          // the grand total, so total debits/credits stay balanced.
+          this.addToBucket(discountDebits, accounts.revenueId, roundMoney(charge.amountBase || 0), roundMoney(charge.amountDoc || 0));
+          continue;
+        }
         chargeCredits.push({
           accountId: accounts.revenueId,
           side: 'Credit',
@@ -2089,12 +2119,13 @@ function detectSalesInvoiceFinancialChanges(
 
   if (input.charges) {
     const existingById = new Map((current.charges || []).map((c) => [c.chargeId, c]));
-    const sig = (c: { amountDoc?: number; taxCodeId?: string }) =>
-      `${c.amountDoc ?? ''}|${c.taxCodeId ?? ''}`;
+    const sig = (c: { kind?: string; amountDoc?: number; taxCodeId?: string }) =>
+      `${c.kind ?? 'CHARGE'}|${c.amountDoc ?? ''}|${c.taxCodeId ?? ''}`;
     const currentSigs = (current.charges || []).map(sig);
     const incomingSigs = input.charges.map((charge) => {
       const ex = charge.chargeId ? existingById.get(charge.chargeId) : undefined;
       return sig({
+        kind: charge.kind ?? ex?.kind,
         amountDoc: charge.amountDoc ?? ex?.amountDoc,
         taxCodeId: charge.taxCodeId ?? ex?.taxCodeId,
       });
@@ -2235,6 +2266,7 @@ export class UpdateSalesInvoiceUseCase {
         const existing = charge.chargeId ? existingById.get(charge.chargeId) : undefined;
         return {
           chargeId: charge.chargeId || randomUUID(),
+          kind: charge.kind ?? existing?.kind ?? 'CHARGE',
           code: charge.code ?? existing?.code,
           name: charge.name ?? existing?.name ?? `Charge ${index + 1}`,
           amountDoc: charge.amountDoc ?? existing?.amountDoc ?? 0,

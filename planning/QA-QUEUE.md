@@ -10,6 +10,52 @@
 
 ## 🧪 Ready to Test
 
+### Purchases — Whole-Invoice Charges & Discounts (Allocation Grid, PI↔SI parity)
+**Added by:** Claude (Opus 4.8) — report 210
+**What to test:**
+- Open `Purchases → Invoices → New Bill`, add at least one line.
+- In the **Account Ledger & Purchase Taxes Allocation Grid** section, click **Add Charge**.
+  - Expected modal: GL Account (pre-filled from the Default Purchase Expense account), Amount, Description, hint "Charge debits this account; discount credits it."
+  - Amount `50`, description "Freight", Save → a Charge row appears; Grand Total **increases** by 50.
+- Click **Add Discount** → amount `50`, description "Volume" → Save.
+  - Expected: a Discount row (red, −50); Grand Total **decreases** by 50.
+- Edit a row (pencil) / delete (trash). Save the bill, reopen → rows persist.
+- Post the bill, open the posted voucher / GL impact.
+  - Expected: the **charge is Debited** to its account; the **discount is Credited** to its account; the AP credit nets both; the voucher **balances**; the grid is read-only.
+- Edge: with no Default Purchase Expense account set and no account chosen, posting returns a clear error.
+
+**Known limitations:**
+- Flat & tax-free by design (mirrors Sales); no line-VAT re-proration.
+- Discount defaults to the Purchase Expense account (net method, credited); override per row for a dedicated discounts-received account.
+- New strings render in English in AR/TR until locale files are filled.
+
+---
+
+### Sales — Whole-Invoice Charges & Discounts (Allocation Grid)
+**Added by:** Claude (Opus 4.8) — report 209
+**What to test:**
+- Open `Sales → Invoices → New Sales Invoice`, add at least one line item.
+- In the **Account Ledger & Financial Taxes Allocation Grid** section, click **Add Charge**.
+  - Expected modal fields: GL Account (pre-filled from the default revenue account), Amount, Description.
+  - Enter amount `50`, description "Freight", Save.
+  - Expected: a Charge row appears in the grid; the Grand Total increases by 50.
+- Click **Add Discount**.
+  - Expected: GL Account pre-fills from the Default Sales Discount account (Sales Settings → Account Defaults).
+  - Enter amount `50`, description "Year-end", Save.
+  - Expected: a Discount row (red, shown as −50) appears; Grand Total decreases by 50; the rail "Discount" line includes it.
+- Edit a row via the pencil icon (reopens the modal); delete via the trash icon.
+- Save the invoice, reopen it → both rows persist.
+- Post the invoice, then open GL Impact / the posted voucher.
+  - Expected: the charge is **credited** to its account; the discount is **debited** to the discount account; the voucher balances; the grid is read-only.
+- Edge: with no Default Sales Discount account configured and no account picked in the modal, posting a discounted invoice returns a clear error (same as per-line discounts).
+
+**Known limitations:**
+- Adjustments are **flat and tax-free** by design (owner decision) — they never re-prorate line VAT.
+- New UI strings render in English in Arabic/Turkish until locale files are filled in.
+- For charges loaded from the server, the grid shows the account id (no code/name lookup); freshly added rows show "CODE — Name".
+
+---
+
 ### Native Documents — Shared Line Table UOM and Settings Polish
 **Added by:** Codex (report 203)
 **What to test:**

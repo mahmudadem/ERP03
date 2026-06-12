@@ -537,6 +537,18 @@ const SalesSettingsPage: React.FC = () => {
                     <p className="mt-1.5 text-xs text-gray-500 italic">Where restocking fees are booked. Keep separate from product revenue (e.g. "Other Operating Income"). Falls back to the line's revenue account if unset.</p>
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Sales Discount Account</label>
+                    <AccountSelector
+                      value={settings.defaultSalesExpenseAccountId}
+                      onChange={(account: any) => updateSetting('defaultSalesExpenseAccountId', account?.id || undefined)}
+                      placeholder="Select Sales Discount / Discount Allowed account"
+                      allowedClassifications={['EXPENSE', 'REVENUE']}
+                      contextLabel="Discount (Expense or Contra-Revenue)"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">Required when a Sales Invoice line carries a discount. Typically "Sales Discounts Allowed" (expense) or a contra-revenue account so discounts have a visible ledger trace instead of netting silently into revenue.</p>
+                  </div>
+
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">
                     <p className="text-xs font-semibold text-indigo-900">
                       {t('sales.settings.arGeneration.title', 'AR Sub-account Generation')}

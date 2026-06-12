@@ -17,7 +17,7 @@ import {
 import { Card } from '../../../components/ui/Card';
 import { StatusChip } from '../../../components/ui/StatusChip';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
-import { ItemSelector, PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, WarehouseSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { FileText, Link2, Plus, Truck } from 'lucide-react';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
@@ -83,6 +83,8 @@ const SalesReturnDetailPage: React.FC = () => {
     uom: string;
     returnQty: string;
     unitPriceDoc: string;
+    discountType?: 'PERCENT' | 'AMOUNT';
+    discountValue: string;
     description: string;
   };
   const newDirectLine = (): DirectLine => ({
@@ -92,8 +94,10 @@ const SalesReturnDetailPage: React.FC = () => {
     itemName: '',
     uomId: undefined,
     uom: '',
-    returnQty: '1',
+    returnQty: '0',
     unitPriceDoc: '0',
+    discountType: undefined,
+    discountValue: '0',
     description: '',
   });
   const [directLines, setDirectLines] = useState<DirectLine[]>([]);
@@ -363,7 +367,19 @@ const SalesReturnDetailPage: React.FC = () => {
     setDirectLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const onDirectLineItemPick = (key: string, item: InventoryItemDTO | null) => {
     if (!item) {
-      updateDirectLine(key, { itemId: '', itemCode: '', itemName: '', uomId: undefined, uom: '' });
+      // Clearing item resets the whole row to defaults.
+      updateDirectLine(key, {
+        itemId: '',
+        itemCode: '',
+        itemName: '',
+        uomId: undefined,
+        uom: '',
+        returnQty: '0',
+        unitPriceDoc: '0',
+        discountType: undefined,
+        discountValue: '0',
+        description: '',
+      });
       return;
     }
     updateDirectLine(key, {
@@ -473,6 +489,8 @@ const SalesReturnDetailPage: React.FC = () => {
           itemId: l.itemId,
           returnQty: Number(l.returnQty),
           unitPriceDoc: Number(l.unitPriceDoc),
+          discountType: l.discountType,
+          discountValue: l.discountValue ? Number(l.discountValue) : undefined,
           uomId: l.uomId,
           uom: l.uom || undefined,
           description: l.description.trim() || undefined,
@@ -558,6 +576,48 @@ const SalesReturnDetailPage: React.FC = () => {
     );
   }
 
+  const hasUnsavedDocumentChanges = (() => {
+    if (!isCreateMode && !isEditing) return false;
+    const hasDirectLines = directLines.some((line) =>
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description.trim() || Number(line.returnQty) || Number(line.unitPriceDoc) || Number(line.discountValue))
+    );
+    const hasSelectedSourceLines = Object.values(lineSelections).some((selection) => selection.include || Number(selection.returnQty));
+    return Boolean(
+      salesInvoiceId ||
+      deliveryNoteId ||
+      customerId ||
+      warehouseId ||
+      reason.trim() ||
+      notes.trim() ||
+      refundSettlementAccountId ||
+      Number(restockingFeeValue) ||
+      hasDirectLines ||
+      hasSelectedSourceLines
+    );
+  })();
+
+  const openNewReturnForm = () => {
+    setSalesReturn(null);
+    setSalesInvoiceId('');
+    setDeliveryNoteId('');
+    setReturnContext('DIRECT');
+    setReturnDate(todayIso());
+    setCustomerId('');
+    setWarehouseId('');
+    setSettlementMode('CREDIT_NOTE');
+    setReasonCode('OTHER');
+    setReason('');
+    setRestockingFeeType('AMOUNT');
+    setRestockingFeeValue('0');
+    setNotes('');
+    setRefundSettlementAccountId('');
+    setLineSelections({});
+    setDirectLines([]);
+    setIsEditing(false);
+    setError(null);
+    navigate('/sales/returns/new');
+  };
+
   if (isCreateMode) {
     const draftFooterSummary = (
       <DocumentFooterTotalsStrip
@@ -642,6 +702,12 @@ const SalesReturnDetailPage: React.FC = () => {
             {contextLabel(returnContext)}
           </DocumentPill>
         }
+        newAction={{
+          label: t('sales.returnDetail.newReturn', 'New Return'),
+          title: t('sales.returnDetail.newReturn', 'New Return'),
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewReturnForm,
+        }}
         railSections={draftRailSections}
         railTitle={t('sales.returnDetail.sideRailTitle')}
         footerSections={{
@@ -997,7 +1063,38 @@ const SalesReturnDetailPage: React.FC = () => {
                   { id: 'returnQty', label: t('sales.returnDetail.returnQtyColumn'), kind: 'number', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: String(value) }) },
                   { id: 'uom', label: t('sales.returnDetail.uomColumn'), kind: 'computed', width: '90px', align: 'left', compute: (line) => line.uom || '-' },
                   { id: 'unitPrice', label: t('sales.returnDetail.unitPriceColumn'), kind: 'number', width: '120px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: String(value) }) },
-                  { id: 'lineTotal', label: t('sales.returnDetail.lineTotalColumn'), kind: 'computed', width: '130px', compute: (line) => Number(line.returnQty || '0') * Number(line.unitPriceDoc || '0') },
+                  {
+                    id: 'discountType',
+                    label: t('sales.returnDetail.discountTypeColumn', 'Discount Type'),
+                    kind: 'custom',
+                    width: '64px',
+                    render: (line) => (
+                      <DiscountTypeSelector
+                        noBorder
+                        value={line.discountType}
+                        currencyCode={salesReturn?.currency || salesInvoices.find((entry) => entry.id === salesInvoiceId)?.currency || 'USD'}
+                        disabled={busy || !line.itemId}
+                        onChange={(next) => updateDirectLine(line.key, { discountType: next || undefined, discountValue: '0' })}
+                      />
+                    ),
+                  } as ColumnDef<DirectLine>,
+                  { id: 'discountValue', label: t('sales.returnDetail.discountColumn', 'Discount'), kind: 'number', width: '90px', accessor: (line) => line.discountValue, setter: (value) => ({ discountValue: String(value) }) },
+                  {
+                    id: 'lineTotal',
+                    label: t('sales.returnDetail.lineTotalColumn'),
+                    kind: 'computed',
+                    width: '130px',
+                    compute: (line) => {
+                      const gross = Number(line.returnQty || '0') * Number(line.unitPriceDoc || '0');
+                      const dv = Number(line.discountValue || '0');
+                      const disc = line.discountType === 'PERCENT'
+                        ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                        : line.discountType === 'AMOUNT'
+                          ? Math.max(0, Math.min(dv, gross))
+                          : 0;
+                      return gross - disc;
+                    },
+                  },
                   { id: 'description', label: t('sales.returnDetail.descriptionColumn'), kind: 'text', width: '190px', accessor: (line) => line.description, setter: (value) => ({ description: value }) },
               ]}
             />
@@ -1094,6 +1191,12 @@ const SalesReturnDetailPage: React.FC = () => {
           </DocumentPill>
         </>
       }
+      newAction={{
+        label: t('sales.returnDetail.newReturn', 'New Return'),
+        title: t('sales.returnDetail.newReturn', 'New Return'),
+        hasUnsavedChanges: hasUnsavedDocumentChanges,
+        onNew: openNewReturnForm,
+      }}
       railSections={viewRailSections}
       railTitle={t('sales.returnDetail.sideRailTitle')}
       footerSections={{

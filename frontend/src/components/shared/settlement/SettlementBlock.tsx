@@ -244,7 +244,7 @@ export const SettlementBlock: React.FC<SettlementBlockProps> = ({
           )}
         </div>
           <select
-            className="h-7 w-full min-w-[10rem] rounded border border-slate-300 bg-white px-2 text-xs outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-40"
+            className="h-8 w-full min-w-[13.5rem] rounded border border-slate-300 bg-white px-2 pr-8 text-xs outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-56"
             value={mode}
             disabled={readOnly}
             onChange={(e) => handleModeChange(e.target.value as SettlementMode)}

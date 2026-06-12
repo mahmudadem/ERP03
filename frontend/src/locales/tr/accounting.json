@@ -946,5 +946,20 @@
       "createAnother": "Başka fiş oluştur",
       "close": "Pencereyi kapat"
     }
+  },
+  "currencyExchangeWidget": {
+    "labels": {
+      "parity": "parite",
+      "equivalent": "eşdeğer"
+    },
+    "tooltips": {
+      "fetchingRate": "Döviz kuru alınıyor...",
+      "sameCurrency": "Temel Para Birimi Paritesi",
+      "manualOverride": "Manuel geçersiz kılma (Sıfırlamak için durum noktasına tıklayın)",
+      "systemRateForDate": "Tarih için sistem kuru",
+      "systemRateLastKnown": "Sistem kuru"
+    },
+    "baseCurrencyParity": "Temel Para Birimi Paritesi",
+    "baseCurrencyParityFormat": "1 {{currency}} = 1.0000 {{baseCurrency}} (Temel Para Birimi Paritesi)"
   }
 }

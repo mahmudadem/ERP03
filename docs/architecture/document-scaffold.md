@@ -31,6 +31,8 @@ The footer exposes:
 
 The top header exposes the **Document action tray** through `headerTools`. The scaffold wraps these tools in the shared tray chrome automatically. This is the compact icon cluster used for document-level quick actions such as attachments, upload/export, delete/void, history/audit, and page-specific tools. Pages should pass actions into `headerTools`; they should not rebuild a separate action strip.
 
+The scaffold also owns the standard **New document** action through `newAction`. Native document pages pass the document-specific reset/navigation callback plus a page-level `hasUnsavedChanges` boolean. The scaffold renders the icon button and, when actual entered data would be lost, shows the shared confirmation dialog: opening a clear form is allowed only after the user confirms. The scaffold does not decide what counts as dirty because each document has different defaults and working rows; pages must ignore automatic defaults such as today's date, base currency, and placeholder blank rows.
+
 Each slot uses the same `DocumentScaffoldSection` contract:
 
 ```ts
@@ -95,6 +97,18 @@ Native document headers use Sales Invoice density as the default:
 - Notes, reasons, and other long free-text fields should sit below the compact header grid, not consume one of the two header rows unless there is a strong document-specific reason.
 
 This keeps Sales Invoice, Purchase Invoice, Sales Order, Delivery Note, Quotation, Purchase Order, Goods Receipt, Sales Return, and Purchase Return from drifting into different input sizes.
+
+## New Document Guard
+
+Native document pages that consume `DocumentDetailScaffold` must provide `newAction` so users can open a fresh document without returning to the list. The guard is template-owned:
+
+- the button appears in the shared top action tray
+- the warning modal is the shared `ConfirmDialog`
+- the modal appears only when the page reports actual unsaved changes
+- confirming resets or navigates to the clear create form
+- read-only/posted views may open the new form without warning
+
+Current coverage: Sales Invoice, Sales Order, Delivery Note, Sales Return, Purchase Invoice, Purchase Order, Goods Receipt, and the saved/edit Purchase Return scaffold. Quotation remains the documented page-local exclusion, and Purchase Return create is still page-local; those need a separate scaffold adoption slice before this rule can cover them without one-off UI.
 
 ## Shared Line Items Table
 

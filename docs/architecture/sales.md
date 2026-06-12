@@ -381,6 +381,20 @@ This keeps the business rule intact: **deliver first, then invoice what was actu
 - GL posting always lands in base currency.
 - Inventory's weighted average cost is converted at the document FX rate when COGS is computed.
 
+### Redesigned Currency Exchange Widget
+To support multi-currency documents while keeping the document header layout compact and clean:
+- **Premium Compact Layout:** The exchange rate widget (`CurrencyExchangeFieldPremium`) is a single-column, high-density component with a total height of `h-9`.
+- **Dual Inputs & Bi-directional calculation:** It provides side-by-side inputs for **Parity** and **Equivalent** (defined inside the border box instead of separate labels). Changing either field dynamically recomputes the other (`parity = 1 / equivalent`, `equivalent = 1 / parity`).
+- **Base Currency Parity:** If the document currency matches the company's base currency, it displays a single read-only green indicator: `🟢 1 [CURR] = 1.0000 [BASE] (Base Currency Parity)`.
+- **Interactive Status Indicator:** A center status icon shows system rate compliance. A manual override changes the status color/icon. Clicking the indicator resets the rate to the system suggested rate (if overridden) or triggers a manual re-fetch of the system rate (if compliant).
+- **RTL-Aware Grid Layout Swap:** In Arabic/RTL mode, the DOM order of the Currency Selector and the Exchange Rate widget is dynamically reversed in the document header card so that the Currency Selector aligns to the left of the Exchange Rate widget visually.
+
+### Footer "New" Button Action
+In addition to the top tray icon button, a text-only `"New"` button is added to the footer actions strip (in both draft/edit and posted views).
+- The button is labeled `"New"` (translated via `t('sidebar.new', 'New')`).
+- It is wired to the standard `handleNewInvoiceClick` dirty-form guard, prompting the user for confirmation if there are unsaved changes before re-initializing the invoice state.
+
+
 ## Key Use Cases
 
 | Use case | Purpose |
@@ -856,6 +870,18 @@ This is layout architecture only. It does not change Sales posting, tax, settlem
 | Sales Order detail | `frontend/src/modules/sales/pages/SalesOrderDetailPage.tsx` |
 | Delivery Note detail | `frontend/src/modules/sales/pages/DeliveryNoteDetailPage.tsx` |
 | Sales Return detail | `frontend/src/modules/sales/pages/SalesReturnDetailPage.tsx` |
+
+## Sales Hub Redesign (2026-06-12)
+
+The Sales module dashboard page (`/sales`) has been refactored into a high-density, performant, and visual module hub.
+
+### Core Features
+
+1. **Premium Page Header**: Features a logical layered icon container, a contextual "Module Dashboard" pill, and inline date/time of the last updated cache timestamp.
+2. **Interactive Quick Links**: Dynamic tiles to jump directly into child pages (Invoices, Orders, Delivery Notes, Quotations, Returns) with visual counters.
+3. **Interactive Document Pipeline**: Shows active counts per status for each document type. Clicking a status badge (e.g. `DRAFT`) routes to the list page with `location.state.statusFilter` pre-applied. The list pages (`SalesInvoicesListPage`, `SalesOrdersListPage`, `DeliveryNotesListPage`, `SalesReturnsListPage`) sync filter states on mount and update dynamically.
+4. **Summary & settings panel**: Displays core workflow settings (e.g. Simple vs. Operational mode, sequence formats, and operational flags) in a key-value layout.
+5. **Caching & TTLs**: Uses a module-level in-memory cache to prevent redundant API fetches. Sales settings cache is set to 5 minutes, while document arrays have a 60-second TTL. Individual section titles have a `RefreshCw` button to selectively force-refetch that data stream without reloading the entire page.
 
 ---
 
