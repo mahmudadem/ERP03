@@ -54,6 +54,11 @@ export interface PurchaseReturnLineInput {
   itemId?: string;
   returnQty?: number;
   unitCostDoc?: number;
+  /** Optional line discount, mirrors PI/PO. When the return is sourced from a
+   *  PI/PO line, the caller is responsible for forwarding the source line's
+   *  discount so the return reverses the same net. */
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   /** When true, `unitCostDoc` already includes tax. Normally inherited from
    *  the source PI line so the return reverses the same gross/net split. */
   priceIsInclusive?: boolean;
@@ -346,6 +351,11 @@ export class CreatePurchaseReturnUseCase {
       uomId: inputLine?.uomId || invoiceLine.uomId,
       uom: inputLine?.uom || invoiceLine.uom,
       unitCostDoc: invoiceLine.unitPriceDoc,
+      // Inherit the PI line's discount so the return reverses the same
+      // gross/net. Caller may override via inputLine if it's reducing the qty
+      // and recomputing the share of the discount.
+      discountType: inputLine?.discountType ?? invoiceLine.discountType,
+      discountValue: inputLine?.discountValue ?? invoiceLine.discountValue,
       unitCostBase: invoiceLine.unitPriceBase,
       fxRateMovToBase: exchangeRate,
       fxRateCCYToBase: exchangeRate,
@@ -379,6 +389,9 @@ export class CreatePurchaseReturnUseCase {
       uomId: inputLine?.uomId || grnLine.uomId,
       uom: inputLine?.uom || grnLine.uom,
       unitCostDoc: grnLine.unitCostDoc,
+      // GRN doesn't carry discount; user-supplied input wins.
+      discountType: inputLine?.discountType,
+      discountValue: inputLine?.discountValue,
       unitCostBase: grnLine.unitCostBase,
       fxRateMovToBase: grnLine.fxRateMovToBase,
       fxRateCCYToBase: grnLine.fxRateCCYToBase,
@@ -416,7 +429,9 @@ export class CreatePurchaseReturnUseCase {
         uomId: input.uomId || item.purchaseUomId || item.baseUomId,
         uom: input.uom || item.purchaseUom || item.baseUom,
         unitCostDoc: unitCost,
-        unitCostBase: 0, 
+        discountType: input.discountType,
+        discountValue: input.discountValue,
+        unitCostBase: 0,
         fxRateMovToBase: 0,
         fxRateCCYToBase: 0,
         taxRate: 0,
@@ -1212,10 +1227,12 @@ export class UpdatePurchaseReturnUseCase {
           uomId: lineInput.uomId || item.purchaseUomId || item.baseUomId,
           uom: lineInput.uom || item.purchaseUom || item.baseUom,
           unitCostDoc,
+          discountType: lineInput.discountType,
+          discountValue: lineInput.discountValue,
           unitCostBase,
           fxRateMovToBase: existing.exchangeRate,
           fxRateCCYToBase: existing.exchangeRate,
-          taxRate: 0, 
+          taxRate: 0,
           taxAmountDoc: 0,
           taxAmountBase: 0,
           accountId: lineInput.accountId,

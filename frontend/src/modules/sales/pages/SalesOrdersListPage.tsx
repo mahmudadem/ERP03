@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, X } from 'lucide-react';
+import { RefreshCw, X, Eye, Printer, Filter, RotateCcw, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { SOStatus, SalesOrderDTO, salesApi } from '../../../api/salesApi';
 import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
-import { PageHeader } from '../../../components/ui/PageHeader';
-import { EmptyState } from '../../../components/ui/EmptyState';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
+import { DatePicker } from '../../../components/shared/selectors/DatePicker';
 import { formatMoney } from '../../../utils/formatMoney';
+import { listUsers, CompanyUser } from '../../../api/companyAdmin';
+import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
+import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/types';
+import { clsx } from 'clsx';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -36,31 +40,64 @@ const SUMMARY_STATUSES: SOStatus[] = [
 const statusChipClasses = (status: SOStatus): string => {
   switch (status) {
     case 'DRAFT':
-      return 'bg-slate-100 text-slate-700';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
     case 'CONFIRMED':
-      return 'bg-indigo-100 text-indigo-700';
+      return 'bg-indigo-50 text-indigo-700 ring-indigo-600/10 dark:bg-indigo-950/35 dark:text-indigo-300 dark:ring-indigo-500/20';
     case 'PARTIALLY_DELIVERED':
-      return 'bg-amber-100 text-amber-700';
+      return 'bg-amber-50 text-amber-800 ring-amber-600/10 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-500/20';
     case 'FULLY_DELIVERED':
-      return 'bg-emerald-100 text-emerald-700';
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-500/20';
     case 'CLOSED':
-      return 'bg-slate-100 text-slate-700';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
     case 'CANCELLED':
-      return 'bg-rose-100 text-rose-700';
+      return 'bg-rose-50 text-rose-700 ring-rose-600/10 dark:bg-rose-950/35 dark:text-rose-300 dark:ring-rose-500/20';
     default:
-      return 'bg-slate-100 text-slate-700';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
   }
 };
 
 const SalesOrdersListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation('common');
   const [orders, setOrders] = useState<SalesOrderDTO[]>([]);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
-  const [statusFilter, setStatusFilter] = useState<SOStatusFilter>('ALL');
+
+  const stateStatus = (location.state as any)?.statusFilter;
+  const initialStatus = stateStatus && STATUS_VALUES.includes(stateStatus) ? stateStatus : 'ALL';
+
+  const [statusFilter, setStatusFilter] = useState<SOStatusFilter>(initialStatus);
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
+  const [searchFilter, setSearchFilter] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
+  // Local state buffers for filters
+  const [localStatus, setLocalStatus] = useState<SOStatusFilter>(initialStatus);
+  const [localCustomer, setLocalCustomer] = useState<string>('ALL');
+  const [localSearch, setLocalSearch] = useState<string>('');
+  const [localDateFrom, setLocalDateFrom] = useState<string>('');
+  const [localDateTo, setLocalDateTo] = useState<string>('');
+
+  useEffect(() => {
+    const sStatus = (location.state as any)?.statusFilter;
+    if (sStatus && STATUS_VALUES.includes(sStatus)) {
+      setStatusFilter(sStatus);
+      setLocalStatus(sStatus);
+      try {
+        window.history.replaceState({ ...location.state, statusFilter: undefined }, '');
+      } catch (e) {}
+    }
+  }, [location.state]);
+
+  const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [sortField, setSortField] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
 
   const customerById = useMemo(
     () =>
@@ -71,11 +108,47 @@ const SalesOrdersListPage: React.FC = () => {
     [customers]
   );
 
-  const hasActiveFilters = statusFilter !== 'ALL' || customerFilter !== 'ALL';
+  const userById = useMemo(
+    () =>
+      users.reduce<Record<string, { name: string; email: string }>>((acc, u) => {
+        acc[u.userId] = {
+          name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+          email: u.email,
+        };
+        return acc;
+      }, {}),
+    [users]
+  );
 
-  const clearFilters = () => {
+  const hasActiveFilters =
+    statusFilter !== 'ALL' ||
+    customerFilter !== 'ALL' ||
+    searchFilter !== '' ||
+    dateFrom !== '' ||
+    dateTo !== '';
+
+  const handleApply = () => {
+    setStatusFilter(localStatus);
+    setCustomerFilter(localCustomer);
+    setSearchFilter(localSearch);
+    setDateFrom(localDateFrom);
+    setDateTo(localDateTo);
+    setPage(1);
+  };
+
+  const handleClear = () => {
+    setLocalStatus('ALL');
+    setLocalCustomer('ALL');
+    setLocalSearch('');
+    setLocalDateFrom('');
+    setLocalDateTo('');
+
     setStatusFilter('ALL');
     setCustomerFilter('ALL');
+    setSearchFilter('');
+    setDateFrom('');
+    setDateTo('');
+    setPage(1);
   };
 
   const load = async () => {
@@ -83,19 +156,19 @@ const SalesOrdersListPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [soResult, customerResult] = await Promise.all([
+      const [soResult, customerResult, usersResult] = await Promise.all([
         salesApi.listSOs({
-          status: statusFilter === 'ALL' ? undefined : statusFilter,
-          customerId: customerFilter === 'ALL' ? undefined : customerFilter,
           limit: 200,
         }),
         sharedApi.listParties({ role: 'CUSTOMER', active: true }),
+        listUsers().catch(() => []),
       ]);
 
       const list = unwrap<SalesOrderDTO[]>(soResult);
       const customerList = unwrap<PartyDTO[]>(customerResult);
       setOrders(Array.isArray(list) ? list : []);
       setCustomers(Array.isArray(customerList) ? customerList : []);
+      setUsers(Array.isArray(usersResult) ? usersResult : []);
     } catch (err: any) {
       console.error('Failed to load sales orders', err);
       setError(
@@ -112,181 +185,412 @@ const SalesOrdersListPage: React.FC = () => {
 
   useEffect(() => {
     load();
-  }, [statusFilter, customerFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const statusSummary = useMemo(
-    () =>
-      SUMMARY_STATUSES.map((status) => ({
-        status,
-        value: orders.filter((order) => order.status === status).length,
-      })),
-    [orders]
+  const statusCounts = useMemo(() => {
+    const counts = {
+      DRAFT: 0,
+      CONFIRMED: 0,
+      PARTIALLY_DELIVERED: 0,
+      FULLY_DELIVERED: 0,
+      CLOSED: 0,
+      CANCELLED: 0,
+    };
+    orders.forEach((order) => {
+      // Filter status counts by other active filters
+      if (customerFilter !== 'ALL' && order.customerId !== customerFilter) {
+        return;
+      }
+      const orderDateStr = order.orderDate || (order.createdAt ? order.createdAt.split('T')[0] : '');
+      if (dateFrom && orderDateStr < dateFrom) {
+        return;
+      }
+      if (dateTo && orderDateStr > dateTo) {
+        return;
+      }
+      if (searchFilter) {
+        const query = searchFilter.toLowerCase().trim();
+        const numMatch = order.orderNumber.toLowerCase().includes(query);
+        const custNameMatch = (customerById[order.customerId] || order.customerName || '').toLowerCase().includes(query);
+        const creator = userById[order.createdBy];
+        const creatorMatch = creator
+          ? creator.name.toLowerCase().includes(query) || creator.email.toLowerCase().includes(query)
+          : order.createdBy.toLowerCase().includes(query);
+        
+        if (!numMatch && !custNameMatch && !creatorMatch) {
+          return;
+        }
+      }
+
+      if (order.status in counts) {
+        counts[order.status as keyof typeof counts]++;
+      }
+    });
+    return counts;
+  }, [orders, customerFilter, dateFrom, dateTo, searchFilter, customerById, userById]);
+
+  const statusFilterConfig = useMemo(() => ({
+    options: [
+      { value: 'DRAFT', label: t('sales.ordersList.status.DRAFT', 'Draft'), color: 'slate' },
+      { value: 'CONFIRMED', label: t('sales.ordersList.status.CONFIRMED', 'Confirmed'), color: 'indigo' },
+      { value: 'PARTIALLY_DELIVERED', label: t('sales.ordersList.status.PARTIALLY_DELIVERED', 'Partially Delivered'), color: 'amber' },
+      { value: 'FULLY_DELIVERED', label: t('sales.ordersList.status.FULLY_DELIVERED', 'Fully Delivered'), color: 'emerald' },
+      { value: 'CLOSED', label: t('sales.ordersList.status.CLOSED', 'Closed'), color: 'gray' },
+      { value: 'CANCELLED', label: t('sales.ordersList.status.CANCELLED', 'Cancelled'), color: 'rose' },
+    ],
+    activeValue: statusFilter,
+    onChange: (val: string) => {
+      const targetStatus = val as SOStatusFilter;
+      setStatusFilter(targetStatus);
+      setLocalStatus(targetStatus);
+      setPage(1);
+    },
+    counts: statusCounts,
+  }), [statusFilter, statusCounts, t]);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      if (statusFilter !== 'ALL' && order.status !== statusFilter) {
+        return false;
+      }
+      if (customerFilter !== 'ALL' && order.customerId !== customerFilter) {
+        return false;
+      }
+      const orderDateStr = order.orderDate || (order.createdAt ? order.createdAt.split('T')[0] : '');
+      if (dateFrom && orderDateStr < dateFrom) {
+        return false;
+      }
+      if (dateTo && orderDateStr > dateTo) {
+        return false;
+      }
+      if (searchFilter) {
+        const query = searchFilter.toLowerCase().trim();
+        const numMatch = order.orderNumber.toLowerCase().includes(query);
+        const custNameMatch = (customerById[order.customerId] || order.customerName || '').toLowerCase().includes(query);
+        const creator = userById[order.createdBy];
+        const creatorMatch = creator
+          ? creator.name.toLowerCase().includes(query) || creator.email.toLowerCase().includes(query)
+          : order.createdBy.toLowerCase().includes(query);
+        
+        if (!numMatch && !custNameMatch && !creatorMatch) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [orders, statusFilter, customerFilter, dateFrom, dateTo, searchFilter, customerById, userById]);
+
+  const handleOpenOrder = (id: string) => {
+    navigate(`/sales/orders/${id}`);
+  };
+
+  // Filter & Sort Data
+  const sortedData = useMemo(() => {
+    let sorted = [...filteredOrders];
+    if (sortField && sortDirection) {
+      sorted.sort((a, b) => {
+        let aVal = (a as any)[sortField];
+        let bVal = (b as any)[sortField];
+
+        if (sortField === 'customerName') {
+          aVal = customerById[a.customerId] || a.customerName || '';
+          bVal = customerById[b.customerId] || b.customerName || '';
+        }
+
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    } else {
+      // Default Sort: Date and Time descending, then Document Number descending
+      sorted.sort((a, b) => {
+        const dateA = a.createdAt || a.orderDate || '';
+        const dateB = b.createdAt || b.orderDate || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        return b.orderNumber.localeCompare(a.orderNumber);
+      });
+    }
+    return sorted;
+  }, [filteredOrders, sortField, sortDirection, customerById]);
+
+  const totalPages = Math.ceil(sortedData.length / pageSize);
+  const paginatedData = useMemo(() => {
+    return sortedData.slice((page - 1) * pageSize, page * pageSize);
+  }, [sortedData, page, pageSize]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') setSortDirection('desc');
+      else if (sortDirection === 'desc') setSortDirection(null);
+      else setSortDirection('asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+    setPage(1);
+  };
+
+  const columns = useMemo<ColumnDefinition<SalesOrderDTO>[]>(
+    () => [
+      {
+        key: 'orderNumber',
+        label: 'Order #',
+        width: '120px',
+        priority: 1,
+        sortable: true,
+        accessor: 'orderNumber',
+        render: (val: string) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{val}</span>
+        ),
+      },
+      {
+        key: 'customerName',
+        label: 'Customer/Party',
+        width: '200px',
+        priority: 1,
+        sortable: true,
+        accessor: 'customerName',
+        render: (_val: string, row: SalesOrderDTO) => (
+          <span className="font-medium text-slate-900 dark:text-slate-100">
+            {customerById[row.customerId] || row.customerName}
+          </span>
+        ),
+      },
+      {
+        key: 'orderDate',
+        label: 'Order Date and time',
+        width: '180px',
+        priority: 1,
+        sortable: true,
+        accessor: 'orderDate',
+        render: (_val: string, row: SalesOrderDTO) => (
+          <div className="flex flex-col">
+            <span className="font-medium text-slate-900 dark:text-slate-100">{row.orderDate}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              {row.createdAt ? new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: 'grandTotalDoc',
+        label: 'Grand Total',
+        width: '130px',
+        priority: 1,
+        sortable: true,
+        align: 'right',
+        accessor: 'grandTotalDoc',
+        render: (val: number, row: SalesOrderDTO) => (
+          <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+            {formatMoney(val, row.currency)}
+          </span>
+        ),
+      },
+      {
+        key: 'currency',
+        label: 'Currency',
+        width: '80px',
+        priority: 1,
+        sortable: true,
+        accessor: 'currency',
+        align: 'center',
+        render: (val: string) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400">{val}</span>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        width: '120px',
+        priority: 1,
+        sortable: true,
+        accessor: 'status',
+        render: (val: string) => (
+          <span
+            className={clsx(
+              'rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
+              statusChipClasses(val as any)
+            )}
+          >
+            {t(`sales.ordersList.status.${val}`, val)}
+          </span>
+        ),
+      },
+      {
+        key: 'createdBy',
+        label: 'Created By',
+        width: '150px',
+        priority: 2,
+        accessor: 'createdBy',
+        render: (val: string) => {
+          const u = userById[val];
+          if (!u) return <span className="text-xs text-slate-400 font-mono">{val}</span>;
+          return (
+            <div className="flex flex-col">
+              <span className="font-medium text-slate-900 dark:text-slate-100">{u.name}</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">{u.email}</span>
+            </div>
+          );
+        }
+      },
+      {
+        key: 'expectedDeliveryDate',
+        label: 'Expected Delivery',
+        width: '140px',
+        priority: 2,
+        accessor: 'expectedDeliveryDate',
+      },
+      {
+        key: 'confirmedAt',
+        label: 'Confirmed At',
+        width: '120px',
+        priority: 3,
+        accessor: 'confirmedAt',
+      },
+    ],
+    [customerById, userById, t]
+  );
+
+  const rowActions = useMemo<RowAction<SalesOrderDTO>[]>(
+    () => [
+      {
+        key: 'view',
+        label: 'View',
+        icon: Eye,
+        onClick: (row) => handleOpenOrder(row.id),
+        primary: false,
+      },
+      {
+        key: 'print',
+        label: 'Print',
+        icon: Printer,
+        onClick: (row) => {
+          toast.success(`Printing order ${row.orderNumber}...`);
+          window.print();
+        },
+        primary: false,
+      }
+    ],
+    [navigate]
   );
 
   return (
-    <div className="space-y-6 p-4">
-      <PageHeader
-        title={t('sales.ordersList.title')}
-        subtitle={t('sales.ordersList.subtitle')}
-        action={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => load()}
-              title={t('sales.ordersList.refresh')}
-              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-              onClick={() => navigate('/sales/orders/new')}
-            >
-              {t('sales.ordersList.newButton')}
-            </button>
+    <OperationalListLayout<SalesOrderDTO>
+      title={t('sales.ordersList.title')}
+      subtitle=""
+      compactHeader
+      statusFilterConfig={statusFilterConfig}
+      newButtonLabel={t('sales.ordersList.newButton')}
+      onNewClick={() => navigate('/sales/orders/new')}
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      hasActiveFilters={false}
+      onClearFilters={undefined}
+      filters={
+        <div className="flex flex-row items-center gap-2.5 w-full overflow-x-auto whitespace-nowrap pb-1.5 lg:pb-0 scrollbar-thin">
+          {/* SEARCH */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder={t('sales.ordersList.filters.searchPlaceholder', 'Order #, customer, user...')}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleApply()}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
+            />
           </div>
-        }
-      />
 
-      <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
-              {t('sales.ordersList.filters.status')}
-            </label>
+          {/* CUSTOMER */}
+          <div className="w-52 flex-shrink-0">
+            <PartySelector
+              role="CUSTOMER"
+              value={localCustomer === 'ALL' ? '' : localCustomer}
+              onChange={(party) => setLocalCustomer(party ? party.id : 'ALL')}
+              placeholder={t('sales.ordersList.filters.allCustomers', 'All Customers')}
+            />
+          </div>
+
+          {/* STATUS */}
+          <div className="w-32 flex-shrink-0">
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as SOStatusFilter)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={localStatus}
+              onChange={(e) => setLocalStatus(e.target.value as SOStatusFilter)}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
             >
               {STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {t(`sales.ordersList.status.${value}`)}
+                  {value === 'ALL' ? t('sales.ordersList.filters.statusPlaceholder', 'Status') : t(`sales.ordersList.status.${value}`, value)}
                 </option>
               ))}
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
-              {t('sales.ordersList.filters.customer')}
-            </label>
-            <PartySelector
-              role="CUSTOMER"
-              value={customerFilter === 'ALL' ? '' : customerFilter}
-              onChange={(party) => setCustomerFilter(party ? party.id : 'ALL')}
-              placeholder={t('sales.ordersList.filters.allCustomers')}
+
+          {/* DATE RANGE */}
+          <div className="flex gap-2 items-center flex-shrink-0">
+            <DatePicker
+              className="w-32"
+              value={localDateFrom}
+              onChange={setLocalDateFrom}
+              placeholder={t('sales.ordersList.filters.dateFrom', 'Date From')}
+            />
+            <span className="text-slate-400 font-medium">-</span>
+            <DatePicker
+              className="w-32"
+              value={localDateTo}
+              onChange={setLocalDateTo}
+              placeholder={t('sales.ordersList.filters.dateTo', 'Date To')}
             />
           </div>
-          <div className="flex items-end">
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-              >
-                <X size={14} />
-                {t('sales.ordersList.clearFilters')}
-              </button>
-            )}
+
+          {/* ACTIONS */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleApply}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
+            >
+              <Filter size={16} />
+              <span>{t('sales.ordersList.filters.apply', 'Apply')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
+              title={t('sales.ordersList.filters.clear', 'Clear')}
+            >
+              <RotateCcw size={16} />
+            </button>
           </div>
         </div>
-      </Card>
-
-      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
-        {statusSummary.map((summary) => (
-          <Card key={summary.status} className="p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              {t(`sales.ordersList.status.${summary.status}`)}
-            </div>
-            <div className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-              {summary.value}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="p-4">
-        {error && (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-        {!loading && orders.length === 0 && !error ? (
-          <EmptyState
-            title={t('sales.ordersList.empty.title')}
-            description={t('sales.ordersList.empty.description')}
-            action={
-              <button
-                type="button"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-                onClick={() => navigate('/sales/orders/new')}
-              >
-                {t('sales.ordersList.newButton')}
-              </button>
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="py-2 text-left">{t('sales.ordersList.headers.orderNumber')}</th>
-                  <th className="py-2 text-left">{t('sales.ordersList.headers.customer')}</th>
-                  <th className="py-2 text-left">{t('sales.ordersList.headers.orderDate')}</th>
-                  <th className="py-2 text-right">{t('sales.ordersList.headers.total')}</th>
-                  <th className="py-2 text-left">{t('sales.ordersList.headers.currency')}</th>
-                  <th className="py-2 text-left">{t('sales.ordersList.headers.status')}</th>
-                  <th className="py-2 text-right">{t('sales.ordersList.headers.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
-                    onClick={() => navigate(`/sales/orders/${order.id}`)}
-                  >
-                    <td className="py-2 font-medium">{order.orderNumber}</td>
-                    <td className="py-2">{customerById[order.customerId] || order.customerName}</td>
-                    <td className="py-2">{order.orderDate}</td>
-                    <td className="py-2 text-right">{formatMoney(order.grandTotalDoc, order.currency)}</td>
-                    <td className="py-2">{order.currency}</td>
-                    <td className="py-2">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${statusChipClasses(order.status)}`}
-                      >
-                        {t(`sales.ordersList.status.${order.status}`, order.status)}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right">
-                      <button
-                        type="button"
-                        className="text-sm font-medium text-primary-600 hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/sales/orders/${order.id}`);
-                        }}
-                      >
-                        {t('sales.ordersList.open')}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-
-                {loading && (
-                  <tr>
-                    <td className="py-6 text-center text-slate-500" colSpan={7}>
-                      {t('sales.ordersList.loading')}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </div>
+      }
+      columns={columns}
+      data={paginatedData}
+      emptyMessage={t('sales.ordersList.empty.title')}
+      onRowClick={(row) => handleOpenOrder(row.id)}
+      sorting={{
+        field: sortField,
+        direction: sortDirection,
+        onSort: handleSort,
+      }}
+      pagination={{
+        page,
+        pageSize,
+        totalItems: sortedData.length,
+        totalPages,
+        onPageChange: setPage,
+        onPageSizeChange: (size) => {
+          setPageSize(size);
+          setPage(1);
+        },
+        pageSizeOptions: [10, 25, 50, 100],
+      }}
+      rowActions={rowActions}
+      idKey="id"
+    />
   );
 };
 

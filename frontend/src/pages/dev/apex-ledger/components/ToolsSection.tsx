@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Wrench,
   Layout,
@@ -48,6 +49,16 @@ const TOOLS = [
 
 export default function ToolsSection({ activeTool }: ToolsSectionProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const getToolKey = (id: string): string => {
+    switch (id) {
+      case 'forms': return 'apex.tools.formsManagement';
+      case 'budgets': return 'apex.tools.budgets';
+      case 'subgroup-tagging': return 'apex.tools.subgroupTagging';
+      default: return 'sidebar.tools';
+    }
+  };
 
   if (activeTool) {
     const tool = TOOLS.find(t => t.id === activeTool);
@@ -58,10 +69,10 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
           {/* Breadcrumb */}
           <div className="flex items-center space-x-2 text-xs text-slate-500">
             <button onClick={() => navigate('/dev/apex-ledger/tools')} className="hover:text-blue-600 transition-colors">
-              Tools
+              {t('sidebar.tools', { defaultValue: 'Tools' })}
             </button>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-800 font-semibold">{tool.name}</span>
+            <span className="text-slate-800 font-semibold">{t(getToolKey(tool.id), { defaultValue: tool.name })}</span>
           </div>
 
           <div className={`${tool.bgColor} border border-[#E2E8F0] rounded-lg p-5 flex items-center justify-between`}>
@@ -70,7 +81,7 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
                 <Icon className="w-5 h-5" />
               </div>
               <div>
-                <h2 className={`text-sm font-bold ${tool.color}`}>{tool.nameAr} / {tool.name}</h2>
+                <h2 className={`text-sm font-bold ${tool.color}`}>{t(getToolKey(tool.id), { defaultValue: tool.name })}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">{tool.desc}</p>
               </div>
             </div>
@@ -78,7 +89,7 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
               onClick={() => navigate(tool.legacyPath)}
               className={`flex items-center space-x-1.5 text-xs font-bold px-3 py-1.5 rounded-md border ${tool.bgColor} ${tool.color} border-current hover:opacity-80`}
             >
-              <span>Open Full Tool</span>
+              <span>{t('apex.tools.openFull', { defaultValue: 'Open Full Tool' })}</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -114,7 +125,7 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
           <Wrench className="w-4 h-4 text-white" />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-slate-800">أدوات المحاسبة / Accounting Tools</h2>
+          <h2 className="text-sm font-bold text-slate-800">{t('apex.tools.accountingTools', { defaultValue: 'Accounting Tools' })}</h2>
           <p className="text-[10px] text-slate-500">Configure forms, budgets, and analytical tagging</p>
         </div>
       </div>
@@ -122,6 +133,7 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {TOOLS.map((tool) => {
           const Icon = tool.icon;
+          const translatedName = t(getToolKey(tool.id), { defaultValue: tool.name });
           return (
             <button
               key={tool.id}
@@ -131,11 +143,11 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
               <div className={`w-10 h-10 rounded-lg ${tool.bgColor} flex items-center justify-center ${tool.color} mb-3 group-hover:scale-105 transition-transform`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <h3 className="text-xs font-bold text-slate-800">{tool.nameAr}</h3>
+              <h3 className="text-xs font-bold text-slate-800">{translatedName}</h3>
               <h4 className={`text-xs font-semibold ${tool.color} mb-1`}>{tool.name}</h4>
               <p className="text-[10px] text-slate-500 leading-relaxed">{tool.desc}</p>
               <div className="mt-3 flex items-center space-x-1 text-[10px] font-semibold text-blue-600 group-hover:underline">
-                <span>Open</span>
+                <span>{t('common.open', { defaultValue: 'Open' })}</span>
                 <ArrowUpRight className="w-3 h-3" />
               </div>
             </button>

@@ -7,10 +7,21 @@ import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyCurrencies } from '../../accounting/hooks/useCompanyCurrencies';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { FileText } from 'lucide-react';
+import {
+  DocumentDetailScaffold,
+  DocumentFooterTotalsStrip,
+  DocumentHeaderGrid,
+  DocumentPill,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
+  DocumentScaffoldRailSections,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -361,6 +372,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: l.itemId,
           returnQty: l.returnQty,
           unitCostDoc: l.unitCostDoc,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
           uomId: l.uomId,
           uom: l.uom,
           description: l.description,
@@ -392,6 +405,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
       uomId: undefined,
       uom: '',
       unitCostDoc: 0,
+      discountType: undefined,
+      discountValue: 0,
       lineId: `new-${Date.now()}`
     }]);
   };
@@ -490,6 +505,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: l.itemId,
           returnQty: l.returnQty,
           unitCostDoc: l.unitCostDoc,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
           uomId: l.uomId,
           uom: l.uom,
           accountId: l.accountId,
@@ -520,6 +537,53 @@ const PurchaseReturnDetailPage: React.FC = () => {
     );
   }
 
+  const hasUnsavedDocumentChanges = (() => {
+    if (!isEditMode || !purchaseReturn) return false;
+    const baselineLines = purchaseReturn.lines.map(l => ({
+      ...l,
+      returnQty: l.returnQty,
+      uomId: l.uomId,
+      uom: l.uom,
+      unitCostDoc: l.unitCostDoc,
+      accountId: l.accountId,
+      description: l.description,
+    }));
+    return (
+      editReturnDate !== purchaseReturn.returnDate ||
+      editWarehouseId !== (purchaseReturn.warehouseId || '') ||
+      editReason !== (purchaseReturn.reason || '') ||
+      editNotes !== (purchaseReturn.notes || '') ||
+      JSON.stringify(editLines) !== JSON.stringify(baselineLines)
+    );
+  })();
+
+  const openNewPurchaseReturnForm = () => {
+    setPurchaseReturn(null);
+    setVendorId('');
+    setPurchaseInvoiceId('');
+    setGoodsReceiptId('');
+    setPurchaseOrderId('');
+    setReturnDate(todayIso());
+    setCurrency('USD');
+    setExchangeRate(1);
+    setWarehouseId('');
+    setReason('');
+    setNotes('');
+    setSelectedLines([{
+      itemId: '',
+      itemName: '',
+      itemCode: '',
+      returnQty: 0,
+      uomId: undefined,
+      uom: '',
+      unitCostDoc: 0,
+      lineId: `new-${Date.now()}`
+    }]);
+    setIsEditMode(false);
+    setError(null);
+    navigate('/purchases/returns/new');
+  };
+
   if (isCreateMode) {
     return (
       <div className="space-y-6 p-4">
@@ -536,14 +600,14 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-2">
+        <Card className="overflow-visible p-0">
+          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Purchase Invoice ID</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Purchase Invoice ID</label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
                   value={purchaseInvoiceId}
                   onChange={(e) => {
                     setPurchaseInvoiceId(e.target.value);
@@ -557,11 +621,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Goods Receipt ID</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Goods Receipt ID</label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
                   value={goodsReceiptId}
                   onChange={(e) => {
                     setGoodsReceiptId(e.target.value);
@@ -575,7 +639,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Vendor (Manual Selection)</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Vendor (Manual Selection)</label>
               <PartySelector 
                 value={vendorId}
                 disabled={!!purchaseInvoiceId || !!goodsReceiptId}
@@ -590,10 +654,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
                 }}
               />
             </div>
-            <div className="md:col-span-2 flex justify-end">
+            <div className="flex items-end justify-end">
               <button
                 type="button"
-                className="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                className="h-9 rounded border border-indigo-200 bg-indigo-50 px-3 text-[10px] font-black uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
                 onClick={async () => {
                   if (goodsReceiptId.trim()) {
                     await fetchSourceData({ goodsReceiptId });
@@ -607,25 +671,25 @@ const PurchaseReturnDetailPage: React.FC = () => {
               </button>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Purchase Order ID (optional)</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Purchase Order ID (optional)</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
                 value={purchaseOrderId}
                 onChange={(e) => setPurchaseOrderId(e.target.value)}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Return Date</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Return Date</label>
               <DatePicker 
                 value={returnDate}
                 onChange={(val) => setReturnDate(val)}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Warehouse</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Warehouse</label>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-1 focus:ring-indigo-500 outline-none"
+                className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
               >
@@ -636,131 +700,123 @@ const PurchaseReturnDetailPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Context</label>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium">
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Context</label>
+              <div className="flex h-9 items-center rounded border border-slate-200 bg-slate-50 px-2 text-xs font-bold">
                 {contextLabel}
               </div>
             </div>
           </div>
 
-            <div className="mt-8 border-t border-slate-100 pt-8">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Return Items</h3>
-                <button
-                  type="button"
-                  className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                  onClick={addLine}
-                >
-                  + Add Item
-                </button>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                  <thead className="bg-slate-50/50 font-semibold text-slate-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left">Item</th>
-                      <th className="px-4 py-3 text-right">Available</th>
-                      <th className="px-4 py-3 text-right w-32">Return Qty</th>
-                      <th className="px-4 py-3 text-left">UOM</th>
-                      <th className="px-4 py-3 text-right">Unit Price</th>
-                      <th className="px-4 py-3 text-right">Total</th>
-                      <th className="px-4 py-3 text-center w-16" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
-                    {selectedLines.map((line, index) => (
-                      <tr key={line.lineId || index} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <select
-                            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white"
-                            value={line.itemId}
-                            onChange={(e) => handleItemSelect(index, e.target.value)}
-                          >
-                            <option value="">{sourceDocument ? 'Select item from source...' : 'Search item...'}</option>
-                            {sourceDocument ? (
-                              sourceDocument.lines.map((sl: any) => (
-                                <option key={sl.lineId} value={sl.itemId}>
-                                  {sl.itemCode} - {sl.itemName}
-                                </option>
-                              ))
-                            ) : (
-                              items.map((it: any) => (
-                                <option key={it.id} value={it.id}>
-                                  {it.code} - {it.name}
-                                </option>
-                              ))
-                            )}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-500 italic">
-                          {line.availableQty ?? '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number"
-                            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-right text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                            value={line.returnQty}
-                            onChange={(e) => handleReturnQtyChange(line.lineId, e.target.value)}
-                            min={0}
-                            max={line.availableQty}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm uppercase focus:ring-1 focus:ring-indigo-500 outline-none"
-                            value={
-                              findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                              line.uomId ||
-                              line.uom
-                            }
-                            disabled={!line.itemId}
-                            onChange={(e) => handleUomChange(line.lineId, line.itemId, e.target.value)}
-                          >
-                            <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                            {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                              <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                                {option.code}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-right text-sm font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
-                            value={line.unitCostDoc}
-                            onChange={(e) => handleUnitPriceChange(line.lineId, e.target.value)}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-900 font-mono">
-                          {(line.returnQty * line.unitCostDoc).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            type="button"
-                            className="text-slate-400 hover:text-red-500 transition-colors p-1"
-                            onClick={() => removeLine(index)}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-50/50 font-bold text-slate-900 border-t border-slate-200">
-                    <tr>
-                      <td colSpan={5} className="px-4 py-4 text-right uppercase tracking-wider text-xs text-slate-500">Subtotal</td>
-                      <td className="px-4 py-4 text-right font-mono text-lg">
-                        {grandTotalDoc.toFixed(2)}
-                      </td>
-                      <td />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+            <div className="col-span-full mt-2 border-t border-slate-100 pt-3">
+              <ClassicLineItemsTable<any>
+                tableId="purchases.return.create.lines"
+                title="Return Items"
+                rows={selectedLines}
+                onRowChange={(index, patch) => {
+                  setSelectedLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+                }}
+                onRowRemove={removeLine}
+                onRowsChange={setSelectedLines}
+                createEmptyRow={() => ({
+                  itemId: '',
+                  itemName: '',
+                  itemCode: '',
+                  returnQty: 0,
+                  uomId: undefined,
+                  uom: '',
+                  unitCostDoc: 0,
+                  discountType: undefined,
+                  discountValue: 0,
+                  lineId: `new-${Date.now()}`,
+                })}
+                isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName)}
+                onRowAdd={addLine}
+                addLabel="Add Item"
+                minTableWidth="980px"
+                columns={[
+                  {
+                    id: 'item',
+                    label: 'Item',
+                    kind: 'custom',
+                    width: '280px',
+                    render: (line, index) => sourceDocument ? (
+                      <select
+                        className="h-9 w-full border-0 bg-transparent px-2 text-xs outline-none"
+                        value={line.itemId}
+                        onChange={(e) => handleItemSelect(index, e.target.value)}
+                      >
+                        <option value="">Select item from source...</option>
+                        {sourceDocument.lines.map((sl: any) => (
+                          <option key={sl.lineId} value={sl.itemId}>
+                            {sl.itemCode} - {sl.itemName}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <ItemSelector
+                        value={line.itemId}
+                        noBorder
+                        placeholder="Search item..."
+                        onChange={(item) => handleItemSelect(index, item?.id || '')}
+                      />
+                    ),
+                  } as ColumnDef<any>,
+                  { id: 'available', label: 'Available', kind: 'computed', width: '100px', compute: (line) => line.availableQty ?? '-' },
+                  { id: 'returnQty', label: 'Return Qty', kind: 'number', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: Number(value) }) },
+                  {
+                    id: 'uom',
+                    label: 'UOM',
+                    kind: 'custom',
+                    width: '100px',
+                    render: (line) => (
+                      <UomSelector
+                        item={itemById[line.itemId]}
+                        itemId={line.itemId}
+                        valueId={line.uomId}
+                        valueCode={line.uom}
+                        usage="purchase"
+                        disabled={!line.itemId}
+                        noBorder
+                        onChange={(selected) => handleUomChange(line.lineId, line.itemId, selected?.uomId || selected?.code || '')}
+                      />
+                    ),
+                  },
+                  { id: 'unitCost', label: 'Unit Price', kind: 'number', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }) },
+                  {
+                    id: 'discountType',
+                    label: 'Discount Type',
+                    kind: 'custom',
+                    width: '64px',
+                    render: (line, index) => (
+                      <DiscountTypeSelector
+                        noBorder
+                        value={line.discountType}
+                        currencyCode={currency}
+                        onChange={(next) => setSelectedLines((prev) => prev.map((l, i) =>
+                          i === index ? { ...l, discountType: next || undefined, discountValue: 0 } : l,
+                        ))}
+                      />
+                    ),
+                  },
+                  { id: 'discountValue', label: 'Discount', kind: 'number', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }) },
+                  {
+                    id: 'total',
+                    label: 'Total',
+                    kind: 'computed',
+                    width: '120px',
+                    compute: (line) => {
+                      const gross = (line.returnQty || 0) * (line.unitCostDoc || 0);
+                      const dv = Number(line.discountValue || 0);
+                      const discount = line.discountType === 'PERCENT'
+                        ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                        : line.discountType === 'AMOUNT'
+                          ? Math.max(0, Math.min(dv, gross))
+                          : 0;
+                      return gross - discount;
+                    },
+                  },
+                ]}
+              />
             </div>
 
           <div className="mt-8 border-t border-slate-100 pt-8">
@@ -949,32 +1005,147 @@ const PurchaseReturnDetailPage: React.FC = () => {
     );
   }
 
+  const activeGrandTotal = isEditMode
+    ? editLines.reduce((s, l) => s + l.returnQty * l.unitCostDoc, 0)
+    : purchaseReturn.grandTotalDoc;
+  const viewRailSections: DocumentScaffoldRailSections = {
+    info: {
+      title: 'Info',
+      action: <DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>,
+      content: (
+        <DocumentRailKeyValueList
+          items={[
+            { label: 'Vendor', value: purchaseReturn.vendorName || purchaseReturn.vendorId || '-' },
+            { label: 'Return Date', value: isEditMode ? editReturnDate : purchaseReturn.returnDate },
+            { label: 'Warehouse', value: isEditMode ? editWarehouseId : purchaseReturn.warehouseId || '-' },
+          ]}
+        />
+      ),
+    },
+    readiness: {
+      title: 'Document Status',
+      content: (
+        <DocumentRailKeyValueList
+          items={[
+            {
+              label: 'Status',
+              value: (
+                <DocumentPill tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'}>
+                  {purchaseReturn.status}
+                </DocumentPill>
+              ),
+            },
+            { label: 'Lines', value: (isEditMode ? editLines : purchaseReturn.lines).length },
+          ]}
+        />
+      ),
+    },
+    totals: {
+      title: 'Totals',
+      action: <DocumentPill tone="slate">{purchaseReturn.currency}</DocumentPill>,
+      content: (
+        <DocumentRailTotals
+          rows={[
+            { label: 'Subtotal', value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
+            { label: 'Tax', value: `${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}` },
+          ]}
+          grand={{ label: 'Grand Total', value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}` }}
+        />
+      ),
+    },
+  };
+
+  const footerActions = isEditMode ? (
+    <button
+      type="button"
+      className="rounded bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+      onClick={saveEdit}
+      disabled={busy}
+    >
+      {busy ? 'Saving...' : 'Save Changes'}
+    </button>
+  ) : (
+    <>
+      {purchaseReturn.status === 'DRAFT' && (
+        <>
+          <button
+            type="button"
+            className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            onClick={postDraft}
+            disabled={busy}
+          >
+            {busy ? 'Posting...' : 'Post Return'}
+          </button>
+          <button
+            type="button"
+            className="rounded border border-indigo-300 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-50"
+            onClick={enterEditMode}
+            disabled={busy}
+          >
+            Edit Return
+          </button>
+        </>
+      )}
+      {purchaseReturn.status === 'POSTED' && (
+        <button
+          type="button"
+          className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+          onClick={() => setUnpostConfirmOpen(true)}
+          disabled={busy}
+        >
+          {busy ? 'Unposting...' : 'Unpost Return'}
+        </button>
+      )}
+    </>
+  );
+
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {purchaseReturn.returnNumber}
-            {isEditMode && <span className="ml-2 text-base font-normal text-indigo-600">(Editing)</span>}
-          </h1>
-          <p className="text-sm text-slate-600">
-            Vendor: <span className="font-medium">{purchaseReturn.vendorName}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-            {purchaseReturn.returnContext}
-          </span>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            purchaseReturn.status === 'POSTED' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'
-          }`}>{purchaseReturn.status}</span>
-        </div>
-      </div>
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-      <Card className="p-5">
-        <div className="grid gap-4 md:grid-cols-3">
+    <>
+    <DocumentDetailScaffold
+      title={purchaseReturn.returnNumber}
+      subtitle={`Vendor: ${purchaseReturn.vendorName || purchaseReturn.vendorId || '-'}`}
+      icon={FileText}
+      backLabel={isEditMode ? 'Cancel edit' : 'Back to purchase returns'}
+      onBack={() => (isEditMode ? cancelEditMode() : navigate('/purchases/returns'))}
+      badges={
+        <>
+          <DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>
+          <DocumentPill tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'}>{purchaseReturn.status}</DocumentPill>
+          {isEditMode && <DocumentPill tone="amber">Editing</DocumentPill>}
+        </>
+      }
+      newAction={{
+        label: 'New Return',
+        title: 'New Return',
+        hasUnsavedChanges: hasUnsavedDocumentChanges,
+        onNew: openNewPurchaseReturnForm,
+      }}
+      railSections={viewRailSections}
+      railTitle="Purchase return side rail"
+      footerSections={{
+        totals: {
+          content: (
+        <DocumentFooterTotalsStrip
+          totals={[
+            { label: 'Subtotal', value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
+            { label: 'Tax', value: `${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+            { label: 'Grand', value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}`, tone: 'green' },
+          ]}
+        />
+          ),
+        },
+        actions: { content: footerActions },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: (
+      <Card className="overflow-visible p-0">
+        <DocumentHeaderGrid>
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
             {isEditMode ? (
@@ -1022,118 +1193,137 @@ const PurchaseReturnDetailPage: React.FC = () => {
               <textarea rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
             </div>
           )}
-        </div>
+        </DocumentHeaderGrid>
       </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Return Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Cost</th>
-                <th className="py-2 text-right">Line Total</th>
-                {isEditMode && <th className="py-2 w-12" />}
-              </tr>
-            </thead>
-            <tbody>
-              {isEditMode ? (
-                editLines.map((line, idx) => (
-                  <tr key={line.lineId || idx} className="border-b border-slate-100">
-                    <td className="py-2">
-                      <span className="text-xs text-slate-500">{line.itemCode}</span>{' '}
-                      <span className="font-medium">{line.itemName}</span>
-                    </td>
-                    <td className="py-2">
-                      <input
-                        type="number"
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm"
-                        value={line.returnQty}
-                        min={0}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setEditLines(prev => prev.map((l, i) => i === idx ? { ...l, returnQty: val } : l));
-                        }}
-                      />
-                    </td>
-                    <td className="py-2">
-                      <select
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm uppercase"
-                        value={
-                          findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                          line.uomId ||
-                          line.uom
-                        }
-                        disabled={!line.itemId}
-                        onChange={(e) => {
-                          const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                            (option) => (option.uomId || option.code) === e.target.value
-                          );
-                          setEditLines((prev) =>
-                            prev.map((entry, i) =>
-                              i === idx ? { ...entry, uomId: selected?.uomId, uom: selected?.code || '' } : entry
-                            )
-                          );
-                        }}
-                      >
-                        <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                        {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                          <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                            {option.code}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm font-mono"
-                        value={line.unitCostDoc}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setEditLines(prev => prev.map((l, i) => i === idx ? { ...l, unitCostDoc: val } : l));
-                        }}
-                      />
-                    </td>
-                    <td className="py-2 text-right font-mono">{(line.returnQty * line.unitCostDoc).toFixed(2)}</td>
-                    <td className="py-2 text-center">
-                      <button
-                        type="button"
-                        className="text-slate-400 hover:text-red-500 transition-colors"
-                        onClick={() => setEditLines(prev => prev.filter((_, i) => i !== idx))}
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                purchaseReturn.lines.map((line) => (
-                  <tr key={line.lineId} className="border-b border-slate-100">
-                    <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                    <td className="py-2 text-right">{line.returnQty}</td>
-                    <td className="py-2">{line.uom}</td>
-                    <td className="py-2 text-right">{line.unitCostDoc.toFixed(2)}</td>
-                    <td className="py-2 text-right">{(line.returnQty * line.unitCostDoc).toFixed(2)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
+          ),
+        },
+        lines: {
+          content: (
+      <ClassicLineItemsTable<any>
+        tableId="purchases.return.view.lines"
+        title="Lines"
+        rows={isEditMode ? editLines : purchaseReturn.lines}
+        disabled={!isEditMode}
+        onRowChange={(index, patch) => {
+          if (!isEditMode) return;
+          setEditLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+        }}
+        onRowRemove={isEditMode ? (index) => setEditLines((prev) => prev.filter((_, i) => i !== index)) : undefined}
+        onRowsChange={isEditMode ? setEditLines : undefined}
+        createEmptyRow={() => ({
+          itemId: '',
+          itemName: '',
+          itemCode: '',
+          returnQty: 0,
+          uomId: undefined,
+          uom: '',
+          unitCostDoc: 0,
+          discountType: undefined,
+          discountValue: 0,
+          lineId: `new-${Date.now()}`,
+        })}
+        isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName)}
+        minTableWidth="900px"
+        columns={[
+          {
+            id: 'item',
+            label: 'Item',
+            kind: 'custom',
+            width: '260px',
+            render: (line) => (
+              <div className="flex h-9 items-center px-2 text-xs">
+                <span className="text-slate-500">{line.itemCode}</span>
+                <span className="ml-1 font-semibold text-slate-900 dark:text-slate-100">{line.itemName}</span>
+              </div>
+            ),
+          } as ColumnDef<any>,
+          { id: 'returnQty', label: 'Return Qty', kind: isEditMode ? 'number' : 'computed', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: Number(value) }), compute: (line) => line.returnQty },
+          {
+            id: 'uom',
+            label: 'UOM',
+            kind: 'custom',
+            width: '110px',
+            render: (line, index) => isEditMode ? (
+              <UomSelector
+                item={itemById[line.itemId]}
+                itemId={line.itemId}
+                valueId={line.uomId}
+                valueCode={line.uom}
+                usage="purchase"
+                disabled={!line.itemId}
+                noBorder
+                onChange={(selected) => {
+                  setEditLines((prev) =>
+                    prev.map((entry, i) =>
+                      i === index ? { ...entry, uomId: selected?.uomId, uom: selected?.code || '' } : entry
+                    )
+                  );
+                }}
+              />
+            ) : (
+              <div className="flex h-9 items-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">{line.uom}</div>
+            ),
+          },
+          { id: 'unitCost', label: 'Unit Cost', kind: isEditMode ? 'number' : 'computed', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }), compute: (line) => line.unitCostDoc },
+          {
+            id: 'discountType',
+            label: 'Discount Type',
+            kind: 'custom',
+            width: '64px',
+            render: (line, index) => isEditMode ? (
+              <DiscountTypeSelector
+                noBorder
+                value={line.discountType}
+                currencyCode={purchaseReturn.currency}
+                onChange={(next) => setEditLines((prev) => prev.map((entry, i) =>
+                  i === index ? { ...entry, discountType: next || undefined, discountValue: 0 } : entry,
+                ))}
+              />
+            ) : (
+              <div className="flex h-9 items-center justify-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">
+                {line.discountType === 'PERCENT' ? '%' : line.discountType === 'AMOUNT' ? purchaseReturn.currency : '—'}
+              </div>
+            ),
+          },
+          { id: 'discountValue', label: 'Discount', kind: isEditMode ? 'number' : 'computed', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }), compute: (line) => line.discountValue || 0 },
+          {
+            id: 'lineTotal',
+            label: 'Line Total',
+            kind: 'computed',
+            width: '130px',
+            compute: (line) => {
+              const gross = (line.returnQty || 0) * (line.unitCostDoc || 0);
+              const dv = Number(line.discountValue || 0);
+              const discount = line.discountType === 'PERCENT'
+                ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                : line.discountType === 'AMOUNT'
+                  ? Math.max(0, Math.min(dv, gross))
+                  : 0;
+              return gross - discount;
+            },
+          },
+        ]}
+      />
+          ),
+        },
+        secondary: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-2 text-sm md:grid-cols-2">
           <div className="flex justify-between">
             <span className="text-slate-600">Subtotal</span>
             <span className="font-medium">
               {purchaseReturn.currency} {isEditMode
-                ? editLines.reduce((s, l) => s + l.returnQty * l.unitCostDoc, 0).toFixed(2)
+                ? editLines.reduce((s, l) => {
+                    const gross = (l.returnQty || 0) * (l.unitCostDoc || 0);
+                    const dv = Number(l.discountValue || 0);
+                    const disc = l.discountType === 'PERCENT'
+                      ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                      : l.discountType === 'AMOUNT'
+                        ? Math.max(0, Math.min(dv, gross))
+                        : 0;
+                    return s + (gross - disc);
+                  }, 0).toFixed(2)
                 : purchaseReturn.subtotalDoc.toFixed(2)}
             </span>
           </div>
@@ -1147,65 +1337,25 @@ const PurchaseReturnDetailPage: React.FC = () => {
             <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total</span>
             <span className="font-semibold text-slate-900 dark:text-slate-100">
               {purchaseReturn.currency} {isEditMode
-                ? editLines.reduce((s, l) => s + l.returnQty * l.unitCostDoc, 0).toFixed(2)
+                ? editLines.reduce((s, l) => {
+                    const gross = (l.returnQty || 0) * (l.unitCostDoc || 0);
+                    const dv = Number(l.discountValue || 0);
+                    const disc = l.discountType === 'PERCENT'
+                      ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+                      : l.discountType === 'AMOUNT'
+                        ? Math.max(0, Math.min(dv, gross))
+                        : 0;
+                    return s + (gross - disc);
+                  }, 0).toFixed(2)
                 : purchaseReturn.grandTotalDoc.toFixed(2)}
             </span>
           </div>
         </div>
       </Card>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => isEditMode ? cancelEditMode() : navigate('/purchases/returns')}
-        >
-          {isEditMode ? 'Cancel Edit' : 'Back to List'}
-        </button>
-        {isEditMode ? (
-          <button
-            type="button"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={saveEdit}
-            disabled={busy}
-          >
-            {busy ? 'Saving...' : 'Save Changes'}
-          </button>
-        ) : (
-          <>
-            {purchaseReturn.status === 'DRAFT' && (
-              <>
-                <button
-                  type="button"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  onClick={postDraft}
-                  disabled={busy}
-                >
-                  {busy ? 'Posting...' : 'Post Return'}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
-                  onClick={enterEditMode}
-                  disabled={busy}
-                >
-                  Edit Return
-                </button>
-              </>
-            )}
-            {purchaseReturn.status === 'POSTED' && (
-              <button
-                type="button"
-                className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                onClick={() => setUnpostConfirmOpen(true)}
-                disabled={busy}
-              >
-                {busy ? 'Unposting...' : 'Unpost Return'}
-              </button>
-            )}
-          </>
-        )}
-      </div>
+          ),
+        },
+      }}
+    />
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
@@ -1218,7 +1368,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         onConfirm={unpostReturn}
         onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
       />
-    </div>
+    </>
   );
 };
 

@@ -12,8 +12,23 @@ import {
 import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { Truck } from 'lucide-react';
+import {
+  DocumentDetailScaffold,
+  DocumentFooterTotalsStrip,
+  DocumentHeaderField,
+  DocumentHeaderGrid,
+  DocumentPill,
+  DocumentRailChecklist,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
+  DocumentScaffoldRailSections,
+  documentHeaderControlClass,
+  documentHeaderSelectorClass,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -499,39 +514,132 @@ const GoodsReceiptDetailPage: React.FC = () => {
     );
   }
 
+  const hasUnsavedDocumentChanges = (() => {
+    if (!(isCreateMode || isEditMode)) return false;
+    const hasLines = form.lines.some((line) =>
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.uomId || line.uom)
+    );
+    return Boolean(
+      form.purchaseOrderId ||
+      form.vendorId ||
+      form.notes.trim() ||
+      hasLines
+    );
+  })();
+
+  const openNewGoodsReceiptForm = () => {
+    setGrn(null);
+    setForm(createEmptyForm('', '', ''));
+    setIsEditMode(false);
+    setError(null);
+    navigate('/purchases/goods-receipts/new');
+  };
+
   if (isCreateMode || isEditMode) {
+    const receivedQtyTotal = form.lines.reduce((sum, line) => sum + (Number(line.receivedQty) || 0), 0);
+    const draftRailSections: DocumentScaffoldRailSections = {
+      info: {
+        title: 'Info',
+        action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
+        content: (
+          <DocumentRailKeyValueList
+            items={[
+              { label: 'Lines', value: form.lines.length },
+              { label: 'Received Qty', value: receivedQtyTotal.toFixed(2) },
+              { label: 'Warehouse', value: form.warehouseId || '-' },
+            ]}
+          />
+        ),
+      },
+      readiness: {
+        title: 'Document Status',
+        content: (
+          <DocumentRailChecklist
+            items={[
+              { state: 'info', label: 'Draft receipt. Posting will update inventory receipt state through the existing purchase flow.' },
+              ...(form.purchaseOrderId
+                ? [{ state: 'info' as const, label: 'Source PO lines can be loaded into this receipt.' }]
+                : []),
+            ]}
+          />
+        ),
+      },
+      totals: {
+        title: 'Totals',
+        content: (
+          <DocumentRailTotals
+            rows={[
+              { label: 'Lines', value: form.lines.length },
+              { label: 'Receipt Date', value: form.receiptDate || '-' },
+            ]}
+            grand={{ label: 'Received Qty', value: receivedQtyTotal.toFixed(2) }}
+          />
+        ),
+      },
+    };
+
     return (
-      <div className="space-y-6 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {isCreateMode ? 'New Goods Receipt' : `Edit ${grn?.grnNumber}`}
-          </h1>
+      <DocumentDetailScaffold
+        title={isCreateMode ? 'New Goods Receipt' : `Edit ${grn?.grnNumber}`}
+        subtitle="Warehouse receiving document. Posting records received stock through the existing Purchases flow."
+        icon={Truck}
+        backLabel={isEditMode ? 'Cancel edit' : 'Back to goods receipts'}
+        onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
+        badges={<DocumentPill tone="slate">Draft</DocumentPill>}
+        railSections={draftRailSections}
+        railTitle="Goods receipt side rail"
+        newAction={{
+          label: 'New Goods Receipt',
+          title: 'New Goods Receipt',
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewGoodsReceiptForm,
+        }}
+        footerSections={{
+          totals: {
+            content: (
+          <DocumentFooterTotalsStrip
+            totals={[
+              { label: 'Lines', value: form.lines.length },
+              { label: 'Received', value: receivedQtyTotal.toFixed(2), tone: 'green' },
+            ]}
+          />
+            ),
+          },
+          actions: {
+            content: (
           <button
             type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
+            className="rounded bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+            onClick={saveDraft}
+            disabled={busy}
           >
-            {isEditMode ? 'Cancel' : 'Back to List'}
+            {busy ? 'Saving...' : (isCreateMode ? 'Create Draft GRN' : 'Update Draft')}
           </button>
-        </div>
-
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">PO Reference (optional unless PO is required for stock items)</label>
+            ),
+          },
+        }}
+        sections={{
+          banner: {
+            content: error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            ) : null,
+          },
+          header: {
+            content: (
+        <Card className="overflow-visible p-0">
+          <DocumentHeaderGrid>
+            <DocumentHeaderField label="PO Reference">
               <input
                 type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={documentHeaderControlClass}
                 value={form.purchaseOrderId}
                 onChange={(e) => setForm((prev) => ({ ...prev, purchaseOrderId: e.target.value }))}
                 placeholder="purchaseOrderId"
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Vendor (standalone only)</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label="Vendor (standalone only)">
               <PartySelector 
+                className={documentHeaderSelectorClass}
                 value={form.vendorId}
                 disabled={!!form.purchaseOrderId}
                 onChange={(party) => {
@@ -541,182 +649,137 @@ const GoodsReceiptDetailPage: React.FC = () => {
                   }));
                 }}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Receipt Date</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label="Receipt Date">
               <DatePicker 
+                className="w-full"
+                inputClassName={documentHeaderControlClass}
                 value={form.receiptDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, receiptDate: val }))}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Warehouse</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            </DocumentHeaderField>
+            <DocumentHeaderField label="Warehouse">
+              <WarehouseSelector
+                className={documentHeaderSelectorClass}
                 value={form.warehouseId}
-                onChange={(e) => setForm((prev) => ({ ...prev, warehouseId: e.target.value }))}
-              >
-                <option value="">Select warehouse</option>
-                {warehouses.map((warehouse) => (
-                  <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.code} - {warehouse.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+                onChange={(warehouse) => setForm((prev) => ({ ...prev, warehouseId: warehouse?.id || '' }))}
+              />
+            </DocumentHeaderField>
+          </DocumentHeaderGrid>
 
-          <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+          <div className="px-3 pb-3">
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Notes</label>
             <textarea
               rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded border border-slate-300 bg-white px-2 py-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
               value={form.notes}
               onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             />
           </div>
 
-          <div className="mt-4 text-xs text-slate-500">
+          <div className="px-3 pb-3 text-xs text-slate-500">
             If PO is provided, lines are pre-filled from open stock lines using server-side rules.
           </div>
         </Card>
-
-        <Card className="p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-            <div className="flex items-center gap-2">
-              {form.purchaseOrderId && (
-                <button
-                  type="button"
-                  className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 disabled:opacity-50"
-                  onClick={() => loadOpenLinesFromPO()}
-                  disabled={busy || loadingPOLines}
-                >
-                  {loadingPOLines ? 'Loading PO Lines...' : 'Load PO Lines'}
-                </button>
-              )}
+            ),
+          },
+          lines: {
+            content: (
+        <ClassicLineItemsTable<EditableLine>
+          tableId="purchases.goodsReceipt.lines"
+          title="Line Items"
+          headerAction={
+            form.purchaseOrderId ? (
               <button
                 type="button"
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-                onClick={addLine}
-                disabled={busy}
+                className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-indigo-700 disabled:opacity-50"
+                onClick={() => loadOpenLinesFromPO()}
+                disabled={busy || loadingPOLines}
               >
-                Add Item
+                {loadingPOLines ? 'Loading...' : 'Load PO Lines'}
               </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="py-2 text-left">Item</th>
-                  <th className="py-2 text-right">Received Qty</th>
-                  <th className="py-2 text-left">UOM</th>
-                  <th className="py-2 text-left">Warehouse</th>
-                  <th className="py-2 text-right" />
-                </tr>
-              </thead>
-              <tbody>
-                {form.lines.map((line, index) => (
-                  <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-52 rounded-lg border border-slate-300 px-2 py-1.5 disabled:bg-slate-100 disabled:text-slate-500"
-                        value={line.itemId}
-                        onChange={(e) => setLine(index, { itemId: e.target.value })}
-                        disabled={!!form.purchaseOrderId}
-                      >
-                        <option value="">Select item</option>
-                        {items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.code} - {item.name}
-                          </option>
-                        ))}
-                      </select>
-                      {(line.itemCode || line.itemName) && (
-                        <div className="mt-1 text-xs text-slate-500">
-                          {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        min={0.000001}
-                        step={0.000001}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                        value={line.receivedQty}
-                        onChange={(e) => setLine(index, { receivedQty: Number(e.target.value) })}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                        value={
-                          findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                          line.uomId ||
-                          line.uom
-                        }
-                        disabled={!line.itemId}
-                        onChange={(e) => {
-                          const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                            (option) => (option.uomId || option.code) === e.target.value
-                          );
-                          setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                        }}
-                      >
-                        <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                        {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                          <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                            {option.code}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-                        value={line.warehouseId || ''}
-                        disabled={busy}
-                        onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
-                      >
-                        <option value="">Select Warehouse</option>
-                        {warehouses.map((warehouse) => (
-                          <option key={warehouse.id} value={warehouse.id}>
-                            {warehouse.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 text-right">
-                      <button
-                        type="button"
-                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
-                        onClick={() => removeLine(index)}
-                        disabled={busy || form.lines.length <= 1}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={saveDraft}
-            disabled={busy}
-          >
-            {busy ? 'Saving...' : (isCreateMode ? 'Create Draft GRN' : 'Update Draft')}
-          </button>
-        </div>
-      </div>
+            ) : undefined
+          }
+          rows={form.lines}
+          disabled={busy}
+          onRowChange={setLine}
+          onRowRemove={!form.purchaseOrderId ? removeLine : undefined}
+          onRowsChange={!form.purchaseOrderId ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
+          createEmptyRow={createEmptyLine}
+          isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.warehouseId)}
+          onRowAdd={!form.purchaseOrderId ? addLine : undefined}
+          addLabel="Add Item"
+          minTableWidth="860px"
+          columns={[
+            {
+              id: 'item',
+              label: 'Item',
+              kind: 'custom',
+              width: '280px',
+              render: (line, index) => (
+                <ItemSelector
+                  value={line.itemId}
+                  disabled={!!form.purchaseOrderId || busy}
+                  noBorder
+                  placeholder="Select item"
+                  trackInventoryOnly
+                  onChange={(item) => {
+                    if (!item) {
+                      setLine(index, { itemId: '', itemCode: undefined, itemName: undefined });
+                      return;
+                    }
+                    const defaultUom = getDefaultItemUomOption(item, 'purchase');
+                    setLine(index, {
+                      itemId: item.id,
+                      itemCode: item.code,
+                      itemName: item.name,
+                      uomId: defaultUom?.uomId,
+                      uom: defaultUom?.code || item.purchaseUom || item.baseUom,
+                    });
+                  }}
+                />
+              ),
+            } as ColumnDef<EditableLine>,
+            { id: 'receivedQty', label: 'Received Qty', kind: 'number', width: '130px', accessor: (line) => line.receivedQty, setter: (value) => ({ receivedQty: Number(value) }) },
+            {
+              id: 'uom',
+              label: 'UOM',
+              kind: 'custom',
+              width: '110px',
+              render: (line, index) => (
+                <UomSelector
+                  item={itemById[line.itemId]}
+                  itemId={line.itemId}
+                  valueId={line.uomId}
+                  valueCode={line.uom}
+                  usage="purchase"
+                  disabled={!line.itemId || busy}
+                  noBorder
+                  onChange={(selected) => setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' })}
+                />
+              ),
+            },
+            {
+              id: 'warehouse',
+              label: 'Warehouse',
+              kind: 'custom',
+              width: '220px',
+              render: (line, index) => (
+                <WarehouseSelector
+                  value={line.warehouseId}
+                  disabled={busy}
+                  noBorder
+                  placeholder="Select Warehouse"
+                  onChange={(warehouse) => setLine(index, { warehouseId: warehouse?.id })}
+                />
+              ),
+            },
+          ]}
+        />
+            ),
+          },
+        }}
+      />
     );
   }
 
@@ -736,23 +799,129 @@ const GoodsReceiptDetailPage: React.FC = () => {
     grn.purchaseOrderId ? `&purchaseOrderId=${encodeURIComponent(grn.purchaseOrderId)}` : ''
   }`;
 
+  const viewReceivedQtyTotal = grn.lines.reduce((sum, line) => sum + (line.receivedQty || 0), 0);
+  const viewRailSections: DocumentScaffoldRailSections = {
+    info: {
+      title: 'Info',
+      action: <DocumentPill tone={grn.purchaseOrderId ? 'blue' : 'slate'}>{grn.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
+      content: (
+        <DocumentRailKeyValueList
+          items={[
+            { label: 'Vendor', value: grn.vendorName },
+            { label: 'Purchase Order', value: grn.purchaseOrderId ? linkedPO?.orderNumber || grn.purchaseOrderId : '-' },
+          ]}
+        />
+      ),
+    },
+    totals: {
+      title: 'Totals',
+      content: (
+        <DocumentRailTotals
+          rows={[
+            { label: 'Lines', value: grn.lines.length },
+            { label: 'Receipt Date', value: grn.receiptDate || '-' },
+          ]}
+          grand={{ label: 'Received Qty', value: viewReceivedQtyTotal.toFixed(2) }}
+        />
+      ),
+    },
+  };
+
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{grn.grnNumber}</h1>
-          <p className="text-sm text-slate-600">
-            Vendor: <span className="font-medium">{grn.vendorName}</span>
-            {grn.purchaseOrderId ? ` • PO: ${linkedPO?.orderNumber || grn.purchaseOrderId}` : ''}
-          </p>
-        </div>
-        <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
+    <>
+    <DocumentDetailScaffold
+      title={grn.grnNumber}
+      subtitle={`Vendor: ${grn.vendorName}${grn.purchaseOrderId ? ` | PO: ${linkedPO?.orderNumber || grn.purchaseOrderId}` : ''}`}
+      icon={Truck}
+      backLabel="Back to goods receipts"
+      onBack={() => navigate('/purchases/goods-receipts')}
+      badges={
+        <DocumentPill tone={grn.status === 'POSTED' ? 'green' : grn.status === 'CANCELLED' ? 'rose' : 'slate'}>
           {grn.status}
-        </span>
-      </div>
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+        </DocumentPill>
+      }
+      newAction={{
+        label: 'New Goods Receipt',
+        title: 'New Goods Receipt',
+        hasUnsavedChanges: false,
+        onNew: openNewGoodsReceiptForm,
+      }}
+      railSections={viewRailSections}
+      railTitle="Goods receipt side rail"
+      footerSections={{
+        totals: {
+          content: (
+            <DocumentFooterTotalsStrip
+              totals={[
+                { label: 'Lines', value: grn.lines.length },
+                { label: 'Received', value: viewReceivedQtyTotal.toFixed(2), tone: 'green' },
+              ]}
+            />
+          ),
+        },
+        actions: {
+          content: (
+            <>
+              <button
+                type="button"
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                onClick={() => navigate('/purchases/goods-receipts')}
+              >
+                Back to List
+              </button>
+              {grn.status === 'DRAFT' && (
+                <button
+                  type="button"
+                  className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                  onClick={toggleEdit}
+                  disabled={busy}
+                >
+                  Edit Draft
+                </button>
+              )}
+              {grn.status === 'DRAFT' && (
+                <button
+                  type="button"
+                  className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                  onClick={postDraft}
+                  disabled={busy}
+                >
+                  {busy ? 'Posting...' : 'Post GRN'}
+                </button>
+              )}
+              {grn.status === 'POSTED' && (
+                <button
+                  type="button"
+                  className="rounded border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => navigate(createReturnHref)}
+                  disabled={!canCreateReturn}
+                >
+                  Create Return
+                </button>
+              )}
+              {grn.status === 'POSTED' && (
+                <button
+                  type="button"
+                  className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                  onClick={() => setUnpostConfirmOpen(true)}
+                  disabled={busy || hasLinkedInvoiceLine}
+                  title={hasLinkedInvoiceLine ? "Cannot unpost because this GRN is linked to a PI" : ""}
+                >
+                  {busy ? 'Unposting...' : 'Unpost GRN'}
+                </button>
+              )}
+            </>
+          ),
+        },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
@@ -773,7 +942,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
           </div>
         </div>
       </Card>
-
+          ),
+        },
+        lines: {
+          content: (
       <Card className="p-5">
         <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
         <div className="overflow-x-auto">
@@ -801,57 +973,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
           </table>
         </div>
       </Card>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => navigate('/purchases/goods-receipts')}
-        >
-          Back to List
-        </button>
-        {grn.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            onClick={toggleEdit}
-            disabled={busy}
-          >
-            Edit Draft
-          </button>
-        )}
-        {grn.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={postDraft}
-            disabled={busy}
-          >
-            {busy ? 'Posting...' : 'Post GRN'}
-          </button>
-        )}
-        {grn.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => navigate(createReturnHref)}
-            disabled={!canCreateReturn}
-          >
-            Create Return
-          </button>
-        )}
-        {grn.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-            onClick={() => setUnpostConfirmOpen(true)}
-            disabled={busy || hasLinkedInvoiceLine}
-            title={hasLinkedInvoiceLine ? "Cannot unpost because this GRN is linked to a PI" : ""}
-          >
-            {busy ? 'Unposting...' : 'Unpost GRN'}
-          </button>
-        )}
-      </div>
+          ),
+        },
+      }}
+    />
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
@@ -864,7 +989,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         onConfirm={unpostGRN}
         onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
       />
-    </div>
+    </>
   );
 };
 

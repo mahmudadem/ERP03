@@ -2,8 +2,10 @@ import { describe, expect, it, jest } from '@jest/globals';
 import {
   GetSalesSettingsUseCase,
   InitializeSalesUseCase,
+  UpdateSalesSettingsUseCase,
 } from '../../../application/sales/use-cases/SalesSettingsUseCases';
 import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
+import { SalesDTOMapper } from '../../../api/dtos/SalesDTOs';
 import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { PostingRole } from '../../../domain/designer/entities/PostingRole';
 import { VoucherFormDefinition } from '../../../repository/interfaces/designer/IVoucherFormRepository';
@@ -243,5 +245,39 @@ describe('Sales settings use-cases', () => {
     const result = await useCase.execute(COMPANY_ID);
 
     expect(result).toBe(existingSettings);
+  });
+
+  it('updates and returns the Simple-mode operational documents visibility flag', async () => {
+    const storedSettings: { current: SalesSettings } = { current: makeExistingSettings() };
+
+    const useCase = new UpdateSalesSettingsUseCase(
+      {
+        getSettings: jest.fn(async () => storedSettings.current),
+        saveSettings: jest.fn(async (settings: SalesSettings) => {
+          storedSettings.current = settings;
+        }),
+      } as any,
+      {
+        getById: jest.fn(async (_companyId: string, accountId: string) => ({
+          id: accountId,
+          classification: accountId === 'AR-100' ? 'ASSET' : 'REVENUE',
+        })),
+      } as any,
+      {} as any,
+      {} as any,
+      { hasOpenOrders: jest.fn(async () => false) } as any,
+      { hasUnpostedDeliveryNotes: jest.fn(async () => false) } as any
+    );
+
+    const result = await useCase.execute({
+      companyId: COMPANY_ID,
+      workflowMode: 'SIMPLE',
+      showOperationalDocsInSimple: true,
+    });
+
+    expect(result.workflowMode).toBe('SIMPLE');
+    expect(result.showOperationalDocsInSimple).toBe(true);
+    expect(storedSettings.current.showOperationalDocsInSimple).toBe(true);
+    expect(SalesDTOMapper.toSettingsDTO(result).showOperationalDocsInSimple).toBe(true);
   });
 });

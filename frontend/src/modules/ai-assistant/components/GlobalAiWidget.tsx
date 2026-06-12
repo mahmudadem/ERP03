@@ -95,26 +95,52 @@ export const GlobalAiWidget: React.FC = () => {
     }
 
     let cancelled = false;
-    aiAssistantApi.getWidgetPreferences()
-      .then(({ preferences }) => {
-        if (!cancelled) {
-          setWidgetPreferences({
-            isEnabled: preferences.isEnabled !== false,
-            showFloatingAssistant: preferences.showFloatingAssistant !== false,
-          });
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load AI widget preferences', err);
-        if (!cancelled) {
-          setWidgetPreferences({ isEnabled: true, showFloatingAssistant: true });
-        }
-      });
+    const loadWidgetPreferences = () => {
+      aiAssistantApi.getWidgetPreferences()
+        .then(({ preferences }) => {
+          if (!cancelled) {
+            setWidgetPreferences({
+              isEnabled: preferences.isEnabled !== false,
+              showFloatingAssistant: preferences.showFloatingAssistant !== false,
+            });
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load AI widget preferences', err);
+          if (!cancelled) {
+            setWidgetPreferences({ isEnabled: false, showFloatingAssistant: false });
+          }
+        });
+    };
+
+    const handlePreferenceUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<AiWidgetPreferencesDTO>>).detail;
+      if (detail && typeof detail === 'object') {
+        setWidgetPreferences((current) => ({
+          isEnabled: detail.isEnabled !== undefined ? detail.isEnabled !== false : current?.isEnabled !== false,
+          showFloatingAssistant: detail.showFloatingAssistant !== undefined
+            ? detail.showFloatingAssistant !== false
+            : current?.showFloatingAssistant !== false,
+        }));
+        return;
+      }
+      loadWidgetPreferences();
+    };
+
+    loadWidgetPreferences();
+    window.addEventListener('ai-widget-preferences-updated', handlePreferenceUpdate);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('ai-widget-preferences-updated', handlePreferenceUpdate);
     };
   }, [shouldFetchWidgetPreferences]);
+
+  useEffect(() => {
+    if (!shouldRenderWidget && isOpen) {
+      setIsOpen(false);
+    }
+  }, [shouldRenderWidget, isOpen]);
 
   // Load latest conversation on mount or when ID changes
   const loadConversation = useCallback(async (id: string) => {

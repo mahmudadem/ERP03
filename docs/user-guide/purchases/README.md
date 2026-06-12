@@ -159,6 +159,32 @@ If you buy in foreign currencies:
 
 ---
 
+## Purchase Order and Bill Page Layout
+
+Purchase Orders and Purchase Invoices use the same document page skeleton as the Sales Invoice page:
+
+- PO and PI totals stay visible in a sticky footer while you scroll long forms.
+- A right-side summary rail shows totals and status details on wide screens, and opens from the page edge on smaller windows.
+- Save, post, receive, invoice, payment, return, cancel, close, and unpost actions remain reachable at the bottom of the page when they apply to the document status.
+- Purchase Invoice PO selection uses real Purchase Orders from the system instead of a raw typed ID. Selecting a PO loads its open lines into the bill.
+- The Vendor Invoice / Ref field is optional free text for the vendor's own invoice or bill reference; it is separate from the internal Purchase Order selector.
+- Purchase Invoice now follows the same inside-page structure as Sales Invoice: source controls at the top, compact header, line table, allocation grid placeholder, attachments/audit shortcuts, and a right rail for info, posting readiness, settlement, and totals.
+- Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns now share the same line-table style. The columns change by document type, but the row layout, add/remove controls, and scan pattern stay consistent.
+- Editable purchase document lines support row right-click actions: copy, paste, insert, delete, highlight, and line color.
+- Clicking or right-clicking the `#` header cell opens table actions: copy, paste, clean, export, import, and the table UI selector.
+- Column widths, line colors, row coloring, table layout style, text size, table font, number font, and the two alternating line colors are saved locally for the current user and document table.
+- Empty numeric cells stay blank on new working rows instead of showing `0` placeholders. A zero appears only after the row has real line content.
+- UOM cells use an item-aware selector. After you select an item, the default purchase UOM fills in automatically. If you need another UOM, edit the cell and choose from the UOMs already defined on that item; use the item-card link in the selector popup to maintain item UOMs.
+- Goods Receipts and Purchase Returns now use the same list layout as Purchase Invoices, with quick status filters, inline filters, centered columns, row actions, and pagination.
+- Goods Receipt draft/edit and Purchase Return saved/edit pages now use the same compact document shell with side rail and sticky footer actions.
+- Native purchase document pages now follow the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.
+- A section can be hidden when it does not apply. For example, Purchase Invoice can show settlement and footer totals, while Goods Receipt can omit settlement without changing the rest of the page structure.
+- The top action tray includes a **New** document button on scaffold-backed Purchase documents. If you entered unsaved data, the system asks for confirmation before opening a clear form so you do not lose work by accident.
+
+This layout does not change AP posting, tax, inventory valuation, approval, segregation-of-duties controls, period lock, or payment voucher behavior.
+
+---
+
 ## Vendor-level overrides
 
 `Purchases → Vendors → [Vendor] → Edit`:

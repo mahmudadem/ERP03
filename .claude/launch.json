@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5199", "--strictPort"],
+      "cwd": "frontend",
+      "port": 5199,
+      "autoPort": false
+    },
+    {
+      "name": "audit-html",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "planning", "-p", "5599", "-c-1"],
+      "port": 5599
+    }
+  ]
+}

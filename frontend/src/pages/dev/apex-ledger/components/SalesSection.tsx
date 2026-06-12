@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { SalesOrder, Invoice, Customer, InventoryItem, LineItem } from '../types';
 import SalesPage2 from './SalesPage2';
+import ConfirmDialog from '../../../../components/ui/ConfirmDialog';
+import { useAuth } from '../../../../context/AuthContext';
+import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { 
   FileCheck, 
   AlertCircle, 
@@ -35,6 +39,10 @@ export default function SalesSection({
   customers, 
   inventory 
 }: SalesSectionProps) {
+  const { company } = useCompanyAccess();
+  const { user } = useAuth();
+  const companyName = company?.name || 'Current Company';
+  const currentUserName = user?.displayName || user?.email || 'Current user';
   
   // Slide Over for New SO
   const [isAddSOOpen, setIsAddSOOpen] = useState(false);
@@ -51,6 +59,7 @@ export default function SalesSection({
   const [editorActive, setEditorActive] = useState(false);
   const [useErpLayout, setUseErpLayout] = useState(true);
   const [editInvoiceId, setEditInvoiceId] = useState<string | null>(null);
+  const [pendingDeleteInvoiceId, setPendingDeleteInvoiceId] = useState<string | null>(null);
 
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [selectedCustomerIdForEditor, setSelectedCustomerIdForEditor] = useState(customers[0]?.id || '');
@@ -492,6 +501,15 @@ export default function SalesSection({
     setEditorActive(false);
   };
 
+  const handleConfirmDeleteInvoice = () => {
+    if (!pendingDeleteInvoiceId) return;
+
+    setInvoices(prev => prev.filter(inv => inv.id !== pendingDeleteInvoiceId));
+    toast.success('Invoice deleted');
+    setPendingDeleteInvoiceId(null);
+    setEditorActive(false);
+  };
+
   // IF editor mode is operating, render the pristine compact tabular view!
   if (editorActive) {
     if (useErpLayout) {
@@ -650,7 +668,7 @@ export default function SalesSection({
                 className="w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 text-xs outline-none focus:border-blue-500"
               >
                 <option>None</option>
-                <option>Mahmud Adem</option>
+                <option>{currentUserName}</option>
                 <option>Roni K.</option>
                 <option>Youssef S.</option>
               </select>
@@ -1330,12 +1348,7 @@ export default function SalesSection({
             {editInvoiceId && (
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this invoice? This will wipe it from database.')) {
-                    setInvoices(prev => prev.filter(inv => inv.id !== editInvoiceId));
-                    setEditorActive(false);
-                  }
-                }}
+                onClick={() => setPendingDeleteInvoiceId(editInvoiceId)}
                 className="border border-rose-200 text-rose-600 hover:bg-rose-50 px-3.5 py-2 rounded-md font-bold text-xs transition"
               >
                 Delete Invoice
@@ -1399,6 +1412,16 @@ export default function SalesSection({
             </button>
           </div>
         </div>
+        <ConfirmDialog
+          isOpen={!!pendingDeleteInvoiceId}
+          title="Delete invoice"
+          message="This removes the invoice from the Apex candidate list. This action cannot be undone."
+          confirmLabel="Delete invoice"
+          cancelLabel="Keep invoice"
+          tone="danger"
+          onConfirm={handleConfirmDeleteInvoice}
+          onCancel={() => setPendingDeleteInvoiceId(null)}
+        />
       </div>
     );
   }
@@ -1658,8 +1681,8 @@ export default function SalesSection({
               </div>
               <div className="text-right border-l border-zinc-200 pl-4">
                 <span className="text-[9px] font-bold text-zinc-400 block uppercase mb-1">TAX ISSUER CORPORATE:</span>
-                <span className="font-bold text-slate-800 text-xs block">Apex Ledger Corp</span>
-                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">Branch: asd syria cluster</span>
+                <span className="font-bold text-slate-800 text-xs block">{companyName}</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">Branch: active tenant</span>
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
@@ -20,6 +20,7 @@ import { communicationsApi, CommunicationsSettingsDTO } from '../../../api/commu
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
 import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
+import { accountingApi, AccountingPolicyConfig, RateDeviationWarning } from '../../../api/accountingApi';
 import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusChip } from '../../../components/ui/StatusChip';
@@ -28,6 +29,7 @@ import { AttachmentsCard } from '../../../components/attachments/AttachmentsCard
 import { SendDocumentButton } from '../../../components/messaging/SendDocumentButton';
 import type { MessagingAccount } from '../../../components/messaging/SendWhatsAppModal';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useAccounts } from '../../../context/AccountsContext';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { useDocumentPolicies } from '../../../hooks/useDocumentPolicies';
 import { useConfirm } from '../../../hooks/useConfirm';
@@ -37,14 +39,51 @@ import { clsx } from 'clsx';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
-import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { SettlementBlock } from '../../../components/shared/settlement/SettlementBlock';
+import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
+import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
+import { PartySelector, ItemSelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
 import { todayLocalIso } from '../../../utils/dateUtils';
+import {
+  AlertTriangle,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  History,
+  Info,
+  Link2,
+  Loader2,
+  Paperclip,
+  RefreshCw,
+  ShieldCheck,
+  Truck,
+  Upload,
+} from 'lucide-react';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import { DocumentChargesAllocation, DocumentChargeModal, ChargeAllocationRow } from '../../../components/shared/DocumentChargesAllocation';
+import {
+  DocumentCompactCard,
+  DocumentControlPanel,
+  DocumentDetailScaffold,
+  DocumentField,
+  DocumentFooterTotalsStrip,
+  DocumentHeaderGrid,
+  DocumentIconButton,
+  DocumentPill,
+  DocumentRailChecklist,
+  DocumentRailFocus,
+  DocumentSegmentButton,
+  DocumentSegmentedGroup,
+  DocumentStatusBanner,
+  documentHeaderControlClass,
+  documentHeaderLabelClass,
+  documentHeaderSelectorClass,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -52,6 +91,9 @@ const todayIso = todayLocalIso;
 const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
 
 interface EditableLine {
+  /** Stable client-side row id for React keys. Survives `{...row, ...patch}`
+   *  edits, so the line table never reuses a stateful cell across rows. */
+  _uid?: string;
   lineId?: string;
   soLineId?: string;
   dnLineId?: string;
@@ -68,15 +110,23 @@ interface EditableLine {
   priceIsInclusive?: boolean;
   warehouseId?: string;
   description?: string;
+  /** Set on server-generated promotion free-goods lines so the grid can badge
+   *  them as intentional free items rather than accidental duplicates. */
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
 }
 
 interface EditableCharge {
   chargeId?: string;
+  /** CHARGE adds to the invoice total; DISCOUNT subtracts from it. Defaults to CHARGE. */
+  kind?: 'CHARGE' | 'DISCOUNT';
   code?: string;
   name: string;
   amountDoc: number;
   taxCodeId?: string;
   revenueAccountId?: string;
+  /** Display-only label for the chosen GL account (code/name), kept for the grid; not sent to the API. */
+  accountLabel?: string;
   description?: string;
 }
 
@@ -94,6 +144,7 @@ interface EditableForm {
   dueDate: string;
   currency: string;
   exchangeRate: number;
+  warehouseId?: string;
   notes: string;
   lines: EditableLine[];
   charges: EditableCharge[];
@@ -108,9 +159,65 @@ interface SettlementRowState {
   paymentDate: string;
 }
 
+type RailFocus =
+  | { kind: 'account'; title: string; code: string; subtitle: string; balance: number; note: string }
+  | { kind: 'item'; title: string; code: string; subtitle: string; balance: number; note: string };
+
+interface SalesInvoiceReferenceData {
+  settings: SalesSettingsDTO | null;
+  accountingPolicy: AccountingPolicyConfig | null;
+  commSettings: CommunicationsSettingsDTO | null;
+  customers: PartyDTO[];
+  items: InventoryItemDTO[];
+  taxCodes: TaxCodeDTO[];
+  warehouses: InventoryWarehouseDTO[];
+  salesOrders: SalesOrderDTO[];
+  salespersons: SalespersonDTO[];
+  invoiceTemplates: VoucherFormResponse[];
+}
+
+interface SalesInvoiceReferenceCacheEntry {
+  expiresAt: number;
+  data?: SalesInvoiceReferenceData;
+  promise?: Promise<SalesInvoiceReferenceData>;
+}
+
+interface LoadingProgress {
+  startedAt: number;
+  elapsedSeconds: number;
+  totalCalls: number;
+  completedCalls: number;
+  activeLabel: string;
+  cacheStatus: 'checking' | 'hit' | 'miss' | 'inflight';
+}
+
+interface StartupTiming {
+  routeKey: string;
+  mode: 'new' | 'edit';
+  startedAt: number;
+  referenceDataFinishedAt?: number;
+  invoiceFetchFinishedAt?: number;
+  dataReadyAt?: number;
+  visibleAt?: number;
+  completedCalls?: number;
+  totalCalls?: number;
+}
+
+const SALES_INVOICE_REFERENCE_CACHE_TTL_MS = 5 * 60 * 1000;
+const salesInvoiceReferenceCache = new Map<string, SalesInvoiceReferenceCacheEntry>();
+
+const getPerfTime = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+let lineUidSeq = 0;
+const nextLineUid = (): string => `ln_${Date.now().toString(36)}_${(lineUidSeq++).toString(36)}`;
+
+let chargeUidSeq = 0;
+const nextChargeId = (): string => `chg_${Date.now().toString(36)}_${(chargeUidSeq++).toString(36)}`;
+
 const createEmptyLine = (): EditableLine => ({
+  _uid: nextLineUid(),
   itemId: '',
-  invoicedQty: 1,
+  invoicedQty: 0,
   uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
@@ -121,13 +228,331 @@ const createEmptyLine = (): EditableLine => ({
   description: '',
 });
 
-const createEmptyCharge = (): EditableCharge => ({
-  name: '',
-  amountDoc: 0,
-  taxCodeId: undefined,
-  revenueAccountId: undefined,
-  description: '',
-});
+interface CurrencyExchangeFieldPremiumProps {
+  currency: string;
+  value?: number;
+  baseCurrency?: string;
+  voucherDate?: string;
+  onChange?: (rate: number) => void;
+  disabled?: boolean;
+}
+
+export const CurrencyExchangeFieldPremium: React.FC<CurrencyExchangeFieldPremiumProps> = ({
+  currency = '',
+  value,
+  baseCurrency = '',
+  voucherDate,
+  onChange,
+  disabled = false
+}) => {
+  const { t } = useTranslation('accounting');
+  const [suggestedRate, setSuggestedRate] = useState<number | null>(null);
+  const [rateSource, setRateSource] = useState<string>('NONE');
+  const [loading, setLoading] = useState(false);
+  const [manualRate, setManualRate] = useState<number | undefined>(value);
+  const [warnings, setWarnings] = useState<RateDeviationWarning[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingRate, setPendingRate] = useState<number | null>(null);
+
+  const [parityText, setParityText] = useState<string>('');
+  const [equivalentText, setEquivalentText] = useState<string>('');
+  const [isParityFocused, setIsParityFocused] = useState(false);
+  const [isEquivalentFocused, setIsEquivalentFocused] = useState(false);
+
+  const prevCurrencyRef = useRef<string>(currency);
+  const isInitialMountRef = useRef(true);
+
+  const fetchSystemRate = async (forceApply: boolean) => {
+    const c1 = currency?.toUpperCase().trim() || '';
+    const c2 = baseCurrency?.toUpperCase().trim() || '';
+
+    if (!c1 || !c2) { setLoading(false); return; }
+
+    if (c1 === c2) {
+      setSuggestedRate(1);
+      setRateSource('SAME_CURRENCY');
+      setLoading(false);
+      if (forceApply || !disabled && (value === undefined || value === null || Number(value) <= 0)) {
+        setManualRate(1);
+        onChange?.(1);
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await accountingApi.getSuggestedRate(c1, c2, voucherDate);
+      setSuggestedRate(response.rate);
+      setRateSource(response.source);
+
+      const resolvedRate = response.rate;
+      const noMeaningfulValue =
+        value === undefined || value === null || Number(value) <= 0 ||
+        (Number(value) === 1 && c1 !== c2);
+
+      if (!disabled && resolvedRate !== null && (forceApply || noMeaningfulValue)) {
+        setManualRate(resolvedRate as number);
+        onChange?.(resolvedRate as number);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch exchange rate:', error);
+      setSuggestedRate(null);
+      setRateSource('ERROR');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      const currencyChanged = currency !== prevCurrencyRef.current;
+      prevCurrencyRef.current = currency;
+      const forceApply = !isInitialMountRef.current && currencyChanged;
+      isInitialMountRef.current = false;
+      if (!mounted) return;
+      await fetchSystemRate(forceApply);
+    };
+    run();
+    return () => { mounted = false; };
+  }, [currency, baseCurrency, voucherDate]);
+
+  useEffect(() => {
+    const effectiveRate = value ?? manualRate ?? suggestedRate ?? 1;
+    if (value !== undefined && value !== manualRate) {
+      setManualRate(value);
+    }
+    
+    if (!isParityFocused) {
+      setParityText(effectiveRate.toFixed(4));
+    }
+    if (!isEquivalentFocused && effectiveRate > 0) {
+      const eq = 1 / effectiveRate;
+      setEquivalentText(eq.toFixed(8).replace(/\.?0+$/, ''));
+    }
+  }, [value, manualRate, suggestedRate, isParityFocused, isEquivalentFocused]);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkDeviation = async () => {
+      if (!manualRate || manualRate <= 0 || currency === baseCurrency) {
+        setWarnings([]);
+        return;
+      }
+      try {
+        const response = await accountingApi.checkRateDeviation(currency, baseCurrency, manualRate);
+        if (mounted) setWarnings(response.warnings);
+      } catch {
+        // ignore
+      }
+    };
+    const timer = setTimeout(checkDeviation, 500);
+    return () => { mounted = false; clearTimeout(timer); };
+  }, [manualRate, currency, baseCurrency]);
+
+  const handleParityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setParityText(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed > 0) {
+      const eq = 1 / parsed;
+      setEquivalentText(eq.toFixed(8).replace(/\.?0+$/, ''));
+      setManualRate(parsed);
+      onChange?.(parsed);
+    }
+  };
+
+  const handleEquivalentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEquivalentText(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed > 0) {
+      const par = 1 / parsed;
+      setParityText(par.toFixed(4));
+      setManualRate(par);
+      onChange?.(par);
+    }
+  };
+
+  const handleParityBlur = () => {
+    setIsParityFocused(false);
+    const effective = manualRate ?? suggestedRate ?? 1;
+    setParityText(effective.toFixed(4));
+    checkDeviationOnBlur(effective);
+  };
+
+  const handleEquivalentBlur = () => {
+    setIsEquivalentFocused(false);
+    const effective = manualRate ?? suggestedRate ?? 1;
+    const eq = 1 / effective;
+    setEquivalentText(eq.toFixed(8).replace(/\.?0+$/, ''));
+    checkDeviationOnBlur(effective);
+  };
+
+  const checkDeviationOnBlur = (rateToCheck: number) => {
+    if (rateToCheck <= 0 || currency === baseCurrency) return;
+    const percentageWarning = warnings.find(w => w.type === 'PERCENTAGE_DEVIATION');
+    const deviationPercentage = percentageWarning?.percentageDeviation
+      ? Math.abs(percentageWarning.percentageDeviation * 100) : 0;
+
+    if (deviationPercentage >= 10) {
+      setPendingRate(rateToCheck);
+      setShowConfirmModal(true);
+    }
+  };
+
+  const handleStatusClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (disabled) return;
+    if (hasOverride) {
+      setManualRate(undefined);
+      if (suggestedRate) onChange?.(suggestedRate);
+    } else {
+      fetchSystemRate(true);
+    }
+  };
+
+  const handleConfirmRate = () => {
+    if (pendingRate !== null) {
+      setManualRate(pendingRate);
+      onChange?.(pendingRate);
+    }
+    setShowConfirmModal(false);
+    setPendingRate(null);
+  };
+
+  const handleCancelRate = () => {
+    setShowConfirmModal(false);
+    setPendingRate(null);
+    const effective = value ?? suggestedRate ?? 1;
+    setManualRate(effective);
+  };
+
+  const hasOverride = manualRate !== undefined && suggestedRate !== null && manualRate !== suggestedRate;
+  const isMissingRate = (manualRate === undefined || manualRate === null || manualRate <= 0) && suggestedRate === null && currency !== baseCurrency;
+
+  const getStatusTooltip = () => {
+    if (loading) return t('currencyExchangeWidget.tooltips.fetchingRate', 'Fetching rate...');
+    if (warnings.length > 0) return warnings.map(w => w.message).join('\n');
+    if (rateSource === 'SAME_CURRENCY') return t('currencyExchangeWidget.tooltips.sameCurrency', 'Same Currency');
+    if (hasOverride) return t('currencyExchangeWidget.tooltips.manualOverride', 'Manual override (Click status dot to reset)');
+    if (rateSource === 'EXACT_DATE') return t('currencyExchangeWidget.tooltips.systemRateForDate', 'System rate for date');
+    return t('currencyExchangeWidget.tooltips.systemRateLastKnown', 'System rate');
+  };
+
+  const getStatusIcon = () => {
+    if (loading) return <Loader2 className="w-3.5 h-3.5 animate-spin" />;
+    return <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500 ease-in-out" />;
+  };
+
+  if (currency === baseCurrency) {
+    return (
+      <div 
+        className={clsx(
+          "flex items-center justify-between h-9 w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded overflow-hidden select-none",
+          disabled && "opacity-75 cursor-not-allowed"
+        )}
+        title={t('currencyExchangeWidget.baseCurrencyParity', 'Base Currency Parity')}
+      >
+        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap px-2.5">
+          {t('currencyExchangeWidget.baseCurrencyParityFormat', '1 {{currency}} = 1.0000 {{baseCurrency}} (Base Currency Parity)', { currency, baseCurrency })}
+        </span>
+        <div className="h-full px-2.5 flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0 border-l border-slate-300 dark:border-slate-700">
+          <ShieldCheck className="w-4 h-4" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className={clsx(
+          "flex items-center h-9 w-full border rounded overflow-hidden transition-all bg-white dark:bg-slate-800",
+          warnings.length > 0 ? 'border-amber-400 ring-1 ring-amber-100 dark:border-amber-500 dark:ring-amber-950/20' :
+          hasOverride ? 'border-blue-400 ring-1 ring-blue-50 dark:border-blue-500 dark:ring-blue-950/20' :
+          isMissingRate ? 'border-red-400 ring-1 ring-red-50 dark:border-red-500 dark:ring-red-950/20' :
+          'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600',
+          disabled && 'opacity-75 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50'
+        )}
+      >
+        <div className="flex-1 flex items-center pl-2.5 h-full min-w-0 relative border-e border-slate-300 dark:border-slate-700">
+          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none lowercase tracking-wide mr-1 shrink-0">
+            {t('currencyExchangeWidget.labels.parity', 'parity')}:
+          </span>
+          <input
+            type="text"
+            value={parityText}
+            onChange={handleParityChange}
+            onFocus={() => setIsParityFocused(true)}
+            onBlur={handleParityBlur}
+            disabled={disabled}
+            placeholder={loading ? '…' : (suggestedRate?.toFixed(4) || '0.00')}
+            className="w-full h-full pr-1.5 text-left text-xs font-semibold bg-transparent outline-none text-slate-900 dark:text-slate-100 min-w-0"
+          />
+        </div>
+
+        <div className="flex-1 flex items-center pl-2.5 h-full min-w-0 relative border-e border-slate-300 dark:border-slate-700">
+          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 select-none pointer-events-none lowercase tracking-wide mr-1 shrink-0">
+            {t('currencyExchangeWidget.labels.equivalent', 'equivalent')}:
+          </span>
+          <input
+            type="text"
+            value={equivalentText}
+            onChange={handleEquivalentChange}
+            onFocus={() => setIsEquivalentFocused(true)}
+            onBlur={handleEquivalentBlur}
+            disabled={disabled}
+            placeholder={loading ? '…' : (suggestedRate ? (1 / suggestedRate).toFixed(6) : '0.00')}
+            className="w-full h-full pr-1.5 text-left text-xs font-semibold bg-transparent outline-none text-slate-900 dark:text-slate-100 min-w-0"
+          />
+        </div>
+
+        <div 
+          className={clsx(
+            "flex items-center justify-center px-2.5 h-full select-none cursor-pointer shrink-0 group transition-colors",
+            warnings.length > 0 ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-500/20" :
+            hasOverride ? "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 hover:bg-blue-500/20" :
+            isMissingRate ? "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-500/20" :
+            "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 hover:bg-emerald-500/20"
+          )}
+          onClick={handleStatusClick}
+          title={getStatusTooltip()}
+        >
+          {getStatusIcon()}
+        </div>
+      </div>
+
+      {showConfirmModal && pendingRate !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={handleCancelRate}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 max-w-sm mx-4 border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <h3 className="font-bold text-sm">{t('currencyExchangeWidget.modal.title', 'Rate Deviation Warning')}</h3>
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+              {t('currencyExchangeWidget.modal.body', 'The rate you entered deviates significantly from the system rate. Do you wish to confirm?')}
+            </p>
+            {warnings.map((w, i) => (
+              <div key={i} className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded mb-3">
+                {w.message}
+              </div>
+            ))}
+            <div className="flex justify-end gap-2">
+              <button onClick={handleCancelRate} className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded text-gray-700">
+                {t('currencyExchangeWidget.modal.cancel', 'Cancel')}
+              </button>
+              <button onClick={handleConfirmRate} className="px-3 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded">
+                {t('currencyExchangeWidget.modal.confirm', 'Confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
 
 export interface SalesInvoiceDetailProps {
   invoiceId?: string;
@@ -142,8 +567,10 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   onClose,
   onSaved,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { company } = useCompanyAccess();
+  const { getAccountById } = useAccounts();
+  const isRtl = i18n.dir() === 'rtl';
   const { hasPermission, isOwner } = useRBAC();
   const { salesSettings } = useDocumentPolicies();
   const { confirm, confirmDialog } = useConfirm();
@@ -159,14 +586,34 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     salesSettings?.allowCreditOverride !== false &&
     (isOwner || hasPermission('sales.creditOverride'));
 
-  const LINE_DISPLAY_MIN = 10;
+  const focusLine = (itemId: string) => {
+    const item = itemById[itemId];
+    if (!item) return;
+    setRailFocus({
+      kind: 'item',
+      title: item.name,
+      code: item.code || 'NOCODE',
+      subtitle: `${item.salesUom || item.baseUom} item`,
+      balance: 0,
+      note: item.trackInventory
+        ? t('sales.invoiceDetail.focus.inventoryTracked', 'Inventory item: cost and stock checks run before posting.')
+        : t('sales.invoiceDetail.focus.serviceItem', 'Service line: no inventory valuation movement.'),
+    });
+  };
+
+  const LINE_DISPLAY_MIN = 1;
   const padLinesToMin = (lines: EditableLine[]): EditableLine[] => {
     if (lines.length >= LINE_DISPLAY_MIN) return lines;
-    const pad: EditableLine[] = [];
-    for (let i = lines.length; i < LINE_DISPLAY_MIN; i++) pad.push(createEmptyLine());
-    return [...lines, ...pad];
+    return [...lines, createEmptyLine()];
   };
   const filledLines = (lines: EditableLine[]): EditableLine[] => lines.filter((l) => !!l.itemId);
+  const hasLineContent = (line: EditableLine | undefined): boolean => {
+    if (!line) return false;
+    return Boolean(
+      line.itemId || line.itemCode || line.itemName || line.description ||
+      line.unitPriceDoc || line.discountValue || line.invoicedQty
+    );
+  };
 
   const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
     salesOrderId,
@@ -179,6 +626,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     dueDate: '',
     currency: company?.baseCurrency || 'USD',
     exchangeRate: 1,
+    warehouseId: undefined,
     notes: '',
     lines: padLinesToMin([]),
     charges: [],
@@ -189,6 +637,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const [invoice, setInvoice] = useState<SalesInvoiceDTO | null>(null);
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
+  const [accountingPolicy, setAccountingPolicy] = useState<AccountingPolicyConfig | null>(null);
   const [commSettings, setCommSettings] = useState<CommunicationsSettingsDTO | null>(null);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
   const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
@@ -202,14 +651,26 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [attachments, setAttachments] = useState<SalesInvoiceAttachmentDTO[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
+  const startupTimingRef = useRef<StartupTiming | null>(null);
+  const startupTimingLoggedRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [glImpactOpen, setGlImpactOpen] = useState(false);
+  const [chargeModal, setChargeModal] = useState<{
+    kind: 'CHARGE' | 'DISCOUNT';
+    editIndex: number | null;
+    accountId: string;
+    accountLabel: string;
+    amount: number;
+    description: string;
+  } | null>(null);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [overrideModalData, setOverrideModalData] = useState<{ documentDate: string; lockedThroughDate: string } | null>(null);
   const [pendingPeriodLockRetry, setPendingPeriodLockRetry] = useState<((reason: string) => void) | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [showOperationalWarning, setShowOperationalWarning] = useState(false);
   const [cloneRecurringOpen, setCloneRecurringOpen] = useState(false);
   const [cloneRecurringBusy, setCloneRecurringBusy] = useState(false);
   const [cloneRecurringName, setCloneRecurringName] = useState('');
@@ -232,23 +693,120 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
   const [arAccountId, setArAccountId] = useState('');
   const [settlementRows, setSettlementRows] = useState<SettlementRowState[]>([]);
-  const [showSettlement, setShowSettlement] = useState(false);
+  const [settlementValidity, setSettlementValidity] = useState<{ ok: boolean; message?: string }>({ ok: true });
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [recordPaymentBusy, setRecordPaymentBusy] = useState(false);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
+  const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'so' | 'dn'>('direct');
+  const [attachmentsPanelOpen, setAttachmentsPanelOpen] = useState(false);
+  const [railFocus, setRailFocus] = useState<RailFocus>(() => ({
+    kind: 'account',
+    title: 'AR - Customer Balance',
+    code: '120000',
+    subtitle: 'Accounts Receivable',
+    balance: 0,
+    note: t('sales.invoiceDetail.selectItemHint', 'Select or hover over an item line to view details, stock level, and SKU info.'),
+  }));
 
   // Reset settlement state when navigating between invoices
   useEffect(() => {
     setSettlementMode('DEFERRED');
     setArAccountId('');
     setSettlementRows([]);
-    setShowSettlement(false);
   }, [resolvedId]);
 
-  // Clause 1: mode flag — DRAFT is editable, everything else is read-only
   const isReadOnly = !isCreateMode && !(invoice?.status === 'DRAFT');
+  const invoiceStatus = invoice?.status || form.status || (isCreateMode ? 'DRAFT' : undefined);
+  const isPendingAccountingApproval = invoiceStatus === 'PENDING_APPROVAL';
+  const isLedgerPosted = invoiceStatus === 'POSTED';
+  const hasUnsavedDocumentChanges = useMemo(() => {
+    if (isReadOnly) return false;
+    const hasLines = form.lines.some(hasLineContent);
+    const hasCharges = form.charges.some((charge) =>
+      Boolean(charge.name.trim() || charge.amountDoc || charge.taxCodeId || charge.revenueAccountId || charge.description?.trim())
+    );
+    const hasSettlement = settlementMode !== 'DEFERRED' || arAccountId.trim() || settlementRows.some((row) =>
+      Boolean(row.settlementAccountId || row.amountBase || row.paymentMethod || row.reference.trim() || row.notes.trim())
+    );
+    return Boolean(
+      form.salesOrderId ||
+      form.customerId ||
+      form.customerInvoiceNumber.trim() ||
+      form.dueDate ||
+      form.warehouseId ||
+      form.notes.trim() ||
+      hasLines ||
+      hasCharges ||
+      hasSettlement
+    );
+  }, [arAccountId, form, isReadOnly, settlementMode, settlementRows]);
+  const statusPillTone = isLedgerPosted ? 'green' : isPendingAccountingApproval ? 'amber' : 'slate';
+  const statusPillLabel = isLedgerPosted
+    ? t('sales.invoiceDetail.postedStatusPill', 'Posted')
+    : isPendingAccountingApproval
+      ? t('sales.invoiceDetail.pendingApprovalStatusPill', 'Pending Approval')
+      : t('sales.invoiceDetail.draftStatusPill', 'Draft');
+
+  const canCreateReceipt = invoice?.status === 'POSTED' && (invoice?.outstandingAmountBase || 0) > 0;
+  const createReturnHref = invoice ? `/sales/returns/new?salesInvoiceId=${encodeURIComponent(invoice.id)}${invoice.salesOrderId ? `&salesOrderId=${encodeURIComponent(invoice.salesOrderId)}` : ''}` : '';
+
+  const openNewInvoiceForm = () => {
+    setInvoice(null);
+    setForm(createEmptyForm('', ''));
+    setAttachments([]);
+    setSettlementMode('DEFERRED');
+    setArAccountId('');
+    setSettlementRows([]);
+    setTemplateTouched(false);
+    setError(null);
+    navigate('/sales/invoices/new');
+  };
+
+  const handleNewInvoiceClick = async () => {
+    if (hasUnsavedDocumentChanges) {
+      const confirmed = await confirm({
+        title: t('documentDetail.newConfirmTitle', 'Discard unsaved changes?'),
+        message: t('documentDetail.newConfirmMessage', 'You have unsaved changes. Are you sure you want to discard them and open a new document?'),
+        confirmLabel: t('documentDetail.newConfirmAction', 'Open New Form'),
+        cancelLabel: t('common.cancel', 'Cancel'),
+        tone: 'warning',
+      });
+      if (confirmed) {
+        openNewInvoiceForm();
+      }
+    } else {
+      openNewInvoiceForm();
+    }
+  };
+
+  // Pay-later entry point (Task 184 Finding 5): record a receipt against this posted invoice
+  // via the invoice-aware dialog → recordPayment endpoint (posts the linked receipt voucher,
+  // reconciles outstanding/paymentStatus). Stays on the invoice page; never routes into Accounting.
+  const handleRecordPayment = async (payload: RecordPaymentPayload) => {
+    if (!invoice) return;
+    setRecordPaymentBusy(true);
+    try {
+      const res = await salesApi.recordPayment(invoice.id, payload as any);
+      const dto = ((res as any)?.invoice ?? res) as SalesInvoiceDTO;
+      setInvoice(dto);
+      populateFormFromInvoice(dto);
+      setRecordPaymentOpen(false);
+      errorHandler.showSuccess(t('sales.invoiceDetail.recordPaymentSuccess', 'Payment recorded.'));
+      window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'SI' } }));
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('sales.invoiceDetail.recordPaymentFailed', 'Failed to record payment.'));
+    } finally {
+      setRecordPaymentBusy(false);
+    }
+  };
 
   const enabledPaymentMethodConfigs = useMemo(
     () => (settings?.paymentMethodConfigs || []).filter((config) => config.isEnabled !== false),
     [settings]
   );
+  const hasDeliveryNoteLinkedLines = form.lines.some((line) => !!line.dnLineId);
+  const sourceMode = hasDeliveryNoteLinkedLines ? 'dn' : form.salesOrderId ? 'so' : 'direct';
+  const activeSourceMode = sourceMode === 'direct' ? requestedSourceMode : sourceMode;
   const currentInvoiceFormType = form.salesOrderId ? 'sales_invoice_linked' : 'sales_invoice_direct';
   const currentInvoicePersona = form.salesOrderId ? 'linked' : 'direct';
   const isCurrentPersonaAllowed = settings
@@ -331,6 +889,15 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       }, {}),
     [salesOrders]
   );
+  const invoiceableSalesOrders = useMemo(
+    () =>
+      salesOrders.filter((order) =>
+        order.id === form.salesOrderId ||
+        order.status === 'CONFIRMED' ||
+        order.status === 'PARTIALLY_DELIVERED'
+      ),
+    [form.salesOrderId, salesOrders]
+  );
 
   const taxById = useMemo(
     () =>
@@ -345,6 +912,40 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     () => taxCodes.filter((taxCode) => taxCode.scope === 'SALES' || taxCode.scope === 'BOTH'),
     [taxCodes]
   );
+
+  /**
+   * Back-solve unit price from a target Line Total (gross) or Net the user
+   * types into a computed cell, given the row's current qty/discount/tax.
+   * Mirrors the forward math in computedLines: same discount handling,
+   * same inclusive/exclusive branching.
+   */
+  const solveUnitPriceFromTotal = (
+    target: number,
+    field: 'lineGross' | 'net',
+    row: EditableLine,
+  ): number => {
+    const q = Number(row.invoicedQty || 0);
+    if (q <= 0 || !Number.isFinite(target)) return 0;
+    const taxCode = row.taxCodeId ? taxById[row.taxCodeId] : undefined;
+    const taxRate = taxCode?.rate ?? 0;
+    const inclusive = row.priceIsInclusive !== undefined
+      ? row.priceIsInclusive === true
+      : taxCode?.priceIsInclusive === true;
+    const postDisc = field === 'lineGross'
+      ? (inclusive ? target : target / (1 + taxRate))
+      : (inclusive ? target * (1 + taxRate) : target);
+    const dt = row.discountType;
+    const dv = Number(row.discountValue || 0);
+    if (dt === 'PERCENT') {
+      const factor = 1 - dv / 100;
+      if (factor <= 0) return 0;
+      return postDisc / (q * factor);
+    }
+    if (dt === 'AMOUNT') {
+      return (postDisc + dv) / q;
+    }
+    return postDisc / q;
+  };
 
   const computedLines = useMemo(() => {
     return form.lines.map((line) => {
@@ -379,23 +980,26 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const computedCharges = useMemo(() => {
     return form.charges.map((charge) => {
-      const taxRate = charge.taxCodeId ? taxById[charge.taxCodeId]?.rate ?? 0 : 0;
+      const kind = charge.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE';
+      // Whole-invoice adjustments are flat and tax-free; discounts never carry tax.
+      const taxRate = kind === 'CHARGE' && charge.taxCodeId ? taxById[charge.taxCodeId]?.rate ?? 0 : 0;
       const amountDoc = roundMoney(charge.amountDoc || 0);
       const amountBase = roundMoney(amountDoc * (form.exchangeRate || 0));
       const taxAmountDoc = roundMoney(amountDoc * taxRate);
       const taxAmountBase = roundMoney(amountBase * taxRate);
-      return { amountDoc, amountBase, taxAmountDoc, taxAmountBase };
+      return { kind, amountDoc, amountBase, taxAmountDoc, taxAmountBase };
     });
   }, [form.charges, form.exchangeRate, taxById]);
 
   const totals = useMemo(() => {
+    // CHARGE adjustments add to the subtotal; DISCOUNT adjustments subtract.
     const subtotalDoc = roundMoney(
       computedLines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
-      + computedCharges.reduce((sum, charge) => sum + charge.amountDoc, 0)
+      + computedCharges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -charge.amountDoc : charge.amountDoc), 0)
     );
     const subtotalBase = roundMoney(
       computedLines.reduce((sum, line) => sum + line.lineTotalBase, 0)
-      + computedCharges.reduce((sum, charge) => sum + charge.amountBase, 0)
+      + computedCharges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -charge.amountBase : charge.amountBase), 0)
     );
     const taxTotalDoc = roundMoney(
       computedLines.reduce((sum, line) => sum + line.taxAmountDoc, 0)
@@ -405,15 +1009,248 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       computedLines.reduce((sum, line) => sum + line.taxAmountBase, 0)
       + computedCharges.reduce((sum, charge) => sum + charge.taxAmountBase, 0)
     );
+    // The rail "Discount" line reflects both per-line discounts and whole-invoice DISCOUNT adjustments.
+    const discountTotalDoc = roundMoney(
+      computedLines.reduce((sum, line) => sum + line.discountAmountDoc, 0)
+      + computedCharges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? charge.amountDoc : 0), 0)
+    );
+    const discountTotalBase = roundMoney(discountTotalDoc * (form.exchangeRate || 0));
     return {
       subtotalDoc, subtotalBase, taxTotalDoc, taxTotalBase,
+      discountTotalDoc, discountTotalBase,
       grandTotalDoc: roundMoney(subtotalDoc + taxTotalDoc),
       grandTotalBase: roundMoney(subtotalBase + taxTotalBase),
     };
-  }, [computedCharges, computedLines]);
+  }, [computedCharges, computedLines, form.exchangeRate]);
+
+  const lineColumns = useMemo<ColumnDef<EditableLine>[]>(() => {
+    const showBaseCurrency = form.currency !== (company?.baseCurrency || 'USD');
+    const cols: ColumnDef<EditableLine>[] = [
+      {
+        id: 'item',
+        label: t('sales.invoiceDetail.col.item', 'Item'),
+        kind: 'custom',
+        width: '220px',
+        render: (row, index, onChange) => {
+          const freeGoodBadge = row.appliedPromotionId ? (
+            <span
+              title={t('sales.invoiceDetail.freeGoodTooltip', 'Free item added by promotion: {{name}}', { name: row.appliedPromotionName || '' })}
+              className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+            >
+              {t('sales.invoiceDetail.freeGoodBadge', 'Free • Promo')}
+            </span>
+          ) : null;
+          if (isReadOnly) {
+            return (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                  {row.itemCode ? `${row.itemCode} - ${row.itemName}` : row.itemName || '—'}
+                </span>
+                {freeGoodBadge}
+              </div>
+            );
+          }
+          if (row.appliedPromotionId) {
+            return (
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                  {row.itemCode ? `${row.itemCode} - ${row.itemName}` : row.itemName || '—'}
+                </span>
+                {freeGoodBadge}
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col w-full gap-1">
+              <ItemSelector
+                noBorder
+                value={row.itemId}
+                onChange={(item) => {
+                  if (item) {
+                    const defaultUom = getDefaultItemUomOption(item, 'sales');
+                    onChange({
+                      itemId: item.id,
+                      itemCode: item.code,
+                      itemName: item.name,
+                      uomId: defaultUom?.uomId,
+                      uom: defaultUom?.code || item.salesUom || item.baseUom,
+                      warehouseId: row.warehouseId || settings?.defaultWarehouseId || undefined,
+                      taxCodeId: row.taxCodeId || item.defaultSalesTaxCodeId || undefined,
+                    });
+                    focusLine(item.id);
+                  } else {
+                    // Clearing the item resets the entire row to defaults so
+                    // qty/price/discount/tax don't linger from the previous item.
+                    const empty = createEmptyLine();
+                    onChange({
+                      itemId: empty.itemId,
+                      itemCode: empty.itemCode,
+                      itemName: empty.itemName,
+                      invoicedQty: empty.invoicedQty,
+                      uomId: empty.uomId,
+                      uom: empty.uom,
+                      unitPriceDoc: empty.unitPriceDoc,
+                      discountType: empty.discountType,
+                      discountValue: empty.discountValue,
+                      taxCodeId: empty.taxCodeId,
+                      priceIsInclusive: undefined,
+                      warehouseId: empty.warehouseId,
+                      description: empty.description,
+                    });
+                  }
+                }}
+              />
+            </div>
+          );
+        },
+      },
+      {
+        id: 'invoicedQty',
+        label: t('sales.invoiceDetail.col.qty', 'Qty'),
+        kind: 'number',
+        width: '64px',
+        accessor: (row) => row.invoicedQty,
+        setter: (value) => ({ invoicedQty: Number(value) }),
+      },
+      {
+        id: 'uom',
+        label: t('sales.invoiceDetail.col.uom', 'UOM'),
+        kind: 'custom',
+        width: '64px',
+        render: (row, index, onChange) => {
+          if (isReadOnly) {
+            return <div className="text-center text-xs text-slate-800 dark:text-slate-200 uppercase">{row.uom || '—'}</div>;
+          }
+          return (
+            <UomSelector
+              item={itemById[row.itemId]}
+              itemId={row.itemId}
+              valueId={row.uomId}
+              valueCode={row.uom}
+              usage="sales"
+              disabled={busy || !row.itemId}
+              noBorder
+              onChange={(selected) => onChange({ uomId: selected?.uomId, uom: selected?.code || '' })}
+            />
+          );
+        },
+      },
+      {
+        id: 'price',
+        label: t('sales.invoiceDetail.col.unitPrice', 'Unit Price'),
+        kind: 'number',
+        width: '82px',
+        accessor: (row) => row.unitPriceDoc,
+        setter: (value) => ({ unitPriceDoc: Number(value) }),
+      },
+      {
+        id: 'discountType',
+        label: t('sales.invoiceDetail.col.discountType', 'Discount Type'),
+        kind: 'custom',
+        width: '64px',
+        render: (row, _index, onChange) => {
+          if (isReadOnly) {
+            return (
+              <div className="text-center text-xs text-slate-800 dark:text-slate-200">
+                {row.discountType === 'PERCENT' ? '%' : row.discountType === 'AMOUNT' ? form.currency : '—'}
+              </div>
+            );
+          }
+          return (
+            <DiscountTypeSelector
+              noBorder
+              value={row.discountType}
+              currencyCode={form.currency}
+              disabled={busy || !row.itemId}
+              onChange={(next) => onChange({ discountType: next || undefined, discountValue: 0 })}
+            />
+          );
+        },
+      },
+      {
+        id: 'discountValue',
+        label: t('sales.invoiceDetail.col.discount', 'Discount'),
+        kind: 'number',
+        width: '70px',
+        accessor: (row) => row.discountValue || 0,
+        setter: (value) => ({ discountValue: Number(value) }),
+      },
+      {
+        id: 'taxCode',
+        label: t('sales.invoiceDetail.col.taxCode', 'Tax Code'),
+        kind: 'custom',
+        width: '100px',
+        render: (row, _index, onChange) => {
+          if (isReadOnly) {
+            return (
+              <div className="text-xs text-slate-800 dark:text-slate-200">
+                {row.taxCodeId ? taxById[row.taxCodeId]?.code || row.taxCodeId : t('sales.invoiceDetail.noTax', 'No Tax')}
+              </div>
+            );
+          }
+          return (
+            <TaxCodeSelector
+              noBorder
+              options={salesTaxCodes.map((tax) => ({ id: tax.id, code: tax.code, name: tax.name, rate: tax.rate }))}
+              valueId={row.taxCodeId}
+              disabled={busy || !row.itemId}
+              emptySetupMessage={t(
+                'sales.invoiceDetail.taxCodeEmptyHint',
+                'No sales tax codes set up. Create one with scope SALES or BOTH to use it here.',
+              )}
+              onChange={(option) => onChange({ taxCodeId: option?.id })}
+            />
+          );
+        },
+      },
+      {
+        id: 'discountAmt',
+        label: t('sales.invoiceDetail.col.discountAmt', 'Discount Amt'),
+        kind: 'computed',
+        width: '82px',
+        compute: (row, index) => computedLines[index]?.discountAmountDoc ?? 0,
+      },
+      {
+        id: 'lineTotal',
+        label: t('sales.invoiceDetail.col.lineTotal', 'Line Total'),
+        kind: 'computed',
+        width: '90px',
+        compute: (row, index) => computedLines[index]?.lineGrossDoc ?? 0,
+        solveFromTotal: (value, row) => ({ unitPriceDoc: solveUnitPriceFromTotal(value, 'lineGross', row) }),
+      },
+      {
+        id: 'net',
+        label: t('sales.invoiceDetail.col.net', 'Net'),
+        kind: 'computed',
+        width: '82px',
+        compute: (row, index) => computedLines[index]?.lineTotalDoc ?? 0,
+        solveFromTotal: (value, row) => ({ unitPriceDoc: solveUnitPriceFromTotal(value, 'net', row) }),
+      },
+      {
+        id: 'taxAmt',
+        label: t('sales.invoiceDetail.col.tax', 'Tax'),
+        kind: 'computed',
+        width: '82px',
+        compute: (row, index) => computedLines[index]?.taxAmountDoc ?? 0,
+      }
+    ];
+
+    if (showBaseCurrency) {
+      cols.push({
+        id: 'netBase',
+        label: t('sales.invoiceDetail.col.netBase', 'Net Base'),
+        kind: 'computed',
+        width: '90px',
+        compute: (row, index) => computedLines[index]?.lineTotalBase ?? 0,
+      });
+    }
+
+    return cols;
+  }, [form.currency, form.lines, company?.baseCurrency, isReadOnly, uomOptionsByItemId, busy, settings, salesTaxCodes, taxById, computedLines, t]);
 
   const toEditableLinesFromLinkedSource = (source: InvoiceableLinkedSalesSourceDTO): EditableLine[] => {
     return source.lines.map((line) => ({
+      _uid: nextLineUid(),
       soLineId: line.soLineId,
       dnLineId: line.dnLineId,
       itemId: line.itemId,
@@ -429,41 +1266,123 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     }));
   };
 
-  const loadReferenceData = async () => {
-    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult, salespersonResult, commResult] = await Promise.all([
-      salesApi.getSettings(),
-      sharedApi.listParties({ role: 'CUSTOMER', active: true }),
-      inventoryApi.listItems({ active: true, limit: 500 }),
-      sharedApi.listTaxCodes({ active: true }),
-      inventoryApi.listWarehouses({ active: true }),
-      salesApi.listSOs({ limit: 500 }),
-      salesMasterDataApi.listSalespersons({ status: 'ACTIVE' }),
-      communicationsApi.getSettings().catch(() => null),
-    ]);
+  const setStartupProgress = (patch: Partial<LoadingProgress>) => {
+    setLoadingProgress((current) => current ? { ...current, ...patch } : current);
+  };
 
-    const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
-    const customerList = unwrap<PartyDTO[]>(customerResult);
-    const itemList = unwrap<InventoryItemDTO[]>(itemResult);
-    const taxCodeList = unwrap<TaxCodeDTO[]>(taxResult);
-    const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
-    const salesOrderList = unwrap<SalesOrderDTO[]>(salesOrderResult);
-
-    setSettings(currentSettings);
-    setCommSettings(commResult);
-    setCustomers(Array.isArray(customerList) ? customerList : []);
-    setItems(Array.isArray(itemList) ? itemList : []);
-    setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
-    setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
-    setSalesOrders(Array.isArray(salesOrderList) ? salesOrderList : []);
-    setSalespersons(Array.isArray(salespersonResult) ? salespersonResult : []);
+  const trackStartupCall = async <T,>(label: string, work: () => Promise<T>): Promise<T> => {
+    setLoadingProgress((current) => current ? { ...current, activeLabel: label } : current);
     try {
-      const templateResult = await voucherFormApi.list();
-      const templates = unwrap<VoucherFormResponse[]>(templateResult);
-      setInvoiceTemplates(Array.isArray(templates) ? templates : []);
-    } catch (templateError) {
-      console.error('Failed to load sales invoice templates', templateError);
-      setInvoiceTemplates([]);
+      return await work();
+    } finally {
+      setLoadingProgress((current) => current
+        ? {
+            ...current,
+            completedCalls: Math.min(current.completedCalls + 1, current.totalCalls),
+            activeLabel: current.completedCalls + 1 >= current.totalCalls
+              ? t('sales.invoiceDetail.loadingFinalizing', 'Finalizing form')
+              : current.activeLabel,
+          }
+        : current
+      );
     }
+  };
+
+  const loadCachedReferenceData = async (): Promise<SalesInvoiceReferenceData> => {
+    const cacheKey = company?.id || 'active-company';
+    const now = Date.now();
+    const cached = salesInvoiceReferenceCache.get(cacheKey);
+
+    setStartupProgress({ cacheStatus: 'checking', activeLabel: t('sales.invoiceDetail.loadingCheckingCache', 'Checking startup cache') });
+
+    if (cached?.data && cached.expiresAt > now) {
+      setStartupProgress({
+        cacheStatus: 'hit',
+        completedCalls: Math.max(10, loadingProgress?.completedCalls || 0),
+        activeLabel: t('sales.invoiceDetail.loadingCacheHit', 'Using cached startup data'),
+      });
+      return cached.data;
+    }
+
+    if (cached?.promise) {
+      setStartupProgress({
+        cacheStatus: 'inflight',
+        activeLabel: t('sales.invoiceDetail.loadingCacheInflight', 'Waiting for shared startup load'),
+      });
+      return cached.promise;
+    }
+
+    setStartupProgress({ cacheStatus: 'miss', activeLabel: t('sales.invoiceDetail.loadingReferenceData', 'Loading reference data') });
+
+    const promise = Promise.all([
+      trackStartupCall(t('sales.invoiceDetail.loadingSalesSettings', 'Sales settings'), () => salesApi.getSettings()).then(unwrap<SalesSettingsDTO | null>),
+      trackStartupCall(t('sales.invoiceDetail.loadingCustomers', 'Customers'), () => sharedApi.listParties({ role: 'CUSTOMER', active: true })).then(unwrap<PartyDTO[]>),
+      trackStartupCall(t('sales.invoiceDetail.loadingItems', 'Items'), () => inventoryApi.listItems({ active: true, limit: 500 })).then(unwrap<InventoryItemDTO[]>),
+      trackStartupCall(t('sales.invoiceDetail.loadingTaxCodes', 'Tax codes'), () => sharedApi.listTaxCodes({ active: true })).then(unwrap<TaxCodeDTO[]>),
+      trackStartupCall(t('sales.invoiceDetail.loadingWarehouses', 'Warehouses'), () => inventoryApi.listWarehouses({ active: true })).then(unwrap<InventoryWarehouseDTO[]>),
+      trackStartupCall(t('sales.invoiceDetail.loadingSalesOrders', 'Sales orders'), () => salesApi.listSOs({ limit: 500 })).then(unwrap<SalesOrderDTO[]>),
+      trackStartupCall(t('sales.invoiceDetail.loadingSalespersons', 'Salespersons'), () => salesMasterDataApi.listSalespersons({ status: 'ACTIVE' })).then(unwrap<SalespersonDTO[]>),
+      trackStartupCall(t('sales.invoiceDetail.loadingCommunications', 'Communications settings'), () => communicationsApi.getSettings().catch(() => null)).then(unwrap<CommunicationsSettingsDTO | null>),
+      trackStartupCall(t('sales.invoiceDetail.loadingAccountingPolicy', 'Accounting policy'), () => accountingApi.getPolicyConfig().catch(() => null)).then(unwrap<AccountingPolicyConfig | null>),
+      trackStartupCall(t('sales.invoiceDetail.loadingInvoiceTemplates', 'Invoice templates'), () => voucherFormApi.list().catch((templateError) => {
+        console.error('Failed to load sales invoice templates', templateError);
+        return [];
+      })).then(unwrap<VoucherFormResponse[]>),
+    ]).then(([
+      settings,
+      customers,
+      items,
+      taxCodes,
+      warehouses,
+      salesOrders,
+      salespersons,
+      commSettings,
+      accountingPolicy,
+      invoiceTemplates,
+    ]) => ({
+      settings,
+      customers: Array.isArray(customers) ? customers : [],
+      items: Array.isArray(items) ? items : [],
+      taxCodes: Array.isArray(taxCodes) ? taxCodes : [],
+      warehouses: Array.isArray(warehouses) ? warehouses : [],
+      salesOrders: Array.isArray(salesOrders) ? salesOrders : [],
+      salespersons: Array.isArray(salespersons) ? salespersons : [],
+      commSettings,
+      accountingPolicy,
+      invoiceTemplates: Array.isArray(invoiceTemplates) ? invoiceTemplates : [],
+    }));
+
+    salesInvoiceReferenceCache.set(cacheKey, {
+      expiresAt: now + SALES_INVOICE_REFERENCE_CACHE_TTL_MS,
+      promise,
+    });
+
+    try {
+      const data = await promise;
+      salesInvoiceReferenceCache.set(cacheKey, {
+        expiresAt: Date.now() + SALES_INVOICE_REFERENCE_CACHE_TTL_MS,
+        data,
+      });
+      return data;
+    } catch (referenceError) {
+      salesInvoiceReferenceCache.delete(cacheKey);
+      throw referenceError;
+    }
+  };
+
+  const loadReferenceData = async () => {
+    const referenceData = await loadCachedReferenceData();
+
+    setSettings(referenceData.settings);
+    setAccountingPolicy(referenceData.accountingPolicy);
+    setCommSettings(referenceData.commSettings);
+    setCustomers(referenceData.customers);
+    setItems(referenceData.items);
+    setTaxCodes(referenceData.taxCodes);
+    setWarehouses(referenceData.warehouses);
+    setSalesOrders(referenceData.salesOrders);
+    setSalespersons(referenceData.salespersons);
+    setInvoiceTemplates(referenceData.invoiceTemplates);
   };
 
   const ensureItemUomOptions = async (itemId: string) => {
@@ -500,6 +1419,8 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         customerName: source.customerName,
         currency: source.currency,
         exchangeRate: source.exchangeRate,
+        salespersonId: salesOrders.find((order) => order.id === trimmedOrderId)?.salespersonId || prev.salespersonId,
+        warehouseId: undefined,
         lines: nextLines.length ? nextLines : [createEmptyLine()],
       }));
     } catch (err: any) {
@@ -525,8 +1446,10 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       dueDate: loaded.dueDate || '',
       currency: loaded.currency,
       exchangeRate: loaded.exchangeRate,
+      warehouseId: loaded.lines?.find((line) => line.warehouseId)?.warehouseId,
       notes: loaded.notes || '',
       lines: padLinesToMin((loaded.lines || []).map((l) => ({
+        _uid: l.lineId || nextLineUid(),
         lineId: l.lineId,
         soLineId: l.soLineId,
         dnLineId: l.dnLineId,
@@ -543,9 +1466,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         priceIsInclusive: (l as any).priceIsInclusive,
         warehouseId: l.warehouseId,
         description: l.description,
+        appliedPromotionId: (l as any).appliedPromotionId,
+        appliedPromotionName: (l as any).appliedPromotionName,
       }))),
       charges: ((loaded as any).charges || []).map((c: any) => ({
         chargeId: c.chargeId,
+        kind: c.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE',
         code: c.code,
         name: c.name,
         amountDoc: c.amountDoc,
@@ -558,11 +1484,34 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const load = async () => {
     try {
+      const totalStartupCalls = isCreateMode ? 10 : 11;
+      const routeKey = resolvedId || 'new';
+      startupTimingLoggedRef.current = false;
+      startupTimingRef.current = {
+        routeKey,
+        mode: isCreateMode ? 'new' : 'edit',
+        startedAt: getPerfTime(),
+        totalCalls: totalStartupCalls,
+      };
       setLoading(true);
       setError(null);
+      setLoadingProgress({
+        startedAt: Date.now(),
+        elapsedSeconds: 0,
+        totalCalls: totalStartupCalls,
+        completedCalls: 0,
+        activeLabel: t('sales.invoiceDetail.loadingStarting', 'Starting sales invoice form'),
+        cacheStatus: 'checking',
+      });
       await loadReferenceData();
+      if (startupTimingRef.current?.routeKey === routeKey) {
+        startupTimingRef.current.referenceDataFinishedAt = getPerfTime();
+      }
       if (!isCreateMode && resolvedId) {
-        const result = await salesApi.getSI(resolvedId);
+        const result = await trackStartupCall(t('sales.invoiceDetail.loadingInvoice', 'Sales invoice'), () => salesApi.getSI(resolvedId));
+        if (startupTimingRef.current?.routeKey === routeKey) {
+          startupTimingRef.current.invoiceFetchFinishedAt = getPerfTime();
+        }
         const loaded = unwrap<SalesInvoiceDTO>(result);
         setInvoice(loaded);
         setAttachments(Array.isArray(loaded.attachments) ? loaded.attachments : []);
@@ -574,6 +1523,10 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         if (initialSalesOrderId) {
           await loadSalesOrderLines(initialSalesOrderId);
         }
+      }
+      if (startupTimingRef.current?.routeKey === routeKey) {
+        startupTimingRef.current.dataReadyAt = getPerfTime();
+        startupTimingRef.current.completedCalls = loadingProgress?.completedCalls;
       }
     } catch (err: any) {
       // A missing invoice is a normal not-found state, not a critical error.
@@ -594,6 +1547,48 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   useEffect(() => {
     load();
   }, [resolvedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (loading || !startupTimingRef.current || startupTimingLoggedRef.current) return;
+    const timing = startupTimingRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (startupTimingLoggedRef.current) return;
+        startupTimingLoggedRef.current = true;
+        timing.visibleAt = getPerfTime();
+        const referenceMs = Math.round((timing.referenceDataFinishedAt || timing.dataReadyAt || timing.visibleAt) - timing.startedAt);
+        const invoiceMs = timing.invoiceFetchFinishedAt && timing.referenceDataFinishedAt
+          ? Math.round(timing.invoiceFetchFinishedAt - timing.referenceDataFinishedAt)
+          : 0;
+        const dataReadyMs = Math.round((timing.dataReadyAt || timing.visibleAt) - timing.startedAt);
+        const visibleMs = Math.round(timing.visibleAt - timing.startedAt);
+        const renderAfterDataMs = Math.max(0, visibleMs - dataReadyMs);
+
+        console.groupCollapsed(`[SalesInvoiceDetail] startup timing (${timing.mode}, ${timing.routeKey})`);
+        console.table([
+          { phase: 'Reference data ready', ms: referenceMs },
+          { phase: 'Invoice fetch after reference', ms: invoiceMs },
+          { phase: 'All data ready', ms: dataReadyMs },
+          { phase: 'First painted frame', ms: visibleMs },
+          { phase: 'Render/layout after data', ms: renderAfterDataMs },
+        ]);
+        console.info('Expected startup API calls:', timing.totalCalls);
+        console.groupEnd();
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [loading]);
+
+  useEffect(() => {
+    if (!loading || !loadingProgress?.startedAt) return;
+    const timer = window.setInterval(() => {
+      setLoadingProgress((current) => current
+        ? { ...current, elapsedSeconds: Math.max(0, Math.floor((Date.now() - current.startedAt) / 1000)) }
+        : current
+      );
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [loading, loadingProgress?.startedAt]);
 
   useEffect(() => {
     const ids = Array.from(new Set<string>(form.lines.map((line) => line.itemId).filter((id): id is string => Boolean(id))));
@@ -637,7 +1632,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           next.uomId = next.uomId || defaultUom?.uomId;
           next.uom = next.uom || defaultUom?.code || item.salesUom || item.baseUom;
           if (!next.warehouseId && settings?.defaultWarehouseId) {
-            next.warehouseId = settings.defaultWarehouseId;
+            next.warehouseId = prev.warehouseId || settings.defaultWarehouseId;
           }
           if (!next.taxCodeId && item.defaultSalesTaxCodeId) {
             const defaultTax = salesTaxCodes.find((taxCode) => taxCode.id === item.defaultSalesTaxCodeId);
@@ -650,6 +1645,9 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         }
       }
       lines[index] = next;
+      if (index === lines.length - 1 && hasLineContent(next)) {
+        lines.push(createEmptyLine());
+      }
       return { ...prev, lines };
     });
 
@@ -684,21 +1682,62 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const removeLine = (index: number) => {
     setForm((prev) => {
       if (prev.lines.length <= 1) return prev;
-      return { ...prev, lines: prev.lines.filter((_, idx) => idx !== index) };
+      return { ...prev, lines: padLinesToMin(prev.lines.filter((_, idx) => idx !== index)) };
     });
   };
-  const setCharge = (index: number, patch: Partial<EditableCharge>) => {
+
+  // Whole-invoice charge/discount entry runs through a single modal opened from the
+  // allocation grid header. Saving upserts a row into form.charges; totals + posting
+  // pick it up via computedCharges and the buildPayload charge maps.
+  const openChargeModal = (kind: 'CHARGE' | 'DISCOUNT', editIndex: number | null = null) => {
+    if (isReadOnly) return;
+    if (editIndex !== null) {
+      const existing = form.charges[editIndex];
+      setChargeModal({
+        kind: existing.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE',
+        editIndex,
+        accountId: existing.revenueAccountId || '',
+        accountLabel: existing.accountLabel || '',
+        amount: existing.amountDoc || 0,
+        description: existing.name || '',
+      });
+      return;
+    }
+    const defaultAccount = kind === 'DISCOUNT' ? settings?.defaultSalesExpenseAccountId : settings?.defaultRevenueAccountId;
+    setChargeModal({
+      kind,
+      editIndex: null,
+      accountId: defaultAccount || '',
+      accountLabel: '',
+      amount: 0,
+      description: '',
+    });
+  };
+  const closeChargeModal = () => setChargeModal(null);
+  const saveChargeModal = () => {
+    if (!chargeModal) return;
+    const description = chargeModal.description.trim();
+    const amount = roundMoney(chargeModal.amount || 0);
+    if (!description || amount <= 0) return; // guarded by the disabled save button too
+    const entry: EditableCharge = {
+      chargeId: chargeModal.editIndex !== null ? form.charges[chargeModal.editIndex]?.chargeId || nextChargeId() : nextChargeId(),
+      kind: chargeModal.kind,
+      name: description,
+      amountDoc: amount,
+      revenueAccountId: chargeModal.accountId || undefined,
+      accountLabel: chargeModal.accountLabel || undefined,
+    };
     setForm((prev) => {
       const charges = [...prev.charges];
-      charges[index] = { ...charges[index], ...patch };
+      if (chargeModal.editIndex !== null) charges[chargeModal.editIndex] = entry;
+      else charges.push(entry);
       return { ...prev, charges };
     });
+    setChargeModal(null);
   };
-  const addCharge = () => { setForm((prev) => ({ ...prev, charges: [...prev.charges, createEmptyCharge()] })); };
   const removeCharge = (index: number) => {
     setForm((prev) => ({ ...prev, charges: prev.charges.filter((_, idx) => idx !== index) }));
   };
-
   const validateBeforeSave = (): string | null => {
     if (!form.customerId) return t('sales.invoiceDetail.validation.customerRequired', 'Customer is required.');
     if (!form.invoiceDate) return t('sales.invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
@@ -711,7 +1750,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('sales.invoiceDetail.validation.lineUnitPriceInvalid', 'Line {{n}}: unit price must be >= 0.', { n: i + 1 });
       if (line.discountType && (Number.isNaN(line.discountValue || 0) || (line.discountValue || 0) < 0)) return t('sales.invoiceDetail.validation.lineDiscountInvalid', 'Line {{n}}: discount must be >= 0.', { n: i + 1 });
       const item = itemById[line.itemId];
-      if (item?.trackInventory && !line.dnLineId && !line.warehouseId) {
+      if (item?.trackInventory && !line.dnLineId && !(line.warehouseId || (activeSourceMode === 'direct' ? form.warehouseId : undefined))) {
         return t('sales.invoiceDetail.validation.lineWarehouseRequired', 'Line {{n}}: warehouse is required for stock item {{item}}.', { n: i + 1, item: item.name });
       }
     }
@@ -742,7 +1781,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       discountValue: line.discountType ? line.discountValue || 0 : undefined,
       taxCodeId: line.taxCodeId || undefined,
       priceIsInclusive: line.priceIsInclusive,
-      warehouseId: line.warehouseId || undefined,
+      warehouseId: line.warehouseId || (activeSourceMode === 'direct' ? form.warehouseId : undefined) || undefined,
       description: line.description || undefined,
     };
   };
@@ -756,16 +1795,16 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     salespersonId: form.salespersonId || undefined,
     customerInvoiceNumber: form.customerInvoiceNumber || undefined,
     invoiceDate: form.invoiceDate,
-    dueDate: form.dueDate || undefined,
     currency: form.currency.toUpperCase(),
     exchangeRate: form.exchangeRate,
     lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
     charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
       chargeId: charge.chargeId,
+      kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
       code: charge.code || undefined,
       name: charge.name,
       amountDoc: charge.amountDoc,
-      taxCodeId: charge.taxCodeId || undefined,
+      taxCodeId: charge.kind === 'DISCOUNT' ? undefined : (charge.taxCodeId || undefined),
       revenueAccountId: charge.revenueAccountId || undefined,
       description: charge.description || undefined,
     })),
@@ -781,16 +1820,16 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     salespersonId: form.salespersonId || undefined,
     customerInvoiceNumber: form.customerInvoiceNumber || undefined,
     invoiceDate: form.invoiceDate,
-    dueDate: form.dueDate || undefined,
     currency: form.currency.toUpperCase(),
     exchangeRate: form.exchangeRate,
     lines: filledLines(form.lines).map((line, index) => buildLinePayload(line, index)),
     charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
       chargeId: charge.chargeId,
+      kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
       code: charge.code || undefined,
       name: charge.name,
       amountDoc: charge.amountDoc,
-      taxCodeId: charge.taxCodeId || undefined,
+      taxCodeId: charge.kind === 'DISCOUNT' ? undefined : (charge.taxCodeId || undefined),
       revenueAccountId: charge.revenueAccountId || undefined,
       description: charge.description || undefined,
     })),
@@ -1032,14 +2071,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             'This invoice is waiting for accounting approval. Approve it from Accounting → Approval Center.',
           ),
         );
-        setShowSettlement(false);
         return;
       }
       const posted = await salesApi.postSI(invoice.id, settlementInput, periodLockOverrideReason);
       const dto = unwrap<SalesInvoiceDTO>(posted);
       setInvoice(dto);
       populateFormFromInvoice(dto);
-      setShowSettlement(false);
       errorHandler.showSuccess(t('sales.invoiceDetail.postSuccess', 'Invoice {{number}} posted.', { number: dto.invoiceNumber }));
       if (isWindow && onSaved) {
         onSaved();
@@ -1056,13 +2093,26 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     }
   };
 
-  const handlePostClick = () => {
+  const handlePostClick = async () => {
     if (!invoice) return;
     const outstanding = roundMoney((invoice.grandTotalBase || 0) - (invoice.paidAmountBase || 0));
-    if (outstanding > 0.005) {
-      setShowSettlement(true);
-      setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+    if (settlementMode === 'DEFERRED') {
+      const confirmed = await confirm({
+        title: t('sales.invoiceDetail.postOnCreditTitle', 'Post on Credit'),
+        message: t('sales.invoiceDetail.postOnCreditMessage', 'Are you sure you want to post this invoice on credit? This will increase the customer\'s receivable balance.'),
+        confirmLabel: t('sales.invoiceDetail.postConfirm', 'Confirm & Post'),
+        tone: 'warning',
+      });
+      if (!confirmed) return;
+      postDraft();
     } else {
+      // The inline SettlementBlock already holds the user's settlement rows.
+      // Gate on its validity, then post directly. (#193 retired the old settlement
+      // modal — re-opening it here rendered nothing and silently wiped the entry.)
+      if (!settlementValidity.ok) {
+        errorHandler.showError(settlementValidity.message || t('settlement.validation.needsAttention', 'Settlement needs attention.'));
+        return;
+      }
       postDraft();
     }
   };
@@ -1155,9 +2205,57 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   // ─── Loading / Not-found states ───────────────────────────────────────────
   if (loading) {
+    const progress = loadingProgress;
+    const completedCalls = progress?.completedCalls ?? 0;
+    const totalCalls = progress?.totalCalls ?? (isCreateMode ? 10 : 11);
+    const progressPercent = totalCalls > 0 ? Math.min(100, Math.round((completedCalls / totalCalls) * 100)) : 0;
+    const cacheLabel =
+      progress?.cacheStatus === 'hit'
+        ? t('sales.invoiceDetail.loadingCacheHitShort', 'Cache hit')
+        : progress?.cacheStatus === 'miss'
+          ? t('sales.invoiceDetail.loadingCacheMissShort', 'Cache miss')
+          : progress?.cacheStatus === 'inflight'
+            ? t('sales.invoiceDetail.loadingCacheInflightShort', 'Shared load')
+            : t('sales.invoiceDetail.loadingCacheCheckingShort', 'Checking cache');
+
     return (
       <div className="space-y-4 p-4">
-        <div className="h-8 w-64 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary-600" />
+              <div className="min-w-0">
+                <div className="text-sm font-black text-slate-900 dark:text-slate-100">
+                  {t('sales.invoiceDetail.loadingTitle', 'Opening Sales Invoice form')}
+                </div>
+                <div className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  {progress?.activeLabel || t('sales.invoiceDetail.loadingPreparing', 'Preparing form')}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide">
+              <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                {cacheLabel}
+              </span>
+              <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                {t('sales.invoiceDetail.loadingElapsed', '{{seconds}}s', { seconds: progress?.elapsedSeconds ?? 0 })}
+              </span>
+              <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                {t('sales.invoiceDetail.loadingApiCount', '{{completed}}/{{total}} API', { completed: completedCalls, total: totalCalls })}
+              </span>
+            </div>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className="h-full rounded-full bg-primary-600 transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            <span>{t('sales.invoiceDetail.loadingReferenceHint', 'Reference data is cached per company for faster reopen.')}</span>
+            <span>{progressPercent}%</span>
+          </div>
+        </div>
         <div className="h-48 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
         <div className="h-64 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700" />
       </div>
@@ -1185,972 +2283,859 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     );
   }
 
-  const canCreateReceipt = invoice?.status === 'POSTED' && (invoice?.outstandingAmountBase || 0) > 0;
-  const receiptHref = invoice ? `/accounting/vouchers?mode=create&type=receipt&sourceType=SALES_INVOICE&sourceId=${invoice.id}` : '';
-  const createReturnHref = invoice
-    ? `/sales/returns/new?salesInvoiceId=${encodeURIComponent(invoice.id)}${invoice.salesOrderId ? `&salesOrderId=${encodeURIComponent(invoice.salesOrderId)}` : ''}`
-    : '';
+  const handleSaveAndPostClick = async () => {
+    const outstanding = roundMoney(totals.grandTotalBase);
+    if (settlementMode === 'DEFERRED') {
+      const confirmed = await confirm({
+        title: t('sales.invoiceDetail.saveAndPostCreditTitle', 'Save & Post on Credit'),
+        message: t('sales.invoiceDetail.saveAndPostCreditMessage', 'Are you sure you want to save and post this invoice on credit? This will increase the customer\'s receivable balance.'),
+        confirmLabel: t('sales.invoiceDetail.saveAndPostConfirm', 'Confirm'),
+        tone: 'warning',
+      });
+      if (!confirmed) return;
+      createAndPostDraft();
+    } else if (outstanding > 0.005) {
+      // Inline SettlementBlock holds the rows; gate on validity, then post directly.
+      // (#193 retired the old settlement modal — re-opening it here wiped the entry.)
+      if (!settlementValidity.ok) {
+        errorHandler.showError(settlementValidity.message || t('settlement.validation.needsAttention', 'Settlement needs attention.'));
+        return;
+      }
+      createAndPostDraft();
+    } else {
+      setSettlementMode('DEFERRED');
+      createAndPostDraft();
+    }
+  };
 
-  // ─── Shared settlement section renderer ──────────────────────────────────
-  const renderSettlementSection = (onConfirm: () => void, confirmLabel: string) => (
-    <Card className="p-5 border-blue-200 bg-blue-50">
-      <h2 className="mb-3 text-lg font-semibold text-slate-900">{t('sales.invoiceDetail.settlement.title', 'Settlement')}</h2>
-      <div className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.mode', 'Settlement Mode')}</label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            value={settlementMode}
-            onChange={(e) => setSettlementMode(e.target.value as any)}
-          >
-            <option value="DEFERRED">{t('sales.invoiceDetail.settlement.deferred', 'Deferred (No Payment)')}</option>
-            <option value="CASH_FULL">{t('sales.invoiceDetail.settlement.cashFull', 'Cash Full Payment')}</option>
-            <option value="MULTI">{t('sales.invoiceDetail.settlement.multi', 'Multiple Payments')}</option>
-          </select>
-        </div>
-        {settlementMode !== 'DEFERRED' && (
-          <>
-            <div>
-              <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.arAccount', 'AR Account (Optional Override)')}</label>
-              <AccountSelector
-                value={arAccountId}
-                placeholder={t('sales.invoiceDetail.settlement.arAccountPlaceholder', 'Leave empty to use Sales default AR')}
-                onChange={(account) => setArAccountId(account?.id || '')}
-              />
-            </div>
-            {settlementRows.map((row, idx) => (
-              <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
-                <div className="text-sm font-medium text-slate-700">{t('sales.invoiceDetail.settlement.paymentRow', 'Payment Row {{n}}', { n: idx + 1 })}</div>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.settlementAccount', 'Receiving Account (Cash / Bank)')}</label>
-                    <AccountSelector
-                      value={row.settlementAccountId}
-                      placeholder={t('sales.invoiceDetail.settlement.settlementAccountPlaceholder', 'Leave empty to use payment method mapping')}
-                      onChange={(account) => {
-                        const updated = [...settlementRows];
-                        updated[idx].settlementAccountId = account?.id || '';
-                        setSettlementRows(updated);
-                      }}
-                    />
-                    <p className="mt-1 text-[11px] text-slate-500">{t('sales.invoiceDetail.settlement.settlementAccountHint', 'Where the money lands. The customer’s AR account is reduced automatically.')}</p>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.amountBase', 'Amount (Base)')}</label>
-                    <input type="number" step="0.01" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={row.amountBase}
-                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].amountBase = parseFloat(e.target.value) || 0; setSettlementRows(updated); }}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.paymentMethod', 'Payment Method')}</label>
-                    <select className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={row.paymentMethod}
-                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].paymentMethod = e.target.value; setSettlementRows(updated); }}
-                    >
-                      {enabledPaymentMethodConfigs.length > 0 ? (
-                        enabledPaymentMethodConfigs.map((config) => (
-                          <option key={config.method} value={config.method}>{config.label || config.method}</option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="CASH">{t('sales.invoiceDetail.settlement.cash', 'Cash')}</option>
-                          <option value="BANK_TRANSFER">{t('sales.invoiceDetail.settlement.bankTransfer', 'Bank Transfer')}</option>
-                          <option value="CHECK">{t('sales.invoiceDetail.settlement.check', 'Check')}</option>
-                          <option value="CREDIT_CARD">{t('sales.invoiceDetail.settlement.creditCard', 'Credit Card')}</option>
-                          <option value="OTHER">{t('sales.invoiceDetail.settlement.other', 'Other')}</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.paymentDate', 'Payment Date')}</label>
-                    <input type="date" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={row.paymentDate}
-                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].paymentDate = e.target.value; setSettlementRows(updated); }}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.reference', 'Reference')}</label>
-                    <input type="text" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={row.reference}
-                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].reference = e.target.value; setSettlementRows(updated); }}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t('sales.invoiceDetail.settlement.notes', 'Notes')}</label>
-                    <input type="text" className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={row.notes}
-                      onChange={(e) => { const updated = [...settlementRows]; updated[idx].notes = e.target.value; setSettlementRows(updated); }}
-                    />
-                  </div>
-                </div>
-                {settlementMode === 'MULTI' && (
-                  <button type="button" className="text-xs text-rose-600 hover:text-rose-800"
-                    onClick={() => setSettlementRows(settlementRows.filter((_, i) => i !== idx))}
-                  >
-                    {t('sales.invoiceDetail.settlement.removeRow', 'Remove Row')}
-                  </button>
-                )}
-              </div>
-            ))}
-            {settlementMode === 'MULTI' && (
-              <button type="button"
-                className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
-                onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: 0, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
-              >
-                {t('sales.invoiceDetail.settlement.addRow', '+ Add Payment Row')}
-              </button>
-            )}
-          </>
-        )}
-        <div className="flex gap-2 pt-2">
-          <button type="button"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            onClick={onConfirm} disabled={busy}
-          >
-            {busy ? t('sales.invoiceDetail.processing', 'Processing...') : confirmLabel}
-          </button>
-          <button type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => setShowSettlement(false)} disabled={busy}
-          >
-            {t('common.cancel', 'Cancel')}
-          </button>
-        </div>
-      </div>
-    </Card>
-  );
+  const downloadLinesCsv = () => {
+    const rows = filledLines(form.lines);
+    if (!rows.length) {
+      errorHandler.showWarning(t('sales.invoiceDetail.noLinesToExport', 'There are no invoice lines to export.'));
+      return;
+    }
+    const headers = ['Item Code', 'Item Name', 'Qty', 'UOM', 'Unit Price', 'Discount', 'Tax Code', 'Warehouse', 'Line Total', 'Net', 'Tax'];
+    const csvRows = rows.map((line, index) => {
+      const computed = computedLines[index];
+      const warehouseName = line.warehouseId ? warehouses.find((w) => w.id === line.warehouseId)?.name || line.warehouseId : '';
+      const taxCode = line.taxCodeId ? taxById[line.taxCodeId]?.code || line.taxCodeId : '';
+      return [
+        line.itemCode || '',
+        line.itemName || '',
+        line.invoicedQty,
+        line.uom || '',
+        line.unitPriceDoc || 0,
+        line.discountValue || 0,
+        taxCode,
+        warehouseName,
+        computed?.lineGrossDoc ?? 0,
+        computed?.lineTotalDoc ?? 0,
+        computed?.taxAmountDoc ?? 0,
+      ];
+    });
+    const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const csv = [headers, ...csvRows].map((row) => row.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${invoice?.invoiceNumber || 'sales-invoice-lines'}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    errorHandler.showSuccess(t('sales.invoiceDetail.linesExported', 'Invoice lines exported.'));
+  };
 
-  // ─── Header fields form (shared for create + edit DRAFT) ─────────────────
-  const renderHeaderForm = () => (
-    <div className="flex-none bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200/60 dark:border-slate-800/60 p-4 space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Card 1: Customer & Logistics */}
-        <div className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/85 p-4 shadow-sm space-y-3">
-          <div className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-2">
-            {t('sales.invoiceDetail.sections.customerLogistics', 'Customer & Timelines')}
-          </div>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <div className="col-span-full">
-              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.customer', 'Customer')}</label>
-              {isReadOnly ? (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900">
-                  {customerNameById[form.customerId] || form.customerName || form.customerId || '—'}
-                </div>
-              ) : (
-                <PartySelector
-                  value={form.customerId}
-                  onChange={(party) => {
-                    setTemplateTouched(false);
-                    setForm((prev) => ({
-                      ...prev,
-                      customerId: party?.id || '',
-                      customerName: party?.displayName || '',
-                      currency: party?.defaultCurrency || prev.currency,
-                      invoiceTemplateId: party ? prev.invoiceTemplateId : '',
-                      invoiceTemplateFormType: party ? prev.invoiceTemplateFormType : currentInvoiceFormType,
-                    }));
-                  }}
-                />
-              )}
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.invoiceDate', 'Invoice Date')}</label>
-              <DatePicker value={form.invoiceDate} onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))} disabled={isReadOnly} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.dueDate', 'Due Date (optional)')}</label>
-              <DatePicker value={form.dueDate} onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))} disabled={isReadOnly} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.salesperson', 'Salesperson')}</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
-                value={form.salespersonId || ''}
-                disabled={isReadOnly}
-                onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
-              >
-                <option value="">{t('sales.invoiceDetail.none', '— None —')}</option>
-                {salespersons.map((sp) => (
-                  <option key={sp.id} value={sp.id}>{sp.name}</option>
-                ))}
-              </select>
-            </div>
-            {eligibleInvoiceTemplates.length > 1 && (
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceTemplates.fieldLabel', 'Print Template')}</label>
-                <select
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
-                  value={form.invoiceTemplateId}
-                  disabled={isReadOnly}
-                  onChange={(e) => {
-                    const selected = eligibleInvoiceTemplates.find((template) => template.id === e.target.value);
-                    setTemplateTouched(true);
-                    setForm((prev) => ({
-                      ...prev,
-                      invoiceTemplateId: e.target.value,
-                      invoiceTemplateFormType: selected?.formType || currentInvoiceFormType,
-                    }));
-                  }}
-                >
-                  <option value="">{t('sales.invoiceTemplates.autoSelect', 'Auto Select')}</option>
-                  {eligibleInvoiceTemplates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}{template.isDefault ? ` ${t('sales.invoiceTemplates.defaultTag', '(Default)')}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+  const showImportNotReady = (message: string) => {
+    errorHandler.showWarning(message);
+  };
+
+  const setSourceMode = async (mode: 'direct' | 'so' | 'dn') => {
+    if (isReadOnly) return;
+    if (mode === 'dn') {
+      errorHandler.showWarning(t('sales.invoiceDetail.deliveryNoteSourceNotReady', 'Delivery Note source loading is not connected on this invoice page yet.'));
+      return;
+    }
+    if (mode === 'so') {
+      setRequestedSourceMode('so');
+      return;
+    }
+    setRequestedSourceMode('direct');
+    if (sourceMode === 'direct') return;
+    const confirmed = await confirm({
+      title: t('sales.invoiceDetail.switchToDirectTitle', 'Switch to direct entry?'),
+      message: t('sales.invoiceDetail.switchToDirectMessage', 'This will unlink the current source document from the editable invoice lines.'),
+      confirmLabel: t('sales.invoiceDetail.switchToDirectConfirm', 'Switch'),
+      tone: 'warning',
+    });
+    if (!confirmed) return;
+    setForm((prev) => ({
+      ...prev,
+      salesOrderId: '',
+      lines: padLinesToMin(
+        prev.lines.map((line) => ({
+          ...line,
+          soLineId: undefined,
+          dnLineId: undefined,
+        })),
+      ),
+    }));
+  };
+
+  const renderDocumentHeaderCard = () => {
+    const selectedSalesOrder = form.salesOrderId ? salesOrders.find((order) => order.id === form.salesOrderId) : undefined;
+    const selectedWarehouseName = form.warehouseId ? warehouses.find((warehouse) => warehouse.id === form.warehouseId)?.name || form.warehouseId : '—';
+    const selectedSalespersonName = form.salespersonId ? salespersons.find((sp) => sp.id === form.salespersonId)?.name || '—' : '—';
+    const headerLabelClass = documentHeaderLabelClass;
+    const headerFieldWrapperClass = 'min-w-0';
+    const headerControlClass = documentHeaderControlClass;
+    const headerSelectorClass = documentHeaderSelectorClass;
+
+    return (
+      <DocumentCompactCard
+        title={activeSourceMode === 'so'
+          ? t('sales.invoiceDetail.headerFromSO', 'Header - From Sales Order')
+          : t('sales.invoiceDetail.headerDirect', 'Header - Direct Invoice')}
+        action={
+          <div className="flex items-center gap-1.5">
+            <DocumentPill tone={activeSourceMode === 'so' ? 'blue' : 'slate'}>
+              {activeSourceMode === 'so'
+                ? t('sales.invoiceDetail.sourceFromSO', 'From SO')
+                : t('sales.invoiceDetail.sourceDirect', 'Direct')}
+            </DocumentPill>
+            <DocumentPill tone="slate">{form.currency}</DocumentPill>
+            {invoice?.status === 'POSTED' && (
+              <DocumentPill tone="green">
+                <ShieldCheck className="h-3 w-3" />
+                {t('sales.invoiceDetail.postedStatus', 'Policy OK')}
+              </DocumentPill>
             )}
           </div>
-        </div>
-
-        {/* Card 2: Financial Details & Origin */}
-        <div className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/85 p-4 shadow-sm space-y-3">
-          <div className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-2">
-            {t('sales.invoiceDetail.sections.financialDetails', 'Financial Details')}
-          </div>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <div className="col-span-full">
-              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.salesOrder', 'Sales Order (optional)')}</label>
-              <div className="flex gap-2">
-                <select
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
-                  value={form.salesOrderId}
-                  disabled={isReadOnly}
-                  onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
-                >
-                  <option value="">{t('sales.invoiceDetail.noSalesOrder', 'No sales order')}</option>
-                  {salesOrders.map((order) => (
-                    <option key={order.id} value={order.id}>{order.orderNumber} - {order.customerName}</option>
-                  ))}
-                </select>
-                {!isReadOnly && (
-                  <button type="button"
-                    className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
-                    onClick={() => loadSalesOrderLines(form.salesOrderId)}
-                    disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
-                  >
-                    {orderLineLoading ? t('sales.invoiceDetail.loading', 'Loading...') : t('sales.invoiceDetail.loadLines', 'Load Lines')}
-                  </button>
-                )}
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.customerInvoiceNumber', 'Customer Invoice #')}</label>
-              <input type="text"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
-                value={form.customerInvoiceNumber}
-                disabled={isReadOnly}
-                onChange={(e) => setForm((prev) => ({ ...prev, customerInvoiceNumber: e.target.value }))}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.currency', 'Currency')}</label>
-              <CurrencySelector value={form.currency} onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))} disabled={isReadOnly || busy} />
-            </div>
-            <div className="flex flex-col gap-1 col-span-full">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
-              <CurrencyExchangeWidget
-                currency={form.currency}
-                baseCurrency={company?.baseCurrency || 'USD'}
-                voucherDate={form.invoiceDate}
-                value={form.exchangeRate}
-                onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
-                disabled={isReadOnly || busy}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="bg-white/85 dark:bg-slate-900/85 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
-        <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">{t('sales.invoiceDetail.notes', 'Notes')}</label>
-        <textarea rows={1.5}
-          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-y text-slate-900 dark:text-slate-100"
-          value={form.notes}
-          disabled={isReadOnly}
-          onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-        />
-      </div>
-    </div>
-  );
-
-  const renderLinesTable = () => (
-    <div className="flex-1 min-h-[250px] flex flex-col bg-white dark:bg-slate-900 border-y border-slate-200/60 dark:border-slate-800/60">
-      <div className="flex-none flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.invoiceDetail.lineItems', 'Line Items')}</h2>
-        {!isReadOnly && (
-          <button type="button"
-            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
-            onClick={addLine} disabled={busy}
-          >
-            {t('sales.invoiceDetail.addItem', 'Add Row')}
-          </button>
-        )}
-      </div>
-      <div className="flex-1 overflow-auto">
-        <table className="min-w-full text-xs border-collapse">
-          <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60 z-10 shadow-sm">
-            <tr>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.item', 'Item')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.qty', 'Qty')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.uom', 'UOM')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.unitPrice', 'Unit Price')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discountType', 'Discount Type')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discount', 'Discount')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.taxCode', 'Tax Code')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.warehouse', 'Warehouse')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.discountAmt', 'Discount Amt')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.lineTotal', 'Line Total')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.net', 'Net')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.tax', 'Tax')}</th>
-              <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.col.netBase', 'Net Base')}</th>
-              {!isReadOnly && <th className="border-b border-slate-200/60 dark:border-slate-800/60 px-3 py-2 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500" />}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {form.lines.map((line, index) => (
-              <tr key={line.lineId || `line-${index}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-950/40 align-middle transition-colors duration-150">
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle min-w-[180px]">
-                  {isReadOnly ? (
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName || '—'}</div>
-                  ) : (
-                    <>
-                      <ItemSelector value={line.itemId}
-                        onChange={(item) => {
-                          if (item) {
-                            const defaultUom = getDefaultItemUomOption(item, 'sales');
-                            setLine(index, { itemId: item.id, itemCode: item.code, itemName: item.name, uomId: defaultUom?.uomId, uom: defaultUom?.code || item.salesUom || item.baseUom });
-                          } else {
-                            setLine(index, { itemId: '', itemCode: '', itemName: '', uomId: undefined, uom: '' });
-                          }
-                        }}
-                      />
-                      {(line.itemCode || line.itemName) && (
-                        <div className="mt-1 text-[10px] text-slate-400">{(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}</div>
-                      )}
-                    </>
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[70px]">
-                  {isReadOnly ? (
-                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.invoicedQty}</div>
-                  ) : (
-                    <input type="number" min={0.000001} step={0.000001}
-                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
-                      value={line.invoicedQty}
-                      onChange={(e) => setLine(index, { invoicedQty: Number(e.target.value) })}
-                    />
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[80px]">
-                  {isReadOnly ? (
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 uppercase">{line.uom || '—'}</div>
-                  ) : (
-                    <select className="w-full border-0 bg-transparent px-1 py-1.5 text-xs uppercase focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
-                      value={findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId || line.uomId || line.uom}
-                      disabled={!line.itemId}
+        }
+        className="overflow-visible"
+      >
+        <DocumentHeaderGrid>
+          {isReadOnly ? (
+            <>
+              <DocumentField label={t('sales.invoiceDetail.invoiceNo', 'Invoice No.')} value={invoice?.invoiceNumber || 'SI-DRAFT'} plain />
+              <DocumentField label={t('sales.invoiceDetail.source', 'Source')} value={form.salesOrderId ? salesOrderLabelById[form.salesOrderId] || form.salesOrderId : t('sales.invoiceDetail.sourceDirect', 'Direct')} plain />
+              <DocumentField label={t('sales.invoiceDetail.customer', 'Customer')} value={customerNameById[form.customerId] || form.customerName || '—'} plain />
+              <DocumentField label={t('sales.invoiceDetail.invoiceDate', 'Invoice Date')} value={form.invoiceDate} plain />
+              <DocumentField label={t('sales.invoiceDetail.currency', 'Currency')} value={form.currency} plain />
+              <DocumentField label={t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')} value={String(form.exchangeRate || 1)} plain />
+              {activeSourceMode === 'direct' && <DocumentField label={t('sales.invoiceDetail.mainWarehouse', 'Main Warehouse')} value={selectedWarehouseName} plain />}
+              <DocumentField label={t('sales.invoiceDetail.salesperson', 'Salesperson')} value={selectedSalespersonName} plain />
+              <DocumentField label={t('sales.invoiceDetail.customerInvoiceNumber', 'Customer PO / Ref')} value={form.customerInvoiceNumber || '—'} plain />
+            </>
+          ) : (
+            <>
+              {activeSourceMode === 'so' ? (
+                <>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.salesOrder', 'Sales Order')}</label>
+                    <select
+                      className={headerControlClass}
+                      value={form.salesOrderId}
                       onChange={(e) => {
-                        const selected = (uomOptionsByItemId[line.itemId] || []).find((option) => (option.uomId || option.code) === e.target.value);
-                        setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                        const nextSalesOrderId = e.target.value;
+                        if (!nextSalesOrderId) {
+                          setForm((prev) => ({
+                            ...prev,
+                            salesOrderId: '',
+                            customerId: '',
+                            customerName: '',
+                            salespersonId: undefined,
+                            lines: padLinesToMin([]),
+                          }));
+                          return;
+                        }
+                        void loadSalesOrderLines(nextSalesOrderId);
                       }}
                     >
-                      <option value="">{line.itemId ? t('sales.invoiceDetail.selectUom', 'Select UOM') : t('sales.invoiceDetail.noItem', 'No item')}</option>
-                      {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                        <option key={option.uomId || option.code} value={option.uomId || option.code}>{option.code}</option>
+                      <option value="">{t('sales.invoiceDetail.selectSalesOrder', 'Select open sales order...')}</option>
+                      {invoiceableSalesOrders.map((order) => (
+                        <option key={order.id} value={order.id}>
+                          {order.orderNumber} - {order.customerName}
+                        </option>
                       ))}
                     </select>
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[90px]">
-                  {isReadOnly ? (
-                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.unitPriceDoc?.toFixed(2)}</div>
-                  ) : (
-                    <input type="number" min={0} step={0.01}
-                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
-                      value={line.unitPriceDoc}
-                      onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
+                  </div>
+                  <div className={headerFieldWrapperClass}>
+                    <DocumentField
+                      label={t('sales.invoiceDetail.customer', 'Customer')}
+                      value={selectedSalesOrder?.customerName || customerNameById[form.customerId] || form.customerName || '—'}
+                      locked
                     />
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[100px]">
-                  {isReadOnly ? (
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.discountType || t('sales.invoiceDetail.noDiscount', 'No Discount')}</div>
-                  ) : (
-                    <select className="w-full border-0 bg-transparent px-1 py-1.5 text-xs focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
-                      value={line.discountType || ''}
-                      onChange={(e) => setLine(index, { discountType: (e.target.value || undefined) as any, discountValue: 0 })}
-                    >
-                      <option value="">{t('sales.invoiceDetail.noDiscount', 'No Discount')}</option>
-                      <option value="PERCENT">{t('sales.invoiceDetail.discountPercent', 'Percent')}</option>
-                      <option value="AMOUNT">{t('sales.invoiceDetail.discountAmount', 'Amount')}</option>
-                    </select>
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[70px]">
-                  {isReadOnly ? (
-                    <div className="text-right font-mono font-medium text-sm text-slate-900 dark:text-slate-100">{line.discountValue || 0}</div>
-                  ) : (
-                    <input type="number" min={0} step={0.01}
-                      className="w-full border-0 bg-transparent px-1 py-1.5 text-xs text-right font-mono focus:ring-1 focus:ring-primary-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-900 dark:text-slate-100"
-                      value={line.discountValue || 0}
-                      disabled={!line.discountType}
-                      onChange={(e) => setLine(index, { discountValue: Number(e.target.value) })}
+                  </div>
+                </>
+              ) : (
+                <div className={headerFieldWrapperClass}>
+                  <label className={headerLabelClass}>{t('sales.invoiceDetail.customer', 'Customer')}</label>
+                  <PartySelector
+                    className={headerSelectorClass}
+                    value={form.customerId}
+                    onChange={(party) => {
+                      setTemplateTouched(false);
+                      setForm((prev) => ({
+                        ...prev,
+                        customerId: party?.id || '',
+                        customerName: party?.displayName || '',
+                        currency: party?.defaultCurrency || prev.currency,
+                        invoiceTemplateId: party ? prev.invoiceTemplateId : '',
+                        invoiceTemplateFormType: party ? prev.invoiceTemplateFormType : currentInvoiceFormType,
+                      }));
+                    }}
+                  />
+                </div>
+              )}
+              <div className={headerFieldWrapperClass}>
+                <label className={headerLabelClass}>{t('sales.invoiceDetail.invoiceDate', 'Invoice Date')}</label>
+                <DatePicker
+                  className="w-full"
+                  inputClassName={clsx(headerControlClass, 'pr-8')}
+                  value={form.invoiceDate}
+                  onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))}
+                />
+              </div>
+              {isRtl ? (
+                <>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
+                    <div>
+                      <CurrencyExchangeFieldPremium
+                        currency={form.currency}
+                        baseCurrency={company?.baseCurrency || 'USD'}
+                        voucherDate={form.invoiceDate}
+                        value={form.exchangeRate}
+                        onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+                        disabled={busy || activeSourceMode === 'so'}
+                      />
+                    </div>
+                  </div>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.currency', 'Currency')}</label>
+                    <CurrencySelector
+                      className={headerSelectorClass}
+                      value={form.currency}
+                      onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
+                      disabled={busy || activeSourceMode === 'so'}
                     />
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle w-[110px]">
-                  {isReadOnly ? (
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.taxCodeId ? taxById[line.taxCodeId]?.code || line.taxCodeId : t('sales.invoiceDetail.noTax', 'No Tax')}</div>
-                  ) : (
-                    <div className="flex flex-col p-1 gap-1">
-                      <select className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-1 py-0.5 text-xs focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
-                        value={line.taxCodeId || ''}
-                        onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
-                      >
-                        <option value="">{t('sales.invoiceDetail.noTax', 'No Tax')}</option>
-                        {salesTaxCodes.map((taxCode) => (
-                          <option key={taxCode.id} value={taxCode.id}>{taxCode.code} ({Math.round(taxCode.rate * 100)}%)</option>
-                        ))}
-                      </select>
-                      {line.taxCodeId && (() => {
-                        const tc = taxById[line.taxCodeId];
-                        const effective = line.priceIsInclusive !== undefined ? line.priceIsInclusive : tc?.priceIsInclusive === true;
-                        return (
-                          <label className="flex items-center gap-1 text-[10px] text-slate-500 select-none">
-                            <input type="checkbox" className="h-3 w-3 rounded border-slate-300 dark:border-slate-700 text-primary-600 focus:ring-primary-500"
-                              checked={effective}
-                              onChange={(e) => setLine(index, { priceIsInclusive: e.target.checked })}
-                            />
-                            <span className="truncate">
-                              {t('sales.invoiceDetail.taxInclusive', 'Tax-incl.')}
-                            </span>
-                          </label>
-                        );
-                      })()}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.currency', 'Currency')}</label>
+                    <CurrencySelector
+                      className={headerSelectorClass}
+                      value={form.currency}
+                      onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
+                      disabled={busy || activeSourceMode === 'so'}
+                    />
+                  </div>
+                  <div className={headerFieldWrapperClass}>
+                    <label className={headerLabelClass}>{t('sales.invoiceDetail.exchangeRate', 'Exchange Rate')}</label>
+                    <div>
+                      <CurrencyExchangeFieldPremium
+                        currency={form.currency}
+                        baseCurrency={company?.baseCurrency || 'USD'}
+                        voucherDate={form.invoiceDate}
+                        value={form.exchangeRate}
+                        onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+                        disabled={busy || activeSourceMode === 'so'}
+                      />
                     </div>
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle min-w-[120px]">
-                  {line.dnLineId ? (
-                    <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 text-[10px] text-slate-500">
-                      {t('sales.invoiceDetail.autoFromDN', 'Auto from DN')}
-                    </div>
-                  ) : isReadOnly ? (
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{line.warehouseId ? (warehouses.find(w => w.id === line.warehouseId)?.name || line.warehouseId) : '—'}</div>
-                  ) : (
-                    <WarehouseSelector value={line.warehouseId} onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })} />
-                  )}
-                </td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.discountAmountDoc.toFixed(2)}</td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{computedLines[index]?.lineGrossDoc.toFixed(2)}</td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.lineTotalDoc.toFixed(2)}</td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.taxAmountDoc.toFixed(2)}</td>
-                <td className="border-r border-slate-100 dark:border-slate-800 px-2 py-1 align-middle text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
-                {!isReadOnly && (
-                  <td className="px-2 py-1 text-center align-middle">
-                    <button type="button"
-                      className="rounded-full h-5 w-5 inline-flex items-center justify-center border border-slate-200 dark:border-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 transition-all active:scale-[0.98]"
-                      onClick={() => removeLine(index)} disabled={busy || form.lines.length <= 1}
-                    >
-                      ✕
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                  </div>
+                </>
+              )}
+              {activeSourceMode === 'direct' && (
+                <div className={headerFieldWrapperClass}>
+                  <label className={headerLabelClass}>{t('sales.invoiceDetail.mainWarehouse', 'Main Warehouse')}</label>
+                  <WarehouseSelector
+                    className={headerSelectorClass}
+                    value={form.warehouseId || settings?.defaultWarehouseId}
+                    onChange={(warehouse) => {
+                      const warehouseId = warehouse?.id || undefined;
+                      setForm((prev) => ({
+                        ...prev,
+                        warehouseId,
+                        lines: prev.lines.map((line) =>
+                          line.dnLineId || line.soLineId
+                            ? line
+                            : { ...line, warehouseId: line.warehouseId || warehouseId }
+                        ),
+                      }));
+                    }}
+                  />
+                </div>
+              )}
+              <div className={headerFieldWrapperClass}>
+                <label className={headerLabelClass}>{t('sales.invoiceDetail.salesperson', 'Salesperson')}</label>
+                <select
+                  className={headerControlClass}
+                  value={form.salespersonId || ''}
+                  onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value || undefined }))}
+                >
+                  <option value="">{t('sales.invoiceDetail.none', '— None —')}</option>
+                  {salespersons.map((sp) => (
+                    <option key={sp.id} value={sp.id}>{sp.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={headerFieldWrapperClass}>
+                <label className={headerLabelClass}>{t('sales.invoiceDetail.customerInvoiceNumber', 'Customer PO / Ref')}</label>
+                <input
+                  type="text"
+                  className={headerControlClass}
+                  value={form.customerInvoiceNumber}
+                  onChange={(e) => setForm((prev) => ({ ...prev, customerInvoiceNumber: e.target.value }))}
+                />
+              </div>
+            </>
+          )}
+        </DocumentHeaderGrid>
+      </DocumentCompactCard>
+    );
+  };
+
+  const renderSourceAndControlsCard = () => {
+    return (
+      <DocumentControlPanel>
+        <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DocumentSegmentedGroup>
+              {[
+                { mode: 'direct' as const, label: t('sales.invoiceDetail.sourceDirect', 'Direct'), icon: FileText },
+                { mode: 'so' as const, label: t('sales.invoiceDetail.sourceFromSO', 'From SO'), icon: Link2 },
+                { mode: 'dn' as const, label: t('sales.invoiceDetail.sourceFromDN', 'From DN'), icon: Truck },
+              ].map((option) => (
+                <DocumentSegmentButton
+                  key={option.mode}
+                  active={activeSourceMode === option.mode}
+                  disabled={isReadOnly}
+                  icon={option.icon}
+                  label={option.label}
+                  title={option.mode === 'dn' ? t('sales.invoiceDetail.deliveryNoteSourceNotReady', 'Delivery Note source loading is not connected on this invoice page yet.') : option.label}
+                  onClick={() => void setSourceMode(option.mode)}
+                />
+              ))}
+            </DocumentSegmentedGroup>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-7 items-center gap-1.5 rounded border border-slate-200 bg-white px-2 text-[10px] font-black uppercase tracking-wide text-slate-500 disabled:cursor-default dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              {activeSourceMode === 'so'
+                ? t('sales.invoiceDetail.pickSourceInHeader', 'Pick SO in header')
+                : t('sales.invoiceDetail.directHeaderDriven', 'Direct header driven')}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-1.5 rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/50">
+            <DocumentIconButton
+              title={t('sales.invoiceDetail.uploadAttachment', 'Upload attachment')}
+              onClick={() => setAttachmentsPanelOpen(true)}
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+            </DocumentIconButton>
+            <button
+              type="button"
+              onClick={() => setAuditModalOpen(true)}
+              disabled={isCreateMode}
+              className={clsx(
+                'inline-flex h-7 w-7 items-center justify-center rounded border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                creditWarnBanner
+                  ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800',
+              )}
+              title={creditWarnBanner || t('sales.invoiceDetail.historyAvailable', 'View edit history & change logs')}
+            >
+              <History className="h-3.5 w-3.5" />
+            </button>
+            <DocumentIconButton
+              title={t('sales.invoiceDetail.downloadExcel', 'Download Excel')}
+              onClick={downloadLinesCsv}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+            </DocumentIconButton>
+            <DocumentIconButton
+              title={t('sales.invoiceDetail.uploadFromFile', 'Upload from file')}
+              onClick={() => showImportNotReady(t('sales.invoiceDetail.fileImportNotReady', 'File import is not connected yet.'))}
+            >
+              <Upload className="h-3.5 w-3.5" />
+            </DocumentIconButton>
+            <DocumentIconButton
+              title={t('sales.invoiceDetail.readFromImage', 'Read from image')}
+              onClick={() => showImportNotReady(t('sales.invoiceDetail.imageReadNotReady', 'Image reading is not connected yet.'))}
+            >
+              <FileImage className="h-3.5 w-3.5" />
+            </DocumentIconButton>
+          </div>
+        </div>
+      </DocumentControlPanel>
+    );
+  };
+
+  const renderLinesTable = () => {
+    return (
+        <ClassicLineItemsTable<EditableLine>
+          tableId="sales.invoice.lines"
+          rows={form.lines}
+          columns={lineColumns}
+          disabled={isReadOnly || busy}
+          getRowKey={(row, index) => row._uid ?? row.lineId ?? index}
+          onRowChange={(index, patch) => setLine(index, patch)}
+          onRowRemove={!isReadOnly ? removeLine : undefined}
+          onRowsChange={!isReadOnly ? (lines) => setForm((prev) => ({ ...prev, lines: padLinesToMin(lines) })) : undefined}
+          createEmptyRow={createEmptyLine}
+          isRowFilled={hasLineContent}
+          onRowAdd={!isReadOnly ? addLine : undefined}
+          addLabel={t('sales.invoiceDetail.addItem', 'Add Line')}
+          minRows={1}
+          maxBodyHeight="none"
+          className="flex-1 min-h-0"
+        />
+    );
+  };
+
+  const renderChargesSection = () => {
+    const baseCurrency = company?.baseCurrency || 'USD';
+    const showBase = form.currency !== baseCurrency;
+    const accountLabelFor = (charge: EditableCharge) => {
+      // Rows added in this session carry a display label; rows loaded from the
+      // server only carry the account id, so resolve it to "CODE — Name" here.
+      if (charge.accountLabel) return charge.accountLabel;
+      if (charge.revenueAccountId) {
+        const acc = getAccountById(charge.revenueAccountId);
+        if (acc) return `${acc.code} — ${acc.name}`;
+        return charge.revenueAccountId;
+      }
+      return charge.kind === 'DISCOUNT'
+        ? t('sales.invoiceDetail.charges.defaultDiscountAccount', 'Default discount account')
+        : t('sales.invoiceDetail.charges.defaultAccount', 'Default revenue account');
+    };
+    const rows: ChargeAllocationRow[] = form.charges.map((charge, index) => ({
+      key: charge.chargeId || String(index),
+      kind: charge.kind,
+      name: charge.name,
+      accountLabel: accountLabelFor(charge),
+      amountDoc: charge.amountDoc || 0,
+      amountBase: computedCharges[index]?.amountBase ?? 0,
+    }));
+
+    return (
+      <DocumentChargesAllocation
+        tns="sales.invoiceDetail"
+        rows={rows}
+        currency={form.currency}
+        baseCurrency={baseCurrency}
+        showBase={showBase}
+        isReadOnly={isReadOnly}
+        busy={busy}
+        onAddCharge={() => openChargeModal('CHARGE')}
+        onAddDiscount={() => openChargeModal('DISCOUNT')}
+        onEditRow={(index) => openChargeModal(form.charges[index]?.kind || 'CHARGE', index)}
+        onRemoveRow={removeCharge}
+      />
+    );
+  };
+
+  const renderChargeModal = () => (
+    <DocumentChargeModal
+      tns="sales.invoiceDetail"
+      state={chargeModal}
+      currency={form.currency}
+      onChange={setChargeModal}
+      onClose={closeChargeModal}
+      onSave={saveChargeModal}
+      chargeClassifications={['REVENUE']}
+      discountClassifications={['EXPENSE', 'REVENUE']}
+      chargeContextLabel="Income"
+      discountContextLabel="Discount"
+    />
   );
 
-  const renderChargesSection = () => (
-    <div className="py-2 space-y-3 bg-white dark:bg-slate-900">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.invoiceDetail.charges', 'Charges / Additions')}</h3>
-        {!isReadOnly && (
-          <button type="button"
-            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-[0.98]"
-            onClick={addCharge} disabled={busy}
+  const renderInfoContent = () => (
+    <DocumentRailFocus
+      code={railFocus.code}
+      title={railFocus.title}
+      subtitle={railFocus.subtitle}
+      note={railFocus.note}
+    />
+  );
+
+  const renderPostingReadinessContent = () => {
+    const isBalanced = totals.grandTotalDoc >= 0;
+    const hasCustomer = !!form.customerId;
+    const hasLines = filledLines(form.lines).length > 0;
+    const taxCodeResolved = filledLines(form.lines).every(l => !l.taxCodeId || taxById[l.taxCodeId]);
+
+    return (
+      <DocumentRailChecklist
+        items={[
+          {
+            state: hasCustomer && hasLines && isBalanced ? 'ok' : 'warn',
+            label: isLedgerPosted ? t('sales.invoiceDetail.ledgerVoucherCreated', 'Ledger voucher created') : t('sales.invoiceDetail.balancedPostingPreview', 'Balanced posting preview'),
+          },
+          {
+            state: taxCodeResolved ? 'ok' : 'warn',
+            label: isLedgerPosted ? t('sales.invoiceDetail.taxLinesPosted', 'Tax lines posted') : t('sales.invoiceDetail.taxAccountResolved', 'Tax accounts resolved'),
+          },
+          ...(invoice?.status !== 'POSTED'
+            ? [{ state: 'info' as const, label: t('sales.invoiceDetail.creditChecksActive', 'Credit policy active') }]
+            : []),
+        ]}
+      />
+    );
+  };
+
+  const renderTotalsContent = () => {
+    const baseCurrency = company?.baseCurrency || 'USD';
+    const showBaseRow = form.currency !== baseCurrency;
+    const fmt = (n: number) => n.toFixed(2);
+    const rows: Array<{ label: string; value: string; tone?: 'rose' }> = [
+      { label: t('sales.invoiceDetail.subtotal', 'Subtotal'), value: `${form.currency} ${fmt(totals.subtotalDoc)}` },
+      { label: t('sales.invoiceDetail.discountTotal', 'Discount'), value: `${form.currency} ${fmt(totals.discountTotalDoc)}`, tone: 'rose' },
+      { label: t('sales.invoiceDetail.tax', 'Tax'), value: `${form.currency} ${fmt(totals.taxTotalDoc)}` },
+    ];
+    return (
+      <div className="space-y-2 p-3">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between gap-2 rounded border border-slate-100 bg-slate-50/50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/40"
           >
-            {t('sales.invoiceDetail.addCharge', 'Add Charge')}
-          </button>
-        )}
-      </div>
-      <div className="space-y-2">
-        {form.charges.length === 0 && (
-          <div className="text-xs text-slate-400 dark:text-slate-500 py-2 italic">{t('sales.invoiceDetail.noCharges', 'No charges added.')}</div>
-        )}
-        {form.charges.map((charge, index) => (
-          <div key={charge.chargeId || `charge-${index}`} className="grid gap-3 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/20 md:grid-cols-6 items-center">
-            <div>
-              <input type="text"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
-                placeholder={t('sales.invoiceDetail.chargeName', 'Charge name')}
-                value={charge.name} disabled={isReadOnly}
-                onChange={(e) => setCharge(index, { name: e.target.value })}
-              />
-            </div>
-            <div>
-              <input type="number" min={0} step={0.01}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-right font-mono focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
-                placeholder={t('sales.invoiceDetail.chargeAmount', 'Amount')}
-                value={charge.amountDoc} disabled={isReadOnly}
-                onChange={(e) => setCharge(index, { amountDoc: Number(e.target.value) })}
-              />
-            </div>
-            <div>
-              <select className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
-                value={charge.taxCodeId || ''} disabled={isReadOnly}
-                onChange={(e) => setCharge(index, { taxCodeId: e.target.value || undefined })}
-              >
-                <option value="">{t('sales.invoiceDetail.noTax', 'No Tax')}</option>
-                {salesTaxCodes.map((taxCode) => (
-                  <option key={taxCode.id} value={taxCode.id}>{taxCode.code} ({Math.round(taxCode.rate * 100)}%)</option>
-                ))}
-              </select>
-            </div>
-            <div className="md:col-span-2 flex items-center gap-2">
-              <input type="text"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 text-slate-900 dark:text-slate-100"
-                placeholder={t('sales.invoiceDetail.chargeDescription', 'Description (optional)')}
-                value={charge.description || ''} disabled={isReadOnly}
-                onChange={(e) => setCharge(index, { description: e.target.value })}
-              />
-              <div className="text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                {form.currency} {computedCharges[index]?.amountDoc.toFixed(2)} + {t('sales.invoiceDetail.tax', 'Tax')} {computedCharges[index]?.taxAmountDoc.toFixed(2)}
-              </div>
-            </div>
-            <div className="flex items-center justify-end">
-              {!isReadOnly && (
-                <button type="button"
-                  className="rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-slate-900 px-3 py-1 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-[0.98]"
-                  onClick={() => removeCharge(index)} disabled={busy}
-                >
-                  {t('sales.invoiceDetail.remove', 'Remove')}
-                </button>
-              )}
-            </div>
+            <span className="font-bold text-slate-500 dark:text-slate-400">{row.label}</span>
+            <span
+              className={`min-w-0 truncate font-mono font-bold ${
+                row.tone === 'rose'
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-slate-800 dark:text-slate-200'
+              }`}
+            >
+              {row.value}
+            </span>
           </div>
         ))}
+        <div className="rounded-lg border border-slate-950 bg-slate-900 px-4 py-3 text-white shadow-md dark:bg-slate-950">
+          <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+            {t('sales.invoiceDetail.grandTotal', 'Grand Total')}
+          </div>
+          <div className="mt-1 text-right font-mono text-2xl font-black leading-tight text-emerald-400">
+            {form.currency} {fmt(totals.grandTotalDoc)}
+          </div>
+          <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2 text-xs font-bold">
+            <span className="text-slate-300">
+              {showBaseRow
+                ? t('sales.invoiceDetail.grandTotalBase', 'Grand Total (Base)')
+                : t('sales.invoiceDetail.grandTotalInBase', 'In base currency')}
+            </span>
+            <span className="font-mono text-slate-100">
+              {baseCurrency} {fmt(totals.grandTotalBase)}
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const renderTotals = () => (
-    <Card className="p-5">
-      <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.totals', 'Totals')}</h3>
-      <div className="grid gap-2 text-sm md:grid-cols-2">
-        <div className="flex justify-between">
-          <span className="text-slate-600">{t('sales.invoiceDetail.subtotalDoc', 'Subtotal ({{currency}})', { currency: form.currency })}</span>
-          <span className="font-medium">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-600">{t('sales.invoiceDetail.subtotalBase', 'Subtotal (Base)')}</span>
-          <span className="font-medium">{totals.subtotalBase.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-600">{t('sales.invoiceDetail.taxDoc', 'Tax ({{currency}})', { currency: form.currency })}</span>
-          <span className="font-medium">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-600">{t('sales.invoiceDetail.taxBase', 'Tax (Base)')}</span>
-          <span className="font-medium">{totals.taxTotalBase.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between border-t border-slate-200 pt-2">
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.grandTotalDoc', 'Grand Total ({{currency}})', { currency: form.currency })}</span>
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{form.currency} {totals.grandTotalDoc.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between border-t border-slate-200 pt-2">
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{t('sales.invoiceDetail.grandTotalBase', 'Grand Total (Base)')}</span>
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{totals.grandTotalBase.toFixed(2)}</span>
-        </div>
-      </div>
-    </Card>
-  );
+  const renderFooterTotalsStrip = () => {
+    const formatFooterMoney = (value: number) => new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(value);
+
+    return (
+      <DocumentFooterTotalsStrip
+        totals={[
+          {
+            label: t('sales.invoiceDetail.footerTotals.subtotal', 'Subtotal'),
+            value: `${formatFooterMoney(totals.subtotalDoc)} ${form.currency}`,
+          },
+          {
+            label: t('sales.invoiceDetail.footerTotals.taxAmount', 'Tax Amount'),
+            value: `${formatFooterMoney(totals.taxTotalDoc)} ${form.currency}`,
+          },
+          {
+            label: t('sales.invoiceDetail.footerTotals.grandTotal', 'Grand Total ({{currency}})', { currency: form.currency }),
+            value: `${formatFooterMoney(totals.grandTotalDoc)} ${form.currency}`,
+            tone: 'rose',
+          },
+        ]}
+      />
+    );
+  };
+
+  const renderPostedBanner = () => {
+    if (!invoice || invoice.status === 'DRAFT') return null;
+
+    const editPolicy = accountingPolicy?.allowPeriodLockOverride ? 'flexible' : 'rigid';
+
+    return (
+      <DocumentStatusBanner
+        tone={isPendingAccountingApproval ? 'warning' : 'success'}
+        title={isPendingAccountingApproval
+          ? t('sales.invoiceDetail.pendingApprovalView', 'Waiting for accounting approval')
+          : t('sales.invoiceDetail.postedView', 'Posted document view')}
+        hint={isPendingAccountingApproval
+          ? t('sales.invoiceDetail.pendingApprovalViewHint', 'The invoice is locked until Accounting approves and posts it.')
+          : t('sales.invoiceDetail.postedViewHint', 'Inputs are plain values; only legal ledger actions remain.')}
+        pills={
+          <>
+            <DocumentPill tone="green">{invoice.invoiceNumber}</DocumentPill>
+            <DocumentPill tone="slate">{t('sales.invoiceDetail.editPolicy', 'Edit Policy: {{policy}}', { policy: editPolicy })}</DocumentPill>
+            {isLedgerPosted && <DocumentPill tone="blue">{t('sales.invoiceDetail.approvedTag', 'Ledger posted')}</DocumentPill>}
+            {isPendingAccountingApproval && <DocumentPill tone="amber">{t('sales.invoiceDetail.awaitingAccountingTag', 'Awaiting accounting')}</DocumentPill>}
+          </>
+        }
+      />
+    );
+  };
 
   // ─── Main render ──────────────────────────────────────────────────────────
   return (
-    <div className={clsx("flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950", isWindow ? "h-full w-full" : "h-[calc(100vh-3.5rem)]")}>
-      {/* Info bar — ~5% */}
-      <div className="flex-none flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60">
-        <div className="flex items-baseline gap-3 min-w-0">
-          <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
-            {isCreateMode ? t('sales.invoiceDetail.newTitle', 'New Sales Invoice') : (invoice?.invoiceNumber || t('sales.invoiceDetail.title', 'Sales Invoice'))}
-          </h1>
-          {invoice && (
-            <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              {customerNameById[invoice.customerId] || invoice.customerName}
-              {invoice.customerInvoiceNumber ? ` · ${t('sales.invoiceDetail.customerRef', 'Customer Ref:')} ${invoice.customerInvoiceNumber}` : ''}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {invoice && <StatusChip status={invoice.status} type="si" />}
-          {isCreateMode && <StatusChip status="DRAFT" type="si" />}
-        </div>
-      </div>
+    <>
+      <DocumentDetailScaffold
+        title={isCreateMode ? t('sales.invoiceDetail.newTitle', 'New Sales Invoice') : invoice?.invoiceNumber || ''}
+        icon={FileText}
+        backLabel={isWindow ? t('common.close', 'Close') : t('sales.invoiceDetail.backToList', 'Back to List')}
+        onBack={() => {
+          if (isWindow && onClose) onClose();
+          else navigate('/sales/invoices');
+        }}
+        badges={
+          <>
+            <DocumentPill tone={statusPillTone}>{statusPillLabel}</DocumentPill>
+            {isPendingAccountingApproval && (
+              <button
+                type="button"
+                title={t('sales.invoiceDetail.pendingApprovalBanner.description', 'This invoice is waiting for approval in Accounting Approval Center.')}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
+              <button
+                type="button"
+                onClick={() => setShowOperationalWarning(true)}
+                title={t(
+                  'sales.governance.operationalWarning',
+                  'Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.',
+                )}
+                aria-label={t('sales.governance.operationalWarningLabel', 'Operational workflow blocked')}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/40"
+              >
+                <AlertTriangle className="h-3 w-3" />
+              </button>
+            )}
+            {form.salesOrderId && <DocumentPill tone="blue">{t('sales.invoiceDetail.linkedOrder', 'From SO')}</DocumentPill>}
+          </>
+        }
+        headerTools={
+          !isReadOnly && !isCreateMode ? (
+            <button
+              type="button"
+              onClick={openCloneRecurringModal}
+              className="inline-flex h-8 items-center gap-1.5 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 px-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+            >
+              <History className="h-3.5 w-3.5" />
+              {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
+            </button>
+          ) : undefined
+        }
+        newAction={{
+          label: t('sales.invoiceDetail.newInvoice', 'New Invoice'),
+          title: t('sales.invoiceDetail.newInvoice', 'New Invoice'),
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewInvoiceForm,
+        }}
+        sections={{
+          banner: { content: renderPostedBanner() },
+          control: { content: renderSourceAndControlsCard() },
+          header: { content: renderDocumentHeaderCard() },
+          lines: { content: renderLinesTable() },
+          secondary: { content: renderChargesSection() },
+          custom: {
+            content: !isReadOnly ? (
+              <SettlementBlock
+                module="sales"
+                mode={settlementMode}
+                onModeChange={setSettlementMode}
+                rows={settlementRows}
+                onRowsChange={setSettlementRows}
+                partyAccountId={arAccountId}
+                partyAccountLabel={customerNameById[form.customerId] || form.customerName || arAccountId}
+                outstandingBase={totals.grandTotalBase}
+                paymentMethodConfigs={enabledPaymentMethodConfigs}
+                allowOverpayment={(settings as any)?.allowOverpayment === true}
+                currencyCode={form.currency}
+                onValidityChange={setSettlementValidity}
+              />
+            ) : null,
+          },
+        }}
+        railSections={{
+          info: {
+            title: t('sales.invoiceDetail.info', 'Info'),
+            action: (
+              <DocumentPill tone={railFocus.kind === 'item' ? 'blue' : 'slate'}>
+                {railFocus.kind === 'item' ? t('sales.invoiceDetail.item', 'Item') : t('sales.invoiceDetail.account', 'Account')}
+              </DocumentPill>
+            ),
+            content: renderInfoContent(),
+          },
+          readiness: {
+            title: isLedgerPosted ? t('sales.invoiceDetail.documentStatus', 'Document Status') : t('sales.invoiceDetail.postingReadiness', 'Posting Readiness'),
+            content: renderPostingReadinessContent(),
+          },
+          settlement: {
+            content: (
+              <SettlementBlock
+                variant="summary"
+                module="sales"
+                mode={settlementMode}
+                rows={settlementRows}
+                partyAccountId={arAccountId}
+                partyAccountLabel={customerNameById[form.customerId] || form.customerName || arAccountId}
+                outstandingBase={isReadOnly ? (invoice?.outstandingAmountBase ?? 0) : totals.grandTotalBase}
+                recordedBase={isReadOnly ? (invoice?.paidAmountBase ?? 0) : undefined}
+              />
+            ),
+          },
+          totals: {
+            title: t('sales.invoiceDetail.totals', 'Totals'),
+            action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
+            content: renderTotalsContent(),
+          },
+        }}
+        railTitle={t('sales.invoiceDetail.rail.title', 'Invoice side rail')}
+        forceRailDrawer={isWindow || isWindowsMode}
+        isWindow={isWindow}
+        footerSections={{
+          totals: {
+            content: ({ showInlineRail, railDrawerOpen }) =>
+              !showInlineRail && !railDrawerOpen ? (
+                renderFooterTotalsStrip()
+              ) : (
+                <div className="text-xs text-slate-500">
+                  {isPendingAccountingApproval
+                    ? t('sales.invoiceDetail.pendingApprovalReadonly', 'Invoice is locked while waiting for accounting approval.')
+                    : isReadOnly
+                      ? t('sales.invoiceDetail.postedReadonly', 'Posted document is read-only.')
+                      : t('sales.invoiceDetail.draftWorking', 'Editing draft sales invoice.')}
+                </div>
+              ),
+          },
+          actions: {
+            content: (
+              <>
+            <button
+              type="button"
+              className="rounded border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+              onClick={() => {
+                if (isWindow && onClose) onClose();
+                else navigate('/sales/invoices');
+              }}
+            >
+              {isWindow ? t('common.close', 'Close') : t('sales.invoiceDetail.backToList', 'Back to List')}
+            </button>
+            <button
+              type="button"
+              className="rounded border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+              onClick={handleNewInvoiceClick}
+            >
+              {t('sidebar.new', 'New')}
+            </button>
 
-      {/* Banners */}
-      {/*
-        SoD: a Sales Invoice in PENDING_APPROVAL is awaiting accounting approval. Sales-side
-        cannot Approve its own postings. The accountant clears the parked state from the
-        Approval Center. See docs/architecture/posting-authority.md §4.1.
-      */}
-      {invoice?.status === 'PENDING_APPROVAL' && (
-        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
-          <div className="font-semibold mb-0.5">
-            {t('sales.invoiceDetail.pendingApprovalBanner.title', '⏳ Awaiting accounting approval')}
-          </div>
-          <div className="text-amber-800 dark:text-amber-300">
-            {t('sales.invoiceDetail.pendingApprovalBanner.description', 'This invoice was submitted and is waiting for accounting to approve the ledger effect. You cannot edit it while it is pending. The decision will appear here when it is made.')}
-          </div>
-        </div>
-      )}
-      {isCreateMode && settings?.workflowMode === 'OPERATIONAL' && !form.salesOrderId && !isCurrentPersonaAllowed && (
-        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300">
-          {t('sales.governance.operationalWarning', 'Operational workflow: Direct invoicing is blocked. Select a Sales Order or ask an admin for an exception.')}
-        </div>
-      )}
-      {creditWarnBanner && (
-        <div className="flex-none mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2">
-          <span>{creditWarnBanner}</span>
-          <button type="button" className="text-amber-500 hover:text-amber-700 font-bold shrink-0" onClick={() => setCreditWarnBanner(null)}>✕</button>
-        </div>
-      )}
-
-      {/* Payment info — POSTED only, inline compact strip */}
-      {invoice && invoice.status !== 'DRAFT' && (
-        <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-2">
-          <div className="grid gap-2 grid-cols-3 md:grid-cols-6">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.invoiceDateLabel', 'Invoice Date')}</div>
-              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.invoiceDate}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.dueDateLabel', 'Due Date')}</div>
-              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.dueDate || '-'}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.soRefLabel', 'SO Reference')}</div>
-              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-                {(invoice.salesOrderId && salesOrderLabelById[invoice.salesOrderId]) || invoice.salesOrderId || '-'}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.currencyLabel', 'Currency')}</div>
-              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.currency}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.exchangeRateLabel', 'Exchange Rate')}</div>
-              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.exchangeRate}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.invoiceDetail.salespersonLabel', 'Salesperson')}</div>
-              <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-                {(() => {
-                  if (!invoice.salespersonId) return '-';
-                  const sp = salespersons.find((s) => s.id === invoice.salespersonId);
-                  return sp ? `${sp.code} - ${sp.name}` : invoice.salespersonId;
-                })()}
-              </div>
-            </div>
-          </div>
-          {invoice.status === 'POSTED' && (
-            <div className="mt-4 grid gap-2 text-sm md:grid-cols-2 border-t border-slate-100 pt-4">
-              <div className="flex justify-between">
-                <span className="text-slate-600">{t('sales.invoiceDetail.paymentStatus', 'Payment Status')}</span>
-                <span className="font-medium">{invoice.paymentStatus}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">{t('sales.invoiceDetail.paymentTerms', 'Payment Terms (days)')}</span>
-                <span className="font-medium">{invoice.paymentTermsDays}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">{t('sales.invoiceDetail.outstandingBase', 'Outstanding (Base)')}</span>
-                <span className="font-medium">{invoice.outstandingAmountBase?.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">{t('sales.invoiceDetail.paidBase', 'Paid (Base)')}</span>
-                <span className="font-medium">{invoice.paidAmountBase?.toFixed(2)}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* DRAFT: editable form */}
-      {(isCreateMode || invoice?.status === 'DRAFT') && renderHeaderForm()}
-
-      {/* Lines — flex-1 */}
-      {renderLinesTable()}
-
-      {/* Charges (collapsible) — flex-none */}
-      <details className="flex-none bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60 group">
-        <summary className="cursor-pointer px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 select-none hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors duration-150">
-          {t('sales.invoiceDetail.charges', 'Charges / Additions')} {form.charges.length > 0 && <span className="text-slate-400">({form.charges.length})</span>}
-        </summary>
-        <div className="px-4 pb-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">{renderChargesSection()}</div>
-      </details>
-
-      {/* Totals + Attachments (collapsed) — flex-none */}
-      <div className="flex-none px-4 py-3 bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-3 shadow-inner">
-        <div className="text-xs text-slate-500">
-          {!isCreateMode && invoice && (
-            <details className="inline-block relative">
-              <summary className="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 select-none transition-colors duration-150 font-medium">
-                📎 {t('sales.invoiceDetail.attachmentsLink', 'Attachments')} ({attachments.length})
-              </summary>
-              <div className="absolute right-0 bottom-full mb-2 z-[999] w-[480px] max-w-[90vw] rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 p-3 shadow-xl">
-                <AttachmentsCard
-                  entityId={invoice.id}
-                  attachments={attachments as any}
-                  onChange={(list) => {
-                    setAttachments(list as SalesInvoiceAttachmentDTO[]);
-                    setInvoice((current) => (current ? { ...current, attachments: list as SalesInvoiceAttachmentDTO[] } : current));
+            {isReadOnly && invoice?.status === 'POSTED' && (
+              <>
+                <button
+                  type="button"
+                  className="rounded border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+                  onClick={() => setGlImpactOpen(true)}
+                >
+                  {t('sales.invoiceDetail.glImpact', 'GL Impact')}
+                </button>
+                <SendDocumentButton
+                  accounts={messagingAccounts}
+                  defaultPhone={customerById[invoice.customerId]?.phone || ''}
+                  documentNumber={invoice.invoiceNumber}
+                  customerName={customerNameById[invoice.customerId] || invoice.customerName}
+                  amount={invoice.grandTotalDoc}
+                  currency={invoice.currency}
+                  documentDate={invoice.invoiceDate}
+                  onSendWhatsApp={async (p) => {
+                    const res = await salesApi.sendInvoiceWhatsApp(invoice.id, p);
+                    errorHandler.showSuccess('whatsapp.sendSuccess');
+                    return unwrap(res);
                   }}
-                  api={{
-                    list: (id) => salesApi.listInvoiceAttachments(id) as any,
-                    upload: (id, file) => salesApi.uploadInvoiceAttachment(id, file) as any,
-                    remove: (id, attachmentId) => salesApi.removeInvoiceAttachment(id, attachmentId) as any,
-                    getDownloadLink: (id, attachmentId) => salesApi.getInvoiceAttachmentDownloadLink(id, attachmentId) as any,
+                  onSendTelegram={async (p) => {
+                    const res = await salesApi.sendInvoiceTelegram(invoice.id, p);
+                    errorHandler.showSuccess('telegram.sendSuccess');
+                    return unwrap(res);
                   }}
                 />
-              </div>
-            </details>
-          )}
-        </div>
-        <div className="flex items-center gap-6 text-sm">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.subtotal', 'Subtotal')}</span>
-            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{form.currency} {totals.subtotalDoc.toFixed(2)}</span>
-          </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.tax', 'Tax')}</span>
-            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{form.currency} {totals.taxTotalDoc.toFixed(2)}</span>
-          </div>
-          <div className="flex flex-col items-end border-l border-slate-200 dark:border-slate-800 pl-6">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{t('sales.invoiceDetail.grandTotal', 'Grand Total')}</span>
-            <span className="font-mono font-black text-xl text-primary-600 dark:text-primary-400">{form.currency} {totals.grandTotalDoc.toFixed(2)}</span>
-          </div>
-        </div>
-      </div>
+                <button
+                  type="button"
+                  className="rounded border border-rose-250 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 px-4 py-2 text-xs font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-100/50 transition-colors"
+                  onClick={() => navigate(createReturnHref)}
+                >
+                  {t('sales.invoiceDetail.createReturn', 'Create Return')}
+                </button>
+                {invoice?.status === 'POSTED' && (invoice?.paidAmountBase || 0) > 0 && (
+                  <button
+                    type="button"
+                    className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    onClick={() => setPaymentHistoryOpen(true)}
+                  >
+                    {t('sales.invoiceDetail.viewPayments', 'Payments')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  onClick={() => setRecordPaymentOpen(true)}
+                  disabled={!canCreateReceipt}
+                >
+                  {t('sales.invoiceDetail.createReceipt', 'Create Receipt')}
+                </button>
+              </>
+            )}
 
-      {/* Settlement section (conditional overlay-style band).
-          SoD guard: never render once the SI is PENDING_APPROVAL — the only
-          legitimate next step at that point is approval in Accounting. */}
-      {showSettlement && (isCreateMode || invoice?.status === 'DRAFT') && (
-        <div className="flex-none px-4 py-2 bg-blue-50 border-t border-blue-200 max-h-[40vh] overflow-auto">
-          {isCreateMode
-            ? renderSettlementSection(() => createAndPostDraft(), t('sales.invoiceDetail.confirmSaveAndPost', 'Confirm Save & Post'))
-            : renderSettlementSection(() => postDraft(), t('sales.invoiceDetail.confirmPost', 'Confirm & Post'))}
-        </div>
-      )}
-
-      {/* Action button bar — sticky bottom, flex-none */}
-      <div className="flex-none flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60">
-        {/* Left Side: Back, History, Sharing, GL Impact */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button"
-            className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
-            onClick={() => {
-              if (isWindow && onClose) {
-                onClose();
-              } else {
-                navigate('/sales/invoices');
-              }
-            }}
-          >
-            {isWindow ? t('common.close', 'Close') : t('sales.invoiceDetail.backToList', 'Back to List')}
-          </button>
-          
-          {!isCreateMode && (
-            <button type="button"
-              className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
-              onClick={() => setAuditModalOpen(true)}
-            >
-              {t('sales.invoiceDetail.history', 'History')}
-            </button>
-          )}
-
-          {invoice?.status === 'POSTED' && (
-            <>
-              {/* GL Impact */}
-              <button type="button"
-                className="rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
-                onClick={() => setGlImpactOpen(true)}
-              >
-                {t('sales.invoiceDetail.glImpact', 'GL Impact')}
-              </button>
-              
-              {/* Unified send (WhatsApp / Telegram / share link) */}
-              <SendDocumentButton
-                accounts={messagingAccounts}
-                defaultPhone={invoice ? (customerById[invoice.customerId]?.phone || '').trim() : ''}
-                documentNumber={invoice?.invoiceNumber || ''}
-                customerName={invoice ? (customerNameById[invoice.customerId] || invoice.customerName) : ''}
-                amount={invoice?.grandTotalDoc || 0}
-                currency={invoice?.currency || ''}
-                documentDate={invoice?.invoiceDate || ''}
-                onSendWhatsApp={async (params) => {
-                  if (!invoice?.id) return { messageId: '', recipientPhoneNumber: '' };
-                  const result = await salesApi.sendInvoiceWhatsApp(invoice.id, {
-                    messagingAccountId: params.messagingAccountId,
-                    toPhoneNumber: params.toPhoneNumber,
-                    messageText: params.messageText,
-                    documentUrl: params.documentUrl,
-                  });
-                  const payload = unwrap<any>(result);
-                  errorHandler.showInfo(
-                    t('sales.invoices.whatsapp.success', 'WhatsApp sent successfully to {{phone}} using {{sender}} (message id: {{messageId}}).', {
-                      phone: payload.recipientPhoneNumber,
-                      sender: payload.senderLabel || t('sales.invoices.whatsapp.defaultSender', 'default sender'),
-                      messageId: payload.messageId,
-                    })
-                  );
-                  return payload;
-                }}
-                onSendTelegram={async (params) => {
-                  if (!invoice?.id) return { messageId: '', recipientChatId: '' };
-                  const result = await salesApi.sendInvoiceTelegram(invoice.id, {
-                    messagingAccountId: params.messagingAccountId,
-                    toChatId: params.toChatId,
-                    messageText: params.messageText,
-                    documentUrl: params.documentUrl,
-                  });
-                  const payload = unwrap<any>(result);
-                  errorHandler.showInfo(
-                    t('sales.invoices.telegram.success', 'Telegram sent successfully to {{chatId}} using {{sender}} (message id: {{messageId}}).', {
-                      chatId: payload.recipientChatId,
-                      sender: payload.senderLabel || t('sales.invoices.telegram.defaultSender', 'default sender'),
-                      messageId: payload.messageId,
-                    })
-                  );
-                  return payload;
-                }}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Right Side: State changes (Save, Post, Discard, Reversing, Receipt) */}
-        <div className="flex flex-wrap items-center gap-2 justify-end">
-          {/* POSTED actions (Refund/Receipt/Recurring) */}
-          {invoice?.status === 'POSTED' && (
-            <>
-              {/* Caution: clone to recurring */}
-              <button type="button"
-                className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-all active:scale-[0.98]"
-                onClick={openCloneRecurringModal}
-              >
-                {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
-              </button>
-
-              {/* Caution: create return */}
-              <button type="button"
-                className="rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 px-4 py-2 text-sm font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-100/50 dark:hover:bg-rose-950/40 transition-all active:scale-[0.98]"
-                onClick={() => navigate(createReturnHref)}
-              >
-                {t('sales.invoiceDetail.createReturn', 'Create Reversing Sales Return')}
-              </button>
-
-              {/* Outbound: create receipt */}
-              <button type="button"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-                onClick={() => navigate(receiptHref)} disabled={!canCreateReceipt}
-              >
-                {t('sales.invoiceDetail.createReceipt', 'Create Receipt')}
-              </button>
-            </>
-          )}
-
-          {/* PENDING_APPROVAL actions: SoD says Sales cannot Approve its own posting.
-              Only History is rendered so the user can see who submitted and when.
-              Approval happens in the Accounting Approval Center. */}
-          {!isCreateMode && invoice?.status === 'PENDING_APPROVAL' && (
-            <>
-              <button type="button"
-                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
-                onClick={() => setAuditModalOpen(true)}
-              >
-                {t('sales.invoiceDetail.history', 'History')}
-              </button>
-            </>
-          )}
-
-          {/* DRAFT actions */}
-          {!isCreateMode && invoice?.status === 'DRAFT' && (
-            <>
-              {/* Clone to recurring (draft) */}
-              <button type="button"
-                className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-all active:scale-[0.98]"
-                onClick={openCloneRecurringModal}
-              >
-                {t('sales.recurring.actions.cloneFromInvoice', 'Clone to Recurring')}
-              </button>
-
-              {/* Discard */}
-              <button type="button"
-                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-all active:scale-[0.98] disabled:opacity-50"
-                onClick={handleDiscard} disabled={busy}
-              >
-                {t('sales.invoiceDetail.discard', 'Discard')}
-              </button>
-
-              {/* Save Draft Changes */}
-              <button type="button"
-                className="rounded-lg bg-slate-800 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 dark:hover:bg-slate-600 transition-all active:scale-[0.98] disabled:opacity-50"
-                onClick={saveDraftChanges} disabled={busy}
-              >
-                {busy ? t('sales.invoiceDetail.saving', 'Saving...') : t('sales.invoiceDetail.saveChanges', 'Save Changes')}
-              </button>
-
-              {/* Post Invoice */}
-              {!showSettlement && (
-                <button type="button"
-                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-50"
-                  onClick={handlePostClick} disabled={busy}
+            {!isReadOnly && (
+              <>
+                <button
+                  type="button"
+                  className="rounded bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition-colors"
+                  onClick={handleDiscard}
+                  disabled={busy}
+                >
+                  {t('sales.invoiceDetail.discard', 'Discard')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded bg-slate-800 dark:bg-slate-700 px-4 py-2 text-xs font-bold text-white hover:bg-slate-900 transition-colors"
+                  onClick={isCreateMode ? () => createDraft() : saveDraftChanges}
+                  disabled={busy}
+                >
+                  {busy ? t('sales.invoiceDetail.saving', 'Saving...') : t('sales.invoiceDetail.saveChanges', 'Save Changes')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded bg-primary-600 px-4 py-2 text-xs font-bold text-white hover:bg-primary-700 transition-colors"
+                  onClick={isCreateMode ? handleSaveAndPostClick : handlePostClick}
+                  disabled={busy}
                 >
                   {busy ? t('sales.invoiceDetail.posting', 'Posting...') : t('sales.invoiceDetail.postInvoice', 'Post Invoice')}
                 </button>
-              )}
-            </>
-          )}
-
-          {/* CREATE actions */}
-          {isCreateMode && (
-            <>
-              {/* Save Draft */}
-              <button type="button"
-                className="rounded-lg bg-slate-800 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 dark:hover:bg-slate-600 transition-all active:scale-[0.98] disabled:opacity-50"
-                onClick={() => createDraft()} disabled={busy || orderLineLoading}
-              >
-                {busy ? t('sales.invoiceDetail.creating', 'Creating...') : t('sales.invoiceDetail.saveDraft', 'Save Draft')}
-              </button>
-
-              {/* Save & Post */}
-              <button type="button"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-50"
-                onClick={() => {
-                  const outstanding = roundMoney(totals.grandTotalBase);
-                  if (outstanding > 0.005) {
-                    setShowSettlement(true);
-                    setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: enabledPaymentMethodConfigs[0]?.method || 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
-                  } else {
-                    setSettlementMode('DEFERRED');
-                    createAndPostDraft();
-                  }
-                }}
-                disabled={busy || orderLineLoading}
-              >
-                {busy ? t('sales.invoiceDetail.savingAndPosting', 'Saving & Posting...') : t('sales.invoiceDetail.saveAndPost', 'Save & Post')}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+              </>
+            )}
+              </>
+            ),
+          },
+        }}
+      />
 
       {/* Modals */}
       {invoice && (
@@ -2162,6 +3147,35 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           documentStatus={invoice.status}
         />
       )}
+
+      <Modal
+        isOpen={attachmentsPanelOpen}
+        onClose={() => setAttachmentsPanelOpen(false)}
+        title={t('sales.invoiceDetail.attachments', 'Attachments')}
+      >
+        <div className="max-h-[70vh] overflow-auto">
+          {!isCreateMode && invoice ? (
+            <AttachmentsCard
+              entityId={invoice.id}
+              attachments={attachments as any}
+              onChange={(list) => {
+                setAttachments(list as SalesInvoiceAttachmentDTO[]);
+                setInvoice((current) => (current ? { ...current, attachments: list as SalesInvoiceAttachmentDTO[] } : current));
+              }}
+              api={{
+                list: (id) => salesApi.listInvoiceAttachments(id) as any,
+                upload: (id, file) => salesApi.uploadInvoiceAttachment(id, file) as any,
+                remove: (id, attachmentId) => salesApi.removeInvoiceAttachment(id, attachmentId) as any,
+                getDownloadLink: (id, attachmentId) => salesApi.getInvoiceAttachmentDownloadLink(id, attachmentId) as any,
+              }}
+            />
+          ) : (
+            <div className="text-xs text-slate-500">
+              {t('sales.invoiceDetail.attachmentsDraftHint', 'Save draft first to upload attachments.')}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {overrideModalData && (
         <PeriodLockOverrideModal
@@ -2188,6 +3202,35 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           entityId={invoice.id}
         />
       )}
+
+      {invoice && (
+        <RecordPaymentDialog
+          open={recordPaymentOpen}
+          module="sales"
+          invoiceNumber={invoice.invoiceNumber}
+          partyName={customerNameById[form.customerId] || form.customerName || invoice.customerName}
+          currencyCode={invoice.currency || form.currency}
+          outstandingBase={invoice.outstandingAmountBase || 0}
+          paymentMethodConfigs={enabledPaymentMethodConfigs}
+          allowOverpayment={(settings as any)?.allowOverpayment === true}
+          busy={recordPaymentBusy}
+          onClose={() => setRecordPaymentOpen(false)}
+          onSubmit={handleRecordPayment}
+        />
+      )}
+
+      {invoice && (
+        <PaymentHistoryModal
+          open={paymentHistoryOpen}
+          invoiceNumber={invoice.invoiceNumber}
+          currencyCode={invoice.currency || form.currency}
+          fetchPayments={() => salesApi.getPaymentHistory(invoice.id)}
+          onClose={() => setPaymentHistoryOpen(false)}
+        />
+      )}
+
+      {/* Whole-invoice charge / discount modal (allocation grid) */}
+      {renderChargeModal()}
 
       {/* Credit override modal */}
       {creditOverrideOpen && (
@@ -2235,6 +3278,23 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         </div>
       )}
 
+      {/* Operational workflow warning modal */}
+      <Modal
+        isOpen={showOperationalWarning}
+        onClose={() => setShowOperationalWarning(false)}
+        title={t('sales.governance.operationalWarningTitle', 'Direct invoicing blocked')}
+      >
+        <div className="flex items-start gap-2 text-sm">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <p className="text-slate-700 dark:text-slate-200">
+            {t(
+              'sales.governance.operationalWarning',
+              'Operational workflow: Direct invoicing is blocked by default. Select a Sales Order above to create a linked invoice, or contact your administrator to add a direct invoicing governance exception.',
+            )}
+          </p>
+        </div>
+      </Modal>
+
       {/* Clone to recurring modal */}
       <Modal isOpen={cloneRecurringOpen} onClose={() => setCloneRecurringOpen(false)} title={t('sales.recurring.cloneModal.title', 'Clone Invoice to Recurring Template')}>
         <div className="space-y-4">
@@ -2278,13 +3338,19 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           <div className="grid gap-3 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.startDate', 'Start Date *')}</label>
-              <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringStartDate} onChange={(e) => setCloneRecurringStartDate(e.target.value)} />
+              <DatePicker
+                value={cloneRecurringStartDate}
+                onChange={setCloneRecurringStartDate}
+                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.endDate', 'End Date')}</label>
-              <input type="date" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={cloneRecurringEndDate} onChange={(e) => setCloneRecurringEndDate(e.target.value)} />
+              <DatePicker
+                value={cloneRecurringEndDate}
+                onChange={setCloneRecurringEndDate}
+                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">{t('sales.recurring.fields.maxOccurrences', 'Max Occurrences')}</label>
@@ -2309,7 +3375,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       </Modal>
 
       {confirmDialog}
-    </div>
+    </>
   );
 };
 

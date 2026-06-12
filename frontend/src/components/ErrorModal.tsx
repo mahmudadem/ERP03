@@ -23,13 +23,17 @@ export const ErrorModal: React.FC = () => {
   if (!error) return null;
 
   const getIcon = () => {
-    switch (error.severity) {
-      case ErrorSeverity.INFO:
+    const severity = String(error.severity).toLowerCase();
+    switch (severity) {
+      case 'info':
         return <Info className="w-6 h-6 text-blue-500" />;
-      case ErrorSeverity.WARNING:
+      case 'warning':
         return <AlertTriangle className="w-6 h-6 text-yellow-500" />;
-      case ErrorSeverity.ERROR:
-      case ErrorSeverity.CRITICAL:
+      case 'error':
+        return <AlertCircle className="w-6 h-6 text-red-500" />;
+      case 'critical':
+        return <AlertCircle className="w-6 h-6 text-red-600 fill-red-600 stroke-white" />;
+      default:
         return <AlertCircle className="w-6 h-6 text-red-500" />;
     }
   };
@@ -37,15 +41,18 @@ export const ErrorModal: React.FC = () => {
   const getTitle = () => {
     if (options.modalTitle) return options.modalTitle;
     
-    switch (error.severity) {
-      case ErrorSeverity.INFO:
+    const severity = String(error.severity).toLowerCase();
+    switch (severity) {
+      case 'info':
         return 'Information';
-      case ErrorSeverity.WARNING:
+      case 'warning':
         return 'Warning';
-      case ErrorSeverity.ERROR:
+      case 'error':
         return 'Error';
-      case ErrorSeverity.CRITICAL:
+      case 'critical':
         return 'Critical Error';
+      default:
+        return 'Error';
     }
   };
 

@@ -239,6 +239,7 @@ const PurchaseSettingsPage: React.FC = () => {
         defaultPurchaseExpenseAccountId: settingsForSave.defaultPurchaseExpenseAccountId || undefined,
         defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? settingsForSave.defaultGRNIAccountId || undefined : undefined,
         allowOverDelivery: settingsForSave.allowOverDelivery,
+        allowOverpayment: settingsForSave.allowOverpayment,
         overDeliveryTolerancePct: settingsForSave.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settingsForSave.overInvoiceTolerancePct,
         defaultPaymentTermsDays: settingsForSave.defaultPaymentTermsDays,
@@ -435,6 +436,19 @@ const PurchaseSettingsPage: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
+                  <div className="pr-4">
+                    <div className="text-sm font-bold text-gray-900">Allow over-payment</div>
+                    <div className="text-xs text-gray-500">When on, a payment may exceed the invoice total. The extra becomes a credit on the vendor's account (their AP balance goes negative) and offsets their future bills.</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.allowOverpayment === true}
+                    onChange={(e) => updateSetting('allowOverpayment', e.target.checked)}
+                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </label>
               </div>
             </div>
           </Card>

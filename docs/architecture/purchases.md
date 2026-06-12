@@ -221,6 +221,14 @@ Dr  Accounts Payable
 
 All vouchers carry `sourceModule='purchases'`, `sourceType=<doctype>`, `sourceId=<docId>` for traceability.
 
+**Allocation grid UI (shared):** the whole-bill charges/discounts grid and its add/edit modal are rendered by the shared `components/shared/DocumentChargesAllocation.tsx`, used by both Purchase Invoice and Sales Invoice (see [sales.md](./sales.md)). It is purely presentational: PI keeps its own charge state, totals math, and posting payload (charge **debits** its account; discount **credits** it — opposite of Sales), and passes display-ready rows. Each row's GL-account label resolves to `CODE — Name` via `useAccounts().getAccountById`, so charges loaded from the server show the account name rather than a raw id. Per-module differences (i18n namespace, allowed GL classifications, context labels) are props.
+
+**Voucher model: two-voucher roundtrip (decision — Task 186, reaffirmed 2026-06-09).** A paid PI always posts as **two linked vouchers** — the invoice voucher (`Dr Expense/Inventory / Cr A/P`) plus a separate payment voucher (`Dr A/P / Cr Cash/Bank`, own PV- number, linked PaymentHistory, `metadata.sourceInvoiceId`) — never one combined entry. Settle-on-post and pay-later use the same mechanism; only timing differs. Rationale (timing symmetry with immutable posted vouchers, Purchases Journal vs Cash Payments Journal separation, clean bank reconciliation/reversal, and over-payment handling) is detailed in [sales.md](./sales.md) "Voucher model". The "one transaction" view is a UI grouping concern (link via `sourceInvoiceId`), not a posting change.
+
+**Settlement preserved across the approval boundary (2026-06-09).** When approval is enabled, posting a paid PI hits `APPROVAL_REQUIRED` and rolls back (invoice + payment voucher) as the PI is parked `PENDING_APPROVAL`. The entered settlement is preserved on `PurchaseInvoice.pendingSettlement` and replayed by `ApprovePurchaseInvoiceUseCase` (explicit approval-request `settlementInput` wins; otherwise the stored intent is used; cleared on successful post). The Approval Center shows a per-row preview of what will post. Mirrors Sales (see [sales.md](./sales.md) "Settlement preserved across the approval boundary").
+
+**Over-payment (vendor credit) — opt-in (`PurchaseSettings.allowOverpayment`, default off).** By default a `MULTI` settlement may not exceed the PI outstanding. When enabled, an over-payment debits A/P by the **full** cash paid, driving the vendor's A/P balance **negative** — a prepayment the vendor owes back / offsets their future bills. The PI is marked `PAID` (outstanding clamped at 0); the credit lives in the **A/P ledger**, not on the invoice. Mirrors `SalesSettings.allowOverpayment` (see [sales.md](./sales.md) "Over-payment"). `CASH_FULL` stays exact; over-payment flows through `MULTI`.
+
 ## Inventory Integration
 
 Purchases calls the inventory contract `IPurchasesInventoryService`:
@@ -268,6 +276,58 @@ All under `backend/src/application/purchases/use-cases/`.
 | Frontend module | `frontend/src/modules/purchases/` |
 | Inventory contract | `backend/src/application/inventory/contracts/InventoryIntegrationContracts.ts` |
 | Module deep-dive | `docs/modules/purchases/MASTER_PLAN.md`, `ALGORITHMS.md` |
+
+## Native Purchases detail-page parity (2026-06-08)
+
+Purchase Order and Purchase Invoice detail pages now render through the shared Sales Invoice-style document scaffold at `frontend/src/components/shared/DocumentDetailScaffold.tsx`. The scaffold owns the common page skeleton: compact topbar, document/status pills, full-height scroll workspace, optional responsive side rail, edge-triggered rail drawer, and persistent footer summary/actions. The scaffold rail controls are RTL-aware, so Arabic layouts mirror the rail edge, drawer side, inner hide button, and back-arrow direction.
+
+Purchase pages supply their own business-specific slots. Purchase Orders use vendor/order/procurement workflow content. Purchase Invoices use vendor bill, PO/direct source, attachments, AP totals/payment status, SoD approval messaging, payment/return/unpost actions, and settlement-on-post panels.
+
+Purchase Invoice now reuses the Sales Invoice page anatomy inside the scaffold, not only the outer chrome. Create/edit and saved-view modes use the shared control strip, compact source-aware header card, shared line-items region, allocation-grid placeholder, attachments/audit shortcut tiles, and side rail ordered as Info, Posting Readiness/Document Status, Settlement, and Totals. The vendor picker is role-filtered to vendors only.
+
+- Purchase Order shows a sticky subtotal / tax / grand-total strip beside save, confirm, receive, invoice, cancel, and close actions.
+- Purchase Invoice create/edit and posted views show a sticky subtotal / tax / grand-total strip beside save/post/payment/return/unpost actions.
+- Purchase Invoice source selection no longer accepts arbitrary raw `purchaseOrderId` text. The form loads real Purchase Orders and uses a dropdown, then loads open PO lines from the selected document.
+- Purchase Invoice no longer renders the old standalone header/totals/attachments card stack in create/edit or saved view; totals live in the rail and sticky footer like Sales Invoice.
+- Both pages use the same shared route shell pattern instead of each page owning a separate topbar/footer implementation.
+
+These changes are UI/data-integrity improvements only. They do not change AP posting, tax calculation, inventory receipt valuation, settlement, approval, SoD enforcement, period-lock behavior, or ledger writes.
+
+## Native Purchases document table/list parity (2026-06-09)
+
+Purchase document line sections now share the configurable line table shell at `frontend/src/components/shared/ClassicLineItemsTable.tsx`. Purchase Invoice already used it; Purchase Order, Goods Receipt, and Purchase Return create/edit/view line sections now render through the same table chrome with document-specific columns.
+
+Native purchase document line tables treat default numeric placeholders as blank for the shared table's `isRowFilled` contract. A row with only default quantity, price, or cost is not business content, so it must not trigger the table auto-append behavior.
+
+Goods Receipt draft/edit and Purchase Return saved/edit views now render through `DocumentDetailScaffold`, giving them the same compact topbar, badges, side rail, footer totals/actions, and workspace scroll behavior as Purchase Invoice and Purchase Order. Purchase Return create mode keeps its source-picking card flow for now, but its return line table uses the shared line shell.
+
+Operational Purchases lists now use `OperationalListLayout` across Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns. Goods Receipts and Purchase Returns were migrated from custom card/table pages to the shared list shell with inline filters, quick status pills, centered columns, row actions, and 25-row pagination.
+
+### Accounting impact
+
+These changes are UI/data-entry consistency only. They do not change PO commercial calculations, GRN receipt posting, PI/AP posting, Purchase Return reversals, tax, inventory valuation, settlement, approval, period-lock behavior, or ledger writes.
+
+## Shared document section contract (2026-06-09)
+
+The Purchases native document scaffold now defines fixed body sections instead of letting each page own a separate body structure: `control`, `header`, `lines`, `secondary`, `attachments`, and `custom`. The right rail is also structured as `info`, `readiness`, `settlement`, `totals`, and `custom`, and footer content is controlled by `totals` and `actions`.
+
+Each slot has a show/hide contract through `DocumentScaffoldSection`. This lets Purchase Invoice show settlement/footer totals while Goods Receipt can hide settlement and still keep the same document anatomy. Existing Purchases pages that still pass legacy `children` or `sideRail` are normalized through the scaffold's `custom` slot until their body regions are fully split into strict slots.
+
+Authoritative contract: [`docs/architecture/document-scaffold.md`](./document-scaffold.md).
+
+### Accounting impact
+
+This is layout architecture only. It does not change AP posting, tax, inventory valuation, GRN receipt posting, Purchase Return reversals, settlement, approval, period-lock, SoD, or ledger behavior.
+
+### Key files
+
+| Layer | File |
+|---|---|
+| Shared line table | `frontend/src/components/shared/ClassicLineItemsTable.tsx` |
+| Shared document scaffold | `frontend/src/components/shared/DocumentDetailScaffold.tsx` |
+| Goods Receipt list/detail | `frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx`, `frontend/src/modules/purchases/pages/GoodsReceiptDetailPage.tsx` |
+| Purchase Return list/detail | `frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx`, `frontend/src/modules/purchases/pages/PurchaseReturnDetailPage.tsx` |
+| Purchase Order detail | `frontend/src/modules/purchases/pages/PurchaseOrderDetailPage.tsx` |
 
 ## What Is NOT Implemented
 

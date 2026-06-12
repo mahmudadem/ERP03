@@ -114,6 +114,32 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
     ? `${t('sales.glImpact.title', 'GL Impact')} — ${sourceLabel}`
     : t('sales.glImpact.title', 'GL Impact');
 
+  // Human role for each voucher in the document's ledger story — separates the
+  // invoice posting from any linked settlement vouchers (settle-on-post or pay-later),
+  // so the two-voucher roundtrip reads as one transaction. See docs/architecture/sales.md.
+  const voucherRoleLabel = (type: string | undefined): string => {
+    const tkn = String(type || '').toUpperCase();
+    if (tkn.includes('RECEIPT')) return t('sales.glImpact.roleReceipt', 'Receipt — cash/bank in');
+    if (tkn.includes('PAYMENT')) return t('sales.glImpact.rolePayment', 'Payment — cash/bank out');
+    return t('sales.glImpact.roleInvoice', 'Invoice & revenue');
+  };
+
+  const RoleBadge = ({ type }: { type: string | undefined }) => {
+    const tkn = String(type || '').toUpperCase();
+    const isCash = tkn.includes('RECEIPT') || tkn.includes('PAYMENT');
+    return (
+      <span
+        className={
+          isCash
+            ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+            : 'rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-200'
+        }
+      >
+        {voucherRoleLabel(type)}
+      </span>
+    );
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="max-h-[70vh] overflow-y-auto space-y-5 pr-1">
@@ -157,7 +183,7 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
             {Object.entries(voucherMap).map(([vid, voucher]) => (
               <div key={vid} className="mb-3 rounded-lg border border-slate-200 overflow-hidden">
                 <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
-                  <span className="text-xs font-semibold text-slate-700">{voucher.voucherNo}</span>
+                  <span className="flex items-center gap-2 text-xs font-semibold text-slate-700">{voucher.voucherNo}<RoleBadge type={voucher.type} /></span>
                   <span className="text-xs text-slate-500">{voucher.date} &mdash; {voucher.type}</span>
                 </div>
                 <table className="min-w-full text-xs">
@@ -248,8 +274,9 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
                       className="mb-3 rounded-lg border border-slate-200 overflow-hidden"
                     >
                       <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
-                        <span className="text-xs font-semibold text-slate-700">
+                        <span className="flex items-center gap-2 text-xs font-semibold text-slate-700">
                           {voucher.voucherNo}
+                          <RoleBadge type={voucher.type} />
                         </span>
                         <span className="text-xs text-slate-500">
                           {voucher.date} &mdash; {voucher.type}

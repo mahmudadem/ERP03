@@ -70,10 +70,23 @@ The system calculates:
 ## Quick Steps
 
 1. Go to `Sales -> Returns -> New Return`.
-2. Choose return context (`After Invoice`, `Before Invoice`, or `Direct Return`).
-3. Select source document/customer as required.
+2. Use the **Return Control** strip to choose `After Invoice`, `Before Invoice`, or `Direct Return`.
+3. In the header below it, select the posted Sales Invoice, posted Delivery Note, or customer required for that mode.
 4. Enter return date, reason code, reason text.
 5. Choose settlement mode and optional restocking fee (when applicable).
 6. Create draft and review.
 7. Click **Post Return**.
 8. Use **GL Impact** and **History** to review accounting and audit trail.
+
+## Page Layout
+
+The Sales Returns list and detail page follow the same operational style as Sales Invoices:
+
+- the list has quick status filters, search, customer/context/date filters, row actions, and paginated results
+- return dates display using the company date format
+- on the return detail page, the same document skeleton as Sales Invoice keeps the header, right-side summary rail, and action footer consistent
+- new returns separate the source choice from the header: **Return Control** chooses the mode, and the header changes to the matching source/customer picker
+- the right-side rail summarizes return totals, settlement mode, and source-document context on wide screens, and opens from the page edge on smaller windows
+- the footer shows subtotal, tax, net settlement, and grand total so you can review the return amount before posting
+
+This layout does not change how return settlement, tax, stock, COGS reversal, GL Impact, or audit history work.

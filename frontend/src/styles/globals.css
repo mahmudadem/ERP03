@@ -5,7 +5,8 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', 'Cairo', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 90%; /* Sweet spot for professional dashboards (approx 14.4px) */
 }
 
@@ -26,6 +27,30 @@ body {
   background-color: var(--color-bg-secondary);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+}
+
+.app-shell-container :is(.font-mono, code, kbd, samp, pre, .tabular-nums, input[type="number"]) {
+  font-family: var(--font-mono);
+}
+
+.main-sidebar-accordion {
+  background: #f8fafc;
+  font-family: 'Inter', 'Cairo', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.dark .main-sidebar-accordion {
+  background: #0f172a;
+}
+
+.apex-ledger-shell {
+  --app-font-family: 'Inter', 'Cairo', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', 'Cairo', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.apex-ledger-shell .font-mono {
+  font-family: var(--font-mono);
 }
 
 /* RTL support */

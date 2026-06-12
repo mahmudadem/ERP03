@@ -69,6 +69,7 @@ export interface SalesSettingsDTO {
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
+  allowOverpayment: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -104,11 +105,18 @@ export interface SalesOrderLineDTO {
   invoicedQty: number;
   returnedQty: number;
   unitPriceDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -309,7 +317,13 @@ export interface SalesReturnLineDTO {
   uomId?: string;
   uom: string;
   unitPriceDoc?: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   unitPriceBase?: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   unitCostBase: number;
   lineTotalDoc?: number;
   lineTotalBase?: number;
@@ -317,6 +331,7 @@ export interface SalesReturnLineDTO {
   fxRateCCYToBase: number;
   taxCodeId?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -380,6 +395,7 @@ export interface InitializeSalesPayload {
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery?: boolean;
+  allowOverpayment?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
@@ -408,6 +424,9 @@ export interface SalesOrderLineInputDTO {
   uomId?: string;
   uom?: string;
   unitPriceDoc: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -597,6 +616,9 @@ export interface SalesReturnLineInputDTO {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;

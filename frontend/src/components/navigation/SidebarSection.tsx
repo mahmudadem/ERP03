@@ -36,13 +36,14 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   path,
   isCompact = false
 }) => {
-  const { appearanceSettings } = useUserPreferences();
+  const { appearanceSettings, sidebarMode } = useUserPreferences();
   const { i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
   
   const use3DStyle = appearanceSettings?.id === 'tailwind-play';
   const isContrastSidebar = appearanceSettings?.sidebarSurface === 'contrast';
+  const useApexAccordionLook = sidebarMode !== 'submenus';
 
   // Phosphor Duotone across the whole sidebar (single icon set everywhere).
   // resolveSidebarIcon falls back to Lucide for any name without a Phosphor
@@ -83,12 +84,18 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
     isOpen 
       ? isCompact 
         ? "flex-row items-center gap-2 px-3 py-1.5"
-        : "flex-row items-center gap-3 px-4 py-2"
+        : useApexAccordionLook
+          ? "flex-row items-center gap-3 px-3 py-2.5 rounded-md"
+          : "flex-row items-center gap-3 px-4 py-2"
       : "flex-col items-center gap-1.5 px-2 py-3 justify-center",
     isCompact
       ? "text-[10px] font-semibold text-[var(--app-sidebar-muted)] uppercase tracking-wider"
-      : "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
-    isContrastSidebar
+      : useApexAccordionLook
+        ? "text-[12px] font-semibold text-slate-700 tracking-wide"
+        : "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
+    useApexAccordionLook
+      ? "hover:bg-slate-100/70 hover:text-slate-800 group"
+      : isContrastSidebar
       ? "hover:text-[var(--app-sidebar-text)] hover:bg-white/10 group"
       : "hover:text-[var(--app-sidebar-text)] hover:bg-black/5 dark:hover:bg-white/5 group"
   );
@@ -102,7 +109,11 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
           <div className={clsx(
             "pointer-events-none rounded-[var(--radius-md)] transition-colors duration-300 flex items-center justify-center shrink-0",
             isOpen
-              ? isActiveLink
+              ? useApexAccordionLook
+                ? isActive
+                  ? "w-6 h-6 text-blue-600"
+                  : "w-6 h-6 text-slate-400 group-hover:text-slate-600"
+              : isActiveLink
                 ? isCompact
                   ? "p-1 bg-white/20 text-primary-600"
                   : "p-1.5 bg-white/20 text-white"           // direct active route → row is blue, pill is translucent white
@@ -164,8 +175,8 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
           <>
             <span className={clsx("pointer-events-none truncate flex-1", isRtl ? "text-right" : "text-left")}>{title}</span>
             {!path && (isExpanded 
-              ? <ChevronDown className="pointer-events-none w-3 h-3 text-gray-400 shrink-0" /> 
-              : <InlineChevron className="pointer-events-none w-3 h-3 text-gray-400 shrink-0" />
+              ? <ChevronDown className="pointer-events-none w-3 h-3 text-slate-400 shrink-0" /> 
+              : <InlineChevron className="pointer-events-none w-3 h-3 text-slate-400 shrink-0" />
             )}
           </>
         ) : (
@@ -194,7 +205,9 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
           className={({ isActive }) => clsx(
             headerClass,
             isActive && (
-              use3DStyle
+              useApexAccordionLook
+                ? "bg-blue-50 text-blue-600 font-semibold border-l-4 rtl:border-l-0 rtl:border-r-4 border-blue-600 rounded-l-none rtl:rounded-l-md rtl:rounded-r-none"
+                : use3DStyle
                 ? "bg-transparent text-primary-600 font-bold"
                 : isCompact
                   ? "sidebar-item-active text-primary-600 dark:text-primary-400 font-semibold"
@@ -212,36 +225,49 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
             // Section contains the active route — soft brand tint so the
             // parent acknowledges it without competing with the child's
             // solid-fill active row.
-            isSectionActive && !use3DStyle && "text-primary-700 dark:text-primary-300"
+            isSectionActive && (
+              useApexAccordionLook
+                ? "bg-slate-100 text-slate-800"
+                : !use3DStyle && "text-primary-700 dark:text-primary-300"
+            )
           )}
         >
           {renderHeaderContent(false)}
         </button>
       )}
 
-      {/* Items List - Conditionally Rendered */}
-      {isExpanded && (
-        <div className={clsx(
-          "space-y-0.5 mt-1 transition-all duration-300",
-          isOpen && (
-            isRtl
+      {/* Items List - Rendered with Grid transition */}
+      {isOpen && (
+        <div
+          className={clsx(
+            "grid transition-all duration-300 ease-in-out overflow-hidden mt-1",
+            isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          )}
+        >
+          <div className={clsx(
+            "min-h-0 space-y-0.5 overflow-hidden",
+            useApexAccordionLook
+              ? isRtl
+                ? "mr-4 border-r border-[#E2E8F0] pr-2.5"
+                : "ml-4 border-l border-[#E2E8F0] pl-2.5"
+              : isRtl
               ? "mr-6 border-r border-[var(--color-border)] pr-[1px]"
               : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
-          )
-        )}>
-          {items.map((item, idx) => (
-            <SidebarItem
-              key={item.path || `${item.label}-${idx}`}
-              path={item.path || ''}
-              label={item.label}
-              isOpen={isOpen}
-              onClick={onNavigate}
-              children={item.children}
-              iconName={item.icon}
-              badge={item.badge}
-              isCompact={isCompact}
-            />
-          ))}
+          )}>
+            {items.map((item, idx) => (
+              <SidebarItem
+                key={item.path || `${item.label}-${idx}`}
+                path={item.path || ''}
+                label={item.label}
+                isOpen={isOpen}
+                onClick={onNavigate}
+                children={item.children}
+                iconName={item.icon}
+                badge={item.badge}
+                isCompact={isCompact}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

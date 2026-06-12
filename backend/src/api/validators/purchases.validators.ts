@@ -113,6 +113,15 @@ const validatePOLine = (line: any, index: number) => {
     ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
   }
 
+  if (line.discountType !== undefined && line.discountType !== null) {
+    if (line.discountType !== 'PERCENT' && line.discountType !== 'AMOUNT') {
+      throw ApiError.badRequest(`lines[${index}].discountType must be PERCENT or AMOUNT`);
+    }
+  }
+  if (line.discountValue !== undefined && line.discountValue !== null) {
+    ensureNonNegativeNumber(line.discountValue, `lines[${index}].discountValue`);
+  }
+
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
   }
@@ -154,8 +163,32 @@ const validatePILine = (line: any, index: number) => {
   if (line.unitPriceDoc !== undefined) ensureNonNegativeNumber(line.unitPriceDoc, `lines[${index}].unitPriceDoc`);
   if (line.taxCodeId !== undefined) ensureOptionalString(line.taxCodeId, `lines[${index}].taxCodeId`);
   if (line.warehouseId !== undefined) ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
+  if (line.discountType !== undefined && line.discountType !== null) {
+    if (line.discountType !== 'PERCENT' && line.discountType !== 'AMOUNT') {
+      throw ApiError.badRequest(`lines[${index}].discountType must be PERCENT or AMOUNT`);
+    }
+  }
+  if (line.discountValue !== undefined && line.discountValue !== null) {
+    ensureNonNegativeNumber(line.discountValue, `lines[${index}].discountValue`);
+  }
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
+  }
+};
+
+const validatePICharge = (charge: any, index: number) => {
+  if (!charge.name || typeof charge.name !== 'string') {
+    throw ApiError.badRequest(`charges[${index}].name is required`);
+  }
+  if (charge.kind !== undefined && !['CHARGE', 'DISCOUNT'].includes(String(charge.kind))) {
+    throw ApiError.badRequest(`charges[${index}].kind must be CHARGE or DISCOUNT`);
+  }
+  ensureNonNegativeNumber(charge.amountDoc, `charges[${index}].amountDoc`);
+  if (charge.chargeId !== undefined) ensureOptionalString(charge.chargeId, `charges[${index}].chargeId`);
+  if (charge.code !== undefined) ensureOptionalString(charge.code, `charges[${index}].code`);
+  if (charge.accountId !== undefined) ensureOptionalString(charge.accountId, `charges[${index}].accountId`);
+  if (charge.description !== undefined && typeof charge.description !== 'string') {
+    throw ApiError.badRequest(`charges[${index}].description must be a string`);
   }
 };
 
@@ -175,6 +208,14 @@ const validatePRLine = (line: any, index: number) => {
   ) {
     throw ApiError.badRequest(`lines[${index}] must include piLineId or grnLineId or itemId`);
   }
+  if (line.discountType !== undefined && line.discountType !== null) {
+    if (line.discountType !== 'PERCENT' && line.discountType !== 'AMOUNT') {
+      throw ApiError.badRequest(`lines[${index}].discountType must be PERCENT or AMOUNT`);
+    }
+  }
+  if (line.discountValue !== undefined && line.discountValue !== null) {
+    ensureNonNegativeNumber(line.discountValue, `lines[${index}].discountValue`);
+  }
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
   }
@@ -185,6 +226,7 @@ export const validateInitializePurchasesInput = (body: any) => {
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requirePOForStockItems !== undefined) ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
+  if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
@@ -224,6 +266,7 @@ export const validateUpdatePurchaseSettingsInput = (body: any) => {
   if (body.defaultPurchaseExpenseAccountId !== undefined) ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
   if (body.defaultGRNIAccountId !== undefined) ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
+  if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
@@ -360,6 +403,13 @@ export const validateCreatePurchaseInvoiceInput = (body: any) => {
     body.lines.forEach((line: any, index: number) => validatePILine(line, index));
   }
 
+  if (body.charges !== undefined) {
+    if (!Array.isArray(body.charges)) {
+      throw ApiError.badRequest('charges must be an array when provided');
+    }
+    body.charges.forEach((charge: any, index: number) => validatePICharge(charge, index));
+  }
+
   if (body.settlementInput !== undefined) {
     validateSettlementInput(body.settlementInput);
   }
@@ -378,6 +428,13 @@ export const validateUpdatePurchaseInvoiceInput = (body: any) => {
       throw ApiError.badRequest('lines must be a non-empty array when provided');
     }
     body.lines.forEach((line: any, index: number) => validatePILine(line, index));
+  }
+
+  if (body.charges !== undefined) {
+    if (!Array.isArray(body.charges)) {
+      throw ApiError.badRequest('charges must be an array when provided');
+    }
+    body.charges.forEach((charge: any, index: number) => validatePICharge(charge, index));
   }
 
   if (body.settlementInput !== undefined) {

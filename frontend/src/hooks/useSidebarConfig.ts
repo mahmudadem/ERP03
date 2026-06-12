@@ -64,6 +64,9 @@ export const useSidebarConfig = () => {
   const { voucherTypes, allModuleForms } = useVoucherTypes();
   const { showPurchaseOperationalDocs, showSalesOperationalDocs } = useDocumentPolicies();
   const { t } = useTranslation('common');
+  const showDevNavigation =
+    import.meta.env.DEV ||
+    (typeof window !== 'undefined' && window.localStorage.getItem('erp_show_dev_navigation') === 'true');
 
   const labelKeyMap: Record<string, string> = {
     Accounting: 'sidebar.accounting',
@@ -87,6 +90,7 @@ export const useSidebarConfig = () => {
     Tools: 'sidebar.tools',
     'All Vouchers': 'sidebar.allVouchers',
     'Forms Designer': 'sidebar.formsDesigner',
+    'Forms Management': 'sidebar.formsManagement',
     'Window Designer': 'sidebar.windowDesigner',
     'Trial Balance': 'sidebar.trialBalance',
     'Account Statement': 'sidebar.accountStatement',
@@ -133,11 +137,69 @@ export const useSidebarConfig = () => {
     'Voucher List Demo': 'sidebar.voucherListDemo',
     'Smart Voucher List': 'sidebar.smartVoucherList',
     'Tailwind Play Demo': 'sidebar.tailwindPlayDemo',
+    'UI Lab': 'sidebar.uiLab',
+    'UI Lab 🎨': 'sidebar.uiLab',
     'Demo': 'sidebar.demo',
-    'New': 'sidebar.new'
+    'New': 'sidebar.new',
+    // Sales items
+    'Products & Services': 'sidebar.productsAndServices',
+    'Sales Orders': 'sidebar.salesOrders',
+    'Delivery Notes': 'sidebar.deliveryNotes',
+    'Sales Invoices': 'sidebar.salesInvoices',
+    'Sales Returns': 'sidebar.salesReturns',
+    'AR Aging': 'sidebar.arAging',
+    'Customer Statement': 'sidebar.customerStatement',
+    'Sales Analytics': 'sidebar.salesAnalytics',
+    'Aged Backlog': 'sidebar.agedBacklog',
+    'Customer Groups': 'sidebar.customerGroups',
+    'Price Lists': 'sidebar.priceLists',
+    Salespersons: 'sidebar.salespersons',
+    Promotions: 'sidebar.promotions',
+    // Purchases items
+    'Goods Receipts': 'sidebar.goodsReceipts',
+    'Purchase Invoices': 'sidebar.purchaseInvoices',
+    'Purchase Returns': 'sidebar.purchaseReturns',
+    'AP Aging': 'sidebar.apAging',
+    'Vendor Statement': 'sidebar.vendorStatement',
+    'Purchases Analytics': 'sidebar.purchasesAnalytics',
+    'Vendor Groups': 'sidebar.vendorGroups',
+    // Inventory items
+    'Opening Stock Documents': 'sidebar.openingStock',
+    Adjustments: 'sidebar.adjustments',
+    Transfers: 'sidebar.transfers',
+    'Stock Levels': 'sidebar.stockLevels',
+    Movements: 'sidebar.movements',
+    'Low Stock Alerts': 'sidebar.lowStockAlerts',
+    'Unsettled Costs': 'sidebar.unsettledCosts',
+    'Inventory Valuation': 'sidebar.inventoryValuation',
+    Categories: 'sidebar.categories',
+    'UOM Master': 'sidebar.uomMaster',
+    // Accounting tools
+    Budgets: 'sidebar.budgets',
+    'Consolidated TB': 'sidebar.consolidatedTB',
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });
+
+  const isDevPath = (path?: string) =>
+    !!path && (path === '/canvas-dev' || path.startsWith('/dev'));
+
+  const filterProductionSidebarItems = (items: SidebarItem[]): SidebarItem[] => {
+    if (showDevNavigation) return items;
+
+    return items.reduce<SidebarItem[]>((acc, item) => {
+      if (isDevPath(item.path)) return acc;
+
+      const children = item.children ? filterProductionSidebarItems(item.children) : undefined;
+      if (item.children && (!children || children.length === 0) && !item.path) return acc;
+
+      acc.push({
+        ...item,
+        children
+      });
+      return acc;
+    }, []);
+  };
 
   /**
    * Build dynamic form groups for a given module from allModuleForms.
@@ -434,6 +496,7 @@ export const useSidebarConfig = () => {
       }
 
       items = filterSidebarItems(items);
+      items = filterProductionSidebarItems(items);
       
       if (items.length > 0) {
         sections[translateLabel(def.label)] = {
@@ -458,43 +521,49 @@ export const useSidebarConfig = () => {
       }
     });
 
-    // === DEV SECTION ===
-    // Always visible, placed after all module sections
-    sections[translateLabel('Dev')] = {
-      icon: 'Code',
-      items: [
-        { 
-          label: translateLabel('DataTable Demo'), 
-          path: '/dev/data-table',
-          icon: 'Table',
-          badge: 'Demo'
-        },
-        { 
-          label: translateLabel('Voucher List Demo'), 
-          path: '/dev/voucher-list',
-          icon: 'FileText',
-          badge: 'Demo'
-        },
-        { 
-          label: translateLabel('Smart Voucher List'), 
-          path: '/dev/smart-vouchers',
-          icon: 'Brain',
-          badge: 'New'
-        },
-        { 
-          label: translateLabel('Tailwind Play Demo'), 
-          path: '/dev/tailwind-play-demo',
-          icon: 'Layout',
-          badge: 'New'
-        },
-        { 
-          label: 'UI Lab 🎨', 
-          path: '/dev/ui-lab',
-          icon: 'Sparkles',
-          badge: 'New'
-        }
-      ]
-    };
+    if (showDevNavigation) {
+      sections[translateLabel('Dev')] = {
+        icon: 'Code',
+        items: [
+          { 
+            label: translateLabel('DataTable Demo'), 
+            path: '/dev/data-table',
+            icon: 'Table',
+            badge: 'Demo'
+          },
+          { 
+            label: translateLabel('Voucher List Demo'), 
+            path: '/dev/voucher-list',
+            icon: 'FileText',
+            badge: 'Demo'
+          },
+          { 
+            label: translateLabel('Smart Voucher List'), 
+            path: '/dev/smart-vouchers',
+            icon: 'Brain',
+            badge: 'New'
+          },
+          { 
+            label: translateLabel('Tailwind Play Demo'), 
+            path: '/dev/tailwind-play-demo',
+            icon: 'Layout',
+            badge: 'New'
+          },
+          { 
+            label: translateLabel('UI Lab'), 
+            path: '/dev/ui-lab',
+            icon: 'Sparkles',
+            badge: 'New'
+          },
+          { 
+            label: translateLabel('Icons Comparison'), 
+            path: '/dev/icons-comparison',
+            icon: 'Layers',
+            badge: 'New'
+          }
+        ]
+      };
+    }
 
     return sections;
   }, [
@@ -507,6 +576,7 @@ export const useSidebarConfig = () => {
     allModuleForms,
     voucherTypes,
     t,
+    showDevNavigation,
     showPurchaseOperationalDocs,
     showSalesOperationalDocs,
   ]);

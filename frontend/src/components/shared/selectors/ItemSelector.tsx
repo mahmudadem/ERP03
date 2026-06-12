@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, RefreshCw, Box } from 'lucide-react';
 import { inventoryApi, InventoryItemDTO, InventoryUomDTO } from '../../../api/inventoryApi';
 import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
+import { useSelectorModalFocus } from './useSelectorModalFocus';
+import ItemMasterCard from '../../../modules/inventory/components/ItemMasterCard';
 
 interface ItemSelectorProps {
   value?: string;
@@ -77,6 +79,16 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
+  const { modalRef, handleKeyDown: handleFocusTrapKeyDown } = useSelectorModalFocus(
+    showModal,
+    () => setShowModal(false),
+    inputRef
+  );
+  const { modalRef: createModalRef, handleKeyDown: handleCreateFocusTrapKeyDown } = useSelectorModalFocus(
+    showCreateModal,
+    () => setShowCreateModal(false),
+    inputRef
+  );
 
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
@@ -246,14 +258,14 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 
     // 1. Check local cache (exact matches first, then partial)
     const lowerQuery = trimmedQuery.toLowerCase();
-    
+
     // Find all potential matches in the 1000-item cache
     const matches = allItems.filter(item => {
       const code = item.code.toLowerCase();
       const name = item.name.toLowerCase();
       const barcode = item.barcode?.toLowerCase();
       const compound = `${item.code} - ${item.name}`.toLowerCase();
-      
+
       return (
         code === lowerQuery ||
         name === lowerQuery ||
@@ -313,14 +325,6 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   };
 
   const handleOpenCreateModal = () => {
-    setCreateError('');
-    const seed = buildCreateSeed(modalSearch || inputValue, currencyOptions[0]?.code || 'USD');
-    const selectedUom = uoms.find((uom) => uom.code === seed.baseUom) || uoms[0];
-    setCreateForm({
-      ...seed,
-      baseUomId: selectedUom?.id,
-      baseUom: selectedUom?.code || seed.baseUom,
-    });
     setShowModal(false);
     setShowCreateModal(true);
   };
@@ -376,13 +380,15 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          onFocus={(e) => { try { e.currentTarget.select(); } catch { /* noop */ } }}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder || t('itemSelector.placeholder', 'Select item...')}
           disabled={disabled}
-          className={`w-full text-xs transition-all duration-200
-            ${noBorder ? 'border-none bg-transparent p-1 pl-8' : 'rounded-lg border border-slate-200 bg-white p-2 pl-8 pr-10 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}
-            focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none
+          className={`w-full transition-all duration-200 outline-none
+            ${noBorder
+              ? 'border-0 bg-transparent p-1 pl-8 [font-size:inherit] [font-family:inherit] focus:bg-blue-50/40 dark:focus:bg-blue-950/20'
+              : 'text-xs rounded-lg border border-slate-200 bg-white p-2 pl-8 pr-10 hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:border-slate-800 dark:bg-slate-900'}
             ${disabled ? 'cursor-not-allowed opacity-50 bg-slate-50' : ''}`}
         />
         {!disabled && (
@@ -404,7 +410,31 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" onClick={() => setShowModal(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="pointer-events-auto flex max-h-[500px] w-full max-w-lg flex-col rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div
+              ref={modalRef}
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (e.target !== modalInputRef.current) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightedIndex((prev) => Math.min(prev + 1, Math.max(searchResults.length - 1, 0)));
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+                    return;
+                  }
+                  if (e.key === 'Enter' && searchResults[highlightedIndex]) {
+                    e.preventDefault();
+                    handleSelect(searchResults[highlightedIndex]);
+                    return;
+                  }
+                }
+                handleFocusTrapKeyDown(e);
+              }}
+              className="pointer-events-auto flex max-h-[500px] w-full max-w-lg flex-col rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+            >
               <div className="flex items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
                 <Search size={18} className="text-slate-400" />
                 <input
@@ -418,11 +448,11 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                     setHighlightedIndex(0);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') setHighlightedIndex((prev) => Math.min(prev + 1, searchResults.length - 1));
+                    if (e.key === 'ArrowDown') setHighlightedIndex((prev) => Math.min(prev + 1, Math.max(searchResults.length - 1, 0)));
                     if (e.key === 'ArrowUp') setHighlightedIndex((prev) => Math.max(prev - 1, 0));
                     if (e.key === 'Enter' && searchResults[highlightedIndex]) handleSelect(searchResults[highlightedIndex]);
                     if (e.key === 'Enter' && searchResults.length === 0 && modalSearch.trim()) handleOpenCreateModal();
-                    if (e.key === 'Escape') setShowModal(false);
+                    if (['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) e.stopPropagation();
                   }}
                 />
                 <button
@@ -519,165 +549,22 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
       {showCreateModal && (
         <>
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" onClick={() => setShowCreateModal(false)} />
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
-            <div className="pointer-events-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Create New Item</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {trackInventoryOnly
-                      ? 'This selector creates stock-tracked items only.'
-                      : 'Create the item here and it will be selected automatically.'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form className="grid gap-4 p-5 md:grid-cols-2" onSubmit={handleCreateItem}>
-                <label className="text-sm">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Code</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.code}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, code: e.target.value }))}
-                    placeholder="ITEM-001"
-                    required
-                  />
-                </label>
-
-                <label className="text-sm">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Name</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.name}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, name: e.target.value }))}
-                    placeholder="Stock item name"
-                    required
-                  />
-                </label>
-
-                <label className="text-sm">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Type</div>
-                  <select
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.type}
-                    onChange={(e) => {
-                      const nextType = e.target.value as InventoryItemDTO['type'];
-                      setCreateForm((current) => ({
-                        ...current,
-                        type: nextType,
-                        trackInventory: trackInventoryOnly ? true : nextType === 'SERVICE' ? false : current.trackInventory,
-                      }));
-                    }}
-                  >
-                    <option value="PRODUCT">PRODUCT</option>
-                    <option value="RAW_MATERIAL">RAW_MATERIAL</option>
-                    {!trackInventoryOnly && <option value="SERVICE">SERVICE</option>}
-                  </select>
-                </label>
-
-                <label className="text-sm">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Base UoM</div>
-                  {uoms.length > 0 ? (
-                    <select
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      value={createForm.baseUomId || ''}
-                      onChange={(e) => {
-                        const selected = uoms.find((uom) => uom.id === e.target.value);
-                        setCreateForm((current) => ({
-                          ...current,
-                          baseUomId: selected?.id,
-                          baseUom: selected?.code || current.baseUom,
-                        }));
-                      }}
-                      required
-                    >
-                      <option value="">Select UoM</option>
-                      {uoms.map((uom) => (
-                        <option key={uom.id} value={uom.id}>
-                          {uom.code} - {uom.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      value={createForm.baseUom}
-                      onChange={(e) => setCreateForm((current) => ({ ...current, baseUom: e.target.value.toUpperCase() }))}
-                      placeholder="PCS"
-                      required
-                    />
-                  )}
-                </label>
-
-                <label className="text-sm">
-                  <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Cost Currency</div>
-                  {currencyOptions.length > 0 ? (
-                    <select
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      value={createForm.costCurrency}
-                      onChange={(e) => setCreateForm((current) => ({ ...current, costCurrency: e.target.value }))}
-                    >
-                      {currencyOptions.map((currency) => (
-                        <option key={currency.code} value={currency.code}>
-                          {currency.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      value={createForm.costCurrency}
-                      onChange={(e) => setCreateForm((current) => ({ ...current, costCurrency: e.target.value.toUpperCase() }))}
-                      placeholder="USD"
-                      required
-                    />
-                  )}
-                </label>
-
-                <label className="md:col-span-2 flex items-center gap-3 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={trackInventoryOnly ? true : createForm.trackInventory}
-                    disabled={trackInventoryOnly || createForm.type === 'SERVICE'}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, trackInventory: e.target.checked }))}
-                  />
-                  <span>
-                    {trackInventoryOnly
-                      ? 'Track Inventory is required for items created from Opening Stock.'
-                      : 'Track inventory for stock-controlled items.'}
-                  </span>
-                </label>
-
-                {createError && (
-                  <div className="md:col-span-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {createError}
-                  </div>
-                )}
-
-                <div className="md:col-span-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreating}
-                    className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                  >
-                    {isCreating ? 'Creating...' : 'Create Item'}
-                  </button>
-                </div>
-              </form>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              ref={createModalRef}
+              tabIndex={-1}
+              onKeyDown={handleCreateFocusTrapKeyDown}
+              className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-slate-950"
+            >
+              <ItemMasterCard
+                itemId="new"
+                isWindow
+                onClose={() => setShowCreateModal(false)}
+                onSaved={(item) => {
+                  handleSelect(item);
+                  void loadAllItems(true);
+                }}
+              />
             </div>
           </div>
         </>

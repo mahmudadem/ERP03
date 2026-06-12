@@ -73,3 +73,15 @@ frontend/src.zip
 # Python build artifacts (skill scripts)
 __pycache__/
 *.pyc
+
+# Transcript / code-recovery scratch (never commit — session artifacts)
+extract.js
+extract.cjs
+unescape.cjs
+apply_recovered_code.cjs
+find_in_transcript.cjs
+recovered_step.json
+extracted_code_*.txt
+
+# Claude Code harness state (worktrees managed by Claude — never commit)
+.claude/worktrees/

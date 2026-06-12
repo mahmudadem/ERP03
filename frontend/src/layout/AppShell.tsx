@@ -51,18 +51,21 @@ export const AppShell: React.FC = () => {
   const [viewingFormType, setViewingFormType] = useState<any>(null);
 
   const isWindowsMode = uiMode === 'windows';
-  const isAccordionMode = sidebarMode === 'submenus';
+  const isFlyoutMode = sidebarMode === 'submenus';
 
   // Sync sidebar state with pinned preference and breakpoint
   React.useEffect(() => {
-    if (sidebarPinned && isDesktop) {
-      setIsSidebarOpen(true);
-    }
-    if (!isDesktop) {
+    if (isDesktop) {
+      setIsSidebarOpen(sidebarPinned);
+    } else {
       // Always close sidebar when on mobile — it hides off-screen via transform
       setIsSidebarOpen(false);
     }
   }, [sidebarPinned, isDesktop]);
+
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen(prev => !prev);
+  };
 
   const handleGlobalPrint = (idOrVoucher: string | any, formType?: any) => {
     if (typeof idOrVoucher === 'string') {
@@ -97,27 +100,30 @@ export const AppShell: React.FC = () => {
     return () => window.removeEventListener('print-voucher', handler as any);
   }, []);
 
+  const openWidth = isFlyoutMode ? '14rem' : '18rem';
+  const closedWidth = isFlyoutMode ? '5rem' : '0px';
+
   const shellStyle = {
-    '--app-sidebar-width': '16rem',
+    '--app-sidebar-width': openWidth,
   } as React.CSSProperties;
 
   // Determine desktop margin (offset) for main content area
   let desktopMarginStyle: React.CSSProperties | undefined = undefined;
 
   if (isDesktop) {
-    if (isAccordionMode) {
-      // Accordion mode: shifts content only when open AND pinned
-      if (isSidebarOpen && sidebarPinned) {
-        desktopMarginStyle = isRtl
-          ? { marginRight: '16rem', marginLeft: 0 }
-          : { marginLeft: '16rem', marginRight: 0 };
-      }
-    } else {
-      // Flat mode: shifts content by 16rem if open, and by 6rem if closed
-      const currentWidth = isSidebarOpen ? '16rem' : '6rem';
+    if (isFlyoutMode) {
+      // Flyout Mode: persistent narrow strip when closed, wider when open
+      const currentWidth = isSidebarOpen ? openWidth : closedWidth;
       desktopMarginStyle = isRtl
         ? { marginRight: currentWidth, marginLeft: 0 }
         : { marginLeft: currentWidth, marginRight: 0 };
+    } else {
+      // Accordion Mode: shifts content only when open AND pinned (no narrow strip when closed)
+      if (isSidebarOpen && sidebarPinned) {
+        desktopMarginStyle = isRtl
+          ? { marginRight: openWidth, marginLeft: 0 }
+          : { marginLeft: openWidth, marginRight: 0 };
+      }
     }
   }
 
@@ -131,23 +137,23 @@ export const AppShell: React.FC = () => {
           <PageTitleManager />
 
           {/* TopBar spans 100% width of the viewport */}
-          <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+          <TopBar onMenuClick={handleToggleSidebar} />
 
           {/* Main workspace area below TopBar */}
           <div className="flex-1 flex relative overflow-hidden" style={shellStyle}>
             {/* Sidebar — floats on top or docks below TopBar */}
             <Sidebar
               isOpen={isSidebarOpen}
-              onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+              onToggle={handleToggleSidebar}
               onNavigate={() => {
-                if (!sidebarPinned && !isDesktop) {
+                if (!isDesktop || !sidebarPinned) {
                   setIsSidebarOpen(false);
                 }
               }}
             />
 
             {/* Backdrop — active when sidebar is open and in overlay mode (not pinned accordion on desktop, or mobile) */}
-            {isSidebarOpen && (!isDesktop || (isAccordionMode && !sidebarPinned)) && (
+            {isSidebarOpen && (!isDesktop || (!isFlyoutMode && !sidebarPinned)) && (
               <div
                 className="fixed inset-0 bg-black/30 z-30"
                 onClick={() => setIsSidebarOpen(false)}

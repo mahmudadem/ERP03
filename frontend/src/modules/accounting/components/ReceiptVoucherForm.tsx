@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AmountInput } from './shared/AmountInput';
 import { accountingApi } from '../../../api/accountingApi';
-import { AccountSelectorSimple } from './AccountSelectorSimple';
+import { AccountSelector } from './shared/AccountSelector';
 import { errorHandler } from '../../../services/errorHandler';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { getCompanyToday, formatCompanyDate } from '../../../utils/dateUtils';
@@ -119,11 +119,14 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
         <div className="form-section">
           <h3>{t('receiptVoucher.sections.header', { defaultValue: 'Receipt Header' })}</h3>
           
-          <AccountSelectorSimple
+          <AccountSelector
             value={depositToAccountId}
-            onChange={setDepositToAccountId}
-            label={t('receiptVoucher.fields.depositTo', { defaultValue: 'Deposit To Account' })}
-            required
+            onChange={(account) => setDepositToAccountId(account?.id || '')}
+            placeholder={t('receiptVoucher.fields.depositTo', { defaultValue: 'Deposit To Account' })}
+            allowedClassifications={['ASSET']}
+            contextLabel={t('receiptVoucher.fields.cashBankAccount', { defaultValue: 'Cash/Bank' })}
+            enforceClassification
+            enforceScope
           />
 
           <div className="form-group">
@@ -153,11 +156,11 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
               {sources.map((source, index) => (
                 <tr key={index}>
                   <td>
-                    <AccountSelectorSimple
+                    <AccountSelector
                       value={source.receiveFromAccountId}
-                      onChange={(id) => handleSourceChange(index, 'receiveFromAccountId', id)}
-                      label=""
-                      required
+                      onChange={(account) => handleSourceChange(index, 'receiveFromAccountId', account?.id || '')}
+                      placeholder={t('receiptVoucher.fields.receiveFrom', { defaultValue: 'Receive From Account *' })}
+                      enforceScope
                     />
                   </td>
                   <td>

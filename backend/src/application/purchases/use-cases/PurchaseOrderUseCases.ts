@@ -50,6 +50,8 @@ export interface PurchaseOrderLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -235,6 +237,9 @@ export class CreatePurchaseOrderUseCase {
       invoicedQty: 0,
       returnedQty: 0,
       unitPriceDoc: lineInput.unitPriceDoc,
+      // Discount fields forwarded; entity recomputes gross/discount/lineTotal/tax.
+      discountType: lineInput.discountType,
+      discountValue: lineInput.discountValue,
       lineTotalDoc,
       unitPriceBase,
       lineTotalBase,
@@ -370,6 +375,8 @@ export class UpdatePurchaseOrderUseCase {
       invoicedQty: currentLine?.invoicedQty ?? 0,
       returnedQty: currentLine?.returnedQty ?? 0,
       unitPriceDoc: lineInput.unitPriceDoc,
+      discountType: lineInput.discountType ?? currentLine?.discountType,
+      discountValue: lineInput.discountValue ?? currentLine?.discountValue,
       lineTotalDoc,
       unitPriceBase,
       lineTotalBase,

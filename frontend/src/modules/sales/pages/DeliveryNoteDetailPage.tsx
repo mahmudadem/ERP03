@@ -13,11 +13,25 @@ import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { StatusChip } from '../../../components/ui/StatusChip';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { PartySelector } from '../../../components/shared/selectors';
-import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { GlImpactModal } from '../components/GlImpactModal';
 import { PeriodLockOverrideModal } from '../components/PeriodLockOverrideModal';
 import { RecordAuditModal } from '../components/RecordAuditModal';
+import { Truck } from 'lucide-react';
+import {
+  DocumentDetailScaffold,
+  DocumentFooterTotalsStrip,
+  DocumentHeaderField,
+  DocumentHeaderGrid,
+  DocumentPill,
+  DocumentRailKeyValueList,
+  DocumentRailTotals,
+  DocumentScaffoldRailSections,
+  documentHeaderControlClass,
+  documentHeaderSelectorClass,
+} from '../../../components/shared/DocumentDetailScaffold';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -48,7 +62,7 @@ interface EditableForm {
 
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
-  deliveredQty: 1,
+  deliveredQty: 0,
   uomId: undefined,
   uom: '',
   warehouseId: undefined,
@@ -230,7 +244,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load sales order lines.'
+          t('sales.dnDetail.loadSOLinesFailed')
       );
     } finally {
       setOrderLineLoading(false);
@@ -276,7 +290,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load delivery note.'
+          t('sales.dnDetail.loadFailed')
       );
     } finally {
       setLoading(false);
@@ -337,28 +351,28 @@ const DeliveryNoteDetailPage: React.FC = () => {
   };
 
   const validateBeforeSave = (): string | null => {
-    if (!form.deliveryDate) return 'Delivery date is required.';
-    if (!form.warehouseId) return 'Warehouse is required.';
-    if (!form.salesOrderId && !form.customerId) return 'Customer is required when sales order is not provided.';
+    if (!form.deliveryDate) return t('sales.dnDetail.deliveryDateRequired');
+    if (!form.warehouseId) return t('sales.dnDetail.warehouseRequired');
+    if (!form.salesOrderId && !form.customerId) return t('sales.dnDetail.customerRequired');
 
     if (!form.salesOrderId) {
-      if (!form.lines.length) return 'At least one line is required for direct delivery notes.';
+      if (!form.lines.length) return t('sales.dnDetail.minLinesRequired');
       for (let i = 0; i < form.lines.length; i += 1) {
         const line = form.lines[i];
-        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (!line.itemId) return t('sales.dnDetail.lineItemRequired', { n: i + 1 });
         if (Number.isNaN(line.deliveredQty) || line.deliveredQty <= 0) {
-          return `Line ${i + 1}: delivered quantity must be greater than 0.`;
+          return t('sales.dnDetail.lineQtyPositive', { n: i + 1 });
         }
       }
     } else if (form.lines.length > 0) {
       for (let i = 0; i < form.lines.length; i += 1) {
         const line = form.lines[i];
-        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (!line.itemId) return t('sales.dnDetail.lineItemRequired', { n: i + 1 });
         if (Number.isNaN(line.deliveredQty) || line.deliveredQty <= 0) {
-          return `Line ${i + 1}: delivered quantity must be greater than 0.`;
+          return t('sales.dnDetail.lineQtyPositive', { n: i + 1 });
         }
         if (line.maxDeliverableQty !== undefined && line.deliveredQty > line.maxDeliverableQty + 0.000001) {
-          return `Line ${i + 1}: delivered quantity cannot exceed the open Sales Order quantity.`;
+          return t('sales.dnDetail.lineQtyExceedsSO', { n: i + 1 });
         }
       }
     }
@@ -415,7 +429,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to create delivery note draft.'
+          t('sales.dnDetail.createFailed')
       );
     } finally {
       setBusy(false);
@@ -441,7 +455,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
           setOverrideModalOpen(true);
           return;
         } else {
-          setError('This accounting period is closed and cannot be overridden.');
+          setError(t('sales.dnDetail.periodLockedHard'));
           return;
         }
       }
@@ -450,7 +464,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to post delivery note.'
+          t('sales.dnDetail.postFailed')
       );
     } finally {
       setBusy(false);
@@ -508,47 +522,128 @@ const DeliveryNoteDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Delivery Note</h1>
-        <Card className="p-6">Loading delivery note...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.dnDetail.pageTitle')}</h1>
+        <Card className="p-6">{t('sales.dnDetail.loading')}</Card>
       </div>
     );
   }
 
+  const hasUnsavedDocumentChanges = (() => {
+    if (!(isCreateMode || isEditing)) return false;
+    const hasLines = form.lines.some((line) =>
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.deliveredQty || line.uomId || line.uom)
+    );
+    return Boolean(
+      form.salesOrderId ||
+      form.customerId ||
+      form.promisedDate ||
+      form.notes.trim() ||
+      hasLines
+    );
+  })();
+
+  const openNewDeliveryNoteForm = () => {
+    setDeliveryNote(null);
+    setForm(createEmptyForm('', '', ''));
+    setIsEditing(false);
+    setError(null);
+    navigate('/sales/delivery-notes/new');
+  };
+
   if (isCreateMode || isEditing) {
+    const draftFooterSummary = (
+      <DocumentFooterTotalsStrip
+        totals={[
+          { label: t('sales.dnDetail.draftLabel'), value: t('sales.dnDetail.linesCount', { count: form.lines.length }) },
+          { label: t('sales.dnDetail.source'), value: form.salesOrderId ? t('sales.dnDetail.fromSO') : t('sales.dnDetail.direct'), tone: form.salesOrderId ? 'blue' : 'slate' },
+        ]}
+      />
+    );
+
+    const draftRailSections: DocumentScaffoldRailSections = {
+      info: {
+        title: t('sales.dnDetail.deliveryDraftTitle'),
+        content: (
+          <DocumentRailKeyValueList
+            items={[
+              { label: t('sales.dnDetail.linesLabel'), value: form.lines.length },
+              { label: t('sales.dnDetail.source'), value: form.salesOrderId ? t('sales.dnDetail.salesOrderLabel') : t('sales.dnDetail.direct') },
+              { label: t('sales.dnDetail.deliveryDate'), value: form.deliveryDate || '-' },
+              { label: t('sales.dnDetail.warehouse'), value: warehouseLabelById[form.warehouseId] || form.warehouseId || '-' },
+            ]}
+          />
+        ),
+      },
+    };
+
     return (
-      <div className="space-y-6 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {isEditing
-                ? t('sales.dnDetail.editTitle', 'Edit Delivery Note')
-                : t('sales.dnDetail.newTitle', 'New Delivery Note')}
-            </h1>
-            {isEditing && deliveryNote && <StatusChip status={deliveryNote.status} type="dn" />}
-          </div>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => (isEditing ? cancelEdit() : navigate('/sales/delivery-notes'))}
-          >
-            {isEditing ? t('sales.dnDetail.cancel', 'Cancel') : t('sales.dnDetail.backToList', 'Back to List')}
-          </button>
-        </div>
-
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        <Card className="p-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order (optional unless SO is required for stock items)</label>
+      <DocumentDetailScaffold
+        title={isEditing ? t('sales.dnDetail.editTitle', 'Edit Delivery Note') : t('sales.dnDetail.newTitle', 'New Delivery Note')}
+        subtitle={t('sales.dnDetail.subtitle')}
+        icon={Truck}
+        backLabel={t('sales.dnDetail.backToList')}
+        onBack={() => (isEditing ? cancelEdit() : navigate('/sales/delivery-notes'))}
+        badges={isEditing && deliveryNote ? <DocumentPill tone="slate">{deliveryNote.status}</DocumentPill> : <DocumentPill tone="slate">{t('sales.dnDetail.draftBadge')}</DocumentPill>}
+        railSections={draftRailSections}
+        railTitle={t('sales.dnDetail.sideRailTitle')}
+        newAction={{
+          label: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+          title: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+          hasUnsavedChanges: hasUnsavedDocumentChanges,
+          onNew: openNewDeliveryNoteForm,
+        }}
+        footerSections={{
+          totals: { content: draftFooterSummary },
+          actions: {
+            content: (
+          <>
+            <button
+              type="button"
+              className="rounded bg-primary-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              onClick={isEditing ? saveEdits : createDraft}
+              disabled={busy || orderLineLoading}
+            >
+              {busy
+                ? isEditing
+                  ? t('sales.dnDetail.saving', 'Saving...')
+                  : t('sales.dnDetail.creating', 'Creating...')
+                : isEditing
+                  ? t('sales.dnDetail.saveChanges', 'Save Changes')
+                  : t('sales.dnDetail.createDraft', 'Create Draft Delivery Note')}
+            </button>
+            {isEditing && (
+              <button
+                type="button"
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                onClick={cancelEdit}
+                disabled={busy}
+              >
+                {t('sales.dnDetail.cancel', 'Cancel')}
+              </button>
+            )}
+          </>
+            ),
+          },
+        }}
+        sections={{
+          banner: {
+            content: error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            ) : null,
+          },
+          header: {
+            content: (
+        <Card className="overflow-visible p-0">
+          <DocumentHeaderGrid>
+            <DocumentHeaderField label={t('sales.dnDetail.salesOrderFieldLabel')}>
               <div className="flex gap-2">
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
+                  className={documentHeaderControlClass}
                   value={form.salesOrderId}
                   disabled={isEditing}
                   onChange={(e) => handleSalesOrderChange(e.target.value)}
                 >
-                  <option value="">No sales order</option>
+                  <option value="">{t('sales.dnDetail.noSalesOrder')}</option>
                   {salesOrders.map((order) => (
                     <option key={order.id} value={order.id}>
                       {order.orderNumber} - {order.customerName}
@@ -557,17 +652,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
                 </select>
                 <button
                   type="button"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium disabled:opacity-50"
+                  className="h-9 shrink-0 rounded border border-slate-300 bg-white px-2 text-[10px] font-black uppercase tracking-wide text-slate-700 disabled:opacity-50"
                   onClick={() => loadSalesOrderLines(form.salesOrderId)}
                   disabled={busy || orderLineLoading || !form.salesOrderId.trim() || isEditing}
                 >
-                  {orderLineLoading ? 'Loading...' : 'Load SO Lines'}
+                  {orderLineLoading ? t('sales.dnDetail.loadingLines') : t('sales.dnDetail.loadSOLines')}
                 </button>
               </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Customer (standalone)</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.customerStandalone')}>
               <PartySelector 
+                className={documentHeaderSelectorClass}
                 value={form.customerId}
                 disabled={!!form.salesOrderId}
                 onChange={(party) => {
@@ -577,43 +672,44 @@ const DeliveryNoteDetailPage: React.FC = () => {
                   }));
                 }}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Delivery Date</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.deliveryDate')}>
               <DatePicker
+                className="w-full"
+                inputClassName={documentHeaderControlClass}
                 value={form.deliveryDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, deliveryDate: val }))}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Promised Delivery Date</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.promisedDeliveryDate')}>
               <DatePicker
+                className="w-full"
+                inputClassName={documentHeaderControlClass}
                 value={form.promisedDate}
                 onChange={(val) => setForm((prev) => ({ ...prev, promisedDate: val }))}
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Warehouse</label>
+            </DocumentHeaderField>
+            <DocumentHeaderField label={t('sales.dnDetail.warehouse')}>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className={documentHeaderControlClass}
                 value={form.warehouseId}
                 onChange={(e) => setForm((prev) => ({ ...prev, warehouseId: e.target.value }))}
               >
-                <option value="">Select warehouse</option>
+                <option value="">{t('sales.dnDetail.selectWarehouse')}</option>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.code} - {warehouse.name}
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
+            </DocumentHeaderField>
+          </DocumentHeaderGrid>
 
-          <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+          <div className="px-3 pb-3">
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('sales.dnDetail.notes')}</label>
             <textarea
               rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded border border-slate-300 bg-white px-2 py-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
               value={form.notes}
               onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             />
@@ -621,214 +717,294 @@ const DeliveryNoteDetailPage: React.FC = () => {
 
           {settings?.requireSOForStockItems && !form.salesOrderId && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-              This company requires a Sales Order reference for stock-item delivery flow.
+              {t('sales.dnDetail.requiresSOWarning')}
             </div>
           )}
 
           <div className="mt-4 text-xs text-slate-500">
-            When a Sales Order is selected, lines can be loaded from the order or pre-filled by server rules.
+            {t('sales.dnDetail.soHint')}
           </div>
         </Card>
-
-        {(!form.salesOrderId || form.lines.length > 0) && (
-          <Card className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
-              {!form.salesOrderId && (
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-                  onClick={addLine}
-                  disabled={busy}
-                >
-                  Add Item
-                </button>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="py-2 text-left">Item</th>
-                    <th className="py-2 text-right">Delivered Qty</th>
-                    <th className="py-2 text-left">UOM</th>
-                    <th className="py-2 text-left">Warehouse</th>
-                    <th className="py-2 text-right" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {form.lines.map((line, index) => (
-                    <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
-                          value={line.itemId}
-                          disabled={!!form.salesOrderId}
-                          onChange={(e) => setLine(index, { itemId: e.target.value })}
-                        >
-                          <option value="">Select item</option>
-                          {items.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.code} - {item.name}
-                            </option>
-                          ))}
-                        </select>
-                        {(line.itemCode || line.itemName) && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          min={0.000001}
-                          max={line.maxDeliverableQty}
-                          step={0.000001}
-                          className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
-                          value={line.deliveredQty}
-                          onChange={(e) => setLine(index, { deliveredQty: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                          value={
-                            findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
-                            line.uomId ||
-                            line.uom
-                          }
-                          disabled={!line.itemId || !!form.salesOrderId}
-                          onChange={(e) => {
-                            const selected = (uomOptionsByItemId[line.itemId] || []).find(
-                              (option) => (option.uomId || option.code) === e.target.value
-                            );
-                            setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
-                          }}
-                        >
-                          <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
-                          {(uomOptionsByItemId[line.itemId] || []).map((option) => (
-                            <option key={option.uomId || option.code} value={option.uomId || option.code}>
-                              {option.code}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-                          value={line.warehouseId || ''}
-                          disabled={busy}
-                          onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
-                        >
-                          <option value="">Select Warehouse</option>
-                          {warehouses.map((warehouse) => (
-                            <option key={warehouse.id} value={warehouse.id}>
-                              {warehouse.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 text-right">
-                        <button
-                          type="button"
-                          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
-                          onClick={() => removeLine(index)}
-                          disabled={busy || form.lines.length <= 1}
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            onClick={isEditing ? saveEdits : createDraft}
-            disabled={busy || orderLineLoading}
-          >
-            {busy
-              ? isEditing
-                ? t('sales.dnDetail.saving', 'Saving...')
-                : t('sales.dnDetail.creating', 'Creating...')
-              : isEditing
-                ? t('sales.dnDetail.saveChanges', 'Save Changes')
-                : t('sales.dnDetail.createDraft', 'Create Draft Delivery Note')}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              onClick={cancelEdit}
-              disabled={busy}
-            >
-              {t('sales.dnDetail.cancel', 'Cancel')}
-            </button>
-          )}
-        </div>
-      </div>
+            ),
+          },
+          lines: {
+            content: (!form.salesOrderId || form.lines.length > 0) ? (
+          <ClassicLineItemsTable<EditableLine>
+            tableId="sales.deliveryNote.lines"
+            title={t('sales.dnDetail.lineItemsTitle')}
+            rows={form.lines}
+            disabled={busy}
+            onRowChange={setLine}
+            onRowRemove={!form.salesOrderId ? removeLine : undefined}
+            onRowsChange={!form.salesOrderId ? (lines) => setForm((prev) => ({ ...prev, lines })) : undefined}
+            createEmptyRow={createEmptyLine}
+            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.warehouseId)}
+            onRowAdd={!form.salesOrderId ? addLine : undefined}
+            addLabel={t('sales.dnDetail.addItem')}
+            minTableWidth="820px"
+            columns={[
+              {
+                id: 'item',
+                label: t('sales.dnDetail.itemColumn'),
+                kind: 'custom',
+                width: '280px',
+                render: (line, index) => (
+                  <ItemSelector
+                    value={line.itemId}
+                    disabled={!!form.salesOrderId || busy}
+                    noBorder
+                    placeholder={t('sales.dnDetail.selectItem')}
+                    trackInventoryOnly
+                    onChange={(item) => {
+                      if (!item) {
+                        const empty = createEmptyLine();
+                        setLine(index, {
+                          itemId: empty.itemId,
+                          itemCode: empty.itemCode,
+                          itemName: empty.itemName,
+                          deliveredQty: empty.deliveredQty,
+                          uomId: empty.uomId,
+                          uom: empty.uom,
+                          warehouseId: empty.warehouseId,
+                          description: empty.description,
+                        });
+                        return;
+                      }
+                      const defaultUom = getDefaultItemUomOption(item, 'sales');
+                      setLine(index, {
+                        itemId: item.id,
+                        itemCode: item.code,
+                        itemName: item.name,
+                        uomId: defaultUom?.uomId,
+                        uom: defaultUom?.code || item.salesUom || item.baseUom,
+                      });
+                    }}
+                  />
+                ),
+              } as ColumnDef<EditableLine>,
+              {
+                id: 'deliveredQty',
+                label: t('sales.dnDetail.deliveredQtyColumn'),
+                kind: 'number',
+                width: '130px',
+                accessor: (line) => line.deliveredQty,
+                setter: (value) => ({ deliveredQty: Number(value) }),
+              },
+              {
+                id: 'uom',
+                label: t('sales.dnDetail.uomColumn'),
+                kind: 'custom',
+                width: '110px',
+                render: (line, index) => (
+                  <UomSelector
+                    item={itemById[line.itemId]}
+                    itemId={line.itemId}
+                    valueId={line.uomId}
+                    valueCode={line.uom}
+                    usage="sales"
+                    disabled={!line.itemId || !!form.salesOrderId || busy}
+                    noBorder
+                    onChange={(selected) => setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' })}
+                  />
+                ),
+              },
+              {
+                id: 'warehouse',
+                label: t('sales.dnDetail.warehouseColumn'),
+                kind: 'custom',
+                width: '220px',
+                render: (line, index) => (
+                  <WarehouseSelector
+                    value={line.warehouseId}
+                    disabled={busy}
+                    noBorder
+                    placeholder={t('sales.dnDetail.selectWarehouseColumn')}
+                    onChange={(warehouse) => setLine(index, { warehouseId: warehouse?.id })}
+                  />
+                ),
+              },
+              {
+                id: 'max',
+                label: t('sales.dnDetail.openQtyColumn'),
+                kind: 'computed',
+                width: '110px',
+                compute: (line) => line.maxDeliverableQty ?? '',
+              },
+            ]}
+          />
+            ) : null,
+          },
+        }}
+      />
     );
   }
 
   if (!deliveryNote) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Delivery Note</h1>
-        <Card className="p-6 text-sm text-red-700">Delivery note not found.</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('sales.dnDetail.pageTitle')}</h1>
+        <Card className="p-6 text-sm text-red-700">{t('sales.dnDetail.notFound')}</Card>
       </div>
     );
   }
 
   const canCreateReturn = deliveryNote.status === 'POSTED' && !!settings?.requireSOForStockItems;
   const createReturnHref = `/sales/returns/new?deliveryNoteId=${encodeURIComponent(deliveryNote.id)}${deliveryNote.salesOrderId ? `&salesOrderId=${encodeURIComponent(deliveryNote.salesOrderId)}` : ''}`;
+  const deliveredQtyTotal = deliveryNote.lines.reduce((sum, line) => sum + (line.deliveredQty || 0), 0);
+  const lineCostBaseTotal = deliveryNote.lines.reduce((sum, line) => sum + (line.lineCostBase || 0), 0);
+  const viewFooterSummary = (
+    <DocumentFooterTotalsStrip
+      totals={[
+        { label: t('sales.dnDetail.linesLabel'), value: deliveryNote.lines.length },
+        { label: t('sales.dnDetail.qtyLabel'), value: deliveredQtyTotal.toFixed(2), tone: 'blue' },
+        { label: t('sales.dnDetail.costBaseLabel'), value: lineCostBaseTotal.toFixed(2), tone: 'green' },
+      ]}
+    />
+  );
+  const viewRailSections: DocumentScaffoldRailSections = {
+    info: {
+      title: t('sales.dnDetail.sourceTitle'),
+      content: (
+        <DocumentRailKeyValueList
+          items={[
+            { label: t('sales.dnDetail.customerLabel'), value: deliveryNote.customerName },
+            { label: t('sales.dnDetail.salesOrderLabel'), value: deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '-' },
+          ]}
+        />
+      ),
+    },
+    totals: {
+      title: t('sales.dnDetail.deliverySummaryTitle'),
+      content: (
+        <DocumentRailTotals
+          rows={[
+            { label: t('sales.dnDetail.linesLabel'), value: deliveryNote.lines.length },
+            { label: t('sales.dnDetail.deliveredQtyLabel'), value: deliveredQtyTotal.toFixed(2) },
+            { label: t('sales.dnDetail.warehouse'), value: warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId || '-' },
+          ]}
+          grand={{
+            label: t('sales.dnDetail.costBaseLabel'),
+            value: lineCostBaseTotal.toFixed(2),
+          }}
+        />
+      ),
+    },
+  };
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{deliveryNote.dnNumber}</h1>
-          <p className="text-sm text-slate-600">
-            Customer: <span className="font-medium">{deliveryNote.customerName}</span>
-            {deliveryNote.salesOrderId
-              ? ` • SO: ${salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId}`
-              : ''}
-          </p>
-        </div>
-        <StatusChip status={deliveryNote.status} type="dn" className="w-fit" />
-      </div>
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
+    <>
+    <DocumentDetailScaffold
+      title={deliveryNote.dnNumber}
+      subtitle={t('sales.dnDetail.viewSubtitle', { customerName: deliveryNote.customerName, soRef: deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '' })}
+      icon={Truck}
+      backLabel={t('sales.dnDetail.backToList')}
+      onBack={() => navigate('/sales/delivery-notes')}
+      badges={
+        <DocumentPill tone={deliveryNote.status === 'POSTED' ? 'green' : deliveryNote.status === 'CANCELLED' ? 'rose' : 'slate'}>
+          {deliveryNote.status}
+        </DocumentPill>
+      }
+      newAction={{
+        label: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+        title: t('sales.dnDetail.newDeliveryNote', 'New Delivery Note'),
+        hasUnsavedChanges: false,
+        onNew: openNewDeliveryNoteForm,
+      }}
+      railSections={viewRailSections}
+      railTitle={t('sales.dnDetail.sideRailTitle')}
+      footerSections={{
+        totals: { content: viewFooterSummary },
+        actions: {
+          content: (
+        <>
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            onClick={() => navigate('/sales/delivery-notes')}
+          >
+            {t('sales.dnDetail.backToListButton')}
+          </button>
+          {deliveryNote.status === 'DRAFT' && (
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              onClick={beginEdit}
+              disabled={busy}
+            >
+              {t('sales.dnDetail.edit', 'Edit')}
+            </button>
+          )}
+          {deliveryNote.status === 'DRAFT' && (
+            <button
+              type="button"
+              className="rounded bg-primary-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              onClick={() => postDraft()}
+              disabled={busy}
+            >
+              {busy ? t('sales.dnDetail.posting', 'Posting...') : t('sales.dnDetail.post', 'Post Delivery Note')}
+            </button>
+          )}
+          {canCreateReturn && (
+            <button
+              type="button"
+              className="rounded border border-amber-300 bg-amber-50/50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100/50"
+              onClick={() => navigate(createReturnHref)}
+            >
+              {t('sales.dnDetail.createReturn')}
+            </button>
+          )}
+          {deliveryNote.status === 'POSTED' && (
+            <button
+              type="button"
+              className="rounded border border-violet-300 bg-white px-4 py-2 text-xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
+              onClick={() => setGlImpactOpen(true)}
+            >
+              {t('sales.dnDetail.glImpact')}
+            </button>
+          )}
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            onClick={() => setAuditModalOpen(true)}
+          >
+            {t('sales.dnDetail.history')}
+          </button>
+        </>
+          ),
+        },
+      }}
+      sections={{
+        banner: {
+          content: error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          ) : null,
+        },
+        header: {
+          content: (
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Delivery Date</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.dnDetail.deliveryDate')}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{deliveryNote.deliveryDate}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.dnDetail.warehouse')}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {warehouseLabelById[deliveryNote.warehouseId] || deliveryNote.warehouseId}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Created</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t('sales.dnDetail.created')}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {new Date(deliveryNote.createdAt).toLocaleString()}
             </div>
           </div>
         </div>
       </Card>
-
-      {(() => {
+          ),
+        },
+        lines: {
+          content: (() => {
         const linkedSO = deliveryNote.salesOrderId
           ? salesOrders.find((so) => so.id === deliveryNote.salesOrderId)
           : null;
@@ -844,17 +1020,17 @@ const DeliveryNoteDetailPage: React.FC = () => {
           : false;
         return (
           <Card className="p-5">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('sales.dnDetail.linesHeading')}</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="py-2 text-left">Item</th>
+                    <th className="py-2 text-left">{t('sales.dnDetail.itemColumn')}</th>
                     {linkedSO && <th className="py-2 text-right">{t('fulfillment.ordered')}</th>}
-                    <th className="py-2 text-right">Delivered Qty</th>
-                    <th className="py-2 text-left">UOM</th>
-                    <th className="py-2 text-right">Unit Cost (Base)</th>
-                    <th className="py-2 text-right">Line Cost (Base)</th>
+                    <th className="py-2 text-right">{t('sales.dnDetail.deliveredQtyColumn')}</th>
+                    <th className="py-2 text-left">{t('sales.dnDetail.uomColumn')}</th>
+                    <th className="py-2 text-right">{t('sales.dnDetail.unitCostBaseColumn')}</th>
+                    <th className="py-2 text-right">{t('sales.dnDetail.lineCostBaseColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -907,62 +1083,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
             )}
           </Card>
         );
-      })()}
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          onClick={() => navigate('/sales/delivery-notes')}
-        >
-          Back to List
-        </button>
-        {deliveryNote.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            onClick={beginEdit}
-            disabled={busy}
-          >
-            {t('sales.dnDetail.edit', 'Edit')}
-          </button>
-        )}
-        {deliveryNote.status === 'DRAFT' && (
-          <button
-            type="button"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            onClick={() => postDraft()}
-            disabled={busy}
-          >
-            {busy ? t('sales.dnDetail.posting', 'Posting...') : t('sales.dnDetail.post', 'Post Delivery Note')}
-          </button>
-        )}
-        {canCreateReturn && (
-          <button
-            type="button"
-            className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700"
-            onClick={() => navigate(createReturnHref)}
-          >
-            Create Return
-          </button>
-        )}
-        {deliveryNote.status === 'POSTED' && (
-          <button
-            type="button"
-            className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700"
-            onClick={() => setGlImpactOpen(true)}
-          >
-            GL Impact
-          </button>
-        )}
-        <button
-          type="button"
-          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-          onClick={() => setAuditModalOpen(true)}
-        >
-          History
-        </button>
-      </div>
+      })(),
+        },
+      }}
+    />
 
       <GlImpactModal
         isOpen={glImpactOpen}
@@ -991,7 +1115,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
         entityType="DELIVERY_NOTE"
         entityId={deliveryNote.id}
       />
-    </div>
+    </>
   );
 };
 

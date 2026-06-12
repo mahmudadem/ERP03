@@ -12,11 +12,12 @@ You can:
 - Filter by status.
 - Filter by payment status.
 - Filter by customer using the customer selector.
+- Use the default date range from the current fiscal-year beginning through today.
 - Refresh the list.
 - Clear active filters.
 - Open an invoice from the row action.
 
-Status and payment badges use consistent colors so users can scan invoices faster.
+Status and payment badges use consistent colors and stay on one line so users can scan invoices faster. Dates display using the company's configured date format.
 
 ## Purchase Invoices
 
@@ -31,6 +32,21 @@ You can:
 - Refresh the list.
 - Clear active filters.
 - Open an invoice from the row action.
+
+## Sales Returns
+
+Open Sales -> Returns.
+
+You can:
+
+- Create a new sales return.
+- Filter by status, return context, customer, search text, and return date range.
+- Use the quick status pills to switch between Draft, Posted, and Cancelled returns.
+- Refresh the list.
+- Clear active filters.
+- Open or print a return from the row action.
+
+The Sales Returns list now follows the same scan pattern as Sales Invoices: centered document cells, company date formatting, one-line status/context chips, newest-first sorting, and paginated results.
 
 ## Financial Note
 

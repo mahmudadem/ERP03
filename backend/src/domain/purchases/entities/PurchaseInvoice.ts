@@ -1,6 +1,50 @@
 export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
+export type PurchaseDiscountType = 'PERCENT' | 'AMOUNT';
+/**
+ * Whole-invoice adjustment kind (purchases side). A CHARGE adds to the bill total and
+ * debits its account (e.g. freight/landed cost we owe the vendor); a DISCOUNT subtracts
+ * from the total and credits its account (e.g. an invoice-wide purchase discount received).
+ * Both are flat, tax-free adjustments entered from the allocation grid — they never
+ * re-prorate line tax. Mirrors the Sales side (SalesChargeKind) with the GL sides flipped.
+ */
+export type PurchaseChargeKind = 'CHARGE' | 'DISCOUNT';
+
+export interface PurchaseInvoiceCharge {
+  chargeId: string;
+  /** CHARGE (adds, debits its account) or DISCOUNT (subtracts, credits its account). Defaults to CHARGE. */
+  kind?: PurchaseChargeKind;
+  code?: string;
+  name: string;
+  amountDoc: number;
+  amountBase?: number;
+  /** The GL account this adjustment posts to (charge → expense/landed; discount → discount-received). */
+  accountId?: string;
+  description?: string;
+}
+
+/**
+ * Settlement the user entered at post time, preserved on the invoice when posting
+ * is parked for accounting approval. Replayed when the invoice is approved so the
+ * cash payment is not lost across the approval boundary. Structurally compatible
+ * with the application-layer `SettlementInput` (kept domain-local to avoid an
+ * application→domain import). See docs/architecture/purchases.md (approval + settlement).
+ */
+export interface PendingSettlementRow {
+  settlementAccountId?: string;
+  amountBase: number;
+  paymentMethod?: string;
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
+}
+
+export interface PendingSettlement {
+  settlementMode: 'DEFERRED' | 'CASH_FULL' | 'MULTI';
+  receivablePayableAccountId?: string;
+  settlements: PendingSettlementRow[];
+}
 
 export interface PurchaseInvoiceLine {
   lineId: string;
@@ -15,8 +59,19 @@ export interface PurchaseInvoiceLine {
   uomId?: string;
   uom: string;
   unitPriceDoc: number;
+  /** Pre-discount line extension (qty × unitPriceDoc), in document currency. */
+  grossLineTotalDoc?: number;
+  /** Optional line-level discount. Mirrors sales: PERCENT or AMOUNT. */
+  discountType?: PurchaseDiscountType;
+  discountValue?: number;
+  /** Resolved discount amount in document currency. */
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  /** Pre-discount line extension in base currency. */
+  grossLineTotalBase?: number;
+  /** Resolved discount amount in base currency. */
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxCode?: string;
@@ -72,6 +127,7 @@ export interface PurchaseInvoiceProps {
   currency: string;
   exchangeRate: number;
   lines: PurchaseInvoiceLine[];
+  charges?: PurchaseInvoiceCharge[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -90,13 +146,45 @@ export interface PurchaseInvoiceProps {
   createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  /** Settlement preserved while parked for approval; replayed on approve, cleared on post. */
+  pendingSettlement?: PendingSettlement | null;
 }
 
 const PI_STATUSES: PIStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
+const PURCHASE_DISCOUNT_TYPES: PurchaseDiscountType[] = ['PERCENT', 'AMOUNT'];
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const normalizePurchaseDiscountType = (value: any): PurchaseDiscountType | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const token = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return PURCHASE_DISCOUNT_TYPES.includes(token as PurchaseDiscountType)
+    ? (token as PurchaseDiscountType)
+    : undefined;
+};
+
+const normalizePurchaseChargeKind = (value: any): PurchaseChargeKind =>
+  (typeof value === 'string' ? value.trim().toUpperCase() : '') === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE';
+
+const calculatePurchaseDiscountAmountDoc = (
+  grossLineTotalDoc: number,
+  discountType: PurchaseDiscountType | undefined,
+  discountValue: number,
+  explicitDiscountAmountDoc: number | undefined,
+): number => {
+  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
+    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
+  }
+  if (discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
+  }
+  if (discountType === 'AMOUNT') {
+    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
+  }
+  return 0;
+};
 
 const normalizeDocumentSource = (value: any): DocumentSource => {
   const source = typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -127,6 +215,7 @@ export class PurchaseInvoice {
   currency: string;
   exchangeRate: number;
   lines: PurchaseInvoiceLine[];
+  charges: PurchaseInvoiceCharge[];
   subtotalDoc: number;
   taxTotalDoc: number;
   grandTotalDoc: number;
@@ -145,6 +234,7 @@ export class PurchaseInvoice {
   readonly createdAt: Date;
   updatedAt: Date;
   postedAt?: Date;
+  pendingSettlement?: PendingSettlement | null;
 
   constructor(props: PurchaseInvoiceProps) {
     if (!props.id?.trim()) throw new Error('PurchaseInvoice id is required');
@@ -177,11 +267,19 @@ export class PurchaseInvoice {
     this.currency = props.currency.toUpperCase().trim();
     this.exchangeRate = props.exchangeRate;
     this.lines = props.lines.map((line, index) => this.normalizeLine(line, index));
+    this.charges = (props.charges || []).map((charge, index) => this.normalizeCharge(charge, index));
 
-    this.subtotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
+    // A DISCOUNT-kind adjustment subtracts from the subtotal; a CHARGE adds. Both are
+    // tax-free, so they only move the subtotal/grand total, never the tax total.
+    const chargeSubtotalDoc = this.charges.reduce(
+      (sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -charge.amountDoc : charge.amountDoc), 0);
+    const chargeSubtotalBase = this.charges.reduce(
+      (sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -(charge.amountBase || 0) : (charge.amountBase || 0)), 0);
+
+    this.subtotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0) + chargeSubtotalDoc);
     this.taxTotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
     this.grandTotalDoc = roundMoney(this.subtotalDoc + this.taxTotalDoc);
-    this.subtotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
+    this.subtotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalBase, 0) + chargeSubtotalBase);
     this.taxTotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
     this.grandTotalBase = roundMoney(this.subtotalBase + this.taxTotalBase);
 
@@ -215,6 +313,7 @@ export class PurchaseInvoice {
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this.postedAt = props.postedAt;
+    this.pendingSettlement = props.pendingSettlement ?? null;
   }
 
   private normalizeLine(line: PurchaseInvoiceLine, index: number): PurchaseInvoiceLine {
@@ -230,13 +329,28 @@ export class PurchaseInvoice {
 
     const taxRate = Number.isNaN(line.taxRate) ? 0 : line.taxRate;
     const priceIsInclusive = line.priceIsInclusive === true;
-    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const discountType = normalizePurchaseDiscountType(line.discountType);
+    const discountValueRaw = Number(line.discountValue);
+    const discountValue = Number.isNaN(discountValueRaw) ? 0 : discountValueRaw;
+    const explicitDiscountDoc =
+      line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
+
     const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    const lineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
+    const discountAmountDoc = calculatePurchaseDiscountAmountDoc(
+      grossLineTotalDoc,
+      discountType,
+      discountValue,
+      explicitDiscountDoc,
+    );
+    const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+    const divisor = priceIsInclusive ? 1 + taxRate : 1;
+    const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
     const unitPriceBase = roundMoney(line.unitPriceDoc * this.exchangeRate);
+    const grossLineTotalBase = roundMoney(grossLineTotalDoc * this.exchangeRate);
+    const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
     const taxAmountDoc = priceIsInclusive
-      ? roundMoney(grossLineTotalDoc - lineTotalDoc)
+      ? roundMoney(postDiscountDoc - lineTotalDoc)
       : roundMoney(lineTotalDoc * taxRate);
     const taxAmountBase = roundMoney(taxAmountDoc * this.exchangeRate);
 
@@ -253,8 +367,14 @@ export class PurchaseInvoice {
       uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
+      grossLineTotalDoc,
+      discountType,
+      discountValue: discountType ? discountValue : undefined,
+      discountAmountDoc,
       lineTotalDoc,
       unitPriceBase,
+      grossLineTotalBase,
+      discountAmountBase,
       lineTotalBase,
       taxCodeId: line.taxCodeId,
       taxCode: line.taxCode,
@@ -266,6 +386,33 @@ export class PurchaseInvoice {
       accountId: line.accountId || '',
       stockMovementId: line.stockMovementId ?? null,
       description: line.description,
+    };
+  }
+
+  private normalizeCharge(charge: PurchaseInvoiceCharge, index: number): PurchaseInvoiceCharge {
+    const chargeId = (charge.chargeId || '').trim();
+    const name = (charge.name || '').trim();
+    const amountDocRaw = Number(charge.amountDoc);
+    const kind = normalizePurchaseChargeKind(charge.kind);
+
+    if (!chargeId) throw new Error(`PurchaseInvoice charge ${index + 1}: chargeId is required`);
+    if (!name) throw new Error(`PurchaseInvoice charge ${index + 1}: name is required`);
+    if (amountDocRaw < 0 || Number.isNaN(amountDocRaw)) {
+      throw new Error(`PurchaseInvoice charge ${index + 1}: amountDoc must be greater than or equal to 0`);
+    }
+
+    const amountDoc = roundMoney(amountDocRaw);
+    const amountBase = roundMoney(charge.amountBase !== undefined ? Number(charge.amountBase) : amountDoc * this.exchangeRate);
+
+    return {
+      chargeId,
+      kind,
+      code: charge.code,
+      name,
+      amountDoc,
+      amountBase,
+      accountId: charge.accountId,
+      description: charge.description,
     };
   }
 
@@ -287,6 +434,7 @@ export class PurchaseInvoice {
       currency: this.currency,
       exchangeRate: this.exchangeRate,
       lines: this.lines.map((line) => ({ ...line })),
+      charges: this.charges.map((charge) => ({ ...charge })),
       subtotalDoc: this.subtotalDoc,
       taxTotalDoc: this.taxTotalDoc,
       grandTotalDoc: this.grandTotalDoc,
@@ -305,6 +453,7 @@ export class PurchaseInvoice {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       postedAt: this.postedAt,
+      pendingSettlement: this.pendingSettlement ?? null,
     };
   }
 
@@ -326,6 +475,7 @@ export class PurchaseInvoice {
       currency: data.currency,
       exchangeRate: data.exchangeRate,
       lines: data.lines || [],
+      charges: data.charges || [],
       subtotalDoc: data.subtotalDoc ?? 0,
       taxTotalDoc: data.taxTotalDoc ?? 0,
       grandTotalDoc: data.grandTotalDoc ?? 0,
@@ -344,6 +494,7 @@ export class PurchaseInvoice {
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       postedAt: data.postedAt ? toDate(data.postedAt) : undefined,
+      pendingSettlement: data.pendingSettlement ?? null,
     });
   }
 }

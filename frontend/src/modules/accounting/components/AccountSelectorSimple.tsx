@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { accountingApi } from '../../../api/accountingApi';
-import { useTranslation } from 'react-i18next';
+import React from 'react';
+import { AccountSelector } from './shared/AccountSelector';
 
 interface AccountSelectorProps {
   value: string;
@@ -13,52 +12,21 @@ export const AccountSelectorSimple: React.FC<AccountSelectorProps> = ({
   value,
   onChange,
   label,
-  required = false
+  required = false,
 }) => {
-  const { t } = useTranslation('accounting');
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        const data = await accountingApi.getAccounts();
-        setAccounts(data || []);
-      } catch (error) {
-        console.error('Failed to load accounts:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAccounts();
-  }, []);
-
-  if (loading) {
-    return (
-      <div>
-        <label>{label} {required && '*'}</label>
-        <select disabled>
-          <option>{t('accountSelector.loadingAccounts')}</option>
-        </select>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <label>{label} {required && '*'}</label>
-      <select 
-        value={value} 
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-      >
-        <option value="">{t('accountSelector.selectAccount')}</option>
-        {accounts.map(account => (
-          <option key={account.id} value={account.id}>
-            {account.code} - {account.name}
-          </option>
-        ))}
-      </select>
-    </div>
+    <label className="block text-sm">
+      {label && (
+        <span className="mb-1 block font-medium text-slate-700">
+          {label} {required && '*'}
+        </span>
+      )}
+      <AccountSelector
+        value={value}
+        onChange={(account) => onChange(account?.id || '')}
+        placeholder={label || 'Account'}
+        enforceScope
+      />
+    </label>
   );
 };

@@ -108,15 +108,13 @@ body {
    Utility Classes
    ======================================== */
 
-/* Glass Effect */
+/* Glass Effect — blur removed, solid background */
 .glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 1);
 }
 
 .dark .glass {
-  background: rgba(31, 41, 55, 0.8);
+  background: rgba(31, 41, 55, 1);
 }
 
 /* Custom Scrollbar */

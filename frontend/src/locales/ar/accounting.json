@@ -973,5 +973,20 @@
     "header": "رئيسي",
     "posting": "فرعي",
     "noAccounts": "لا توجد حسابات للمعاينة"
+  },
+  "currencyExchangeWidget": {
+    "labels": {
+      "parity": "التكافؤ",
+      "equivalent": "المعادل"
+    },
+    "tooltips": {
+      "fetchingRate": "جلب سعر الصرف...",
+      "sameCurrency": "تكافؤ العملة الأساسية",
+      "manualOverride": "تجاوز يدوي (انقر فوق نقطة الحالة لإعادة التعيين)",
+      "systemRateForDate": "سعر النظام للتاريخ المحدد",
+      "systemRateLastKnown": "سعر النظام"
+    },
+    "baseCurrencyParity": "تكافؤ العملة الأساسية",
+    "baseCurrencyParityFormat": "1 {{currency}} = 1.0000 {{baseCurrency}} (تكافؤ العملة الأساسية)"
   }
 }

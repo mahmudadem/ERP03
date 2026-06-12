@@ -35,7 +35,7 @@ export const moduleMenuMap: Record<
 > = {
   accounting: {
     label: 'Accounting',
-    icon: 'HandCoins',
+    icon: 'Landmark',
     items: [
       { label: 'Overview', path: '/accounting', icon: 'LayoutDashboard' },
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
@@ -73,7 +73,7 @@ export const moduleMenuMap: Record<
   },
   inventory: {
     label: 'Inventory',
-    icon: 'Package',
+    icon: 'Warehouse',
     items: [
       { label: 'Overview', path: '/inventory', icon: 'LayoutDashboard' },
       { label: 'Items', path: '/inventory/items', permission: 'inventory.items.manage', icon: 'Package' },
@@ -111,7 +111,7 @@ export const moduleMenuMap: Record<
   },
   sales: {
     label: 'Sales',
-    icon: 'ShoppingCart',
+    icon: 'TrendingUp',
     items: [
       { label: 'Overview', path: '/sales', icon: 'LayoutDashboard' },
       { label: 'Customers', path: '/sales/customers', icon: 'Users' },
@@ -198,7 +198,7 @@ export const moduleMenuMap: Record<
   },
   crm: {
     label: 'CRM',
-    icon: 'Users',
+    icon: 'HeartHandshake',
     items: [
       { label: 'Leads', path: '/crm/leads', permission: 'crm.leads.view', icon: 'Target' },
       { label: 'Customers', path: '/crm/customers', permission: 'crm.customers.view', icon: 'Users' },
@@ -229,7 +229,7 @@ export const moduleMenuMap: Record<
   },
   tools: {
     label: 'Tools',
-    icon: 'Wrench',
+    icon: '2gears',
     items: [
       { label: 'Forms Designer', path: '/tools/forms-designer', icon: 'Layout' },
       { label: 'UI Lab 🎨', path: '/dev/ui-lab', icon: 'Sparkles' }

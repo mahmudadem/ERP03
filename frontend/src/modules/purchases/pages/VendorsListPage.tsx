@@ -61,7 +61,7 @@ const VendorsListPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight">Vendors (Suppliers)</h1>
         <button
-          className="rounded bg-slate-900 px-5 py-2 text-xs font-bold text-white shadow-lg hover:bg-slate-800 transition-all uppercase tracking-widest"
+          className="rounded bg-primary-600 px-5 py-2 text-xs font-bold text-white hover:bg-primary-700 transition-all uppercase tracking-widest"
           onClick={handleAddVendor}
           type="button"
         >
@@ -69,7 +69,7 @@ const VendorsListPage: React.FC = () => {
         </button>
       </div>
 
-      <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl">
+      <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800">
         {loading ? (
           <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse tracking-widest font-mono">Loading Supply Chain Records...</div>
         ) : (

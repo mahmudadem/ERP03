@@ -7,7 +7,9 @@ import {
   ChevronRight,
   ShieldCheck
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { aiAssistantApi } from '../../../../api/aiAssistantApi';
+import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 
 interface AIAssistantSectionProps {
   accounts: COAAccount[];
@@ -23,23 +25,15 @@ interface ThreadMessage {
 }
 
 export default function AIAssistantSection({ accounts, invoices, inventory }: AIAssistantSectionProps) {
-  const [messages, setMessages] = useState<ThreadMessage[]>([
-    {
-      id: 'init-1',
-      sender: 'assistant',
-      text: `### **أهلاً بك في وحدة الذكاء الاصطناعي - المستشار المالي التنفيذي (CFO Advisor)**
+  const { company } = useCompanyAccess();
+  const { t } = useTranslation();
+  const companyName = company?.name || 'current company';
+  const baseCurrency = company?.baseCurrency || 'SYP';
+  const fiscalYear = company?.fiscalYearStart
+    ? `FY ${new Date(company.fiscalYearStart).getFullYear()}`
+    : `FY ${new Date().getFullYear()}`;
 
-أنا مستشارك المالي الذكي المرتبط بنظام القيود ودفاتر الحسابات الخاصة بالمؤسسة بالكامل. يمكنني تحليل البيانات في الوقت الفعلي وتقديم التحرير الفوري للتقارير والقيود.
-
-**التحليلات الجاهزة لك الآن:**
-- **كشف السيولة والموازين**: تحليل السيولة في BBS Bank وصناديق الفروع.
-- **إدارة مخاطر التحصيل**: دراسة أعمار الديون والمطالبات المالية المتأخرة.
-- **استشارات القيود المحاسبية**: إعداد مسودات القيود المزدوجة ومطابقة الأصول والضريبة وفق معايير IFRS.
-
-يرجى طرح أي سؤال مالي أو المحاولة عبر النقرات السريعة أدناه!`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
 
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -48,13 +42,33 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setMessages([
+      {
+        id: 'init-1',
+        sender: 'assistant',
+        text: t('apex.ai.welcomeMsg', { defaultValue: `### **أهلاً بك في وحدة الذكاء الاصطناعي - المستشار المالي التنفيذي (CFO Advisor)**\n\nأنا مستشارك المالي الذكي المرتبط بنظام القيود ودفاتر الحسابات الخاصة بالمؤسسة بالكامل. يمكنني تحليل البيانات في الوقت الفعلي وتقديم التحرير الفوري للتقارير والقيود.\n\n**التحليلات الجاهزة لك الآن:**\n- **كشف السيولة والموازين**: تحليل السيولة في BBS Bank وصناديق الفروع.\n- **إدارة مخاطر التحصيل**: دراسة أعمار الديون والمطالبات المالية المتأخرة.\n- **استشارات القيود المحاسبية**: إعداد مسودات القيود المزدوجة ومطابقة الأصول والضريبة وفق معايير IFRS.\n\nيرجى طرح أي سؤال مالي أو المحاولة عبر النقرات السريعة أدناه!` }),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+  }, [t]);
+
+  useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const promptSuggestions = [
-    { label: 'تحليل الموقف المالي للسيولة', prompt: 'حلل السيولة النقدية الحالية بالصندوق والبنك واقترح إستراتيجية لإدارة التدفقات النقدية' },
-    { label: 'دراسة وتحليل فواتير المبيعات المتأخرة', prompt: 'دراسة أعمار الديون الحالية والفواتير المتأخرة Overdue لعميل مجموعة النور' },
-    { label: 'قيد محاسبي لإهلاك أجهزة الحاسوب', prompt: 'أريد مسودة قيد محاسبي مزدوج (Debit/Credit) لإهلاك أجهزة حاسوب بقيمة 500,000 ل.س بخط مستقيم' }
+    { 
+      label: t('apex.ai.quickQueryLiquidity', { defaultValue: 'تحليل الموقف المالي للسيولة' }), 
+      prompt: t('apex.ai.quickQueryLiquidityPrompt', { defaultValue: 'حلل السيولة النقدية الحالية بالصندوق والبنك واقترح إستراتيجية لإدارة التدفقات النقدية' }) 
+    },
+    { 
+      label: t('apex.ai.quickQueryOverdue', { defaultValue: 'دراسة وتحليل فواتير المبيعات المتأخرة' }), 
+      prompt: t('apex.ai.quickQueryOverduePrompt', { defaultValue: 'دراسة أعمار الديون الحالية والفواتير المتأخرة Overdue لعميل مجموعة النور' }) 
+    },
+    { 
+      label: t('apex.ai.quickQueryDepreciation', { defaultValue: 'قيد محاسبي لإهلاك أجهزة الحاسوب' }), 
+      prompt: t('apex.ai.quickQueryDepreciationPrompt', { defaultValue: 'أريد مسودة قيد محاسبي مزدوج (Debit/Credit) لإهلاك أجهزة حاسوب بقيمة 500,000 ل.س بخط مستقيم' }) 
+    }
   ];
 
   // Professional markdown visual parser custom built to avoid library version mismatches
@@ -151,8 +165,8 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
       overallDetails: {
         totalAccountsCount: accounts.length,
         currentLocalTime: new Date().toISOString(),
-        fiscalYear: "FY 2026",
-        baseCurrency: "SYP"
+        fiscalYear,
+        baseCurrency
       },
       bankAndCashLedgers: accounts
         .filter(a => a.classification === 'Posting' && (a.parentId === '101' || a.parentId === '102'))
@@ -199,9 +213,7 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
       const errorMsg: ThreadMessage = {
         id: Math.random().toString(36).substring(2, 11),
         sender: 'assistant',
-        text: `### **عذراً، حدث خطأ أثناء الاتصال بالخادم الذكي**
-لم نتمكن من جلب رد المستشار المالي بسبب الخصائص التالية: ${e.message || e}.
-يرجى التأكد من استقرار الخادم أو المحاولة مرة أخرى لاحقاً.`,
+        text: `${t('apex.ai.errorTitle', { defaultValue: '### **عذراً، حدث خطأ أثناء الاتصال بالخادم الذكي**' })}\n${t('apex.ai.errorDesc', { defaultValue: 'لم نتمكن من جلب رد المستشار المالي بسبب الخصائص التالية: {{message}}.', message: e.message || e })}\n${t('apex.ai.errorRetry', { defaultValue: 'يرجى التأكد من استقرار الخادم أو المحاولة مرة أخرى لاحقاً.' })}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -275,7 +287,7 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
                 <Sparkles className="w-4 h-4 text-blue-600" />
               </div>
               <div className="p-3.5 bg-white border border-zinc-150 rounded-xl rounded-tl-none text-xs text-slate-500 font-medium">
-                جاري دراسة البيانات وإجراء الحسابات المالية المزدوجة...
+                {t('apex.ai.loading', { defaultValue: 'Analyzing data and calculating double entries...' })}
               </div>
             </div>
           )}
@@ -294,7 +306,7 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
                   handleSendMessage(inputMessage);
                 }
               }}
-              placeholder="طرح سؤال مالي أو الاستفسار عن شجرة الحسابات..."
+              placeholder={t('apex.ai.chatPlaceholder', { defaultValue: 'طرح سؤال مالي أو الاستفسار عن شجرة الحسابات...' })}
               className="flex-1 text-xs text-slate-700 placeholder-zinc-400 p-2 outline-none text-right font-medium font-sans"
             />
             <button
@@ -305,9 +317,12 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
               <Send className="w-4.5 h-4.5 text-white" />
             </button>
           </div>
-          <div className="mt-2 text-[10px] text-zinc-400 text-right font-semibold">
-            المستشار مرتبط مباشرة بالحسابات وتفاصيل الفواتير المسجلة لـ <strong>asd syria</strong>.
-          </div>
+          <div 
+            className="mt-2 text-[10px] text-zinc-400 text-right font-semibold"
+            dangerouslySetInnerHTML={{
+              __html: t('apex.ai.advisorConnected', { defaultValue: 'المستشار مرتبط مباشرة بالحسابات وتفاصيل الفواتير المسجلة لـ <strong>{{companyName}}</strong>.', companyName })
+            }}
+          />
         </div>
 
       </div>
@@ -316,9 +331,9 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
       <div className="space-y-4 h-full overflow-y-auto">
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-4 shadow-sm space-y-4">
           <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-1">
-            <Sparkles className="w-4 h-4 text-amber-500" /> الاستعلامات الائتمانية المقترحة
+            <Sparkles className="w-4 h-4 text-amber-500" /> {t('apex.ai.suggestedQueries', { defaultValue: 'Suggested Smart Queries' })}
           </h3>
-          <p className="text-[11px] text-slate-500 leading-relaxed">نقرات ذكية جاهزة للمركز المحاسبي الحالي للمطابقة والتحقق الفوري:</p>
+          <p className="text-[11px] text-slate-500 leading-relaxed">{t('apex.ai.suggestedQueriesDesc', { defaultValue: 'Smart queries ready for the current accounting center for instant verification:' })}</p>
           
           <div className="space-y-2.5">
             {promptSuggestions.map((s, idx) => (
@@ -341,10 +356,10 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
         <div className="bg-slate-50 border border-slate-150 rounded-lg p-4 text-xs space-y-3">
           <div className="flex items-center space-x-1.5 text-slate-700 font-bold">
             <ShieldCheck className="w-4.5 h-4.5 text-emerald-600" />
-            <span>معايير أمان البيانات المالية</span>
+            <span>{t('apex.ai.securityStandards', { defaultValue: 'Financial Data Security Standards' })}</span>
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            تتم معالجة كافة العمليات الحسابية والبرمجية من جانب الخادم بشكل آمن دون تسريب مفتاح API الحساس للمتصفح.
+            {t('apex.ai.securityStandardsDesc', { defaultValue: 'All calculations and processing are securely performed server-side without exposing API keys to the browser.' })}
           </p>
           <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[9px] text-zinc-500 space-y-1">
             <div>DB_ISOLATION: isolated_aes256</div>

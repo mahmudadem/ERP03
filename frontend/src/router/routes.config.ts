@@ -164,7 +164,9 @@ const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => 
 const TailwindPlayDemoPage = lazy(() => import('../pages/dev/TailwindPlayDemoPage').then(m => ({ default: m.TailwindPlayDemoPage })));
 const UiLabDashboard = lazy(() => import('../pages/dev/UiLabDashboard').then(m => ({ default: m.UiLabDashboard })));
 const SalesInvoiceV2LayoutPage = lazy(() => import('../pages/dev/SalesInvoiceV2LayoutPage'));
+const CompactSalesInvoiceMockPage = lazy(() => import('../pages/dev/CompactSalesInvoiceMockPage'));
 const ApexLedgerDashboard = lazy(() => import('../pages/dev/apex-ledger/ApexLedgerDashboard'));
+const IconsComparisonPage = lazy(() => import('../pages/dev/IconsComparisonPage').then(m => ({ default: m.IconsComparisonPage })));
 
 
 export interface AppRoute {
@@ -390,23 +392,28 @@ export const routesConfig: AppRoute[] = [
   // Legacy path from Phase 2 — superseded by the unified Voucher Designer.
   { path: '/purchases/settings/voucher-types', label: 'Voucher Designer', component: lazy(() => import('../modules/purchases/pages/PurchaseVoucherDesignerPage')), section: 'INVENTORY', requiredModule: 'purchase', hideInMenu: true },
 
+  // Specific Purchase Master Routes — MUST come BEFORE dynamic :formCode routes
+  { path: '/purchases/vendors', label: 'Vendors', component: VendorsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/vendors/:id', label: 'Vendor Detail', component: VendorDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+
   // Dynamic Purchase Documents (designed in Forms Designer)
   { path: '/purchases/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/:formCode/new', label: 'New Document', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/:formCode/:id', label: 'Document Detail', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
-  { path: '/purchases/vendors', label: 'Vendors', component: VendorsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
-  { path: '/purchases/vendors/:id', label: 'Vendor Detail', component: VendorDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+
   
   // TOOLS
   { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },
-  { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: false },
-  { path: '/dev/data-table', label: 'DataTable Demo', component: lazy(() => import('../pages/dev/DataTableDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
-  { path: '/dev/voucher-list', label: 'Voucher List Demo', component: lazy(() => import('../pages/dev/VoucherListDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
-  { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: false },
-  { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: false },
-  { path: '/dev/ui-lab', label: 'UI Lab 🎨', component: UiLabDashboard, section: 'TOOLS', hideInMenu: false },
-  { path: '/dev/sales-invoice-v2', label: 'Sales Invoice V2 🎨', component: SalesInvoiceV2LayoutPage, section: 'TOOLS', hideInMenu: false },
-  { path: '/dev/apex-ledger', label: 'Apex Ledger Mockup 💻', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: false },
+  { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/data-table', label: 'DataTable Demo', component: lazy(() => import('../pages/dev/DataTableDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/voucher-list', label: 'Voucher List Demo', component: lazy(() => import('../pages/dev/VoucherListDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/ui-lab', label: 'UI Lab', component: UiLabDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/icons-comparison', label: 'Icons Comparison', component: IconsComparisonPage, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/sales-invoice-v2', label: 'Sales Invoice V2', component: SalesInvoiceV2LayoutPage, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/sales-invoice-compact', label: 'Sales Invoice Compact Mock', component: CompactSalesInvoiceMockPage, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger', label: 'Apex Shell Candidate', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
   // Accounting sub-routes
   { path: '/dev/apex-ledger/accounting', label: 'Apex Accounting Overview', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/apex-ledger/coa', label: 'Apex Chart of Accounts', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
@@ -443,7 +450,11 @@ export const routesConfig: AppRoute[] = [
   { path: '/dev/apex-ledger/pos', label: 'Apex POS', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/apex-ledger/manufacturing', label: 'Apex Manufacturing', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/apex-ledger/projects', label: 'Apex Projects', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
-  { path: '/dev/apex-ledger/dev', label: 'Apex Dev Panel', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/settings/appearance', label: 'Apex Appearance Settings', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/settings/accounting', label: 'Apex Accounting Settings Details', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/profile', label: 'Apex User Profile', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/apex-ledger/*', label: 'Apex Wildcard Catch-All', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },
+
 
 
   // AI ASSISTANT

@@ -125,11 +125,13 @@ export const calculateSalesInvoiceChargeAmounts = (
 
 export const calculateSalesInvoiceTotals = (
   lines: Pick<SalesInvoiceLine, 'lineTotalDoc' | 'lineTotalBase' | 'taxAmountDoc' | 'taxAmountBase'>[],
-  charges: Pick<SalesInvoiceCharge, 'amountDoc' | 'amountBase' | 'taxAmountDoc' | 'taxAmountBase'>[] = []
+  charges: Pick<SalesInvoiceCharge, 'kind' | 'amountDoc' | 'amountBase' | 'taxAmountDoc' | 'taxAmountBase'>[] = []
 ): SalesInvoiceTotals => {
+  // A DISCOUNT-kind adjustment subtracts from the subtotal; a CHARGE adds. Discounts
+  // carry no tax, so the tax reduces below are unaffected by them.
   const subtotalDoc = roundMoney(
     lines.reduce((sum, line) => sum + line.lineTotalDoc, 0)
-    + charges.reduce((sum, charge) => sum + charge.amountDoc, 0)
+    + charges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -charge.amountDoc : charge.amountDoc), 0)
   );
   const taxTotalDoc = roundMoney(
     lines.reduce((sum, line) => sum + line.taxAmountDoc, 0)
@@ -137,7 +139,7 @@ export const calculateSalesInvoiceTotals = (
   );
   const subtotalBase = roundMoney(
     lines.reduce((sum, line) => sum + line.lineTotalBase, 0)
-    + charges.reduce((sum, charge) => sum + (charge.amountBase || 0), 0)
+    + charges.reduce((sum, charge) => sum + (charge.kind === 'DISCOUNT' ? -(charge.amountBase || 0) : (charge.amountBase || 0)), 0)
   );
   const taxTotalBase = roundMoney(
     lines.reduce((sum, line) => sum + line.taxAmountBase, 0)

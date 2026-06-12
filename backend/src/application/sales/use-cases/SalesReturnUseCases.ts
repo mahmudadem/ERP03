@@ -60,6 +60,10 @@ export interface SalesReturnLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;    // Selling price — needed for revenue reversal
+  /** Optional line discount. When returning from a SI, the source line's
+   *  discount is inherited by default so the return reverses the same net. */
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
    *  net + tax. Normally inherited from the source SI line. */
   priceIsInclusive?: boolean;
@@ -409,6 +413,10 @@ export class CreateSalesReturnUseCase {
       uomId: inputLine?.uomId || salesInvoiceLine.uomId,
       uom: inputLine?.uom || salesInvoiceLine.uom,
       unitPriceDoc,
+      // Inherit the SI line's discount so the return reverses the same gross/net.
+      // Caller may override via inputLine for partial-return discount adjustments.
+      discountType: inputLine?.discountType ?? salesInvoiceLine.discountType,
+      discountValue: inputLine?.discountValue ?? salesInvoiceLine.discountValue,
       unitPriceBase,
       unitCostBase: salesInvoiceLine.unitCostBase || 0,
       fxRateMovToBase: exchangeRate,
@@ -443,6 +451,9 @@ export class CreateSalesReturnUseCase {
       returnQty,
       uomId: inputLine?.uomId || deliveryNoteLine.uomId,
       uom: inputLine?.uom || deliveryNoteLine.uom,
+      // DN carries no price/tax/discount — user-supplied input wins.
+      discountType: inputLine?.discountType,
+      discountValue: inputLine?.discountValue,
       unitCostBase: deliveryNoteLine.unitCostBase || 0,
       fxRateMovToBase: deliveryNoteLine.fxRateMovToBase || 1,
       fxRateCCYToBase: deliveryNoteLine.fxRateCCYToBase || 1,
@@ -1321,6 +1332,8 @@ export class UpdateSalesReturnUseCase {
           uomId: line.uomId ?? existing?.uomId,
           uom: line.uom || existing?.uom || 'EA',
           unitPriceDoc: line.unitPriceDoc ?? existing?.unitPriceDoc ?? 0,
+          discountType: line.discountType ?? existing?.discountType,
+          discountValue: line.discountValue ?? existing?.discountValue,
           unitPriceBase: existing?.unitPriceBase ?? 0,
           unitCostBase: existing?.unitCostBase ?? 0,
           fxRateMovToBase: existing?.fxRateMovToBase ?? 1,

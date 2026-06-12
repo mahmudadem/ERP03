@@ -121,7 +121,7 @@ const ItemsListPage: React.FC = () => {
           <button
             type="button"
             onClick={openNewItem}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
           >
             <Plus size={16} aria-hidden="true" />
             {t('inventory.itemsList.new')}
@@ -164,7 +164,7 @@ const ItemsListPage: React.FC = () => {
             value={newItem.costCurrency}
             onChange={(e) => setNewItem((prev) => ({ ...prev, costCurrency: e.target.value.toUpperCase() }))}
           />
-          <button className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white" type="submit">
+          <button className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700" type="submit">
             {t('inventory.itemsList.add')}
           </button>
         </form>
@@ -198,7 +198,7 @@ const ItemsListPage: React.FC = () => {
             <option value="SERVICE">{t('inventory.itemsList.typeOptions.SERVICE')}</option>
           </select>
           <button
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"
             onClick={() => loadItems(0)}
             type="button"
             disabled={loading}

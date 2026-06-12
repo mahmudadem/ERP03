@@ -65,6 +65,9 @@ The only thing actively blocking sign-off is that **the pages look broken**: lay
 ### R6 — Phantom empty rows on SI line table
 - The SI line-items table renders ~10 trailing empty rows (`1 — — 0.00 No Discount 0 No Tax —`). The row mapper is iterating past actual lines. Confirm the fix is structural (`form.lines.map` should not pad), not just a CSS hide.
 
+### R6b — Collapse the redundant "Net Base" line column on single-currency invoices
+The line table shows both **Net** (document currency) and **Net Base** (base currency). When the invoice's document currency == the company base currency (exchange rate 1), these two columns are always identical — confirmed during QA on a SYP/SYP invoice (Net 100 = Net Base 100). Hide the **Net Base** column when `documentCurrency === baseCurrency`; show it only for foreign-currency invoices where it carries real information (what actually posts to the ledger). Same treatment for any other "* Base" mirror columns in the totals strip.
+
 ### R7 — Totals strip alignment
 - The bottom Subtotal / Tax / Grand Total / base-currency mirrors are wrapping awkwardly at typical viewport widths. They must align right, use a single horizontal strip on desktop, and stack cleanly on narrow widths.
 

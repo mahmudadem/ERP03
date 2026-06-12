@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Customer, InventoryItem, Invoice, LineItem } from '../types';
+import ConfirmDialog from '../../../../components/ui/ConfirmDialog';
 import {
   Search,
   ChevronDown,
@@ -47,6 +48,7 @@ export default function SalesPage2({
   const [notes, setNotes] = useState('');
   const [securityLevel, setSecurityLevel] = useState('Standard');
   const [currentRecordIndex, setCurrentRecordIndex] = useState(1);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   // 2. Main materials items table state (Preloads with 4 rows like an empty invoice grid or active items)
   const [materialsLines, setMaterialsLines] = useState<any[]>([
@@ -297,13 +299,24 @@ export default function SalesPage2({
 
   const handleDeleteItem = () => {
     if (editInvoiceId) {
-      if (confirm('Are you sure you want to delete this invoice?')) {
-        setInvoices(prev => prev.filter(inv => inv.id !== editInvoiceId));
-        onClose();
-      }
-    } else {
-      handleClearForm();
+      setIsDeleteConfirmOpen(true);
+      return;
     }
+
+    handleClearForm();
+    toast('New document form ready', { icon: 'i' });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!editInvoiceId) {
+      setIsDeleteConfirmOpen(false);
+      return;
+    }
+
+    setInvoices(prev => prev.filter(inv => inv.id !== editInvoiceId));
+    toast.success('Invoice deleted');
+    setIsDeleteConfirmOpen(false);
+    onClose();
   };
 
   return (
@@ -973,7 +986,10 @@ export default function SalesPage2({
 
           <button
             type="button"
-            onClick={handleClearForm}
+            onClick={() => {
+              handleClearForm();
+              toast('New document form ready', { icon: 'i' });
+            }}
             className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold px-3.5 py-2 rounded-md transition flex items-center justify-center gap-1.5 shadow-2xs text-xs"
           >
             <RefreshCw className="w-3.5 h-3.5 text-amber-500" /> New Document
@@ -1028,6 +1044,16 @@ export default function SalesPage2({
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        title="Delete invoice"
+        message="This removes the invoice from the Apex candidate list. This action cannot be undone."
+        confirmLabel="Delete invoice"
+        cancelLabel="Keep invoice"
+        tone="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+      />
     </div>
   );
 }

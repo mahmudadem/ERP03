@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { ColumnDefinition, ResponsiveColumn } from './types';
 
@@ -42,9 +42,14 @@ export function useResponsiveColumns<T>(
 
   const maxPriority = getBreakpointMaxPriority(isSm, isLg);
 
-  const result = useMemo(() => {
-    const overrides = loadUserOverrides(tableId);
+  const [overrides, setOverrides] = useState<string[] | null>(() => loadUserOverrides(tableId));
 
+  // Sync overrides state when tableId changes
+  useEffect(() => {
+    setOverrides(loadUserOverrides(tableId));
+  }, [tableId]);
+
+  const result = useMemo(() => {
     let filtered: ColumnDefinition<T>[];
 
     if (overrides) {
@@ -87,14 +92,16 @@ export function useResponsiveColumns<T>(
       if (next.length === 0) return;
 
       saveUserOverrides(tableId, next);
+      setOverrides(next);
     };
 
     const resetColumns = () => {
       localStorage.removeItem(`${STORAGE_KEY_PREFIX}${tableId}`);
+      setOverrides(null);
     };
 
     return { visibleColumns, allVisibleKeys, isColumnVisible, toggleColumn, resetColumns };
-  }, [columns, tableId, maxPriority]);
+  }, [columns, tableId, maxPriority, overrides]);
 
   return result;
 }

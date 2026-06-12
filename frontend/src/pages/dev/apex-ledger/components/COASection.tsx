@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { COAAccount, AccountType, AccountClassification } from '../types';
 import { 
   Folder, 
@@ -19,6 +20,7 @@ interface COASectionProps {
 }
 
 export default function COASection({ accounts, setAccounts }: COASectionProps) {
+  const { t } = useTranslation('common');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<AccountType | 'All'>('All');
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({
@@ -77,13 +79,13 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
     setFormError('');
 
     if (!newCode || !newName) {
-      setFormError('Please fill in both the unique Account Code and Account Name.');
+      setFormError(t('apex.coa.validationError', { defaultValue: 'Please fill in both the unique Account Code and Account Name.' }));
       return;
     }
 
     // Check code duplication
     if (accounts.some(a => a.code === newCode)) {
-      setFormError(`An account with code "${newCode}" already exists.`);
+      setFormError(t('apex.coa.duplicateError', { defaultValue: `An account with code "${newCode}" already exists.`, code: newCode }));
       return;
     }
 
@@ -267,7 +269,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-zinc-400" />
             <input
               type="text"
-              placeholder="Search by accounts code or name..."
+              placeholder={t('apex.coa.searchPlaceholder', { defaultValue: 'Search by accounts code or name...' })}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full text-xs text-slate-700 placeholder-zinc-400 bg-zinc-50 hover:bg-zinc-100 focus:bg-white border border-[#E2E8F0] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md py-2 pl-9 pr-3 outline-none"
@@ -279,20 +281,20 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
               onClick={handleExpandAll}
               className="text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded transition-all"
             >
-              Expand All
+              {t('apex.coa.expandAll', { defaultValue: 'Expand All' })}
             </button>
             <button
               onClick={handleCollapseAll}
               className="text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded transition-all"
             >
-              Collapse All
+              {t('apex.coa.collapseAll', { defaultValue: 'Collapse All' })}
             </button>
             <button
               onClick={() => setIsAddOpen(true)}
               className="inline-flex items-center text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded shadow-sm transition-all"
             >
               <Plus className="w-4 h-4 mr-1 text-white" />
-              New Account
+              {t('apex.coa.newAccount', { defaultValue: 'New Account' })}
             </button>
           </div>
         </div>
@@ -300,7 +302,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
         {/* Account Types Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5 border-t border-zinc-100 pt-3">
           <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mr-2 flex items-center gap-1">
-            <Sliders className="w-3.5 h-3.5 inline" /> Filter:
+            <Sliders className="w-3.5 h-3.5 inline" /> {t('apex.coa.filter', { defaultValue: 'Filter:' })}
           </span>
           {(['All', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'] as const).map(type => (
             <button
@@ -312,7 +314,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {type === 'All' ? 'All Classes' : type}
+              {type === 'All' ? t('apex.coa.allClasses', { defaultValue: 'All Classes' }) : type}
             </button>
           ))}
         </div>
@@ -322,11 +324,11 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
       <div className="bg-white rounded-lg border border-[#E2E8F0] shadow-sm overflow-hidden">
         {/* Header line of list */}
         <div className="flex items-center justify-between py-2.5 px-3 bg-zinc-50 border-b border-zinc-200 text-[10px] font-mono font-black text-slate-500 uppercase tracking-wider">
-          <span>Account Code & Name</span>
+          <span>{t('apex.coa.codeAndName', { defaultValue: 'Account Code & Name' })}</span>
           <div className="flex items-center space-x-6 pr-3">
-            <span className="w-20 text-center col-span-1">Class</span>
-            <span className="w-12 text-center col-span-1">CCY</span>
-            <span className="w-24 text-right col-span-1">Balance SYP</span>
+            <span className="w-20 text-center col-span-1">{t('apex.coa.class', { defaultValue: 'Class' })}</span>
+            <span className="w-12 text-center col-span-1">{t('apex.coa.ccy', { defaultValue: 'CCY' })}</span>
+            <span className="w-24 text-right col-span-1">{t('apex.coa.balance', { defaultValue: 'Balance SYP' })}</span>
           </div>
         </div>
 
@@ -337,7 +339,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
             ) : (
               <div className="p-8 text-center bg-[#FAFCFD]">
                 <HelpCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <span className="text-xs text-slate-500 block">No accounts match search criterion.</span>
+                <span className="text-xs text-slate-500 block">{t('apex.coa.noMatches', { defaultValue: 'No accounts match search criterion.' })}</span>
               </div>
             )
           ) : (
@@ -352,7 +354,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
               <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
                 <div>
                   <span className="text-[10px] font-bold tracking-widest font-mono text-zinc-400 block uppercase">
-                    Account Ledger Drilldown
+                    {t('apex.coa.drilldownTitle', { defaultValue: 'Account Ledger Drilldown' })}
                   </span>
                   <h3 className="text-sm font-black text-slate-800 mt-1">
                     [{selectedAccountForLedger.code}] - {selectedAccountForLedger.name}
@@ -370,28 +372,28 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
               <div className="bg-slate-50 p-4 rounded-lg border border-slate-150 space-y-3 mb-6">
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-slate-400 font-medium block text-[10px]">ACCOUNT TYPE</span>
+                    <span className="text-slate-400 font-medium block text-[10px]">{t('apex.coa.accountType', { defaultValue: 'ACCOUNT TYPE' })}</span>
                     <span className="font-bold text-slate-700">{selectedAccountForLedger.type}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-medium block text-[10px]">CLASSIFICATION</span>
+                    <span className="text-slate-400 font-medium block text-[10px]">{t('apex.coa.classification', { defaultValue: 'CLASSIFICATION' })}</span>
                     <span className="font-bold text-slate-700">{selectedAccountForLedger.classification}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-medium block text-[10px]">OPERATIONAL VALUE</span>
+                    <span className="text-slate-400 font-medium block text-[10px]">{t('apex.coa.operationalValue', { defaultValue: 'OPERATIONAL VALUE' })}</span>
                     <span className="font-bold text-slate-800 font-mono text-xs">{fmt(selectedAccountForLedger.balance)} {selectedAccountForLedger.currency}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-medium block text-[10px]">STATUS</span>
+                    <span className="text-slate-400 font-medium block text-[10px]">{t('apex.coa.status', { defaultValue: 'STATUS' })}</span>
                     <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active Ledger
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {t('apex.coa.activeLedger', { defaultValue: 'Active Ledger' })}
                     </span>
                   </div>
                 </div>
 
                 {selectedAccountForLedger.notes && (
                   <div className="border-t border-slate-200/80 pt-2 text-[11px] text-slate-500">
-                    <span className="font-bold text-[10px] text-zinc-400 block uppercase mb-0.5">Notes / Description</span>
+                    <span className="font-bold text-[10px] text-zinc-400 block uppercase mb-0.5">{t('apex.coa.notesTitle', { defaultValue: 'Notes / Description' })}</span>
                     {selectedAccountForLedger.notes}
                   </div>
                 )}
@@ -399,12 +401,12 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
 
               {/* Transactions/Ledger simulation table (Global standard look) */}
               <div>
-                <h4 className="text-xs font-bold text-slate-700 mb-2.5 uppercase tracking-wide">Journal Posting Entries Audited</h4>
+                <h4 className="text-xs font-bold text-slate-700 mb-2.5 uppercase tracking-wide">{t('apex.coa.postingEntries', { defaultValue: 'Journal Posting Entries Audited' })}</h4>
                 <div className="border border-slate-150 rounded-lg overflow-hidden text-[11px]">
                   <div className="grid grid-cols-3 bg-slate-100 p-2 text-slate-500 font-mono font-bold border-b border-slate-200">
-                    <span>Entry / Date</span>
-                    <span className="text-right">Debit SYP</span>
-                    <span className="text-right">Credit SYP</span>
+                    <span>{t('apex.coa.entryDate', { defaultValue: 'Entry / Date' })}</span>
+                    <span className="text-right">{t('apex.coa.debitSyp', { defaultValue: 'Debit SYP' })}</span>
+                    <span className="text-right">{t('apex.coa.creditSyp', { defaultValue: 'Credit SYP' })}</span>
                   </div>
                   
                   {/* Simulate detailed balancing book logs */}
@@ -426,7 +428,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                       <span className="text-right tabular-nums text-rose-600">{selectedAccountForLedger.classification === 'Posting' ? fmt(selectedAccountForLedger.balance * 0.05) : '–'}</span>
                     </div>
                     <div className="grid grid-cols-3 p-2 bg-slate-50 font-bold">
-                      <span className="font-sans text-slate-600">Calculated Balance</span>
+                      <span className="font-sans text-slate-600">{t('apex.coa.calcBalance', { defaultValue: 'Calculated Balance' })}</span>
                       <span className="text-right tabular-nums block font-black text-slate-800 col-span-2">{fmt(selectedAccountForLedger.balance)} SYP</span>
                     </div>
                   </div>
@@ -446,9 +448,9 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
               <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
                 <div>
                   <h3 className="text-sm font-black text-slate-800">
-                    Configure & Register Account Node
+                    {t('apex.coa.configureTitle', { defaultValue: 'Configure & Register Account Node' })}
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Define double-entry structural hierarchy following accounting rules.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{t('apex.coa.configureDesc', { defaultValue: 'Define double-entry structural hierarchy following accounting rules.' })}</p>
                 </div>
                 <button 
                   type="button"
@@ -469,13 +471,13 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
               <div className="space-y-4 flex-1">
                 {/* Parent Account selector */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Parent Node (Hierarchy)</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.parentNode', { defaultValue: 'Parent Node (Hierarchy)' })}</label>
                   <select
                     value={newParentId}
                     onChange={handleParentSelect}
                     className="w-full text-xs text-slate-700 bg-zinc-50 border border-[#E2E8F0] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md p-2 outline-none"
                   >
-                    <option value="">No Parent (Root Header Level)</option>
+                    <option value="">{t('apex.coa.noParent', { defaultValue: 'No Parent (Root Header Level)' })}</option>
                     {accounts.filter(a => a.classification === 'Header').map(parent => (
                       <option key={parent.id} value={parent.id}>
                         [{parent.code}] – {parent.name} ({parent.type})
@@ -487,7 +489,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                 <div className="grid grid-cols-2 gap-3">
                   {/* Code */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Account Code</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.accountCode', { defaultValue: 'Account Code' })}</label>
                     <input
                       type="text"
                       required
@@ -500,7 +502,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
 
                   {/* Name */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Account Name</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.accountName', { defaultValue: 'Account Name' })}</label>
                     <input
                       type="text"
                       required
@@ -515,20 +517,20 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                 <div className="grid grid-cols-2 gap-3">
                   {/* Account Classification */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Classification Target</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.classTarget', { defaultValue: 'Classification Target' })}</label>
                     <select
                       value={newClass}
                       onChange={(e) => setNewClass(e.target.value as AccountClassification)}
                       className="w-full text-xs text-slate-700 bg-zinc-50 border border-[#E2E8F0] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md p-2 outline-none"
                     >
-                      <option value="Posting">Posting (Collects Ledger postings)</option>
-                      <option value="Header">Header (Consolidation node only)</option>
+                      <option value="Posting">{t('apex.coa.classPosting', { defaultValue: 'Posting (Collects Ledger postings)' })}</option>
+                      <option value="Header">{t('apex.coa.classHeader', { defaultValue: 'Header (Consolidation node only)' })}</option>
                     </select>
                   </div>
 
                   {/* Account Type */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Account Type</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.accountType', { defaultValue: 'Account Type' })}</label>
                     <select
                       value={newType}
                       disabled={!!newParentId}
@@ -547,7 +549,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                 <div className="grid grid-cols-2 gap-3">
                   {/* Starting Balance */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Opening Balance</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.openingBalance', { defaultValue: 'Opening Balance' })}</label>
                     <input
                       type="number"
                       placeholder="0.00"
@@ -559,7 +561,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
 
                   {/* Currency */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Currency (Operational)</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.currencyOp', { defaultValue: 'Currency (Operational)' })}</label>
                     <select
                       value={newCurrency}
                       onChange={(e) => setNewCurrency(e.target.value)}
@@ -574,7 +576,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
 
                 {/* Notes */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Description / Notes</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.coa.descNotes', { defaultValue: 'Description / Notes' })}</label>
                   <textarea
                     placeholder="Enter details on the intended usage of this general ledger node..."
                     value={newNotes}
@@ -592,13 +594,13 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                   onClick={() => setIsAddOpen(false)}
                   className="flex-1 text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 py-2 rounded-md transition-colors"
                 >
-                  Cancel
+                  {t('apex.coa.cancel', { defaultValue: 'Cancel' })}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 py-2 rounded-md shadow-sm transition-colors"
                 >
-                  Create & Save Account
+                  {t('apex.coa.createAndSave', { defaultValue: 'Create & Save Account' })}
                 </button>
               </div>
             </form>

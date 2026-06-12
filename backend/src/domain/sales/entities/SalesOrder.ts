@@ -7,6 +7,7 @@
   | 'CANCELLED';
 
 export type SOItemType = 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
+export type SalesOrderDiscountType = 'PERCENT' | 'AMOUNT';
 
 import { AppliedPromotionInfo } from './AppliedPromotion';
 
@@ -25,8 +26,14 @@ export interface SalesOrderLine {
   invoicedQty: number;
   returnedQty: number;
   unitPriceDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: SalesOrderDiscountType;
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxRate: number;
@@ -81,8 +88,35 @@ const SO_STATUSES: SOStatus[] = [
   'CLOSED',
   'CANCELLED',
 ];
+const SO_DISCOUNT_TYPES: SalesOrderDiscountType[] = ['PERCENT', 'AMOUNT'];
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const normalizeSODiscountType = (value: any): SalesOrderDiscountType | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const token = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return SO_DISCOUNT_TYPES.includes(token as SalesOrderDiscountType)
+    ? (token as SalesOrderDiscountType)
+    : undefined;
+};
+
+const calculateSODiscountAmountDoc = (
+  grossLineTotalDoc: number,
+  discountType: SalesOrderDiscountType | undefined,
+  discountValue: number,
+  explicitDiscountAmountDoc: number | undefined,
+): number => {
+  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
+    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
+  }
+  if (discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
+  }
+  if (discountType === 'AMOUNT') {
+    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
+  }
+  return 0;
+};
 
 const toDate = (value: any): Date => {
   if (!value) return new Date();
@@ -182,13 +216,28 @@ export class SalesOrder {
 
     const normalizedTaxRate = line.taxRate ?? 0;
     const priceIsInclusive = line.priceIsInclusive === true;
-    const divisor = priceIsInclusive ? 1 + normalizedTaxRate : 1;
+    const discountType = normalizeSODiscountType(line.discountType);
+    const discountValueRaw = Number(line.discountValue);
+    const discountValue = Number.isNaN(discountValueRaw) ? 0 : discountValueRaw;
+    const explicitDiscountDoc =
+      line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
+
     const grossLineTotalDoc = roundMoney(line.orderedQty * line.unitPriceDoc);
-    const lineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
+    const discountAmountDoc = calculateSODiscountAmountDoc(
+      grossLineTotalDoc,
+      discountType,
+      discountValue,
+      explicitDiscountDoc,
+    );
+    const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+    const divisor = priceIsInclusive ? 1 + normalizedTaxRate : 1;
+    const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
     const unitPriceBase = roundMoney(line.unitPriceDoc * this.exchangeRate);
+    const grossLineTotalBase = roundMoney(grossLineTotalDoc * this.exchangeRate);
+    const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
     const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
     const taxAmountDoc = priceIsInclusive
-      ? roundMoney(grossLineTotalDoc - lineTotalDoc)
+      ? roundMoney(postDiscountDoc - lineTotalDoc)
       : roundMoney(lineTotalDoc * normalizedTaxRate);
     const taxAmountBase = roundMoney(taxAmountDoc * this.exchangeRate);
 
@@ -207,6 +256,12 @@ export class SalesOrder {
       invoicedQty: line.invoicedQty ?? 0,
       returnedQty: line.returnedQty ?? 0,
       unitPriceDoc: line.unitPriceDoc,
+      grossLineTotalDoc,
+      discountType,
+      discountValue: discountType ? discountValue : undefined,
+      discountAmountDoc,
+      grossLineTotalBase,
+      discountAmountBase,
       lineTotalDoc,
       unitPriceBase,
       lineTotalBase,

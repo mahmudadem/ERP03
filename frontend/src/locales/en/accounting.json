@@ -972,5 +972,20 @@
     "header": "Header",
     "posting": "Posting",
     "noAccounts": "No accounts to preview"
+  },
+  "currencyExchangeWidget": {
+    "labels": {
+      "parity": "parity",
+      "equivalent": "equivalent"
+    },
+    "tooltips": {
+      "fetchingRate": "Fetching rate...",
+      "sameCurrency": "Base Currency Parity",
+      "manualOverride": "Manual override (Click status dot to reset)",
+      "systemRateForDate": "System rate for date",
+      "systemRateLastKnown": "System rate"
+    },
+    "baseCurrencyParity": "Base Currency Parity",
+    "baseCurrencyParityFormat": "1 {{currency}} = 1.0000 {{baseCurrency}} (Base Currency Parity)"
   }
 }

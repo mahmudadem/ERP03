@@ -1,5 +1,13 @@
 # ERP03 — QA Queue
 
+> ## ⛔ SUPERSEDED (2026-06-13, CTO audit / Phase 1)
+> **This per-feature queue is retired.** It is replaced by the five end-to-end
+> [golden-path QA scripts](./qa/golden-paths/README.md), which cover the flows
+> these items live inside. Do NOT add new items here — during the feature freeze
+> no new QA-surface work is allowed, and any post-freeze feature carries its QA
+> inside its own done-report. The items below remain as reference detail for
+> debugging golden-path failures.
+
 > Items in this list are **built and ready for Mahmud to manually test**.
 > Agents add items here when a feature is complete.
 > Mahmud checks them off after testing and marks Pass ✅ or Fail ❌ (with notes).
@@ -9,6 +17,263 @@
 ---
 
 ## 🧪 Ready to Test
+
+### Purchases — Whole-Invoice Charges & Discounts (Allocation Grid, PI↔SI parity)
+**Added by:** Claude (Opus 4.8) — report 210
+**What to test:**
+- Open `Purchases → Invoices → New Bill`, add at least one line.
+- In the **Account Ledger & Purchase Taxes Allocation Grid** section, click **Add Charge**.
+  - Expected modal: GL Account (pre-filled from the Default Purchase Expense account), Amount, Description, hint "Charge debits this account; discount credits it."
+  - Amount `50`, description "Freight", Save → a Charge row appears; Grand Total **increases** by 50.
+- Click **Add Discount** → amount `50`, description "Volume" → Save.
+  - Expected: a Discount row (red, −50); Grand Total **decreases** by 50.
+- Edit a row (pencil) / delete (trash). Save the bill, reopen → rows persist.
+- Post the bill, open the posted voucher / GL impact.
+  - Expected: the **charge is Debited** to its account; the **discount is Credited** to its account; the AP credit nets both; the voucher **balances**; the grid is read-only.
+- Edge: with no Default Purchase Expense account set and no account chosen, posting returns a clear error.
+
+**Known limitations:**
+- Flat & tax-free by design (mirrors Sales); no line-VAT re-proration.
+- Discount defaults to the Purchase Expense account (net method, credited); override per row for a dedicated discounts-received account.
+- New strings render in English in AR/TR until locale files are filled.
+
+---
+
+### Sales — Whole-Invoice Charges & Discounts (Allocation Grid)
+**Added by:** Claude (Opus 4.8) — report 209
+**What to test:**
+- Open `Sales → Invoices → New Sales Invoice`, add at least one line item.
+- In the **Account Ledger & Financial Taxes Allocation Grid** section, click **Add Charge**.
+  - Expected modal fields: GL Account (pre-filled from the default revenue account), Amount, Description.
+  - Enter amount `50`, description "Freight", Save.
+  - Expected: a Charge row appears in the grid; the Grand Total increases by 50.
+- Click **Add Discount**.
+  - Expected: GL Account pre-fills from the Default Sales Discount account (Sales Settings → Account Defaults).
+  - Enter amount `50`, description "Year-end", Save.
+  - Expected: a Discount row (red, shown as −50) appears; Grand Total decreases by 50; the rail "Discount" line includes it.
+- Edit a row via the pencil icon (reopens the modal); delete via the trash icon.
+- Save the invoice, reopen it → both rows persist.
+- Post the invoice, then open GL Impact / the posted voucher.
+  - Expected: the charge is **credited** to its account; the discount is **debited** to the discount account; the voucher balances; the grid is read-only.
+- Edge: with no Default Sales Discount account configured and no account picked in the modal, posting a discounted invoice returns a clear error (same as per-line discounts).
+
+**Known limitations:**
+- Adjustments are **flat and tax-free** by design (owner decision) — they never re-prorate line VAT.
+- New UI strings render in English in Arabic/Turkish until locale files are filled in.
+- For charges loaded from the server, the grid shows the account id (no code/name lookup); freshly added rows show "CODE — Name".
+
+---
+
+### Native Documents — Shared Line Table UOM and Settings Polish
+**Added by:** Codex (report 203)
+**What to test:**
+- Open Sales Invoice, Sales Order, Delivery Note, Quotation, Purchase Invoice, Purchase Order, Goods Receipt, and Purchase Return in Classic and Windows mode.
+- Select an item on a new line and confirm the default sales/purchase UOM fills automatically.
+- Edit the UOM cell. If there is one match, it should select directly; if there are multiple item UOMs, the selector modal should open.
+- In the modal, confirm only item-defined UOMs are available, the refresh button reloads item UOMs, and the item-card link opens the item.
+- Open table settings from the `#` header and confirm table font plus Line Color 1 / Line Color 2 persist after reload.
+- Confirm untouched empty rows show blank numeric cells instead of `0` placeholders.
+
+---
+
+### Sales/Purchases - Document Template True Adoption (Phases 1-3)
+**Added by:** Claude (report 202)
+**What to test:**
+- Open `Purchases -> Invoices -> New Bill` (the pilot page).
+  - Expected body order: source control strip, compact header card, line table, allocation grid placeholder, attachments/audit cards, settlement block, sticky footer.
+  - Expected rail order: Info, Posting Readiness, Settlement, Totals.
+  - With the side rail visible, the footer left side shows a short status text; hide the rail with its round button and the footer switches to the boxed Subtotal/Tax/Grand totals strip (same behavior as Sales Invoice).
+  - Confirm the Vendor dropdown is not clipped by the header card edge.
+- Open a posted Purchase Invoice and confirm the same anatomy read-only, with Outstanding in the footer strip when the rail is hidden.
+- Check the footer totals strip on SO, DN, SR, PO, GRN, and PR: it now renders as one bordered box with small uppercase labels and mono values, visually matching the Sales Invoice footer.
+- Open Sales Order: confirm the credit-override dialog still opens and works when confirming an order over the customer's credit limit.
+- Open a posted/saved Goods Receipt: it now uses the shared document template (topbar with back button and status pill, Info/Totals side rail, sticky footer with actions). Confirm Post/Unpost/Create Return actions still work, including the Unpost confirmation dialog.
+- Open a Purchase Return saved view: header grid, lines, totals summary, rail Info -> Document Status -> Totals; Unpost dialog still works.
+- On every document: hide the rail, restore it from the edge button, shrink the window below ~1280px and confirm the rail becomes an edge drawer. Repeat a sample in Arabic/RTL (drawer mirrors to the left).
+- On a very wide (2xl) screen, rail cards should fill the column height in the Sales Invoice rhythm instead of compressing into the top quarter.
+- **Rail interiors (added same day):** on SO, PO, DN, SR, GRN, and PR, each rail Totals card now looks like the Sales Invoice Totals card — light label/value rows ending in the dark Grand Total box with the green number — and status/source cards use the same key-value row style. Sections that do not apply to a document (e.g. Settlement on Sales Order) stay hidden by design.
+- **Phase 4 (added same day, owner-directed): Sales Invoice itself now runs on the template.** Open `Sales -> Invoices -> New Sales Invoice` and a posted invoice:
+  - Confirm the page looks and behaves as before: status banner (posted/pending), source control strip, compact header, line table, allocation grid, settlement block, sticky footer.
+  - Rail order Info -> Posting Readiness -> Settlement -> Totals; hide/restore the rail; footer totals strip appears only while the rail is hidden.
+  - The Clone to Recurring button now sits in the standard top action tray chrome.
+  - Repeat in Windows mode (rail becomes an edge drawer) and in Arabic/RTL (drawer and back arrow mirror) — this behavior is now template-driven on SI.
+  - **Important:** settlement QA (report 194 scripts A–D + over-payment scenario) was NOT run before this rebuild. Run it on the rebuilt page; if a settlement step fails, note it may be either the settlement code or the rebuild.
+- Full QA script: [done/202-document-scaffold-true-template-adoption-phases-1-3.md](./done/202-document-scaffold-true-template-adoption-phases-1-3.md).
+
+**Known limitations:**
+- UI/layout only; no posting, tax, settlement, AP/AR, inventory, approval, period-lock, audit, or ledger behavior changed.
+- Quotation intentionally stays page-local (owner decision).
+
+---
+
+### Sales/Purchases - Shared Line Table Auto-Append Regression Fix
+**Added by:** Codex (report 201)
+**What to test:**
+- Open `Sales -> Delivery Notes -> New Delivery Note` in Direct mode.
+- Expected: the line table shows a stable working grid and does not keep adding rows by itself.
+- Open `Sales -> Returns -> New Return`, select `Direct Return`.
+- Expected: the form opens without an infinite error/render loop, and the direct return line table stays stable.
+- Repeat the same stability check on Sales Orders, Quotations, Purchase Orders, Goods Receipts, Purchase Invoices, and Purchase Returns.
+- Right-click a row in DN or SR direct lines, choose a row color swatch, reload, and confirm the local row color persists for that table.
+- Right-click the row again and clear the row color.
+- Confirm the context menu shadow is subtle and does not look like a heavy floating card.
+
+**Known limitations:**
+- This is UI/local-preference behavior only. It does not change document totals, Delivery Note stock movement, Goods Receipt receipt behavior, Sales Return/Purchase Return posting, tax, AR/AP, refund/credit-note settlement, inventory valuation, approval, period locks, audit, backend DTOs, or ledger behavior.
+
+---
+
+### Sales/Purchases - Native Document Shared Table And Action Tray
+**Added by:** Codex (report 200)
+**What to test:**
+- Open SI, PI, SO, DN, SR, Quotation, PO, GRN, and PR create/edit/view screens.
+- Confirm the top icon cluster appears as one compact document action tray.
+- In editable line grids, right-click a row and confirm Copy, Paste, Insert row, Highlight, and Delete actions appear.
+- Confirm Delete/Insert are disabled or absent where linked-source rows should not be structurally edited.
+- Click or right-click the empty `#` header cell and confirm Copy, Paste, Clean, Export, Import, and UI selector actions appear.
+- Resize several columns, reload the page, and confirm widths persist for that document table only.
+- Open the UI selector, change classic/web layout, row coloring, text size, and number font; reload and confirm preferences persist.
+- Confirm empty cells do not show placeholder text and selectors visually blend into table cells.
+- Repeat representative tests in Windows mode with a resized window.
+
+**Known limitations:**
+- This is UI/data-entry parity only. It does not change posting, tax, AP/AR, settlement, inventory valuation, COGS, approval, period locks, audit, backend DTOs, or repository behavior.
+- Allocation grid behavior remains placeholder/display-only until the controlled allocation contract is implemented.
+
+---
+
+### Sales - Sales Return Source Control Parity
+**Added by:** Codex (report 199)
+**What to test:**
+- Open `Sales -> Returns -> New Return`.
+- Confirm the top **Return Control** strip shows `After Invoice`, `Before Invoice`, and `Direct Return`.
+- Select `After Invoice`; expected header field is posted Sales Invoice.
+- Select `Before Invoice`; expected header field is posted Delivery Note.
+- Select `Direct Return`; expected header field is Customer.
+- Confirm the create-draft validation still requires the correct source/customer for the selected mode.
+- Repeat in Windows mode with a resized window.
+
+**Known limitations:**
+- This is UI/data-entry layout only. It does not change Sales Return posting, tax, AR reversal, credit-note/refund settlement, inventory receipt, COGS reversal, approval, period locks, audit, or ledger behavior.
+
+---
+
+### Sales/Purchases - Native Document Header Density
+**Added by:** Codex (report 198)
+**What to test:**
+- Open SI, PI, SO, DN, Quote, PO, GRN, SR, and PR create/edit/view screens.
+- Confirm the main header inputs use compact Sales Invoice sizing.
+- Confirm the header fits into the two-row/five-column rhythm on wide layouts.
+- Confirm Notes/Reason text areas sit below the compact header instead of stretching the header rows.
+- Repeat in Windows mode with resized windows and with long customer/vendor names.
+
+**Known limitations:**
+- This is layout-only. It does not change posting, tax, inventory valuation, settlement, approval, period locks, AP/AR, audit, or ledger behavior.
+- Some return/source flows still need a deeper business UX pass, especially raw source-ID entry in Purchase Return. This task only standardized density.
+
+---
+
+### Sales/Purchases - Sectioned Document Scaffold Contract
+**Added by:** Codex (report 197)
+**What to test:**
+- Open Sales Invoice, Purchase Invoice, Sales Order, Delivery Note, Sales Return, Purchase Order, Goods Receipt, Purchase Return, and Quotation pages.
+- Confirm the document anatomy stays consistent: controls/header at the top, line table in the main work area, secondary panels where applicable, right rail where applicable, and sticky footer actions where applicable.
+- Confirm sections can be absent without changing the whole page shell. Example: invoices can show settlement/totals while Delivery Note and Goods Receipt omit settlement.
+- Repeat representative pages in Classic and Windows mode, including narrow/resized windows.
+- Switch to Arabic/RTL and confirm rail edge buttons, drawers, and back direction still mirror correctly.
+
+**Known limitations:**
+- This is layout architecture only. It does not change posting, tax, settlement, inventory valuation, approval, period locks, AP/AR, audit, or ledger behavior.
+- Existing scaffold consumers are normalized through compatibility `custom` slots; the next visual cleanup pass should split all page bodies into direct `control`, `header`, `lines`, `secondary`, and `attachments` props.
+
+---
+
+### Sales/Purchases - Native Document Scaffold And List Parity
+**Added by:** Codex (report 196)
+**What to test:**
+- Open Sales -> Quotations.
+  - Expected: list uses the shared operational list layout with quick status pills, inline filters, centered columns, row actions, and pagination.
+  - Open or create a quote.
+  - Expected: line items use the same shared table style as invoices/orders; quote lifecycle buttons still appear in the quote header.
+- Open Sales Order, Delivery Note, and Sales Return create/edit/view pages.
+  - Expected: line tables match the Sales Invoice/Purchase Invoice table style while columns remain document-specific.
+  - Expected: existing save/post/confirm/deliver/return actions still work from the same document status rules.
+- Open Purchases -> Goods Receipts.
+  - Expected: list uses the shared operational list layout.
+  - Open or create a GRN.
+  - Expected: draft/edit page uses the shared document shell with right rail, sticky footer, shared line table, item selector, and warehouse selector.
+- Open Purchases -> Returns.
+  - Expected: list uses the shared operational list layout.
+  - Open a Purchase Return.
+  - Expected: saved/edit view uses the shared document shell with right rail, sticky footer, and shared line table.
+- Repeat representative pages in Classic and Windows mode.
+
+**Known limitations:**
+- This is UI/data-entry consistency only. It does not change posting, tax, inventory valuation, settlement, approval, period locks, AP/AR, or ledger behavior.
+- Quotation detail outer header is still page-local; only its list and line table were standardized in this slice.
+- Purchase Return create mode keeps its source-picking card flow; its return line table is standardized.
+
+---
+
+### Sales/Purchases - Document UI Parity
+**Added by:** Codex (report 191)
+**What to test:**
+- Open Sales -> Returns.
+  - Expected: list uses the same layout style as Sales Invoices, with quick status pills, search, customer/context/status/date filters, row actions, company date formatting, centered cells, and pagination.
+- Open Sales Order, Delivery Note, and Sales Return detail pages.
+  - Expected: pages use the shared Sales Invoice-style document scaffold: compact topbar, document icon/status pills, full-height scroll workspace, responsive right rail, and persistent footer.
+  - Expected: the right rail shows SO totals/status, DN delivery quantity/cost/source, and SR return totals/settlement/source context.
+  - Expected: footer actions stay visible while scrolling and the rail can be hidden/restored or opened from the edge on smaller windows.
+- Open Purchases -> Purchase Orders detail.
+  - Expected: page uses the shared Sales Invoice-style document scaffold with right rail and footer actions visible with subtotal/tax/grand total.
+- Open Purchases -> Invoices -> New.
+  - Expected: page uses the shared Sales Invoice-style document scaffold with persistent footer.
+  - Expected: inside the page, PI follows the Sales Invoice anatomy: source controls, compact source-aware header, line table, allocation grid placeholder, attachments/audit shortcuts, and right rail cards ordered Info -> Posting Readiness -> Settlement -> Totals.
+  - Expected: the Vendor picker is vendor-only, not a generic customer/vendor selector.
+  - Expected: PO Reference is a dropdown of real purchase orders, not a typed ID field.
+  - Expected: selecting a PO loads open lines and pre-fills vendor/currency data.
+- Open a posted Purchase Invoice.
+  - Expected: page uses the shared Sales Invoice-style document scaffold and the same PI internal anatomy as the new/edit screen, with read-only header fields, line table, allocation grid placeholder, attachments/audit shortcuts, and Info/Document Status/Settlement/Totals rail.
+  - Expected: sticky footer shows subtotal/tax/grand total/outstanding and keeps payment/return/unpost actions reachable.
+
+**Known limitations:**
+- This is UI/data-entry parity only. It does not change posting, tax, settlement, AP/AR, inventory valuation, approval, period-lock, COGS, or ledger behavior.
+- Visual QA should be repeated in both Classic and Windows mode to confirm sticky footers do not cover important fields in small windows.
+- SO, DN, SR, and PO still need a follow-up internal-anatomy audit against Sales Invoice; this QA item now specifically expects PI to match the SI body/rail structure.
+- Browser screenshot QA was not completed because the in-app Browser navigation/screenshot tool was not exposed in this session.
+
+---
+
+### Sales - Invoices List Filter Polish
+**Added by:** Codex (report 190)
+**What to test:**
+- Open Sales -> Invoices.
+- Confirm Type, Status, and Payment filters show placeholder-style neutral text.
+- Confirm the date range defaults from fiscal-year beginning through today and displays in the company date format.
+- Confirm table cell content is centered.
+- Confirm Pending Approval stays on one line in both the quick status pills and the Status column.
+
+---
+
+### Sales - Invoice Responsive Window Layout
+**Added by:** Codex (report 187)
+**What to test:**
+- Sign in with an active company.
+- Open `/#/sales/invoices/new` in normal web mode.
+  - Expected: the Sales Invoice header, line items, allocation grid, attachments/audit shortcuts, right-side information panels, settlement, totals, and footer actions are reachable.
+  - Expected on a wide screen: the side rail is pinned by default, can be hidden, and can be restored from the small edge button.
+- Switch to Windows mode and open a Sales Invoice window from the Sales Invoices list.
+- Resize the invoice window smaller than its default `1100x750` size.
+  - Expected: page content scrolls vertically inside the available window area instead of hiding sections.
+  - Expected: the side rail does not push over invoice fields; it opens from the edge button as a drawer.
+  - Expected: wide line-item/allocation tables scroll horizontally inside their table area.
+  - Expected: footer actions such as Close/Save/Post remain reachable.
+
+**Known limitations:**
+- This is a layout-only fix. It does not change posting, taxes, totals, settlement, approval, period-lock, inventory, or ledger behavior.
+- Automated visual screenshot QA was not completed because the in-app Browser tool was unavailable and Playwright is not installed.
+
+---
 
 ### Navigation - Apex Route Coverage Gap Audit
 **Added by:** Codex (report 179)
@@ -25,11 +290,33 @@
   - `/#/dev/apex-ledger/accounting/tools/budgets`
   - `/#/dev/apex-ledger/accounting/tools/subgroup-tagging`
   - `/#/dev/apex-ledger/tools/forms`
+- Specifically click these Apex sidebar entries that previously had stale URLs:
+  - Sales Analytics -> `/#/dev/apex-ledger/sales/reports/sales-analytics`
+  - Aged Backlog -> `/#/dev/apex-ledger/sales/aged-backlog`
+  - Sales Voucher Designer -> `/#/dev/apex-ledger/sales/tools/voucher-designer`
+  - Purchases Analytics -> `/#/dev/apex-ledger/purchases/reports/purchases-analytics`
+  - Purchases Voucher Designer -> `/#/dev/apex-ledger/purchases/tools/voucher-designer`
+  - Low Stock Alerts -> `/#/dev/apex-ledger/inventory/alerts/low-stock`
+  - Unsettled Costs -> `/#/dev/apex-ledger/inventory/reports/unsettled-costs`
+  - Inventory Valuation -> `/#/dev/apex-ledger/inventory/reports/valuation`
+- Open representative remaining route groups directly where your role has access:
+  - `/#/dev/apex-ledger/companies`
+  - `/#/dev/apex-ledger/notifications`
+  - `/#/dev/apex-ledger/companyAdmin/setup`
+  - `/#/dev/apex-ledger/hr/employees`
+  - `/#/dev/apex-ledger/pos`
+  - `/#/dev/apex-ledger/super-admin`
+  - `/#/dev/apex-ledger/company-wizard`
+  - `/#/dev/apex-ledger/crm/leads`
+  - `/#/dev/apex-ledger/manufacturing/work-orders`
+  - `/#/dev/apex-ledger/projects`
+  - `/#/dev/apex-ledger/canvas-dev`
 - Expected: each page renders inside Apex with the Apex sidebar and topbar still visible.
 - Expected: protected pages keep the same permission/module behavior as the main shell.
 
 **Known limitations:**
-- Super Admin routes are not included in tenant Apex shell cutover. Treat Super Admin as a separate shell decision.
+- This verifies route continuity only. Some pages still use their native/basic visual design inside Apex.
+- Super Admin routes now stay inside Apex, but platform-role QA is still required before default-shell cutover.
 
 ---
 

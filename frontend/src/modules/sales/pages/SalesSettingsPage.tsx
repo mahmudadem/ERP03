@@ -207,6 +207,7 @@ const SalesSettingsPage: React.FC = () => {
       setSaving(true);
       const payload: Partial<SalesSettingsDTO> = {
         workflowMode: settings.workflowMode,
+        showOperationalDocsInSimple: settings.showOperationalDocsInSimple === true,
         allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
         requireSOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requireSOForStockItems,
         arParentAccountId: settings.arParentAccountId || undefined,
@@ -216,6 +217,7 @@ const SalesSettingsPage: React.FC = () => {
         defaultRefundAccountId: settings.defaultRefundAccountId || undefined,
         restockingFeeAccountId: settings.restockingFeeAccountId || undefined,
         allowOverDelivery: settings.allowOverDelivery,
+        allowOverpayment: settings.allowOverpayment,
         overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
         defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
@@ -391,6 +393,26 @@ const SalesSettingsPage: React.FC = () => {
                       </span>
                     </span>
                   </label>
+                  <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      checked={settings.allowOverpayment === true}
+                      onChange={(e) =>
+                        setSettings((prev) =>
+                          prev ? { ...prev, allowOverpayment: e.target.checked } : prev
+                        )
+                      }
+                    />
+                    <span className="text-xs">
+                      <span className="font-semibold text-gray-900">
+                        Allow over-payment
+                      </span>
+                      <span className="ml-1 text-gray-500">
+                        When on, a receipt may exceed the invoice total. The extra becomes a credit on the customer's account (their AR balance goes negative) and offsets their future invoices.
+                      </span>
+                    </span>
+                  </label>
                 </div>
 
                 {settings.workflowMode === 'OPERATIONAL' ? (
@@ -513,6 +535,18 @@ const SalesSettingsPage: React.FC = () => {
                       contextLabel="Income"
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">Where restocking fees are booked. Keep separate from product revenue (e.g. "Other Operating Income"). Falls back to the line's revenue account if unset.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Sales Discount Account</label>
+                    <AccountSelector
+                      value={settings.defaultSalesExpenseAccountId}
+                      onChange={(account: any) => updateSetting('defaultSalesExpenseAccountId', account?.id || undefined)}
+                      placeholder="Select Sales Discount / Discount Allowed account"
+                      allowedClassifications={['EXPENSE', 'REVENUE']}
+                      contextLabel="Discount (Expense or Contra-Revenue)"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">Required when a Sales Invoice line carries a discount. Typically "Sales Discounts Allowed" (expense) or a contra-revenue account so discounts have a visible ledger trace instead of netting silently into revenue.</p>
                   </div>
 
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">

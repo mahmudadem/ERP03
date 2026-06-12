@@ -209,9 +209,11 @@ const makeSI = (input: {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  priceIsInclusive?: boolean;
   warehouseId?: string;
   charges?: Array<{
     chargeId?: string;
+    kind?: 'CHARGE' | 'DISCOUNT';
     name: string;
     amountDoc: number;
     taxCodeId?: string;
@@ -254,6 +256,7 @@ const makeSI = (input: {
         taxRate: 0,
         taxAmountDoc: 0,
         taxAmountBase: 0,
+        priceIsInclusive: input.priceIsInclusive,
         warehouseId: input.warehouseId,
         revenueAccountId: input.item.revenueAccountId || '',
         cogsAccountId: input.item.cogsAccountId,
@@ -263,10 +266,13 @@ const makeSI = (input: {
     ],
     charges: (input.charges || []).map((charge, index) => ({
       chargeId: charge.chargeId || `chg-${index + 1}`,
+      kind: charge.kind,
       name: charge.name,
       amountDoc: charge.amountDoc,
       taxCodeId: charge.taxCodeId,
-      revenueAccountId: charge.revenueAccountId || input.item.revenueAccountId || '',
+      // A DISCOUNT with no explicit account falls back to the settings discount
+      // account at posting time; a CHARGE defaults to the item's revenue account.
+      revenueAccountId: charge.revenueAccountId || (charge.kind === 'DISCOUNT' ? undefined : (input.item.revenueAccountId || '')),
     })),
     subtotalDoc: 0,
     taxTotalDoc: 0,
@@ -801,6 +807,96 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
   });
 
+  it('A1b) PostSI preserves the entered settlement on the parked invoice (not lost across the approval boundary)', async () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const stockItem = makeItem('stock-appr-pend', {
+      trackInventory: true,
+      cogsAccountId: 'COGS-700',
+      inventoryAssetAccountId: 'INV-700',
+      revenueAccountId: 'REV-700',
+    });
+    const si = makeSI({ id: 'si-appr-pend', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
+
+    const inventoryService = makeInventoryService();
+    const invoiceStore = new Map([[si.id, si]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+
+    const approvalPolicy = {
+      id: 'approval-required',
+      name: 'Approval Required',
+      validate: jest.fn(async (ctx: any) =>
+        ctx.isApproved
+          ? { ok: true }
+          : { ok: false, error: { code: 'APPROVAL_REQUIRED', message: 'Voucher must be approved before posting', fieldHints: ['status'] } }
+      ),
+    };
+    const mockPolicyRegistry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [approvalPolicy]),
+    };
+    const mockTxManager = {
+      runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => {
+        try {
+          return await operation({ id: 'txn-1' });
+        } catch (err) {
+          inventoryService.writeStockMovement.mockClear();
+          voucherRepo.save.mockClear();
+          ledgerRepo.recordForVoucher.mockClear();
+          throw err;
+        }
+      }),
+    };
+
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => { invoiceStore.set(entity.id, entity); }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+        undefined,
+        undefined,
+        undefined,
+        mockPolicyRegistry as any
+      ),
+      undefined,
+      mockTxManager as any
+    );
+
+    const settlementInput = {
+      settlementMode: 'CASH_FULL' as const,
+      receivablePayableAccountId: 'AR-1',
+      settlements: [{ amountBase: 30, paymentMethod: 'CASH' as const, paymentDate: '2026-05-02' }],
+    };
+    const result = await useCase.execute(COMPANY_ID, si.id, true, undefined, settlementInput);
+
+    expect(result.status).toBe('PENDING_APPROVAL');
+    // The settlement intent is preserved verbatim so the approver can replay it.
+    expect(result.pendingSettlement).toEqual(settlementInput);
+    // And it is persisted on the parked invoice, not just the returned entity.
+    expect(invoiceStore.get(si.id)?.pendingSettlement).toEqual(settlementInput);
+    // Still no financial effect while parked.
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+  });
+
   it('A2) ApproveSalesInvoiceUseCase runs the real post on a PENDING_APPROVAL invoice', async () => {
     const settings = makeSettings('SIMPLE');
     const customer = makeCustomer();
@@ -1130,6 +1226,152 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const sumCredit = revenueVoucher.lines.reduce((s: number, l: any) => s + (l.creditAmount || 0), 0);
     expect(sumDebit).toBeCloseTo(26.8, 2);
     expect(sumCredit).toBeCloseTo(26.8, 2);
+  });
+
+  it('10d) PostSI applies a whole-invoice DISCOUNT adjustment: debits the discount account, reduces the total, stays balanced', async () => {
+    const settings = makeSettings('SIMPLE', { defaultSalesExpenseAccountId: 'EXP-DISC-10D' });
+    const customer = makeCustomer();
+    const serviceItem = makeItem('svc-10d', {
+      trackInventory: false,
+      type: 'SERVICE',
+      revenueAccountId: 'REV-100',
+    });
+    const si = makeSI({
+      id: 'si-10d',
+      item: serviceItem,
+      invoicedQty: 2,
+      unitPriceDoc: 10, // 20 gross, no line discount, no tax
+      charges: [
+        // Whole-invoice discount with no explicit account → falls back to the settings discount account.
+        { chargeId: 'disc-10d', kind: 'DISCOUNT', name: 'Year-end discount', amountDoc: 5 },
+      ],
+    });
+
+    const invoiceStore = new Map([[si.id, si]]);
+    const savedVouchers: any[] = [];
+
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => {
+          invoiceStore.set(entity.id, entity);
+        }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => serviceItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }), delete: jest.fn(async () => true) } as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, si.id);
+    // 20 gross − 5 discount = 15 net; no tax.
+    expect(posted.subtotalDoc).toBe(15);
+    expect(posted.taxTotalDoc).toBe(0);
+    expect(posted.grandTotalDoc).toBe(15);
+
+    const revenueVoucher = savedVouchers.find((voucher) => voucher.voucherNo === `SI-${si.invoiceNumber}`);
+    expect(revenueVoucher).toBeTruthy();
+    const creditLines = revenueVoucher.lines.filter((line: any) => line.side === 'Credit');
+    const debitLines = revenueVoucher.lines.filter((line: any) => line.side === 'Debit');
+    // AR reduced to 15; discount debited 5 to the settings discount account; revenue credited at gross 20.
+    expect(debitLines.some((line: any) => line.accountId === 'AR-200' && line.debitAmount === 15)).toBe(true);
+    expect(debitLines.some((line: any) => line.accountId === 'EXP-DISC-10D' && line.debitAmount === 5)).toBe(true);
+    expect(creditLines.some((line: any) => line.accountId === 'REV-100' && line.creditAmount === 20)).toBe(true);
+    expect(revenueVoucher.totalDebit).toBe(20);
+    expect(revenueVoucher.totalCredit).toBe(20);
+    // No tax line on a tax-free discount/charge invoice: AR + discount debits, single revenue credit.
+    expect(debitLines).toHaveLength(2);
+    expect(creditLines).toHaveLength(1);
+  });
+
+  it('10c) PostSI balances the revenue voucher when discount + inclusive tax force ±0.01 rounding', async () => {
+    // Regression for "Subledger voucher SI-... is not balanced: debit=99.52, credit=99.53".
+    // qty 1, price 100, 5% inclusive, discount $10 → 100/1.05 and 10/1.05 both non-
+    // terminating; rounding revenue, discount, and tax independently leaks 1 paisa.
+    // Discount must absorb the residue (revenueCreditBase − lineTotalBase).
+    const settings = makeSettings('SIMPLE', { defaultSalesExpenseAccountId: 'EXP-DISC-10C' });
+    const customer = makeCustomer();
+    const serviceItem = makeItem('svc-10c', {
+      trackInventory: false,
+      type: 'SERVICE',
+      revenueAccountId: 'REV-100',
+    });
+    const si = makeSI({
+      id: 'si-10c',
+      item: serviceItem,
+      invoicedQty: 1,
+      unitPriceDoc: 100,
+      discountType: 'AMOUNT',
+      discountValue: 10,
+      taxCodeId: 'tax-1',
+      priceIsInclusive: true,
+    });
+
+    const taxCode = makeTaxCode(0.05);
+    const invoiceStore = new Map([[si.id, si]]);
+    const savedVouchers: any[] = [];
+
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => {
+          invoiceStore.set(entity.id, entity);
+        }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => taxCode) } as any,
+      { getItem: jest.fn(async () => serviceItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }), delete: jest.fn(async () => true) } as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    // The bug was a throw from SubledgerDocumentPoster.assertBalanced.
+    // If posting completes at all, the voucher is balanced.
+    const posted = await useCase.execute(COMPANY_ID, si.id);
+    expect(posted.grandTotalBase).toBe(90);
+
+    const revenueVoucher = savedVouchers.find((voucher) => voucher.voucherNo === `SI-${si.invoiceNumber}`);
+    expect(revenueVoucher).toBeTruthy();
+    expect(revenueVoucher.totalDebit).toBeCloseTo(revenueVoucher.totalCredit, 2);
+
+    const debitLines = revenueVoucher.lines.filter((line: any) => line.side === 'Debit');
+    const creditLines = revenueVoucher.lines.filter((line: any) => line.side === 'Credit');
+    expect(debitLines.some((l: any) => l.accountId === 'AR-200' && l.debitAmount === 90)).toBe(true);
+    // Discount absorbs the +0.01 residue → 9.53, not 9.52.
+    expect(debitLines.some((l: any) => l.accountId === 'EXP-DISC-10C' && l.debitAmount === 9.53)).toBe(true);
+    expect(creditLines.some((l: any) => l.accountId === 'REV-100' && l.creditAmount === 95.24)).toBe(true);
+    expect(creditLines.some((l: any) => l.accountId === 'TAX-OUT-100' && l.creditAmount === 4.29)).toBe(true);
   });
 
   it('11) PostDN: accounting failure does not persist posted DN or SO status', async () => {

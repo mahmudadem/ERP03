@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Settings,
   ArrowUpRight,
@@ -123,12 +124,28 @@ const SETTING_SECTIONS = [
 
 export default function ApexAccountingSettings() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  const getSectionKey = (id: string): string => {
+    switch (id) {
+      case 'general': return 'apex.settings.generalSettings';
+      case 'policies': return 'apex.settings.approvalWorkflow';
+      case 'payment-methods': return 'apex.settings.paymentMethods';
+      case 'cost-center': return 'apex.settings.costCenterRules';
+      case 'cost-centers-manage': return 'apex.settings.costCenterManagement';
+      case 'error-mode': return 'apex.settings.policyErrorMode';
+      case 'fiscal': return 'apex.settings.accountingPeriods';
+      case 'numbering': return 'apex.settings.documentNumbering';
+      case 'fx-revaluation': return 'apex.settings.currencyRevaluation';
+      default: return 'apex.settings.accountingSettings';
+    }
+  };
 
   const handleOpenInFullApp = (sectionId?: string) => {
     const path = sectionId
-      ? `/accounting/settings#${sectionId}`
-      : '/accounting/settings';
+      ? `/dev/apex-ledger/settings/accounting#${sectionId}`
+      : '/dev/apex-ledger/settings/accounting';
     navigate(path);
   };
 
@@ -141,7 +158,7 @@ export default function ApexAccountingSettings() {
             <Settings className="w-4.5 h-4.5 text-white" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-800">إعدادات المحاسبة</h2>
+            <h2 className="text-sm font-bold text-slate-800">{t('apex.settings.accountingSettings', { defaultValue: 'Accounting Settings' })}</h2>
             <p className="text-[10px] text-slate-500 font-mono">Accounting Settings — {SETTING_SECTIONS.length} sections</p>
           </div>
         </div>
@@ -150,7 +167,7 @@ export default function ApexAccountingSettings() {
           className="flex items-center space-x-2 text-xs font-bold text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          <span>Open Full Settings Page</span>
+          <span>{t('apex.settings.openFullPage', { defaultValue: 'Open Full Settings Page' })}</span>
         </button>
       </div>
 
@@ -179,12 +196,12 @@ export default function ApexAccountingSettings() {
                 <ArrowUpRight className={`w-3.5 h-3.5 transition-colors ${isActive ? section.color : 'text-slate-300 group-hover:text-blue-500'}`} />
               </div>
               <div>
-                <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-widest leading-tight">{section.nameAr}</p>
+                <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-widest leading-tight">{t(getSectionKey(section.id), { defaultValue: section.name })}</p>
                 <h3 className={`text-[11px] font-bold leading-tight mt-0.5 ${isActive ? section.color : 'text-slate-700'}`}>{section.name}</h3>
                 <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">{section.desc}</p>
               </div>
               <div className={`mt-3 text-[10px] font-semibold flex items-center space-x-1 ${section.color}`}>
-                <span>Configure</span>
+                <span>{t('common.configure', { defaultValue: 'Configure' })}</span>
                 <ChevronRight className="w-3 h-3" />
               </div>
             </button>
@@ -197,7 +214,7 @@ export default function ApexAccountingSettings() {
         <div className="text-white space-y-1">
           <div className="flex items-center space-x-2">
             <Settings className="w-4 h-4 text-slate-300" />
-            <span className="text-xs font-bold uppercase tracking-wider">Full Accounting Settings</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('apex.settings.fullSettings', { defaultValue: 'Full Accounting Settings' })}</span>
           </div>
           <p className="text-[11px] text-slate-400 leading-relaxed max-w-md">
             The full settings page includes Fiscal Year closing workflows, FX revaluation engine, voucher sequence management, and granular approval policy configuration.
@@ -208,7 +225,7 @@ export default function ApexAccountingSettings() {
           className="flex-shrink-0 flex items-center space-x-2 bg-white text-slate-800 text-xs font-bold px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          <span>Open Full Page</span>
+          <span>{t('apex.settings.openFullPage', { defaultValue: 'Open Full Page' })}</span>
         </button>
       </div>
     </div>

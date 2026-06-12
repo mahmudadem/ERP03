@@ -23,6 +23,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   const isRtl = i18n.dir() === 'rtl';
   const isDesktop = useBreakpoint('lg');
   const isPinnedAndDocked = sidebarPinned && isDesktop;
+  const isFlyoutMode = sidebarMode === 'submenus';
+
+  const [isHovered, setIsHovered] = React.useState(false);
+  const isSidebarExpanded = isOpen || (isHovered && isFlyoutMode && isDesktop);
+
+  // When the user clicks a nav item the cursor stays inside the sidebar,
+  // so onMouseLeave never fires. Reset isHovered here so the sidebar
+  // collapses immediately after navigation instead of waiting for mouse-out.
+  const handleNavigate = React.useCallback(() => {
+    setIsHovered(false);
+    if (onNavigate) onNavigate();
+  }, [onNavigate]);
 
   const toggleSidebar = () => {
     if (onToggle) onToggle();
@@ -82,57 +94,63 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   }, [sections, searchQuery]);
 
   const isTailwindPlayTheme = appearanceSettings?.id === 'tailwind-play';
-  const isAccordionMode = sidebarMode === 'submenus';
 
-  // Determine classes based on mode (accordion vs flat) and screen sizes
+  // Determine classes based on mode (flyout vs accordion) and screen sizes
   let asideClasses: string[] = [];
-  if (isAccordionMode) {
+  if (isFlyoutMode) {
+    // Flyout Mode: has a persistent narrow icon-strip on desktop when closed
+    if (isDesktop) {
+      asideClasses = [
+        "top-12 bottom-0 z-30",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        isSidebarExpanded ? "w-[var(--app-sidebar-width)]" : "w-20",
+        (isSidebarExpanded && !sidebarPinned) ? "shadow-xl" : "",
+        "translate-x-0",
+      ];
+    } else {
+      // Mobile: standard slide-over drawer
+      asideClasses = [
+        "top-0 bottom-0 z-50",
+        isRtl ? "right-0 border-l" : "left-0 border-r",
+        "w-56 shadow-2xl",
+        isSidebarExpanded ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
+      ];
+    }
+  } else {
+    // Accordion Mode: either fully shown or fully hidden (no narrow strip when closed)
     if (isPinnedAndDocked) {
       asideClasses = [
         "top-12 bottom-0 z-30",
         isRtl ? "right-0 border-l" : "left-0 border-r",
         "w-[var(--app-sidebar-width)]",
-        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
+        isSidebarExpanded ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
       ];
     } else {
+      // Mobile or unpinned overlay: standard overlay drawer
       asideClasses = [
         "top-0 bottom-0 z-50",
         isRtl ? "right-0 border-l" : "left-0 border-r",
-        "w-64 shadow-2xl",
-        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
-      ];
-    }
-  } else {
-    // Flat Mode (not accordion): persistent narrow icon-strip on desktop when closed
-    if (isDesktop) {
-      asideClasses = [
-        "top-12 bottom-0 z-30",
-        isRtl ? "right-0 border-l" : "left-0 border-r",
-        isOpen ? "w-64" : "w-24",
-        "translate-x-0",
-      ];
-    } else {
-      // Mobile: standard overlay drawer
-      asideClasses = [
-        "top-0 bottom-0 z-50",
-        isRtl ? "right-0 border-l" : "left-0 border-r",
-        "w-64 shadow-2xl",
-        isOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
+        "w-72 shadow-2xl",
+        isSidebarExpanded ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full"),
       ];
     }
   }
 
   return (
     <aside
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={clsx(
         "fixed flex flex-col print:hidden bg-[var(--app-sidebar-surface)] border-[var(--color-border)] transition-all duration-300 ease-out",
+        !isFlyoutMode && "main-sidebar-accordion",
         asideClasses
       )}
     >
       {/* Header Area with Pin & Close Buttons */}
       <div className={clsx(
         "h-12 flex items-center shrink-0 border-b border-[var(--color-border)]",
-        isOpen ? "justify-between px-4" : "justify-center px-2"
+        !isFlyoutMode && "bg-white/80",
+        isSidebarExpanded ? "justify-between px-4" : "justify-center px-2"
       )}>
         {/* Pin button */}
         <button
@@ -146,17 +164,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
               ? "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400 rotate-[-45deg]" 
               : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
           )}
-          title={sidebarPinned ? "Unpin Sidebar" : "Pin Sidebar"}
+          title={sidebarPinned ? t('sidebar.unpin', 'Unpin Sidebar') : t('sidebar.pin', 'Pin Sidebar')}
         >
           <Icons.Pin className="w-4 h-4" />
         </button>
 
         {/* Close button */}
-        {isOpen && (
+        {isSidebarExpanded && (
           <button
             onClick={toggleSidebar}
             className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] transition-all duration-200"
-            title="Close Sidebar"
+            title={t('sidebar.close', 'Close Sidebar')}
           >
             <Icons.X className="w-4 h-4" />
           </button>
@@ -164,13 +182,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
       </div>
 
       {/* Search Area */}
-      {isOpen && (
-        <div className="px-4 mb-4 shrink-0">
+      {isSidebarExpanded && (
+        <div className={clsx("px-4 mb-4 shrink-0", !isFlyoutMode && "mt-4")}>
           <div className="relative">
             <input
               ref={searchInputRef}
               type="text"
-              placeholder={t('sidebar.search', { defaultValue: 'Search (Ctrl + G)' })}
+              placeholder={t('sidebar.search', 'Search (Ctrl + G)')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={clsx(
@@ -191,10 +209,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
       )}
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4 px-3 custom-scroll">
-        {isOpen && isTailwindPlayTheme && (
+      <div className={clsx("flex-1 overflow-y-auto px-3 custom-scroll", !isFlyoutMode ? "py-3 space-y-1" : "py-4")}>
+        {isSidebarExpanded && isTailwindPlayTheme && (
           <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-4 mb-2">
-            MODULES
+            {t('sidebar.modulesTitle', 'Modules')}
           </div>
         )}
         {sidebarMode === 'submenus' ? (
@@ -203,8 +221,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
               <SidebarItem
                 key={key}
                 label={key}
-                isOpen={isOpen}
-                onClick={onNavigate}
+                isOpen={isSidebarExpanded}
+                onClick={handleNavigate}
                 children={(data as any).items}
                 iconName={(data as any).icon}
                 isCompact={isCompact}
@@ -217,8 +235,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
               key={key}
               title={key}
               items={(data as any).items}
-              isOpen={isOpen}
-              onNavigate={onNavigate}
+              isOpen={isSidebarExpanded}
+              onNavigate={handleNavigate}
               iconName={(data as any).icon}
               path={(data as any).path}
               isCompact={isCompact}
@@ -232,7 +250,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
         <SidebarItem
           label={t('sidebar.companySettings')}
           iconName="Settings"
-          isOpen={isOpen}
+          isOpen={isSidebarExpanded}
           onClick={onNavigate}
           isCompact={isCompact}
           children={[

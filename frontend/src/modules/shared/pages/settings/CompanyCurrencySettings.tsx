@@ -10,6 +10,7 @@ import { DollarSign, Plus, X, Check, Loader2, AlertCircle, Info } from 'lucide-r
 import { accountingApi, CurrencyDTO, CompanyCurrencyDTO } from '../../../../api/accountingApi';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../../services/errorHandler';
+import { useQueryClient } from '@tanstack/react-query';
 import { ExchangeRateMatrix, ExchangeRateMatrixRef } from './components/ExchangeRateMatrix';
 import { ExchangeRateHistory, ExchangeRateHistoryRef } from './components/ExchangeRateHistory';
 import { PricingEntryForm } from './components/PricingEntryForm';
@@ -17,6 +18,7 @@ import { AvailableCurrenciesModal } from './components/AvailableCurrenciesModal'
 import { EnableCurrencyModal } from './components/EnableCurrencyModal';
 
 export const CompanyCurrencySettings: React.FC = () => {
+  const queryClient = useQueryClient();
   const [globalCurrencies, setGlobalCurrencies] = useState<CurrencyDTO[]>([]);
   const [companyCurrencies, setCompanyCurrencies] = useState<CompanyCurrencyDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +63,7 @@ export const CompanyCurrencySettings: React.FC = () => {
       await accountingApi.disableCurrency(currencyCode);
       errorHandler.showSuccess(`${currencyCode} disabled`);
       loadData();
+      queryClient.invalidateQueries({ queryKey: ['company-currencies'] });
     } catch (error: any) {
       errorHandler.showError(error.message || 'Failed to disable currency');
     } finally {
@@ -201,6 +204,7 @@ export const CompanyCurrencySettings: React.FC = () => {
           onClose={() => setEnableModalCurrency(null)}
           onEnabled={() => {
             loadData();
+            queryClient.invalidateQueries({ queryKey: ['company-currencies'] });
             matrixRef.current?.refresh();
             historyRef.current?.refresh();
           }}

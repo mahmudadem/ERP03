@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { InventoryItem } from '../types';
 import { 
   Plus, 
@@ -13,6 +14,7 @@ interface InventorySectionProps {
 }
 
 export default function InventorySection({ inventory, setInventory }: InventorySectionProps) {
+  const { t } = useTranslation('common');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newSku, setNewSku] = useState('');
   const [newName, setNewName] = useState('');
@@ -27,12 +29,12 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
     setErrorStr('');
 
     if (!newSku || !newName) {
-      setErrorStr('Sku and Name are mandatory fields.');
+      setErrorStr(t('apex.inventory.validationError', { defaultValue: 'Sku and Name are mandatory fields.' }));
       return;
     }
 
     if (inventory.some(p => p.sku === newSku)) {
-      setErrorStr(`Product SKU "${newSku}" already exists in index.`);
+      setErrorStr(t('apex.inventory.duplicateError', { defaultValue: `Product SKU "${newSku}" already exists in index.`, sku: newSku }));
       return;
     }
 
@@ -73,15 +75,15 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
       {/* Header action panel */}
       <div className="flex items-center justify-between pb-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight">Inventory & Stock Module</h1>
-          <p className="text-xs text-slate-500">Track raw materials and packaged licenses, average cost evaluations, and margins.</p>
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">{t('apex.inventory.moduleTitle', { defaultValue: 'Inventory & Stock Module' })}</h1>
+          <p className="text-xs text-slate-500">{t('apex.inventory.moduleDesc', { defaultValue: 'Track raw materials and packaged licenses, average cost evaluations, and margins.' })}</p>
         </div>
         <button
           onClick={() => setIsAddOpen(true)}
           className="inline-flex items-center text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded shadow-sm transition-colors"
         >
           <Plus className="w-4 h-4 mr-1 text-white" />
-          Add Product
+          {t('apex.inventory.addProduct', { defaultValue: 'Add Product' })}
         </button>
       </div>
 
@@ -91,20 +93,20 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm">
             <div className="p-4 border-b border-zinc-150 flex items-center justify-between">
-              <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider">Product Stock & Pricing Matrix</h2>
-              <span className="text-[11px] text-slate-400">Total: {inventory.length} SKUs cataloged</span>
+              <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider">{t('apex.inventory.matrixTitle', { defaultValue: 'Product Stock & Pricing Matrix' })}</h2>
+              <span className="text-[11px] text-slate-400">{t('apex.inventory.skuCataloged', { defaultValue: 'Total: {{count}} SKUs cataloged', count: inventory.length })}</span>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-zinc-50 border-b border-zinc-200 text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">
-                    <th className="py-2.5 px-4">SKU / Item</th>
-                    <th className="py-2.5 px-3">Category</th>
-                    <th className="py-2.5 px-3 text-right">Avg Cost SYP</th>
-                    <th className="py-2.5 px-3 text-right">Selling Price SYP</th>
-                    <th className="py-2.5 px-3 text-center">Qty on Hand</th>
-                    <th className="py-2.5 px-4 text-center">Action</th>
+                    <th className="py-2.5 px-4">{t('apex.inventory.skuItem', { defaultValue: 'SKU / Item' })}</th>
+                    <th className="py-2.5 px-3">{t('apex.inventory.category', { defaultValue: 'Category' })}</th>
+                    <th className="py-2.5 px-3 text-right">{t('apex.inventory.avgCost', { defaultValue: 'Avg Cost SYP' })}</th>
+                    <th className="py-2.5 px-3 text-right">{t('apex.inventory.sellingPrice', { defaultValue: 'Selling Price SYP' })}</th>
+                    <th className="py-2.5 px-3 text-center">{t('apex.inventory.qtyOnHand', { defaultValue: 'Qty on Hand' })}</th>
+                    <th className="py-2.5 px-4 text-center">{t('apex.inventory.action', { defaultValue: 'Action' })}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -134,11 +136,11 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
                               onClick={() => handleReorder(item.sku)}
                               className="text-[10px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-150 px-2 py-1 rounded transition-colors"
                             >
-                              Reorder 50
+                              {t('apex.inventory.reorder', { defaultValue: 'Reorder 50' })}
                             </button>
                           ) : (
                             <span className="text-[10px] text-emerald-600 font-semibold block py-1 flex items-center justify-center gap-0.5">
-                              <Check className="w-3.5 h-3.5 text-emerald-500 inline" /> Stocks safe
+                              <Check className="w-3.5 h-3.5 text-emerald-500 inline" /> {t('apex.inventory.stocksSafe', { defaultValue: 'Stocks safe' })}
                             </span>
                           )}
                         </td>
@@ -154,26 +156,26 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
         {/* Category summaries */}
         <div className="space-y-4">
           <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm p-4 text-right">
-            <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider text-left mb-4">Stock Valuation Stats</h2>
+            <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider text-left mb-4">{t('apex.inventory.valuationTitle', { defaultValue: 'Stock Valuation Stats' })}</h2>
             <div className="space-y-4">
               <div className="p-3.5 bg-zinc-50 rounded-lg border border-[#F1F3F5] text-left">
-                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Gross Valuation (At Sales Value)</span>
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{t('apex.inventory.grossValuation', { defaultValue: 'Gross Valuation (At Sales Value)' })}</span>
                 <span className="text-sm font-black text-slate-800 mt-1 block font-mono">
                   {fmt(inventory.reduce((sum, item) => sum + (item.qtyOnHand * item.salePrice), 0))} SYP
                 </span>
               </div>
               <div className="p-3.5 bg-zinc-50 rounded-lg border border-[#F1F3F5] text-left">
-                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Average Profit Premium Margin</span>
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{t('apex.inventory.avgProfitMargin', { defaultValue: 'Average Profit Premium Margin' })}</span>
                 <span className="text-sm font-black text-blue-600 mt-1 block font-mono">
-                  {fmt(Math.round(inventory.reduce((sum, item) => sum + (item.salePrice - item.avgCost), 0) / inventory.length))} SYP / unit avg
+                  {fmt(Math.round(inventory.reduce((sum, item) => sum + (item.salePrice - item.avgCost), 0) / inventory.length))} {t('apex.inventory.avgProfitMarginDesc', { defaultValue: 'SYP / unit avg' })}
                 </span>
               </div>
               <div className="p-3.5 bg-rose-50 rounded-lg border border-rose-150 text-left flex items-start gap-2.5 animate-fade-in">
                 <ShieldAlert className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="text-[10px] text-rose-700 font-black uppercase tracking-wider block">Action Needed: Critically low</span>
+                  <span className="text-[10px] text-rose-700 font-black uppercase tracking-wider block">{t('apex.inventory.actionNeeded', { defaultValue: 'Action Needed: Critically low' })}</span>
                   <span className="text-xs text-rose-600 block mt-0.5">
-                    {inventory.filter(p => p.qtyOnHand < 10).length} high-priority product SKUs require urgent wholesale provisioning files now.
+                    {t('apex.inventory.actionNeededDesc', { defaultValue: '{{count}} high-priority product SKUs require urgent wholesale provisioning files now.', count: inventory.filter(p => p.qtyOnHand < 10).length })}
                   </span>
                 </div>
               </div>
@@ -192,8 +194,8 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div>
-                <h3 className="text-sm font-black text-slate-800">Add New Catalog Product SKU</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Define unit pricing, average accounting costs, and catalog category.</p>
+                <h3 className="text-sm font-black text-slate-800">{t('apex.inventory.addNewSku', { defaultValue: 'Add New Catalog Product SKU' })}</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">{t('apex.inventory.addNewSkuDesc', { defaultValue: 'Define unit pricing, average accounting costs, and catalog category.' })}</p>
               </div>
               <button 
                 type="button"
@@ -214,7 +216,7 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
               <div className="grid grid-cols-2 gap-3">
                 {/* SKU */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Catalog SKU</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.inventory.catalogSku', { defaultValue: 'Catalog SKU' })}</label>
                   <input
                     type="text"
                     required
@@ -227,7 +229,7 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
 
                 {/* Name */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Product Title</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.inventory.productTitle', { defaultValue: 'Product Title' })}</label>
                   <input
                     type="text"
                     required
@@ -242,22 +244,22 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
               <div className="grid grid-cols-2 gap-3">
                 {/* Category */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Class Category</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.inventory.classCategory', { defaultValue: 'Class Category' })}</label>
                   <select
                     value={newCat}
                     onChange={(e) => setNewCat(e.target.value)}
                     className="w-full text-xs text-slate-700 bg-zinc-50 border border-[#E2E8F0] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded p-2 outline-none"
                   >
-                    <option value="Hardware">Hardware Components</option>
-                    <option value="Cabling & Infrastructure">Cabling & Infrastructure</option>
-                    <option value="Software">Software & Cloud Licenses</option>
-                    <option value="Furniture & Workspaces">Office & Industrial Workspaces</option>
+                    <option value="Hardware">{t('apex.inventory.hardwareComponents', { defaultValue: 'Hardware Components' })}</option>
+                    <option value="Cabling & Infrastructure">{t('apex.inventory.cablingInfrastructure', { defaultValue: 'Cabling & Infrastructure' })}</option>
+                    <option value="Software">{t('apex.inventory.softwareLicenses', { defaultValue: 'Software & Cloud Licenses' })}</option>
+                    <option value="Furniture & Workspaces">{t('apex.inventory.officeIndustrial', { defaultValue: 'Office & Industrial Workspaces' })}</option>
                   </select>
                 </div>
 
                 {/* Opening Qty */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Opening Qty</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.inventory.openingQty', { defaultValue: 'Opening Qty' })}</label>
                   <input
                     type="number"
                     min={0}
@@ -272,7 +274,7 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
               <div className="grid grid-cols-2 gap-3">
                 {/* Cost */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Unit Avg Cost SYP</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.inventory.unitAvgCost', { defaultValue: 'Unit Avg Cost SYP' })}</label>
                   <input
                     type="number"
                     min={0}
@@ -286,7 +288,7 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
 
                 {/* Price */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Unit Sale Price SYP</label>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">{t('apex.inventory.unitSalePrice', { defaultValue: 'Unit Sale Price SYP' })}</label>
                   <input
                     type="number"
                     min={0}
@@ -308,13 +310,13 @@ export default function InventorySection({ inventory, setInventory }: InventoryS
                 onClick={() => setIsAddOpen(false)}
                 className="flex-1 text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 py-2 rounded-md"
               >
-                Cancel
+                {t('apex.inventory.cancel', { defaultValue: 'Cancel' })}
               </button>
               <button
                 type="submit"
                 className="flex-1 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 py-2 rounded-md shadow-sm"
               >
-                Register SKU Item
+                {t('apex.inventory.registerSku', { defaultValue: 'Register SKU Item' })}
               </button>
             </div>
 

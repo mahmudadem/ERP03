@@ -1,4 +1,4 @@
-import { PostSalesInvoiceUseCase, SettlementInput } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { PostSalesInvoiceUseCase, ApproveSalesInvoiceUseCase, SettlementInput } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
 
 const buildPostedInvoice = (grandTotalBase = 100) =>
@@ -184,6 +184,33 @@ describe('PostSalesInvoiceUseCase — Settlement Modes', () => {
     expect(result.outstandingAmountBase).toBe(0);
     expect(deps.paymentHistoryRepo.create).toHaveBeenCalled();
     expect(deps.voucherRepo.save).toHaveBeenCalled();
+  });
+
+  it('approve replays the settlement preserved while parked for approval, then clears it', async () => {
+    // Simulates the approval-required flow: the salesperson posted with a CASH_FULL
+    // settlement, the post was parked as PENDING_APPROVAL, and the settlement intent was
+    // preserved on the invoice. Approving it must replay that settlement (not post on credit)
+    // and clear pendingSettlement so it can never be replayed twice.
+    const invoice = buildPostedInvoice(100);
+    invoice.status = 'PENDING_APPROVAL';
+    invoice.pendingSettlement = {
+      settlementMode: 'CASH_FULL',
+      receivablePayableAccountId: 'AR-1',
+      settlements: [{ amountBase: 100, paymentMethod: 'CASH', paymentDate: '2026-05-02' }],
+    };
+    const deps = makeDeps(invoice);
+    const postUseCase = buildUseCase(deps);
+    const approveUseCase = new ApproveSalesInvoiceUseCase(deps.salesInvoiceRepo as any, postUseCase);
+
+    // Approve WITHOUT passing an explicit settlement — the stored intent must be honoured.
+    const result = await approveUseCase.execute('cmp-1', invoice.id, { userId: 'u-approver' });
+
+    expect(result.status).toBe('POSTED');
+    expect(result.paymentStatus).toBe('PAID');
+    expect(result.paidAmountBase).toBe(100);
+    expect(result.outstandingAmountBase).toBe(0);
+    expect(result.pendingSettlement).toBeNull();
+    expect(deps.paymentHistoryRepo.create).toHaveBeenCalled();
   });
 
   it('posts with MULTI mode — partial settlement marks PARTIALLY_PAID', async () => {

@@ -9,7 +9,9 @@ import { PurchaseSettings } from '../../../domain/purchases/entities/PurchaseSet
 import {
   DocumentSource,
   PaymentStatus,
+  PendingSettlement,
   PurchaseInvoice,
+  PurchaseInvoiceCharge,
   PurchaseInvoiceLine,
 } from '../../../domain/purchases/entities/PurchaseInvoice';
 import { Party } from '../../../domain/shared/entities/Party';
@@ -147,11 +149,26 @@ export interface PurchaseInvoiceLineInput {
   uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
+  /** Optional line discount mirroring sales. PERCENT applies to grossLineTotal,
+   *  AMOUNT is a flat discount in document currency. */
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
    *  net + tax during construction so totals match the user's input. */
   priceIsInclusive?: boolean;
   taxCodeId?: string;
   warehouseId?: string;
+  description?: string;
+}
+
+export interface PurchaseInvoiceChargeInput {
+  chargeId?: string;
+  /** CHARGE adds to the bill and debits its account; DISCOUNT subtracts and credits its account. Defaults to CHARGE. */
+  kind?: 'CHARGE' | 'DISCOUNT';
+  code?: string;
+  name: string;
+  amountDoc: number;
+  accountId?: string;
   description?: string;
 }
 
@@ -169,6 +186,7 @@ export interface CreatePurchaseInvoiceInput {
   currency?: string;
   exchangeRate?: number;
   lines?: PurchaseInvoiceLineInput[];
+  charges?: PurchaseInvoiceChargeInput[];
   notes?: string;
   createdBy: string;
 }
@@ -183,6 +201,7 @@ export interface UpdatePurchaseInvoiceInput {
   currency?: string;
   exchangeRate?: number;
   lines?: PurchaseInvoiceLineInput[];
+  charges?: PurchaseInvoiceChargeInput[];
   notes?: string;
 }
 
@@ -321,6 +340,10 @@ export class CreatePurchaseInvoiceUseCase {
         uomId: sourceLine.uomId || poLine?.uomId || item.purchaseUomId || item.baseUomId,
         uom: sourceLine.uom || poLine?.uom || item.purchaseUom || item.baseUom,
         unitPriceDoc,
+        // Discount fields forwarded to the entity; the entity recomputes
+        // discountAmountDoc/grossLineTotalDoc/lineTotalDoc/tax* from these.
+        discountType: sourceLine.discountType,
+        discountValue: sourceLine.discountValue,
         lineTotalDoc,
         unitPriceBase,
         lineTotalBase,
@@ -336,6 +359,23 @@ export class CreatePurchaseInvoiceUseCase {
         description: sourceLine.description || poLine?.description,
       });
     }
+
+    // Whole-invoice charges/discounts (allocation grid). Charges default to the purchase
+    // expense account; discounts default to the same account (credited — net method) and can
+    // be overridden per row. The entity recomputes amounts and applies the kind sign to totals.
+    const charges: PurchaseInvoiceCharge[] = (input.charges || []).map((sourceCharge) => {
+      const chargeKind: 'CHARGE' | 'DISCOUNT' = sourceCharge.kind === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE';
+      return {
+        chargeId: sourceCharge.chargeId || randomUUID(),
+        kind: chargeKind,
+        code: sourceCharge.code,
+        name: sourceCharge.name,
+        amountDoc: roundMoney(sourceCharge.amountDoc),
+        amountBase: roundMoney(sourceCharge.amountDoc * exchangeRate),
+        accountId: sourceCharge.accountId || settings.defaultPurchaseExpenseAccountId,
+        description: sourceCharge.description,
+      };
+    });
 
     const paymentTermsDays = vendor.paymentTermsDays ?? settings.defaultPaymentTermsDays;
     const dueDate = input.dueDate || addDaysToISODate(input.invoiceDate, paymentTermsDays);
@@ -358,6 +398,7 @@ export class CreatePurchaseInvoiceUseCase {
       currency,
       exchangeRate,
       lines,
+      charges,
       subtotalDoc: 0,
       taxTotalDoc: 0,
       grandTotalDoc: 0,
@@ -737,6 +778,18 @@ export class PostPurchaseInvoiceUseCase {
     const apAccountId = this.resolveAPAccount(vendor, settings);
     const resolvedAPId = await resolveAccountCached(apAccountId);
 
+    // Resolve the GL account for each whole-invoice charge/discount (falls back to the
+    // purchase expense account, throwing a clear error if neither is set).
+    const resolvedChargeAccounts = new Map<string, string>();
+    for (const charge of pi.charges || []) {
+      const fallback = settings.defaultPurchaseExpenseAccountId;
+      const accountSource = charge.accountId || fallback;
+      if (!accountSource) {
+        throw new Error(`No GL account for ${charge.kind === 'DISCOUNT' ? 'discount' : 'charge'} "${charge.name}". Set a Default Purchase Expense account or choose one on the row.`);
+      }
+      resolvedChargeAccounts.set(charge.chargeId, await resolveAccountCached(accountSource));
+    }
+
     // PHASE 2: TRANSACTION CALLBACK — WRITES ONLY
     try {
       await this.transactionManager.runTransaction(async (transaction) => {
@@ -783,6 +836,28 @@ export class PostPurchaseInvoiceUseCase {
               },
             });
           }
+        }
+
+        // Whole-invoice charges/discounts (allocation grid). Mirror of the Sales side with the
+        // GL sides flipped: a CHARGE we owe the vendor is a Debit (e.g. freight/landed cost);
+        // a DISCOUNT received is a Credit. The AP credit already nets both via grandTotalBase,
+        // so total debits/credits stay balanced.
+        for (const charge of pi.charges || []) {
+          const chargeAccountId = resolvedChargeAccounts.get(charge.chargeId);
+          const isDiscount = charge.kind === 'DISCOUNT';
+          postingEntries.push({
+            role: isDiscount ? 'discount' : 'expense',
+            accountId: chargeAccountId || undefined,
+            side: isDiscount ? 'Credit' : 'Debit',
+            baseAmount: roundMoney(charge.amountBase || 0),
+            docAmount: roundMoney(charge.amountDoc || 0),
+            notes: `${isDiscount ? 'Discount' : 'Charge'}: ${charge.name}`,
+            metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, chargeId: charge.chargeId },
+            missingAccountContext: {
+              fallbackChain: ['charge.accountId', 'settings.defaultPurchaseExpenseAccountId'],
+              hint: `Configure the GL account for ${isDiscount ? 'discount' : 'charge'} "${charge.name}".`,
+            },
+          });
         }
 
         postingEntries.push({
@@ -840,6 +915,9 @@ export class PostPurchaseInvoiceUseCase {
         pi.status = 'POSTED';
         pi.postedAt = new Date();
         pi.updatedAt = new Date();
+        // A successful post consumes any settlement preserved while parked for
+        // approval — clear it so it can never be replayed twice.
+        pi.pendingSettlement = null;
         await this.purchaseInvoiceRepo.update(pi, transaction);
 
         if (po) {
@@ -850,6 +928,13 @@ export class PostPurchaseInvoiceUseCase {
       });
     } catch (err: any) {
       if (err instanceof PostingError && err.appError.code === 'APPROVAL_REQUIRED') {
+        // Preserve the settlement entered at post time so it is replayed when an
+        // accountant approves the invoice. Without this, the cash payment is silently
+        // dropped across the approval boundary and the invoice posts on credit.
+        const parkedSettlement: PendingSettlement | null =
+          settlementInput && settlementInput.settlementMode !== 'DEFERRED'
+            ? (settlementInput as PendingSettlement)
+            : null;
         await this.transactionManager.runTransaction(async (tx) => {
           const latestPi = await this.purchaseInvoiceRepo.getById(companyId, pi.id);
           if (!latestPi) throw new Error('Purchase invoice not found during parking');
@@ -857,10 +942,12 @@ export class PostPurchaseInvoiceUseCase {
             throw new Error(`Cannot park purchase invoice. Expected DRAFT, but current status is ${latestPi.status}`);
           }
           latestPi.status = 'PENDING_APPROVAL';
+          latestPi.pendingSettlement = parkedSettlement;
           latestPi.updatedAt = new Date();
           await this.purchaseInvoiceRepo.update(latestPi, tx);
         });
         pi.status = 'PENDING_APPROVAL';
+        pi.pendingSettlement = parkedSettlement;
         pi.updatedAt = new Date();
         return pi;
       }
@@ -913,11 +1000,17 @@ export class PostPurchaseInvoiceUseCase {
   }
 
   private recalcInvoiceTotals(pi: PurchaseInvoice): void {
-    pi.subtotalDoc = roundMoney(pi.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
+    // Whole-invoice CHARGE adds to the subtotal; DISCOUNT subtracts. Both are tax-free.
+    const chargeSubtotalDoc = (pi.charges || []).reduce(
+      (sum, c) => sum + (c.kind === 'DISCOUNT' ? -c.amountDoc : c.amountDoc), 0);
+    const chargeSubtotalBase = (pi.charges || []).reduce(
+      (sum, c) => sum + (c.kind === 'DISCOUNT' ? -(c.amountBase || 0) : (c.amountBase || 0)), 0);
+
+    pi.subtotalDoc = roundMoney(pi.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0) + chargeSubtotalDoc);
     pi.taxTotalDoc = roundMoney(pi.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
     pi.grandTotalDoc = roundMoney(pi.subtotalDoc + pi.taxTotalDoc);
 
-    pi.subtotalBase = roundMoney(pi.lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
+    pi.subtotalBase = roundMoney(pi.lines.reduce((sum, line) => sum + line.lineTotalBase, 0) + chargeSubtotalBase);
     pi.taxTotalBase = roundMoney(pi.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
     pi.grandTotalBase = roundMoney(pi.subtotalBase + pi.taxTotalBase);
 
@@ -985,8 +1078,9 @@ export class PostPurchaseInvoiceUseCase {
 
     if (settlementMode === 'MULTI') {
       const outstanding = roundMoney(pi.grandTotalBase - (pi.paidAmountBase || 0));
-      if (settlementTotal > outstanding + 0.01) {
-        throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding})`);
+      const allowOverpayment = (await this.settingsRepo.getSettings(companyId))?.allowOverpayment === true;
+      if (!allowOverpayment && settlementTotal > outstanding + 0.01) {
+        throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Purchase settings to record the excess as a vendor credit.`);
       }
       if (settlements.length === 0) {
         throw new Error('MULTI mode requires at least one settlement row');
@@ -1261,6 +1355,8 @@ export class UpdatePurchaseInvoiceUseCase {
           uomId: line.uomId ?? existing?.uomId,
           uom: line.uom || existing?.uom || 'EA',
           unitPriceDoc: line.unitPriceDoc ?? existing?.unitPriceDoc ?? 0,
+          discountType: line.discountType ?? existing?.discountType,
+          discountValue: line.discountValue ?? existing?.discountValue,
           lineTotalDoc: existing?.lineTotalDoc ?? 0,
           unitPriceBase: existing?.unitPriceBase ?? 0,
           lineTotalBase: existing?.lineTotalBase ?? 0,
@@ -1280,6 +1376,23 @@ export class UpdatePurchaseInvoiceUseCase {
         };
       });
       current.lines = mappedLines;
+    }
+
+    if (isDraft && input.charges) {
+      const existingById = new Map((current.charges || []).map((charge) => [charge.chargeId, charge]));
+      current.charges = input.charges.map((charge, index) => {
+        const existing = charge.chargeId ? existingById.get(charge.chargeId) : undefined;
+        return {
+          chargeId: charge.chargeId || randomUUID(),
+          kind: (charge.kind ?? existing?.kind ?? 'CHARGE') as 'CHARGE' | 'DISCOUNT',
+          code: charge.code ?? existing?.code,
+          name: charge.name ?? existing?.name ?? `Charge ${index + 1}`,
+          amountDoc: charge.amountDoc ?? existing?.amountDoc ?? 0,
+          amountBase: existing?.amountBase,
+          accountId: charge.accountId ?? existing?.accountId,
+          description: charge.description ?? existing?.description,
+        };
+      });
     }
 
     current.updatedAt = new Date();
@@ -1420,8 +1533,14 @@ export class ApprovePurchaseInvoiceUseCase {
     if (pi.status !== 'PENDING_APPROVAL') {
       throw new Error('Only purchase invoices pending approval can be approved');
     }
+    // Replay the settlement entered at post time (preserved on the invoice while
+    // parked). An explicit settlementInput on the approval request takes precedence;
+    // otherwise honour the stored intent so the cash payment is not lost across the
+    // approval boundary. The post clears pendingSettlement on success.
+    const effectiveSettlement: SettlementInput | undefined =
+      settlementInput ?? (pi.pendingSettlement ? (pi.pendingSettlement as SettlementInput) : undefined);
     // Re-enter the real post with approvalContext set (bypasses the gate).
-    return this.postUseCase.execute(companyId, id, true, settlementInput, { approvedBy: actor.userId });
+    return this.postUseCase.execute(companyId, id, true, effectiveSettlement, { approvedBy: actor.userId });
   }
 }
 

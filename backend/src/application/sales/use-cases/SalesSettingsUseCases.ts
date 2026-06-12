@@ -38,6 +38,7 @@ export interface InitializeSalesInput {
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery?: boolean;
+  allowOverpayment?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
@@ -79,6 +80,7 @@ export interface UpdateSalesSettingsInput {
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery?: boolean;
+  allowOverpayment?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
@@ -235,6 +237,7 @@ export class InitializeSalesUseCase {
       defaultInventoryAccountId: input.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: input.defaultSalesExpenseAccountId,
       allowOverDelivery: input.allowOverDelivery ?? false,
+      allowOverpayment: input.allowOverpayment ?? false,
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? 30,
@@ -406,6 +409,7 @@ export class UpdateSalesSettingsUseCase {
       defaultRefundAccountId: input.defaultRefundAccountId ?? existing.defaultRefundAccountId,
       restockingFeeAccountId: input.restockingFeeAccountId ?? existing.restockingFeeAccountId,
       allowOverDelivery: input.allowOverDelivery ?? existing.allowOverDelivery,
+      allowOverpayment: input.allowOverpayment ?? existing.allowOverpayment,
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? existing.overDeliveryTolerancePct,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? existing.overInvoiceTolerancePct,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? existing.defaultPaymentTermsDays,

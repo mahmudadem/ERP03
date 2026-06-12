@@ -119,6 +119,15 @@ const validateSOLine = (line: any, index: number) => {
     ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
   }
 
+  if (line.discountType !== undefined && line.discountType !== null) {
+    if (line.discountType !== 'PERCENT' && line.discountType !== 'AMOUNT') {
+      throw ApiError.badRequest(`lines[${index}].discountType must be PERCENT or AMOUNT`);
+    }
+  }
+  if (line.discountValue !== undefined && line.discountValue !== null) {
+    ensureNonNegativeNumber(line.discountValue, `lines[${index}].discountValue`);
+  }
+
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
   }
@@ -170,6 +179,9 @@ const validateSICharge = (charge: any, index: number) => {
   if (!charge.name || typeof charge.name !== 'string') {
     throw ApiError.badRequest(`charges[${index}].name is required`);
   }
+  if (charge.kind !== undefined && !['CHARGE', 'DISCOUNT'].includes(String(charge.kind))) {
+    throw ApiError.badRequest(`charges[${index}].kind must be CHARGE or DISCOUNT`);
+  }
   ensureNonNegativeNumber(charge.amountDoc, `charges[${index}].amountDoc`);
   if (charge.chargeId !== undefined) ensureOptionalString(charge.chargeId, `charges[${index}].chargeId`);
   if (charge.code !== undefined) ensureOptionalString(charge.code, `charges[${index}].code`);
@@ -200,6 +212,14 @@ const validateSRLine = (line: any, index: number) => {
   if (line.returnQty !== undefined) ensurePositiveNumber(line.returnQty, `lines[${index}].returnQty`);
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
   if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
+  if (line.discountType !== undefined && line.discountType !== null) {
+    if (line.discountType !== 'PERCENT' && line.discountType !== 'AMOUNT') {
+      throw ApiError.badRequest(`lines[${index}].discountType must be PERCENT or AMOUNT`);
+    }
+  }
+  if (line.discountValue !== undefined && line.discountValue !== null) {
+    ensureNonNegativeNumber(line.discountValue, `lines[${index}].discountValue`);
+  }
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
   }
@@ -274,6 +294,7 @@ export const validateInitializeSalesInput = (body: any) => {
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
+  if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
@@ -339,6 +360,8 @@ export const validateInitializeSalesInput = (body: any) => {
 
 export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.workflowMode !== undefined) ensureWorkflowMode(body.workflowMode, 'workflowMode');
+  if (body.showOperationalDocsInSimple !== undefined) ensureBoolean(body.showOperationalDocsInSimple, 'showOperationalDocsInSimple');
+  if (body.allowCreditOverride !== undefined) ensureBoolean(body.allowCreditOverride, 'allowCreditOverride');
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.defaultARAccountId !== undefined) ensureOptionalString(body.defaultARAccountId, 'defaultARAccountId');
@@ -351,6 +374,7 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.defaultRefundAccountId !== undefined) ensureOptionalString(body.defaultRefundAccountId, 'defaultRefundAccountId');
   if (body.restockingFeeAccountId !== undefined) ensureOptionalString(body.restockingFeeAccountId, 'restockingFeeAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
+  if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');

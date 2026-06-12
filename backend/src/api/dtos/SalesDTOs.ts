@@ -39,6 +39,8 @@ export interface SalesMessagingAccountDTO {
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
+  showOperationalDocsInSimple: boolean;
+  allowCreditOverride: boolean;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -51,6 +53,7 @@ export interface SalesSettingsDTO {
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
+  allowOverpayment: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -84,11 +87,18 @@ export interface SalesOrderLineDTO {
   invoicedQty: number;
   returnedQty: number;
   unitPriceDoc: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   lineTotalDoc: number;
   unitPriceBase: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   lineTotalBase: number;
   taxCodeId?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   warehouseId?: string;
@@ -199,10 +209,14 @@ export interface SalesInvoiceLineDTO {
   lineCostBase?: number;
   stockMovementId?: string | null;
   description?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
 }
 
 export interface SalesInvoiceChargeDTO {
   chargeId: string;
+  /** CHARGE (adds to total, credits its account) or DISCOUNT (subtracts, debits its account). Defaults to CHARGE. */
+  kind?: 'CHARGE' | 'DISCOUNT';
   code?: string;
   name: string;
   amountDoc: number;
@@ -311,12 +325,19 @@ export interface SalesReturnLineDTO {
   uomId?: string;
   uom: string;
   unitPriceDoc?: number;
+  grossLineTotalDoc?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountAmountDoc?: number;
   unitPriceBase?: number;
+  grossLineTotalBase?: number;
+  discountAmountBase?: number;
   unitCostBase: number;
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
   taxCodeId?: string;
   taxRate: number;
+  priceIsInclusive?: boolean;
   taxAmountDoc: number;
   taxAmountBase: number;
   revenueAccountId?: string;
@@ -388,6 +409,8 @@ export class SalesDTOMapper {
     return {
       companyId: settings.companyId,
       workflowMode: settings.workflowMode,
+      showOperationalDocsInSimple: settings.showOperationalDocsInSimple,
+      allowCreditOverride: settings.allowCreditOverride,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
       defaultARAccountId: settings.defaultARAccountId,
@@ -400,6 +423,7 @@ export class SalesDTOMapper {
       defaultRefundAccountId: settings.defaultRefundAccountId,
       restockingFeeAccountId: settings.restockingFeeAccountId,
       allowOverDelivery: settings.allowOverDelivery,
+      allowOverpayment: settings.allowOverpayment,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
@@ -449,11 +473,18 @@ export class SalesDTOMapper {
       invoicedQty: line.invoicedQty,
       returnedQty: line.returnedQty,
       unitPriceDoc: line.unitPriceDoc,
+      grossLineTotalDoc: line.grossLineTotalDoc,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
+      discountAmountDoc: line.discountAmountDoc,
       lineTotalDoc: line.lineTotalDoc,
       unitPriceBase: line.unitPriceBase,
+      grossLineTotalBase: line.grossLineTotalBase,
+      discountAmountBase: line.discountAmountBase,
       lineTotalBase: line.lineTotalBase,
       taxCodeId: line.taxCodeId,
       taxRate: line.taxRate,
+      priceIsInclusive: line.priceIsInclusive,
       taxAmountDoc: line.taxAmountDoc,
       taxAmountBase: line.taxAmountBase,
       warehouseId: line.warehouseId,
@@ -572,6 +603,8 @@ export class SalesDTOMapper {
       lineCostBase: line.lineCostBase,
       stockMovementId: line.stockMovementId ?? null,
       description: line.description,
+      appliedPromotionId: (line as any).appliedPromotionId,
+      appliedPromotionName: (line as any).appliedPromotionName,
     };
   }
 
@@ -633,12 +666,19 @@ export class SalesDTOMapper {
       uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
+      grossLineTotalDoc: line.grossLineTotalDoc,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
+      discountAmountDoc: line.discountAmountDoc,
       unitPriceBase: line.unitPriceBase,
+      grossLineTotalBase: line.grossLineTotalBase,
+      discountAmountBase: line.discountAmountBase,
       unitCostBase: line.unitCostBase,
       fxRateMovToBase: line.fxRateMovToBase,
       fxRateCCYToBase: line.fxRateCCYToBase,
       taxCodeId: line.taxCodeId,
       taxRate: line.taxRate,
+      priceIsInclusive: line.priceIsInclusive,
       taxAmountDoc: line.taxAmountDoc,
       taxAmountBase: line.taxAmountBase,
       revenueAccountId: line.revenueAccountId,

@@ -20,8 +20,10 @@ The layout contains several functional tabs:
 - **Inventory**: Views live stock counts, units of measure, and SKU average cost valuations.
 - **AI CFO Advisor**: A side chat widget allowing you to chat directly with your company's live Gemini AI assistant. It reads your current Chart of Accounts, stock count, and receivables context to answer financial analysis questions instantly.
 
-## Layout Features
+## Layout & Language Support
 To provide a clean, premium visual preview, the outer system chrome (production top header, main sidebar, and standard floating AI widgets) is automatically bypassed when viewing the Apex Ledger page. It renders the mockup's built-in header, navigation, and sidebar tools in a full-screen layout.
+
+The dashboard layout is fully compatible with Right-to-Left (RTL) reading directions (e.g. when changing the application language to Arabic). Navigations, sidebars, forms, and charts adjust coordinates automatically to maintain a cohesive, aligned look in both directions.
 
 > [!IMPORTANT]
 > Because this page is now fully integrated with your database APIs, **adding, updating, or deleting records will modify your actual company databases**. Use with care during testing.

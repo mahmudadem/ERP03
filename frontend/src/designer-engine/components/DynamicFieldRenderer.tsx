@@ -12,6 +12,7 @@ import { PartySelector, ItemSelector, WarehouseSelector } from '../../components
 import { CustomerAccountSelector, VendorAccountSelector } from '../../components/shared/selectors/PartyAccountSelector';
 import { AccountSelector } from '../../modules/accounting/components/shared/AccountSelector';
 import { CostCenterSelector } from '../../modules/accounting/components/shared/CostCenterSelector';
+import { SettlementField } from './SettlementField';
 
 interface Props {
   field: FieldDefinition;
@@ -250,9 +251,26 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
     }
   };
 
+  // The settlement control is a self-titled composite widget (its own header,
+  // mode dropdown, modal). Render it full-width without the generic field label
+  // so the designer placement maps 1:1 to the shared SettlementBlock.
+  if (field.type === 'settlement') {
+    return (
+      <div className={`flex flex-col ${field.hidden ? 'hidden' : ''} ${className || ''}`}>
+        <SettlementField
+          field={field}
+          value={value}
+          onChange={onChange}
+          readOnly={field.readOnly || readOnly}
+        />
+        {error && <span className="mt-1 text-xs text-red-500">{error}</span>}
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col ${field.hidden ? 'hidden' : ''} ${className || ''}`}>
-      <label 
+      <label
         className="mb-1 text-xs font-medium text-gray-700"
         style={{
             color: style.color, 

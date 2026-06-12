@@ -58,6 +58,7 @@ export function documentUiToCanonical(
       case 'vendor-account-selector': return 'vendor-account-selector';
       case 'item-selector': return 'item-selector';
       case 'warehouse-selector': return 'warehouse-selector';
+      case 'settlement': return 'settlement';
       case 'currency-selector': return 'SELECT';
       case 'textarea': return 'TEXTAREA';
       case 'relation': return 'RELATION';

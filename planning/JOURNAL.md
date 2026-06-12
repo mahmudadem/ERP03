@@ -2,6 +2,878 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-13 — Custom Sandbox Icons (Clipboard Up/Down Trends & Enhanced 2Gears)
+
+**Context:** User requested previewing custom green/red clipboard trend icons for Sales and Purchases and enhancing the custom two gears icon on the dev comparison page first.
+
+**What was done:**
+- **Custom Clipboard Trend Icons:** Crafted `ClipboardUpTrendIcon` (with an emerald green up-trending arrow) and `ClipboardDownTrendIcon` (with a rose red down-trending arrow) inside `sidebarIcons.tsx`. Standardized SVG attributes to support default `width="24" height="24"` and parameter forwarding to prevent collapse.
+- **Enhanced TwoGears Icon:** Upgraded `TwoGearsIcon` to render 8 teeth on the primary gear and 6 teeth on the secondary gear using nested SVG rotation groups for precise alignment.
+- **Developer Sandbox Integration:** Added "Set 6: Selected Premium Layout" to the `ICON_PACKAGES` list in `IconsComparisonPage.tsx`. Cleaned up icon sizing classes in the matrix table.
+- **Verification:** Ran TypeScript typechecks and production builds successfully with 0 errors.
+
+**Files changed:**
+- `frontend/src/components/navigation/sidebarIcons.tsx`
+- `frontend/src/pages/dev/IconsComparisonPage.tsx`
+- `planning/done/219-custom-sandbox-icons.md`
+
+### Session: 2026-06-13 — Icons Comparison Sandbox Page
+
+**Context:** User requested a dev page to visually inspect and compare 5 different module/sidebar icon options on the same page.
+
+**What was done:**
+- **Created IconsComparisonPage.tsx:** Built an interactive comparison page in `frontend/src/pages/dev/` that displays the 10 main ERP modules across the 5 proposed icon sets in a comparative grid.
+- **Interactive Mock Sidebar Drawer:** Included a live sidebar simulator on the right side of the page, allowing the user to select any of the 5 presets and instantly preview how it updates the sidebar navigation drawer. Includes a copyable code block to export the config JSON.
+- **Routing Integration:** Registered `/dev/icons-comparison` in `routes.config.ts` and added its link under the "Dev" sidebar list in `useSidebarConfig.ts` (when dev navigation is active).
+- **Verification:** Ran TypeScript typecheck and production build successfully with zero errors.
+
+**Files changed:**
+- `frontend/src/pages/dev/IconsComparisonPage.tsx`
+- `frontend/src/router/routes.config.ts`
+- `frontend/src/hooks/useSidebarConfig.ts`
+
+### Session: 2026-06-13 — List Pages Premium UI/UX Parity & DatePicker Bouncing Fix (report 217 Follow-up)
+
+**Context:** Fixed filter bar bouncing and completed horizontal-scroll single-row layout standardizations across remaining list pages.
+
+**What was done:**
+- **DatePicker Popover Portal Fix:** Portaled the calendar dropdown in `DatePicker.tsx` to `document.body` with viewport-relative tracking. This prevents absolute elements from overflowing the horizontal scroll filter container, resolving bouncing layout shifts and vertical scrollbars. Added click-outside listener checks to guard the portaled calendar.
+- **Filter Bar Parity:** Standardized filters section on remaining list pages (`GoodsReceiptsListPage.tsx`, `PurchaseReturnsListPage.tsx`, `QuotationsPage.tsx`) to the high-density single-row horizontal scrolling style.
+- **Verification:** Ran TypeScript typecheck and production build successfully with zero errors.
+
+**Files changed:**
+- `frontend/src/modules/accounting/components/shared/DatePicker.tsx`
+- `frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx`
+- `frontend/src/modules/sales/pages/QuotationsPage.tsx`
+- `planning/done/217-list-pages-premium-ui-enhancements.md`
+
+### Session: 2026-06-13 (Main Shell Font and Sidebar Pivot)
+
+- **Goal:** Apply JetBrains Mono to main-shell mono/numeric/code surfaces, stop Apex cutover work, and reuse only the Apex accordion-sidebar look inside the production main shell.
+- **Owner decision:** Apex is no longer the production-shell cutover target. Do not continue Apex feature flag/cutover work unless explicitly reopened. Main shell remains production.
+- **What was done:** Added the global `--font-mono` token using JetBrains Mono, applied it to main-shell mono/code/tabular-number/number-input surfaces, aligned the user appearance mono preset, and applied Apex-inspired accordion row/child-rail/active-state styling to `SidebarSection` and `SidebarItem` only when `sidebarMode !== 'submenus'`.
+- **Preserved behavior:** `useSidebarConfig()` remains the source of truth. Sidebar permissions, tenant/module filtering, workflow hiding, routing, expand/collapse behavior, and flyout/submenus mode were not changed.
+- **Accounting impact:** UI chrome only. No posting, ledger, voucher, tax, inventory valuation, AR/AP, approval, period-lock, report, RBAC, tenant isolation, or data model behavior changed.
+- **Docs:** Added `docs/architecture/main-shell-chrome.md`, `docs/user-guide/navigation/main-shell-sidebar.md`, and completion report [218-main-shell-font-and-sidebar-pivot.md](./done/218-main-shell-font-and-sidebar-pivot.md). Updated `planning/ACTIVE.md` and `planning/PRIORITIES.md` to retire Apex cutover from current priorities.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report, raw-confirm, and SoD checks; existing Vite bundle/Browserslist warnings remain.
+- **Time spent:** ~0.6h.
+- **Next:** Manual visual QA in main-shell accordion mode, including Arabic RTL and compact layout; confirm flyout/submenus mode remains unchanged.
+
+### Session: 2026-06-13 — List Pages Premium UI/UX Enhancements (report 217)
+
+**Context:** User requested to implement the UI/UX enhancement proposal for Sales and Purchases list tables using `/ui-ux-pro-max` as the design knowledge base.
+
+**What was done:**
+- **Status & Payment Badges Glassy Styling:** Refactored status badge CSS classes across all 9 Sales and Purchase list views (`SalesInvoicesListPage.tsx`, `PurchaseInvoicesListPage.tsx`, `SalesOrdersListPage.tsx`, `PurchaseOrdersListPage.tsx`, `DeliveryNotesListPage.tsx`, `GoodsReceiptsListPage.tsx`, `SalesReturnsListPage.tsx`, `PurchaseReturnsListPage.tsx`, `QuotationsPage.tsx`). Applied curated, glassy HSL pastel background fills with inset border rings and high-contrast dark text.
+- **Grand Total Right-Alignment:** Updated `SalesInvoicesListPage.tsx` Grand Total column configuration (`grandTotalDoc`) to use `align: 'right'` to match standard financial scanability guidelines and bring it to parity with the other tables.
+- **Verification:** Built the frontend package successfully.
+
+**Files changed:**
+- `frontend/src/modules/sales/pages/SalesInvoicesListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseInvoicesListPage.tsx`
+- `frontend/src/modules/sales/pages/SalesOrdersListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseOrdersListPage.tsx`
+- `frontend/src/modules/sales/pages/DeliveryNotesListPage.tsx`
+- `frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx`
+- `frontend/src/modules/sales/pages/SalesReturnsListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx`
+- `frontend/src/modules/sales/pages/QuotationsPage.tsx`
+- `planning/done/217-list-pages-premium-ui-enhancements.md`
+
+### Session: 2026-06-12 — Sales Dashboard Quick Action Buttons (report 216)
+
+**Context:** direct user request: "in sales dashboad page: add sales order and sales return buttons next to + Create Invoice".
+
+**What was done:**
+- **Added Translation Keys:** Added localized labels for `createInvoice`, `createOrder`, `createReturn`, and `settings` under `sales.home` in `en/common.json`, `ar/common.json`, and `tr/common.json`.
+- **UI Button Implementation:** Updated `SalesHomePage.tsx` to import `Plus` and `useTranslation`, initializing `const { t } = useTranslation('common')`.
+- **Header Actions Restructuring:** Added `+ Create Sales Order` (outline, conditional on `showOperationalDocuments`), `+ Create Invoice` (primary indigo), `+ Create Sales Return` (outline), and `Settings` (outline with icon) next to each other.
+- **Verification:** Ran `tsc --noEmit` typecheck and `npm run build` production build, both successfully passing with zero errors.
+
+**Files changed:**
+- `frontend/src/locales/en/common.json`
+- `frontend/src/locales/ar/common.json`
+- `frontend/src/locales/tr/common.json`
+- `frontend/src/modules/sales/pages/SalesHomePage.tsx`
+- `docs/architecture/sales.md`
+- `docs/user-guide/sales/sales-hub.md`
+- `planning/done/216-sales-dashboard-header-actions.md`
+
+### Session: 2026-06-12 — Allocation grid GL display, document-specific row colors, shared charges component (report 215)
+
+**Context:** Owner-delegated follow-ups from the SI/PI charges work (209/210): "do those while I go and come back."
+
+**What was done:**
+- **GL Account column fix (SI + PI):** the allocation grid showed raw account ids for charge rows loaded
+  from the server (only in-session rows had a label). Added `useAccounts()` to both pages; `accountLabelFor`
+  now resolves the id to `CODE — Name` via `getAccountById`, falling back to the id only if unresolved.
+- **Row colors → document-specific:** `ClassicLineItemsTable` `rowColors` is now in-memory only (removed the
+  `localStorage` read/persist + key), matching `highlightedRows`. Reverses the Task 201/214 "persisted
+  per-table preference" call per owner request — colors no longer bleed across all documents of a type.
+- **Shared `DocumentChargesAllocation` component:** extracted the ~400 duplicated lines of allocation grid +
+  charge/discount modal into `components/shared/DocumentChargesAllocation.tsx` (`DocumentChargesAllocation` +
+  `DocumentChargeModal`). Purely presentational — pages keep state/math/posting and pass display rows +
+  callbacks; per-module diffs (i18n namespace, GL classifications, context labels) are props. Removed the
+  now-orphaned imports from both pages.
+
+**Accounting boundary:** UI only — no posting/tax/AR-AP/settlement/ledger change; charge state, totals math,
+and `buildPayload` charge maps untouched.
+**Verification:** `tsc --noEmit` clean; `npm run build` green.
+**Report:** [done/215-allocation-grid-gl-display-rowcolor-shared-component.md](./done/215-allocation-grid-gl-display-rowcolor-shared-component.md).
+**Manual QA needed:** report 215 script (GL display on reopen, row-color isolation across documents, SI/PI charge parity).
+
+### Session: 2026-06-12 — Sales Hub Split-Column Layout Polish & Reorganization (Task 213 Follow-up)
+
+**Context:** Owner requested reorganizing the Sales Overview page to match the classic split-column design (separate SO/INV tables, Top Clients sidebar), while keeping Quick Links, the Recent Activity log, and the new metadata columns.
+
+**What was done:**
+- **Reorganized Grid Layout**: Split page content below the KPIs into a left-column for main lists and a right-column (sidebar) for metadata and summaries.
+- **Dedicated Orders & Invoices Tables**: Removed the unified recent activity list and implemented separate lists for **Recent Sales Orders (SO)** and **Recent Sales Invoices (INV)**, showing all 9 columns of requested metadata (Created By, Created At, Approved At, Currency, etc.) in a high-density, horizontal scroll format.
+- **KPI Card Polish**: Updated the KPI card component to match the screenshot style: text-focused styling with a currency suffix, left HSL accent lines, and color-coded status dots (Total Revenue → green dot, Outstanding AR → red dot, Overdue → red dot, Pending → slate dot).
+- **Sidebar Integration**:
+  - Moved **Quick Navigation** to a compact 2-column sidebar grid.
+  - Built a compact **Recent Activity feed** timeline widget featuring document icons, creator details, formatted amounts, and status badges.
+  - Implemented card-based **Top Client Accounts** showing dual-language customer names, balances, and nested bottom progress lines.
+- **Verification**: Ran `tsc --noEmit` and `npm run build` with zero compiler/bundler errors.
+
+**Files changed:**
+- `frontend/src/modules/sales/pages/SalesHomePage.tsx`
+- `docs/architecture/sales.md`
+- `docs/user-guide/sales/sales-hub.md`
+- `planning/done/213-sales-hub-redesign.md`
+
+### Session: 2026-06-12 (Shared line-table: numeric math, no-negatives, per-document highlight — report 214)
+
+**Context:** Owner requests on the shared `ClassicLineItemsTable` (SI/PI/SO/DN/Quote/GRN/PR):
+(1) no negative numbers / no characters in numeric inputs; (2) allow arithmetic (`5+5`→10, `5*5`→25,
+`100-5`→95); (3) row highlight should be document-specific, not shared across all documents of a type.
+
+**What was done:**
+- `NumericCell`: `onChange` strips chars outside `[0-9.+\-*/() ]`; on blur a new `evaluateNumericExpression()`
+  (shunting-yard, no eval) evaluates the expression, trims float noise, clamps negatives to 0, and reverts
+  on invalid input. Enter→focus-advance→blur already triggers it.
+- Row highlight made **in-memory only** (removed the localStorage read/persist + unused key): it was
+  persisted by row index under a shared tableId, so it bled across every document of that type. Row
+  **colors** left unchanged (deliberate persisted per-table preference, Task 201).
+
+**Verification:** typecheck + build green; evaluator unit-checked; live browser on SI line table —
+`5+5`→`10.00`, `abc9`→`9`, `-5`→blank/0.
+**Report:** [done/214-shared-table-numeric-math-and-per-doc-highlight.md](./done/214-shared-table-numeric-math-and-per-doc-highlight.md).
+
+### Session: 2026-06-12 — Sales Hub Page Redesign (Task 213)
+
+**Trigger:** Owner requested the Sales Overview page be refactored into a proper module hub.
+Requirements: date+time on all timestamps, quick-links grid, full pipeline overview (SI/SO/DN/SR/Q),
+module settings summary panel, per-section in-memory caching with 60s TTL. Follow-up feedback requested compacting the quick links, always showing SO/DN documents, removing the Settings tile, making document pipeline badges act as clickable filters to their respective list pages, and polishing page header styling.
+
+**What was done:**
+Completely rewrote and refined `frontend/src/modules/sales/pages/SalesHomePage.tsx`. Modified Sales list pages to support pre-filtered navigation state.
+
+Key changes:
+- **Cache layer:** module-level `Map<string, CacheEntry>` with `cacheGet`/`cacheSet` helpers. Each section (settings=5 min, SI/SO/DN/SR=60s) has its own cache slot. Per-section `Refresh` button force-invalidates only that slot.
+- **`formatDateTime()` helper:** renders all ISO timestamps as `Jun 12, 2026, 02:34 PM` using `Date.toLocaleString()`. Used on recent-activity rows and "Last updated" header stamp.
+- **Premium Page Header**: Rebuilt layout to feature a structured graphic container using the logical `Layers` icon, a contextual "Module Dashboard" label pill, a clock metadata indicator next to last updated time, and a bottom dividing line.
+- **Quick Links grid**: Compact row with 5 horizontal tiles (Invoices, Orders, Delivery Notes, Quotations, Returns) always visible. Removed conditional settings checks and the duplicate settings tile.
+- **Interactive Badges in Pipeline**: Status badges are now interactable `<button>` elements with logical cursor pointer and hover scaling. Clicking a badge triggers `onBadgeClick` to navigate to the respective list page passing `{ state: { statusFilter: status } }`.
+- **List Page Seeding**: Modified `SalesInvoicesListPage`, `SalesOrdersListPage`, `DeliveryNotesListPage`, and `SalesReturnsListPage` to read the state filter (`location.state.statusFilter`) on mount and react dynamically to router state updates, clearing the state from history after load.
+- **KPI cards:** Total Revenue / Outstanding AR / Overdue (danger accent) / Pending Approval (warning accent). Each card shows a colored icon, accent color on the value, and a sub-label.
+- **Settings summary panel:** 10-row key-value table — workflow mode, number prefixes+sequences, payment terms, direct-invoicing/credit-override/over-delivery flags.
+- **Recent activity table:** merges SI+SO+SR sorted by `updatedAt desc`, top 10. Columns: Number | Customer | Type badge | Status badge | Amount | Date & Time.
+- **Top customers:** visual percentage bar behind each row (emerald fill scaled to max customer revenue).
+- **Skeleton loading:** `animate-pulse` placeholders in every section instead of "..." strings.
+- **Boot sequence:** checks module initialization first, then fetches settings, then parallel-fetches SI+SR (always) and SO+DN (only if operational mode).
+- **TS fix:** removed `{ limit: 100 }` from `salesApi.listReturns()` call — `ListSalesReturnsOptions` has no `limit` field.
+
+**Files changed:**
+- `frontend/src/modules/sales/pages/SalesHomePage.tsx`
+- `frontend/src/modules/sales/pages/SalesInvoicesListPage.tsx`
+- `frontend/src/modules/sales/pages/SalesOrdersListPage.tsx`
+- `frontend/src/modules/sales/pages/DeliveryNotesListPage.tsx`
+- `frontend/src/modules/sales/pages/SalesReturnsListPage.tsx`
+- `docs/architecture/sales.md`
+- `docs/user-guide/sales/sales-hub.md`
+- `planning/done/213-sales-hub-redesign.md`
+
+**TS check:** passed (0 errors after both original and follow-up updates)
+**Report:** [done/213-sales-hub-redesign.md](./done/213-sales-hub-redesign.md)
+
+**Next:** Manual QA / review.
+
+### Session: 2026-06-12 (Charges & Discounts i18n — Arabic + Turkish)
+
+**Context:** The SI/PI allocation-grid charges/discounts UI (reports 209/210) used English `t(key, fallback)`
+calls, so it rendered English in Arabic/Turkish — out of step with today's translation focus.
+
+**What was done:** Added ~26 keys × 2 modules × 3 languages to `{en,ar,tr}/common.json` under
+`sales/purchases.invoiceDetail.{charges,allocation}` (buttons, tags, columns, modal labels + placeholders +
+debit/credit hint, empty states, allocation titles). The old unreferenced `sales.invoiceDetail.charges`
+leaf string was safely converted to a namespace. Merged via a one-off Node script (deleted after).
+
+**Verification:** JSON validated for all 3 languages; frontend build green. UI strings only — no logic change.
+**Report:** [done/212-charges-discounts-i18n-ar-tr.md](./done/212-charges-discounts-i18n-ar-tr.md).
+
+### Session: 2026-06-12 (Jest `uuid` ESM shim — test-infra fix)
+
+**Context:** While verifying the PI work, `jest sales` kept reporting `RecurringInvoiceUseCases.test.ts`
+failing to load with `SyntaxError: Unexpected token 'export'` from `node_modules/uuid`. Root cause:
+`uuid@14` is ESM-only and ts-jest's CommonJS runtime can't parse it, so **any suite importing a file
+that uses uuid silently fails to load** (9 production files import it). RecurringInvoice's 23 tests
+never ran — regressions there were invisible.
+
+**Fix:** Added `backend/src/tests/shims/uuidShim.ts` (`v4` via Node `crypto.randomUUID`) and mapped
+`^uuid$` → the shim in `jest.config.js` (`moduleNameMapper`). Tests only; production keeps real uuid.
+
+**Verification:** `jest RecurringInvoiceUseCases` now 23/23. **Full backend suite green: 146 suites
+passed, 0 failed, 1365 tests passing** (also confirms the SI+PI charges/discounts work regressed nothing,
+and the previously-noted AI-assistant test failures no longer appear).
+
+**Report:** [done/211-jest-uuid-esm-shim-test-infra.md](./done/211-jest-uuid-esm-shim-test-infra.md).
+
+### Session: 2026-06-12 (Purchase Invoice Charges & Discounts — PI↔SI parity)
+
+**Context:** Owner goal "PI needs to match SI." After SI got the allocation-grid charges/discounts
+(report 209), Purchase Invoice still had **no charges concept at all**. This session mirrored the
+whole feature onto PI, full-stack, with the GL sides flipped for the purchases direction.
+
+**What was done:**
+- Backend: added `PurchaseInvoiceCharge` + `kind: CHARGE|DISCOUNT` to the domain entity (signed
+  totals, tax-free), DTO + validator, create/update/post use-cases. Posting mirrors SI with flipped
+  sides: **CHARGE → Debit** its account (default purchase-expense; e.g. freight/landed cost),
+  **DISCOUNT → Credit** its account. AP credit = grand total nets both, so the voucher balances.
+- Frontend: PI page now has the same allocation grid + Add Charge/Add Discount modal as SI
+  (`renderAllocationGrid`/`renderChargeModal`), signed totals, save/load mapping, API payload types.
+- Test: new `6b` in PurchasePostingUseCases (charge debit + discount credit, balanced 70=70).
+
+**Verification:** backend + frontend typecheck green; frontend build green; `jest PurchasePostingUseCases`
+15/15. **Live browser** (preview :5199, logged in as qwe@qwe.com): `/purchases/invoices/new` shows the
+allocation grid with ADD CHARGE / ADD DISCOUNT and the modal opens with GL Account/Amount/Description/Save.
+
+**Report:** [done/210-purchase-invoice-charges-discounts-parity.md](./done/210-purchase-invoice-charges-discounts-parity.md).
+**Note (git):** left uncommitted — the branch is a large multi-agent WIP bundle with files changing
+under me; work is on disk + documented for the owner to commit/coordinate.
+
+### Session: 2026-06-12 (Sales Invoice whole-invoice Charges & Discounts — Allocation Grid)
+
+**Context:** The owner noticed "charges" wasn't visible in Sales. Investigation showed the
+charges feature was **backend-complete but UI-stubbed** — the page rendered only an empty
+allocation-grid placeholder (Task 188), so no charge could be entered, and there was no
+whole-invoice discount at all. Owner spec: keep the allocation grid; add **Add Charge** and
+**Add Discount** buttons that open one modal (GL account defaulted from settings, amount,
+description); saved rows show in the grid and feed the totals. Confirmed treatment: **flat,
+tax-free** adjustments (no line-tax re-proration).
+
+**What was done (full-stack):**
+- Model: `SalesInvoiceCharge.kind: 'CHARGE' | 'DISCOUNT'` (defaults CHARGE). Amounts stay
+  positive; sign applied by kind across all 4 totals paths (entity ctor, calc service, inline
+  post-totals, frontend memo).
+- Posting: CHARGE credits its account (default revenue) via `chargeCredits`; DISCOUNT debits
+  its account (default `defaultSalesExpenseAccountId`) via the existing `discountDebits` bucket.
+  AR = grand total (auto-nets), so the voucher balances — no new ledger primitives.
+- Frontend: allocation grid restored; two buttons → shared modal; rows with Charge/Discount tag,
+  account, amount, edit/delete; read-only when posted; rail Discount line includes header discounts.
+- Test: new `10d` (header discount debits discount acct, reduces total, balances). `makeSI`
+  helper made kind-aware. Existing charge test `10b` still green.
+
+**Verification:** backend + frontend typecheck green; frontend build green; `jest SalesPostingUseCases`
+23/23; `jest sales` 243 pass (only the pre-existing `uuid`/RecurringInvoice suite-load failure remains).
+
+**Report:** [done/209-sales-invoice-charges-discounts-allocation-grid.md](./done/209-sales-invoice-charges-discounts-allocation-grid.md).
+**Follow-up:** mirror charges/discounts onto Purchase Invoice (PI has no charges at all today).
+
+### Session: 2026-06-12 (Sidebar Full Translation Sweep)
+
+**Context:** The product owner noticed that `"Products & Services"` and `"Tools"` and many other sidebar menu items were still appearing in English even in Arabic mode.
+
+**Root causes identified:**
+1. `"Products & Services"` was never in `labelKeyMap` → always fell through to the raw English string
+2. `"Tools"` was mapped to `sidebar.tools` but that key didn't exist in **any** locale file
+3. ~30 other sub-menu items (Sales/Purchases/Inventory children) were in the map but missing matching locale keys in some files
+4. **Cannot fix by i18n:** Dynamic form names like `"Sales Invoice (Direct) - Copy"` come from Firestore `form.name` field — would need `nameAr`/`nameTr` DB fields as a v2 feature
+
+**What was done:**
+- **`useSidebarConfig.ts`** — Added all missing entries to `labelKeyMap`: `productsAndServices`, `formsManagement`, `'UI Lab 🎨'`, Goods Receipts, Purchase Invoices/Returns, AP/AR Aging, Vendor/Customer Statement, Sales/Purchases Analytics, Customer/Vendor Groups, Opening Stock Documents, Adjustments, Transfers, Stock Levels, Movements, Low Stock Alerts, Unsettled Costs, Inventory Valuation, Categories, UOM Master, Consolidated TB, Budgets
+- **`en/common.json`** — Added 6 missing keys: `tools`, `productsAndServices`, `formsManagement`, `home`, `search`, `uiLab`
+- **`ar/common.json`** — Same 6 keys in Arabic: الأدوات، المنتجات والخدمات، إدارة النماذج، الرئيسية، بحث، مختبر الواجهة
+- **`tr/common.json`** — Same 6 keys in Turkish: Araçlar, Ürünler ve Hizmetler, Form Yönetimi, Ana Sayfa, etc.
+- **`Sidebar.tsx`** — Simplified search placeholder to use `t('sidebar.search', ...)` call
+
+**Result:** TypeScript typecheck passed with zero errors. All static sidebar labels now translate. Dynamic form names noted as v2 work.
+
+**Time spent:** ~25 min
+
+### Session: 2026-06-12 (Sales Invoice Layout, Fonts, and Translation Polish)
+
+**Context:** The product owner requested completing the remaining layout, font integration, and translation alignments for Arabic (RTL) and other locales, including the new "New" footer action, and cleaning up duplicate codes.
+
+**What was done:**
+- **Font Fallbacks:** Added `'Cairo'` fallback to `--font-sans` in `globals.css` and `userAppearance.ts` (both system and mono), and mapped `system` in `tableFontClasses` to `var(--app-font-family)` in `ClassicLineItemsTable.tsx`.
+- **RTL Swap:** Swapped the DOM layout order of Currency Selector and Exchange Rate widget inside `SalesInvoiceDetailPage.tsx` dynamically in RTL mode so the Currency Selector aligns to the left of the Exchange Rate widget.
+- **Redesigned Exchange Rate Widget:** Renamed/translated redesigned widget label, removed legacy exchange rate widget and wrapper container, and added base currency parity translation formats.
+- **Footer "New" Action:** Added borderless text-only `"New"` button in the footer actions strip (posted and edit/draft views) triggering the dirty-guarded reset function.
+- **Sidebar Translations:** Replaced hardcoded tooltips (pin, unpin, close) and "MODULES" header with translations in `Sidebar.tsx`.
+- **Locale sweeping:** Moved status fields (`pendingApprovalReadonly`, `draftWorking`) under default namespace, removed duplicate `sales` translation blocks inside `accounting.json`, translated missing sidebar menu items, and fixed corrupted characters in Turkish locale file.
+- **Documentation:** Created user-guide page `docs/user-guide/sales/exchange-rate-and-new-button.md`, updated technical documentation in `docs/architecture/sales.md`, and created completion report `planning/done/208-sales-invoice-translation-and-layout-fixes.md`.
+- **Verification:** Ran typechecks and production builds successfully.
+- **Time spent:** ~2.5h.
+
+### Session: 2026-06-12 (Currency Exchange Widget Premium Redesign)
+
+**Context:** The product owner requested a redesigned, premium exchange rate component. The redesign places two inputs (Parity and Equivalent) inside a single border along with the center status indicator dot. It must be compact (height `h-[34px]`, single column) to fit the document header layout without breaking density.
+
+**What was done:**
+- Implemented `CurrencyExchangeFieldPremium` locally in `SalesInvoiceDetailPage.tsx`.
+- The widget renders:
+  - If transaction currency matches base currency (same currency): a disabled container with a green status dot showing: `🟢 1 [CURR] = 1.0000 [BASE] (Base Currency Parity)` inside the border.
+  - If currencies differ: a dual-input flex container inside the border.
+    - Left side: Parity input prefixed by a small uppercase `Parity` label. (Unnecessary currency names like `TRY →` and `SYP` were removed to clean up the input).
+    - Center: Status dot showing `🟢` (system matching) or `🔵` (manually overridden). Clicking the status dot resets it to the system rate (if overridden) or triggers a manual re-fetch/refresh (if system rate).
+    - Right side: Equivalent input prefixed by a small uppercase `Equivalent` label. (Unnecessary currency names like `SYP →` and `TRY` were removed).
+- Added live bi-directional calculation mapping: editing either input updates the other dynamically (`parity = 1 / equivalent`, `equivalent = 1 / parity`).
+- Synced state with parent `form.exchangeRate` safely via focused-input check to avoid cursor jumps.
+- Mounted both the old `CurrencyExchangeWidget` and new `CurrencyExchangeFieldPremium` side-by-side inside `SalesInvoiceDetailPage.tsx` for easy visual comparison.
+- Fixed the Currency Selector caching bug: Added `useQueryClient` to invalidate React Query `['company-currencies']` cache in both shared and accounting `CompanyCurrencySettings.tsx` components upon enabling/disabling currencies. This ensures selectors update immediately in real-time.
+- Verified compilation and static checks: typecheck and production build pass with exit code 0.
+
+**Next Recommendation:** Ask the product owner to review the redesigned layout side-by-side on the Sales Invoice page and decide if we can replace the legacy widget.
+
+### Session: 2026-06-12 (Task 204 Line-Discount QA — bugs fixed + ghost-line explained)
+
+**Context:** Interactive manual QA of the Task 204 line-discount feature on a
+template-seeded tenant. Found and fixed two real bugs; resolved a reported
+"ghost line" mystery as expected behavior; made two shared-table UX fixes.
+
+**Bugs fixed:**
+1. **Sales Settings missing "Default Sales Discount Account" field.** Posting any
+   discounted Sales Invoice threw `Default sales expense account is required…`
+   (`INFRA_999`). `SalesSettings.defaultSalesExpenseAccountId` was plumbed
+   end-to-end but never rendered in the UI (Task 184 flagged it; never done).
+   Added the `AccountSelector` field to Sales Settings → Account Defaults
+   ([SalesSettingsPage.tsx](../frontend/src/modules/sales/pages/SalesSettingsPage.tsx)).
+2. **Inclusive-tax + discount GL imbalance.** Posting `qty 1 × 100, 5% inclusive,
+   $10 discount` failed: `voucher not balanced: debit=99.52, credit=99.53`.
+   Revenue/discount/tax were each rounded independently from `1/1.05` ratios, so
+   the residue didn't cancel. Fixed by deriving the discount debit as the
+   balancing plug (`revenueCreditBase − lineTotalBase`) in
+   [SalesInvoiceUseCases.ts](../backend/src/application/sales/use-cases/SalesInvoiceUseCases.ts).
+   Added regression test `10c` in `SalesPostingUseCases.test.ts`. All 32 sales
+   invoice/posting/DTO tests green.
+
+**"Ghost line" — NOT a bug.** A reported duplicate line (same item as line 1,
+qty ≈ real÷5, price 0, appearing only after Save) was traced to the **free-goods
+promotion** engine: an active `BUY_X_GET_Y` rule ("buy 5 get 1 free") on the
+test items. `CreateSalesInvoiceUseCase` correctly appends the reward line. The
+÷5 qty was the tell. Several wrong hypotheses (React key reuse, UOM conversion,
+substring auto-select) were chased first before the ÷5 pattern pointed at the
+promotion. To prevent future confusion, free-goods lines are now **badged
+`FREE • PROMO`** in the line grid (backend DTO now passes
+`appliedPromotionId`/`appliedPromotionName`; SI page renders the badge in edit +
+posted views).
+
+**Shared-table UX fixes (owner-requested):**
+- **Ghost-proofing / stable keys:** `ClassicLineItemsTable` gained a `getRowKey`
+  prop; SI lines carry a stable `_uid` so stateful cell inputs are never reused
+  across rows (latent React index-key bug — defensive, not the promo cause).
+- **Scroll fix:** the line body is now a proper flex scroll region
+  (`flex flex-col` wrapper + `flex-1 min-h-0` body); SI drops a broken
+  `[&>div:first-child]` height override and passes `maxBodyHeight="none"`. All
+  25 working rows scroll smoothly from form open (was stuck in a 1–19 / 7–25
+  slice). `minEditRows = 25` kept per owner preference.
+
+**Deferred task logged:** [tasks/per-item-promotions-from-item-card.md](./tasks/per-item-promotions-from-item-card.md)
+— manage promotions from the Item Card (per-item) in addition to the system-wide
+Promotions page; one rule store, two UIs.
+
+**Still open (out of scope this session):** Purchases-side line discount has no
+GL posting wiring yet (PI/PO/PR domain math is correct, but no discount account
+resolution mirroring `resolveSalesDiscountAccount`); end-user/architecture docs
+for line discount. The 7-page line-discount QA (SO/Quote/SR/PI/PO/PR) was paused
+after the SI deep-dive.
+
+**Verification:** backend + frontend typecheck green; 32 sales tests green;
+production build green.
+
+### Session: 2026-06-12 (Discount Type Currency Label Fix)
+
+- **Goal:** Fix line discount type cells and picker options showing a hardcoded `$` while the document currency is `SYP`.
+- **What was done:** Made the shared `DiscountTypeSelector` accept the active document `currencyCode`, wired it through Sales Invoice, Sales Order, Quotation, Sales Return, Purchase Invoice, Purchase Order, and Purchase Return, and replaced read-only `$` fallbacks with the document currency.
+- **Accounting impact:** Display-only. No discount math, taxable base, DTO, posting, ledger, AR/AP, inventory valuation, approval, period-lock, or audit behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed; scoped hardcoded `$` search for discount amount display returned no matches.
+- **Docs:** Added [205-discount-type-currency-label.md](./done/205-discount-type-currency-label.md).
+- **Time spent:** ~0.3h.
+- **Next:** Manual visual QA on SI/PI line discount type picker with `SYP` document currency.
+
+## 2026-06-11 (Thu) — Line Table Feature Sweep + Purchase/SO/SR Line Discount (Task 204)
+
+**Task:** Two threads in one session: (1) shared `ClassicLineItemsTable` UX polish across every native document page; (2) vertical-slice **line discount** feature for Purchases (PI / PO / PR) and Sales (SO / SR) — Sales Invoice and Quotation already had it.
+**Agent:** Claude (interactive). **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/204-line-table-feature-sweep-and-purchase-line-discount.md](./done/204-line-table-feature-sweep-and-purchase-line-discount.md).
+
+**What changed (shared line table — all detail pages benefit):**
+- Enter key advances the focused cell left-to-right per row, wraps row-to-row, scrolls focused row into view.
+- Numeric cells: min 2 decimals on display (`25 → "25.00"`), preserve extra precision (`25.575 → "25.575"`), render blank when value is 0 (still 0 in data).
+- Cell content auto-selects on focus.
+- Computed cells gained `solveFromTotal(value, row, index)` API → SI/SO/Quotation/PI/PO/PR/SR back-solve unit price from Line Total / Net (discount + inclusive/exclusive tax aware).
+- Settings modal: Column Order (per-table ↑/↓), table font, line-color-1/2 alternating row colors. Row coloring switched to inline RGBA to bypass Tailwind JIT class-ordering issues.
+- Tabular trash column removed (delete still available via right-click).
+- JetBrains Mono wired through Tailwind `font-mono` (was already preloaded).
+
+**What changed (per-page selectors + parity):**
+- New typable combobox selectors: `TaxCodeSelector` (with modal + empty-state setup CTA linking to `/settings/tax-codes`), `DiscountTypeSelector` (% / $ / None with modal fallback for unrecognized input). Borderless + inherit-font in cells.
+- Tax-code and discount selectors auto-disabled on rows without an item (chevron hidden).
+- Clearing the Item resets the row (qty/price/uom/tax/discount/etc.).
+- Default qty = `0` (blank cell) instead of `1`.
+- Item name inherits the table's font-size and table-font preferences.
+- Operational-workflow banner on SI converted to a header icon button (tooltip on hover, modal on click).
+- Rail Totals enlarged + Subtotal / Discount / Tax / Grand Total (always with Grand Total Base).
+
+**What changed (line discount — engine):**
+- Domain entities added `discountType` / `discountValue` and compute `discountAmountDoc/Base` + `grossLineTotalDoc/Base`. Tax is calculated on **post-discount net** (EU VAT Directive Art. 79(a) — standard trade-discount treatment). Inclusive-tax + discount split correctly (`postDisc / (1+t)`).
+- Added to: `PurchaseInvoice`, `PurchaseOrder`, `PurchaseReturn`, `SalesOrder`, `SalesReturn` (SI and Quote already had it).
+- Frontend API types, page columns, save/load mappers, back-solve helpers all updated to match.
+- PR / SR inherit discount from their source PI / SI line when sourced from `AFTER_INVOICE`.
+
+**Tests:** 15 new domain tests in `src/tests/domain/purchases/{PurchaseInvoice,PurchaseOrder,PurchaseReturn}.test.ts` (PERCENT, AMOUNT, clamp-at-gross, inclusive-tax-with-discount, round-trip, zero-discount equivalence). All green.
+
+**Accounting boundary:** Engine math is the source of truth; use-cases forward `discountType` / `discountValue` only — they never precompute the discount amount. Frontend pages keep their own live-preview compute (for the UI back-solve to feel instant) but the server-recomputed values are what posts to the ledger.
+
+**Out of scope (intentional):** GoodsReceipt (qty-only doc); cash/settlement discount (different mechanism, post-invoice); `docs/architecture/*` + `docs/user-guide/*` (separate task — only `planning/done/204` + this JOURNAL entry + ACTIVE update done).
+
+**Verification:** Backend + frontend typecheck green throughout. Purchases domain test suite passes (15/15 incl. 8 new discount cases). Manual QA per the report's checklist.
+
+**Next:** End-user docs for line discount (`docs/user-guide/sales/line-discount.md`, `docs/user-guide/purchases/line-discount.md`); update `docs/architecture/sales.md` and `docs/architecture/purchases.md` to call out the new field. Then full manual QA per the script in 204's report.
+
+## 2026-06-10 (Wed) — Document Scaffold True Template Adoption (Task 202, Phases 1–3)
+
+**Task:** Audit + fix: make all native Sales/Purchases document pages actually run on the shared `DocumentDetailScaffold` named sections instead of the legacy escape hatch.
+**Agent:** Claude (Fable 5). **Branch:** `feat/overpayment-credit-balance`. **Plan:** [tasks/202-document-scaffold-true-template-adoption.md](./tasks/202-document-scaffold-true-template-adoption.md). **Report:** [done/202-document-scaffold-true-template-adoption-phases-1-3.md](./done/202-document-scaffold-true-template-adoption-phases-1-3.md).
+
+**Audit verdict (start of session):** the template existed (Task 197) but zero pages used its named slots — all 8 consumers passed free-form `children`/`sideRail`; Sales Invoice (the reference) never used the template at all and carries its own duplicated shell; Quotation had no shell. Owner decisions: template first → PI pilot → rollout → SI last; Quotation excluded; keep the legacy props as convention.
+
+**What changed:**
+- Phase 1 (`f6ee6ea4`): template self-parity with SI — footer totals strip redesigned to SI's boxed grid, rail-state-aware footer slots, new `banner` body slot + `DocumentStatusBanner`/`DocumentNoticeBanner`, lines/secondary slot flex fixes, `DocumentField` lock icon, `cardClassName` passthrough. Confirmed SI's odd shades (`slate-205` etc.) are dead Tailwind classes — not copied.
+- Phase 2 (`a193ddd4`): Purchase Invoice (draft + view) on strict named slots; SI's rail-aware footer behavior adopted; new EN/AR/TR footer status keys. Migration fixed the 2xl rail grid bug (cards were collapsing into one custom slot).
+- Phase 3 (`fa683ad8`): SO, DN, SR, PO, GRN, PR migrated; GRN **posted view** newly adopted the scaffold (was a plain page); SR/PR headers adopted `DocumentHeaderGrid`; SO credit-override + PR unpost dialogs moved out of the body flow. Zero legacy scaffold usage remains in `frontend/src/modules`.
+- Docs: [docs/architecture/document-scaffold.md](../docs/architecture/document-scaffold.md) updated (banner slot, footer function content, adoption status, legacy-compat rule).
+
+**Accounting boundary:** UI/layout only. No posting, tax, settlement, AP/AR, inventory valuation, approval, period-lock, audit, DTO, or ledger behavior changed.
+
+**Verification:** frontend typecheck after each phase; production build after Phases 2 and 3 (check:reports / check:no-confirm / check:sod-approve included) — all green. Legacy-usage grep sweep clean.
+
+**Follow-up same day (`ea4f26c0`):** owner QA noticed SO's rail still looked unlike SI. Standardized the rail card *interiors* too: new template primitives `DocumentRailFocus` / `DocumentRailKeyValueList` / `DocumentRailChecklist` / `DocumentRailTotals` (SI light rows + dark Grand Total box), consumed by PI, SO, DN, SR, PO, GRN, PR. Typecheck + build green.
+
+**Phase 4 same day (`73245f21`, owner-directed):** Sales Invoice itself rebuilt on the template with strict named slots; deleted its duplicated shell (rail state, drawer, edge button, sticky footer, topbar, local Pill/Field/CompactCard) — 622 deletions / 292 insertions. Settlement QA (report 194) was NOT run first, per explicit owner instruction; if it fails, retest against `ea4f26c0` to attribute. Parallel-session Task 203 (UOM selector) checkpointed as `5b727763` before the Phase 4 commit. Typecheck + production build green.
+
+**Next:** Manual QA per [QA-QUEUE.md](./QA-QUEUE.md) (report 202 script), settlement QA (report 194), then Task 202 Phase 4 — rebuild Sales Invoice on the template.
+
+## 2026-06-09 (Tue) — Native Document Shared Table And Action Tray
+
+**Task:** Task 200 — make the shared line-items table and top action tray part of the native document scaffold/template across Sales and Purchases.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Plan:** [tasks/200-native-document-table-and-section-parity.md](./tasks/200-native-document-table-and-section-parity.md). **Report:** [done/200-native-document-table-and-section-parity.md](./done/200-native-document-table-and-section-parity.md).
+
+**Checkpoint commit before starting:** `14310574` (`feat(ui): checkpoint native document scaffold parity [ACTIVE-196]`) after `npm --prefix frontend run typecheck` passed.
+
+**What changed:**
+- Upgraded `ClassicLineItemsTable` with GVR-style row context menu actions: copy, paste, insert row, delete, and highlight.
+- Added table context actions from the empty `#` header cell: copy, paste, clean, export, import, and UI selector.
+- Added resizable columns saved to `localStorage` per table/page/user via stable `tableId` values.
+- Added local table UI preferences for classic/web layout, alternating row colors, text size, and number font.
+- Suppressed placeholder text inside table cells so empty cells display blank until filled.
+- Wired SI, PI, SO, DN, SR Direct, Quotation, PO, GRN, and PR tables with stable table IDs and filled-row predicates.
+- Added `DocumentActionTray` to `DocumentDetailScaffold`; scaffold now owns the top compact icon cluster.
+- Updated English/Arabic/Turkish locale keys, architecture docs, Sales/Purchases user guides, ACTIVE, PRIORITIES, and QA queue.
+
+**Accounting boundary:** UI/data-entry parity only. No posting, tax, AP/AR, settlement, inventory valuation, COGS, approval, period-lock, audit, backend DTO, or repository behavior changed. Allocation remains placeholder/display-only until the controlled allocation contract exists.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed after shared table work.
+- `npm --prefix frontend run typecheck` passed after page wiring.
+- `npm --prefix frontend run typecheck` passed after resizing/i18n/action-tray changes.
+- `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, and `check:sod-approve`; existing bundle/Browserslist/baseline/dynamic-import warnings remain.
+- `graphify update .` attempted but `graphify` is not available on this PowerShell PATH.
+
+**Time spent:** ~4.5h.
+
+**Next:** Manual QA from [QA-QUEUE.md](./QA-QUEUE.md): Classic + Windows pass for row/table context menus, resize persistence, UI selector persistence, placeholder-free cells, selector blending, and linked-source row-action disabling across SI, PI, SO, DN, SR, Quote, PO, GRN, and PR.
+
+## 2026-06-09 (Tue) — Sales Return Source Control Parity
+
+**Task:** Move Sales Return source mode choices into a Sales Invoice-style control strip.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/199-sales-return-source-control-parity.md](./done/199-sales-return-source-control-parity.md).
+
+**What changed:**
+- Updated `SalesReturnDetailPage.tsx` so `After Invoice`, `Before Invoice`, and `Direct Return` live in a compact **Return Control** strip above the header form.
+- Kept the source-specific input in the header below the control strip: posted Sales Invoice for `AFTER_INVOICE`, posted Delivery Note for `BEFORE_INVOICE`, and Customer selector for `DIRECT`.
+- Added English/Arabic/Turkish labels for the SI-style source helper indicator.
+- Updated Sales architecture and user-guide docs.
+
+**Accounting boundary:** UI/data-entry layout only. No Sales Return posting, tax, AR reversal, credit-note/refund settlement, inventory receipt, COGS reversal, approval, period-lock, audit, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed.
+
+**Time spent:** ~0.5h.
+
+**Next:** Manual QA `Sales -> Returns -> New Return` in Classic and Windows mode: switch After Invoice / Before Invoice / Direct Return and confirm the header picker changes correctly.
+
+## 2026-06-09 (Tue) — Native Document Header Density Standard
+
+**Task:** Make document header inputs match the Sales Invoice compact density by default: two rows, five columns on wide layouts, h-9 controls, compact labels, and no oversized page-local header inputs.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/198-document-header-density-standard.md](./done/198-document-header-density-standard.md).
+
+**What changed:**
+- Added `DocumentHeaderGrid`, `DocumentHeaderField`, `documentHeaderLabelClass`, `documentHeaderControlClass`, and `documentHeaderSelectorClass` to `DocumentDetailScaffold`.
+- Updated SI and PI to use the same five-column header grid.
+- Tightened SO, DN, Quote, PO, GRN, SR, and PR main header cards toward the same compact grid/input sizing.
+- Documented the density rule in `docs/architecture/document-scaffold.md`.
+
+**Accounting boundary:** Layout only. No posting, tax, settlement, inventory valuation, approval, period-lock, AP/AR, audit, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, `check:sod-approve`, TypeScript, and Vite build.
+
+**Manual QA needed:** Classic + Windows visual pass for real document data, especially long customer/vendor names and resized windows.
+
+## 2026-06-09 (Tue) — Sectioned Native Document Scaffold Contract
+
+**Task:** Make the shared native document scaffold define fixed named sections, with show/hide flags, so document pages share one anatomy while supplying different inputs, actions, rail data, and footer content.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/197-sectioned-document-scaffold-contract.md](./done/197-sectioned-document-scaffold-contract.md).
+
+**What changed:**
+- Added body slots to `DocumentDetailScaffold`: `control`, `header`, `lines`, `secondary`, `attachments`, and `custom`.
+- Added rail slots: `info`, `readiness`, `settlement`, `totals`, and `custom`.
+- Added footer slots: `totals` and `actions`.
+- Added `DocumentScaffoldSection` with `show`, `preserveSpace`, `title`, `action`, `content`, and `className`.
+- Normalized legacy `children` and `sideRail` consumers through `custom` slots so existing document pages stay compatible while future cleanup splits page content into strict slots.
+- Added the architecture contract at `docs/architecture/document-scaffold.md` and updated Sales/Purchases architecture docs and user guides.
+
+**Accounting boundary:** Layout architecture only. No posting, settlement, tax, AP/AR, inventory valuation, approval, period-lock, audit, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, `check:sod-approve`, TypeScript, and Vite build.
+
+**Manual QA needed:** Classic + Windows mode visual pass for SI, PI, SO, DN, SR, PO, GRN, PR, and Quotes; then progressively split remaining legacy `custom` content into strict page slots during the next UI cleanup pass.
+
+## 2026-06-09 (Tue) — Native Document Scaffold/List Parity
+
+**Task:** Make the remaining native Sales/Purchases document pages and related list pages look and behave like the SI/PI standard, with shared line tables, shared rails/footers where safe, and standardized operational lists.
+**Agent:** Codex. **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/196-native-document-scaffold-parity.md](./done/196-native-document-scaffold-parity.md).
+
+**Checkpoint first:** Per Mahmud's instruction, committed the pre-existing dirty state before new work: `65b8400c` — `fix(ui): checkpoint native invoice reference labels [ACTIVE-194]`.
+
+**What changed:**
+- Extended `ClassicLineItemsTable` with optional section title/header action, max body height, and min table width.
+- Migrated line tables for SO, DN, SR direct-entry lines, Quotations, PO, GRN, and PR to the shared table shell.
+- Migrated Goods Receipt draft/edit and Purchase Return saved/edit surfaces to `DocumentDetailScaffold` with side rail and sticky footer actions.
+- Migrated Quotations, Goods Receipts, and Purchase Returns lists to `OperationalListLayout` / `DataTable`.
+- Updated architecture docs, user guides, QA queue, priorities, and ACTIVE.
+
+**Accounting boundary:** UI/data-entry consistency only. No posting, tax, inventory valuation, settlement, approval, period-lock, AP/AR, or ledger behavior changed.
+
+**Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, `check:sod-approve`, TypeScript, and Vite build.
+
+**Manual QA needed:** Classic + Windows mode pass for Quotes, SO, DN, SR, PO, GRN, PR, SI, and PI. Known caveat: Quotation detail outer lifecycle header remains page-local; its list and line table are standardized.
+
+## 2026-06-09 (Tue) — Settlement: approval-boundary preservation + pay-later dialog
+
+**Task:** Settlement QA on a Financial-Approval tenant — "paid invoices always post as deferred, payment never reaches the ledger." Diagnose + fix, document the voucher-model decision, and fix the record-payment button.
+**Agent:** Claude (Opus 4.8). **Branch:** `feat/overpayment-credit-balance`. **Report:** [done/194-settlement-approval-preservation-and-record-payment.md](./done/194-settlement-approval-preservation-and-record-payment.md).
+
+**Root cause (not the settlement engine):** with Financial Approval ON, posting a paid invoice throws `APPROVAL_REQUIRED`, rolls back the whole posting (invoice + receipt voucher), and parks `PENDING_APPROVAL` — **discarding the entered settlement**. On later approval it posted on credit; the payment was lost. Confirmed against the live emulator: the QA invoice was `PENDING_APPROVAL`, `voucherId`/`settlementVoucherIds` null, paid 0.
+
+**Fixes (6 commits):**
+- `86ba56b9` — #193 regression: the Post handlers still drove the retired settlement modal (`setShowSettlement(true)` rendered nothing post-#193) and **wiped `settlementRows`**, so valid CASH_FULL/MULTI never posted. Both SI/PI now post directly from the inline `SettlementBlock`, gated on its validity.
+- `2e677172` — removed the dead settlement modal/card code (`renderSettlementCard`, `showSettlement`, legacy PI cards).
+- `ae295800` — **settlement preserved across approval**: new domain-local `pendingSettlement` on SalesInvoice/PurchaseInvoice; stored when parking, replayed by `Approve{Sales,Purchase}InvoiceUseCase`, cleared on successful post. Tests: parking-preserves + approve-replays-and-clears (sales + purchases).
+- `54a7e07a` — **docs**: recorded the two-voucher decision (invoice voucher + separate linked receipt; not one combined entry) with reasons in `sales.md`/`purchases.md`; Approval Center now shows a per-row settlement preview ("Will post PAID / Partial / On credit").
+- `8585e246` — **pay-later dialog (Task 184 Finding 5)**: replaced the broken "Create Payment/Receipt" button (navigated to a blank Accounting voucher that never reconciled) with a shared on-page `RecordPaymentDialog` calling the existing `recordPayment` endpoint. EN/AR/TR added.
+
+**Boundary:** posting/tax/AR-AP/ledger semantics unchanged — only preserve+replay an already-valid settlement, and invoke the existing record-payment use case from the UI. Architecture boundary tests green.
+
+**Verification:** backend build + 50 settlement/posting/payment-sync + 28 boundary/authority tests green; frontend typecheck + production build green.
+
+**Manual QA needed:** full scripts A–D in report 194 (approval-tenant settle→approve, immediate post, pay-later partial→full, over-payment). Restart the backend emulator first so it serves the rebuilt code.
+
+## 2026-06-09 (Tue) — Task 186 Part A: Settlement Field-Type Registration + Branch Commit
+
+**Task:** Finish the last unbuilt piece of Task 186 Part A — register the shared `<SettlementBlock>` as a Forms-Designer `settlement` `system_core` HEADER field type — then commit the branch's accumulated work.
+**Agent:** Claude (Opus 4.8).
+**Branch:** `feat/overpayment-credit-balance`.
+
+**What changed (field-type gap):**
+- `backend/src/seeder/seedFieldLibrary.ts` — seeded a `settlement` `system_core` HEADER field in the SALES + PURCHASE lists, scoped via `supportedTypes` to `sales_invoice` / `purchase_invoice`. The seed de-dupes by id and unions `supportedTypes`, so the catalog exposes one `settlement` entry covering both invoice types.
+- `frontend/src/designer-engine/types/FieldDefinition.ts` — added `'settlement'` to the `FieldType` union and an optional `settlementContext` (module, party AR/AP account, outstanding, payment-method configs, allowOverpayment, currency) so the host form feeds the controlled component its context per the Part C contract.
+- `frontend/src/designer-engine/components/SettlementField.tsx` (new) — adapter bridging the renderer's single `value`/`onChange` to `SettlementBlock`'s granular `mode`/`rows` props; stores state as one `{ mode, rows }` `SettlementValue`.
+- `frontend/src/designer-engine/components/DynamicFieldRenderer.tsx` — mounts the adapter for `field.type === 'settlement'` via a dedicated full-width early return (no duplicate outer label, since the block is self-titled).
+- `frontend/src/modules/tools/forms-designer/mappers/documentMapper.ts` — `mapFieldType` now maps `settlement → 'settlement'` so a designer-placed settlement field keeps its type instead of falling through to `TEXT`.
+
+**Branch hygiene:** gitignored transcript/code-recovery scratch artifacts (`extract.js`, `extract.cjs`, `unescape.cjs`, `apply_recovered_code.cjs`, `find_in_transcript.cjs`, `recovered_step.json`, `extracted_code_*.txt`) so they stop polluting `git status`. `.claude/worktrees/` was already ignored.
+
+**Commit scope:** the branch carried a large body of completed-but-uncommitted work (Apex shell 167–179, operational-list standardization 186/190, SI responsive layout/allocation/footer 187–189, SR/PI parity 191, Simple-mode SO/DN toggle 192, settlement placement 193, Task 186 Part A/B settlement + over-payment) plus this field-type gap. File changes overlap heavily across these tasks (e.g. `SalesInvoiceDetailPage.tsx` touched by 187/188/189/191/193/186), so a clean per-task split was not achievable; committed together on the feature branch (not pushed). Per-task granular history is preserved by the individual `planning/done/167…193.md` reports.
+
+**Accounting/ERP impact:** none from the field-type gap — it adds a designer placement marker + adapter that mount the existing, unchanged `SettlementBlock`. No posting, tax, AR/AP, settlement payload, approval, period-lock, or ledger behavior changed.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed.
+- `npm --prefix backend run typecheck` passed.
+- Backend targeted suites green: 28 tests across `SalesInvoiceSettlementPosting`, `PurchaseInvoiceSettlementPosting`, `Sales/PurchaseSettingsUseCases`, `FxGainLossSettlement`, and `VoucherFormDeduper`.
+
+**Next:** Manual QA of the over-payment canonical scenario ($1000 invoice, $1500 paid, flag ON → invoice PAID + $500 party credit; flag OFF → rejected) and the settlement placement/visual QA carried from #193. Optionally surface the `settlement` marker inside a Forms-Designer header to confirm the runtime renderer mounts `SettlementBlock` (v2 designer path).
+
+## 2026-06-09 (Tue) — Sales Invoice Settlement Placement Polish
+
+**Task:** Move native Sales Invoice settlement to the end of the invoice body and remove duplicated lower shortcut cards.
+**Agent:** Codex.
+**Branch:** `feat/overpayment-credit-balance`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- Moved the editable `SettlementBlock` in `SalesInvoiceDetailPage.tsx` from above the line grid to after the lines and Account Ledger / Financial Taxes Allocation Grid placeholder.
+- Removed the lower full-width Attachments and Audit & Warnings shortcut cards from the invoice body.
+- Kept Attachments as the existing top paperclip icon and added a compact History/Audit icon beside it, with warning coloring when a credit warning is active.
+- Follow-up: tightened the shared `SettlementBlock` full-paid editor so Method, Amount, and Contra Account render as one equal-width row; settlement validation/over-payment messages now appear in the section header instead of consuming body height.
+- Follow-up: polished settlement field labels/placeholders and widened the settlement mode dropdown for clearer Fully paid / On credit / Multi payment selection.
+- Follow-up: fixed Arabic/RTL rail controls on native Sales Invoice and shared `DocumentDetailScaffold`; the edge trigger, drawer side, inner hide button, rail icon, and back arrow now mirror to the left edge in RTL.
+- Updated Sales architecture/user-guide docs and completion report `planning/done/193-sales-invoice-settlement-placement.md`.
+
+**Accounting/ERP impact:** UI placement only. No settlement payload shape, posting, payment voucher, tax, inventory valuation, approval, period-lock, AR, or ledger behavior changed.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed.
+- `git diff --check -- frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` passed with CRLF line-ending warning only.
+- Follow-up `git diff --check -- frontend/src/components/shared/settlement/SettlementBlock.tsx` passed.
+- Follow-up `git diff --check -- frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx frontend/src/components/shared/DocumentDetailScaffold.tsx frontend/src/components/shared/settlement/SettlementBlock.tsx` passed with CRLF warning only.
+- Follow-up `npm --prefix frontend run typecheck` passed.
+
+**Next:** Manual visual QA on `Sales -> Invoices -> New Sales Invoice` in Classic and Windows mode: verify the body order is Header -> Lines -> Allocation -> Settlement -> sticky footer, and verify the top attachment/history icons still open their panels.
+
+## 2026-06-08 (Mon) — Purchase Invoice SI-Anatomy Correction
+
+**Task:** Fix the Purchase Invoice page after the first shared-scaffold pass still left PI visually different from Sales Invoice.
+**Agent:** Codex.
+**Branch:** `feat/overpayment-credit-balance`.
+**Time spent:** ~1.0h correction.
+
+**What changed:**
+- Refactored `PurchaseInvoiceDetailPage.tsx` create/edit mode so it now uses the Sales Invoice-style source controls, compact source-aware header card, shared line-items region, allocation-grid placeholder, attachments/audit shortcut tiles, and right rail ordered as Info, Posting Readiness, Settlement, and Totals.
+- Refactored saved Purchase Invoice view mode to the same SI-style body/rail anatomy instead of the old full-width header, lines, payment info, and attachments card stack.
+- Role-filtered the Purchase Invoice vendor selector to `VENDOR` so the picker no longer shows generic customer/vendor behavior.
+- Updated purchases architecture/user-guide docs and report 191.
+
+**Accounting/ERP impact:** UI layout and selector filtering only. No AP posting, tax calculation, inventory valuation, settlement, approval, SoD, period-lock, or ledger-write behavior changed.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed.
+- `npm --prefix frontend run build` passed, including reports/no-confirm/SoD checks.
+- Static scan confirmed the old PI markers (`Bill Totals`, `Payables Control`, raw `PO Reference`, old titled `Line Items`, old full-width `Totals`, and generic customer/vendor selector text) are gone from `PurchaseInvoiceDetailPage.tsx`.
+- Browser visual smoke QA could not run because the in-app Browser navigation/screenshot tool was not exposed.
+
+**Next:** Manual visual QA for `Purchases -> Invoices -> New` and an existing Purchase Invoice in Classic and Windows mode. Then repeat the same internal-anatomy audit for SO, DN, SR, and PO if their bodies still diverge from SI.
+
+## 2026-06-08 (Mon) — Sales Simple Mode SO/DN Toggle Persistence
+
+**Task:** Fix Sales Settings checkbox **Show Sales Orders & Delivery Notes anyway** not staying enabled after save.
+**Agent:** Codex.
+**Branch:** `feat/overpayment-credit-balance`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- Added `showOperationalDocsInSimple` to the Sales Settings frontend save payload.
+- Added a focused backend regression test proving the Simple-mode operational document visibility flag saves and maps back to the API response through the existing backend contract.
+- Updated Sales architecture/user-guide docs and completion report `planning/done/192-sales-simple-operational-docs-toggle-fix.md`.
+
+**Accounting/ERP impact:** Settings/navigation visibility only. No invoice posting, tax, settlement, AR, inventory valuation, approval, period-lock, COGS, or ledger-write behavior changed.
+
+**Verification:**
+- `npm --prefix backend test -- --runInBand backend/src/tests/application/sales/SalesSettingsUseCases.test.ts` passed.
+- `npm --prefix frontend run typecheck` passed.
+- `npm --prefix backend run build` passed.
+- `graphify update .` failed because `graphify` is not available in this PowerShell environment.
+
+**Next:** Manual QA in Simple mode: enable the setting, save, reload Sales Settings, and confirm Sales Orders/Delivery Notes remain visible.
+
+## 2026-06-08 (Mon) — Sales/Purchases Document UI Parity
+
+**Task:** Apply the Sales Invoice list/form polish pattern to SO, DN, SR, PI, and PO where safe.
+**Agent:** Codex.
+**Branch:** `feat/subledger-document-poster`.
+**Time spent:** ~3.2h.
+
+**What changed:**
+- Refactored `SalesReturnsListPage.tsx` to use the shared `OperationalListLayout` / `DataTable` pattern with quick status pills, inline filters, company date/time formatting, centered cells, pagination, sorting, and row actions.
+- Replaced the Purchase Invoice raw PO ID input with a real Purchase Order dropdown and line-loading flow.
+- Added shared SI-style document shell primitives in `DocumentDetailScaffold.tsx`.
+- Converted Sales Order, Delivery Note, Sales Return, Purchase Invoice, and Purchase Order detail pages to the same visible Sales Invoice shell pattern: compact topbar, status pills, full-height scroll workspace, dense card rhythm, and persistent footer summaries/actions.
+- Updated architecture docs, user guides, and completion report `planning/done/191-sales-purchases-document-ui-parity.md`.
+
+**Accounting/ERP impact:** UI and data-entry integrity only. No posting, tax, settlement, AR/AP, inventory valuation, approval, period-lock, COGS, or ledger-write behavior changed.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed.
+- `npm --prefix frontend run build` passed, including reports/no-confirm/SoD checks.
+- `git diff --check -- <touched files>` passed with CRLF line-ending warnings only.
+- `graphify update .` failed because `graphify` is not available in this PowerShell environment.
+- Browser visual smoke QA could not run because the in-app Browser navigation/screenshot tool was not exposed.
+
+**Next:** Manual QA in Classic and Windows mode for SR list plus SO/DN/SR/PI/PO detail sticky footers.
+
+## 2026-06-07 (Sun) — Sales Invoice Sticky Footer Totals
+
+**Task:** Keep Sales Invoice totals visible when the side rail is hidden.
+**Agent:** Codex.
+**Branch:** `feat/subledger-document-poster`.
+**Time spent:** ~0.4h.
+
+**What changed:**
+- Added a compact subtotal / tax amount / grand total strip to the right side of the Sales Invoice sticky footer.
+- Kept the existing side-rail totals card unchanged, so totals now appear in both places when the rail is open and remain visible when the rail is hidden.
+- Added localized footer-total labels in English, Arabic, and Turkish.
+- Updated Sales architecture and user-guide docs.
+
+**Accounting/ERP impact:** UI visibility only. No invoice total formula, tax calculation, posting, settlement, approval, period-lock, AR, inventory, or ledger behavior changed.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed.
+
+## 2026-06-07 (Sun) — Sales Invoice Allocation Grid Mock Cleanup
+
+**Task:** Remove mocked Account Ledger & Financial Taxes Allocation Grid rows and delete the Charge / Account Name table.
+**Agent:** Codex.
+**Branch:** `feat/subledger-document-poster`.
+**Time spent:** ~0.6h.
+
+**What changed:**
+- Removed hardcoded allocation rows from `SalesInvoiceDetailPage.tsx` so the page no longer shows fake Sales Discounts, VAT / Tax Payable, or Various Revenues ledger rows.
+- Removed the lower **Charge / Account Name** table from the Sales Invoice page.
+- Replaced the grid content with a localized empty state until Task 184 implements the controlled allocation contract.
+- Updated the Sales architecture doc, Sales Invoice user guide, Task 184 handoff, and completion report `planning/done/188-sales-invoice-allocation-grid-mock-cleanup.md`.
+
+**Accounting/ERP impact:** Frontend cleanup only. No posting, tax calculation, invoice total, approval, period-lock, AR, inventory, settlement, or ledger behavior changed. This reduces financial-control risk by removing mocked accounting rows that could be mistaken for real posting data.
+
+**Verification:**
+- `npm --prefix frontend run typecheck` passed.
+- Text scan confirmed the old mocked allocation labels and **Charge / Account Name** label are gone from `SalesInvoiceDetailPage.tsx`.
+
+## 2026-06-07 (Sun) — High-Density Single-Row Filters Bar on Operational Lists
+
+**Task:** Refactor filter bar on all 5 operational lists to a single horizontal flex-wrap row and remove labels.
+**Agent:** Antigravity.
+**Branch:** `feat/subledger-document-poster`.
+**Time spent:** ~0.5h.
+
+**What changed:**
+- Modified `DatePicker.tsx` to support custom `placeholder` strings for date inputs.
+- Refactored filter layouts in `SalesInvoicesListPage.tsx`, `PurchaseInvoicesListPage.tsx`, `SalesOrdersListPage.tsx`, `PurchaseOrdersListPage.tsx`, and `DeliveryNotesListPage.tsx` from grid to a horizontal flex-wrap row.
+- Removed vertical labels and inline-labeled all date inputs and dropdown selectors.
+- Updated technical architecture (`docs/architecture/operational-lists.md`) and user guide (`docs/user-guide/lists/standardized-operational-lists.md`).
+- Logged the completion report at `planning/done/186-filter-bar-one-row.md`.
+
+**Accounting/ERP impact:** None. UI layout layout and frontend list management standardization only.
+
+**Verification:**
+- `npx tsc --noEmit` on frontend → ✅ clean compile.
+- `npm run build` on frontend → ✅ build succeeded; reports-check, no-confirm, and sod-approve static analyses all passed.
+
+## 2026-06-07 (Sun) — Quick Status Filters on Standardized Operational Lists
+
+**Task:** Add a quick status filter pills bar with dynamic counts (Voucher List Demo style) to all 5 operational lists.
+**Agent:** Antigravity.
+**Branch:** `feat/subledger-document-poster`.
+**Time spent:** ~1.0h.
+
+**What changed:**
+- Modified `OperationalListLayout.tsx` to support and render a horizontal quick status filter pills row with dots and counts.
+- Updated `SalesInvoicesListPage.tsx`, `PurchaseInvoicesListPage.tsx`, `SalesOrdersListPage.tsx`, `PurchaseOrdersListPage.tsx`, and `DeliveryNotesListPage.tsx` to query list APIs without status filters and run status filtering in memory.
+- Calculated status counts dynamically from loaded lists, respecting other active filters (like selected Customer/Vendor or Payment status) in real time.
+- Removed the old static, non-interactive `summaryWidgets` grid sections from Sales/Purchase Orders list pages to use the new interactive status pills bar.
+- Updated documentation (`docs/architecture/operational-lists.md`, `docs/user-guide/lists/standardized-operational-lists.md`).
+- Logged the completion report at `planning/done/186-quick-status-filters-pills.md`.
+
+**Accounting/ERP impact:** None. Visual layout filter enhancement and frontend list optimization only.
+
+**Verification:**
+- `npx tsc --noEmit` on frontend → ✅ clean compile.
+- `npm run build` on frontend → ✅ build succeeded; reports-check, no-confirm, and sod-approve static analyses all passed.
+
+## 2026-06-07 (Sun) — Operational List Page Template & Standardization
+
+**Task:** Standardize list pages (Sales Invoices, Purchase Invoices, Sales Orders, Purchase Orders, Delivery Notes) using the unified OperationalListLayout.
+**Agent:** Antigravity.
+**Branch:** `feat/subledger-document-poster`.
+**Time spent:** ~1.5h.
+
+**What changed:**
+- Created reusable template `OperationalListLayout.tsx` supporting classic (comfortable) and windows (compact) user preference modes.
+- Refactored `useResponsiveColumns.ts` to use `useState` and `useEffect` state synchronization so column visibility toggling from the toolbar Settings checklist dynamically forces a re-render.
+- Migrated `SalesInvoicesListPage.tsx`, `PurchaseInvoicesListPage.tsx`, `SalesOrdersListPage.tsx`, `PurchaseOrdersListPage.tsx`, and `DeliveryNotesListPage.tsx` to the layout and configured standard sorting (defaulting to date/time descending then document number descending), standard pagination size (defaulting to 25 items), and standard row action kebabs.
+- Formulated technical architecture documentation (`docs/architecture/operational-lists.md`) and user guide (`docs/user-guide/lists/standardized-operational-lists.md`).
+- Authored the completion report at `planning/done/186-operational-lists-standardization.md`.
+
+**Accounting/ERP impact:** None. Visual shell layout and frontend list management standardization only. No voucher posting, subledger calculations, or database write behavior changed.
+
+**Verification:**
+- `npx tsc --noEmit` on the frontend workspace → ✅ clean compile.
+- `npm run build` on the frontend workspace → ✅ build successfully bundled; reports-check, no-confirm, and sod-approve static analyses all passed.
+
+---
+
+## 2026-06-06 (Sat) - Apex Route Coverage Gap Audit
+
+**Task:** Recheck Apex route coverage after Settings/RBAC/AI mounting and fix missed pages.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~1.3h.
+
+**What changed:**
+- Audited `routesConfig`, `routeMap`, `NativeModuleRouteMount`, and `ApexLedgerDashboard` route handling.
+- Found missed Accounting/Tools coverage: Accounting Setup, Recurring Vouchers, Cost Centers, Voucher Detail/View/Demo, Voucher Designer, Budgets, Subgroup Tagging, and Tools Forms Designer.
+- Ran a stricter route-table audit after the first fix and found 45 remaining valid routes still falling to placeholders.
+- Extended `NativeModuleRouteMount.tsx` to support `accounting`, `tools`, and a `remaining` native route group.
+- Updated `ApexLedgerDashboard.tsx` to route the missed Accounting/Tools paths plus Companies, Notifications, Company Admin, HR, POS, Super Admin, Company Wizard, CRM, Manufacturing, Projects, and Canvas Dev through native production pages inside Apex.
+- Follow-up from Mahmud found some sidebar clicks still failed. Root cause was stale Apex sidebar URLs, not missing route mounts. Fixed Sales Analytics, Aged Backlog, Sales/Purchases Voucher Designer, Purchases Analytics, Low Stock Alerts, Unsettled Costs, Inventory Valuation, Budgets, and Subgroup Tagging links to target real production route paths.
+- Updated Apex architecture/user docs, QA queue, ACTIVE, and created [planning/done/179-apex-route-coverage-gap-audit.md](./done/179-apex-route-coverage-gap-audit.md).
+
+**Accounting/ERP impact:** None. This preserves native production page behavior inside Apex and keeps existing route guards; no posting, ledger, tax, approval, valuation, permissions, or schema behavior changed.
+
+**Verification:** Strict route audit script reported `tenant routes 185` and `placeholders 0`. Apex sidebar link audit reported `sidebarPaths 79` and `missing 0`. `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only. `graphify update .` failed because `graphify` is not available in this PowerShell environment.
+
+**Boundary:** This is route continuity, not Apex visual redesign of every native page. Super Admin now stays inside Apex by route, but still needs separate platform-role QA before default-shell cutover.
+
+**Next recommended step:** Manual authenticated route QA, then Task 167 Slice 3D feature flag and cutover QA.
+
+---
+
+## 2026-06-06 (Sat) - Apex Settings/RBAC/AI Native Page Mounting
+
+**Task:** Mount Settings/RBAC and AI native production pages inside the Apex candidate shell.
+**Agent:** Codex.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.8h.
+
+**What changed:**
+- Extended `frontend/src/pages/dev/apex-ledger/components/NativeModuleRouteMount.tsx` to support Settings/RBAC and AI route aliases.
+- Routed `/dev/apex-ledger/settings/*` through the native `/settings/*` route tree while keeping Company Settings footer routes on `NativeCompanySettingsRouteMount`.
+- Routed `/dev/apex-ledger/ai/*` through the native `/ai-assistant/*` route tree while preserving Apex URLs during internal native navigation.
+- Kept `/dev/apex-ledger/settings/accounting` on the dedicated Accounting Settings detail page.
+- Updated Apex architecture/user docs, Task 167 planning, QA queue, ACTIVE, PRIORITIES, and created [planning/done/178-apex-settings-rbac-ai-native-page-mounting.md](./done/178-apex-settings-rbac-ai-native-page-mounting.md).
+
+**Accounting/ERP impact:** None. This is route-shell coverage only. Existing Settings/RBAC and AI permissions, module guards, and global-role checks remain the enforcement layer.
+
+**Verification:** `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only. `graphify update .` could not run because `graphify` is not available in this PowerShell environment.
+
+**Next recommended step:** Continue Task 167 Slice 3D feature flag and cutover QA.
+
+---
+
+## 2026-06-06 (Sat) — React Query Devtools Floating Icon Hidden
+
+**Task:** Hide the React Query Devtools floating launcher icon in development mode.
+**Agent:** Antigravity.
+**Branch:** `feat/init-wizard-forms-selection`.
+**Time spent:** ~0.1h.
+
+**What changed:**
+- Commented out `<ReactQueryDevtools />` in [QueryProvider.tsx](file:///d:/DEV2026/ERP03/frontend/src/providers/QueryProvider.tsx#L13) to hide the floating beach/island launcher icon during local development.
+- Verified that both frontend typechecking and production build bundling compile successfully.
+
+**Accounting/ERP impact:** None.
+
 ## 2026-06-05 (Fri) - Apex Purchases And Inventory Native Page Mounting
 
 **Task:** Mount Purchases and Inventory native production pages inside the Apex candidate shell.
@@ -18,9 +890,9 @@
 
 **Accounting/ERP impact:** No posting, ledger, tax, valuation, approval, period-lock, or data schema behavior changed. The slice preserves existing native Purchases and Inventory controls inside Apex.
 
-**Verification:** `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only.
+**Verification:** `git diff --check -- <touched files>` passed with CRLF normalization warnings only. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing dependency/chunk warnings only. `graphify update .` could not run because `graphify` is not available in this PowerShell environment.
 
-**Next recommended step:** Run frontend typecheck/build, then continue Task 167 Slice 3C-Settings/RBAC/AI native page mounting.
+**Next recommended step:** Continue Task 167 Slice 3C-Settings/RBAC/AI native page mounting.
 
 ---
 
@@ -2173,6 +3045,18 @@ Also recorded a Phase E follow-up: role-gate the Override Period Lock button, ad
 - Backend `tsc --noEmit`: ✅ clean
 - Frontend `tsc --noEmit`: ✅ clean
 - 19 new tests: ✅ all passing
+### Session: 2026-06-10 (Shared Line Table UOM Selector and Settings Polish)
+
+- **Goal:** Polish the shared native document line table: hide numeric zero placeholders on empty working rows, add table-level line color/font options, and replace page-local UOM dropdown/free-text cells with a shared item-scoped UOM selector.
+- **What was done:** Updated `ClassicLineItemsTable` so empty rows show blank numeric cells until the row has real business content. Added table font selection plus Line Color 1 / Line Color 2 settings. Added shared `UomSelector` with item-default UOM population, editable input, multi-match picker modal, refresh, and item-card link. Wired it into Sales Invoice, Sales Order, Delivery Note, Quotation, Purchase Invoice, Purchase Order, Goods Receipt, and Purchase Return line tables.
+- **Accounting impact:** UI/data-entry only. No posting, tax, UOM conversion math, inventory valuation, AR/AP, settlement, approval, period-lock, audit, backend DTO, repository, or ledger behavior changed. UOM choices are intentionally constrained to UOMs defined on the selected item; no new UOM creation is allowed from document lines.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Docs:** Updated `docs/architecture/document-scaffold.md`, Sales/Purchases user guides, `planning/QA-QUEUE.md`, `planning/ACTIVE.md`, and added [203-shared-line-table-uom-and-settings.md](./done/203-shared-line-table-uom-and-settings.md).
+- **Time spent:** ~1.8h.
+- **Next:** Manual QA report 203 in Classic and Windows mode, then continue the existing native document QA queue before further table-wide changes.
+
+---
+
 - Full suite: 1197 pass / 3 fail (pre-existing) / 18 skip — 0 regressions
 
 **Time spent:** ~2 hours
@@ -2249,6 +3133,74 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 ## 2026-05-20 (Wed) — Phase C (sales finance & reporting)
 **Task:** Task 110 — Phase C of the sales completion roadmap
 
+### Session: 2026-06-09 (Native Invoice Reference Label Clarification)
+
+- **Goal:** Clarify whether Sales/Purchases native invoice reference fields should be free text or SO/PO selectors.
+- **Decision:** Keep the external reference fields as optional free text. Sales uses the internal Sales Order selector only in From SO mode; Purchases uses the internal Purchase Order selector only in From PO mode.
+- **What was done:** Renamed Sales `customerInvoiceNumber` UI text to **Customer PO / Ref** and Purchases `vendorInvoiceNumber` UI text to **Vendor Invoice / Ref**. Updated English, Arabic, and Turkish locale strings plus sales/purchases user-guide notes. Added completion report [195-native-invoice-reference-labels.md](./done/195-native-invoice-reference-labels.md).
+- **Accounting impact:** Label/documentation clarity only. No posting, tax, AR/AP, inventory, settlement, approval, period-lock, audit, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~0.4h.
+- **Next:** Manual visual QA on Sales Invoice and Purchase Invoice Direct/linked modes to confirm the labels read correctly.
+
+### Session: 2026-06-08 (Sales Invoices List Filter Polish)
+
+- **Goal:** Polish the Sales Invoices list filter bar and table scan layout.
+- **What was done:** Updated `SalesInvoicesListPage.tsx` so Type/Status/Payment neutral filter options read as inline placeholders, the default date range resolves to fiscal-year beginning through company-today, date displays use company date/time formatting, cells are center-aligned, and payment/status chips stay on one line.
+- **Accounting impact:** UI list filtering and display only. No invoice totals, tax, posting, settlement, approval, period-lock, AR, inventory, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Docs:** Updated `docs/user-guide/lists/invoice-lists.md`, `docs/architecture/operational-lists.md`, and added `planning/done/190-sales-invoices-list-filter-polish.md`.
+- **Time spent:** ~0.7h.
+- **Next:** Manual visual QA on Sales -> Invoices in Classic and Windows mode.
+
+### Session: 2026-06-08 (Sales Invoice Form Startup Cache)
+
+- **Goal:** Reduce repeat open latency on the native Sales Invoice form and expose what the loading gate is waiting for.
+- **What was done:** Added a short-lived company-scoped in-memory cache for Sales Invoice startup reference data and kept the existing loading skeleton with a new spinner/status panel showing elapsed seconds, cache status, current API phase, and completed/total API count.
+- **Accounting impact:** Frontend startup/cache behavior only. Invoice documents, posting state, totals, tax, settlement, approval, period-lock, AR, inventory, ledger writes, and audit behavior are not cached or changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed; scoped `git diff --check -- frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` passed.
+- **Docs:** Updated `docs/architecture/sales.md` and `docs/user-guide/sales/direct-invoice-and-operational-linked-invoice.md`.
+- **Time spent:** ~0.6h.
+- **Next:** Manual QA by opening `Sales -> Invoices -> New Sales Invoice` twice in the same company and confirming the second open reports a cache hit and loads faster.
+
+### Session: 2026-06-08 (Shared Sales Invoice-Style Document Scaffold Correction)
+
+- **Goal:** Correct the Sales/Purchases document UI parity slice so SO, DN, SR, PI, and PO use one shared Sales Invoice-style document skeleton instead of only page-by-page visual patches.
+- **What was done:** Expanded `DocumentDetailScaffold.tsx` into the shared document scaffold for compact topbar, status/source pills, full-height scroll workspace, responsive right rail/edge drawer, reusable rail cards/stats, and persistent footer totals/actions. Moved Sales Order, Delivery Note, Sales Return, Purchase Order, and Purchase Invoice detail pages onto that scaffold with document-specific slots. Kept the Purchase Invoice real-PO dropdown fix.
+- **Accounting impact:** UI/data-entry layout only. No posting, tax, AP/AR, COGS, inventory valuation, settlement, approval, period-lock, SoD, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed after the shared scaffold migration. `npm --prefix frontend run build` passed, including `check:reports`, `check:no-confirm`, and `check:sod-approve`; existing bundle/browser-data warnings remain.
+- **Docs:** Updated `planning/done/191-sales-purchases-document-ui-parity.md`, `docs/architecture/sales.md`, `docs/architecture/purchases.md`, `docs/user-guide/sales/README.md`, `docs/user-guide/sales/sales-returns.md`, `docs/user-guide/purchases/README.md`, `planning/ACTIVE.md`, and `planning/QA-QUEUE.md`.
+- **Time spent:** ~2.4h correction pass on top of the earlier parity slice.
+- **Next:** Manual visual QA in Classic and Windows mode for SO/DN/SR/PI/PO side rail, edge drawer, and sticky footer behavior.
+
+### Session: 2026-06-07 (Sales Invoice Allocation Grid Design Handoff)
+
+- **Goal:** Capture the product-owner requirement for making the Sales Invoice Account Ledger & Financial Taxes Allocation Grid a real invoice-level financial allocation workspace instead of a read-only/static preview.
+- **What was done:** Verified current behavior: backend Sales Invoice posting resolves tax accounts from Tax Codes, discount account from Sales Settings, and charge revenue account from charge/default revenue settings; the current production grid is not part of the posting contract. Created [Task 184](./tasks/184-sales-invoice-allocation-grid-controlled-overrides.md) with the intended design, accounting rules, backend contract, frontend plan, settings/default-account requirements, tests, acceptance criteria, and out-of-scope boundaries.
+- **Accounting decision captured:** For v1, allocations are invoice-level only. Line Tax Codes auto-populate tax rows; the user can override accounts in the grid; user-added discount/addition/additional-tax rows must affect totals and must post to validated GL accounts.
+- **Time spent:** ~0.4h.
+- **Next:** Have the next implementation agent execute Task 184 in slices, starting with backend contract/posting tests before unlocking the frontend grid.
+
+### Session: 2026-06-07 (Sales Invoice Source/Header Cleanup)
+
+- **Goal:** Clean the Sales Invoice page's top section so Control only chooses the source mechanism and the Header changes based on Direct vs From Sales Order.
+- **What was done:** Updated `SalesInvoiceDetailPage.tsx`: removed the header collapse control, removed visible Invoice Template and Due Date fields, moved Salesperson into the header, added Direct-only Main Warehouse, moved the Sales Order selector into the header for From SO mode, filtered SO choices to invoiceable statuses, and made direct line payloads fall back to the header warehouse.
+- **Accounting impact:** Frontend workflow/layout only. No posting, tax-account, discount, settlement, approval, period-lock, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing bundle/browser-data warnings.
+- **Docs:** Updated `docs/architecture/sales.md`, `docs/user-guide/sales/direct-invoice-and-operational-linked-invoice.md`, and added `planning/done/185-sales-invoice-source-header-cleanup.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Manual visual QA for `/#/sales/invoices/new` Direct and From SO modes, then continue Task 177/184 as separate slices.
+
+### Session: 2026-06-07 (Sales Invoice Responsive Window Layout)
+
+- **Goal:** Fix the Sales Invoice page so smaller available view areas and Windows-mode invoice windows do not hide invoice sections.
+- **What was done:** Updated `SalesInvoiceDetailPage.tsx` so normal laptop/resized-window layouts use one reliable vertical workspace scroll. The dense rail is pinned by default only when there is enough wide-screen room; it can be hidden/restored from an edge button. In Windows mode and narrow viewports, the rail automatically leaves the grid and opens as an edge-triggered drawer so it does not push over invoice fields. Line-item and allocation tables keep local horizontal scroll. Added architecture/user-guide notes and completion report [187-sales-invoice-responsive-window-layout.md](./done/187-sales-invoice-responsive-window-layout.md).
+- **Accounting impact:** Layout-only. No invoice totals, tax, discount, settlement, approval, period-lock, posting, AR, inventory, audit, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing Vite bundle/browser-data warnings. `npm --prefix frontend run check:no-confirm` passed. Scoped `git diff --check -- frontend/src/modules/sales/pages/SalesInvoiceDetailPage.tsx` passed.
+- **Not verified:** Automated screenshot/interactive visual QA was not completed because the in-app Browser tool was not exposed and Playwright is not installed.
+- **Time spent:** ~1.1h.
+- **Next:** Manual QA in Windows mode by opening a Sales Invoice window, resizing it below the default `1100x750`, and confirming all invoice fields/footer actions remain reachable while the side rail opens from the edge button as a drawer.
+
 ## 2026-05-30: Deep UI/UX Hardening
 
 **Agent:** Antigravity
@@ -2316,3 +3268,62 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Not verified:** Authenticated visual QA was not completed because the in-app Browser tool was not exposed and Playwright is not installed. Dev server was started at `http://127.0.0.1:5173/` for smoke-check preparation.
 - **Time spent:** about 1.8 hours.
 - **Next:** Task 167 Slice 2 - Apex route coverage/wildcard handling, settings/profile shell decision, and authenticated English/Arabic RTL visual QA before any main tenant-shell cutover. Estimated 2-3 hours.
+### Session: 2026-06-10 (Shared Line Table Auto-Append Regression Sweep)
+
+- **Goal:** Fix Delivery Note rows increasing automatically, Sales Return direct form infinite render/error loop, add selectable line colors, soften the shared row context menu shadow, and sweep all other shared table consumers for the same numeric-default auto-append bug.
+- **What was done:** Corrected DN, direct SR, SO, Quote, PO, GRN, PI, and PR `isRowFilled` predicates so default numeric placeholders do not count as real line content for the shared table's auto-append behavior. Added explicit local-only row color swatches and clear-color action to `ClassicLineItemsTable`. Reduced the shared table context-menu shadow.
+- **Accounting impact:** UI/local-preference behavior only. No document totals, Delivery Note stock movement, Goods Receipt receipt behavior, Sales/Purchase Return posting, tax, AR/AP, refund/credit-note settlement, inventory valuation, approval, period-lock, audit, backend DTO, or ledger behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing bundle/browser-data warnings. Scoped `git diff --check` passed for touched frontend files.
+- **Docs:** Updated `docs/architecture/document-scaffold.md`, `docs/architecture/sales.md`, Sales/Purchases user guides, `planning/QA-QUEUE.md`, `planning/ACTIVE.md`, and added [201-dn-sr-line-table-regression-fix.md](./done/201-dn-sr-line-table-regression-fix.md).
+- **Time spent:** ~0.9h.
+- **Next:** Manual QA DN/SR/SO/Quote/PO/GRN/PI/PR create/edit line tables in Classic and Windows mode, then continue native document table QA.
+
+### Session: 2026-06-12 (Settlement Dropdown Text Clipping Fix)
+
+- **Goal:** Fix the settlement mode dropdown where the long "Deferred / no payment" label was clipped by the native select arrow.
+- **What was done:** Updated the shared `SettlementBlock` editor select sizing so Sales and Purchase invoice settlement controls reserve enough width and right padding for long mode labels.
+- **Accounting impact:** UI-only. No settlement mode values, payment rows, posting behavior, approval parking, AR/AP, ledger, tax, inventory, or audit behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~0.2h.
+- **Next:** Manual visual check on Sales Invoice and Purchase Invoice create pages in Classic and Windows mode.
+
+### Session: 2026-06-12 (AI Floating Launcher Preference Refresh Fix)
+
+- **Goal:** Fix the global AI launcher still appearing after **Show Floating AI Launcher** is turned off in AI Settings.
+- **Root cause:** The settings page saved `showFloatingAssistant`, but the mounted `GlobalAiWidget` did not refresh its widget-preferences state after save. The widget also failed open if its lightweight preferences endpoint failed, defaulting the launcher visible.
+- **What was done:** AI Settings now broadcasts the saved `isEnabled` / `showFloatingAssistant` values after a successful save. `GlobalAiWidget` listens for that event, hides immediately when the preference is off, closes any open widget when rendering becomes disallowed, and fails closed if widget preferences cannot be loaded.
+- **Accounting impact:** None. AI shell visibility only; no ERP posting, ledger, permissions, tenant data, vouchers, reports, or financial controls changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~0.4h.
+- **Next:** Manual QA: turn **Show Floating AI Launcher** off, click **Save Settings**, confirm the floating button disappears without reload; turn it back on and confirm it reappears outside the AI Assistant page.
+
+### Session: 2026-06-12 (Shared Selector Contract Hardening)
+
+- **Goal:** Apply one consistent selector contract across shared ERP selectors: unique typed match auto-select, borderless table/grid rendering, keyboard picker control, trapped modal focus, native add-card flows, and clearer financial selector displays.
+- **What was done:** Added `useSelectorModalFocus`; hardened Item, Party, Warehouse, UOM, Account, Tax Code, Discount Type, and Currency selector modal behavior; replaced Item/Party/Warehouse selector mini-create forms with native master-card modals; promoted `CurrencySelector` through `components/shared/selectors`; converted `AccountSelectorSimple` into a wrapper around the rich `AccountSelector`; replaced Receipt Voucher account dropdowns with `AccountSelector`; replaced Sales Invoice recurring-template native dates with `DatePicker`; passed tax-code names into Tax Code selectors on SI/SO/Quote/PI/PO.
+- **Accounting impact:** UI/data-entry hardening only. No posting math, ledger writes, tax calculation, inventory valuation, AP/AR balances, approval, period-lock, settlement, or backend DTO contracts changed. Stronger selector resolution reduces invalid account/tax/currency/master-data references before save/posting.
+- **Verification:** `npm --prefix frontend run typecheck` passed. Production module/component scan for `type="date"` returned no matches. `AccountSelectorSimple` no longer renders a native account `<select>`.
+- **Docs:** Added `docs/architecture/shared-selectors.md`, `docs/user-guide/lists/shared-selectors.md`, and completion report [206-shared-selector-contract-hardening.md](./done/206-shared-selector-contract-hardening.md).
+- **Time spent:** ~2.0h.
+- **Next:** Manual QA selector keyboard behavior inside SI/SO/Quote/PI/PO line tables and Item/Party/Warehouse `+` add-card flow in Classic and Windows modes.
+
+### Session: 2026-06-12 (Native Document New Form Guard)
+
+- **Goal:** Add a shared New document action to native Sales/Purchases document forms, with a confirmation guard only when actual unsaved entered data would be lost.
+- **What was done:** Added template-owned `newAction` support to `DocumentDetailScaffold`, including the top action-tray icon button and shared `ConfirmDialog` warning. Wired scaffold consumers for SI, SO, DN, SR, PI, PO, GRN, and saved/edit PR with page-specific dirty checks and clear-form reset/navigation callbacks.
+- **Accounting impact:** UI workflow only. No posting, vouchers, ledger, taxes, AR/AP, inventory valuation, settlement posting, approvals, period locks, backend DTOs, repositories, or audit behavior changed.
+- **Known boundary:** Quotation remains the documented page-local scaffold exclusion, and Purchase Return create remains page-local. Do not add one-off New-button logic there; move them onto the scaffold first if full coverage is required.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Docs:** Updated `docs/architecture/document-scaffold.md`, Sales/Purchases user guides, and added [207-native-document-new-form-guard.md](./done/207-native-document-new-form-guard.md).
+- **Time spent:** ~1.2h.
+- **Next:** Manual QA the New button in Classic and Windows mode on SI/SO/DN/SR/PI/PO/GRN/PR saved/edit: blank form opens directly, dirty form warns, Cancel preserves data, Confirm opens a clear form.
+
+### Session: 2026-06-13 (Feature Freeze Ship Package Prep)
+
+- **Goal:** Prepare the v0.9-alpha stabilization package after the CTO audit declared feature freeze.
+- **What was done:** Reviewed the freeze/ship-plan planning updates, added the GitHub Actions CI workflow, created the five golden-path QA scripts plus `planning/qa/findings.md`, and retired `planning/QA-QUEUE.md` as the active QA surface. Tightened the Sales/Purchases QA scripts so inventory checks reconcile to stock movements instead of relying on a brittle hardcoded quantity.
+- **Detours:** Fixed a pre-existing `SidebarItem.tsx` JSX syntax break while preserving the intended child sidebar icon addition. Fixed `AiModelCertificationUseCase.test.ts` test isolation by replacing `Date.now()` ids in the fake certification engine with deterministic incrementing ids.
+- **Accounting/ERP impact:** No production posting, ledger, tax, inventory valuation, AR/AP, approval, period-lock, settlement, tenant isolation, or runtime business behavior changed. The golden paths add manual accounting reconciliation gates before deployment.
+- **Verification:** `npm --prefix backend run build` passed; `npm --prefix backend test` passed (146 suites, 1,365 tests, 18 skipped); `npm --prefix frontend run typecheck` passed; `npm --prefix frontend run build` passed with existing bundle/Browserslist warnings.
+- **Time spent:** ~0.8h.
+- **Next:** Commit the ship package after owner approval, then merge to `main`, tag `v0.9-alpha`, push, and run golden paths 01–05 on a fresh tenant.

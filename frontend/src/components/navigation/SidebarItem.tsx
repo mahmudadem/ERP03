@@ -53,6 +53,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   const [isHovered, setIsHovered] = React.useState(false);
   const hasChildren = children && children.length > 0;
   const isSubmenusMode = sidebarMode === 'submenus';
+  const useApexAccordionLook = !isSubmenusMode;
   
   // Custom active check
   const isActive = (targetPath: string) => {
@@ -64,8 +65,20 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   };
   
   const active = path ? isActive(path) : false;
-  const isAnyChildActive = hasChildren && children.some(child => child.path && isActive(child.path));
-  const isSolidActive = active || (isAnyChildActive && !isExpanded && !isSubmenusMode && isOpen);
+
+  // Deep recursive descendant check.
+  // isAnyChildActive is true when ANY descendant at ANY depth is the active route.
+  // This gives grandparent / great-grandparent items the soft "ancestor" tint.
+  const checkDeepActive = (items: any[]): boolean =>
+    items.some((child: any) =>
+      (child.path && isActive(child.path)) ||
+      (child.children?.length && checkDeepActive(child.children))
+    );
+  const isAnyChildActive = hasChildren ? checkDeepActive(children!) : false;
+
+  // RULE: only the EXACT current-route item gets a solid/strong highlight.
+  // Every ancestor node (parent, grandparent…) gets the soft tint via isAnyChildActive.
+  const isSolidActive = active;
 
   // Auto-expand for classic mode
   React.useEffect(() => {
@@ -126,15 +139,21 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   const itemContent = (
     <div className={clsx(
       "flex items-center rounded-[var(--radius-md)] w-full transition-colors duration-300 ease-out group relative outline-none",
-      // Layout switching: Row when open/flyout, Col when shrunk
+      // Layout: row when expanded, centered column when shrunk (no label below so just center the icon)
       (isOpen || isFlyout) 
         ? isCompact 
           ? "flex-row gap-2 px-2.5 py-1"
-          : "flex-row gap-3 px-3 py-2" 
-        : "flex-col gap-1.5 px-2 py-3 justify-center items-center",
+          : useApexAccordionLook
+            ? "flex-row gap-3 px-3 py-2"
+            : "flex-row gap-3 px-3 py-2" 
+        : "px-1 py-2.5 justify-center items-center",
       
       isCompact
         ? "compact-sidebar-item"
+        : useApexAccordionLook
+          ? isChild
+            ? "text-[12px] font-medium"
+            : "text-[12px] font-semibold"
         : isChild 
           ? "text-xs font-normal py-1.5" 
           : "text-sm font-medium",
@@ -143,7 +162,11 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       //   2. A child is active AND parent is collapsed → solid blue fill so the collapsed parent still signals it.
       //   3. A child is active AND parent is expanded → soft brand-tinted text (the child carries the strong fill).
       isSolidActive
-        ? (use3DStyle && isChild && !isFlyout)
+        ? useApexAccordionLook
+          ? isChild
+            ? "bg-blue-50 text-blue-600 font-semibold"
+            : "bg-blue-50 text-blue-600 font-semibold border-l-4 rtl:border-l-0 rtl:border-r-4 border-blue-600 rounded-l-none rtl:rounded-l-md rtl:rounded-r-none"
+        : (use3DStyle && isChild && !isFlyout)
           ? "bg-transparent text-primary-600 font-bold"
           : isCompact
             ? isContrastSidebar
@@ -153,22 +176,29 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               ? "bg-white/20 text-white font-semibold shadow-sm"
               : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
         : isAnyChildActive
-          ? isCompact
+          ? useApexAccordionLook
+            ? "bg-slate-100 text-slate-800 font-semibold"
+          : isCompact
             ? isContrastSidebar
               ? "bg-white/10 text-white font-medium hover:bg-white/15"
               : "bg-primary-50/50 text-primary-600 dark:bg-primary-950/20 dark:text-primary-400 hover:bg-black/5 dark:hover:bg-white/5"
             : isContrastSidebar
               ? "bg-white/10 text-white font-medium hover:bg-white/15"
               : "bg-primary-50/50 text-primary-700 dark:bg-primary-950/20 dark:text-primary-300 hover:bg-black/5 dark:hover:bg-white/5"
+          : useApexAccordionLook
+            ? "text-slate-700 hover:bg-slate-100/70 hover:text-slate-900"
           : isContrastSidebar
             ? "text-[var(--app-sidebar-muted)] hover:bg-white/10 hover:text-[var(--app-sidebar-text)]"
             : "text-[var(--app-sidebar-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--app-sidebar-text)]",
-      isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
+      // Flyout child base layout; split hover based on active state to avoid overriding the active background on hover
+      isFlyout && "px-4 py-2.5 rounded-none",
+      isFlyout && !isSolidActive && "hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400",
+      isFlyout && isSolidActive && "hover:bg-primary-700 dark:hover:bg-primary-400/20",
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).
           Inverted active state fills the row with primary, so the indicator is
           white to stay visible against the blue background. */}
-      {!isFlyout && !isCompact && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
+      {!isFlyout && !isCompact && !useApexAccordionLook && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
         <span
           className={clsx(
             "absolute top-1/2 -translate-y-1/2 w-1 h-6",
@@ -197,19 +227,25 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
             ? isCompact 
               ? "w-5 h-5"
               : "w-6 h-6" 
-            : "w-10 h-10 mb-1",
+            : "w-8 h-8",
           // Icon pill state matches the row state:
           //   - row solid blue (direct active OR collapsed-parent-with-active-child) → pill is bg-white/20
           //   - row tinted (expanded parent with active child) → pill is bg-primary-100 / text-primary-700
           //   - inactive → muted
           isSolidActive
-            ? use3DStyle && !isOpen && !isFlyout
+            ? useApexAccordionLook
+              ? "text-blue-500"
+              : use3DStyle && !isOpen && !isFlyout
               ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
               : "bg-white/20 text-white"
             : isAnyChildActive
-              ? isContrastSidebar
+              ? useApexAccordionLook
+                ? "text-blue-600"
+              : isContrastSidebar
                 ? "bg-white/20 text-white"
                 : "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+              : useApexAccordionLook
+                ? "text-slate-400 group-hover:text-slate-600"
               : use3DStyle && !isOpen && !isFlyout
                 ? "bg-transparent text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
                 : isContrastSidebar
@@ -239,14 +275,33 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           })()}
         </div>
       )}
+
+      {/* Sub-link icon (child items in accordion mode) */}
+      {isChild && !isFlyout && finalIcon && (
+        <div className={clsx(
+          "pointer-events-none flex items-center justify-center shrink-0 transition-colors duration-200",
+          "w-4 h-4",
+          isSolidActive
+            ? useApexAccordionLook ? "text-blue-500" : "text-primary-300"
+            : useApexAccordionLook
+              ? "text-slate-400 group-hover:text-slate-500"
+              : "text-[var(--app-sidebar-muted)]"
+        )}>
+          {React.cloneElement(finalIcon as React.ReactElement, {
+            className: clsx(
+              (finalIcon as React.ReactElement).props.className,
+              "w-3.5 h-3.5 transition-colors duration-200"
+            )
+          })}
+        </div>
+      )}
       
-      {/* Label */}
-      <span className={clsx(
-        "pointer-events-none whitespace-nowrap truncate",
-        (isOpen || isFlyout) ? "flex-1 text-sm" : "text-[9px] font-black uppercase tracking-tighter text-center w-full px-1"
-      )}>
-        {label}
-      </span>
+      {/* Label — only shown when sidebar is expanded */}
+      {(isOpen || isFlyout) && (
+        <span className="pointer-events-none whitespace-nowrap truncate flex-1">
+          {label}
+        </span>
+      )}
 
       {/* Badge */}
       {badge && (isOpen || isFlyout) && (
@@ -282,7 +337,10 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <button className={clsx("w-full outline-none group", isRtl ? "text-right" : "text-left")}>
+        <button
+          className={clsx("w-full outline-none group", isRtl ? "text-right" : "text-left")}
+          title={!isOpen ? label : undefined}
+        >
           {itemContent}
         </button>
 
@@ -366,26 +424,37 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       )}
 
       {/* Render children inline (Classic Mode) */}
-      {hasChildren && isExpanded && isOpen && !isSubmenusMode && (
+      {hasChildren && isOpen && !isSubmenusMode && (
         <div
           className={clsx(
-            "mt-1 space-y-0.5 transition-all duration-300",
-            isRtl ? "mr-6 border-r border-[var(--color-border)] pr-[1px]" : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+            "grid transition-all duration-300 ease-in-out overflow-hidden mt-0.5",
+            isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
           )}
         >
-          {children.map((child, idx) => (
-            <SidebarItem
-              key={child.path || idx}
-              path={child.path}
-              label={child.label}
-              isOpen={isOpen}
-              onClick={onClick}
-              children={child.children}
-              iconName={child.icon}
-              isChild={true}
-              isCompact={isCompact}
-            />
-          ))}
+          <div className={clsx(
+            "min-h-0 space-y-0.5 overflow-hidden",
+            useApexAccordionLook
+              ? isRtl
+                ? "mr-4 border-r border-[#E2E8F0] pr-2.5"
+                : "ml-4 border-l border-[#E2E8F0] pl-2.5"
+              : isRtl
+                ? "mr-6 border-r border-[var(--color-border)] pr-[1px]"
+                : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+          )}>
+            {children.map((child, idx) => (
+              <SidebarItem
+                key={child.path || idx}
+                path={child.path}
+                label={child.label}
+                isOpen={isOpen}
+                onClick={onClick}
+                children={child.children}
+                iconName={child.icon}
+                isChild={true}
+                isCompact={isCompact}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

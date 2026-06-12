@@ -92,6 +92,21 @@ If you picked SIMPLE in settings:
 3. **Post**. Stock is decremented at the moment of posting (no separate delivery step).
 4. Record payment as in step 4 above.
 
+If you sometimes need Sales Orders or Delivery Notes without switching the whole company to Operational mode, open `Sales -> Settings` and enable **Show Sales Orders & Delivery Notes anyway**. This only shows those pages in Simple mode; it does not change invoice posting, tax, stock valuation, or accounting controls.
+
+---
+
+## Sales Order, Delivery Note, and Return Page Layout
+
+Sales Orders, Delivery Notes, and Sales Returns use the same document page skeleton as the Sales Invoice page:
+
+- the document header stays compact and shows the document number, source/context, and status
+- a right-side summary rail shows totals, delivery quantities, settlement, or source-document context depending on the document type
+- the action footer stays visible while you scroll long forms and line tables
+- the footer shows the most important totals or counts before you save, post, deliver, return, or open GL Impact/history
+
+This layout does not change posting, tax, stock movement, COGS, AR, approval, period-lock, or ledger behavior.
+
 ---
 
 ## Sales returns
@@ -193,7 +208,7 @@ A: Use Sales Return for the wrong lines, then create a new invoice with the righ
 A: Record the payment for the full received amount. The system marks the invoice PAID and the extra remains as an unallocated credit on the customer. Apply it to their next invoice manually.
 
 **Q: I see "Quotations" in some docs but there's no menu for them.**
-A: Quotations are planned but not yet built. For now, use a Sales Order in DRAFT status as your quotation.
+A: Quotations are available under `Sales -> Quotations`. Use them for customer offers before creating a Sales Order or Sales Invoice.
 
 **Q: The dashboard shows my revenue total — but the Accounting P&L shows a different number. Why?**
 A: They should match for a closed period. If they don't, check for: unposted invoices (they show in dashboard but not in P&L), refunds/returns posted in a different period, or manual journal entries to revenue accounts outside Sales.
@@ -201,3 +216,23 @@ A: They should match for a closed period. If they don't, check for: unposted inv
 ---
 
 *For technical details (workflow modes, GL posting logic, inventory integration contract) see [`docs/architecture/sales.md`](../../architecture/sales.md). For the canonical posting algorithms see [`docs/modules/sales/ALGORITHMS.md`](../../modules/sales/ALGORITHMS.md).*
+
+---
+
+## Shared Document Layout
+
+Sales Invoices remain the reference layout for Sales documents. Sales Orders, Delivery Notes, Sales Returns, and Quotations now use the same shared line table style, while their columns and actions change for each document type.
+
+- Sales document lists use the same list layout with quick status filters, inline filters, centered columns, row actions, and pagination.
+- Line item tables use the same compact grid style across invoices, orders, delivery notes, returns, and quotations.
+- Users can right-click a line to copy, paste, insert, delete, highlight it, or choose a line color when the document is editable.
+- Users can click/right-click the `#` header cell to copy, paste, clean, export, import, or open the table UI selector.
+- Column widths, line colors, row coloring, table layout style, text size, table font, number font, and the two alternating line colors are saved locally for the current user and document table.
+- Empty numeric cells stay blank on new working rows instead of showing `0` placeholders. A zero appears only after the row has real line content.
+- UOM cells use an item-aware selector. After you select an item, the default sales UOM fills in automatically. If you need another UOM, edit the cell and choose from the UOMs already defined on that item; use the item-card link in the selector popup to maintain item UOMs.
+- Side rails and sticky footers keep totals/status/actions visible on Sales Orders, Delivery Notes, Sales Invoices, and Sales Returns.
+- Native document pages now share the same section order: controls, header details, line table, secondary work area, optional attachments, right rail, and footer actions.
+- A section can be hidden when it does not apply. For example, Sales Invoice can show settlement and footer totals, while Delivery Note can omit settlement without changing the rest of the page structure.
+- The top action tray includes a **New** document button on scaffold-backed Sales documents. If you entered unsaved data, the system asks for confirmation before opening a clear form so you do not lose work by accident.
+
+This is a layout and data-entry consistency improvement only. It does not change posting, tax, settlement, inventory, approval, or ledger behavior.
