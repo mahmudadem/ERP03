@@ -25,13 +25,13 @@ const CONTEXT_VALUES: ContextFilter[] = ['ALL', 'AFTER_INVOICE', 'BEFORE_INVOICE
 const statusChipClasses = (status: SRStatus): string => {
   switch (status) {
     case 'DRAFT':
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
     case 'POSTED':
-      return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-500/20';
     case 'CANCELLED':
-      return 'bg-rose-100 text-rose-700 ring-rose-200';
+      return 'bg-rose-50 text-rose-700 ring-rose-600/10 dark:bg-rose-950/35 dark:text-rose-300 dark:ring-rose-500/20';
     default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
   }
 };
 

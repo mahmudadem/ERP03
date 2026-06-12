@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   ShoppingCart,
@@ -17,6 +18,7 @@ import {
   DollarSign,
   Users,
   Layers,
+  Plus,
 } from 'lucide-react';
 import { companyModulesApi } from '../../../api/companyModules';
 import { listUsers, CompanyUser } from '../../../api/companyAdmin';
@@ -57,6 +59,33 @@ function formatDateTime(iso: string | undefined | null): string {
 
 function formatCurrency(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parseCustomerName(name: string): { primary: string; secondary: string } {
+  if (!name) return { primary: '—', secondary: '' };
+  const delimiters = [/ \/ /, / \| /, / - /];
+  for (const delim of delimiters) {
+    const parts = name.split(delim);
+    if (parts.length > 1) {
+      return {
+        primary: parts[0].trim(),
+        secondary: parts[1].trim(),
+      };
+    }
+  }
+  
+  const hasArabic = /[\u0600-\u06FF]/.test(name);
+  if (hasArabic) {
+    return {
+      primary: name,
+      secondary: 'Client Partner',
+    };
+  } else {
+    return {
+      primary: name,
+      secondary: 'Customer Account',
+    };
+  }
 }
 
 // ─── Per-section In-Memory Cache ─────────────────────────────────────────────
@@ -141,41 +170,78 @@ const QuickLinkTile = ({ icon, label, sublabel, onClick }: QuickLinkProps) => (
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+
 interface KPICardProps {
   label: string;
   value: string;
-  icon: React.ReactNode;
-  iconBg: string;
   loading: boolean;
   subtext?: string;
   accent?: 'normal' | 'warning' | 'danger' | 'success';
+  subtextAccent?: 'normal' | 'warning' | 'danger' | 'success';
+  suffix?: string;
 }
 
-const KPI_ACCENT = {
-  normal: '',
-  warning: 'text-amber-600 dark:text-amber-400',
-  danger: 'text-red-600 dark:text-red-400',
-  success: 'text-emerald-600 dark:text-emerald-400',
+const KPI_BORDERS = {
+  normal: 'border-l-[3px] border-l-blue-500 dark:border-l-blue-400',
+  warning: 'border-l-[3px] border-l-amber-500 dark:border-l-amber-400',
+  danger: 'border-l-[3px] border-l-red-500 dark:border-l-red-400',
+  success: 'border-l-[3px] border-l-emerald-500 dark:border-l-emerald-400',
 };
 
-const KPICard = ({ label, value, icon, iconBg, loading, subtext, accent = 'normal' }: KPICardProps) => (
-  <Card className="flex items-center gap-4 p-4">
-    <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-      {icon}
-    </div>
-    <div className="min-w-0 flex-1">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</div>
+const KPI_DOTS = {
+  normal: 'bg-slate-400',
+  warning: 'bg-amber-500',
+  danger: 'bg-red-500',
+  success: 'bg-emerald-500',
+};
+
+const KPI_SUBTEXT_ACCENT = {
+  normal: 'text-slate-400 dark:text-slate-500',
+  warning: 'text-amber-600 dark:text-amber-400 font-medium',
+  danger: 'text-red-600 dark:text-red-400 font-medium',
+  success: 'text-emerald-600 dark:text-emerald-400 font-medium',
+};
+
+const KPICard = ({
+  label,
+  value,
+  loading,
+  subtext,
+  accent = 'normal',
+  subtextAccent,
+  suffix,
+}: KPICardProps) => (
+  <Card
+    className={`p-3.5 flex flex-col justify-between rounded-lg shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 ${KPI_BORDERS[accent]}`}
+  >
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        {label}
+      </div>
       {loading ? (
-        <Skeleton className="mt-1 h-7 w-24" />
+        <Skeleton className="mt-2 h-7 w-28" />
       ) : (
-        <div className={`mt-0.5 text-2xl font-bold leading-none ${KPI_ACCENT[accent]} text-slate-900 dark:text-slate-100`}>
-          {value}
+        <div className="mt-1.5 flex items-baseline gap-1">
+          <span className="text-xl font-bold tracking-tight text-slate-850 dark:text-slate-50">
+            {value}
+          </span>
+          {suffix && (
+            <span className="text-xs font-normal text-slate-400 uppercase">
+              {suffix}
+            </span>
+          )}
         </div>
       )}
-      {subtext && !loading && (
-        <div className="mt-0.5 text-[10px] text-slate-400">{subtext}</div>
-      )}
     </div>
+    {subtext && !loading && (
+      <div className="mt-2 flex items-center gap-1.5 text-[10px]">
+        <span className={`h-1.5 w-1.5 rounded-full ${KPI_DOTS[subtextAccent || accent]}`} />
+        <span className={`${KPI_SUBTEXT_ACCENT[subtextAccent || accent]}`}>
+          {subtext}
+        </span>
+      </div>
+    )}
   </Card>
 );
 
@@ -345,6 +411,7 @@ const SettingsSummary = ({
 
 const SalesHomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -657,6 +724,10 @@ const SalesHomePage: React.FC = () => {
 
   const maxCustomerTotal = topCustomers[0]?.total || 1;
 
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
+  const recentInvoices = useMemo(() => invoices.slice(0, 5), [invoices]);
+  const companyCurrency = invoices[0]?.currency || 'SYP';
+
   // ── Loading / Error / Init states ──────────────────────────────────────────
   if (loadingSettings && initialized === null) {
     return (
@@ -694,374 +765,462 @@ const SalesHomePage: React.FC = () => {
     );
   }
 
-  const TYPE_BADGE: Record<string, string> = {
-    Invoice: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
-    Order: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
-    Return: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
-    Delivery: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50',
-  };
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5 p-4">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200/60 dark:border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shadow-sm border border-indigo-100/50 dark:border-indigo-900/30">
             <Layers size={24} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">
-                Sales Hub
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
+                Sales Overview Module
               </h1>
               <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">
                 Module Dashboard
               </span>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-              <Clock size={12} className="text-slate-400 dark:text-slate-500" />
-              <span>Last updated:</span>
-              <span className="font-medium text-slate-600 dark:text-slate-400">
-                {formatDateTime(lastRefreshed.toISOString())}
-              </span>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Track and publish invoices, monitor receivables, and configure sales order funnels.
             </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {showOperationalDocuments && (
-            <button
-              type="button"
-              onClick={() => navigate('/sales/orders/new')}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              + New SO
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => navigate('/sales/orders/new')}
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 shadow-sm"
+          >
+            <Plus size={14} />
+            {t('sales.home.createOrder', 'Sales Order')}
+          </button>
           <button
             type="button"
             onClick={() => navigate('/sales/invoices/new')}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-700 dark:bg-primary-600 dark:hover:bg-primary-500"
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 shadow-sm"
           >
-            + New Invoice
+            <Plus size={14} />
+            {t('sales.home.createInvoice', 'Invoice')}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/sales/returns/new')}
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 shadow-sm"
+          >
+            <Plus size={14} />
+            {t('sales.home.createReturn', 'Sales Return')}
           </button>
           <button
             type="button"
             onClick={() => navigate('/sales/settings')}
-            className="rounded-lg border border-slate-300 p-1.5 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-805 dark:text-slate-200 dark:hover:bg-slate-700 shadow-sm"
             title="Sales Settings"
           >
-            <Settings size={16} />
+            <Settings size={14} />
+            {t('sales.home.settings', 'Settings')}
           </button>
         </div>
       </div>
 
-      {/* ── Quick Links ── */}
-      <div>
-        <SectionHeader title="Quick Links" />
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
-          <QuickLinkTile
-            icon={<FileText size={14} />}
-            label="Invoices"
-            sublabel={loadingInvoices ? '…' : `${invoices.length} total`}
-            onClick={() => navigate('/sales/invoices')}
-          />
-          <QuickLinkTile
-            icon={<ShoppingCart size={14} />}
-            label="Orders"
-            sublabel={loadingOrders ? '…' : `${orders.length} total`}
-            onClick={() => navigate('/sales/orders')}
-          />
-          <QuickLinkTile
-            icon={<Truck size={14} />}
-            label="Delivery Notes"
-            sublabel={loadingDNs ? '…' : `${deliveryNotes.length} total`}
-            onClick={() => navigate('/sales/delivery-notes')}
-          />
-          <QuickLinkTile
-            icon={<ClipboardList size={14} />}
-            label="Quotations"
-            onClick={() => navigate('/sales/quotes')}
-          />
-          <QuickLinkTile
-            icon={<RotateCcw size={14} />}
-            label="Returns"
-            sublabel={loadingReturns ? '…' : `${returns.length} total`}
-            onClick={() => navigate('/sales/returns')}
-          />
-        </div>
-      </div>
-
       {/* ── KPI Cards ── */}
-      <div>
-        <SectionHeader
-          title="Financials"
-          onRefresh={() => { void fetchInvoices(true); setLastRefreshed(new Date()); }}
-          refreshing={loadingInvoices}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KPICard
+          label="Total Revenue"
+          value={formatCurrency(totalRevenue)}
+          suffix={companyCurrency}
+          loading={loadingInvoices}
+          accent="normal"
+          subtextAccent="success"
+          subtext="Realized cash settlements"
         />
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <KPICard
-            label="Total Revenue"
-            value={formatCurrency(totalRevenue)}
-            icon={<DollarSign size={20} className="text-slate-500 dark:text-slate-400" />}
-            iconBg="bg-slate-50 dark:bg-slate-800/60"
-            loading={loadingInvoices}
-            subtext={`${postedInvoices.length} posted invoices`}
-          />
-          <KPICard
-            label="Outstanding AR"
-            value={formatCurrency(outstandingAR)}
-            icon={<TrendingUp size={20} className="text-slate-500 dark:text-slate-400" />}
-            iconBg="bg-slate-50 dark:bg-slate-800/60"
-            loading={loadingInvoices}
-          />
-          <KPICard
-            label="Overdue Invoices"
-            value={String(overdueInvoices)}
-            icon={<AlertCircle size={20} className={overdueInvoices > 0 ? "text-red-500" : "text-slate-500 dark:text-slate-400"} />}
-            iconBg={overdueInvoices > 0 ? "bg-red-50 dark:bg-red-950/20" : "bg-slate-50 dark:bg-slate-800/60"}
-            loading={loadingInvoices}
-            accent={overdueInvoices > 0 ? 'danger' : 'normal'}
-            subtext={overdueInvoices > 0 ? 'Require immediate action' : 'All current'}
-          />
-          <KPICard
-            label="Pending Approval"
-            value={String(pendingApproval)}
-            icon={<Clock size={20} className={pendingApproval > 0 ? "text-amber-500" : "text-slate-500 dark:text-slate-400"} />}
-            iconBg={pendingApproval > 0 ? "bg-amber-50 dark:bg-amber-950/20" : "bg-slate-50 dark:bg-slate-800/60"}
-            loading={loadingInvoices}
-            accent={pendingApproval > 0 ? 'warning' : 'normal'}
-          />
-        </div>
+        <KPICard
+          label="Outstanding AR"
+          value={formatCurrency(outstandingAR)}
+          suffix={companyCurrency}
+          loading={loadingInvoices}
+          accent="normal"
+          subtextAccent="danger"
+          subtext="Due collection ledger status"
+        />
+        <KPICard
+          label="Overdue Invoices"
+          value={String(overdueInvoices)}
+          suffix="Active items"
+          loading={loadingInvoices}
+          accent={overdueInvoices > 0 ? 'danger' : 'normal'}
+          subtextAccent={overdueInvoices > 0 ? 'danger' : 'normal'}
+          subtext="Requiring immediate credit claims"
+        />
+        <KPICard
+          label="Pending Approval"
+          value={String(pendingApproval)}
+          suffix="Invoices pending"
+          loading={loadingInvoices}
+          accent={pendingApproval > 0 ? 'warning' : 'normal'}
+          subtextAccent={pendingApproval > 0 ? 'warning' : 'normal'}
+          subtext="Awaiting bank transfers"
+        />
       </div>
 
-      {/* ── Pipeline Overview + Settings (2-col) ── */}
-      <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
+      {/* ── Main Workspace Grid (Left tables & Right sidebar) ── */}
+      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
 
-        {/* Pipeline */}
-        <Card className="p-4">
-          <SectionHeader
-            title="Document Pipeline"
-            onRefresh={() => {
-              void fetchInvoices(true);
-              if (showOperationalDocuments) { void fetchOrders(true); void fetchDNs(true); }
-              void fetchReturns(true);
-              setLastRefreshed(new Date());
-            }}
-            refreshing={loadingInvoices || loadingOrders || loadingDNs || loadingReturns}
-          />
-          <div className="space-y-2">
-            <PipelineRow
-              icon={<FileText size={15} />}
-              label="Invoices"
-              statuses={siStatuses}
-              total={invoices.length}
-              loading={loadingInvoices}
-              onBadgeClick={(status) => navigate('/sales/invoices', { state: { statusFilter: status } })}
-              onClick={() => navigate('/sales/invoices')}
-            />
-            {showOperationalDocuments && (
-              <>
-                <PipelineRow
-                  icon={<ShoppingCart size={15} />}
-                  label="Orders"
-                  statuses={soStatuses}
-                  total={orders.length}
-                  loading={loadingOrders}
-                  onBadgeClick={(status) => navigate('/sales/orders', { state: { statusFilter: status } })}
+        {/* Left Column: Tables */}
+        <div className="space-y-5">
+
+          {/* RECENT SALES ORDERS (SO) */}
+          {showOperationalDocuments && (
+            <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Recent Sales Orders (SO)
+                </h3>
+                <button
+                  type="button"
                   onClick={() => navigate('/sales/orders')}
-                />
-                <PipelineRow
-                  icon={<Truck size={15} />}
-                  label="Delivery Notes"
-                  statuses={dnStatuses}
-                  total={deliveryNotes.length}
-                  loading={loadingDNs}
-                  onBadgeClick={(status) => navigate('/sales/delivery-notes', { state: { statusFilter: status } })}
-                  onClick={() => navigate('/sales/delivery-notes')}
-                />
-              </>
-            )}
-            <PipelineRow
-              icon={<RotateCcw size={15} />}
-              label="Returns"
-              statuses={srStatuses}
-              total={returns.length}
-              loading={loadingReturns}
-              onBadgeClick={(status) => navigate('/sales/returns', { state: { statusFilter: status } })}
-              onClick={() => navigate('/sales/returns')}
-            />
-            {/* Quotations — nav only, no count */}
-            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-400">
-                <ClipboardList size={15} />
+                  className="text-[10px] font-bold text-indigo-650 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  Fulfillment Queue
+                </button>
               </div>
-              <div className="min-w-[80px] text-sm font-medium text-slate-700 dark:text-slate-300">Quotations</div>
-              <div className="flex-1">
-                <span className="text-[11px] text-slate-400">View in list page</span>
-              </div>
+              <div className="border-b border-slate-100 dark:border-slate-700/60 mb-3" />
+              {loadingOrders && recentOrders.length === 0 ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 rounded" />)}
+                </div>
+              ) : recentOrders.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">No recent orders.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-700/80">
+                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">SO Number</th>
+                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
+                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Customer / Client</th>
+                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
+                        <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
+                        <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
+                        <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
+                        <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
+                        <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                      {recentOrders.map((o) => {
+                        const creatorName = userById[o.createdBy]?.name || o.createdBy;
+                        return (
+                          <tr
+                            key={o.id}
+                            className="group cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                            onClick={() => navigate(`/sales/orders/${o.id}`)}
+                          >
+                            <td className="py-2.5 pr-3 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                              {o.orderNumber}
+                            </td>
+                            <td className="py-2.5 pr-3 text-slate-500 font-mono whitespace-nowrap">
+                              {o.orderDate || o.createdAt.split('T')[0]}
+                            </td>
+                            <td className="py-2.5 pr-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={o.customerName}>
+                              {o.customerName}
+                            </td>
+                            <td className="py-2.5 pr-3 font-mono text-slate-500 whitespace-nowrap">
+                              {o.currency}
+                            </td>
+                            <td className="py-2.5 pr-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                              {formatCurrency(o.grandTotalDoc)}
+                            </td>
+                            <td className="py-2.5 pr-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
+                              {creatorName}
+                            </td>
+                            <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                              {formatDateTime(o.createdAt)}
+                            </td>
+                            <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                              {o.confirmedAt ? formatDateTime(o.confirmedAt) : '—'}
+                            </td>
+                            <td className="py-2.5 text-right whitespace-nowrap">
+                              <StatusBadge status={o.status} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* RECENT SALES INVOICES (INV) */}
+          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Recent Sales Invoices (INV)
+              </h3>
               <button
                 type="button"
-                onClick={() => navigate('/sales/quotes')}
-                className="rounded p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-600"
-                title="Go to Quotations"
+                onClick={() => navigate('/sales/invoices')}
+                className="text-[10px] font-bold text-indigo-650 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
               >
-                <ArrowRight size={13} />
+                Postings Register
               </button>
             </div>
-          </div>
-        </Card>
+            <div className="border-b border-slate-100 dark:border-slate-700/60 mb-3" />
+            {loadingInvoices && recentInvoices.length === 0 ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 rounded" />)}
+              </div>
+            ) : recentInvoices.length === 0 ? (
+              <div className="py-6 text-center text-xs text-slate-400">No recent invoices.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700/80">
+                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Invoice ID</th>
+                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
+                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Debtor Customer</th>
+                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
+                      <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
+                      <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
+                      <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
+                      <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
+                      <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    {recentInvoices.map((i) => {
+                      const creatorName = userById[i.createdBy]?.name || i.createdBy;
+                      return (
+                        <tr
+                          key={i.id}
+                          className="group cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                          onClick={() => navigate(`/sales/invoices/${i.id}`)}
+                        >
+                          <td className="py-2.5 pr-3 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                            {i.invoiceNumber}
+                          </td>
+                          <td className="py-2.5 pr-3 text-slate-500 font-mono whitespace-nowrap">
+                            {i.invoiceDate || i.createdAt.split('T')[0]}
+                          </td>
+                          <td className="py-2.5 pr-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={i.customerName}>
+                            {i.customerName}
+                          </td>
+                          <td className="py-2.5 pr-3 font-mono text-slate-500 whitespace-nowrap">
+                            {i.currency}
+                          </td>
+                          <td className="py-2.5 pr-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                            {formatCurrency(i.grandTotalDoc)}
+                          </td>
+                          <td className="py-2.5 pr-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
+                            {creatorName}
+                          </td>
+                          <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                            {formatDateTime(i.createdAt)}
+                          </td>
+                          <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                            {i.postedAt ? formatDateTime(i.postedAt) : '—'}
+                          </td>
+                          <td className="py-2.5 text-right whitespace-nowrap">
+                            <StatusBadge status={i.status} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
 
-        {/* Settings Summary */}
-        <SettingsSummary
-          settings={settings}
-          loading={loadingSettings}
-          onNavigate={() => navigate('/sales/settings')}
-        />
-      </div>
+        {/* Right Column: Sidebar */}
+        <div className="space-y-5">
 
-      {/* ── Recent Activity ── */}
-      <Card className="p-4">
-        <SectionHeader
-          title="Recent Activity"
-          action={
-            <button
-              type="button"
-              onClick={() => navigate('/sales/invoices')}
-              className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
-            >
-              All invoices <ArrowRight size={11} />
-            </button>
-          }
-        />
-        <div className="border-b border-slate-200/60 dark:border-slate-700/60 mb-3" />
-        {loadingInvoices && recentActivity.length === 0 ? (
-          <div className="space-y-2">
-            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
-          </div>
-        ) : recentActivity.length === 0 ? (
-          <div className="py-6 text-center text-sm text-slate-400">No activity yet.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Number</th>
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Customer</th>
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Type</th>
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
-                  <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
-                  <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
-                  <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+          {/* Quick Links */}
+          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+              Quick Navigation
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <QuickLinkTile
+                icon={<FileText size={13} />}
+                label="Invoices"
+                onClick={() => navigate('/sales/invoices')}
+              />
+              <QuickLinkTile
+                icon={<ShoppingCart size={13} />}
+                label="Orders"
+                onClick={() => navigate('/sales/orders')}
+              />
+              <QuickLinkTile
+                icon={<Truck size={13} />}
+                label="Delivery Notes"
+                onClick={() => navigate('/sales/delivery-notes')}
+              />
+              <QuickLinkTile
+                icon={<ClipboardList size={13} />}
+                label="Quotations"
+                onClick={() => navigate('/sales/quotes')}
+              />
+              <QuickLinkTile
+                icon={<RotateCcw size={13} />}
+                label="Returns"
+                onClick={() => navigate('/sales/returns')}
+              />
+              <button
+                type="button"
+                onClick={() => navigate('/sales/settings')}
+                className="group flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
+              >
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-655 dark:bg-slate-700 dark:text-slate-400">
+                  <Settings size={13} />
+                </div>
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Settings</div>
+              </button>
+            </div>
+          </Card>
+
+          {/* Recent Activity Log */}
+          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Recent Activity
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  void fetchInvoices(true);
+                  if (showOperationalDocuments) {
+                    void fetchOrders(true);
+                    void fetchDNs(true);
+                  }
+                  void fetchReturns(true);
+                  setLastRefreshed(new Date());
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                title="Refresh activity"
+              >
+                <RefreshCw size={11} className={loadingInvoices || loadingOrders ? 'animate-spin' : ''} />
+              </button>
+            </div>
+            <div className="border-b border-slate-100 dark:border-slate-700/60 mb-3" />
+            {loadingInvoices && recentActivity.length === 0 ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 rounded" />)}
+              </div>
+            ) : recentActivity.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-400">No activity yet.</div>
+            ) : (
+              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
                 {recentActivity.map((item) => {
                   const creatorName = userById[item.createdBy]?.name || item.createdBy;
                   return (
-                    <tr
+                    <div
                       key={item.id}
-                      className="group cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
                       onClick={() => navigate(item.route)}
+                      className="group flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-100 dark:border-slate-700/60 bg-slate-50/30 p-2 transition-all hover:bg-slate-50 dark:bg-slate-800/20 dark:hover:bg-slate-700/40"
                     >
-                      <td className="py-2 pr-3 font-mono font-bold text-slate-800 dark:text-slate-100">
-                        {item.number}
-                      </td>
-                      <td className="py-2 pr-3 text-slate-500 font-mono">
-                        {item.date}
-                      </td>
-                      <td className="py-2 pr-3 font-semibold text-slate-700 dark:text-slate-200">
-                        {item.customer}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[item.type] ?? ''}`}>
-                          {item.type}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3 font-mono text-slate-500">
-                        {item.currency}
-                      </td>
-                      <td className="py-2 pr-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100">
-                        {item.amount !== null ? formatCurrency(item.amount) : '—'}
-                      </td>
-                      <td className="py-2 pr-3 text-slate-600 dark:text-slate-300 truncate max-w-[120px]" title={creatorName}>
-                        {creatorName}
-                      </td>
-                      <td className="py-2 pr-3 text-slate-400 font-mono text-[10px]">
-                        {formatDateTime(item.createdAt)}
-                      </td>
-                      <td className="py-2 pr-3 text-slate-400 font-mono text-[10px]">
-                        {item.approvedAt ? formatDateTime(item.approvedAt) : '—'}
-                      </td>
-                      <td className="py-2 text-right">
-                        <StatusBadge status={item.status} />
-                      </td>
-                    </tr>
+                      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-white text-slate-500 shadow-sm dark:bg-slate-750 dark:text-slate-400">
+                        {item.type === 'Invoice' ? <FileText size={12} /> :
+                         item.type === 'Order' ? <ShoppingCart size={12} /> :
+                         item.type === 'Return' ? <RotateCcw size={12} /> : <Truck size={12} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 font-mono">
+                            {item.number}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {item.date}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-400">
+                          <span className="font-semibold text-slate-700 dark:text-slate-350">{item.customer}</span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-1 text-[9px] text-slate-400">
+                          <span className="truncate max-w-[120px]" title={creatorName}>
+                            By {creatorName}
+                          </span>
+                          <span className="font-semibold text-slate-650 dark:text-slate-300 font-mono">
+                            {item.amount !== null ? `${formatCurrency(item.amount)} ${item.currency}` : '—'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+              </div>
+            )}
+          </Card>
 
-      {/* ── Top Customers ── */}
-      <Card className="p-4">
-        <SectionHeader
-          title="Top Customers"
-          action={
-            <div className="flex items-center gap-1 text-[11px] text-slate-400">
-              <Users size={11} />
-              by revenue (posted only)
-            </div>
-          }
-        />
-        {loadingInvoices && topCustomers.length === 0 ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 rounded-lg" />)}
-          </div>
-        ) : topCustomers.length === 0 ? (
-          <div className="py-4 text-center text-sm text-slate-400">No posted invoices yet.</div>
-        ) : (
-          <div className="space-y-2">
-            {topCustomers.map((c, idx) => {
-              const pct = Math.round((c.total / maxCustomerTotal) * 100);
-              return (
-                <div key={c.name} className="group relative flex items-center gap-3">
-                  <div className="w-5 flex-shrink-0 text-center text-[11px] font-bold text-slate-400">
-                    {idx + 1}
-                  </div>
-                  <div className="relative min-w-0 flex-1 overflow-hidden rounded-lg">
-                    {/* Bar */}
+          {/* Top Client Accounts */}
+          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+              Top Client Accounts
+            </h3>
+            <div className="border-b border-slate-100 dark:border-slate-700/60 mb-3" />
+            {loadingInvoices && topCustomers.length === 0 ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
+              </div>
+            ) : topCustomers.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-400">No client data available.</div>
+            ) : (
+              <div className="space-y-2.5">
+                {topCustomers.map((c) => {
+                  const { primary, secondary } = parseCustomerName(c.name);
+                  const pct = Math.round((c.total / maxCustomerTotal) * 100);
+                  return (
                     <div
-                      className="absolute inset-y-0 left-0 rounded-lg bg-slate-100 transition-all duration-500 dark:bg-slate-800/65"
-                      style={{ width: `${pct}%` }}
-                    />
-                    <div className="relative flex items-center justify-between px-3 py-2">
-                      <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                        {c.name}
-                      </span>
-                      <span className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        {formatCurrency(c.total)}
-                      </span>
+                      key={c.name}
+                      className="group relative overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-3 transition-all hover:border-slate-350 hover:shadow-sm dark:bg-slate-800"
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="truncate text-xs font-bold text-slate-800 dark:text-slate-100 font-cairo">
+                            {primary}
+                          </div>
+                          {secondary && (
+                            <div className="mt-0.5 truncate text-[9px] font-medium text-slate-400 dark:text-slate-500">
+                              {secondary}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100 font-mono">
+                            {formatCurrency(c.total)} <span className="text-[9px] font-normal text-slate-400">{companyCurrency}</span>
+                          </div>
+                          <div className="text-[9px] font-bold tracking-wider text-slate-400 uppercase">
+                            BALANCE
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Bottom edge thin progress bar */}
+                      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-slate-100 dark:bg-slate-750">
+                        <div
+                          className="h-full bg-slate-800 dark:bg-slate-300 transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-10 flex-shrink-0 text-right text-[10px] text-slate-400">
-                    {pct}%
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+        </div>
+      </div>
 
       {/* ── Footer stamp ── */}
-      <div className="flex items-center justify-center gap-1.5 pb-2 text-[10px] text-slate-300 dark:text-slate-600">
+      <div className="flex items-center justify-center gap-1.5 pb-2 text-[10px] text-slate-300 dark:text-slate-655">
         <Layers size={10} />
         Sales module — cached data refreshes every 60 s per section
       </div>

@@ -37,12 +37,14 @@ const getSharedFiscalYears = async () => {
 export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', inputClassName, disabled = false, placeholder }) => {
   const { settings } = useCompanySettings();
   const containerRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   
   // Display value formatting
   const getDisplayValue = (iso: string) => formatCompanyDate(iso, settings);
   const [inputValue, setInputValue] = useState(getDisplayValue(value));
   const [isOpen, setIsOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   
   // Calendar state
   const [viewDate, setViewDate] = useState(() => {
@@ -51,6 +53,40 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
     // Use local time for picker view
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   });
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCoords(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const calendarWidth = 256; // w-64 is 256px
+        let left = rect.right - calendarWidth;
+        if (left < 10) {
+          left = rect.left;
+        }
+        if (left + calendarWidth > window.innerWidth) {
+          left = window.innerWidth - calendarWidth - 10;
+        }
+        setCoords({
+          top: rect.bottom + window.scrollY,
+          left: left + window.scrollX,
+        });
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, { capture: true });
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, { capture: true });
+    };
+  }, [isOpen]);
 
   // Sync with value if it changes from outside
   useEffect(() => {
@@ -67,7 +103,12 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        (!calendarRef.current || !calendarRef.current.contains(target))
+      ) {
         setIsOpen(false);
       }
     };
@@ -231,7 +272,14 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     return (
-      <div className="absolute z-50 top-full right-0 mt-1 bg-white dark:bg-[var(--color-bg-primary)] border border-slate-200 dark:border-[var(--color-border)] rounded-xl shadow-lg p-3 w-64 select-none animate-in fade-in slide-in-from-top-2 duration-200">
+      <div 
+        ref={calendarRef}
+        className="absolute z-[10000] bg-white dark:bg-[var(--color-bg-primary)] border border-slate-200 dark:border-[var(--color-border)] rounded-xl shadow-lg p-3 w-64 select-none animate-in fade-in slide-in-from-top-2 duration-200"
+        style={{
+          top: coords ? `${coords.top}px` : undefined,
+          left: coords ? `${coords.left}px` : undefined,
+        }}
+      >
         <div className="flex justify-between items-center mb-4 px-1">
           <button type="button" onClick={() => changeMonth(-1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-500">
             <ChevronLeft size={16} />
@@ -322,7 +370,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
         <CalendarIcon size={14} />
       </button>
       
-      {isOpen && !disabled && renderCalendar()}
+      {isOpen && !disabled && coords && createPortal(renderCalendar(), document.body)}
 
       {/* Shortcuts Context Menu */}
       {contextMenu && createPortal(

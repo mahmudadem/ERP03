@@ -142,12 +142,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
       onMouseLeave={() => setIsHovered(false)}
       className={clsx(
         "fixed flex flex-col print:hidden bg-[var(--app-sidebar-surface)] border-[var(--color-border)] transition-all duration-300 ease-out",
+        !isFlyoutMode && "main-sidebar-accordion",
         asideClasses
       )}
     >
       {/* Header Area with Pin & Close Buttons */}
       <div className={clsx(
         "h-12 flex items-center shrink-0 border-b border-[var(--color-border)]",
+        !isFlyoutMode && "bg-white/80",
         isSidebarExpanded ? "justify-between px-4" : "justify-center px-2"
       )}>
         {/* Pin button */}
@@ -181,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
 
       {/* Search Area */}
       {isSidebarExpanded && (
-        <div className="px-4 mb-4 shrink-0">
+        <div className={clsx("px-4 mb-4 shrink-0", !isFlyoutMode && "mt-4")}>
           <div className="relative">
             <input
               ref={searchInputRef}
@@ -207,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
       )}
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4 px-3 custom-scroll">
+      <div className={clsx("flex-1 overflow-y-auto px-3 custom-scroll", !isFlyoutMode ? "py-3 space-y-1" : "py-4")}>
         {isSidebarExpanded && isTailwindPlayTheme && (
           <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-4 mb-2">
             {t('sidebar.modulesTitle', 'Modules')}

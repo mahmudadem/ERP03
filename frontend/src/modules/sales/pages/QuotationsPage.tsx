@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Eye, Search } from 'lucide-react';
+import { Eye, Search, Filter, RotateCcw } from 'lucide-react';
 import { clsx } from 'clsx';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
@@ -24,19 +24,19 @@ const STATUS_OPTIONS: Array<{ label: string; value: QuoteStatus | 'ALL'; color: 
 const statusChipClasses = (status: QuoteStatus): string => {
   switch (status) {
     case 'DRAFT':
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
     case 'SENT':
-      return 'bg-blue-100 text-blue-700 ring-blue-200';
+      return 'bg-blue-50 text-blue-700 ring-blue-600/10 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-500/20';
     case 'ACCEPTED':
-      return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-500/20';
     case 'REJECTED':
-      return 'bg-rose-100 text-rose-700 ring-rose-200';
+      return 'bg-rose-50 text-rose-700 ring-rose-600/10 dark:bg-rose-950/35 dark:text-rose-300 dark:ring-rose-500/20';
     case 'EXPIRED':
-      return 'bg-amber-100 text-amber-700 ring-amber-200';
+      return 'bg-amber-50 text-amber-800 ring-amber-600/10 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-500/20';
     case 'CONVERTED':
-      return 'bg-violet-100 text-violet-700 ring-violet-200';
+      return 'bg-violet-50 text-violet-700 ring-violet-600/10 dark:bg-violet-950/35 dark:text-violet-300 dark:ring-violet-500/20';
     default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
   }
 };
 
@@ -147,36 +147,48 @@ const QuotationsPage: React.FC = () => {
     [navigate, t],
   );
 
+  const handleApply = () => {
+    setSearchFilter(localSearch);
+    setPage(1);
+  };
+
+  const handleClear = () => {
+    setLocalSearch('');
+    setSearchFilter('');
+    setStatusFilter('ALL');
+    setCustomerFilter('');
+    setPage(1);
+  };
+
   const hasActiveFilters = statusFilter !== 'ALL' || !!customerFilter || !!searchFilter;
 
   return (
     <OperationalListLayout<QuoteDTO>
       title={t('sales.quotesList.title')}
-      subtitle={t('sales.quotesList.subtitle')}
+      subtitle=""
+      compactHeader
       newButtonLabel={t('sales.quotesList.newQuote')}
       onNewClick={() => navigate('/sales/quotes/new')}
       onRefresh={load}
       loading={loading}
       error={error}
       filters={
-        <div className="flex w-full flex-wrap items-center gap-3">
-          <div className="relative min-w-[220px] flex-1">
+        <div className="flex flex-row items-center gap-2.5 w-full overflow-x-auto whitespace-nowrap pb-1.5 lg:pb-0 scrollbar-thin">
+          {/* SEARCH */}
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
               value={localSearch}
-              onChange={(event) => setLocalSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  setSearchFilter(localSearch);
-                  setPage(1);
-                }
-              }}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleApply()}
               placeholder="Quote #, customer, status..."
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
             />
           </div>
-          <div className="w-full lg:w-64">
+
+          {/* CUSTOMER */}
+          <div className="w-52 flex-shrink-0">
             <PartySelector
               role="CUSTOMER"
               value={customerFilter}
@@ -187,32 +199,47 @@ const QuotationsPage: React.FC = () => {
               placeholder={t('sales.quotesList.allCustomers')}
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value as QuoteStatus | 'ALL');
-              setPage(1);
-            }}
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 lg:w-40"
-          >
-            <option value="ALL">{t('sales.quotesList.allStatuses')}</option>
-            {ALL_STATUSES.map((status) => (
-              <option key={status} value={status}>{t(`sales.quotesList.statuses.${status}`)}</option>
-            ))}
-          </select>
-          <button type="button" className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white" onClick={() => { setSearchFilter(localSearch); setPage(1); }}>
-            {t('actions.apply', 'Apply')}
-          </button>
+
+          {/* STATUS */}
+          <div className="w-32 flex-shrink-0">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as QuoteStatus | 'ALL');
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
+            >
+              <option value="ALL">{t('sales.quotesList.allStatuses')}</option>
+              {ALL_STATUSES.map((status) => (
+                <option key={status} value={status}>{t(`sales.quotesList.statuses.${status}`)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* ACTIONS */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleApply}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
+            >
+              <Filter size={16} />
+              <span>{t('actions.apply', 'Apply')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
+              title={t('actions.clear', 'Clear')}
+            >
+              <RotateCcw size={16} />
+            </button>
+          </div>
         </div>
       }
       hasActiveFilters={hasActiveFilters}
-      onClearFilters={() => {
-        setStatusFilter('ALL');
-        setCustomerFilter('');
-        setLocalSearch('');
-        setSearchFilter('');
-        setPage(1);
-      }}
+      onClearFilters={handleClear}
       statusFilterConfig={{
         options: STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label, color: option.color })),
         activeValue: statusFilter,

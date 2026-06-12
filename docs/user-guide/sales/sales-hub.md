@@ -14,45 +14,43 @@ Next to it, a **Last updated** timestamp shows exactly when the data on the scre
 
 ### 2. Action Buttons
 Use the quick action buttons in the header to create records:
-- **+ New SO**: Quickly create a new Sales Order (visible in Operational mode).
-- **+ New Invoice**: Directly create a new Sales Invoice.
-- **Settings Icon**: Navigate to the Sales Settings page.
+- **+ Create Sales Order**: Quickly create a new Sales Order.
+- **+ Create Invoice**: Directly create a new Sales Invoice.
+- **+ Create Sales Return**: Directly create a new Sales Return.
+- **Settings**: Navigate to the Sales Settings page.
 
-### 3. Quick Links
-A compact row of horizontal tiles lets you jump to specific documents:
-- **Invoices**
-- **Orders** (if operational mode is enabled)
-- **Delivery Notes** (if operational mode is enabled)
-- **Quotations**
-- **Returns**
+### 3. Financial KPI Cards
+Four clean, border-accented metric cards displaying:
+- **Total Revenue**: Total sales values with base currency, representing cash settlements.
+- **Outstanding AR**: Total accounts receivable currently due.
+- **Overdue Invoices**: A count of active invoices past their due date.
+- **Pending Approval**: A count of invoices awaiting manager approval.
 
-Each link displays a total count of documents currently in the system.
+---
 
-### 4. Document Pipeline
-The **Document Pipeline** displays status counts for Invoices, Orders, Delivery Notes, and Returns.
-- **Clickable Badges**: Each status count (e.g. `Draft`, `Pending Approval`, `Posted`) is an interactive button. Clicking a badge will navigate you to the document's list page with that specific status filter pre-applied.
-- **Total Counts**: Displays the overall count of documents.
-- **Row Navigation**: Clicking the arrow button (`->`) on the right side of the row takes you directly to the full document list.
+## Workspace Layout
 
-### 5. Settings Summary
-This panel lists your active Sales configurations, including:
-- **Workflow Mode**: Simple or Operational workflow.
-- **Prefixes and Sequences**: Standard document numbering templates.
-- **Payment Terms**: Default company payment rules.
-- **Operational Options**: Flags for credit-limit checks, over-deliveries, and direct invoicing overrides.
+The main workspace is split into two columns:
 
-### 6. Recent Activity
-A unified table showing the 10 most recent transactions (Invoices, Orders, and Returns) sorted by update time.
-Each entry displays:
-- Document number (with a link to its details)
-- Customer name
-- Document type badge
-- Status badge
-- Financial amount
-- Date and time of the last update
+### Left Column: Transaction Tables
+- **Recent Sales Orders (SO)**: Displays the 5 most recent Sales Orders in the system. Clicking a row opens the detail page for that Sales Order.
+- **Recent Sales Invoices (INV)**: Displays the 5 most recent Sales Invoices. Clicking a row opens the detail page for that Sales Invoice.
 
-### 7. Top Customers
-A visual percentage progress bar chart displaying your highest-revenue customers. The progress bar for each customer is dynamically scaled relative to your highest-producing customer.
+Both tables show all the key metadata columns for maximum readability:
+- Document Number / ID
+- Transaction Date
+- Customer Name
+- Document Currency
+- Raw Total Amount
+- Created By (Operator name)
+- Created At Timestamp
+- Approved At Timestamp
+- Current Status Badge
+
+### Right Column: Sidebar
+- **Quick Navigation**: Jump straight to document listing pages (Invoices, Orders, Delivery Notes, Quotations, Returns) or settings.
+- **Recent Activity Log**: A compact chronological timeline feed of the latest updates across all document types. It displays document numbers, transaction dates, customer info, and total amounts in a space-saving vertical card list.
+- **Top Client Accounts**: Cards displaying your highest-revenue customer accounts. Each card shows the primary Arabic customer name, its English translation, the current total balance, and a thin nested progress line representing their share of total company sales.
 
 ---
 

@@ -27,28 +27,28 @@ const PAYMENT_VALUES: PaymentFilter[] = ['ALL', 'UNPAID', 'PARTIALLY_PAID', 'PAI
 const statusChipClasses = (status: PIStatus): string => {
   switch (status) {
     case 'DRAFT':
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
     case 'PENDING_APPROVAL':
-      return 'bg-amber-100 text-amber-800 ring-amber-200';
+      return 'bg-amber-50 text-amber-800 ring-amber-600/10 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-500/20';
     case 'POSTED':
-      return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-500/20';
     case 'CANCELLED':
-      return 'bg-rose-100 text-rose-700 ring-rose-200';
+      return 'bg-rose-50 text-rose-700 ring-rose-600/10 dark:bg-rose-950/35 dark:text-rose-300 dark:ring-rose-500/20';
     default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
   }
 };
 
 const paymentChipClasses = (status: PaymentStatus): string => {
   switch (status) {
     case 'PAID':
-      return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-500/20';
     case 'PARTIALLY_PAID':
-      return 'bg-amber-100 text-amber-700 ring-amber-200';
+      return 'bg-amber-50 text-amber-800 ring-amber-600/10 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-500/20';
     case 'UNPAID':
-      return 'bg-rose-100 text-rose-700 ring-rose-200';
+      return 'bg-rose-50 text-rose-700 ring-rose-600/10 dark:bg-rose-950/35 dark:text-rose-300 dark:ring-rose-500/20';
     default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
   }
 };
 
@@ -507,7 +507,8 @@ const PurchaseInvoicesListPage: React.FC = () => {
   return (
     <OperationalListLayout<PurchaseInvoiceDTO>
       title={t('purchases.invoicesList.title')}
-      subtitle={t('purchases.invoicesList.subtitle')}
+      subtitle=""
+      compactHeader
       statusFilterConfig={statusFilterConfig}
       newButtonLabel={t('purchases.invoicesList.new')}
       onNewClick={() => navigate('/purchases/invoices/new')}
@@ -517,9 +518,9 @@ const PurchaseInvoicesListPage: React.FC = () => {
       hasActiveFilters={false}
       onClearFilters={undefined}
       filters={
-        <div className="flex flex-row items-center gap-3 w-full flex-wrap">
+        <div className="flex flex-row items-center gap-2.5 w-full overflow-x-auto whitespace-nowrap pb-1.5 lg:pb-0 scrollbar-thin">
           {/* SEARCH */}
-          <div className="relative flex-1 min-w-[200px] w-full">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
@@ -532,7 +533,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
           </div>
 
           {/* VENDOR */}
-          <div className="w-full lg:w-64">
+          <div className="w-52 flex-shrink-0">
             <PartySelector
               role="VENDOR"
               value={localVendor === 'ALL' ? '' : localVendor}
@@ -542,20 +543,20 @@ const PurchaseInvoicesListPage: React.FC = () => {
           </div>
 
           {/* TYPE (Persona) */}
-          <div className="w-full lg:w-36">
+          <div className="w-32 flex-shrink-0">
             <select
               value={localPersona}
               onChange={(e) => setLocalPersona(e.target.value)}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
             >
-              <option value="ALL">{t('purchases.invoicesList.filters.allTypes', 'All Types')}</option>
+              <option value="ALL">{t('purchases.invoicesList.filters.allTypes', 'Type')}</option>
               <option value="DIRECT">{t('purchases.invoicesList.filters.direct', 'Direct')}</option>
               <option value="POS">{t('purchases.invoicesList.filters.pos', 'POS')}</option>
             </select>
           </div>
 
           {/* STATUS */}
-          <div className="w-full lg:w-36">
+          <div className="w-32 flex-shrink-0">
             <select
               value={localStatus}
               onChange={(e) => setLocalStatus(e.target.value as PIStatusFilter)}
@@ -563,14 +564,14 @@ const PurchaseInvoicesListPage: React.FC = () => {
             >
               {STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {t(`purchases.invoicesList.statusOptions.${value}`, value)}
+                  {value === 'ALL' ? t('purchases.invoicesList.filters.statusPlaceholder', 'Status') : t(`purchases.invoicesList.statusOptions.${value}`, value)}
                 </option>
               ))}
             </select>
           </div>
 
           {/* PAYMENT */}
-          <div className="w-full lg:w-36">
+          <div className="w-32 flex-shrink-0">
             <select
               value={localPayment}
               onChange={(e) => setLocalPayment(e.target.value as PaymentFilter)}
@@ -578,23 +579,23 @@ const PurchaseInvoicesListPage: React.FC = () => {
             >
               {PAYMENT_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {t(`purchases.invoicesList.paymentOptions.${value}`, value)}
+                  {value === 'ALL' ? t('purchases.invoicesList.filters.paymentPlaceholder', 'Payment') : t(`purchases.invoicesList.paymentOptions.${value}`, value)}
                 </option>
               ))}
             </select>
           </div>
 
           {/* DATE RANGE */}
-          <div className="flex gap-2 items-center w-full lg:w-auto">
+          <div className="flex gap-2 items-center flex-shrink-0">
             <DatePicker
-              className="w-36"
+              className="w-32"
               value={localDateFrom}
               onChange={setLocalDateFrom}
               placeholder={t('purchases.invoicesList.filters.dateFrom', 'Date From')}
             />
             <span className="text-slate-400 font-medium">-</span>
             <DatePicker
-              className="w-36"
+              className="w-32"
               value={localDateTo}
               onChange={setLocalDateTo}
               placeholder={t('purchases.invoicesList.filters.dateTo', 'Date To')}
@@ -602,11 +603,11 @@ const PurchaseInvoicesListPage: React.FC = () => {
           </div>
 
           {/* ACTIONS */}
-          <div className="flex items-center gap-2 w-full lg:w-auto">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={handleApply}
-              className="flex-grow lg:flex-grow-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
             >
               <Filter size={16} />
               <span>{t('purchases.invoicesList.filters.apply', 'Apply')}</span>
@@ -615,7 +616,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
               type="button"
               onClick={handleClear}
               className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
-              title={t('purchases.invoicesList.filters.clear', 'Clear Filters')}
+              title={t('purchases.invoicesList.filters.clear', 'Clear')}
             >
               <RotateCcw size={16} />
             </button>

@@ -328,7 +328,7 @@ const fontVars: Record<UserAppearanceFont, string> = {
   inter: '"Inter", "Cairo", ui-sans-serif, system-ui, sans-serif',
   roboto: '"Roboto", "Cairo", ui-sans-serif, system-ui, sans-serif',
   outfit: '"Outfit", "Cairo", ui-sans-serif, system-ui, sans-serif',
-  mono: 'ui-monospace, "Cairo", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  mono: '"JetBrains Mono", "Cairo", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
   cairo: '"Cairo", "Inter", ui-sans-serif, system-ui, sans-serif',
 };
 
@@ -443,6 +443,7 @@ export const applyUserAppearanceToDocument = (settings: UserAppearanceSettings, 
     
     '--app-font-family': fontVars[settings.fontFamily],
     '--font-sans': fontVars[settings.fontFamily],
+    '--font-mono': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     
     '--compact-content-max-width': isCompact ? '80rem' : 'none',
     '--compact-content-padding': isCompact ? '1.25rem' : 'var(--app-content-padding, 1.5rem)',

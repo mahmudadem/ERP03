@@ -2324,6 +2324,12 @@
     }
   },
   "sales": {
+    "home": {
+      "createInvoice": "فاتورة مبيعات",
+      "createOrder": "أمر بيع",
+      "createReturn": "مرتجع مبيعات",
+      "settings": "الإعدادات"
+    },
     "quoteDetail": {
       "pageTitle": "عرض سعر",
       "loadingQuotation": "جاري تحميل عرض السعر...",

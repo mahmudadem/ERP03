@@ -72,7 +72,18 @@ The main Sales landing page has been redesigned with a premium dashboard style, 
 4. Click any status badge (e.g., `Draft` under `Invoices`) to jump directly to the pre-filtered Invoices list page displaying only draft invoices.
 
 ### Where to Find It
+ 
+ - Menu: **Sales**
+ - URL: `/sales`
+ - Required permission: `sales.dashboard.view` (or standard sales module access)
 
-- Menu: **Sales**
-- URL: `/sales`
-- Required permission: `sales.dashboard.view` (or standard sales module access)
+---
+
+## 3. Reorganization & Layout Polish (2026-06-12 follow-up)
+
+### What Was Done
+- **Layout Shift**: Reorganized the single consolidated Sales Hub layout into a premium split-column workspace layout matching the dashboard screenshot.
+- **KPI Card Redesign**: Restyled KPI cards to remove circle icons, adding subtle color-coded dot badges, base currency suffixes, and colored left-border indicators.
+- **Separate Orders and Invoices Tables**: Split the Recent Activity table into two dedicated, side-by-side tables for **Recent Sales Orders (SO)** and **Recent Sales Invoices (INV)**, keeping the requested metadata columns (`Created By`, `Created At`, `Approved At`, `Currency`).
+- **Sidebar Integration**: Placed **Quick Navigation**, a compact **Recent Activity log** timeline feed, and card-based **Top Client Accounts** progress indicators into the right-hand sidebar.
+- **TypeScript & Build Check**: Verified that both `tsc --noEmit` and `npm run build` completed successfully with zero errors.

@@ -554,6 +554,12 @@ export const useSidebarConfig = () => {
             path: '/dev/ui-lab',
             icon: 'Sparkles',
             badge: 'New'
+          },
+          { 
+            label: translateLabel('Icons Comparison'), 
+            path: '/dev/icons-comparison',
+            icon: 'Layers',
+            badge: 'New'
           }
         ]
       };

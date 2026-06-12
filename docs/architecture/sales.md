@@ -873,7 +873,7 @@ This is layout architecture only. It does not change Sales posting, tax, settlem
 | Delivery Note detail | `frontend/src/modules/sales/pages/DeliveryNoteDetailPage.tsx` |
 | Sales Return detail | `frontend/src/modules/sales/pages/SalesReturnDetailPage.tsx` |
 
-## Sales Hub Redesign (2026-06-12)
+## Sales Hub Redesign & Action Buttons (2026-06-12)
 
 The Sales module dashboard page (`/sales`) has been refactored into a high-density, performant, and visual split-layout overview module.
 
@@ -887,6 +887,12 @@ The Sales module dashboard page (`/sales`) has been refactored into a high-densi
      * **Recent Activity**: A high-density timeline feed showing the 5 most recent activities (SO, INV, Returns) with creator details, formatted amounts, and status badges.
      * **Top Client Accounts**: Clean outlined cards showing dual-language customer names, balances, and thin bottom-aligned progress lines showing their share of total revenue.
 3. **Caching & TTLs**: Uses a module-level in-memory cache to prevent redundant API fetches. Sales settings cache is set to 5 minutes, while document arrays have a 60-second TTL. Individual sections support cache refreshing.
+4. **Header Quick Actions**: Integrated standard layout action buttons in the dashboard header for streamlined record creation:
+   * **Sales Order**: Navigates to `/sales/orders/new` (indigo primary button, always visible).
+   * **Invoice**: Navigates to `/sales/invoices/new` (indigo primary button).
+   * **Sales Return**: Navigates to `/sales/returns/new` (indigo primary button, always visible).
+   * **Settings**: Navigates to `/sales/settings` (slate outline button with a Settings icon).
+   All action buttons are fully localized (EN/AR/TR) and use high-fidelity icons (Plus / Settings) with uniform spacing and hover micro-animations.
 
 ---
 

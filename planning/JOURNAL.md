@@ -2,6 +2,104 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-13 — Custom Sandbox Icons (Clipboard Up/Down Trends & Enhanced 2Gears)
+
+**Context:** User requested previewing custom green/red clipboard trend icons for Sales and Purchases and enhancing the custom two gears icon on the dev comparison page first.
+
+**What was done:**
+- **Custom Clipboard Trend Icons:** Crafted `ClipboardUpTrendIcon` (with an emerald green up-trending arrow) and `ClipboardDownTrendIcon` (with a rose red down-trending arrow) inside `sidebarIcons.tsx`. Standardized SVG attributes to support default `width="24" height="24"` and parameter forwarding to prevent collapse.
+- **Enhanced TwoGears Icon:** Upgraded `TwoGearsIcon` to render 8 teeth on the primary gear and 6 teeth on the secondary gear using nested SVG rotation groups for precise alignment.
+- **Developer Sandbox Integration:** Added "Set 6: Selected Premium Layout" to the `ICON_PACKAGES` list in `IconsComparisonPage.tsx`. Cleaned up icon sizing classes in the matrix table.
+- **Verification:** Ran TypeScript typechecks and production builds successfully with 0 errors.
+
+**Files changed:**
+- `frontend/src/components/navigation/sidebarIcons.tsx`
+- `frontend/src/pages/dev/IconsComparisonPage.tsx`
+- `planning/done/219-custom-sandbox-icons.md`
+
+### Session: 2026-06-13 — Icons Comparison Sandbox Page
+
+**Context:** User requested a dev page to visually inspect and compare 5 different module/sidebar icon options on the same page.
+
+**What was done:**
+- **Created IconsComparisonPage.tsx:** Built an interactive comparison page in `frontend/src/pages/dev/` that displays the 10 main ERP modules across the 5 proposed icon sets in a comparative grid.
+- **Interactive Mock Sidebar Drawer:** Included a live sidebar simulator on the right side of the page, allowing the user to select any of the 5 presets and instantly preview how it updates the sidebar navigation drawer. Includes a copyable code block to export the config JSON.
+- **Routing Integration:** Registered `/dev/icons-comparison` in `routes.config.ts` and added its link under the "Dev" sidebar list in `useSidebarConfig.ts` (when dev navigation is active).
+- **Verification:** Ran TypeScript typecheck and production build successfully with zero errors.
+
+**Files changed:**
+- `frontend/src/pages/dev/IconsComparisonPage.tsx`
+- `frontend/src/router/routes.config.ts`
+- `frontend/src/hooks/useSidebarConfig.ts`
+
+### Session: 2026-06-13 — List Pages Premium UI/UX Parity & DatePicker Bouncing Fix (report 217 Follow-up)
+
+**Context:** Fixed filter bar bouncing and completed horizontal-scroll single-row layout standardizations across remaining list pages.
+
+**What was done:**
+- **DatePicker Popover Portal Fix:** Portaled the calendar dropdown in `DatePicker.tsx` to `document.body` with viewport-relative tracking. This prevents absolute elements from overflowing the horizontal scroll filter container, resolving bouncing layout shifts and vertical scrollbars. Added click-outside listener checks to guard the portaled calendar.
+- **Filter Bar Parity:** Standardized filters section on remaining list pages (`GoodsReceiptsListPage.tsx`, `PurchaseReturnsListPage.tsx`, `QuotationsPage.tsx`) to the high-density single-row horizontal scrolling style.
+- **Verification:** Ran TypeScript typecheck and production build successfully with zero errors.
+
+**Files changed:**
+- `frontend/src/modules/accounting/components/shared/DatePicker.tsx`
+- `frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx`
+- `frontend/src/modules/sales/pages/QuotationsPage.tsx`
+- `planning/done/217-list-pages-premium-ui-enhancements.md`
+
+### Session: 2026-06-13 (Main Shell Font and Sidebar Pivot)
+
+- **Goal:** Apply JetBrains Mono to main-shell mono/numeric/code surfaces, stop Apex cutover work, and reuse only the Apex accordion-sidebar look inside the production main shell.
+- **Owner decision:** Apex is no longer the production-shell cutover target. Do not continue Apex feature flag/cutover work unless explicitly reopened. Main shell remains production.
+- **What was done:** Added the global `--font-mono` token using JetBrains Mono, applied it to main-shell mono/code/tabular-number/number-input surfaces, aligned the user appearance mono preset, and applied Apex-inspired accordion row/child-rail/active-state styling to `SidebarSection` and `SidebarItem` only when `sidebarMode !== 'submenus'`.
+- **Preserved behavior:** `useSidebarConfig()` remains the source of truth. Sidebar permissions, tenant/module filtering, workflow hiding, routing, expand/collapse behavior, and flyout/submenus mode were not changed.
+- **Accounting impact:** UI chrome only. No posting, ledger, voucher, tax, inventory valuation, AR/AP, approval, period-lock, report, RBAC, tenant isolation, or data model behavior changed.
+- **Docs:** Added `docs/architecture/main-shell-chrome.md`, `docs/user-guide/navigation/main-shell-sidebar.md`, and completion report [218-main-shell-font-and-sidebar-pivot.md](./done/218-main-shell-font-and-sidebar-pivot.md). Updated `planning/ACTIVE.md` and `planning/PRIORITIES.md` to retire Apex cutover from current priorities.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report, raw-confirm, and SoD checks; existing Vite bundle/Browserslist warnings remain.
+- **Time spent:** ~0.6h.
+- **Next:** Manual visual QA in main-shell accordion mode, including Arabic RTL and compact layout; confirm flyout/submenus mode remains unchanged.
+
+### Session: 2026-06-13 — List Pages Premium UI/UX Enhancements (report 217)
+
+**Context:** User requested to implement the UI/UX enhancement proposal for Sales and Purchases list tables using `/ui-ux-pro-max` as the design knowledge base.
+
+**What was done:**
+- **Status & Payment Badges Glassy Styling:** Refactored status badge CSS classes across all 9 Sales and Purchase list views (`SalesInvoicesListPage.tsx`, `PurchaseInvoicesListPage.tsx`, `SalesOrdersListPage.tsx`, `PurchaseOrdersListPage.tsx`, `DeliveryNotesListPage.tsx`, `GoodsReceiptsListPage.tsx`, `SalesReturnsListPage.tsx`, `PurchaseReturnsListPage.tsx`, `QuotationsPage.tsx`). Applied curated, glassy HSL pastel background fills with inset border rings and high-contrast dark text.
+- **Grand Total Right-Alignment:** Updated `SalesInvoicesListPage.tsx` Grand Total column configuration (`grandTotalDoc`) to use `align: 'right'` to match standard financial scanability guidelines and bring it to parity with the other tables.
+- **Verification:** Built the frontend package successfully.
+
+**Files changed:**
+- `frontend/src/modules/sales/pages/SalesInvoicesListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseInvoicesListPage.tsx`
+- `frontend/src/modules/sales/pages/SalesOrdersListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseOrdersListPage.tsx`
+- `frontend/src/modules/sales/pages/DeliveryNotesListPage.tsx`
+- `frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx`
+- `frontend/src/modules/sales/pages/SalesReturnsListPage.tsx`
+- `frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx`
+- `frontend/src/modules/sales/pages/QuotationsPage.tsx`
+- `planning/done/217-list-pages-premium-ui-enhancements.md`
+
+### Session: 2026-06-12 — Sales Dashboard Quick Action Buttons (report 216)
+
+**Context:** direct user request: "in sales dashboad page: add sales order and sales return buttons next to + Create Invoice".
+
+**What was done:**
+- **Added Translation Keys:** Added localized labels for `createInvoice`, `createOrder`, `createReturn`, and `settings` under `sales.home` in `en/common.json`, `ar/common.json`, and `tr/common.json`.
+- **UI Button Implementation:** Updated `SalesHomePage.tsx` to import `Plus` and `useTranslation`, initializing `const { t } = useTranslation('common')`.
+- **Header Actions Restructuring:** Added `+ Create Sales Order` (outline, conditional on `showOperationalDocuments`), `+ Create Invoice` (primary indigo), `+ Create Sales Return` (outline), and `Settings` (outline with icon) next to each other.
+- **Verification:** Ran `tsc --noEmit` typecheck and `npm run build` production build, both successfully passing with zero errors.
+
+**Files changed:**
+- `frontend/src/locales/en/common.json`
+- `frontend/src/locales/ar/common.json`
+- `frontend/src/locales/tr/common.json`
+- `frontend/src/modules/sales/pages/SalesHomePage.tsx`
+- `docs/architecture/sales.md`
+- `docs/user-guide/sales/sales-hub.md`
+- `planning/done/216-sales-dashboard-header-actions.md`
+
 ### Session: 2026-06-12 — Allocation grid GL display, document-specific row colors, shared charges component (report 215)
 
 **Context:** Owner-delegated follow-ups from the SI/PI charges work (209/210): "do those while I go and come back."

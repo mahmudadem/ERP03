@@ -2324,6 +2324,12 @@
     }
   },
   "sales": {
+    "home": {
+      "createInvoice": "Satış Faturası",
+      "createOrder": "Satış Siparişi",
+      "createReturn": "Satış İadesi",
+      "settings": "Ayarlar"
+    },
     "quoteDetail": {
       "pageTitle": "Teklif",
       "loadingQuotation": "Teklif yükleniyor...",

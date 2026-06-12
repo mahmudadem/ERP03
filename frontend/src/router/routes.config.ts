@@ -166,6 +166,7 @@ const UiLabDashboard = lazy(() => import('../pages/dev/UiLabDashboard').then(m =
 const SalesInvoiceV2LayoutPage = lazy(() => import('../pages/dev/SalesInvoiceV2LayoutPage'));
 const CompactSalesInvoiceMockPage = lazy(() => import('../pages/dev/CompactSalesInvoiceMockPage'));
 const ApexLedgerDashboard = lazy(() => import('../pages/dev/apex-ledger/ApexLedgerDashboard'));
+const IconsComparisonPage = lazy(() => import('../pages/dev/IconsComparisonPage').then(m => ({ default: m.IconsComparisonPage })));
 
 
 export interface AppRoute {
@@ -406,6 +407,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
   { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/ui-lab', label: 'UI Lab', component: UiLabDashboard, section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/icons-comparison', label: 'Icons Comparison', component: IconsComparisonPage, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/sales-invoice-v2', label: 'Sales Invoice V2', component: SalesInvoiceV2LayoutPage, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/sales-invoice-compact', label: 'Sales Invoice Compact Mock', component: CompactSalesInvoiceMockPage, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/apex-ledger', label: 'Apex Shell Candidate', component: ApexLedgerDashboard, section: 'TOOLS', hideInMenu: true },

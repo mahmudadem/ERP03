@@ -40,19 +40,19 @@ const SUMMARY_STATUSES: SOStatus[] = [
 const statusChipClasses = (status: SOStatus): string => {
   switch (status) {
     case 'DRAFT':
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
     case 'CONFIRMED':
-      return 'bg-indigo-100 text-indigo-700 ring-indigo-200';
+      return 'bg-indigo-50 text-indigo-700 ring-indigo-600/10 dark:bg-indigo-950/35 dark:text-indigo-300 dark:ring-indigo-500/20';
     case 'PARTIALLY_DELIVERED':
-      return 'bg-amber-100 text-amber-700 ring-amber-200';
+      return 'bg-amber-50 text-amber-800 ring-amber-600/10 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-500/20';
     case 'FULLY_DELIVERED':
-      return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-500/20';
     case 'CLOSED':
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
     case 'CANCELLED':
-      return 'bg-rose-100 text-rose-700 ring-rose-200';
+      return 'bg-rose-50 text-rose-700 ring-rose-600/10 dark:bg-rose-950/35 dark:text-rose-300 dark:ring-rose-500/20';
     default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200';
+      return 'bg-slate-50 text-slate-600 ring-slate-500/10 dark:bg-slate-900/35 dark:text-slate-300 dark:ring-slate-400/20';
   }
 };
 
@@ -479,7 +479,8 @@ const SalesOrdersListPage: React.FC = () => {
   return (
     <OperationalListLayout<SalesOrderDTO>
       title={t('sales.ordersList.title')}
-      subtitle={t('sales.ordersList.subtitle')}
+      subtitle=""
+      compactHeader
       statusFilterConfig={statusFilterConfig}
       newButtonLabel={t('sales.ordersList.newButton')}
       onNewClick={() => navigate('/sales/orders/new')}
@@ -489,9 +490,9 @@ const SalesOrdersListPage: React.FC = () => {
       hasActiveFilters={false}
       onClearFilters={undefined}
       filters={
-        <div className="flex flex-row items-center gap-3 w-full flex-wrap">
+        <div className="flex flex-row items-center gap-2.5 w-full overflow-x-auto whitespace-nowrap pb-1.5 lg:pb-0 scrollbar-thin">
           {/* SEARCH */}
-          <div className="relative flex-1 min-w-[200px] w-full">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
@@ -504,7 +505,7 @@ const SalesOrdersListPage: React.FC = () => {
           </div>
 
           {/* CUSTOMER */}
-          <div className="w-full lg:w-64">
+          <div className="w-52 flex-shrink-0">
             <PartySelector
               role="CUSTOMER"
               value={localCustomer === 'ALL' ? '' : localCustomer}
@@ -514,7 +515,7 @@ const SalesOrdersListPage: React.FC = () => {
           </div>
 
           {/* STATUS */}
-          <div className="w-full lg:w-36">
+          <div className="w-32 flex-shrink-0">
             <select
               value={localStatus}
               onChange={(e) => setLocalStatus(e.target.value as SOStatusFilter)}
@@ -522,23 +523,23 @@ const SalesOrdersListPage: React.FC = () => {
             >
               {STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {t(`sales.ordersList.status.${value}`, value)}
+                  {value === 'ALL' ? t('sales.ordersList.filters.statusPlaceholder', 'Status') : t(`sales.ordersList.status.${value}`, value)}
                 </option>
               ))}
             </select>
           </div>
 
           {/* DATE RANGE */}
-          <div className="flex gap-2 items-center w-full lg:w-auto">
+          <div className="flex gap-2 items-center flex-shrink-0">
             <DatePicker
-              className="w-36"
+              className="w-32"
               value={localDateFrom}
               onChange={setLocalDateFrom}
               placeholder={t('sales.ordersList.filters.dateFrom', 'Date From')}
             />
             <span className="text-slate-400 font-medium">-</span>
             <DatePicker
-              className="w-36"
+              className="w-32"
               value={localDateTo}
               onChange={setLocalDateTo}
               placeholder={t('sales.ordersList.filters.dateTo', 'Date To')}
@@ -546,11 +547,11 @@ const SalesOrdersListPage: React.FC = () => {
           </div>
 
           {/* ACTIONS */}
-          <div className="flex items-center gap-2 w-full lg:w-auto">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={handleApply}
-              className="flex-grow lg:flex-grow-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
             >
               <Filter size={16} />
               <span>{t('sales.ordersList.filters.apply', 'Apply')}</span>
@@ -559,7 +560,7 @@ const SalesOrdersListPage: React.FC = () => {
               type="button"
               onClick={handleClear}
               className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
-              title={t('sales.ordersList.filters.clear', 'Clear Filters')}
+              title={t('sales.ordersList.filters.clear', 'Clear')}
             >
               <RotateCcw size={16} />
             </button>

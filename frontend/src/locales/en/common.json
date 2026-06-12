@@ -2251,6 +2251,12 @@
     }
   },
   "sales": {
+    "home": {
+      "createInvoice": "Invoice",
+      "createOrder": "Sales Order",
+      "createReturn": "Sales Return",
+      "settings": "Settings"
+    },
     "quoteDetail": {
       "pageTitle": "Quotation",
       "loadingQuotation": "Loading quotation...",

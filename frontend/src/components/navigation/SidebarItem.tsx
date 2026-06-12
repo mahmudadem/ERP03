@@ -53,6 +53,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   const [isHovered, setIsHovered] = React.useState(false);
   const hasChildren = children && children.length > 0;
   const isSubmenusMode = sidebarMode === 'submenus';
+  const useApexAccordionLook = !isSubmenusMode;
   
   // Custom active check
   const isActive = (targetPath: string) => {
@@ -142,11 +143,17 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       (isOpen || isFlyout) 
         ? isCompact 
           ? "flex-row gap-2 px-2.5 py-1"
-          : "flex-row gap-3 px-3 py-2" 
+          : useApexAccordionLook
+            ? "flex-row gap-3 px-3 py-2"
+            : "flex-row gap-3 px-3 py-2" 
         : "px-1 py-2.5 justify-center items-center",
       
       isCompact
         ? "compact-sidebar-item"
+        : useApexAccordionLook
+          ? isChild
+            ? "text-[12px] font-medium"
+            : "text-[12px] font-semibold"
         : isChild 
           ? "text-xs font-normal py-1.5" 
           : "text-sm font-medium",
@@ -155,7 +162,11 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       //   2. A child is active AND parent is collapsed → solid blue fill so the collapsed parent still signals it.
       //   3. A child is active AND parent is expanded → soft brand-tinted text (the child carries the strong fill).
       isSolidActive
-        ? (use3DStyle && isChild && !isFlyout)
+        ? useApexAccordionLook
+          ? isChild
+            ? "bg-blue-50 text-blue-600 font-semibold"
+            : "bg-blue-50 text-blue-600 font-semibold border-l-4 rtl:border-l-0 rtl:border-r-4 border-blue-600 rounded-l-none rtl:rounded-l-md rtl:rounded-r-none"
+        : (use3DStyle && isChild && !isFlyout)
           ? "bg-transparent text-primary-600 font-bold"
           : isCompact
             ? isContrastSidebar
@@ -165,13 +176,17 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               ? "bg-white/20 text-white font-semibold shadow-sm"
               : "bg-primary-600 text-white font-semibold shadow-sm dark:bg-primary-500"
         : isAnyChildActive
-          ? isCompact
+          ? useApexAccordionLook
+            ? "bg-slate-100 text-slate-800 font-semibold"
+          : isCompact
             ? isContrastSidebar
               ? "bg-white/10 text-white font-medium hover:bg-white/15"
               : "bg-primary-50/50 text-primary-600 dark:bg-primary-950/20 dark:text-primary-400 hover:bg-black/5 dark:hover:bg-white/5"
             : isContrastSidebar
               ? "bg-white/10 text-white font-medium hover:bg-white/15"
               : "bg-primary-50/50 text-primary-700 dark:bg-primary-950/20 dark:text-primary-300 hover:bg-black/5 dark:hover:bg-white/5"
+          : useApexAccordionLook
+            ? "text-slate-700 hover:bg-slate-100/70 hover:text-slate-900"
           : isContrastSidebar
             ? "text-[var(--app-sidebar-muted)] hover:bg-white/10 hover:text-[var(--app-sidebar-text)]"
             : "text-[var(--app-sidebar-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--app-sidebar-text)]",
@@ -183,7 +198,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk).
           Inverted active state fills the row with primary, so the indicator is
           white to stay visible against the blue background. */}
-      {!isFlyout && !isCompact && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
+      {!isFlyout && !isCompact && !useApexAccordionLook && (active || isAnyChildActive) && !(use3DStyle && isChild) && (isOpen ? (
         <span
           className={clsx(
             "absolute top-1/2 -translate-y-1/2 w-1 h-6",
@@ -218,13 +233,19 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           //   - row tinted (expanded parent with active child) → pill is bg-primary-100 / text-primary-700
           //   - inactive → muted
           isSolidActive
-            ? use3DStyle && !isOpen && !isFlyout
+            ? useApexAccordionLook
+              ? "text-blue-500"
+              : use3DStyle && !isOpen && !isFlyout
               ? "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-primary-600"
               : "bg-white/20 text-white"
             : isAnyChildActive
-              ? isContrastSidebar
+              ? useApexAccordionLook
+                ? "text-blue-600"
+              : isContrastSidebar
                 ? "bg-white/20 text-white"
                 : "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+              : useApexAccordionLook
+                ? "text-slate-400 group-hover:text-slate-600"
               : use3DStyle && !isOpen && !isFlyout
                 ? "bg-transparent text-[var(--app-sidebar-muted)] hover:bg-white dark:hover:bg-slate-800 hover:border hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm"
                 : isContrastSidebar
@@ -257,7 +278,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       
       {/* Label — only shown when sidebar is expanded */}
       {(isOpen || isFlyout) && (
-        <span className="pointer-events-none whitespace-nowrap truncate flex-1 text-sm">
+        <span className="pointer-events-none whitespace-nowrap truncate flex-1">
           {label}
         </span>
       )}
@@ -392,7 +413,13 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         >
           <div className={clsx(
             "min-h-0 space-y-0.5 overflow-hidden",
-            isRtl ? "mr-6 border-r border-[var(--color-border)] pr-[1px]" : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+            useApexAccordionLook
+              ? isRtl
+                ? "mr-4 border-r border-[#E2E8F0] pr-2.5"
+                : "ml-4 border-l border-[#E2E8F0] pl-2.5"
+              : isRtl
+                ? "mr-6 border-r border-[var(--color-border)] pr-[1px]"
+                : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
           )}>
             {children.map((child, idx) => (
               <SidebarItem

@@ -16,7 +16,7 @@
  * export/import, local table skin preferences, and optional 25-line edit mode.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Clipboard, Copy, Download, Eraser, Palette, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Clipboard, Copy, Download, Eraser, MoreVertical, Palette, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -970,6 +970,15 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     );
   };
 
+  // Mobile card list: show filled rows plus a single trailing blank row to fill.
+  // Avoids rendering all 25 padded edit rows as cards on a phone.
+  const mobileEntries = (() => {
+    const filled = visibleEntries.filter(({ row }) => rowIsFilled(row));
+    if (disabled) return filled;
+    const firstEmpty = visibleEntries.find(({ row }) => !rowIsFilled(row));
+    return firstEmpty ? [...filled, firstEmpty] : filled;
+  })();
+
   return (
     <div
       className={`flex flex-col border border-slate-200 dark:border-slate-800 rounded overflow-hidden shadow-sm bg-white dark:bg-slate-950 ${tableFontClasses[preferences.tableFont]} ${preferences.skin === 'web' ? 'rounded-md' : ''} ${className}`}
@@ -1005,7 +1014,7 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
         </div>
       )}
       <div
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-auto [&_input::placeholder]:text-transparent [&_input::placeholder]:opacity-0"
+        className="hidden md:block flex-1 min-h-0 overflow-y-auto overflow-x-auto [&_input::placeholder]:text-transparent [&_input::placeholder]:opacity-0"
         style={{ maxHeight: maxBodyHeight }}
       >
         <table className="w-full text-sm border-collapse" style={{ minWidth: minTableWidth }}>
@@ -1122,6 +1131,69 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile stacked-card view — phones only (<768px). Each line becomes a
+          labeled card so all fields are visible without sideways scrolling.
+          Reuses renderCell() so every selector / numeric / computed cell edits
+          identically to the desktop table. */}
+      <div
+        className="md:hidden flex-1 min-h-0 space-y-2 overflow-y-auto p-2"
+        style={{ maxHeight: maxBodyHeight }}
+      >
+        {mobileEntries.length === 0 ? (
+          <div className="px-3 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+            {emptyMessage}
+          </div>
+        ) : (
+          mobileEntries.map(({ row, rowIndex }, displayIndex) => {
+            const [primaryCol, ...restCols] = orderedColumns;
+            const manualRowColor = rowColors[rowIndex];
+            const cardBg = manualRowColor
+              ? rowColorSoftRgb[manualRowColor]
+              : highlightedRows.has(rowIndex)
+                ? rowColorSoftRgb.amber
+                : undefined;
+            return (
+              <div
+                key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
+                style={cardBg ? { backgroundColor: cardBg } : undefined}
+                className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="w-6 shrink-0 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                    {displayIndex + 1}
+                  </span>
+                  {primaryCol && (
+                    <div className="min-w-0 flex-1 overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+                      {renderCell(row, rowIndex, primaryCol)}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(event) => setContextMenu({ type: 'row', x: event.clientX, y: event.clientY, rowIndex })}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label={t('lineItemsTable.menu.rowActions', 'Row actions')}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                  {restCols.map((col) => (
+                    <div key={col.id} className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        {col.label}
+                      </span>
+                      <div className="flex min-h-[2.25rem] items-center overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+                        {renderCell(row, rowIndex, col)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {onRowAdd && (
