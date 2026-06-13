@@ -11,6 +11,7 @@ import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILe
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity, roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
@@ -107,7 +108,8 @@ export class PostSalesInvoiceWithSettlementUseCase {
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly transactionManager: ITransactionManager,
-    private readonly accountRepo?: IAccountRepository
+    private readonly accountRepo?: IAccountRepository,
+    private readonly partyRepo?: IPartyRepository
   ) {}
 
   private async resolveAccountId(companyId: string, idOrCode: string): Promise<string> {
@@ -140,7 +142,14 @@ export class PostSalesInvoiceWithSettlementUseCase {
     const baseCurrency = await this.companyCurrencyRepo.getBaseCurrency(companyId);
     if (!baseCurrency) throw new Error('Company base currency is not configured');
     const settings = await this.salesSettingsRepo.getSettings(companyId);
-    const effectiveReceivablePayableAccountId = receivablePayableAccountId?.trim() || settings?.defaultARAccountId;
+    // Prefer the explicit caller value, then the customer's OWN AR account (the
+    // sub-account the invoice posted to), then the settings default. Without the
+    // customer fallback, Record-Payment fails whenever settings.defaultARAccountId
+    // is unset — even though the customer already has an AR sub-account. Mirrors
+    // SalesInvoiceUseCases.resolveARAccount used by post-time settlement.
+    const customer = this.partyRepo ? await this.partyRepo.getById(companyId, invoice.customerId) : null;
+    const effectiveReceivablePayableAccountId =
+      receivablePayableAccountId?.trim() || customer?.defaultARAccountId || settings?.defaultARAccountId;
     if (!effectiveReceivablePayableAccountId) {
       throw new Error('receivablePayableAccountId is required or Sales default AR account must be configured');
     }
@@ -391,7 +400,8 @@ export class RecordSalesInvoicePaymentUseCase {
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly transactionManager: ITransactionManager,
-    private readonly accountRepo?: IAccountRepository
+    private readonly accountRepo?: IAccountRepository,
+    private readonly partyRepo?: IPartyRepository
   ) {}
 
   async execute(
@@ -409,7 +419,8 @@ export class RecordSalesInvoicePaymentUseCase {
       this.ledgerRepo,
       this.companyCurrencyRepo,
       this.transactionManager,
-      this.accountRepo
+      this.accountRepo,
+      this.partyRepo
     );
     return useCase.execute(companyId, userId, siId, input);
   }

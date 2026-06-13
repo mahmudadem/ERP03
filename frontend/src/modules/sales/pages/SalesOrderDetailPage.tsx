@@ -533,15 +533,21 @@ const SalesOrderDetailPage: React.FC = () => {
   );
   const hasVisibleSuggestions = visibleFreeGoods.length + visibleLineDiscounts.length > 0;
 
+  const isFilledLine = (line: EditableLine): boolean =>
+    Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId);
+
   const validateBeforeSave = (): string | null => {
     if (!form.customerId) return t('sales.soDetail.customerRequired');
     if (!form.orderDate) return t('sales.soDetail.orderDateRequired');
     if (!form.currency.trim()) return t('sales.soDetail.currencyRequired');
     if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('sales.soDetail.exchangeRateRequired');
-    if (!form.lines.length) return t('sales.soDetail.atLeastOneLine');
+    // Validate only filled lines — the line table keeps a trailing empty working
+    // row that must not be treated as a real (invalid) line.
+    const filled = form.lines.filter(isFilledLine);
+    if (!filled.length) return t('sales.soDetail.atLeastOneLine');
 
-    for (let i = 0; i < form.lines.length; i += 1) {
-      const line = form.lines[i];
+    for (let i = 0; i < filled.length; i += 1) {
+      const line = filled[i];
       if (!line.itemId) return t('sales.soDetail.lineItemRequired', { n: i + 1 });
       if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return t('sales.soDetail.lineQuantityRequired', { n: i + 1 });
       if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('sales.soDetail.lineUnitPriceRequired', { n: i + 1 });
@@ -590,7 +596,7 @@ const SalesOrderDetailPage: React.FC = () => {
         promisedDate: form.promisedDate || undefined,
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
-        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        lines: form.lines.filter(isFilledLine).map((line, index) => buildLinePayload(line, index)),
         notes: form.notes || undefined,
         internalNotes: form.internalNotes || undefined,
         // The frontend now drives promotion selection via the live-preview
