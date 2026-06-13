@@ -692,9 +692,24 @@ export class PostSalesReturnUseCase {
       // tax → unbalanced. Same split as the entity.
       const grossLineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc || 0));
       const grossLineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase || 0));
+      // Apply the inherited line discount BEFORE tax, mirroring SalesInvoice's
+      // calculateDiscountAmountDoc. Without this the revenue debit was gross while
+      // the AR credit was net-of-discount, leaving the reversal voucher unbalanced
+      // by the discount amount.
+      const lineDiscountOf = (gross: number): number => {
+        if (line.discountType === 'PERCENT') {
+          return roundMoney(Math.max(0, Math.min(gross, gross * ((line.discountValue || 0) / 100))));
+        }
+        if (line.discountType === 'AMOUNT') {
+          return roundMoney(Math.max(0, Math.min(line.discountValue || 0, gross)));
+        }
+        return 0;
+      };
+      const postDiscountDoc = roundMoney(grossLineTotalDoc - lineDiscountOf(grossLineTotalDoc));
+      const postDiscountBase = roundMoney(grossLineTotalBase - lineDiscountOf(grossLineTotalBase));
       const lineDivisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
-      const lineTotalDoc = roundMoney(grossLineTotalDoc / lineDivisor);
-      const lineTotalBase = roundMoney(grossLineTotalBase / lineDivisor);
+      const lineTotalDoc = roundMoney(postDiscountDoc / lineDivisor);
+      const lineTotalBase = roundMoney(postDiscountBase / lineDivisor);
       line.taxAmountDoc = line.priceIsInclusive
         ? roundMoney(grossLineTotalDoc - lineTotalDoc)
         : roundMoney(lineTotalDoc * line.taxRate);
