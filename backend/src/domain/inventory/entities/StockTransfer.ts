@@ -1,5 +1,14 @@
 export type StockTransferStatus = 'DRAFT' | 'IN_TRANSIT' | 'COMPLETED';
 
+/**
+ * FLAT  — pure stock move A→B; destination inherits the source moving-average
+ *         cost; no GL voucher (value-neutral).
+ * VALUED — ledger-affecting; the destination may land at an overridden/uplifted
+ *         cost (e.g. capitalized freight). The uplift posts to GL with the
+ *         credit going to the Inventory Transfer Clearing account.
+ */
+export type StockTransferMode = 'FLAT' | 'VALUED';
+
 export interface StockTransferLine {
   itemId: string;
   qty: number;
@@ -14,8 +23,10 @@ export interface StockTransferProps {
   destinationWarehouseId: string;
   date: string;
   notes?: string;
+  mode?: StockTransferMode;
   lines: StockTransferLine[];
   status: StockTransferStatus;
+  voucherId?: string;
   transferPairId: string;
   createdBy: string;
   createdAt: Date;
@@ -23,6 +34,7 @@ export interface StockTransferProps {
 }
 
 const TRANSFER_STATUSES: StockTransferStatus[] = ['DRAFT', 'IN_TRANSIT', 'COMPLETED'];
+const TRANSFER_MODES: StockTransferMode[] = ['FLAT', 'VALUED'];
 
 const toDate = (value: any): Date => {
   if (!value) return value;
@@ -38,8 +50,10 @@ export class StockTransfer {
   destinationWarehouseId: string;
   date: string;
   notes?: string;
+  mode: StockTransferMode;
   lines: StockTransferLine[];
   status: StockTransferStatus;
+  voucherId?: string;
   transferPairId: string;
   readonly createdBy: string;
   readonly createdAt: Date;
@@ -60,6 +74,9 @@ export class StockTransfer {
     }
     if (!TRANSFER_STATUSES.includes(props.status)) {
       throw new Error(`Invalid StockTransfer status: ${props.status}`);
+    }
+    if (props.mode !== undefined && !TRANSFER_MODES.includes(props.mode)) {
+      throw new Error(`Invalid StockTransfer mode: ${props.mode}`);
     }
     if (!Array.isArray(props.lines) || props.lines.length === 0) {
       throw new Error('StockTransfer lines are required');
@@ -83,8 +100,10 @@ export class StockTransfer {
     this.destinationWarehouseId = props.destinationWarehouseId;
     this.date = props.date;
     this.notes = props.notes;
+    this.mode = props.mode || 'FLAT';
     this.lines = props.lines.map((line) => ({ ...line }));
     this.status = props.status;
+    this.voucherId = props.voucherId;
     this.transferPairId = props.transferPairId;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
@@ -99,8 +118,10 @@ export class StockTransfer {
       destinationWarehouseId: this.destinationWarehouseId,
       date: this.date,
       notes: this.notes,
+      mode: this.mode,
       lines: this.lines.map((line) => ({ ...line })),
       status: this.status,
+      voucherId: this.voucherId,
       transferPairId: this.transferPairId,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
@@ -116,8 +137,10 @@ export class StockTransfer {
       destinationWarehouseId: data.destinationWarehouseId,
       date: data.date,
       notes: data.notes,
+      mode: data.mode || 'FLAT',
       lines: Array.isArray(data.lines) ? data.lines : [],
       status: data.status || 'DRAFT',
+      voucherId: data.voucherId,
       transferPairId: data.transferPairId || data.id,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt || new Date()),

@@ -87,6 +87,16 @@ export class PrismaStockLevelRepository implements IStockLevelRepository {
     return this.toDomain(record);
   }
 
+  async getLevelsByItemInTransaction(
+    transaction: unknown,
+    companyId: string,
+    itemId: string
+  ): Promise<StockLevel[]> {
+    const tx = transaction as any;
+    const records = await tx.stockLevel.findMany({ where: { companyId, itemId } });
+    return records.map((r: any) => this.toDomain(r));
+  }
+
   async upsertLevelInTransaction(transaction: unknown, level: StockLevel): Promise<void> {
     const tx = transaction as any;
     await tx.stockLevel.update({

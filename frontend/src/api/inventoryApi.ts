@@ -30,6 +30,8 @@ export interface InventoryItemDTO {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  salePrice?: number;
+  purchasePrice?: number;
   imageUrl?: string;
   metadata?: Record<string, any>;
   active: boolean;
@@ -195,9 +197,13 @@ export interface InventorySettingsDTO {
   accountingMode: InventoryAccountingMode;
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: 'MOVING_AVG';
+  costingBasis?: 'WAREHOUSE' | 'GLOBAL';
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   defaultCOGSAccountId?: string;
+  defaultInventoryGainAccountId?: string;
+  defaultInventoryLossAccountId?: string;
+  defaultInventoryTransferClearingAccountId?: string;
   allowNegativeStock: boolean;
   allowDeferredCost: boolean;
   defaultWarehouseId?: string;
@@ -323,7 +329,9 @@ export interface StockTransferDTO {
   destinationWarehouseId: string;
   date: string;
   notes?: string;
+  mode: 'FLAT' | 'VALUED';
   status: 'DRAFT' | 'IN_TRANSIT' | 'COMPLETED';
+  voucherId?: string;
   transferPairId: string;
   createdBy: string;
   createdAt: string;
@@ -346,6 +354,26 @@ export interface InventoryValuationDTO {
     avgCostBase: number;
     valueBase: number;
   }>;
+}
+
+export interface InventoryGLReconciliationLineDTO {
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  stockValueBase: number;
+  glBalanceBase: number;
+  differenceBase: number;
+  matched: boolean;
+}
+
+export interface InventoryGLReconciliationDTO {
+  asOfDate: string;
+  isReconciled: boolean;
+  totalStockValueBase: number;
+  totalGLBalanceBase: number;
+  totalDifferenceBase: number;
+  unmappedStockValueBase: number;
+  lines: InventoryGLReconciliationLineDTO[];
 }
 
 export interface InventoryPeriodSnapshotDTO {
@@ -634,7 +662,8 @@ export const inventoryApi = {
     destinationWarehouseId: string;
     date: string;
     notes?: string;
-    lines: Array<{ itemId: string; qty: number }>;
+    mode?: 'FLAT' | 'VALUED';
+    lines: Array<{ itemId: string; qty: number; unitCostBaseAtTransfer?: number; unitCostCCYAtTransfer?: number }>;
   }): Promise<StockTransferDTO> => client.post('/tenant/inventory/transfers', payload),
 
   completeTransfer: (id: string): Promise<StockTransferDTO> =>
@@ -671,6 +700,9 @@ export const inventoryApi = {
 
   reconcile: (): Promise<ReconcileResultDTO> =>
     client.post('/tenant/inventory/reconcile', {}),
+
+  getGLReconciliation: (asOfDate?: string): Promise<InventoryGLReconciliationDTO> =>
+    client.get('/tenant/inventory/reports/gl-reconciliation', { params: { asOfDate } }),
 
   configureFinancialIntegration: (payload: {
     accountingMethod: 'PERIODIC' | 'PERPETUAL';

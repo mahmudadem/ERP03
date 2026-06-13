@@ -1,11 +1,19 @@
 export type LegacyInventoryAccountingMethod = 'PERIODIC' | 'PERPETUAL';
 export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
+/**
+ * WAREHOUSE — one moving-average cost per (item, warehouse). Default; precise
+ *   per-location valuation; supports valued inter-warehouse transfers.
+ * GLOBAL — one company-wide moving-average cost per item (quantity still per
+ *   warehouse). Set once at setup; switching after movements exist is unsafe.
+ */
+export type InventoryCostingBasis = 'WAREHOUSE' | 'GLOBAL';
 
 export interface InventorySettingsProps {
   companyId: string;
   inventoryAccountingMethod?: LegacyInventoryAccountingMethod;
   accountingMode?: InventoryAccountingMode;
   defaultCostingMethod: 'MOVING_AVG';
+  costingBasis?: InventoryCostingBasis;
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
@@ -23,6 +31,21 @@ export interface InventorySettingsProps {
   itemCodePrefix?: string;
   itemCodeNextSeq: number;
   defaultCOGSAccountId?: string;
+  /**
+   * GL account credited when stock is found / written up (ADJUSTMENT_IN).
+   * Standard "inventory gain" / book-to-physical surplus account.
+   */
+  defaultInventoryGainAccountId?: string;
+  /**
+   * GL account debited when stock is lost / written down (ADJUSTMENT_OUT) —
+   * damage, shrinkage, expiry. Standard "inventory loss / shrinkage" account.
+   */
+  defaultInventoryLossAccountId?: string;
+  /**
+   * Clearing account used by VALUED stock transfers to absorb a cost uplift
+   * (e.g. capitalized freight/handling) so the transfer voucher stays balanced.
+   */
+  defaultInventoryTransferClearingAccountId?: string;
 }
 
 export class InventorySettings {
@@ -30,6 +53,7 @@ export class InventorySettings {
   inventoryAccountingMethod: LegacyInventoryAccountingMethod;
   accountingMode: InventoryAccountingMode;
   defaultCostingMethod: 'MOVING_AVG';
+  costingBasis: InventoryCostingBasis;
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
@@ -39,6 +63,9 @@ export class InventorySettings {
   itemCodePrefix?: string;
   itemCodeNextSeq: number;
   defaultCOGSAccountId?: string;
+  defaultInventoryGainAccountId?: string;
+  defaultInventoryLossAccountId?: string;
+  defaultInventoryTransferClearingAccountId?: string;
 
   constructor(props: InventorySettingsProps) {
     if (!props.companyId?.trim()) throw new Error('InventorySettings companyId is required');
@@ -64,6 +91,7 @@ export class InventorySettings {
     this.inventoryAccountingMethod = inventoryAccountingMethod;
     this.accountingMode = accountingMode;
     this.defaultCostingMethod = props.defaultCostingMethod;
+    this.costingBasis = props.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
     this.defaultCostCurrency = props.defaultCostCurrency.toUpperCase().trim();
     this.defaultInventoryAssetAccountId = props.defaultInventoryAssetAccountId?.trim() || undefined;
     this.allowNegativeStock = props.allowNegativeStock;
@@ -73,6 +101,10 @@ export class InventorySettings {
     this.itemCodePrefix = props.itemCodePrefix;
     this.itemCodeNextSeq = props.itemCodeNextSeq;
     this.defaultCOGSAccountId = props.defaultCOGSAccountId?.trim() || undefined;
+    this.defaultInventoryGainAccountId = props.defaultInventoryGainAccountId?.trim() || undefined;
+    this.defaultInventoryLossAccountId = props.defaultInventoryLossAccountId?.trim() || undefined;
+    this.defaultInventoryTransferClearingAccountId =
+      props.defaultInventoryTransferClearingAccountId?.trim() || undefined;
   }
 
   static createDefault(
@@ -100,6 +132,7 @@ export class InventorySettings {
       accountingMode: this.accountingMode,
       inventoryAccountingMethod: this.inventoryAccountingMethod,
       defaultCostingMethod: this.defaultCostingMethod,
+      costingBasis: this.costingBasis,
       defaultCostCurrency: this.defaultCostCurrency,
       defaultInventoryAssetAccountId: this.defaultInventoryAssetAccountId,
       allowNegativeStock: this.allowNegativeStock,
@@ -109,6 +142,9 @@ export class InventorySettings {
       itemCodePrefix: this.itemCodePrefix,
       itemCodeNextSeq: this.itemCodeNextSeq,
       defaultCOGSAccountId: this.defaultCOGSAccountId,
+      defaultInventoryGainAccountId: this.defaultInventoryGainAccountId,
+      defaultInventoryLossAccountId: this.defaultInventoryLossAccountId,
+      defaultInventoryTransferClearingAccountId: this.defaultInventoryTransferClearingAccountId,
     };
   }
 
@@ -121,6 +157,7 @@ export class InventorySettings {
         InventorySettings.normalizeAccountingMode(data.accountingMode, data.inventoryAccountingMethod)
       ),
       defaultCostingMethod: data.defaultCostingMethod || 'MOVING_AVG',
+      costingBasis: data.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
       defaultCostCurrency: data.defaultCostCurrency,
       defaultInventoryAssetAccountId: data.defaultInventoryAssetAccountId,
       allowNegativeStock: data.allowNegativeStock ?? true,
@@ -130,6 +167,9 @@ export class InventorySettings {
       itemCodePrefix: data.itemCodePrefix,
       itemCodeNextSeq: data.itemCodeNextSeq ?? 1,
       defaultCOGSAccountId: data.defaultCOGSAccountId,
+      defaultInventoryGainAccountId: data.defaultInventoryGainAccountId,
+      defaultInventoryLossAccountId: data.defaultInventoryLossAccountId,
+      defaultInventoryTransferClearingAccountId: data.defaultInventoryTransferClearingAccountId,
     });
   }
 

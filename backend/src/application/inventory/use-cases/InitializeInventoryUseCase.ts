@@ -26,6 +26,9 @@ export interface InitializeInventoryInput {
   itemCodePrefix?: string;
   itemCodeNextSeq?: number;
   defaultCOGSAccountId?: string;
+  defaultInventoryGainAccountId?: string;
+  defaultInventoryLossAccountId?: string;
+  defaultInventoryTransferClearingAccountId?: string;
   /**
    * IDs of system Inventory voucher templates the user picked in the wizard.
    * `undefined` keeps legacy behavior (no voucher templates copied — Inventory
@@ -84,6 +87,7 @@ export class InitializeInventoryUseCase {
         || currentSettings?.inventoryAccountingMethod
         || DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(input.accountingMode || currentSettings?.accountingMode || 'PERPETUAL'),
       defaultCostingMethod: 'MOVING_AVG',
+      costingBasis: currentSettings?.costingBasis ?? 'WAREHOUSE',
       defaultCostCurrency: input.defaultCostCurrency || currentSettings?.defaultCostCurrency || company.baseCurrency,
       defaultInventoryAssetAccountId:
         input.defaultInventoryAssetAccountId
@@ -95,6 +99,12 @@ export class InitializeInventoryUseCase {
       itemCodePrefix: input.itemCodePrefix ?? currentSettings?.itemCodePrefix,
       itemCodeNextSeq: input.itemCodeNextSeq ?? currentSettings?.itemCodeNextSeq ?? 1,
       defaultCOGSAccountId: input.defaultCOGSAccountId ?? currentSettings?.defaultCOGSAccountId,
+      defaultInventoryGainAccountId:
+        input.defaultInventoryGainAccountId ?? currentSettings?.defaultInventoryGainAccountId,
+      defaultInventoryLossAccountId:
+        input.defaultInventoryLossAccountId ?? currentSettings?.defaultInventoryLossAccountId,
+      defaultInventoryTransferClearingAccountId:
+        input.defaultInventoryTransferClearingAccountId ?? currentSettings?.defaultInventoryTransferClearingAccountId,
     });
 
     await this.settingsRepo.saveSettings(settings);

@@ -9,6 +9,9 @@ import { ITransactionManager } from '../../../repository/interfaces/shared/ITran
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { ProcessINInput, ProcessOUTInput, RecordStockMovementUseCase } from './RecordStockMovementUseCase';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
+import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
+import { InventorySettings } from '../../../domain/inventory/entities/InventorySettings';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 
 export interface CreateStockAdjustmentInput {
   companyId: string;
@@ -72,7 +75,8 @@ export class PostStockAdjustmentUseCase {
     private readonly movementUseCase: RecordStockMovementUseCase,
     private readonly transactionManager: ITransactionManager,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService?: SubledgerVoucherPostingService
+    private readonly accountingPostingService?: SubledgerVoucherPostingService,
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
   async execute(companyId: string, adjustmentId: string, userId: string, createAccountingEffect: boolean = true): Promise<StockAdjustment> {
@@ -109,7 +113,17 @@ export class PostStockAdjustmentUseCase {
       );
     }
 
+    // Resolve dedicated inventory gain/loss + asset fallbacks once per post.
+    const settings = shouldPostAccounting && this.inventorySettingsRepo
+      ? await this.inventorySettingsRepo.getSettings(companyId)
+      : null;
+
     await this.transactionManager.runTransaction(async (transaction) => {
+      // Capture the ACTUAL posted movements so the GL voucher is valued from the
+      // engine's real cost (avg cost for OUT, applied cost for IN) — never from
+      // the user-typed unit cost, which can silently diverge from the subledger.
+      const lineMovements: Array<{ line: StockAdjustmentLine; movement: StockMovement }> = [];
+
       for (const line of adjustment.lines) {
         if (line.adjustmentQty === 0) continue;
         const item = itemCache.get(line.itemId);
@@ -140,7 +154,8 @@ export class PostStockAdjustmentUseCase {
             skipWarehouseValidation: true,
           };
 
-          await this.movementUseCase.processIN(inInput);
+          const movement = await this.movementUseCase.processIN(inInput);
+          lineMovements.push({ line, movement });
         } else {
           const outInput: ProcessOUTInput = {
             companyId,
@@ -161,9 +176,15 @@ export class PostStockAdjustmentUseCase {
             skipWarehouseValidation: true,
           };
 
-          await this.movementUseCase.processOUT(outInput);
+          const movement = await this.movementUseCase.processOUT(outInput);
+          lineMovements.push({ line, movement });
         }
       }
+
+      // Real posted value = sum of the actual movement totals (base currency).
+      const realValueBase = roundMoney(
+        lineMovements.reduce((sum, { movement }) => sum + Math.abs(movement.totalCostBase), 0)
+      );
 
       let voucherId: string | undefined;
       if (shouldPostAccounting && this.accountingPostingService) {
@@ -172,6 +193,8 @@ export class PostStockAdjustmentUseCase {
           userId,
           adjustment,
           itemCache,
+          lineMovements,
+          settings,
           Array.from(baseCurrencyCache.values())[0],
           transaction
         );
@@ -181,6 +204,7 @@ export class PostStockAdjustmentUseCase {
         status: 'POSTED',
         postedAt: new Date(),
         voucherId: voucherId || null,
+        adjustmentValueBase: realValueBase,
       };
 
       await this.adjustmentRepo.updateAdjustment(companyId, adjustment.id, updatePatch, transaction);
@@ -199,19 +223,23 @@ export class PostStockAdjustmentUseCase {
     userId: string,
     adjustment: StockAdjustment,
     itemCache: Map<string, any>,
+    lineMovements: Array<{ line: StockAdjustmentLine; movement: StockMovement }>,
+    settings: InventorySettings | null,
     baseCurrencyOverride?: string,
     transaction?: unknown
   ): Promise<string | undefined> {
     if (!this.accountingPostingService) {
-      console.warn(
-        `[Inventory][PostStockAdjustmentUseCase] Accounting dependencies not provided; skipping GL voucher for adjustment ${adjustment.id}.`
+      throw new Error(
+        'Inventory adjustment cannot be posted because accounting posting is not configured.'
       );
-      return undefined;
     }
 
     const voucherLines: Array<{
       accountId: string;
       side: 'Debit' | 'Credit';
+      amount: number;
+      currency: string;
+      exchangeRate: number;
       baseAmount: number;
       docAmount: number;
       notes: string;
@@ -220,67 +248,88 @@ export class PostStockAdjustmentUseCase {
 
     let computedAmountBase = 0;
 
-    for (const line of adjustment.lines) {
+    for (const { line, movement } of lineMovements) {
       if (line.adjustmentQty === 0) continue;
 
       const item = itemCache.get(line.itemId) || (await this.itemRepo.getItem(line.itemId));
       if (!item || item.companyId !== companyId) {
-        console.warn(
-          `[Inventory][PostStockAdjustmentUseCase] Skipping GL voucher for adjustment ${adjustment.id}: item not found (${line.itemId}).`
+        throw new Error(
+          `Inventory adjustment cannot be posted because item ${line.itemId} was not found.`
         );
-        return undefined;
       }
 
-      if (!item.inventoryAssetAccountId || !item.cogsAccountId) {
-        console.warn(
-          `[Inventory][PostStockAdjustmentUseCase] Skipping GL voucher for adjustment ${adjustment.id}: item ${item.id} is missing inventoryAssetAccountId or cogsAccountId.`
-        );
-        return undefined;
-      }
-
-      const amountBase = roundMoney(Math.abs(line.adjustmentQty) * line.unitCostBase);
+      // F1: value the GL from the actual posted movement, not the typed cost.
+      const amountBase = roundMoney(Math.abs(movement.totalCostBase));
       if (amountBase <= 0) continue;
+      if (!baseCurrencyOverride) {
+        throw new Error(
+          `[Inventory][PostStockAdjustmentUseCase] Missing base currency for adjustment ${adjustment.id}.`
+        );
+      }
+
+      const isAdjustmentOut = line.adjustmentQty < 0;
+
+      // Inventory asset side: item -> inventory settings default.
+      const assetAccountId = item.inventoryAssetAccountId || settings?.defaultInventoryAssetAccountId;
+      // Offset side: dedicated gain/loss -> item COGS -> settings COGS (graceful fallback).
+      const offsetAccountId = isAdjustmentOut
+        ? (settings?.defaultInventoryLossAccountId || item.cogsAccountId || settings?.defaultCOGSAccountId)
+        : (settings?.defaultInventoryGainAccountId || item.cogsAccountId || settings?.defaultCOGSAccountId);
+
+      if (!assetAccountId) {
+        throw new Error(
+          `Inventory adjustment cannot be posted because item ${item.code || item.id} has no Inventory Asset account. Set it on the item's Accounting GL tab or set a default Inventory Asset account in Inventory Settings.`
+        );
+      }
+      if (!offsetAccountId) {
+        throw new Error(
+          `Inventory adjustment cannot be posted because no offset account is configured for ${isAdjustmentOut ? 'stock losses (write-downs)' : 'stock gains (write-ups)'}. Set the ${isAdjustmentOut ? 'Inventory Loss' : 'Inventory Gain'} account in Inventory Settings (or a COGS account on the item).`
+        );
+      }
 
       computedAmountBase = roundMoney(computedAmountBase + amountBase);
 
-      const isAdjustmentOut = line.adjustmentQty < 0;
-      const debitAccountId = isAdjustmentOut ? item.cogsAccountId : item.inventoryAssetAccountId;
-      const creditAccountId = isAdjustmentOut ? item.inventoryAssetAccountId : item.cogsAccountId;
+      // OUT (loss): Dr loss / Cr inventory asset. IN (gain): Dr inventory asset / Cr gain.
+      const debitAccountId = isAdjustmentOut ? offsetAccountId : assetAccountId;
+      const creditAccountId = isAdjustmentOut ? assetAccountId : offsetAccountId;
+
+      const lineMeta = {
+        source: 'inventory-adjustment',
+        adjustmentId: adjustment.id,
+        itemId: line.itemId,
+        warehouseId: adjustment.warehouseId,
+        movementId: movement.id,
+        direction: isAdjustmentOut ? 'ADJUSTMENT_OUT' : 'ADJUSTMENT_IN',
+      };
 
       voucherLines.push({
         accountId: debitAccountId,
         side: 'Debit',
+        amount: amountBase,
+        currency: baseCurrencyOverride,
+        exchangeRate: 1,
         baseAmount: amountBase,
         docAmount: amountBase,
         notes: `Stock adjustment ${adjustment.id} (${line.itemId})`,
-        metadata: {
-          source: 'inventory-adjustment',
-          adjustmentId: adjustment.id,
-          itemId: line.itemId,
-          warehouseId: adjustment.warehouseId,
-          direction: isAdjustmentOut ? 'ADJUSTMENT_OUT' : 'ADJUSTMENT_IN',
-        },
+        metadata: lineMeta,
       });
 
       voucherLines.push({
         accountId: creditAccountId,
         side: 'Credit',
+        amount: amountBase,
+        currency: baseCurrencyOverride,
+        exchangeRate: 1,
         baseAmount: amountBase,
         docAmount: amountBase,
         notes: `Stock adjustment ${adjustment.id} (${line.itemId})`,
-        metadata: {
-          source: 'inventory-adjustment',
-          adjustmentId: adjustment.id,
-          itemId: line.itemId,
-          warehouseId: adjustment.warehouseId,
-          direction: isAdjustmentOut ? 'ADJUSTMENT_OUT' : 'ADJUSTMENT_IN',
-        },
+        metadata: lineMeta,
       });
     }
 
     if (voucherLines.length === 0) {
       console.warn(
-        `[Inventory][PostStockAdjustmentUseCase] Skipping GL voucher for adjustment ${adjustment.id}: no monetary adjustment lines.`
+        `[Inventory][PostStockAdjustmentUseCase] Skipping GL voucher for adjustment ${adjustment.id}: all adjustment lines have zero value.`
       );
       return undefined;
     }
@@ -288,13 +337,6 @@ export class PostStockAdjustmentUseCase {
     if (!baseCurrencyOverride) {
       throw new Error(
         `[Inventory][PostStockAdjustmentUseCase] Missing base currency for adjustment ${adjustment.id}.`
-      );
-    }
-
-    const expectedAmount = roundMoney(adjustment.adjustmentValueBase);
-    if (Math.abs(computedAmountBase - expectedAmount) > 0.01) {
-      console.warn(
-        `[Inventory][PostStockAdjustmentUseCase] Adjustment amount mismatch for ${adjustment.id}: expected=${expectedAmount}, computed=${computedAmountBase}.`
       );
     }
 
@@ -314,7 +356,7 @@ export class PostStockAdjustmentUseCase {
           referenceId: adjustment.id,
           adjustmentId: adjustment.id,
           adjustmentReason: adjustment.reason,
-          adjustmentValueBase: expectedAmount,
+          adjustmentValueBase: computedAmountBase,
         },
         createdBy: userId,
         postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,

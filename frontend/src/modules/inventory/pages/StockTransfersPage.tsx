@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { ArrowLeftRight } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
-import { DatePicker } from '../../../components/shared/selectors';
+import { DatePicker, WarehouseSelector, ItemSelector } from '../../../components/shared/selectors';
+import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import {
-  InventoryItemDTO,
   InventoryWarehouseDTO,
+  StockLevelDTO,
   StockMovementDTO,
   StockTransferDTO,
   inventoryApi,
@@ -11,43 +14,65 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
-interface DraftLine {
+type TransferMode = 'FLAT' | 'VALUED';
+
+interface TLine {
+  _key: string;
   itemId: string;
+  itemCode?: string;
+  itemName?: string;
   qty: number;
+  sourceCostBase: number;
+  sourceCostCCY: number;
+  landedCostBase: number;
+  landedCostCCY: number;
 }
+
+let keySeq = 0;
+const newKey = () => `trfln_${Date.now()}_${keySeq++}`;
+const emptyLine = (): TLine => ({
+  _key: newKey(),
+  itemId: '',
+  qty: 1,
+  sourceCostBase: 0,
+  sourceCostCCY: 0,
+  landedCostBase: 0,
+  landedCostCCY: 0,
+});
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const StockTransfersPage: React.FC = () => {
   const [transfers, setTransfers] = useState<StockTransferDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
-  const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DRAFT' | 'COMPLETED'>('ALL');
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [sourceWarehouseId, setSourceWarehouseId] = useState('');
   const [destinationWarehouseId, setDestinationWarehouseId] = useState('');
   const [date, setDate] = useState(todayIso());
   const [notes, setNotes] = useState('');
-  const [lineItemId, setLineItemId] = useState('');
-  const [lineQty, setLineQty] = useState(1);
-  const [lines, setLines] = useState<DraftLine[]>([]);
+  const [mode, setMode] = useState<TransferMode>('FLAT');
+  const [lines, setLines] = useState<TLine[]>([emptyLine()]);
 
   const [expandedTransferId, setExpandedTransferId] = useState<string | null>(null);
   const [transferMovements, setTransferMovements] = useState<Record<string, StockMovementDTO[]>>({});
 
+  const warehouseLabel = useMemo(
+    () => warehouses.reduce<Record<string, string>>((acc, w) => { acc[w.id] = `${w.code} - ${w.name}`; return acc; }, {}),
+    [warehouses]
+  );
+
   const load = async () => {
     try {
       setLoading(true);
-      const [transferRes, warehouseRes, itemRes] = await Promise.all([
+      const [transferRes, warehouseRes] = await Promise.all([
         inventoryApi.listTransfers(statusFilter === 'ALL' ? undefined : statusFilter),
         inventoryApi.listWarehouses({ active: true, limit: 500 }),
-        inventoryApi.listItems({ active: true, limit: 500 }),
       ]);
-
       setTransfers(unwrap<StockTransferDTO[]>(transferRes) || []);
       setWarehouses(unwrap<InventoryWarehouseDTO[]>(warehouseRes) || []);
-      setItems((unwrap<InventoryItemDTO[]>(itemRes) || []).filter((item) => item.trackInventory));
     } catch (error) {
       console.error('Failed to load stock transfers', error);
     } finally {
@@ -59,47 +84,91 @@ const StockTransfersPage: React.FC = () => {
     load();
   }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const addLine = () => {
-    if (!lineItemId || lineQty <= 0) return;
-    setLines((prev) => [...prev, { itemId: lineItemId, qty: lineQty }]);
-    setLineItemId('');
-    setLineQty(1);
+  const fetchLevel = async (itemId: string, whId: string): Promise<StockLevelDTO | null> => {
+    if (!itemId || !whId) return null;
+    try {
+      const res = await inventoryApi.getStockLevels({ itemId, warehouseId: whId, limit: 1 });
+      return (unwrap<StockLevelDTO[]>(res) || [])[0] || null;
+    } catch {
+      return null;
+    }
   };
 
-  const removeLine = (index: number) => {
-    setLines((prev) => prev.filter((_, idx) => idx !== index));
+  const setLine = (index: number, patch: Partial<TLine>) => {
+    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
   };
 
-  const handleCreateTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sourceWarehouseId || !destinationWarehouseId || lines.length === 0) {
+  const prefillSourceCost = async (index: number, itemId: string, whId: string) => {
+    const level = await fetchLevel(itemId, whId);
+    const base = level?.avgCostBase ?? 0;
+    const ccy = level?.avgCostCCY ?? 0;
+    setLine(index, { sourceCostBase: base, sourceCostCCY: ccy, landedCostBase: base, landedCostCCY: ccy });
+  };
+
+  const onSourceWarehouseChange = async (whId: string) => {
+    setSourceWarehouseId(whId);
+    if (!whId) return;
+    const updated = await Promise.all(
+      lines.map(async (l) => {
+        if (!l.itemId) return l;
+        const level = await fetchLevel(l.itemId, whId);
+        const base = level?.avgCostBase ?? 0;
+        const ccy = level?.avgCostCCY ?? 0;
+        return { ...l, sourceCostBase: base, sourceCostCCY: ccy, landedCostBase: base, landedCostCCY: ccy };
+      })
+    );
+    setLines(updated);
+  };
+
+  const handleCreateTransfer = async () => {
+    const filled = lines.filter((l) => l.itemId && l.qty > 0);
+    if (!sourceWarehouseId || !destinationWarehouseId) {
+      toast.error('Source and destination warehouses are required.');
       return;
     }
-
+    if (sourceWarehouseId === destinationWarehouseId) {
+      toast.error('Source and destination must be different.');
+      return;
+    }
+    if (filled.length === 0) {
+      toast.error('Add at least one item line.');
+      return;
+    }
     try {
+      setSaving(true);
       await inventoryApi.createTransfer({
         sourceWarehouseId,
         destinationWarehouseId,
         date,
         notes: notes || undefined,
-        lines,
+        mode,
+        lines: filled.map((l) =>
+          mode === 'VALUED'
+            ? { itemId: l.itemId, qty: Number(l.qty), unitCostBaseAtTransfer: Number(l.landedCostBase), unitCostCCYAtTransfer: Number(l.landedCostCCY) }
+            : { itemId: l.itemId, qty: Number(l.qty) }
+        ),
       });
-
-      setLines([]);
+      toast.success('Stock transfer created.');
+      setLines([emptyLine()]);
       setNotes('');
       setDate(todayIso());
       await load();
     } catch (error) {
       console.error('Failed to create stock transfer', error);
+      toast.error((error as any)?.response?.data?.error?.message || 'Failed to create stock transfer.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleCompleteTransfer = async (id: string) => {
     try {
       await inventoryApi.completeTransfer(id);
+      toast.success('Stock transfer completed.');
       await load();
     } catch (error) {
       console.error('Failed to complete stock transfer', error);
+      toast.error((error as any)?.response?.data?.error?.message || 'Failed to complete stock transfer.');
     }
   };
 
@@ -108,162 +177,167 @@ const StockTransfersPage: React.FC = () => {
       setExpandedTransferId(null);
       return;
     }
-
     setExpandedTransferId(transferId);
-
     if (!transferMovements[transferId]) {
       try {
-        const movementRes = await inventoryApi.getMovements({
-          referenceType: 'STOCK_TRANSFER',
-          referenceId: transferId,
-          limit: 200,
-        });
-        setTransferMovements((prev) => ({
-          ...prev,
-          [transferId]: unwrap<StockMovementDTO[]>(movementRes) || [],
-        }));
+        const movementRes = await inventoryApi.getMovements({ referenceType: 'STOCK_TRANSFER', referenceId: transferId, limit: 200 });
+        setTransferMovements((prev) => ({ ...prev, [transferId]: unwrap<StockMovementDTO[]>(movementRes) || [] }));
       } catch (error) {
         console.error('Failed to load transfer movements', error);
       }
     }
   };
 
+  const columns: ColumnDef<TLine>[] = [
+    {
+      id: 'item',
+      label: 'Item',
+      kind: 'custom',
+      width: '300px',
+      render: (line, index) => (
+        <ItemSelector
+          value={line.itemId}
+          noBorder
+          placeholder="Select item"
+          trackInventoryOnly
+          disabled={saving}
+          onChange={(item) => {
+            if (!item) {
+              setLine(index, { itemId: '', itemCode: undefined, itemName: undefined, sourceCostBase: 0, sourceCostCCY: 0, landedCostBase: 0, landedCostCCY: 0 });
+              return;
+            }
+            setLine(index, { itemId: item.id, itemCode: item.code, itemName: item.name });
+            prefillSourceCost(index, item.id, sourceWarehouseId);
+          }}
+        />
+      ),
+    } as ColumnDef<TLine>,
+    { id: 'qty', label: 'Qty', kind: 'number', width: '120px', accessor: (l) => l.qty, setter: (v) => ({ qty: Number(v) }) },
+    ...(mode === 'VALUED'
+      ? [
+          { id: 'sourceCost', label: 'Source Cost', kind: 'computed', width: '120px', compute: (l: TLine) => l.sourceCostBase } as ColumnDef<TLine>,
+          {
+            id: 'landedCost',
+            label: 'Landed Unit Cost',
+            kind: 'custom',
+            width: '150px',
+            align: 'right',
+            render: (line, index) => (
+              <input
+                type="number"
+                min={0}
+                step="any"
+                disabled={saving}
+                className="w-full bg-transparent text-right text-xs outline-none"
+                value={line.landedCostBase || ''}
+                placeholder="0.00"
+                onChange={(e) => {
+                  const base = Number(e.target.value) || 0;
+                  const ratio = line.landedCostBase > 0 && line.landedCostCCY > 0 ? line.landedCostCCY / line.landedCostBase : 1;
+                  setLine(index, { landedCostBase: base, landedCostCCY: base * ratio });
+                }}
+              />
+            ),
+          } as ColumnDef<TLine>,
+          { id: 'uplift', label: 'Uplift', kind: 'computed', width: '120px', compute: (l: TLine) => (Number(l.landedCostBase) - Number(l.sourceCostBase)) * Number(l.qty) } as ColumnDef<TLine>,
+        ]
+      : []),
+  ];
+
   return (
-    <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Stock Transfers</h1>
+    <div className="space-y-4 p-4">
+      <div className="flex items-center gap-2">
+        <ArrowLeftRight className="h-6 w-6 text-slate-500" />
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Stock Transfers</h1>
+      </div>
 
-      <Card className="p-6">
-        <form className="space-y-4" onSubmit={handleCreateTransfer}>
-          <div className="grid gap-3 md:grid-cols-4">
-            <select
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              value={sourceWarehouseId}
-              onChange={(e) => setSourceWarehouseId(e.target.value)}
-              required
-            >
-              <option value="">Source warehouse</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name} ({warehouse.code})
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              value={destinationWarehouseId}
-              onChange={(e) => setDestinationWarehouseId(e.target.value)}
-              required
-            >
-              <option value="">Destination warehouse</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name} ({warehouse.code})
-                </option>
-              ))}
-            </select>
-
-            <DatePicker
-              inputClassName="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-              value={date}
-              onChange={setDate}
-            />
-
-            <input
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+      <Card className="p-4">
+        <div className="grid gap-3 md:grid-cols-5">
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Source Warehouse</label>
+            <WarehouseSelector value={sourceWarehouseId} onChange={(wh) => onSourceWarehouseChange(wh?.id || '')} placeholder="Source" />
           </div>
-
-          <div className="grid gap-3 md:grid-cols-4">
-            <select
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              value={lineItemId}
-              onChange={(e) => setLineItemId(e.target.value)}
-            >
-              <option value="">Select item</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.code} - {item.name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min={0.000001}
-              step="any"
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              value={lineQty}
-              onChange={(e) => setLineQty(Number(e.target.value))}
-            />
-            <button
-              type="button"
-              className="rounded bg-slate-700 px-3 py-2 text-sm text-white"
-              onClick={addLine}
-            >
-              Add Line
-            </button>
-            <button
-              type="submit"
-              className="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-              disabled={lines.length === 0}
-            >
-              Create Transfer
-            </button>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Destination Warehouse</label>
+            <WarehouseSelector value={destinationWarehouseId} onChange={(wh) => setDestinationWarehouseId(wh?.id || '')} placeholder="Destination" />
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="py-2 text-left">Item</th>
-                  <th className="py-2 text-right">Qty</th>
-                  <th className="py-2 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, index) => (
-                  <tr key={`${line.itemId}_${index}`} className="border-b border-slate-100">
-                    <td className="py-2">{line.itemId}</td>
-                    <td className="py-2 text-right">{line.qty}</td>
-                    <td className="py-2 text-right">
-                      <button
-                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-700"
-                        type="button"
-                        onClick={() => removeLine(index)}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {lines.length === 0 && (
-                  <tr>
-                    <td className="py-2 text-slate-500" colSpan={3}>
-                      No lines added.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Date</label>
+            <DatePicker value={date} onChange={setDate} />
           </div>
-        </form>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Notes</label>
+            <input className="h-9 w-full rounded border border-slate-300 px-2 text-xs dark:border-slate-700 dark:bg-slate-800" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Mode</label>
+            <div className="inline-flex h-9 overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+              <button
+                className={`px-3 text-xs ${mode === 'FLAT' ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}
+                onClick={() => setMode('FLAT')}
+                type="button"
+              >
+                Flat
+              </button>
+              <button
+                className={`px-3 text-xs ${mode === 'VALUED' ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}
+                onClick={() => setMode('VALUED')}
+                type="button"
+              >
+                Valued
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-2 text-[10px] uppercase tracking-tighter text-slate-400">
+          {mode === 'FLAT'
+            ? 'Flat: move stock A→B at source cost. No ledger effect.'
+            : 'Valued: override the landing cost (e.g. capitalized freight). The uplift posts to GL via the Inventory Transfer Clearing account.'}
+        </p>
+
+        <div className="mt-3">
+          <ClassicLineItemsTable<TLine>
+            tableId="inventory.transfer.lines"
+            title="Transfer Lines"
+            columns={columns}
+            rows={lines}
+            disabled={saving}
+            onRowChange={setLine}
+            onRowRemove={(i) => setLines((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev))}
+            onRowsChange={setLines}
+            createEmptyRow={emptyLine}
+            getRowKey={(l) => l._key}
+            isRowFilled={(l) => Boolean(l.itemId)}
+            onRowAdd={() => setLines((prev) => [...prev, emptyLine()])}
+            addLabel="Add Item"
+            minTableWidth={mode === 'VALUED' ? '900px' : '520px'}
+          />
+        </div>
+
+        <div className="mt-4 flex justify-end border-t border-slate-200 pt-3 dark:border-slate-700">
+          <button
+            className="rounded bg-slate-900 px-5 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+            onClick={handleCreateTransfer}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : 'Create Transfer'}
+          </button>
+        </div>
       </Card>
 
-      <Card className="p-6">
-        <div className="mb-4 flex flex-wrap gap-3">
+      <Card className="p-4">
+        <div className="mb-3 flex flex-wrap items-center gap-3">
           <select
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
+            className="h-9 rounded border border-slate-300 px-2 text-xs dark:border-slate-700 dark:bg-slate-800"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'DRAFT' | 'COMPLETED')}
           >
-            <option value="ALL">ALL</option>
-            <option value="DRAFT">DRAFT</option>
-            <option value="COMPLETED">COMPLETED</option>
+            <option value="ALL">All</option>
+            <option value="DRAFT">Draft</option>
+            <option value="COMPLETED">Completed</option>
           </select>
-          <button className="rounded bg-slate-700 px-3 py-2 text-sm text-white" onClick={load} type="button">
+          <button className="h-9 rounded bg-slate-700 px-3 text-xs text-white" onClick={load} type="button">
             Refresh
           </button>
         </div>
@@ -271,64 +345,62 @@ const StockTransfersPage: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200">
+              <tr className="border-b border-slate-200 dark:border-slate-700">
                 <th className="py-2 text-left">Date</th>
                 <th className="py-2 text-left">Source</th>
                 <th className="py-2 text-left">Destination</th>
+                <th className="py-2 text-left">Mode</th>
                 <th className="py-2 text-left">Status</th>
-                <th className="py-2 text-left">Pair ID</th>
+                <th className="py-2 text-left">GL</th>
                 <th className="py-2 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {transfers.map((transfer) => (
                 <React.Fragment key={transfer.id}>
-                  <tr className="border-b border-slate-100">
+                  <tr className="border-b border-slate-100 dark:border-slate-800">
                     <td className="py-2">{transfer.date}</td>
-                    <td className="py-2">{transfer.sourceWarehouseId}</td>
-                    <td className="py-2">{transfer.destinationWarehouseId}</td>
+                    <td className="py-2">{warehouseLabel[transfer.sourceWarehouseId] || transfer.sourceWarehouseId}</td>
+                    <td className="py-2">{warehouseLabel[transfer.destinationWarehouseId] || transfer.destinationWarehouseId}</td>
+                    <td className="py-2">
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${transfer.mode === 'VALUED' ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                        {transfer.mode || 'FLAT'}
+                      </span>
+                    </td>
                     <td className="py-2">{transfer.status}</td>
-                    <td className="py-2">{transfer.transferPairId}</td>
+                    <td className="py-2">{transfer.voucherId ? '✓' : '—'}</td>
                     <td className="py-2 text-right space-x-2">
                       {transfer.status === 'DRAFT' && (
-                        <button
-                          className="rounded bg-blue-600 px-3 py-1 text-xs text-white"
-                          onClick={() => handleCompleteTransfer(transfer.id)}
-                        >
+                        <button className="rounded bg-blue-600 px-3 py-1 text-xs text-white" onClick={() => handleCompleteTransfer(transfer.id)}>
                           Complete
                         </button>
                       )}
-                      <button
-                        className="rounded border border-slate-300 px-3 py-1 text-xs"
-                        onClick={() => toggleDetails(transfer.id)}
-                      >
+                      <button className="rounded border border-slate-300 px-3 py-1 text-xs dark:border-slate-600" onClick={() => toggleDetails(transfer.id)}>
                         {expandedTransferId === transfer.id ? 'Hide' : 'Details'}
                       </button>
                     </td>
                   </tr>
 
                   {expandedTransferId === transfer.id && (
-                    <tr className="border-b border-slate-100 bg-slate-50">
-                      <td className="py-3" colSpan={6}>
+                    <tr className="border-b border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40">
+                      <td className="py-3" colSpan={7}>
                         <div className="space-y-4">
                           <div>
                             <div className="mb-1 text-sm font-semibold">Transfer Lines</div>
                             <table className="min-w-full text-xs">
                               <thead>
-                                <tr className="border-b border-slate-200">
+                                <tr className="border-b border-slate-200 dark:border-slate-700">
                                   <th className="py-1 text-left">Item</th>
                                   <th className="py-1 text-right">Qty</th>
-                                  <th className="py-1 text-right">Unit Cost Base</th>
-                                  <th className="py-1 text-right">Unit Cost CCY</th>
+                                  <th className="py-1 text-right">Landed Unit Cost</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {transfer.lines.map((line, index) => (
-                                  <tr key={`${transfer.id}_line_${index}`} className="border-b border-slate-100">
+                                  <tr key={`${transfer.id}_line_${index}`} className="border-b border-slate-100 dark:border-slate-800">
                                     <td className="py-1">{line.itemId}</td>
                                     <td className="py-1 text-right">{line.qty}</td>
                                     <td className="py-1 text-right">{line.unitCostBaseAtTransfer.toFixed(2)}</td>
-                                    <td className="py-1 text-right">{line.unitCostCCYAtTransfer.toFixed(2)}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -339,31 +411,25 @@ const StockTransfersPage: React.FC = () => {
                             <div className="mb-1 text-sm font-semibold">Paired Movements</div>
                             <table className="min-w-full text-xs">
                               <thead>
-                                <tr className="border-b border-slate-200">
-                                  <th className="py-1 text-left">Movement ID</th>
+                                <tr className="border-b border-slate-200 dark:border-slate-700">
                                   <th className="py-1 text-left">Type</th>
                                   <th className="py-1 text-left">Warehouse</th>
                                   <th className="py-1 text-right">Qty</th>
                                   <th className="py-1 text-right">Unit Cost Base</th>
-                                  <th className="py-1 text-left">Pair ID</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {(transferMovements[transfer.id] || []).map((movement) => (
-                                  <tr key={movement.id} className="border-b border-slate-100">
-                                    <td className="py-1">{movement.id}</td>
+                                  <tr key={movement.id} className="border-b border-slate-100 dark:border-slate-800">
                                     <td className="py-1">{movement.movementType}</td>
-                                    <td className="py-1">{movement.warehouseId}</td>
+                                    <td className="py-1">{warehouseLabel[movement.warehouseId] || movement.warehouseId}</td>
                                     <td className="py-1 text-right">{movement.qty}</td>
                                     <td className="py-1 text-right">{movement.unitCostBase.toFixed(2)}</td>
-                                    <td className="py-1">{movement.transferPairId || '-'}</td>
                                   </tr>
                                 ))}
                                 {(transferMovements[transfer.id] || []).length === 0 && (
                                   <tr>
-                                    <td className="py-1 text-slate-500" colSpan={6}>
-                                      No movements found yet.
-                                    </td>
+                                    <td className="py-1 text-slate-500" colSpan={4}>No movements found yet.</td>
                                   </tr>
                                 )}
                               </tbody>
@@ -377,8 +443,8 @@ const StockTransfersPage: React.FC = () => {
               ))}
               {transfers.length === 0 && (
                 <tr>
-                  <td className="py-3 text-slate-500" colSpan={6}>
-                    {loading ? 'Loading...' : 'No transfers found.'}
+                  <td className="py-8 text-center text-slate-400" colSpan={7}>
+                    {loading ? 'Loading…' : 'No transfers found.'}
                   </td>
                 </tr>
               )}

@@ -67,6 +67,7 @@ Notes:
 - **SI Direct capability audit** ([tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md)) — stays valid as the v2 starting point.
 - **Task 135 — Field Library drift warnings** — only relevant once defaults are the primary surface.
 - **#6 + #7 design notes** — Cost & historical-margin layer + Per-party item history / price-source engine. Architectural pair; revisit when v1 ships.
+- **Task 222 — Desktop, LAN, and Offline Authority Architecture** ([tasks/222-desktop-offline-lan-architecture.md](./tasks/222-desktop-offline-lan-architecture.md)) — post-pilot major epic. Desktop shell first, then SQL parity, local/LAN authority, backups/license/device trust, queued posting, and one-way cloud migration. Local on This PC is private by default; Office Server / LAN is the multi-device mode.
 
 ---
 

@@ -253,6 +253,10 @@ class InMemoryStockLevelRepository implements IStockLevelRepository {
     return this.getLevel(companyId, itemId, warehouseId);
   }
 
+  async getLevelsByItemInTransaction(_transaction: unknown, companyId: string, itemId: string): Promise<StockLevel[]> {
+    return this.getLevelsByItem(companyId, itemId);
+  }
+
   async upsertLevelInTransaction(_transaction: unknown, level: StockLevel): Promise<void> {
     this.levels.set(level.id, level);
   }
@@ -664,6 +668,41 @@ describe('RecordStockMovementUseCase', () => {
 
     expect(result.outMov.unitCostBase).toBe(320);
     expect(result.outMov.unsettledCostBasis).toBe('LAST_KNOWN');
+  });
+
+  it('Valued transfer: destination lands at the override cost while the source issues at its own cost', async () => {
+    addDefaultContext('USD');
+
+    levelRepo.add(new StockLevel({
+      id: StockLevel.compositeId(itemId, whA),
+      companyId, itemId, warehouseId: whA,
+      qtyOnHand: 20, reservedQty: 0,
+      avgCostBase: 320, avgCostCCY: 10,
+      lastCostBase: 320, lastCostCCY: 10,
+      postingSeq: 4, maxBusinessDate: '2026-01-10', totalMovements: 4, lastMovementId: 'm4', version: 4, updatedAt: new Date(),
+    }));
+
+    const result = await useCase.processTRANSFER({
+      companyId,
+      itemId,
+      sourceWarehouseId: whA,
+      destinationWarehouseId: whB,
+      qty: 5,
+      date: '2026-01-12',
+      transferDocId: 'trf-valued',
+      currentUser: 'user-1',
+      destUnitCostOverrideBase: 400, // landed cost = source 320 + 80 freight/unit
+    });
+
+    // Source OUT issues at the real source cost; destination IN lands at the override.
+    expect(result.outMov.unitCostBase).toBe(320);
+    expect(result.inMov.unitCostBase).toBe(400);
+    // The uplift the GL would capitalize = (400 - 320) * 5 = 400.
+    expect(result.inMov.totalCostBase - result.outMov.totalCostBase).toBe(400);
+
+    const dst = await levelRepo.getLevel(companyId, itemId, whB);
+    expect(dst?.qtyOnHand).toBe(5);
+    expect(dst?.avgCostBase).toBe(400);
   });
 
   it('Delete #17: deleting an inbound movement rebuilds qty, avg cost, and movement metadata', async () => {

@@ -133,7 +133,7 @@ describe('RecordStockMovementUseCase — allowNegativeStock enforcement', () => 
     expect(movement.negativeQtyAtPosting).toBe(true);
   });
 
-  it('does not consult settings when projected qty stays non-negative', async () => {
+  it('reads settings exactly once per OUT (resolves costing basis and the negative guard from a single read)', async () => {
     const { useCase, inventorySettingsRepository } = buildUseCase(false);
     const preFetchedLevel = makeLevel(10);
     const preFetchedItem = makeItem();
@@ -154,7 +154,9 @@ describe('RecordStockMovementUseCase — allowNegativeStock enforcement', () => 
 
     expect(movement.qtyAfter).toBe(5);
     expect(movement.negativeQtyAtPosting).toBe(false);
-    expect(inventorySettingsRepository.getSettings).not.toHaveBeenCalled();
+    // The settings read now drives the costing basis too, so it always happens —
+    // but exactly once (the negative-stock guard reuses the same read).
+    expect(inventorySettingsRepository.getSettings).toHaveBeenCalledTimes(1);
   });
 
   it('allows OUT (and does not throw) when settings record is absent', async () => {

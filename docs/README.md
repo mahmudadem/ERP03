@@ -76,6 +76,9 @@ The reviewer agent (`erp-reviewer`) is configured to block merge if a user-facin
 | Module Access 403 Trace | [module-access-403-trace.md](architecture/module-access-403-trace.md) |
 | Graphify Usage | [graphify-usage.md](architecture/graphify-usage.md) |
 | Appearance Settings | [appearance-settings.md](architecture/appearance-settings.md) |
+| Deployment Modes | [deployment-modes.md](architecture/deployment-modes.md) |
+| Desktop Shell | [desktop-shell.md](architecture/desktop-shell.md) |
+| Local Authority and Migration | [local-authority-and-migration.md](architecture/local-authority-and-migration.md) |
 
 ### User guides (`docs/user-guide/`)
 
@@ -90,6 +93,7 @@ The reviewer agent (`erp-reviewer`) is configured to block merge if a user-facin
 | Company Admin — Modules | [company-admin-modules.md](user-guide/company-admin-modules.md) |
 | Topbar Widget Layout | [topbar-widget-layout.md](user-guide/topbar-widget-layout.md) |
 | Appearance Settings | [appearance-settings.md](user-guide/appearance-settings.md) |
+| Settings — Deployment Mode | [settings/deployment-mode.md](user-guide/settings/deployment-mode.md) |
 
 ### Module deep-dives (`docs/modules/` — coming in Phase 4)
 

@@ -96,6 +96,7 @@ export const moduleMenuMap: Record<
           { label: 'Low Stock Alerts', path: '/inventory/alerts/low-stock', permission: 'inventory.stock.view', icon: 'AlertTriangle' },
           { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'inventory.movements.view', icon: 'CircleDollarSign' },
           { label: 'Inventory Valuation', path: '/inventory/reports/valuation', permission: 'inventory.valuation.view', icon: 'Coins' },
+          { label: 'Inventory GL Reconciliation', path: '/inventory/reports/gl-reconciliation', permission: 'inventory.valuation.view', icon: 'Scale' },
         ],
       },
       {

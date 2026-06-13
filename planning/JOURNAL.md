@@ -2,6 +2,150 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-13 — GLOBAL costing live emulator QA + Inventory Revaluation backlog
+
+- **Goal:** Owner-requested live browser QA of the GLOBAL costing slice before committing, and clarify the stock-valuation ↔ GL relationship.
+- **What was done:** Drove the running emulator stack (Firestore 8080 / Auth 9099 / functions 5001) via a dedicated preview frontend on port 5174, signed in to TESTCO, and exercised the GLOBAL engine end-to-end.
+- **Live results (TESTCO, GLOBAL basis):**
+  - Company-wide average confirmed across warehouses (`GP02-130339` = 6.00 in both; `GP02-130818` = 8.37 in both).
+  - Stock Adjustment OUT issued at the engine company average (3 × 6 = 18.00), average unchanged after issue.
+  - **Typed-cost override ignored:** a draft typed at 999 × 3 = 2997 posted as **18.00**.
+  - **Negative-stock guard** blocked an OUT of 1000 from a warehouse holding 11, with a readable error.
+  - **GL ties in lockstep:** the OUT posting dropped stock 13,119.35 → 13,101.35 and GL 346.00 → 328.00 (both −18.00); reconciliation drift held constant at −12,773.35.
+- **Diagnosis:** whole-tenant reconciliation drift (−12,773.35) is exactly legacy item `001`'s value (stock 12,773.36 vs GL ~0) — a data issue (stock loaded without a GL posting), not a code issue. Every new GLOBAL posting ties.
+- **Conceptual clarification (for owner):** stock sub-ledger value = Σ qty × avg cost; the GL Inventory account is its control account (like AR sub-ledger ↔ AR control); they stay equal because each movement posts to both; drift = a movement that hit one side only.
+- **Backlog logged:** [223 Inventory Revaluation](./tasks/223-inventory-revaluation-value-only-correction.md) — value-only cost correction (no qty change), post delta to GL, GLOBAL re-prices all warehouses. The fix for item `001`-style value drift; no in-app tool exists today. Post-pilot.
+- **Verification:** live emulator round-trip (above); no code changed this session beyond planning/docs + a `qa-test` preview launch entry.
+- **Next:** commit + PR the Task 221 inventory stabilization slice (engine validated).
+
+### Session: 2026-06-13 (Desktop / LAN / Offline Authority Documentation)
+
+- **Goal:** Document the future desktop/on-premise architecture and divide implementation into phases after the owner clarified Cloud, Office Server/LAN, and Local on This PC flows.
+- **What was done:** Created the post-pilot execution plan [222-desktop-offline-lan-architecture.md](./tasks/222-desktop-offline-lan-architecture.md), architecture docs for deployment modes, desktop shell, and local authority/migration, plus the user-facing Deployment Mode guide. Updated the docs index, ACTIVE, PRIORITIES, and completion report.
+- **Key decisions:** Local on This PC is private by default and binds to the local machine; multi-device local work requires explicit Office Server / LAN promotion with backups, license, device approval, local system admin, and local authority controls. Desktop shell is separate from data authority.
+- **Accounting/ERP impact:** Planning only. The future local/LAN authority must enforce the same posting, period-lock, approval, audit, stock valuation, tax, currency, and tenant/company isolation rules as cloud. Queued offline posting intents do not affect official balances until an authority accepts them.
+- **Verification:** Documentation-only; no code tests/builds run.
+- **Time spent:** ~0.8h.
+- **Next:** Keep this as a post-pilot epic. After pilot, start with the desktop shell spike and SQL parity audit before any local authority implementation.
+
+### Session: 2026-06-13 — Inventory Task 221: GLOBAL costing engine (the deferred piece, now built)
+
+**Context:** Picking up the one item the previous session deliberately left unbuilt — the live GLOBAL costing
+engine. Owner was awake and chose to build it together so it could be validated for real (the reason it was
+deferred: it edits `RecordStockMovementUseCase`, the hot path every sale/purchase receipt runs through, and
+must not be shipped blind). WAREHOUSE stays the proven default.
+
+**What GLOBAL means:** one company-wide moving average per item (quantity still tracked per warehouse). The
+defining property: a warehouse issues COGS at the **company** average, not at the price it personally received,
+and a receipt into one warehouse re-prices the item in every warehouse.
+
+**Design (smallest blast radius, WAREHOUSE untouched):**
+- The engine resolves `InventorySettings.costingBasis` per movement (default/`null`/error → WAREHOUSE). Each
+  `process*` method has a one-line guard at the top that branches to a new GLOBAL helper; the existing WAREHOUSE
+  bodies are byte-for-byte unchanged.
+- **Invariant:** after any movement every warehouse level for the item carries the same company-wide average, so
+  all downstream readers (valuation, COGS, GL-reconciliation, stock-levels rollup) work unchanged.
+- **IN** (`processINGlobal`): reads every level for the item in the txn, re-blends the company average, writes
+  the new average to all levels (qty only to the receiving warehouse). **OUT** (`processOUTGlobal`): issues at
+  the company average; average is unchanged by an issue so only the shipping warehouse's qty is written;
+  availability check stays per-warehouse. **TRANSFER** (`processTRANSFERGlobal`): FLAT leaves the average flat;
+  VALUED capitalizes the uplift into the company average and keeps `inMov−outMov == uplift` so the existing
+  clearing-voucher logic is untouched.
+- New repo method `IStockLevelRepository.getLevelsByItemInTransaction` (Firestore uses `transaction.get(query)`
+  so the read joins the txn's optimistic lock; Prisma + in-memory impls added). `processOUT` now reads settings
+  once up front (drives basis **and** the negative-stock guard — a single read, not two).
+
+**Reversals are safe:** returns/voids post compensating IN/OUT movements (verified in `ReturnUseCases`), which
+the GLOBAL branch handles natively; the per-warehouse rebuild path isn't on that flow.
+
+**Verification:** backend `tsc` clean; new `GlobalCostingEngine.test.ts` (7 cases incl. cross-warehouse COGS at
+the company average, fan-out restatement, FLAT/VALUED transfer) green; **full backend suite 150 suites / 1380
+tests pass** (incl. `AccountingBoundary`); backend `npm run build` (lib/) clean so the emulator serves it;
+frontend `tsc` clean. Settings UI note updated (both engines live); architecture + user-guide docs updated.
+**Not committed — owner retests first, with an emulator pass on GLOBAL.**
+
+**Files changed:** `RecordStockMovementUseCase.ts` (GLOBAL branches + helpers), `IStockLevelRepository.ts`,
+`FirestoreStockLevelRepository.ts`, `PrismaStockLevelRepository.ts`, `InventorySettingsPage.tsx` (note),
+`docs/architecture/inventory.md`, `docs/user-guide/inventory/stock-adjustments-and-transfers.md`,
+`GlobalCostingEngine.test.ts` (new), `NegativeStockEnforcement.test.ts` (single-read contract),
+`RecordStockMovementUseCase.test.ts` (in-memory repo method).
+
+---
+
+### Session: 2026-06-13 — Inventory Deep Stabilization (Task 221), Slice 1: Adjustment money path
+
+**Context:** Owner reframed GP02: inventory was implemented but never tested while focus was on
+Sales/Purchases/Accounting. Ran a deep scan (Financial Observer + SWE) of the whole module — engine, GL
+paths, API, frontend, tests. Verdict: the cost engine is solid (per-warehouse moving avg, dual-currency,
+atomic, append-only ledger, 5 working GL paths), but the **Stock Adjustment money path** had real
+integrity bugs and the UI is far below the Sales/Purchases bar. Opened epic [tasks/221](./tasks/221-inventory-deep-stabilization-epic.md).
+
+**Owner decisions ratified:** (1) Stock Transfer = flat vs valued(→clearing account); (2) adjustments
+offset to dedicated Inventory Gain/Loss accounts; (3) costing basis is a live selectable mode
+(WAREHOUSE + GLOBAL) — build both.
+
+**Slice 1 done (this session):**
+- **F1** — adjustment GL is now valued from the actual posted `StockMovement.totalCostBase` (engine cost),
+  not the user-typed unit cost. Kills silent GL↔subledger drift on OUT adjustments.
+- **F3/F6** — offset resolves dedicated Inventory Loss/Gain → item COGS → settings COGS; asset resolves
+  item → settings. New gain/loss/transfer-clearing account fields on `InventorySettings` (entity, DTO,
+  validators, controller, init use case, frontend API type) surfaced in the Inventory Settings → Accounting
+  tab (fixes GP02-step8 "no place to set accounts").
+- Persists the real `adjustmentValueBase` from posted movements.
+
+**Slice 4 done (same session, owner steered here next):**
+- **Item prices** — `salePrice`/`purchasePrice` added end-to-end (entity, DTO, validators, use cases, both
+  repos; Firestore auto-persists via toJSON, Prisma columns + client regenerated). New "Default Prices"
+  section on the Item card Pricing tab (fixes GP02-step2 "no place to set price").
+- **Item-level stock rollup** — `StockLevelsPage` rewritten: default By-Item grouped view (total qty +
+  blended avg cost, expandable to per-warehouse), By-Warehouse toggle, warehouse dropdown (was a raw ID
+  box). Fixes GP02-step6 "duplicates item per warehouse." Per-warehouse WAC stays source of truth.
+
+**Slices 3 + 5 + costing setting done (same session — owner authorized uninterrupted autonomous build):**
+- **Transfer two-mode (Slice 3):** `StockTransfer.mode = FLAT | VALUED`; `processTRANSFER` takes a dest cost
+  override (source OUT at source cost, dest IN at override); `CompleteStockTransferUseCase` posts the VALUED
+  uplift as Dr inventory / Cr Inventory Transfer Clearing. Engine test added.
+- **UI rebuild (Slice 5):** Stock Adjustment + Stock Transfer rebuilt on the shared `ClassicLineItemsTable`
+  (multi-line, item pickers, adjustment auto-prefills current qty + avg cost — kills the zero-cost footgun;
+  transfer has a Flat/Valued toggle + landed-cost column). Stock Levels rebuilt with a By-Item rollup (Slice
+  4b). Opening Stock left as-is (already mature).
+- **Costing basis:** `InventorySettings.costingBasis` shipped end-to-end + Settings UI (WAREHOUSE default/active,
+  GLOBAL selectable). **GLOBAL engine deliberately NOT shipped** — a correct company-wide average needs a core
+  cost-engine change that can't be validated against the emulator unattended; shipping it blind risks cost-data
+  corruption. WAREHOUSE (proven) stays active → retest is safe. GLOBAL engine = next focused piece.
+- Docs: `docs/architecture/inventory.md` corrected (GL posting IS implemented; adjustment gain/loss; transfer
+  modes; item prices; costing basis).
+
+**GL↔stock reconciliation report (Slice 6 / F4) — also done this session:** new read-only
+`ReconcileInventoryGLUseCase` compares stock value (Σ qty × avg cost, grouped by each item's Inventory Asset
+account) to the GL balance of those accounts and flags drift — the period-end control for the exact drift class
+the money-path fixes target. Depends on an inventory-side `IGLAccountBalanceProvider` port (NOT
+`ILedgerRepository`) to satisfy the `AccountingBoundary` arch guard; ledger wiring lives in the controller. New
+`InventoryGLReconciliationPage` on `ReportContainer`, routed + in `moduleMenuMap` (passes `check-reports.mjs`).
+Tests added for the use-case, the valued-transfer uplift voucher, and the engine override.
+
+**Verification (final):** backend + frontend `tsc` clean; full backend `jest` **149 suites / 1373 tests pass**
+(incl. `AccountingBoundary`); backend `npm run build` (lib/) clean so the emulator serves the new code; frontend
+production build clean. User-guide doc added (`docs/user-guide/inventory/stock-adjustments-and-transfers.md`).
+**Negative-stock default intentionally NOT flipped** (would risk the owner's golden-path retest).
+
+**Deferred (documented, not shipped):** the **GLOBAL costing engine** — the setting is shipped but the engine
+edits the core `RecordStockMovementUseCase` hot path (every sale/purchase receipt) and can't be validated
+against the emulator unattended; shipping blind risks cost corruption. WAREHOUSE (proven, default) is active so
+the retest is safe. Next focused piece: implement GLOBAL behind the setting with emulator integration tests.
+Other open: stock-reservation wire-or-hide. See [tasks/221](./tasks/221-inventory-deep-stabilization-epic.md).
+
+**Files changed:**
+- `backend/src/domain/inventory/entities/InventorySettings.ts`
+- `backend/src/application/inventory/use-cases/StockAdjustmentUseCases.ts`
+- `backend/src/application/inventory/use-cases/InitializeInventoryUseCase.ts`
+- `backend/src/api/controllers/inventory/InventoryController.ts`
+- `backend/src/api/dtos/InventoryDTOs.ts`, `backend/src/api/validators/inventory.validators.ts`
+- `backend/src/tests/application/inventory/StockAdjustmentAtomicity.test.ts` (mock returns movements)
+- `backend/src/tests/application/inventory/StockAdjustmentGLValuation.test.ts` (new)
+- `frontend/src/api/inventoryApi.ts`, `frontend/src/modules/inventory/pages/InventorySettingsPage.tsx`
+- `planning/tasks/221-inventory-deep-stabilization-epic.md` (new)
+
 ### Session: 2026-06-13 — Custom Sandbox Icons (Clipboard Up/Down Trends & Enhanced 2Gears)
 
 **Context:** User requested previewing custom green/red clipboard trend icons for Sales and Purchases and enhancing the custom two gears icon on the dev comparison page first.
@@ -3327,3 +3471,24 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** `npm --prefix backend run build` passed; `npm --prefix backend test` passed (146 suites, 1,365 tests, 18 skipped); `npm --prefix frontend run typecheck` passed; `npm --prefix frontend run build` passed with existing bundle/Browserslist warnings.
 - **Time spent:** ~0.8h.
 - **Next:** Commit the ship package after owner approval, then merge to `main`, tag `v0.9-alpha`, push, and run golden paths 01–05 on a fresh tenant.
+
+### Session: 2026-06-13 (GP02 Inventory Stabilization Slice)
+
+- **Goal:** Address the first blocking GP02 findings without opening a broad inventory redesign during feature freeze.
+- **What was done:** Preserved item `metadata` through item create/update and DTO output so Price Groups persist; forced SERVICE items to remain non-stock in frontend and backend; labeled Stock Adjustment inputs; added toast feedback for create/post/no-op/error results; changed Stock Adjustment posting so accounting-enabled tenants fail with a readable mapping error instead of silently posting stock without a GL voucher.
+- **Accounting/ERP impact:** This closes a dangerous stock-vs-ledger silent gap for adjustments. It does not yet introduce dedicated adjustment gain/loss settings accounts; current voucher behavior still uses the existing item Inventory Asset + COGS mappings. Moving-average cost behavior remains per item + warehouse and needs an explicit audit before any model change.
+- **Verification:** `npm --prefix backend run build` passed; `npm --prefix backend test` passed (146 suites passed, 2 skipped; 1,365 tests passed, 18 skipped); `npm --prefix frontend run typecheck` passed; `npm --prefix frontend run build` passed with existing bundle/Browserslist warnings.
+- **Docs:** Added [done/220-gp02-inventory-stabilization-slice.md](./done/220-gp02-inventory-stabilization-slice.md) and updated [ACTIVE.md](./ACTIVE.md).
+- **Time spent:** ~1.1h.
+- **Next:** Owner should rerun GP02. If GP02 still fails on costing, audit/decide global WAC vs warehouse-level WAC before changing inventory valuation behavior.
+
+### Session: 2026-06-13 (GP02 GLOBAL Costing Emulator Retest + Voucher Contract Detour)
+
+- **Goal:** Retest GP02 against the local emulator using the provided local account and verify the active Inventory deep-stabilization changes under GLOBAL costing.
+- **What was done:** Logged into the local emulator tenant TESTCO (`cmp_mqblxfqy_zmecyl`), set Inventory Settings to GLOBAL costing with negative stock disabled, created QA item/service/warehouse records, posted opening stock, an OUT stock adjustment, a receipt, a FLAT transfer, a VALUED transfer, and a negative-stock rejection case. Confirmed the Stock Levels page shows the successful QA item as one rolled-up item across two warehouses with total qty 27, blended avg cost 8.37, and total value 225.99.
+- **Detour fixed:** Stock Adjustment and Valued Stock Transfer GL vouchers failed the current accounting voucher V2 contract because generated journal lines had `baseAmount`/`docAmount` but not required `amount`, `currency`, and `exchangeRate`. Updated `StockAdjustmentUseCases.ts` and `StockTransferUseCases.ts` to emit those required fields, and locked the contract in `StockAdjustmentGLValuation.test.ts` and `StockTransferValuedVoucher.test.ts`.
+- **Accounting/ERP impact:** The fix does not change inventory movement quantities or weighted-average costing math. It makes inventory-generated GL vouchers compatible with the accounting posting contract so adjustment and valued-transfer costs actually reach the ledger instead of failing at voucher validation. For the emulator QA setup, COGS was temporarily reused as adjustment gain/loss and In-Transit Inventory as transfer clearing; final production templates should use proper dedicated control accounts.
+- **Verification:** Targeted inventory valuation tests passed. `npm --prefix backend run build` passed. Full backend Jest via `npx jest --maxWorkers=2` from `backend/` passed: 150 suites passed, 2 skipped; 1,380 tests passed, 18 skipped.
+- **Known issue:** Whole-tenant Inventory GL Reconciliation still does not pass on the reused TESTCO tenant because older pre-fix stock rows remain out of sync with the ledger (stock 13,119.35 vs GL 346). The new GP02 item itself tied through its generated vouchers; a fresh tenant or cleanup of historical drift is still required before marking whole-tenant reconciliation as passed.
+- **Time spent:** ~1.4h.
+- **Next:** Run GP02 once on a fresh tenant after the owner approves this code state, then commit the Task 221 inventory stabilization batch if the fresh-tenant reconciliation gate passes.
