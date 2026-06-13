@@ -52,6 +52,7 @@ const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTr
 const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
 const UnsettledCostsPage = lazy(() => import('../modules/inventory/pages/UnsettledCostsPage'));
 const InventoryValuationPage = lazy(() => import('../modules/inventory/pages/InventoryValuationPage'));
+const InventoryGLReconciliationPage = lazy(() => import('../modules/inventory/pages/InventoryGLReconciliationPage'));
 const InventorySettingsPage = lazy(() => import('../modules/inventory/pages/InventorySettingsPage'));
 const UomsPage = lazy(() => import('../modules/inventory/pages/UomsPage'));
 
@@ -242,6 +243,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/valuation', label: 'Inventory Valuation', component: InventoryValuationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
+  { path: '/inventory/reports/gl-reconciliation', label: 'Inventory ↔ GL Reconciliation', component: InventoryGLReconciliationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/opening-stock', label: 'Opening Stock Documents', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
   { path: '/inventory/uoms', label: 'UOM Master', component: UomsPage, section: 'INVENTORY', requiredPermission: 'inventory.uom.view', requiredModule: 'inventory' },
   { path: '/inventory/settings', label: 'Settings', component: InventorySettingsPage, section: 'INVENTORY', requiredPermission: 'inventory.settings.manage', requiredModule: 'inventory' },

@@ -41,6 +41,7 @@ import { GetInventoryValuationUseCase, GetStockLevelsUseCase } from '../../../ap
 import { GetMovementHistoryUseCase } from '../../../application/inventory/use-cases/MovementHistoryUseCases';
 import { InitializeInventoryUseCase } from '../../../application/inventory/use-cases/InitializeInventoryUseCase';
 import { ReconcileStockUseCase } from '../../../application/inventory/use-cases/ReconcileStockUseCase';
+import { ReconcileInventoryGLUseCase } from '../../../application/inventory/use-cases/ReconcileInventoryGLUseCase';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
 import {
   CompleteStockTransferUseCase,
@@ -241,6 +242,7 @@ export class InventoryController {
         accountingMode: effectiveAccountingMode,
         inventoryAccountingMethod: DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(effectiveAccountingMode),
         defaultCostingMethod: 'MOVING_AVG',
+        costingBasis: (req as any).body.costingBasis ?? current?.costingBasis ?? 'WAREHOUSE',
         defaultCostCurrency: (req as any).body.defaultCostCurrency || current?.defaultCostCurrency || company.baseCurrency,
         defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId ?? current?.defaultInventoryAssetAccountId,
         allowNegativeStock: (req as any).body.allowNegativeStock ?? current?.allowNegativeStock ?? true,
@@ -249,9 +251,18 @@ export class InventoryController {
         autoGenerateItemCode: (req as any).body.autoGenerateItemCode ?? current?.autoGenerateItemCode ?? false,
         itemCodePrefix: (req as any).body.itemCodePrefix ?? current?.itemCodePrefix,
         itemCodeNextSeq: (req as any).body.itemCodeNextSeq ?? current?.itemCodeNextSeq ?? 1,
-        defaultCOGSAccountId: (req as any).body.defaultCOGSAccountId !== undefined 
-          ? (req as any).body.defaultCOGSAccountId 
+        defaultCOGSAccountId: (req as any).body.defaultCOGSAccountId !== undefined
+          ? (req as any).body.defaultCOGSAccountId
           : current?.defaultCOGSAccountId,
+        defaultInventoryGainAccountId: (req as any).body.defaultInventoryGainAccountId !== undefined
+          ? (req as any).body.defaultInventoryGainAccountId
+          : current?.defaultInventoryGainAccountId,
+        defaultInventoryLossAccountId: (req as any).body.defaultInventoryLossAccountId !== undefined
+          ? (req as any).body.defaultInventoryLossAccountId
+          : current?.defaultInventoryLossAccountId,
+        defaultInventoryTransferClearingAccountId: (req as any).body.defaultInventoryTransferClearingAccountId !== undefined
+          ? (req as any).body.defaultInventoryTransferClearingAccountId
+          : current?.defaultInventoryTransferClearingAccountId,
       });
 
       await diContainer.inventorySettingsRepository.saveSettings(settings);
@@ -1313,7 +1324,8 @@ export class InventoryController {
         movementUseCase,
         diContainer.transactionManager,
         diContainer.companyModuleRepository,
-        accountingPostingService
+        accountingPostingService,
+        diContainer.inventorySettingsRepository
       );
 
       const adjustment = await useCase.execute(companyId, (req as any).params.id, userId);
@@ -1346,6 +1358,7 @@ export class InventoryController {
         destinationWarehouseId: (req as any).body.destinationWarehouseId,
         date: (req as any).body.date,
         notes: (req as any).body.notes,
+        mode: (req as any).body.mode,
         lines: (req as any).body.lines || [],
         createdBy: userId,
       });
@@ -1370,7 +1383,10 @@ export class InventoryController {
         diContainer.itemRepository,
         diContainer.stockLevelRepository,
         movementUseCase,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        diContainer.companyModuleRepository,
+        diContainer.inventorySettingsRepository,
+        InventoryController.buildAccountingPostingService()
       );
 
       const transfer = await useCase.execute(companyId, (req as any).params.id, userId);
@@ -1578,6 +1594,34 @@ export class InventoryController {
         diContainer.stockMovementRepository
       );
       const result = await useCase.execute(companyId);
+
+      (res as any).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async reconcileGL(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const asOfDate = (req as any).query.asOfDate ? String((req as any).query.asOfDate) : undefined;
+      const glBalanceProvider = {
+        getAccountBalances: async (cid: string, date: string) => {
+          const rows = await diContainer.ledgerRepository.getTrialBalance(cid, date, false);
+          return rows.map((row) => ({ accountId: row.accountId, balanceBase: (row.debit || 0) - (row.credit || 0) }));
+        },
+      };
+      const useCase = new ReconcileInventoryGLUseCase(
+        diContainer.stockLevelRepository,
+        diContainer.itemRepository,
+        diContainer.inventorySettingsRepository,
+        glBalanceProvider,
+        diContainer.accountRepository
+      );
+      const result = await useCase.execute(companyId, asOfDate);
 
       (res as any).json({
         success: true,

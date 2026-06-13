@@ -57,8 +57,8 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
     };
 
     const movementUseCase = {
-      processIN: jest.fn(async () => undefined),
-      processOUT: jest.fn(async () => undefined),
+      processIN: jest.fn(async () => ({ id: 'sm-in', direction: 'IN', totalCostBase: 20 })),
+      processOUT: jest.fn(async () => ({ id: 'sm-out', direction: 'OUT', totalCostBase: 0 })),
       preFetchItemContext: jest.fn(async () => ({
         item: {
           id: 'item-1',
@@ -135,8 +135,8 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
     };
 
     const movementUseCase = {
-      processIN: jest.fn(async () => undefined),
-      processOUT: jest.fn(async () => undefined),
+      processIN: jest.fn(async () => ({ id: 'sm-in', direction: 'IN', totalCostBase: 20 })),
+      processOUT: jest.fn(async () => ({ id: 'sm-out', direction: 'OUT', totalCostBase: 0 })),
       preFetchItemContext: jest.fn(async () => ({
         item: {
           id: 'item-1',

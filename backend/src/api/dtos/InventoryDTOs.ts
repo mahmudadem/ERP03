@@ -43,6 +43,9 @@ export interface ItemDTO {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  salePrice?: number;
+  purchasePrice?: number;
+  metadata?: Record<string, any>;
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -105,6 +108,7 @@ export interface InventorySettingsDTO {
   accountingMode: 'INVOICE_DRIVEN' | 'PERPETUAL';
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: 'MOVING_AVG';
+  costingBasis: 'WAREHOUSE' | 'GLOBAL';
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
@@ -114,6 +118,9 @@ export interface InventorySettingsDTO {
   itemCodePrefix?: string;
   itemCodeNextSeq: number;
   defaultCOGSAccountId?: string;
+  defaultInventoryGainAccountId?: string;
+  defaultInventoryLossAccountId?: string;
+  defaultInventoryTransferClearingAccountId?: string;
 }
 
 export interface OpeningStockDocumentDTO {
@@ -236,7 +243,9 @@ export interface StockTransferDTO {
   destinationWarehouseId: string;
   date: string;
   notes?: string;
+  mode: 'FLAT' | 'VALUED';
   status: 'DRAFT' | 'IN_TRANSIT' | 'COMPLETED';
+  voucherId?: string;
   transferPairId: string;
   createdBy: string;
   createdAt: string;
@@ -304,6 +313,9 @@ export class InventoryDTOMapper {
       minStockLevel: item.minStockLevel,
       maxStockLevel: item.maxStockLevel,
       reorderPoint: item.reorderPoint,
+      salePrice: item.salePrice,
+      purchasePrice: item.purchasePrice,
+      metadata: item.metadata ? { ...item.metadata } : undefined,
       active: item.active,
       createdBy: item.createdBy,
       createdAt: item.createdAt.toISOString(),
@@ -376,6 +388,7 @@ export class InventoryDTOMapper {
       accountingMode: settings.accountingMode,
       inventoryAccountingMethod: settings.inventoryAccountingMethod,
       defaultCostingMethod: settings.defaultCostingMethod,
+      costingBasis: settings.costingBasis,
       defaultCostCurrency: settings.defaultCostCurrency,
       defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId,
       allowNegativeStock: settings.allowNegativeStock,
@@ -385,6 +398,9 @@ export class InventoryDTOMapper {
       itemCodePrefix: settings.itemCodePrefix,
       itemCodeNextSeq: settings.itemCodeNextSeq,
       defaultCOGSAccountId: settings.defaultCOGSAccountId,
+      defaultInventoryGainAccountId: settings.defaultInventoryGainAccountId,
+      defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId,
+      defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId,
     };
   }
 
@@ -500,7 +516,9 @@ export class InventoryDTOMapper {
       destinationWarehouseId: transfer.destinationWarehouseId,
       date: transfer.date,
       notes: transfer.notes,
+      mode: transfer.mode,
       status: transfer.status,
+      voucherId: transfer.voucherId,
       transferPairId: transfer.transferPairId,
       createdBy: transfer.createdBy,
       createdAt: transfer.createdAt.toISOString(),

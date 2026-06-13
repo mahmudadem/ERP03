@@ -40,9 +40,24 @@ const ensureOptionalString = (value: any, fieldName: string) => {
   }
 };
 
+const ensureOptionalNonNegativeNumber = (value: any, fieldName: string) => {
+  if (value !== undefined && (typeof value !== 'number' || Number.isNaN(value) || value < 0)) {
+    throw ApiError.badRequest(`${fieldName} must be a non-negative number`);
+  }
+};
+
 const ensureBoolean = (value: any, fieldName: string) => {
   if (typeof value !== 'boolean') {
     throw ApiError.badRequest(`${fieldName} must be boolean`);
+  }
+};
+
+const ensureOptionalPlainObject = (value: any, fieldName: string) => {
+  if (
+    value !== undefined &&
+    (value === null || Array.isArray(value) || typeof value !== 'object')
+  ) {
+    throw ApiError.badRequest(`${fieldName} must be an object`);
   }
 };
 
@@ -86,6 +101,12 @@ export const validateInitializeInventoryInput = (body: any) => {
 
   if (body.defaultCOGSAccountId !== undefined) {
     ensureUuid(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  }
+
+  if (body.defaultInventoryGainAccountId) ensureUuid(body.defaultInventoryGainAccountId, 'defaultInventoryGainAccountId');
+  if (body.defaultInventoryLossAccountId) ensureUuid(body.defaultInventoryLossAccountId, 'defaultInventoryLossAccountId');
+  if (body.defaultInventoryTransferClearingAccountId) {
+    ensureUuid(body.defaultInventoryTransferClearingAccountId, 'defaultInventoryTransferClearingAccountId');
   }
 
   if (body.defaultWarehouseCode && typeof body.defaultWarehouseCode !== 'string') {
@@ -140,6 +161,9 @@ export const validateCreateItemInput = (body: any) => {
   ensureRequiredString(body.costCurrency, 'costCurrency');
 
   ensureBoolean(body.trackInventory, 'trackInventory');
+  ensureOptionalPlainObject(body.metadata, 'metadata');
+  ensureOptionalNonNegativeNumber(body.salePrice, 'salePrice');
+  ensureOptionalNonNegativeNumber(body.purchasePrice, 'purchasePrice');
 };
 
 export const validateUpdateItemInput = (body: any) => {
@@ -153,6 +177,9 @@ export const validateUpdateItemInput = (body: any) => {
   ensureOptionalString(body.salesUomId, 'salesUomId');
   if (body.costCurrency !== undefined) ensureRequiredString(body.costCurrency, 'costCurrency');
   if (body.trackInventory !== undefined) ensureBoolean(body.trackInventory, 'trackInventory');
+  ensureOptionalPlainObject(body.metadata, 'metadata');
+  ensureOptionalNonNegativeNumber(body.salePrice, 'salePrice');
+  ensureOptionalNonNegativeNumber(body.purchasePrice, 'purchasePrice');
 };
 
 export const validateCreateCategoryInput = (body: any) => {
@@ -292,6 +319,10 @@ export const validateCreateStockTransferInput = (body: any) => {
   ensureRequiredString(body.destinationWarehouseId, 'destinationWarehouseId');
   ensureIsoDate(body.date, 'date');
 
+  if (body.mode !== undefined && body.mode !== 'FLAT' && body.mode !== 'VALUED') {
+    throw ApiError.badRequest('mode must be FLAT or VALUED');
+  }
+
   if (!Array.isArray(body.lines) || body.lines.length === 0) {
     throw ApiError.badRequest('lines must be a non-empty array');
   }
@@ -299,6 +330,8 @@ export const validateCreateStockTransferInput = (body: any) => {
   body.lines.forEach((line: any, index: number) => {
     ensureRequiredString(line.itemId, `lines[${index}].itemId`);
     ensurePositiveNumber(line.qty, `lines[${index}].qty`);
+    ensureOptionalNonNegativeNumber(line.unitCostBaseAtTransfer, `lines[${index}].unitCostBaseAtTransfer`);
+    ensureOptionalNonNegativeNumber(line.unitCostCCYAtTransfer, `lines[${index}].unitCostCCYAtTransfer`);
   });
 };
 
@@ -357,6 +390,14 @@ export const validateUpdateSettingsInput = (body: any) => {
   }
   if (body.defaultCOGSAccountId !== undefined) {
     ensureUuid(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  }
+  if (body.defaultInventoryGainAccountId) ensureUuid(body.defaultInventoryGainAccountId, 'defaultInventoryGainAccountId');
+  if (body.defaultInventoryLossAccountId) ensureUuid(body.defaultInventoryLossAccountId, 'defaultInventoryLossAccountId');
+  if (body.defaultInventoryTransferClearingAccountId) {
+    ensureUuid(body.defaultInventoryTransferClearingAccountId, 'defaultInventoryTransferClearingAccountId');
+  }
+  if (body.costingBasis !== undefined && body.costingBasis !== 'WAREHOUSE' && body.costingBasis !== 'GLOBAL') {
+    throw ApiError.badRequest('costingBasis must be WAREHOUSE or GLOBAL');
   }
 };
 

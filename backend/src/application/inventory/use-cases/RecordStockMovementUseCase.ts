@@ -16,7 +16,7 @@ import { IStockLevelRepository } from '../../../repository/interfaces/inventory/
 import { IStockMovementRepository } from '../../../repository/interfaces/inventory/IStockMovementRepository';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { InventorySettings } from '../../../domain/inventory/entities/InventorySettings';
+import { InventorySettings, InventoryCostingBasis } from '../../../domain/inventory/entities/InventorySettings';
 import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
 
 interface MovementRefs {
@@ -48,6 +48,7 @@ export interface ProcessINInput extends BaseMovementInput {
   fxRateCCYToBase: number;
   preFetchedLevel?: StockLevel;
   preFetchedItem?: Item;
+  preFetchedInventorySettings?: InventorySettings;
   baseCurrency?: string;
   skipWarehouseValidation?: boolean;
 }
@@ -77,7 +78,16 @@ export interface ProcessTRANSFERInput {
   preFetchedItem?: Item;
   preFetchedSourceLevel?: StockLevel;
   preFetchedDestinationLevel?: StockLevel;
+  preFetchedInventorySettings?: InventorySettings;
   skipWarehouseValidation?: boolean;
+  /**
+   * VALUED transfers only: the cost the stock should LAND at in the destination
+   * warehouse (e.g. source cost + capitalized freight). The source OUT leg still
+   * issues at the real source cost; the difference is the transfer uplift. When
+   * omitted the destination inherits the source cost (FLAT behavior).
+   */
+  destUnitCostOverrideBase?: number;
+  destUnitCostOverrideCCY?: number;
 }
 
 export interface TransferResult {
@@ -119,7 +129,13 @@ export class RecordStockMovementUseCase {
       input.fxRateCCYToBase
     );
 
+    const costingBasis = await this.resolveCostingBasis(input.companyId, input.preFetchedInventorySettings);
+
     const execute = async (txn: unknown) => {
+      if (costingBasis === 'GLOBAL') {
+        return this.processINGlobal(txn, input, item, baseCurrency, converted);
+      }
+
       const level = input.preFetchedLevel
         ? StockLevel.fromJSON(input.preFetchedLevel.toJSON())
         : await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
@@ -224,7 +240,17 @@ export class RecordStockMovementUseCase {
       await this.ensureWarehouseExists(input.warehouseId);
     }
 
+    // Loaded once: drives the costing basis AND the negative-stock guard below,
+    // so GLOBAL costing adds at most one settings read per movement.
+    const settings = await this.loadSettingsSafe(input.companyId, input.preFetchedInventorySettings);
+    const costingBasis: InventoryCostingBasis = settings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
+
     const execute = async (txn: unknown) => {
+      if (costingBasis === 'GLOBAL') {
+        const baseCurrency = await this.getBaseCurrency(input.companyId);
+        return this.processOUTGlobal(txn, input, item, baseCurrency, settings);
+      }
+
       const level = input.preFetchedLevel
         ? StockLevel.fromJSON(input.preFetchedLevel.toJSON())
         : await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
@@ -265,9 +291,6 @@ export class RecordStockMovementUseCase {
 
       const projectedQty = qtyBefore - input.qty;
       if (projectedQty < 0) {
-        const settings =
-          input.preFetchedInventorySettings ??
-          (await this.deps.inventorySettingsRepository.getSettings(input.companyId));
         if (settings && settings.allowNegativeStock === false) {
           throw new NegativeStockError({
             companyId: input.companyId,
@@ -362,7 +385,13 @@ export class RecordStockMovementUseCase {
       await this.ensureWarehouseExists(input.destinationWarehouseId);
     }
 
+    const costingBasis = await this.resolveCostingBasis(input.companyId, input.preFetchedInventorySettings);
+
     const executeTransfer = async (txn: unknown): Promise<TransferResult> => {
+      if (costingBasis === 'GLOBAL') {
+        return this.processTRANSFERGlobal(txn, input, item);
+      }
+
       const pairId = input.transferPairId?.trim() || randomUUID();
       const now = new Date();
 
@@ -399,6 +428,24 @@ export class RecordStockMovementUseCase {
       const srcQtyAfter = srcLevel.qtyOnHand;
       const srcIsBackdated = input.date < srcOldMaxDate;
       const srcFxRate = transferCostCCY > 0 ? transferCostBase / transferCostCCY : 1.0;
+
+      // VALUED transfer: the destination may land at an overridden cost. The OUT
+      // leg keeps the real source cost; only the IN/destination side uses the
+      // override. FLAT transfers pass no override → destination inherits source.
+      const hasDestOverride =
+        input.destUnitCostOverrideBase !== undefined &&
+        !Number.isNaN(input.destUnitCostOverrideBase) &&
+        input.destUnitCostOverrideBase >= 0;
+      const destCostBase = hasDestOverride ? input.destUnitCostOverrideBase! : transferCostBase;
+      const destCostCCY =
+        input.destUnitCostOverrideCCY !== undefined &&
+        !Number.isNaN(input.destUnitCostOverrideCCY) &&
+        input.destUnitCostOverrideCCY >= 0
+          ? input.destUnitCostOverrideCCY!
+          : hasDestOverride
+            ? destCostBase
+            : transferCostCCY;
+      const destFxRate = destCostCCY > 0 ? destCostBase / destCostCCY : 1.0;
 
       const outMov = new StockMovement({
         id: this.generateMovementId(),
@@ -452,21 +499,21 @@ export class RecordStockMovementUseCase {
       const dstNewPositiveQty = input.qty - dstSettlesNegativeQty;
 
       if (dstQtyBefore <= 0) {
-        dstLevel.avgCostBase = transferCostBase;
-        dstLevel.avgCostCCY = transferCostCCY;
+        dstLevel.avgCostBase = destCostBase;
+        dstLevel.avgCostCCY = destCostCCY;
       } else {
         const newQty = dstQtyBefore + input.qty;
         dstLevel.avgCostBase = roundMoney(
-          ((dstLevel.avgCostBase * dstQtyBefore) + (transferCostBase * input.qty)) / newQty
+          ((dstLevel.avgCostBase * dstQtyBefore) + (destCostBase * input.qty)) / newQty
         );
         dstLevel.avgCostCCY = roundMoney(
-          ((dstLevel.avgCostCCY * dstQtyBefore) + (transferCostCCY * input.qty)) / newQty
+          ((dstLevel.avgCostCCY * dstQtyBefore) + (destCostCCY * input.qty)) / newQty
         );
       }
 
       dstLevel.qtyOnHand += input.qty;
-      dstLevel.lastCostBase = transferCostBase;
-      dstLevel.lastCostCCY = transferCostCCY;
+      dstLevel.lastCostBase = destCostBase;
+      dstLevel.lastCostCCY = destCostCCY;
       dstLevel.postingSeq += 1;
       dstLevel.version += 1;
       dstLevel.totalMovements += 1;
@@ -493,13 +540,13 @@ export class RecordStockMovementUseCase {
         referenceType: 'STOCK_TRANSFER',
         referenceId: input.transferDocId,
         transferPairId: pairId,
-        unitCostBase: transferCostBase,
-        totalCostBase: roundMoney(transferCostBase * input.qty),
-        unitCostCCY: transferCostCCY,
-        totalCostCCY: roundMoney(transferCostCCY * input.qty),
+        unitCostBase: destCostBase,
+        totalCostBase: roundMoney(destCostBase * input.qty),
+        unitCostCCY: destCostCCY,
+        totalCostCCY: roundMoney(destCostCCY * input.qty),
         movementCurrency: item.costCurrency,
-        fxRateMovToBase: srcFxRate,
-        fxRateCCYToBase: srcFxRate,
+        fxRateMovToBase: destFxRate,
+        fxRateCCYToBase: destFxRate,
         fxRateKind: 'EFFECTIVE',
         avgCostBaseAfter: dstLevel.avgCostBase,
         avgCostCCYAfter: dstLevel.avgCostCCY,
@@ -530,6 +577,508 @@ export class RecordStockMovementUseCase {
     }
 
     return this.deps.transactionManager.runTransaction(async (txn) => executeTransfer(txn));
+  }
+
+  // ───────────────────────── GLOBAL costing basis ─────────────────────────
+  // One company-wide moving average per item (quantity is still tracked per
+  // warehouse). Every warehouse level for the item carries the SAME average, so
+  // all downstream readers (valuation, COGS, reconciliation) are unchanged — the
+  // number they read just happens to be the company-wide one. WAREHOUSE costing
+  // (the default) never enters any of the methods below.
+
+  private async resolveCostingBasis(
+    companyId: string,
+    prefetched?: InventorySettings
+  ): Promise<InventoryCostingBasis> {
+    const settings = await this.loadSettingsSafe(companyId, prefetched);
+    return settings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
+  }
+
+  private async loadSettingsSafe(
+    companyId: string,
+    prefetched?: InventorySettings
+  ): Promise<InventorySettings | null> {
+    if (prefetched) return prefetched;
+    try {
+      return await this.deps.inventorySettingsRepository.getSettings(companyId);
+    } catch {
+      // A settings read failure must never break a movement: fall back to the
+      // proven WAREHOUSE path rather than aborting the posting.
+      return null;
+    }
+  }
+
+  private async getBaseCurrency(companyId: string): Promise<string> {
+    const company = await this.deps.companyRepository.findById(companyId);
+    if (!company) throw new Error(`Company not found: ${companyId}`);
+    return company.baseCurrency;
+  }
+
+  /**
+   * Company-wide quantity and value across every warehouse level of an item,
+   * plus the derived moving average. Negative warehouse balances net out
+   * naturally (an oversold location reduces the company position).
+   */
+  private computeGlobalTotals(levels: StockLevel[]): {
+    qty: number;
+    valueBase: number;
+    valueCCY: number;
+    avgBase: number;
+    avgCCY: number;
+  } {
+    let qty = 0;
+    let valueBase = 0;
+    let valueCCY = 0;
+    for (const lvl of levels) {
+      qty += lvl.qtyOnHand;
+      valueBase += lvl.qtyOnHand * lvl.avgCostBase;
+      valueCCY += lvl.qtyOnHand * lvl.avgCostCCY;
+    }
+    return {
+      qty,
+      valueBase,
+      valueCCY,
+      avgBase: qty > 0 ? valueBase / qty : 0,
+      avgCCY: qty > 0 ? valueCCY / qty : 0,
+    };
+  }
+
+  private async processINGlobal(
+    txn: unknown,
+    input: ProcessINInput,
+    item: Item,
+    baseCurrency: string,
+    converted: { unitCostBase: number; unitCostCCY: number; fxRateCCYToBase: number }
+  ): Promise<StockMovement> {
+    const levels = await this.deps.stockLevelRepository.getLevelsByItemInTransaction(
+      txn,
+      input.companyId,
+      item.id
+    );
+    let dest = levels.find((l) => l.warehouseId === input.warehouseId);
+    const otherLevels = levels.filter((l) => l.warehouseId !== input.warehouseId);
+    if (!dest) {
+      dest = StockLevel.createNew(input.companyId, item.id, input.warehouseId);
+    }
+
+    const totals = this.computeGlobalTotals(levels);
+    const qtyBefore = dest.qtyOnHand;
+    const oldMaxBusinessDate = dest.maxBusinessDate;
+
+    const settlesNegativeQty = Math.min(input.qty, Math.max(-qtyBefore, 0));
+    const newPositiveQty = input.qty - settlesNegativeQty;
+
+    // Re-blend the company-wide average with the incoming receipt.
+    let newAvgBase = converted.unitCostBase;
+    let newAvgCCY = converted.unitCostCCY;
+    if (totals.qty > 0) {
+      const newGlobalQty = totals.qty + input.qty;
+      newAvgBase = roundByCurrency(
+        (totals.valueBase + converted.unitCostBase * input.qty) / newGlobalQty,
+        baseCurrency
+      );
+      newAvgCCY = roundByCurrency(
+        (totals.valueCCY + converted.unitCostCCY * input.qty) / newGlobalQty,
+        item.costCurrency
+      );
+    }
+
+    dest.qtyOnHand += input.qty;
+    dest.avgCostBase = newAvgBase;
+    dest.avgCostCCY = newAvgCCY;
+    dest.lastCostBase = converted.unitCostBase;
+    dest.lastCostCCY = converted.unitCostCCY;
+    dest.postingSeq += 1;
+    dest.version += 1;
+    dest.totalMovements += 1;
+    dest.maxBusinessDate = this.maxDate(oldMaxBusinessDate, input.date);
+    dest.updatedAt = new Date();
+
+    const qtyAfter = dest.qtyOnHand;
+    const isBackdated = input.date < oldMaxBusinessDate;
+    const now = new Date();
+
+    const movement = new StockMovement({
+      id: this.generateMovementId(),
+      companyId: input.companyId,
+      date: input.date,
+      postingSeq: dest.postingSeq,
+      createdAt: now,
+      createdBy: input.currentUser,
+      postedAt: now,
+      itemId: item.id,
+      warehouseId: input.warehouseId,
+      direction: 'IN',
+      movementType: input.movementType,
+      qty: input.qty,
+      uom: item.baseUom,
+      referenceType: input.refs.type,
+      referenceId: input.refs.docId,
+      referenceLineId: input.refs.lineId,
+      reversesMovementId: input.refs.reversesMovementId,
+      transferPairId: input.refs.transferPairId,
+      unitCostBase: converted.unitCostBase,
+      totalCostBase: roundMoney(converted.unitCostBase * input.qty),
+      unitCostCCY: converted.unitCostCCY,
+      totalCostCCY: roundMoney(converted.unitCostCCY * input.qty),
+      movementCurrency: input.moveCurrency.toUpperCase(),
+      fxRateMovToBase: input.fxRateMovToBase,
+      fxRateCCYToBase: converted.fxRateCCYToBase,
+      fxRateKind: 'DOCUMENT',
+      avgCostBaseAfter: newAvgBase,
+      avgCostCCYAfter: newAvgCCY,
+      qtyBefore,
+      qtyAfter,
+      settlesNegativeQty,
+      newPositiveQty,
+      negativeQtyAtPosting: qtyAfter < 0,
+      costSettled: true,
+      isBackdated,
+      costSource: this.deriveCostSource(input.movementType),
+      notes: input.notes,
+      metadata: input.metadata,
+    });
+
+    dest.lastMovementId = movement.id;
+
+    await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, dest);
+    await this.deps.stockMovementRepository.recordMovement(movement, txn);
+    await this.restateAverageAcrossLevels(txn, otherLevels, newAvgBase, newAvgCCY, now);
+
+    return movement;
+  }
+
+  private async processOUTGlobal(
+    txn: unknown,
+    input: ProcessOUTInput,
+    item: Item,
+    baseCurrency: string,
+    settings: InventorySettings | null
+  ): Promise<StockMovement> {
+    const levels = await this.deps.stockLevelRepository.getLevelsByItemInTransaction(
+      txn,
+      input.companyId,
+      item.id
+    );
+    let source = levels.find((l) => l.warehouseId === input.warehouseId);
+    if (!source) {
+      source = StockLevel.createNew(input.companyId, item.id, input.warehouseId);
+    }
+
+    const totals = this.computeGlobalTotals(levels);
+    const qtyBefore = source.qtyOnHand;
+    const oldMaxBusinessDate = source.maxBusinessDate;
+
+    const globalAvgBase =
+      totals.qty > 0 ? roundByCurrency(totals.avgBase, baseCurrency) : source.avgCostBase;
+    const globalAvgCCY =
+      totals.qty > 0 ? roundByCurrency(totals.avgCCY, item.costCurrency) : source.avgCostCCY;
+
+    let issueCostBase = 0;
+    let issueCostCCY = 0;
+    let costBasis: 'AVG' | 'LAST_KNOWN' | 'MISSING' = 'MISSING';
+
+    const hasForcedCost = input.forcedUnitCostBase !== undefined || input.forcedUnitCostCCY !== undefined;
+    if (hasForcedCost) {
+      const forcedBase = input.forcedUnitCostBase ?? 0;
+      const forcedCCY = input.forcedUnitCostCCY ?? 0;
+      if (forcedBase < 0 || Number.isNaN(forcedBase) || forcedCCY < 0 || Number.isNaN(forcedCCY)) {
+        throw new Error('Forced OUT costs must be valid non-negative numbers');
+      }
+      issueCostBase = forcedBase;
+      issueCostCCY = forcedCCY;
+      costBasis = issueCostBase > 0 || issueCostCCY > 0 ? 'AVG' : 'MISSING';
+    } else if (totals.qty > 0) {
+      issueCostBase = globalAvgBase;
+      issueCostCCY = globalAvgCCY;
+      costBasis = 'AVG';
+    } else if (source.lastCostBase > 0) {
+      issueCostBase = source.lastCostBase;
+      issueCostCCY = source.lastCostCCY;
+      costBasis = 'LAST_KNOWN';
+    }
+
+    // Availability is still physical/per-warehouse even though cost is global.
+    const settledQty = Math.min(input.qty, Math.max(qtyBefore, 0));
+    const unsettledQty = input.qty - settledQty;
+    const costSettled = unsettledQty === 0;
+
+    const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
+
+    const projectedQty = qtyBefore - input.qty;
+    if (projectedQty < 0 && settings && settings.allowNegativeStock === false) {
+      throw new NegativeStockError({
+        companyId: input.companyId,
+        itemId: item.id,
+        warehouseId: input.warehouseId,
+        qtyBefore,
+        requested: input.qty,
+        resultingQty: projectedQty,
+      });
+    }
+
+    source.qtyOnHand -= input.qty;
+    // Issues don't change a moving average; restate this location to the
+    // company-wide average so it converges (a no-op once already in sync).
+    source.avgCostBase = globalAvgBase;
+    source.avgCostCCY = globalAvgCCY;
+    source.postingSeq += 1;
+    source.version += 1;
+    source.totalMovements += 1;
+    source.maxBusinessDate = this.maxDate(oldMaxBusinessDate, input.date);
+    source.updatedAt = new Date();
+
+    const qtyAfter = source.qtyOnHand;
+    const isBackdated = input.date < oldMaxBusinessDate;
+    const now = new Date();
+
+    const movement = new StockMovement({
+      id: this.generateMovementId(),
+      companyId: input.companyId,
+      date: input.date,
+      postingSeq: source.postingSeq,
+      createdAt: now,
+      createdBy: input.currentUser,
+      postedAt: now,
+      itemId: item.id,
+      warehouseId: input.warehouseId,
+      direction: 'OUT',
+      movementType: input.movementType,
+      qty: input.qty,
+      uom: item.baseUom,
+      referenceType: input.refs.type,
+      referenceId: input.refs.docId,
+      referenceLineId: input.refs.lineId,
+      reversesMovementId: input.refs.reversesMovementId,
+      transferPairId: input.refs.transferPairId,
+      unitCostBase: issueCostBase,
+      totalCostBase: roundMoney(issueCostBase * input.qty),
+      unitCostCCY: issueCostCCY,
+      totalCostCCY: roundMoney(issueCostCCY * input.qty),
+      movementCurrency: item.costCurrency,
+      fxRateMovToBase: effectiveFxCCYToBase,
+      fxRateCCYToBase: effectiveFxCCYToBase,
+      fxRateKind: 'EFFECTIVE',
+      avgCostBaseAfter: globalAvgBase,
+      avgCostCCYAfter: globalAvgCCY,
+      qtyBefore,
+      qtyAfter,
+      settledQty,
+      unsettledQty,
+      unsettledCostBasis: unsettledQty > 0 ? costBasis : undefined,
+      negativeQtyAtPosting: qtyAfter < 0,
+      costSettled,
+      isBackdated,
+      costSource: this.deriveCostSource(input.movementType),
+      notes: input.notes,
+      metadata: input.metadata,
+    });
+
+    source.lastMovementId = movement.id;
+
+    await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, source);
+    await this.deps.stockMovementRepository.recordMovement(movement, txn);
+
+    return movement;
+  }
+
+  private async processTRANSFERGlobal(
+    txn: unknown,
+    input: ProcessTRANSFERInput,
+    item: Item
+  ): Promise<TransferResult> {
+    const baseCurrency = await this.getBaseCurrency(input.companyId);
+    const levels = await this.deps.stockLevelRepository.getLevelsByItemInTransaction(
+      txn,
+      input.companyId,
+      item.id
+    );
+    const pairId = input.transferPairId?.trim() || randomUUID();
+    const now = new Date();
+
+    let src = levels.find((l) => l.warehouseId === input.sourceWarehouseId);
+    if (!src) src = StockLevel.createNew(input.companyId, item.id, input.sourceWarehouseId);
+    let dst = levels.find((l) => l.warehouseId === input.destinationWarehouseId);
+    if (!dst) dst = StockLevel.createNew(input.companyId, item.id, input.destinationWarehouseId);
+    const otherLevels = levels.filter(
+      (l) => l.warehouseId !== input.sourceWarehouseId && l.warehouseId !== input.destinationWarehouseId
+    );
+
+    const totals = this.computeGlobalTotals(levels);
+    const srcCostBase =
+      totals.qty > 0 ? roundByCurrency(totals.avgBase, baseCurrency) : src.lastCostBase;
+    const srcCostCCY =
+      totals.qty > 0 ? roundByCurrency(totals.avgCCY, item.costCurrency) : src.lastCostCCY;
+
+    // VALUED transfers may capitalize an uplift (e.g. freight) into the company
+    // average; FLAT transfers carry the source cost and leave the average flat.
+    const hasDestOverride =
+      input.destUnitCostOverrideBase !== undefined &&
+      !Number.isNaN(input.destUnitCostOverrideBase) &&
+      input.destUnitCostOverrideBase >= 0;
+    const destCostBase = hasDestOverride ? input.destUnitCostOverrideBase! : srcCostBase;
+    const destCostCCY =
+      input.destUnitCostOverrideCCY !== undefined &&
+      !Number.isNaN(input.destUnitCostOverrideCCY) &&
+      input.destUnitCostOverrideCCY >= 0
+        ? input.destUnitCostOverrideCCY!
+        : hasDestOverride
+          ? destCostBase
+          : srcCostCCY;
+
+    const upliftBase = (destCostBase - srcCostBase) * input.qty;
+    const upliftCCY = (destCostCCY - srcCostCCY) * input.qty;
+
+    // A transfer moves quantity between locations without changing the total, so
+    // only a VALUED uplift moves the company-wide average.
+    const newGlobalAvgBase =
+      totals.qty > 0 ? roundByCurrency((totals.valueBase + upliftBase) / totals.qty, baseCurrency) : destCostBase;
+    const newGlobalAvgCCY =
+      totals.qty > 0 ? roundByCurrency((totals.valueCCY + upliftCCY) / totals.qty, item.costCurrency) : destCostCCY;
+
+    // ── Source OUT leg ──
+    const srcQtyBefore = src.qtyOnHand;
+    const srcOldMaxDate = src.maxBusinessDate;
+    const srcSettledQty = Math.min(input.qty, Math.max(srcQtyBefore, 0));
+    const srcUnsettledQty = input.qty - srcSettledQty;
+    src.qtyOnHand -= input.qty;
+    src.avgCostBase = newGlobalAvgBase;
+    src.avgCostCCY = newGlobalAvgCCY;
+    src.postingSeq += 1;
+    src.version += 1;
+    src.totalMovements += 1;
+    src.maxBusinessDate = this.maxDate(srcOldMaxDate, input.date);
+    src.updatedAt = now;
+    const srcFxRate = srcCostCCY > 0 ? srcCostBase / srcCostCCY : 1.0;
+
+    const outMov = new StockMovement({
+      id: this.generateMovementId(),
+      companyId: input.companyId,
+      date: input.date,
+      postingSeq: src.postingSeq,
+      createdAt: now,
+      createdBy: input.currentUser,
+      postedAt: now,
+      itemId: item.id,
+      warehouseId: input.sourceWarehouseId,
+      direction: 'OUT',
+      movementType: 'TRANSFER_OUT',
+      qty: input.qty,
+      uom: item.baseUom,
+      referenceType: 'STOCK_TRANSFER',
+      referenceId: input.transferDocId,
+      transferPairId: pairId,
+      unitCostBase: srcCostBase,
+      totalCostBase: roundMoney(srcCostBase * input.qty),
+      unitCostCCY: srcCostCCY,
+      totalCostCCY: roundMoney(srcCostCCY * input.qty),
+      movementCurrency: item.costCurrency,
+      fxRateMovToBase: srcFxRate,
+      fxRateCCYToBase: srcFxRate,
+      fxRateKind: 'EFFECTIVE',
+      avgCostBaseAfter: newGlobalAvgBase,
+      avgCostCCYAfter: newGlobalAvgCCY,
+      qtyBefore: srcQtyBefore,
+      qtyAfter: src.qtyOnHand,
+      settledQty: srcSettledQty,
+      unsettledQty: srcUnsettledQty,
+      unsettledCostBasis: srcUnsettledQty > 0 ? 'AVG' : undefined,
+      negativeQtyAtPosting: src.qtyOnHand < 0,
+      costSettled: srcUnsettledQty === 0,
+      isBackdated: input.date < srcOldMaxDate,
+      costSource: 'TRANSFER',
+      notes: input.notes,
+      metadata: input.metadata,
+    });
+    src.lastMovementId = outMov.id;
+
+    // ── Destination IN leg ──
+    const dstQtyBefore = dst.qtyOnHand;
+    const dstOldMaxDate = dst.maxBusinessDate;
+    const dstSettlesNegativeQty = Math.min(input.qty, Math.max(-dstQtyBefore, 0));
+    const dstNewPositiveQty = input.qty - dstSettlesNegativeQty;
+    dst.qtyOnHand += input.qty;
+    dst.avgCostBase = newGlobalAvgBase;
+    dst.avgCostCCY = newGlobalAvgCCY;
+    dst.lastCostBase = destCostBase;
+    dst.lastCostCCY = destCostCCY;
+    dst.postingSeq += 1;
+    dst.version += 1;
+    dst.totalMovements += 1;
+    dst.maxBusinessDate = this.maxDate(dstOldMaxDate, input.date);
+    dst.updatedAt = now;
+    const destFxRate = destCostCCY > 0 ? destCostBase / destCostCCY : 1.0;
+
+    const inMov = new StockMovement({
+      id: this.generateMovementId(),
+      companyId: input.companyId,
+      date: input.date,
+      postingSeq: dst.postingSeq,
+      createdAt: now,
+      createdBy: input.currentUser,
+      postedAt: now,
+      itemId: item.id,
+      warehouseId: input.destinationWarehouseId,
+      direction: 'IN',
+      movementType: 'TRANSFER_IN',
+      qty: input.qty,
+      uom: item.baseUom,
+      referenceType: 'STOCK_TRANSFER',
+      referenceId: input.transferDocId,
+      transferPairId: pairId,
+      unitCostBase: destCostBase,
+      totalCostBase: roundMoney(destCostBase * input.qty),
+      unitCostCCY: destCostCCY,
+      totalCostCCY: roundMoney(destCostCCY * input.qty),
+      movementCurrency: item.costCurrency,
+      fxRateMovToBase: destFxRate,
+      fxRateCCYToBase: destFxRate,
+      fxRateKind: 'EFFECTIVE',
+      avgCostBaseAfter: newGlobalAvgBase,
+      avgCostCCYAfter: newGlobalAvgCCY,
+      qtyBefore: dstQtyBefore,
+      qtyAfter: dst.qtyOnHand,
+      settlesNegativeQty: dstSettlesNegativeQty,
+      newPositiveQty: dstNewPositiveQty,
+      negativeQtyAtPosting: dst.qtyOnHand < 0,
+      costSettled: true,
+      isBackdated: input.date < dstOldMaxDate,
+      costSource: 'TRANSFER',
+      notes: input.notes,
+      metadata: input.metadata,
+    });
+    dst.lastMovementId = inMov.id;
+
+    await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, src);
+    await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, dst);
+    await this.deps.stockMovementRepository.recordMovement(outMov, txn);
+    await this.deps.stockMovementRepository.recordMovement(inMov, txn);
+    if (upliftBase !== 0 || upliftCCY !== 0) {
+      await this.restateAverageAcrossLevels(txn, otherLevels, newGlobalAvgBase, newGlobalAvgCCY, now);
+    }
+
+    return { outMov, inMov };
+  }
+
+  /**
+   * Writes a new company-wide average onto warehouse levels that weren't the
+   * physical site of the movement, keeping every level for the item in sync.
+   */
+  private async restateAverageAcrossLevels(
+    txn: unknown,
+    levels: StockLevel[],
+    avgBase: number,
+    avgCCY: number,
+    now: Date
+  ): Promise<void> {
+    for (const lvl of levels) {
+      if (lvl.avgCostBase === avgBase && lvl.avgCostCCY === avgCCY) continue;
+      lvl.avgCostBase = avgBase;
+      lvl.avgCostCCY = avgCCY;
+      lvl.version += 1;
+      lvl.updatedAt = now;
+      await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, lvl);
+    }
   }
 
   convertCosts(

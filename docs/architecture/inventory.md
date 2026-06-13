@@ -1,7 +1,9 @@
 # Architecture: Inventory Module
 
-**Last updated:** 2026-05-17
-**Status:** V1 implemented. FIFO/Weighted-Average costing and Cost Settlement Wizard deferred to V2.
+**Last updated:** 2026-06-13 (Task 221 — deep stabilization)
+**Status:** V1 implemented. Moving-average costing live, on either a **per-warehouse** or **company-wide
+(GLOBAL)** basis (see Costing basis). GL posting from inventory documents IS implemented
+(see Accounting Integration). FIFO deferred to a follow-up.
 **Module-level docs:** [`docs/modules/inventory/MASTER_PLAN.md`](../modules/inventory/MASTER_PLAN.md), [`docs/modules/inventory/ALGORITHMS.md`](../modules/inventory/ALGORITHMS.md), [`docs/modules/inventory/SCHEMAS.md`](../modules/inventory/SCHEMAS.md)
 
 ---
@@ -39,6 +41,37 @@ All movements are stored in `baseUom`. UOM conversions happen at input time.
 
 **Moving Average** is the only method in V1.
 
+### Costing basis: Per-Warehouse vs Global
+
+`InventorySettings.costingBasis` selects how the moving average is scoped. Both engines are live; the basis
+is resolved per movement from the settings record (default **WAREHOUSE**).
+
+- **`WAREHOUSE`** (default) — one moving average per (item, warehouse). The code path is exactly as it has
+  always been; this is the proven engine and the entry point for the GLOBAL branch is the only edit to it.
+- **`GLOBAL`** — one company-wide moving average per item. Quantity is still tracked per warehouse, but every
+  warehouse level for the item carries the **same** average. Invariant: after any movement, all of an item's
+  levels hold the current company-wide average, so all downstream readers (valuation, COGS, GL reconciliation,
+  stock-levels rollup) are unchanged — they simply read a number that happens to be global.
+
+GLOBAL is implemented inside `RecordStockMovementUseCase` as `processINGlobal` / `processOUTGlobal` /
+`processTRANSFERGlobal`, gated at the top of each `process*` method. Mechanics:
+
+- **Receipt (IN)** — reads every warehouse level for the item in the transaction
+  (`IStockLevelRepository.getLevelsByItemInTransaction`, whose result set joins the transaction's optimistic
+  lock), re-blends the company-wide average with the incoming cost, then writes the new average onto **every**
+  level (the receiving warehouse also gets the +qty). A purchase into one warehouse therefore re-prices the
+  item everywhere.
+- **Issue (OUT)** — values COGS at the company-wide average (`Σ value ÷ Σ qty` across levels). A moving average
+  is unchanged by an issue, so only the shipping warehouse's qty is written; availability is still checked
+  per-warehouse. The defining property: a warehouse issues at the company cost, not the price it personally
+  received.
+- **Transfer** — FLAT leaves the average flat (qty moves A→B). VALUED capitalizes the uplift
+  `qty × (landed − source)` into the company average; `inMov.totalCostBase − outMov.totalCostBase` still equals
+  the uplift, so the clearing-voucher logic in `CompleteStockTransferUseCase` is untouched.
+
+Switching basis after movements exist is not recommended (it is a one-time setup choice); the first GLOBAL
+movement after a switch will re-blend any divergent per-warehouse averages into the true company-wide figure.
+
 ### Dual-track cost storage
 
 Each movement stores cost in **two currencies**:
@@ -60,7 +93,7 @@ Controlled by `InventorySettings.allowNegativeStock` (default `true`).
 - **`allowNegativeStock = true`** — OUT movements that would drive `qtyOnHand` below zero succeed; the movement records `negativeQtyAtPosting = true` and `unsettledCostBasis` reflects how the cost was sourced (see below).
 - **`allowNegativeStock = false`** — `RecordStockMovementUseCase.processOUT` throws `NegativeStockError` **before** mutating the StockLevel. No movement is created, no ledger entry posted. Callers (Sales/Purchases posting flows) propagate the error to the API response.
 
-The settings lookup happens only when the projected post-movement qty would be negative; positive-result OUTs are not penalized. Callers may pre-fetch the settings record once per posting transaction and pass it via `preFetchedInventorySettings` to avoid a second read.
+`processOUT` reads the settings record once up front — it drives **both** the costing basis (WAREHOUSE vs GLOBAL) and the negative-stock guard, so there is no second read. A settings read failure falls back to the WAREHOUSE path rather than aborting the posting. Callers may pre-fetch the settings record once per posting transaction and pass it via `preFetchedInventorySettings` to skip the read entirely.
 
 When the deficit IS allowed:
 On OUT movements when stock is insufficient:
@@ -90,12 +123,25 @@ Document posting is immutable; corrections require a separate adjustment.
 
 ## Accounting Integration
 
-Inventory has account fields prepared (`item.revenueAccountId`, `item.cogsAccountId`, `item.inventoryAssetAccountId`) but **automatic GL posting from inventory movements is NOT implemented in V1**.
+Inventory documents **do** post to the GL when the Accounting module is enabled. The integration points:
 
-Where the integration *does* exist:
-- **Opening Stock Document** can produce an inventory-valuation Accounting voucher when the Accounting module is enabled.
-- **Sales** calls into Inventory via `ISalesInventoryService.processOUT()` and posts COGS itself using the returned unit cost.
-- **Purchases** calls into Inventory via `IPurchasesInventoryService.processIN()` to record the receipt.
+- **Opening Stock Document** — produces an inventory-valuation voucher (Dr Inventory Asset / Cr opening-balance
+  offset).
+- **Stock Adjustment** (Task 221) — posts a journal valued from the **actual posted movement cost**
+  (`movement.totalCostBase`), not the user-typed cost. Write-downs (ADJUSTMENT_OUT) debit the **Inventory Loss**
+  account; write-ups (ADJUSTMENT_IN) credit the **Inventory Gain** account. Offset resolution chain:
+  dedicated gain/loss (Inventory Settings) → item COGS → settings COGS. Inventory-asset side: item → settings.
+  Missing accounts produce a readable blocking error (never a silent skip).
+- **Stock Transfer** (Task 221) has two modes:
+  - **FLAT** — pure A→B move; destination inherits source moving-average cost; **no GL** (value-neutral).
+  - **VALUED** — the destination may land at an overridden/uplifted cost (e.g. capitalized freight). The
+    uplift `qty × (landedCost − sourceCost)` is capitalized into inventory (Dr) against the **Inventory
+    Transfer Clearing** account (Cr). Zero uplift → no GL.
+- **Sales** calls `ISalesInventoryService.processOUT()` and posts COGS itself using the returned unit cost.
+- **Purchases** calls `IPurchasesInventoryService.processIN()` to record the receipt (GRN posts the GRNI cycle).
+
+GL accounts for adjustments/transfers are configured in **Inventory Settings → Accounting** (`defaultInventoryGainAccountId`,
+`defaultInventoryLossAccountId`, `defaultInventoryTransferClearingAccountId`).
 
 ### Sales-mode behavior for missing cost
 
@@ -116,7 +162,8 @@ V2 plans automatic Accounting vouchers from inventory movements (decoupled from 
 
 | Feature | Status | Note |
 |---|---|---|
-| **FIFO / Weighted Average costing** | V2 | Only MOVING_AVG today. |
+| **Item sale/purchase price** | Implemented (Task 221) | `item.salePrice` / `item.purchasePrice` (base currency). Sale price is a price-list fallback. |
+| **FIFO** | V2 | Only MOVING_AVG today. |
 | **Cost Settlement Wizard** | Placeholder | Retroactively fix `costSettled = false` OUT movements (`unsettledCostBasis = 'MISSING'`). |
 | **Period Snapshots** | Stub | Entity exists; not populated. For as-of valuations. |
 | **Automatic COGS posting from inventory** | Deferred | Sales posts COGS itself today; Inventory will own this in V2. |

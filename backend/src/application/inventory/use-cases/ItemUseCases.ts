@@ -28,6 +28,9 @@ export interface CreateItemInput {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  salePrice?: number;
+  purchasePrice?: number;
+  metadata?: Record<string, any>;
   createdBy: string;
 }
 
@@ -136,6 +139,7 @@ export class CreateItemUseCase {
       throw new Error('base UOM is required');
     }
     const now = new Date();
+    const normalizedType = data.type;
     const item = new Item(
       {
         id: randomUUID(),
@@ -144,7 +148,7 @@ export class CreateItemUseCase {
         name: data.name,
         description: data.description,
         barcode: data.barcode,
-        type: data.type,
+        type: normalizedType,
         categoryId: data.categoryId,
         brand: data.brand,
         tags: data.tags,
@@ -156,13 +160,16 @@ export class CreateItemUseCase {
         salesUom: uomFields.salesUom,
         costCurrency: data.costCurrency,
         costingMethod: 'MOVING_AVG',
-        trackInventory: data.trackInventory,
+        trackInventory: normalizedType === 'SERVICE' ? false : data.trackInventory,
         revenueAccountId,
         cogsAccountId,
         inventoryAssetAccountId,
         minStockLevel: data.minStockLevel,
         maxStockLevel: data.maxStockLevel,
         reorderPoint: data.reorderPoint,
+        salePrice: data.salePrice,
+        purchasePrice: data.purchasePrice,
+        metadata: data.metadata,
         active: true,
         createdBy: data.createdBy,
         createdAt: now,
@@ -203,11 +210,15 @@ export class UpdateItemUseCase {
       ? await resolveItemUomFields(current.companyId, { ...current, ...data }, this.uomRepo)
       : {};
 
-    await this.repo.updateItem(id, stripUndefined({
+    const effectiveType = data.type ?? current.type;
+    const patch = stripUndefined({
       ...data,
       ...uomFields,
+      ...(effectiveType === 'SERVICE' ? { trackInventory: false } : {}),
       updatedAt: new Date(),
-    }) as Partial<Item>);
+    }) as Partial<Item>;
+
+    await this.repo.updateItem(id, patch);
     const updated = await this.repo.getItem(id);
     if (!updated) throw new Error(`Item not found after update: ${id}`);
     return updated;

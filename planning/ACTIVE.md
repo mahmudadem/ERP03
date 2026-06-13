@@ -10,9 +10,17 @@
 - ✅ CI pipeline created: `.github/workflows/ci.yml` (backend typecheck+tests, frontend typecheck+build, on push/PR to main)
 - ✅ Golden-path QA scripts created: [planning/qa/golden-paths/](./qa/golden-paths/README.md) — **these supersede QA-QUEUE.md**
 - ✅ Verification detours fixed: sidebar child-icon JSX syntax repaired; AI certification test double now uses deterministic ids
-- 🔶 Merge to `main` + tag `v0.9-alpha` + push — in progress this session
-- ⬜ **Owner action: run golden paths 01–05 on a fresh tenant** (~3 hours, one sitting). Findings → `planning/qa/findings.md`
-- ⬜ Fix findings → then Phase 2 (deploy)
+- ✅ Merge to `main` + tag `v0.9-alpha` + push completed — `main` and tag pushed
+- 🔶 **Owner action: rerun GP02 after Codex stabilization slice** (~30-45 min). Findings → `planning/qa/findings.md`
+- ⬜ Fix remaining GP02 findings, especially warehouse-level average cost / transfer costing audit → then continue GP03 only after GP02 is testable
+
+**Latest GP02 stabilization slice (2026-06-13):**
+- Fixed Item Card price-group persistence by preserving item `metadata` through create/update DTOs.
+- Forced SERVICE items to remain non-stock in both frontend and backend.
+- Made Stock Adjustment inputs labeled and added visible toast success/error/no-op feedback.
+- Changed Stock Adjustment posting so accounting-enabled tenants get a readable blocking error when item GL mappings are missing instead of silently posting stock without a voucher.
+- Verification passed: backend build, backend full test suite (146 passed / 2 skipped suites; 1,365 passed / 18 skipped tests), frontend typecheck, frontend production build.
+- Completion report: [done/220-gp02-inventory-stabilization-slice.md](./done/220-gp02-inventory-stabilization-slice.md).
 
 **Shell decision (owner, 2026-06-13): main shell IS production. Apex cutover dead.** Remaining Apex visual backports are frozen chrome polish.
 
@@ -44,9 +52,29 @@
 
 **Deferred to v2 (preserved as roadmap, no code removed):** [tasks/native-to-default-forms-migration.md](./tasks/native-to-default-forms-migration.md), [tasks/137-si-direct-capability-audit.md](./tasks/137-si-direct-capability-audit.md).
 
+**Deferred backlog (owner-confirmed 2026-06-13):** [tasks/223-inventory-revaluation-value-only-correction.md](./tasks/223-inventory-revaluation-value-only-correction.md) — add an **Inventory Revaluation** document to correct a wrong average cost (value-only, quantity unchanged), posting the delta to GL so the sub-ledger stays tied. Identified during GP02 GLOBAL QA: item `001`'s value drift (stock 12,773 vs GL ~0) has no in-app fix today. The costing engine itself is correct; this only adds a correction path.
+
 **Deferred backlog (owner-requested 2026-06-12):** [tasks/per-item-promotions-from-item-card.md](./tasks/per-item-promotions-from-item-card.md) — manage promotions from the **Item Card** (per-item) in addition to the existing system-wide Promotions page; both write to the same promotion-rule store. Logged during Task 204 line-discount QA, alongside discovering that the "ghost line" was a free-goods promotion (now badged `FREE • PROMO`).
 
+**Post-pilot strategic plan (owner-requested 2026-06-13):** [tasks/222-desktop-offline-lan-architecture.md](./tasks/222-desktop-offline-lan-architecture.md) documents the future Desktop / Office Server / Local on This PC architecture. Key decision: Local on This PC is private by default; multi-device local use requires explicit Office Server / LAN promotion with backups, license, device approval, and local authority controls. Architecture docs: [deployment-modes](../docs/architecture/deployment-modes.md), [desktop-shell](../docs/architecture/desktop-shell.md), [local-authority-and-migration](../docs/architecture/local-authority-and-migration.md). User guide: [deployment mode](../docs/user-guide/settings/deployment-mode.md). **Implementation is post-pilot only.**
+
 ## 👉 Next agent — start here
+
+**Inventory Deep Stabilization (Task 221) — big slice landed 2026-06-13; GLOBAL engine added same day.** Owner
+reframed GP02: inventory was built but never tested. Deep scan → epic [tasks/221-inventory-deep-stabilization-epic.md](./tasks/221-inventory-deep-stabilization-epic.md).
+**Done + verified (backend `lib/` built; full suite 150 suites / 1380 tests green; frontend tsc + build green):**
+Slice 1 adjustment money path (GL valued from real movement cost + dedicated Gain/Loss accounts), Slice 3
+Stock Transfer FLAT/VALUED modes (valued uplift → Inventory Transfer Clearing), Slice 4 item Sale/Purchase
+price + By-Item stock rollup, Slice 5 UI rebuilds (Adjustment/Transfer/Stock-Levels on the shared line table),
+GL↔stock reconciliation report, **and the GLOBAL costing engine** — `RecordStockMovementUseCase` now branches on
+`InventorySettings.costingBasis`: GLOBAL keeps one company-wide moving average per item (every warehouse issues
+at the same cost; a receipt re-prices all locations), gated so WAREHOUSE (default) is byte-for-byte unchanged.
+New `IStockLevelRepository.getLevelsByItemInTransaction`; 7 new engine tests (`GlobalCostingEngine.test.ts`).
+Both costing engines are live and selectable in Inventory Settings → Accounting. **Not committed — owner will
+retest first** (emulator pass on GLOBAL especially). **Open follow-ups:** (1) flip `allowNegativeStock` default
+after pilot decision; (2) stock-reservation wire-or-hide. Owner manual-QA script in the epic file.
+
+**Codex GP02 emulator retest (2026-06-13) — mostly passed, with one ledger-contract detour fixed.** Using local TESTCO (`cmp_mqblxfqy_zmecyl`) and QA suffix `130818`, GLOBAL costing produced one company-wide moving average across warehouses: 10 @ 5 in MAIN + 10 @ 7 in G2 repriced both warehouses to avg 6; later 10 @ 12 repriced both to avg 8.22. Stock Adjustment OUT posted at engine cost 6 despite typed cost 999, negative stock was blocked with `NEGATIVE_STOCK_BLOCKED`, FLAT transfer posted no GL, and VALUED transfer posted only the uplift to Inventory/Transfer Clearing. **Detour fixed:** Stock Adjustment and Valued Transfer voucher lines were missing required V2 fields `amount`, `currency`, and `exchangeRate`; fixed in `StockAdjustmentUseCases.ts` and `StockTransferUseCases.ts`, with tests added/updated. **Verified:** targeted inventory valuation tests passed, backend build passed, full backend Jest passed via `npx jest --maxWorkers=2` from `backend/` (150 suites passed, 2 skipped; 1,380 tests passed, 18 skipped). **Still not a clean ship gate:** reused TESTCO has old pre-fix stock/ledger drift, so whole-tenant Inventory GL Reconciliation is still false (stock 13,119.35 vs GL 346). Next gate: rerun GP02 on a fresh tenant or clean old drift before marking reconciliation passed. Estimated next QA time: 20-30 minutes.
 
 **Icons Comparison Sandbox Page — READY (2026-06-13).** Created an interactive comparison sandbox at `/#/dev/icons-comparison` to preview sidebar/module icon configuration presets side-by-side. Set 6 now features custom colored trend clipboards (green for Sales, red for Purchases) and an enhanced 3D-rotated TwoGears mechanical layout. Includes a live sidebar simulator and JSON code exporter.
 

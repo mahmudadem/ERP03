@@ -71,6 +71,7 @@ const InventorySettingsPage: React.FC = () => {
       setSaving(true);
       const payload: Partial<InventorySettingsDTO> = {
         defaultCostCurrency: settings.defaultCostCurrency,
+        costingBasis: settings.costingBasis || 'WAREHOUSE',
         defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId || undefined,
         allowNegativeStock: settings.allowNegativeStock,
         allowDeferredCost: settings.allowDeferredCost,
@@ -79,6 +80,9 @@ const InventorySettingsPage: React.FC = () => {
         itemCodePrefix: settings.itemCodePrefix || undefined,
         itemCodeNextSeq: settings.itemCodeNextSeq,
         defaultCOGSAccountId: settings.defaultCOGSAccountId || undefined,
+        defaultInventoryGainAccountId: settings.defaultInventoryGainAccountId || undefined,
+        defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId || undefined,
+        defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId || undefined,
       };
 
       const result = await inventoryApi.updateSettings(payload);
@@ -166,6 +170,21 @@ const InventorySettingsPage: React.FC = () => {
                     placeholder="e.g. USD"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Costing Basis</label>
+                  <select
+                    value={settings.costingBasis || 'WAREHOUSE'}
+                    onChange={(e) => updateSetting('costingBasis', e.target.value as 'WAREHOUSE' | 'GLOBAL')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none bg-white font-medium"
+                  >
+                    <option value="WAREHOUSE">Per Warehouse (moving average per item + warehouse)</option>
+                    <option value="GLOBAL">Global (one company-wide average per item)</option>
+                  </select>
+                  <p className="mt-1.5 text-xs text-gray-500 italic">
+                    Set once at setup — changing it after stock movements exist is not recommended. <strong>Per Warehouse</strong> keeps a separate moving average per location (default). <strong>Global</strong> keeps one company-wide average per item, so every location issues at the same cost. Both engines are live.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-6">
@@ -198,6 +217,51 @@ const InventorySettingsPage: React.FC = () => {
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
                       Optional fallback for stock cost recognition when the item or category has no own COGS account.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Loss / Write-down Account</label>
+                    <AccountSelector
+                      value={settings.defaultInventoryLossAccountId}
+                      onChange={(acc) => updateSetting('defaultInventoryLossAccountId', acc?.id || '')}
+                      placeholder="Select inventory loss account"
+                      accounts={allAccounts.filter(a =>
+                        a.accountRole === 'POSTING' &&
+                        ['EXPENSE', 'COGS'].includes(a.classification?.toUpperCase() || '')
+                      )}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      Debited when stock is written down (damage, shrinkage, expiry) on a negative stock adjustment. Falls back to COGS if unset.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Gain / Write-up Account</label>
+                    <AccountSelector
+                      value={settings.defaultInventoryGainAccountId}
+                      onChange={(acc) => updateSetting('defaultInventoryGainAccountId', acc?.id || '')}
+                      placeholder="Select inventory gain account"
+                      accounts={allAccounts.filter(a =>
+                        a.accountRole === 'POSTING' &&
+                        ['INCOME', 'REVENUE', 'EXPENSE', 'COGS'].includes(a.classification?.toUpperCase() || '')
+                      )}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      Credited when stock is found / written up on a positive stock adjustment. Falls back to COGS if unset.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Transfer Clearing Account</label>
+                    <AccountSelector
+                      value={settings.defaultInventoryTransferClearingAccountId}
+                      onChange={(acc) => updateSetting('defaultInventoryTransferClearingAccountId', acc?.id || '')}
+                      placeholder="Select transfer clearing account"
+                      accounts={allAccounts.filter(a => a.accountRole === 'POSTING')}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      Used by valued (ledger-affecting) stock transfers to absorb a cost uplift such as capitalized freight/handling, so the transfer voucher stays balanced.
                     </p>
                   </div>
                 </div>

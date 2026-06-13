@@ -63,14 +63,19 @@ export class ConfigureInventoryFinancialIntegrationUseCase {
       accountingMode: input.accountingMode,
       inventoryAccountingMethod: input.accountingMethod,
       defaultCostingMethod: settings.defaultCostingMethod,
+      costingBasis: settings.costingBasis,
       defaultCostCurrency: settings.defaultCostCurrency,
       defaultInventoryAssetAccountId: input.defaultInventoryAssetAccountId,
       allowNegativeStock: settings.allowNegativeStock,
+      allowDeferredCost: settings.allowDeferredCost,
       defaultWarehouseId: settings.defaultWarehouseId,
       autoGenerateItemCode: settings.autoGenerateItemCode,
       itemCodePrefix: settings.itemCodePrefix,
       itemCodeNextSeq: settings.itemCodeNextSeq,
       defaultCOGSAccountId: input.defaultCOGSAccountId,
+      defaultInventoryGainAccountId: settings.defaultInventoryGainAccountId,
+      defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId,
+      defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId,
     });
 
     await this.settingsRepo.saveSettings(updatedSettings);

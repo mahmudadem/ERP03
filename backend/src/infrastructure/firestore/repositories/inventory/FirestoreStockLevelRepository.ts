@@ -82,6 +82,17 @@ export class FirestoreStockLevelRepository implements IStockLevelRepository {
     return StockLevelMapper.toDomain(doc.data());
   }
 
+  async getLevelsByItemInTransaction(
+    transaction: unknown,
+    companyId: string,
+    itemId: string
+  ): Promise<StockLevel[]> {
+    const txn = transaction as Transaction;
+    const query = this.collection(companyId).where('itemId', '==', itemId);
+    const snap = await txn.get(query);
+    return snap.docs.map((doc) => StockLevelMapper.toDomain(doc.data()));
+  }
+
   async upsertLevelInTransaction(transaction: unknown, level: StockLevel): Promise<void> {
     const txn = transaction as Transaction;
     const ref = this.collection(level.companyId).doc(level.id);

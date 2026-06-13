@@ -74,6 +74,7 @@ router.get('/costs/current', permissionGuard('inventory.stock.view'), InventoryC
 router.get('/dashboard', permissionGuard('inventory.view'), InventoryController.getDashboard);
 router.get('/alerts/low-stock', permissionGuard('inventory.stock.view'), InventoryController.getLowStockAlerts);
 router.get('/reports/unsettled-costs', permissionGuard('inventory.movements.view'), InventoryController.getUnsettledCosts);
+router.get('/reports/gl-reconciliation', permissionGuard('inventory.valuation.view'), InventoryController.reconcileGL);
 router.post('/reconcile', permissionGuard('inventory.reconcile.run'), InventoryController.reconcile);
 
 export default router;

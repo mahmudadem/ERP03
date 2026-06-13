@@ -374,7 +374,10 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
           <FormSection title="Details">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Category"><select className="form-control" value={item.categoryId} onChange={e => setItem(p => ({ ...p, categoryId: e.target.value }))}><option value="">None</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
-              <Field label="Type"><select className="form-control" value={item.type} onChange={e => setItem(p => ({ ...p, type: e.target.value as any }))}><option value="PRODUCT">PRODUCT</option><option value="SERVICE">SERVICE</option></select></Field>
+              <Field label="Type"><select className="form-control" value={item.type} onChange={e => {
+                const type = e.target.value as InventoryItemDTO['type'];
+                setItem(p => ({ ...p, type, trackInventory: type === 'SERVICE' ? false : p.trackInventory }));
+              }}><option value="PRODUCT">PRODUCT</option><option value="SERVICE">SERVICE</option></select></Field>
             </div>
           </FormSection>
         </div>
@@ -382,6 +385,36 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
       {activeTab === 'PRICING' && (
         <div className="space-y-6">
+          <FormSection title="Default Prices">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Default Sale Price">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  className="form-control text-right"
+                  value={item.salePrice ?? ''}
+                  onChange={e => setItem(p => ({ ...p, salePrice: e.target.value === '' ? undefined : parseFloat(e.target.value) }))}
+                  placeholder="0.00"
+                />
+              </Field>
+              <Field label="Default Purchase Price">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  className="form-control text-right"
+                  value={item.purchasePrice ?? ''}
+                  onChange={e => setItem(p => ({ ...p, purchasePrice: e.target.value === '' ? undefined : parseFloat(e.target.value) }))}
+                  placeholder="0.00"
+                />
+              </Field>
+            </div>
+            <p className="mt-2 text-[10px] text-slate-400 italic uppercase tracking-tighter">
+              Default unit prices in the pricing currency below. Sale price is used as a fallback when no customer price list applies.
+            </p>
+          </FormSection>
+
           <FormSection title="Price Groups">
             <div className="rounded border font-mono">
               <table className="w-full text-xs text-left">
@@ -454,8 +487,23 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
         <div className="space-y-6">
            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border">
               <Layers size={18} className="text-blue-500" />
-              <div className="flex-1 text-sm font-bold">Inventory Tracking</div>
-              <button onClick={() => setItem(p => ({ ...p, trackInventory: !p.trackInventory }))} className={clsx("px-4 py-1.5 rounded-full text-[10px] font-black", item.trackInventory ? "bg-blue-600 text-white" : "bg-slate-200")}>{item.trackInventory ? 'ON' : 'OFF'}</button>
+              <div className="flex-1">
+                <div className="text-sm font-bold">Inventory Tracking</div>
+                {item.type === 'SERVICE' && (
+                  <div className="text-[11px] text-slate-500">Service items are non-stock by default.</div>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={item.type === 'SERVICE'}
+                onClick={() => setItem(p => ({ ...p, trackInventory: !p.trackInventory }))}
+                className={clsx(
+                  "px-4 py-1.5 rounded-full text-[10px] font-black disabled:cursor-not-allowed disabled:opacity-60",
+                  item.trackInventory && item.type !== 'SERVICE' ? "bg-blue-600 text-white" : "bg-slate-200"
+                )}
+              >
+                {item.trackInventory && item.type !== 'SERVICE' ? 'ON' : 'OFF'}
+              </button>
            </div>
 
            <FormSection title="Managed UOM Defaults">

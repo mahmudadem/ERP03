@@ -30,6 +30,10 @@ export interface ItemProps {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  /** Default unit selling price (company base currency), used as a price-list fallback. */
+  salePrice?: number;
+  /** Default unit purchase price (company base currency), shown as a buying hint. */
+  purchasePrice?: number;
   imageUrl?: string;
   metadata?: Record<string, any>;
   active: boolean;
@@ -74,6 +78,8 @@ export class Item {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  salePrice?: number;
+  purchasePrice?: number;
   imageUrl?: string;
   metadata?: Record<string, any>;
   active: boolean;
@@ -110,6 +116,14 @@ export class Item {
       throw new Error('Item reorderPoint must be a valid number');
     }
 
+    if (props.salePrice !== undefined && (Number.isNaN(props.salePrice) || props.salePrice < 0)) {
+      throw new Error('Item salePrice must be a valid non-negative number');
+    }
+
+    if (props.purchasePrice !== undefined && (Number.isNaN(props.purchasePrice) || props.purchasePrice < 0)) {
+      throw new Error('Item purchasePrice must be a valid non-negative number');
+    }
+
     this.id = props.id;
     this.companyId = props.companyId;
     this.code = props.code.trim();
@@ -137,6 +151,8 @@ export class Item {
     this.minStockLevel = props.minStockLevel;
     this.maxStockLevel = props.maxStockLevel;
     this.reorderPoint = props.reorderPoint;
+    this.salePrice = props.salePrice;
+    this.purchasePrice = props.purchasePrice;
     this.imageUrl = props.imageUrl;
     this.metadata = props.metadata ? { ...props.metadata } : undefined;
     this.active = props.active;
@@ -185,6 +201,8 @@ export class Item {
       minStockLevel: this.minStockLevel,
       maxStockLevel: this.maxStockLevel,
       reorderPoint: this.reorderPoint,
+      salePrice: this.salePrice,
+      purchasePrice: this.purchasePrice,
       imageUrl: this.imageUrl,
       metadata: this.metadata ? { ...this.metadata } : undefined,
       active: this.active,
@@ -223,6 +241,8 @@ export class Item {
       minStockLevel: data.minStockLevel,
       maxStockLevel: data.maxStockLevel,
       reorderPoint: data.reorderPoint,
+      salePrice: data.salePrice,
+      purchasePrice: data.purchasePrice,
       imageUrl: data.imageUrl,
       metadata: data.metadata,
       active: data.active ?? true,

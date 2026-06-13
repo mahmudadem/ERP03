@@ -588,6 +588,8 @@ model Item {
   minStockLevel             Float?
   maxStockLevel             Float?
   reorderPoint              Float?
+  salePrice                 Float?
+  purchasePrice             Float?
   imageUrl                  String?
   metadata                  Json?
   active                    Boolean  @default(true)
