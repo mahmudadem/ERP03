@@ -269,14 +269,20 @@ const QuotationDetailPage: React.FC = () => {
 
   // ── Validation ────────────────────────────────────────────────────────────────
 
+  const isFilledLine = (l: EditableLine): boolean =>
+    Boolean(l.itemId || l.itemCode || l.itemName || l.description);
+
   const validate = (): string | null => {
     if (!form.customerId) return t('sales.quoteDetail.valCustomer', 'Customer is required.');
     if (!form.quoteDate) return t('sales.quoteDetail.valQuoteDate', 'Quote date is required.');
     if (!form.currency.trim()) return t('sales.quoteDetail.valCurrency', 'Currency is required.');
     if (form.exchangeRate <= 0) return t('sales.quoteDetail.valExchangeRate', 'Exchange rate must be greater than 0.');
-    if (!form.lines.length) return t('sales.quoteDetail.valNoLines', 'At least one line is required.');
-    for (let i = 0; i < form.lines.length; i++) {
-      const l = form.lines[i];
+    // Only validate filled lines — the line table keeps a trailing empty
+    // working row that must not be treated as a real (invalid) line.
+    const filled = form.lines.filter(isFilledLine);
+    if (!filled.length) return t('sales.quoteDetail.valNoLines', 'At least one line is required.');
+    for (let i = 0; i < filled.length; i++) {
+      const l = filled[i];
       if (!l.itemId) return t('sales.quoteDetail.valLineItem', { line: i + 1, defaultValue: 'Line {{line}}: item is required.' });
       if (l.quotedQty <= 0) return t('sales.quoteDetail.valLineQty', { line: i + 1, defaultValue: 'Line {{line}}: quantity must be greater than 0.' });
       if (l.unitPriceDoc < 0) return t('sales.quoteDetail.valLinePrice', { line: i + 1, defaultValue: 'Line {{line}}: unit price must be >= 0.' });
@@ -295,7 +301,7 @@ const QuotationDetailPage: React.FC = () => {
     currency: form.currency.toUpperCase(),
     exchangeRate: form.exchangeRate,
     notes: form.notes || undefined,
-    lines: form.lines.map((l, i) => {
+    lines: form.lines.filter(isFilledLine).map((l, i) => {
       const item = itemById[l.itemId];
       return {
         lineId: l.lineId,

@@ -162,7 +162,18 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const loadCurrencies = async () => {
     try {
       const res = await accountingApi.getCompanyCurrencies();
-      setCurrencies((res?.currencies || []).filter(c => c.isEnabled).map(c => c.currencyCode));
+      const all = res?.currencies || [];
+      const enabled = all.filter(c => c.isEnabled).map(c => c.currencyCode);
+      setCurrencies(enabled);
+      // The form seeds defaultCurrency to 'USD', but that may not be an enabled
+      // currency for this company (the <select> then visually shows the first
+      // option while state stays 'USD', causing a save 500). If the current
+      // value isn't enabled, default to the company base currency or the first
+      // enabled one.
+      if (enabled.length > 0) {
+        const base = all.find(c => c.isEnabled && (c as any).isBase)?.currencyCode || enabled[0];
+        setForm(p => (p.defaultCurrency && enabled.includes(p.defaultCurrency) ? p : { ...p, defaultCurrency: base }));
+      }
     } catch (err) { console.error(err); }
   };
 
