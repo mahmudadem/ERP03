@@ -57,7 +57,7 @@ const SalesSettingsPage: React.FC = () => {
         const settingsResult = await salesApi.getSettings();
         const inventorySettings = await inventoryApi.getSettings().catch(() => null);
 
-        const currentSettings = unwrap<any>(settingsResult)?.data ?? unwrap<any>(settingsResult);
+        const currentSettings = unwrap<any>(settingsResult)?.data ?? unwrap<any>(settingsResult) ?? {};
         const invSettingsData = unwrap<any>(inventorySettings)?.data ?? unwrap<any>(inventorySettings);
         if (!Array.isArray(currentSettings.messagingAccounts)) {
           currentSettings.messagingAccounts = [];
