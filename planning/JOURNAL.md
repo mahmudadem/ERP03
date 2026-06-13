@@ -2,6 +2,28 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-13 — GP03 (Sales) golden-path QA + 7 fixes (PR #8)
+
+- **Goal:** Run the full GP03 Sales order-to-cash golden path on fresh tenant TESTCO (Claude driving the browser + owner doing line-item entry), fix what it surfaces.
+- **Outcome:** ALL 17 GP03 steps pass. Full chain SO→DN→Invoice→COGS→Receipt→Return + over-payment + partial pay-later posts balanced GL with GLOBAL-costed COGS (8.37); trial balance balances; customer statement / AR aging tie.
+- **Also shipped earlier same day:** Inventory GLOBAL costing slice merged via **PR #7** (`88c38563`) after live emulator QA; CI hardened (npm ci lock sync + Firestore emulator step) so the repo is green for the first time.
+- **12 bugs found, 7 fixed (PR #8 `fix/sales-module-onboarding-bugs`, CI green):**
+  1. Sales Settings page crash on null settings; 2. new-party currency defaults to USD→500;
+  3. Quote empty-trailing-row validation; 4. Sales Return discount-reversal voucher imbalance;
+  5. Sales Order empty-trailing-row validation; 6. Record-Payment didn't resolve the customer AR
+  sub-account (added partyRepo); 7. Record-Payment defaulted to CASH_FULL (blocked partial pay → MULTI).
+- **5 logged, not fixed:** legalName required vs UI optional; party+AR-account creation not atomic;
+  "Allow Direct Invoicing" dead in Operational (owner insight: DN should be optionally skippable via one
+  clear control — real lever is the Governance tab); empty invoice from undelivered SO (should warn);
+  Simple-workflow switch blocked by POSTED (not just draft) DNs (owner catch). + observation:
+  opening-stock offsets to COGS instead of Opening Balance Equity.
+- **Accounting/ERP impact:** posting correctness preserved; fixes #4/#6/#7 are settlement/return ledger
+  correctness. All detail in [planning/qa/findings.md](./qa/findings.md).
+- **Verification:** live emulator round-trips for every step; backend rebuilt for each backend fix; PR #8
+  CI green (backend typecheck+tests, frontend typecheck+build).
+- **Next:** GP04 (Purchases), then GP05 (cross-module books check). Follow-up: the empty-trailing-row
+  validation pattern likely affects DN/SI/SR/PO/PI/PR pages too; and the 5 logged bugs.
+
 ### Session: 2026-06-13 — GLOBAL costing live emulator QA + Inventory Revaluation backlog
 
 - **Goal:** Owner-requested live browser QA of the GLOBAL costing slice before committing, and clarify the stock-valuation ↔ GL relationship.

@@ -60,6 +60,9 @@
 
 ## 👉 Next agent — start here
 
+**Golden-path QA status (2026-06-13):** GP01 ✅ · GP02 ✅ (inventory GLOBAL costing merged, [PR #7](https://github.com/mahmudadem/ERP03/pull/7)) · **GP03 (Sales) ✅ — all 17 steps pass** ([PR #8](https://github.com/mahmudadem/ERP03/pull/8), CI green): full SO→DN→Invoice→COGS→Receipt→Return + over-payment + partial pay-later posts balanced GL with GLOBAL-costed COGS. GP03 found 12 bugs (7 fixed in PR #8, 5 logged) — see [qa/findings.md](./qa/findings.md). **Next: GP04 (Purchases), then GP05 (cross-module books check).** Follow-ups: the empty-trailing-row save-validation bug likely also affects DN/SI/SR/PO/PI/PR pages; plus the 5 logged GP03 bugs (notably the misleading "Allow Direct Invoicing" toggle and the Simple-switch DN guard). Drive GP04 the same way: Claude drives the browser + verifies GL, owner types line items (the line-table cells resist automation).
+
+
 **Inventory Deep Stabilization (Task 221) — big slice landed 2026-06-13; GLOBAL engine added same day.** Owner
 reframed GP02: inventory was built but never tested. Deep scan → epic [tasks/221-inventory-deep-stabilization-epic.md](./tasks/221-inventory-deep-stabilization-epic.md).
 **Done + verified (backend `lib/` built; full suite 150 suites / 1380 tests green; frontend tsc + build green):**
