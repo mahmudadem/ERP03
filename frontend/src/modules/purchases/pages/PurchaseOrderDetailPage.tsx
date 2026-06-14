@@ -434,15 +434,20 @@ const PurchaseOrderDetailPage: React.FC = () => {
     });
   };
 
+  const isFilledLine = (line: EditableLine): boolean =>
+    Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId);
+
   const validateBeforeSave = (): string | null => {
     if (!form.vendorId) return t('purchases.poDetail.vendorRequired');
     if (!form.orderDate) return t('purchases.poDetail.orderDateRequired');
     if (!form.currency.trim()) return t('purchases.poDetail.currencyRequired');
     if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('purchases.poDetail.exchangeRatePositive');
-    if (!form.lines.length) return t('purchases.poDetail.minLines');
+    // Validate only filled lines — ignore the line table's trailing empty working row.
+    const filled = form.lines.filter(isFilledLine);
+    if (!filled.length) return t('purchases.poDetail.minLines');
 
-    for (let i = 0; i < form.lines.length; i += 1) {
-      const line = form.lines[i];
+    for (let i = 0; i < filled.length; i += 1) {
+      const line = filled[i];
       if (!line.itemId) return t('purchases.poDetail.lineItemRequired', { lineNum: i + 1 });
       if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return t('purchases.poDetail.lineQtyPositive', { lineNum: i + 1 });
       if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('purchases.poDetail.lineUnitPriceNonNegative', { lineNum: i + 1 });
@@ -486,7 +491,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         expectedDeliveryDate: form.expectedDeliveryDate || undefined,
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
-        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        lines: form.lines.filter(isFilledLine).map((line, index) => buildLinePayload(line, index)),
         notes: form.notes || undefined,
         internalNotes: form.internalNotes || undefined,
       };

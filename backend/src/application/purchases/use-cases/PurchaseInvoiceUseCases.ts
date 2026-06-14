@@ -990,11 +990,21 @@ export class PostPurchaseInvoiceUseCase {
     const inclusive = line.priceIsInclusive === true;
     const divisor = inclusive ? 1 + line.taxRate : 1;
     const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    line.lineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
+    // Apply the line discount BEFORE tax, mirroring SalesInvoice.calculateDiscountAmountDoc.
+    // Without this the posting recomputed lineTotal from GROSS, so the inventory debit
+    // and AP credit ignored the line discount (vendor over-credited by the discount).
+    const lineDiscountDoc = line.discountType === 'PERCENT'
+      ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * ((line.discountValue || 0) / 100))))
+      : line.discountType === 'AMOUNT'
+        ? roundMoney(Math.max(0, Math.min(line.discountValue || 0, grossLineTotalDoc)))
+        : 0;
+    const postDiscountDoc = roundMoney(grossLineTotalDoc - lineDiscountDoc);
+    line.discountAmountDoc = lineDiscountDoc;
+    line.lineTotalDoc = roundMoney(postDiscountDoc / divisor);
     line.unitPriceBase = roundMoney(line.unitPriceDoc * rate);
     line.lineTotalBase = roundMoney(line.lineTotalDoc * rate);
     line.taxAmountDoc = inclusive
-      ? roundMoney(grossLineTotalDoc - line.lineTotalDoc)
+      ? roundMoney(postDiscountDoc - line.lineTotalDoc)
       : roundMoney(line.lineTotalDoc * line.taxRate);
     line.taxAmountBase = roundMoney(line.taxAmountDoc * rate);
   }

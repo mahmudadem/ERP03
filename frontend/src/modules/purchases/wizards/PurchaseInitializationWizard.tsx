@@ -143,7 +143,10 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     if (currentStep === 2) {
       if (accountingEnabled) {
         if (!defaultAPAccountId) return 'Default AP Account is required.';
-        if (workflowMode === 'OPERATIONAL' && !defaultGRNIAccountId) return 'Default GRNI Account is required for operational workflow.';
+        // GRNI is only used (and only shown) in PERPETUAL mode. In invoice-driven
+        // mode the GRN posts no GL, so requiring GRNI here would deadlock the
+        // wizard (the field isn't rendered) for invoice-driven + OPERATIONAL tenants.
+        if (workflowMode === 'OPERATIONAL' && accountingMode === 'PERPETUAL' && !defaultGRNIAccountId) return 'Default GRNI Account is required for operational workflow.';
       }
       if (!defaultPaymentTermsDays || defaultPaymentTermsDays <= 0) return 'Payment terms must be greater than 0.';
     }
@@ -153,7 +156,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     }
 
     return null;
-  }, [accountingEnabled, currentStep, defaultAPAccountId, defaultGRNIAccountId, defaultPaymentTermsDays, workflowMode]);
+  }, [accountingEnabled, accountingMode, currentStep, defaultAPAccountId, defaultGRNIAccountId, defaultPaymentTermsDays, workflowMode]);
 
   const goNext = () => {
     if (stepError) {
@@ -189,7 +192,9 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       await purchasesApi.initializePurchases({
         workflowMode,
         defaultAPAccountId: accountingEnabled ? defaultAPAccountId : undefined,
-        defaultGRNIAccountId: accountingEnabled ? (workflowMode === 'OPERATIONAL' ? defaultGRNIAccountId : undefined) : undefined,
+        // Only send GRNI when actually set (perpetual mode). An empty string is
+        // rejected by the optional-string validator, so coerce '' → undefined.
+        defaultGRNIAccountId: accountingEnabled && workflowMode === 'OPERATIONAL' ? (defaultGRNIAccountId || undefined) : undefined,
         defaultPurchaseExpenseAccountId: accountingEnabled ? defaultPurchaseExpenseAccountId : undefined,
         defaultPaymentTermsDays,
         allowDirectInvoicing: workflowMode === 'SIMPLE' ? true : allowDirectInvoicing,
