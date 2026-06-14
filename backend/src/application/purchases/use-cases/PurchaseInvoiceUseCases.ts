@@ -1477,38 +1477,48 @@ export class UnpostPurchaseInvoiceUseCase {
       po = await this.purchaseOrderRepo.getById(companyId, pi.purchaseOrderId);
     }
 
+    // Firestore requires ALL reads before ALL writes within a single transaction.
+    // Both the voucher deletion (it queries the ledger entries to delete) and each
+    // inventory movement reversal (it reads the stock level to rebuild it) are
+    // read-then-write blocks, so they cannot legally share one transaction. Run
+    // each as its own transaction (each is internally read-before-write). Order is
+    // voucher -> inventory -> PO/PI so a mid-way failure leaves the PI still POSTED
+    // in the DB and the unpost can be safely retried.
+
+    // 1. Delete the accounting voucher (own transaction).
+    if (shouldPostAccounting && pi.voucherId) {
+      const voucherId = pi.voucherId;
+      await this.transactionManager.runTransaction(async (transaction) => {
+        await this.accountingPostingService.deleteVoucherInTransaction(companyId, voucherId, transaction);
+      });
+      pi.voucherId = null;
+    }
+
+    // 2. Reverse inventory movements — each deleteMovement runs in its own
+    //    transaction (no shared txn passed), keeping its reads before its writes.
+    for (const line of pi.lines) {
+      if (line.stockMovementId) {
+        await this.inventoryService.deleteMovement(companyId, line.stockMovementId);
+        line.stockMovementId = null;
+      }
+
+      // Reverse PO invoicedQty (in-memory; persisted in step 3).
+      if (po) {
+        const poLine = findPOLine(po, line.poLineId, line.itemId);
+        if (poLine) {
+          poLine.invoicedQty = roundMoney(Math.max(0, poLine.invoicedQty - line.invoicedQty));
+        }
+      }
+    }
+
+    // 3. Update PO status + revert PI to DRAFT (own transaction; pure writes).
     await this.transactionManager.runTransaction(async (transaction) => {
-      if (shouldPostAccounting) {
-      if (pi.voucherId) {
-        await this.accountingPostingService.deleteVoucherInTransaction(companyId, pi.voucherId, transaction);
-        pi.voucherId = null;
-      }
-      }
-
-      // 2. Reverse inventory movements (direct invoicing lines)
-      for (const line of pi.lines) {
-        if (line.stockMovementId) {
-          await this.inventoryService.deleteMovement(companyId, line.stockMovementId, transaction);
-          line.stockMovementId = null;
-        }
-
-        // 3. Reverse PO invoicedQty
-        if (po) {
-          const poLine = findPOLine(po, line.poLineId, line.itemId);
-          if (poLine) {
-            poLine.invoicedQty = roundMoney(Math.max(0, poLine.invoicedQty - line.invoicedQty));
-          }
-        }
-      }
-
-      // 4. Update PO status
       if (po) {
         po.status = updatePOStatus(po);
         po.updatedAt = new Date();
         await this.purchaseOrderRepo.update(po, transaction);
       }
 
-      // 5. Revert PI to DRAFT
       pi.status = 'DRAFT';
       pi.postedAt = undefined;
       pi.updatedAt = new Date();
