@@ -255,7 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
           isCompact={isCompact}
           children={[
             { label: t('sidebar.overview'), path: '/company-admin/overview', icon: 'Layout' },
-            { label: t('sidebar.users'), path: '/company-admin/users', icon: 'User' },
+            { label: t('sidebar.users'), path: '/company-admin/users', icon: 'Users' },
             { label: t('sidebar.roles'), path: '/company-admin/roles', icon: 'Shield' },
             { label: t('sidebar.modules'), path: '/company-admin/modules', icon: 'Package' },
             { label: t('sidebar.features'), path: '/company-admin/features', icon: 'Zap' },

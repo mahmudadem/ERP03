@@ -221,9 +221,25 @@ const PurchaseHomePage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchases Overview</h1>
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200/60 dark:border-slate-800 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shadow-sm border border-indigo-100/50 dark:border-indigo-900/30">
+            <ClipboardList size={24} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
+                Purchases Overview Module
+              </h1>
+              <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">
+                Module Dashboard
+              </span>
+            </div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Manage vendors, track purchase orders and receipts, and process vendor invoices.
+            </div>
+          </div>
         </div>
         <div className="flex gap-2">
           <button

@@ -43,7 +43,7 @@ type ApexMenuItem = {
 
 const companySettingsChildren: ApexSubItem[] = [
   { label: 'Overview', path: tenantPathToApexPath('/company-admin/overview'), iconName: 'LayoutDashboard' },
-  { label: 'Users', path: tenantPathToApexPath('/company-admin/users'), iconName: 'User' },
+  { label: 'Users', path: tenantPathToApexPath('/company-admin/users'), iconName: 'Users' },
   { label: 'Roles', path: tenantPathToApexPath('/company-admin/roles'), iconName: 'Shield' },
   { label: 'Modules', path: tenantPathToApexPath('/company-admin/modules'), iconName: 'Package' },
   { label: 'Features', path: tenantPathToApexPath('/company-admin/features'), iconName: 'Zap' },

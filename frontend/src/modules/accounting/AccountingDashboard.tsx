@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PendingApprovalsWidget } from './components/PendingApprovalsWidget';
-import { LayoutDashboard, FileText, ArrowRightLeft, TrendingUp, Wallet, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Landmark, FileText, ArrowRightLeft, TrendingUp, Wallet, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { accountingApi } from '../../api/accountingApi';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +47,7 @@ const AccountingDashboard: React.FC = () => {
         <div className="flex justify-between items-center mb-10">
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <LayoutDashboard size={32} className="text-primary-600" />
+              <Landmark size={32} className="text-primary-600" />
               {t('accountingDashboard.title', { defaultValue: 'Accounting Dashboard' })}
             </h1>
             <p className="text-slate-500 mt-2 font-medium">

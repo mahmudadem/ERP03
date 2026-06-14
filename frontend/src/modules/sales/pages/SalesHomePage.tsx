@@ -213,7 +213,7 @@ const KPICard = ({
   suffix,
 }: KPICardProps) => (
   <Card
-    className={`p-2.5 px-3.5 flex flex-col justify-center rounded-lg shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 ${KPI_BORDERS[accent]}`}
+    className={`p-2 px-3 flex flex-col justify-center rounded-lg shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 ${KPI_BORDERS[accent]}`}
   >
     <div className="flex items-center justify-between">
       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -726,8 +726,8 @@ const SalesHomePage: React.FC = () => {
 
   const maxCustomerTotal = topCustomers[0]?.total || 1;
 
-  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
-  const recentInvoices = useMemo(() => invoices.slice(0, 5), [invoices]);
+  const recentOrders = useMemo(() => orders.slice(0, 10), [orders]);
+  const recentInvoices = useMemo(() => invoices.slice(0, 10), [invoices]);
   const companyCurrency = invoices[0]?.currency || 'SYP';
 
   // ── Loading / Error / Init states ──────────────────────────────────────────
@@ -769,13 +769,13 @@ const SalesHomePage: React.FC = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5 p-4">
+    <div className="space-y-3.5 p-4">
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200/60 dark:border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shadow-sm border border-indigo-100/50 dark:border-indigo-900/30">
-            <Layers size={24} />
+            <TrendingUp size={24} />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -869,15 +869,15 @@ const SalesHomePage: React.FC = () => {
       </div>
 
       {/* ── Main Workspace Grid (Left tables & Right sidebar) ── */}
-      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
 
         {/* Left Column: Tables */}
-        <div className="space-y-5">
+        <div className="space-y-3.5">
 
           {/* RECENT SALES ORDERS (SO) */}
           {showOperationalDocuments && (
-            <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <div className="mb-3 flex items-center justify-between">
+            <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <div className="mb-2.5 flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Recent Sales Orders (SO)
                 </h3>
@@ -889,27 +889,29 @@ const SalesHomePage: React.FC = () => {
                   Fulfillment Queue
                 </button>
               </div>
-              <div className="border-b border-slate-100 dark:border-slate-700/60 mb-3" />
+              <div className="border-b border-slate-100 dark:border-slate-700/60 mb-2.5" />
               {loadingOrders && recentOrders.length === 0 ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 rounded" />)}
+                <div className="h-[150px] flex flex-col justify-between border border-slate-300 dark:border-slate-700 p-3 rounded-lg">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-6 rounded" />)}
                 </div>
               ) : recentOrders.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">No recent orders.</div>
+                <div className="h-[150px] flex items-center justify-center text-center text-xs text-slate-400 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50/20">
+                  No recent orders.
+                </div>
               ) : (
-                <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-lg">
+                <div className="h-[150px] overflow-auto border border-slate-300 dark:border-slate-700 rounded-lg custom-scroll">
                   <table className="w-full text-[11px] text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-900/20">
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">SO Number</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Customer / Client</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
+                    <thead className="sticky top-0 z-10">
+                      <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">SO Number</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Customer / Client</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">Currency</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Raw Total</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">Created By</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Created At</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Approved At</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -930,19 +932,19 @@ const SalesHomePage: React.FC = () => {
                             <td className="py-2 px-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={o.customerName}>
                               {o.customerName}
                             </td>
-                            <td className="py-2 px-3 font-mono text-slate-500 whitespace-nowrap">
+                            <td className="py-2 px-3 font-mono text-slate-500 whitespace-nowrap hidden sm:table-cell">
                               {o.currency}
                             </td>
                             <td className="py-2 px-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                               {formatCurrency(o.grandTotalDoc)}
                             </td>
-                            <td className="py-2 px-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
+                            <td className="py-2 px-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px] hidden md:table-cell" title={creatorName}>
                               {creatorName}
                             </td>
-                            <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                            <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap hidden lg:table-cell">
                               {formatDateTime(o.createdAt)}
                             </td>
-                            <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                            <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap hidden lg:table-cell">
                               {o.confirmedAt ? formatDateTime(o.confirmedAt) : '—'}
                             </td>
                             <td className="py-2 px-3 text-right whitespace-nowrap">
@@ -959,8 +961,8 @@ const SalesHomePage: React.FC = () => {
           )}
 
           {/* RECENT SALES INVOICES (INV) */}
-          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
-            <div className="mb-3 flex items-center justify-between">
+          <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <div className="mb-2.5 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Recent Sales Invoices (INV)
               </h3>
@@ -972,27 +974,29 @@ const SalesHomePage: React.FC = () => {
                 Postings Register
               </button>
             </div>
-            <div className="border-b border-slate-100 dark:border-slate-700/60 mb-3" />
+            <div className="border-b border-slate-100 dark:border-slate-700/60 mb-2.5" />
             {loadingInvoices && recentInvoices.length === 0 ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 rounded" />)}
+              <div className="h-[150px] flex flex-col justify-between border border-slate-300 dark:border-slate-700 p-3 rounded-lg">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-6 rounded" />)}
               </div>
             ) : recentInvoices.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">No recent invoices.</div>
+              <div className="h-[150px] flex items-center justify-center text-center text-xs text-slate-400 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50/20">
+                No recent invoices.
+              </div>
             ) : (
-              <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-lg">
+              <div className="h-[150px] overflow-auto border border-slate-300 dark:border-slate-700 rounded-lg custom-scroll">
                 <table className="w-full text-[11px] text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-900/20">
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Invoice ID</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Debtor Customer</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
-                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
-                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Invoice ID</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Debtor Customer</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">Currency</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Raw Total</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">Created By</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Created At</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Approved At</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -1013,19 +1017,19 @@ const SalesHomePage: React.FC = () => {
                           <td className="py-2 px-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={i.customerName}>
                             {i.customerName}
                           </td>
-                          <td className="py-2 px-3 font-mono text-slate-500 whitespace-nowrap">
+                          <td className="py-2 px-3 font-mono text-slate-500 whitespace-nowrap hidden sm:table-cell">
                             {i.currency}
                           </td>
                           <td className="py-2 px-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             {formatCurrency(i.grandTotalDoc)}
                           </td>
-                          <td className="py-2 px-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
+                          <td className="py-2 px-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px] hidden md:table-cell" title={creatorName}>
                             {creatorName}
                           </td>
-                          <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                          <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap hidden lg:table-cell">
                             {formatDateTime(i.createdAt)}
                           </td>
-                          <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                          <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap hidden lg:table-cell">
                             {i.postedAt ? formatDateTime(i.postedAt) : '—'}
                           </td>
                           <td className="py-2 px-3 text-right whitespace-nowrap">
@@ -1039,13 +1043,71 @@ const SalesHomePage: React.FC = () => {
               </div>
             )}
           </Card>
+
+          {/* Top Client Accounts */}
+          <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">
+              Top Client Accounts
+            </h3>
+            <div className="border-b border-slate-100 dark:border-slate-700/60 mb-2.5" />
+            {loadingInvoices && topCustomers.length === 0 ? (
+              <div className="h-[120px] flex flex-col justify-between border border-slate-300 dark:border-slate-700 p-3 rounded-lg">
+                {[1, 2].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
+              </div>
+            ) : topCustomers.length === 0 ? (
+              <div className="h-[120px] flex items-center justify-center text-center text-xs text-slate-400 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50/20">
+                No client data available.
+              </div>
+            ) : (
+              <div className="h-[120px] overflow-auto pr-1 custom-scroll space-y-2">
+                {topCustomers.map((c) => {
+                  const { primary, secondary } = parseCustomerName(c.name);
+                  const pct = Math.round((c.total / maxCustomerTotal) * 100);
+                  return (
+                    <div
+                      key={c.name}
+                      className="group relative overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700 bg-white p-2.5 transition-all hover:border-slate-400 hover:shadow-sm dark:bg-slate-800"
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="truncate text-xs font-bold text-slate-800 dark:text-slate-100 font-cairo">
+                            {primary}
+                          </div>
+                          {secondary && (
+                            <div className="mt-0.5 truncate text-[9px] font-medium text-slate-400 dark:text-slate-500">
+                              {secondary}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100 font-mono">
+                            {formatCurrency(c.total)} <span className="text-[9px] font-normal text-slate-400">{companyCurrency}</span>
+                          </div>
+                          <div className="text-[9px] font-bold tracking-wider text-slate-400 uppercase">
+                            BALANCE
+                          </div>
+                        </div>
+                      </div>
+                      {/* Bottom edge thin progress bar */}
+                      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-slate-100 dark:bg-slate-750">
+                        <div
+                          className="h-full bg-slate-800 dark:bg-slate-300 transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         </div>
 
         {/* Right Column: Sidebar */}
-        <div className="space-y-5">
+        <div className="space-y-3.5">
 
           {/* Quick Links */}
-          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
               Quick Navigation
             </h3>
@@ -1089,7 +1151,7 @@ const SalesHomePage: React.FC = () => {
           </Card>
 
           {/* Recent Activity Log */}
-          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Recent Activity
@@ -1119,7 +1181,7 @@ const SalesHomePage: React.FC = () => {
             ) : recentActivity.length === 0 ? (
               <div className="py-4 text-center text-xs text-slate-400">No activity yet.</div>
             ) : (
-              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
                 {recentActivity.map((item) => {
                   const creatorName = userById[item.createdBy]?.name || item.createdBy;
                   return (
@@ -1160,64 +1222,6 @@ const SalesHomePage: React.FC = () => {
               </div>
             )}
           </Card>
-
-          {/* Top Client Accounts */}
-          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-              Top Client Accounts
-            </h3>
-            <div className="border-b border-slate-100 dark:border-slate-700/60 mb-3" />
-            {loadingInvoices && topCustomers.length === 0 ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
-              </div>
-            ) : topCustomers.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-400">No client data available.</div>
-            ) : (
-              <div className="space-y-2.5">
-                {topCustomers.map((c) => {
-                  const { primary, secondary } = parseCustomerName(c.name);
-                  const pct = Math.round((c.total / maxCustomerTotal) * 100);
-                  return (
-                    <div
-                      key={c.name}
-                      className="group relative overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700 bg-white p-3 transition-all hover:border-slate-400 hover:shadow-sm dark:bg-slate-800"
-                    >
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="min-w-0 flex-1 pr-2">
-                          <div className="truncate text-xs font-bold text-slate-800 dark:text-slate-100 font-cairo">
-                            {primary}
-                          </div>
-                          {secondary && (
-                            <div className="mt-0.5 truncate text-[9px] font-medium text-slate-400 dark:text-slate-500">
-                              {secondary}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100 font-mono">
-                            {formatCurrency(c.total)} <span className="text-[9px] font-normal text-slate-400">{companyCurrency}</span>
-                          </div>
-                          <div className="text-[9px] font-bold tracking-wider text-slate-400 uppercase">
-                            BALANCE
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Bottom edge thin progress bar */}
-                      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-slate-100 dark:bg-slate-750">
-                        <div
-                          className="h-full bg-slate-800 dark:bg-slate-300 transition-all duration-500"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-
         </div>
       </div>
 
