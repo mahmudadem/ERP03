@@ -203,6 +203,8 @@ const makePI = (input: {
   unitPriceDoc: number;
   taxCodeId?: string;
   warehouseId?: string;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   charges?: Array<{
     chargeId?: string;
     kind?: 'CHARGE' | 'DISCOUNT';
@@ -245,6 +247,8 @@ const makePI = (input: {
         invoicedQty: input.invoicedQty,
         uom: 'EA',
         unitPriceDoc: input.unitPriceDoc,
+        discountType: input.discountType,
+        discountValue: input.discountValue,
         lineTotalDoc: input.invoicedQty * input.unitPriceDoc,
         unitPriceBase: (input.exchangeRate ?? 1) * input.unitPriceDoc,
         lineTotalBase: input.invoicedQty * input.unitPriceDoc * (input.exchangeRate ?? 1),
@@ -707,6 +711,75 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     // Balanced: debits 60+10 = 70; credits 5 + 65 = 70.
     expect(piVoucher.totalDebit).toBeCloseTo(70, 2);
     expect(piVoucher.totalCredit).toBeCloseTo(70, 2);
+  });
+
+  it('6c) PostPI applies the LINE discount to the GL: inventory debit + AP credit are NET of the discount (regression for GP04 line-discount drop)', async () => {
+    const settings = makeSettings('CONTROLLED');
+    const vendor = makeVendor();
+    // Stock item so the debit goes to the inventory asset account.
+    const stockItem = makeItem('itm-6c', { trackInventory: true, inventoryAssetAccountId: 'INV-103' });
+    const po = makePO({ id: 'po-6c', item: stockItem, orderedQty: 50, receivedQty: 50, invoicedQty: 0 });
+    const pi = makePI({
+      id: 'pi-6c',
+      item: stockItem,
+      purchaseOrderId: po.id,
+      poLineId: 'po-line-1',
+      grnLineId: 'grn-line-1',
+      invoicedQty: 50,
+      unitPriceDoc: 10,      // gross line = 500
+      discountType: 'PERCENT',
+      discountValue: 5,       // 5% → discount 25 → net 475
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    const savedVouchers: any[] = [];
+    const voucherRepo = { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+    const invoiceRepoStore = new Map([[pi.id, pi]]);
+    const invoiceRepo = {
+      getById: jest.fn(async (_companyId: string, id: string) => invoiceRepoStore.get(id) ?? null),
+      update: jest.fn(async (entity: PurchaseInvoice) => { invoiceRepoStore.set(entity.id, entity); }),
+    };
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      invoiceRepo as any,
+      { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, pi.id);
+    // Net line = 500 − 5% = 475; no charges, no tax.
+    expect(posted.subtotalDoc).toBe(475);
+    expect(posted.grandTotalDoc).toBe(475);
+
+    const piVoucher = savedVouchers[0];
+    const debits = piVoucher.lines.filter((l: any) => l.side === 'Debit');
+    const credits = piVoucher.lines.filter((l: any) => l.side === 'Credit');
+    // Inventory debited at NET 475 (not gross 500), AP credited NET 475.
+    expect(debits.some((l: any) => l.debitAmount === 475)).toBe(true);
+    expect(debits.some((l: any) => l.debitAmount === 500)).toBe(false);
+    expect(credits.some((l: any) => l.creditAmount === 475)).toBe(true);
+    expect(piVoucher.totalDebit).toBeCloseTo(475, 2);
+    expect(piVoucher.totalCredit).toBeCloseTo(475, 2);
   });
 
   it('7) PostPI (SIMPLE standalone): creates inventory movement + GL voucher', async () => {
