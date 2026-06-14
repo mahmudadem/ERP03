@@ -2,6 +2,32 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-14 — GP05 cross-module books check + Opening Stock offset guard
+
+- **Goal:** Run GP05 cross-module books check on TESTCO and decide whether the golden paths are ship-green.
+- **Result:** GP05 is **not green** on the current TESTCO dataset. Trial Balance balances (Dr 19,498.01 = Cr 19,498.01), Balance Sheet equation balances, AR ties at 328.00, AP ties to the vendor debit-note position (ledger Dr 47.50 = statement/aging -47.50), GRNI is zero, and SI-00001 posting log/audit trail exist.
+- **Blocking accounting failures:** P&L is distorted because old Opening Stock vouchers credited COGS (50100 credit balance -164.97), overstating profit. Inventory GL reconciliation also fails: stock valuation 13,887.43 vs Inventory GL 592.47, drift 13,294.96. Root causes in TESTCO are dirty historical data: legacy item `001` value drift, pre-fix duplicate PI-00001 receipt residue, and old opening-stock offsets to COGS / inventory.
+- **Fixed:** Added a backend control in `OpeningStockDocumentUseCases`: Opening Stock with accounting effect now requires the offset account to be an active POSTING `EQUITY` account and rejects using the same Inventory Asset account as the offset. This prevents balanced-but-wrong vouchers that credit COGS or self-offset inventory.
+- **Docs updated:** `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, `planning/qa/findings.md`, `planning/ACTIVE.md`, and completion report `planning/done/226-gp05-books-check-opening-stock-offset-guard.md`.
+- **Verified:** `npm --prefix backend test -- --runInBand backend/src/tests/application/inventory/OpeningStockDocumentUseCases.test.ts`; `npm --prefix backend run build`; `npm --prefix backend test -- --runInBand backend/src/tests/application/inventory`.
+- **Time spent:** ~1.1h.
+- **Next:** Do not mark golden paths green from TESTCO. Recommended gate: merge PR #9 plus this guard, then rerun GP01-GP05 on a fresh tenant. Alternative: approve a controlled TESTCO data repair/revaluation plan.
+
+### Session: 2026-06-14 — Users Sidebar Icon & Module Homepages Icon Alignment
+
+- **Goal:** Update the Users module sidebar icon and align module overview/homepage icons with their sidebar icons for visual consistency.
+- **Completed:**
+  1. Updated the Users sidebar menu item icon from `User` to `Users` in `Sidebar.tsx` (both production sidebar and dev/apex-ledger sidebar).
+  2. Modified `SalesHomePage.tsx` to display the `TrendingUp` icon in its header instead of `Layers` (matching the Sales sidebar icon).
+  3. Modified `PurchaseHomePage.tsx` to add a premium header block displaying the `ClipboardList` icon (matching the Purchases sidebar icon) along with a description and sub-badge.
+  4. Modified `InventoryHomePage.tsx` to add a premium header block displaying the `Warehouse` icon (matching the Inventory sidebar icon) along with a description and sub-badge.
+  5. Modified `AccountingDashboard.tsx` to display the `Landmark` icon in its header instead of `LayoutDashboard` (matching the Accounting sidebar icon).
+- **Verified:**
+  1. Frontend typecheck (`npx tsc --noEmit`) completed successfully with 0 errors.
+  2. Frontend production build (`npm run build`) completed successfully with 0 errors (including all custom validation checks).
+- **Time spent:** ~0.4h.
+- **Next:** Resume GP05 cross-module books check.
+
 ### Session: 2026-06-14 — Loading Spinner Unification (Premium Option A implemented)
 
 - **Goal:** Unify loading spinners across the entire application using the developer's selected style—Premium Option A: Smooth Gradient Sweep.
@@ -3581,16 +3607,17 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Time spent:** ~1.4h.
 - **Next:** Run GP02 once on a fresh tenant after the owner approves this code state, then commit the Task 221 inventory stabilization batch if the fresh-tenant reconciliation gate passes.
 
-### Session: 2026-06-14 (Side-Rail Toggle Button Sizing Fix)
+### Session: 2026-06-14 (Side-Rail Toggle Button, KPI Cards, and Border Visibility Polish)
 
-- **Goal:** Fix the side-rail toggle (collapse) button on the document detail pages (under `DocumentDetailScaffold.tsx`) being half-shown/clipped at the left boundary of the rail column at `2xl` viewports.
+- **Goal:** Fix the side-rail toggle (collapse) button on the document detail pages (under `DocumentDetailScaffold.tsx`) being half-shown/clipped at the left boundary of the rail column at `2xl` viewports, redesign the Sales overview dashboard KPI cards into a compact space-saving layout, and enhance the dashboard card and table border visibility.
 - **What was done:** 
-  - Identified that the `aside` element wrapping the side-rail components has `2xl:overflow-hidden` applied to constrain its content.
-  - Because the collapse button is positioned absolutely with a negative left offset (`-left-3`/`-right-3`), the overflow constraint clipped the left half of the button.
-  - Wrapped the `aside` element inside `DocumentDetailScaffold.tsx` in a relative flexbox div container (`relative flex flex-col min-h-0 h-full`) and moved the collapse button out of the `aside` and into this wrapper. This allows the button to overlap the main panel boundary without being clipped by the `aside`'s overflow rules, while preserving the exact layout, width, and height behavior of the rail itself.
+  - **Side-Rail Collapse Polish:** Wrapped the `aside` element inside `DocumentDetailScaffold.tsx` in a relative flexbox div container (`relative flex flex-col min-h-0 h-full`) and added a clean themed header bar with title and PanelRightClose icon at the top of the side-rail. Moved the collapse button out of the `aside` and into this header. This allows the button to overlap the main panel boundary without being clipped by the `aside`'s overflow rules, while maintaining visual alignment.
+  - **KPI Cards Redesign:** Redesigned the Sales overview dashboard KPI cards (`KPICard` component inside `SalesHomePage.tsx`) from a tall 3-line vertical stack to a compact horizontal layout where the Label (left) and Value (right) sit inline with smaller paddings, reducing vertical space by over 40%.
+  - **Border Visibility Enhancement:** Replaced the default faint borders on all dashboard cards and table overflow wrappers across `SalesHomePage.tsx` with a slightly darker `border-slate-300` (in light mode) and `border-slate-700` (in dark mode) for clearer structure and contrast per the developer's request.
 - **Accounting/ERP impact:** None. Visual layout/UX fix only.
 - **Verification:** 
   - Run `npm --prefix frontend run typecheck` (tsc check passed with zero errors).
   - Run `npm --prefix frontend run build` (full frontend build script passed including custom CI checks).
-- **Time spent:** ~0.2h.
-- **Next:** Proceed with fixing the Purchase Invoice double-receipt bug in GP04, then GP05 cross-module books check.
+- **Time spent:** ~0.6h.
+- **Git state note:** GP04 code fixes and this UI detour are committed locally on `fix/purchases-module-gp04` (`eb712996`, `0a42a405`); the branch is ahead of origin by 2 commits. Current dirty tree also includes planning-doc wording plus three small frontend icon-only tweaks (`frontend/src/layout/Sidebar.tsx`, `frontend/src/modules/sales/pages/SalesHomePage.tsx`, `frontend/src/pages/dev/apex-ledger/components/Sidebar.tsx`) that should stay separate from the GP04 accounting PR unless intentionally approved.
+- **Next:** Push/open the GP04 branch, then run GP05 cross-module books check. Do not start further UI polish during feature freeze unless it directly blocks golden-path QA or fixes a P0 accounting/control issue.
