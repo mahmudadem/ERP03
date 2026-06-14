@@ -6,6 +6,7 @@ import { CostCenterSelector } from '../components/shared/CostCenterSelector';
 import { DatePicker } from '../components/shared/DatePicker';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useTranslation } from 'react-i18next';
 
 // ============================================================================
@@ -155,7 +156,7 @@ const CCSummaryContent: React.FC<{
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+          <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
           <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">
             {t('costCenterSummary.processing', { defaultValue: 'Processing...' })}
           </p>

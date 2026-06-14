@@ -9,6 +9,7 @@ import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { Folder, FolderOpen, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe, AlertCircle, Sliders } from 'lucide-react';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { AccountDrilldownModal } from '../components/AccountDrilldownModal';
+import { Spinner } from '../../../components/ui/Spinner';
 
 export default function AccountsListPage() {
     const { t } = useTranslation('accounting');
@@ -285,7 +286,7 @@ export default function AccountsListPage() {
     if (isLoading) {
         return (
             <div className="p-8 flex justify-center items-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <Spinner size="lg" variant="indigo" />
                 <span className="ml-3 text-gray-500">{t('accountsList.loading', { defaultValue: 'Loading accounts...' })}</span>
             </div>
         );

@@ -145,12 +145,29 @@ const recalcPaymentStatus = (pi: PurchaseInvoice): PaymentStatus => {
   return 'UNPAID';
 };
 
+// Net taxable base for a return line: gross extension minus the line discount,
+// then stripped of embedded tax when the price is inclusive. Mirrors
+// PurchaseReturn.addLine's netDoc so the posted AP reversal equals the document
+// net — otherwise the inherited line discount is dropped from the GL.
+const returnLineNetDoc = (line: { returnQty: number; unitCostDoc: number; discountAmountDoc?: number; priceIsInclusive?: boolean; taxRate?: number }): number => {
+  const gross = roundMoney(line.returnQty * line.unitCostDoc);
+  const postDisc = roundMoney(gross - (line.discountAmountDoc ?? 0));
+  const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
+  return roundMoney(postDisc / divisor);
+};
+const returnLineNetBase = (line: { returnQty: number; unitCostBase: number; discountAmountBase?: number; priceIsInclusive?: boolean; taxRate?: number }): number => {
+  const gross = roundMoney(line.returnQty * line.unitCostBase);
+  const postDisc = roundMoney(gross - (line.discountAmountBase ?? 0));
+  const divisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
+  return roundMoney(postDisc / divisor);
+};
+
 const recalcReturnTotals = (purchaseReturn: PurchaseReturn): void => {
   purchaseReturn.subtotalDoc = roundMoney(
-    purchaseReturn.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * line.unitCostDoc), 0)
+    purchaseReturn.lines.reduce((sum, line) => sum + returnLineNetDoc(line), 0)
   );
   purchaseReturn.subtotalBase = roundMoney(
-    purchaseReturn.lines.reduce((sum, line) => sum + roundMoney(line.returnQty * line.unitCostBase), 0)
+    purchaseReturn.lines.reduce((sum, line) => sum + returnLineNetBase(line), 0)
   );
   purchaseReturn.taxTotalDoc = roundMoney(
     purchaseReturn.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0)
@@ -666,18 +683,31 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
       }
 
       // Posting-time recompute. lineTotalDoc/Base feed inventory/expense
-      // buckets and MUST be NET, otherwise the ledger debits AP gross while
-      // crediting inventory net + tax → unbalanced.
+      // buckets and MUST be NET (post line-discount, post tax), otherwise the
+      // ledger debits AP at gross while the document total is net-of-discount →
+      // the inherited line discount is silently dropped from the GL (vendor AP
+      // over-reduced). Mirrors PurchaseReturn.addLine and the PI freeze fix:
+      // discount applies BEFORE tax (EU VAT Art. 79(a)).
       const grossLineTotalDoc = roundMoney(line.returnQty * line.unitCostDoc);
       const grossLineTotalBase = roundMoney(line.returnQty * line.unitCostBase);
+      const lineDiscountDoc = line.discountType === 'PERCENT'
+        ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * ((line.discountValue || 0) / 100))))
+        : line.discountType === 'AMOUNT'
+          ? roundMoney(Math.max(0, Math.min(line.discountValue || 0, grossLineTotalDoc)))
+          : 0;
+      const lineDiscountBase = roundMoney(lineDiscountDoc * purchaseReturn.exchangeRate);
+      line.discountAmountDoc = lineDiscountDoc;
+      line.discountAmountBase = lineDiscountBase;
+      const postDiscountDoc = roundMoney(grossLineTotalDoc - lineDiscountDoc);
+      const postDiscountBase = roundMoney(grossLineTotalBase - lineDiscountBase);
       const lineDivisor = line.priceIsInclusive ? 1 + (line.taxRate || 0) : 1;
-      const lineTotalDoc = roundMoney(grossLineTotalDoc / lineDivisor);
-      const lineTotalBase = roundMoney(grossLineTotalBase / lineDivisor);
+      const lineTotalDoc = roundMoney(postDiscountDoc / lineDivisor);
+      const lineTotalBase = roundMoney(postDiscountBase / lineDivisor);
       line.taxAmountDoc = line.priceIsInclusive
-        ? roundMoney(grossLineTotalDoc - lineTotalDoc)
+        ? roundMoney(postDiscountDoc - lineTotalDoc)
         : roundMoney(lineTotalDoc * (line.taxRate || 0));
       line.taxAmountBase = line.priceIsInclusive
-        ? roundMoney(grossLineTotalBase - lineTotalBase)
+        ? roundMoney(postDiscountBase - lineTotalBase)
         : roundMoney(lineTotalBase * (line.taxRate || 0));
 
       // Compute inventory movement for tracked items
@@ -1281,31 +1311,46 @@ export class UnpostPurchaseReturnUseCase {
       purchaseOrder = await this.purchaseOrderRepo.getById(companyId, purchaseReturn.purchaseOrderId);
     }
 
-    await this.transactionManager.runTransaction(async (transaction) => {
-      if (shouldPostAccounting) {
-      if (purchaseReturn.voucherId) {
-        await this.accountingPostingService.deleteVoucherInTransaction(companyId, purchaseReturn.voucherId, transaction);
-        purchaseReturn.voucherId = null;
-      }
+    // Firestore requires ALL reads before ALL writes within a single transaction.
+    // Both the voucher deletion (it queries the ledger entries to delete) and each
+    // inventory movement reversal (it reads the stock level to rebuild it) are
+    // read-then-write blocks, so they cannot legally share one transaction. Run
+    // each as its own transaction (each is internally read-before-write). Order is
+    // voucher -> inventory -> PO/PI/PR so a mid-way failure leaves the return still
+    // POSTED in the DB and the unpost can be safely retried. Mirrors the PI unpost.
+
+    // 1. Delete the accounting voucher (own transaction).
+    if (shouldPostAccounting && purchaseReturn.voucherId) {
+      const voucherId = purchaseReturn.voucherId;
+      await this.transactionManager.runTransaction(async (transaction) => {
+        await this.accountingPostingService.deleteVoucherInTransaction(companyId, voucherId, transaction);
+      });
+      purchaseReturn.voucherId = null;
+    }
+
+    // 2. Reverse inventory movements — each deleteMovement runs in its own
+    //    transaction (no shared txn passed), keeping its reads before its writes.
+    for (const line of purchaseReturn.lines) {
+      if (line.stockMovementId) {
+        await this.inventoryService.deleteMovement(companyId, line.stockMovementId);
+        line.stockMovementId = null;
       }
 
-      for (const line of purchaseReturn.lines) {
-        if (line.stockMovementId) {
-          await this.inventoryService.deleteMovement(companyId, line.stockMovementId, transaction);
-          line.stockMovementId = null;
-        }
-
-        if (purchaseOrder) {
-          const poLine = findPOLine(purchaseOrder, line.poLineId, line.itemId);
-          if (poLine) {
-            if (purchaseReturn.returnContext === 'BEFORE_INVOICE') {
-               poLine.receivedQty = roundMoney(poLine.receivedQty + line.returnQty);
-            }
-            poLine.returnedQty = roundMoney(poLine.returnedQty - line.returnQty);
+      // Reverse PO received/returned qty (in-memory; persisted in step 3).
+      if (purchaseOrder) {
+        const poLine = findPOLine(purchaseOrder, line.poLineId, line.itemId);
+        if (poLine) {
+          if (purchaseReturn.returnContext === 'BEFORE_INVOICE') {
+            poLine.receivedQty = roundMoney(poLine.receivedQty + line.returnQty);
           }
+          poLine.returnedQty = roundMoney(poLine.returnedQty - line.returnQty);
         }
       }
+    }
 
+    // 3. Restore PI outstanding, PO status, and revert the return to DRAFT
+    //    (own transaction; pure writes).
+    await this.transactionManager.runTransaction(async (transaction) => {
       if (purchaseInvoice) {
         purchaseInvoice.outstandingAmountBase = roundMoney(purchaseInvoice.outstandingAmountBase + purchaseReturn.grandTotalBase);
         purchaseInvoice.paymentStatus = recalcPaymentStatus(purchaseInvoice);

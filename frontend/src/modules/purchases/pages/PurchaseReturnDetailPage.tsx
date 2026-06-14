@@ -197,6 +197,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
           ...l,
           piLineId: l.lineId,
           uomId: l.uomId,
+          // PI lines carry the price as unitPriceDoc; the return row reads unitCostDoc.
+          // Without this map the inherited unit price renders empty and posts as 0,
+          // zeroing the AP/debit-note reversal. Mirrors handleItemSelect.
+          unitCostDoc: l.unitPriceDoc ?? l.unitCostDoc,
+          availableQty: l.invoicedQty ?? l.receivedQty,
           returnQty: 0, // Default to 0, let user enter
         })));
       } else if (targetGRN) {
@@ -208,6 +213,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           ...l,
           grnLineId: l.lineId,
           uomId: l.uomId,
+          unitCostDoc: l.unitPriceDoc ?? l.unitCostDoc,
+          availableQty: l.receivedQty ?? l.invoicedQty,
           returnQty: 0,
         })));
       } else {

@@ -154,7 +154,7 @@ const QuickLinkTile = ({ icon, label, sublabel, onClick }: QuickLinkProps) => (
   <button
     type="button"
     onClick={onClick}
-    className="group flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-all duration-150 hover:border-slate-300 hover:bg-slate-50/50 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700/60"
+    className="group flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left transition-all duration-150 hover:border-slate-400 hover:bg-slate-50/50 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700/60"
   >
     <div
       className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 dark:bg-slate-700/50 dark:text-slate-400 dark:group-hover:bg-indigo-950/40 dark:group-hover:text-indigo-400 transition-colors duration-150"
@@ -213,31 +213,33 @@ const KPICard = ({
   suffix,
 }: KPICardProps) => (
   <Card
-    className={`p-3.5 flex flex-col justify-between rounded-lg shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 ${KPI_BORDERS[accent]}`}
+    className={`p-2.5 px-3.5 flex flex-col justify-center rounded-lg shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 ${KPI_BORDERS[accent]}`}
   >
-    <div>
+    <div className="flex items-center justify-between">
       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
         {label}
       </div>
-      {loading ? (
-        <Skeleton className="mt-2 h-7 w-28" />
-      ) : (
-        <div className="mt-1.5 flex items-baseline gap-1">
-          <span className="text-xl font-bold tracking-tight text-slate-850 dark:text-slate-50">
-            {value}
-          </span>
-          {suffix && (
-            <span className="text-xs font-normal text-slate-400 uppercase">
-              {suffix}
+      <div className="flex items-baseline gap-1">
+        {loading ? (
+          <Skeleton className="h-5 w-16" />
+        ) : (
+          <>
+            <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
+              {value}
             </span>
-          )}
-        </div>
-      )}
+            {suffix && (
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+                {suffix}
+              </span>
+            )}
+          </>
+        )}
+      </div>
     </div>
     {subtext && !loading && (
-      <div className="mt-2 flex items-center gap-1.5 text-[10px]">
-        <span className={`h-1.5 w-1.5 rounded-full ${KPI_DOTS[subtextAccent || accent]}`} />
-        <span className={`${KPI_SUBTEXT_ACCENT[subtextAccent || accent]}`}>
+      <div className="mt-1 flex items-center gap-1.5 text-[9px] truncate">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${KPI_DOTS[subtextAccent || accent]}`} />
+        <span className={`truncate ${KPI_SUBTEXT_ACCENT[subtextAccent || accent]}`}>
           {subtext}
         </span>
       </div>
@@ -874,7 +876,7 @@ const SalesHomePage: React.FC = () => {
 
           {/* RECENT SALES ORDERS (SO) */}
           {showOperationalDocuments && (
-            <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+            <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Recent Sales Orders (SO)
@@ -895,19 +897,19 @@ const SalesHomePage: React.FC = () => {
               ) : recentOrders.length === 0 ? (
                 <div className="py-6 text-center text-xs text-slate-400">No recent orders.</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-lg">
                   <table className="w-full text-[11px] text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700/80">
-                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">SO Number</th>
-                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
-                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Customer / Client</th>
-                        <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
-                        <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
-                        <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
-                        <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
-                        <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
-                        <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
+                      <tr className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-900/20">
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">SO Number</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Customer / Client</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -919,31 +921,31 @@ const SalesHomePage: React.FC = () => {
                             className="group cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
                             onClick={() => navigate(`/sales/orders/${o.id}`)}
                           >
-                            <td className="py-2.5 pr-3 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                            <td className="py-2 px-3 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                               {o.orderNumber}
                             </td>
-                            <td className="py-2.5 pr-3 text-slate-500 font-mono whitespace-nowrap">
+                            <td className="py-2 px-3 text-slate-500 font-mono whitespace-nowrap">
                               {o.orderDate || o.createdAt.split('T')[0]}
                             </td>
-                            <td className="py-2.5 pr-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={o.customerName}>
+                            <td className="py-2 px-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={o.customerName}>
                               {o.customerName}
                             </td>
-                            <td className="py-2.5 pr-3 font-mono text-slate-500 whitespace-nowrap">
+                            <td className="py-2 px-3 font-mono text-slate-500 whitespace-nowrap">
                               {o.currency}
                             </td>
-                            <td className="py-2.5 pr-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                            <td className="py-2 px-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                               {formatCurrency(o.grandTotalDoc)}
                             </td>
-                            <td className="py-2.5 pr-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
+                            <td className="py-2 px-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
                               {creatorName}
                             </td>
-                            <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                            <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
                               {formatDateTime(o.createdAt)}
                             </td>
-                            <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                            <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
                               {o.confirmedAt ? formatDateTime(o.confirmedAt) : '—'}
                             </td>
-                            <td className="py-2.5 text-right whitespace-nowrap">
+                            <td className="py-2 px-3 text-right whitespace-nowrap">
                               <StatusBadge status={o.status} />
                             </td>
                           </tr>
@@ -957,7 +959,7 @@ const SalesHomePage: React.FC = () => {
           )}
 
           {/* RECENT SALES INVOICES (INV) */}
-          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Recent Sales Invoices (INV)
@@ -978,19 +980,19 @@ const SalesHomePage: React.FC = () => {
             ) : recentInvoices.length === 0 ? (
               <div className="py-6 text-center text-xs text-slate-400">No recent invoices.</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-lg">
                 <table className="w-full text-[11px] text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-700/80">
-                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Invoice ID</th>
-                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
-                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Debtor Customer</th>
-                      <th className="pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
-                      <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
-                      <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
-                      <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
-                      <th className="pb-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
-                      <th className="pb-2 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
+                    <tr className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-900/20">
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Invoice ID</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Debtor Customer</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">Currency</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400">Raw Total</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created By</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Created At</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">Approved At</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-400 font-sans">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -1002,31 +1004,31 @@ const SalesHomePage: React.FC = () => {
                           className="group cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
                           onClick={() => navigate(`/sales/invoices/${i.id}`)}
                         >
-                          <td className="py-2.5 pr-3 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                          <td className="py-2 px-3 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             {i.invoiceNumber}
                           </td>
-                          <td className="py-2.5 pr-3 text-slate-500 font-mono whitespace-nowrap">
+                          <td className="py-2 px-3 text-slate-500 font-mono whitespace-nowrap">
                             {i.invoiceDate || i.createdAt.split('T')[0]}
                           </td>
-                          <td className="py-2.5 pr-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={i.customerName}>
+                          <td className="py-2 px-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]" title={i.customerName}>
                             {i.customerName}
                           </td>
-                          <td className="py-2.5 pr-3 font-mono text-slate-500 whitespace-nowrap">
+                          <td className="py-2 px-3 font-mono text-slate-500 whitespace-nowrap">
                             {i.currency}
                           </td>
-                          <td className="py-2.5 pr-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                          <td className="py-2 px-3 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             {formatCurrency(i.grandTotalDoc)}
                           </td>
-                          <td className="py-2.5 pr-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
+                          <td className="py-2 px-3 text-slate-650 dark:text-slate-300 truncate max-w-[100px]" title={creatorName}>
                             {creatorName}
                           </td>
-                          <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                          <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
                             {formatDateTime(i.createdAt)}
                           </td>
-                          <td className="py-2.5 pr-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
+                          <td className="py-2 px-3 text-slate-400 font-mono text-[9px] whitespace-nowrap">
                             {i.postedAt ? formatDateTime(i.postedAt) : '—'}
                           </td>
-                          <td className="py-2.5 text-right whitespace-nowrap">
+                          <td className="py-2 px-3 text-right whitespace-nowrap">
                             <StatusBadge status={i.status} />
                           </td>
                         </tr>
@@ -1043,7 +1045,7 @@ const SalesHomePage: React.FC = () => {
         <div className="space-y-5">
 
           {/* Quick Links */}
-          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
               Quick Navigation
             </h3>
@@ -1076,7 +1078,7 @@ const SalesHomePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/sales/settings')}
-                className="group flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
+                className="group flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-left transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750"
               >
                 <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-655 dark:bg-slate-700 dark:text-slate-400">
                   <Settings size={13} />
@@ -1087,7 +1089,7 @@ const SalesHomePage: React.FC = () => {
           </Card>
 
           {/* Recent Activity Log */}
-          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Recent Activity
@@ -1160,7 +1162,7 @@ const SalesHomePage: React.FC = () => {
           </Card>
 
           {/* Top Client Accounts */}
-          <Card className="p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
+          <Card className="p-4 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
               Top Client Accounts
             </h3>
@@ -1179,7 +1181,7 @@ const SalesHomePage: React.FC = () => {
                   return (
                     <div
                       key={c.name}
-                      className="group relative overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-3 transition-all hover:border-slate-350 hover:shadow-sm dark:bg-slate-800"
+                      className="group relative overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700 bg-white p-3 transition-all hover:border-slate-400 hover:shadow-sm dark:bg-slate-800"
                     >
                       <div className="flex items-start justify-between mb-1">
                         <div className="min-w-0 flex-1 pr-2">

@@ -1296,12 +1296,12 @@ const SalesOrderDetailPage: React.FC = () => {
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-200">
-                        <th className="py-2 text-left">{t('sales.soDetail.fulfillmentItemHeader')}</th>
-                        <th className="py-2 text-right">{t('fulfillment.ordered')}</th>
-                        <th className="py-2 text-right">{t('fulfillment.delivered')}</th>
-                        <th className="py-2 text-right">{t('fulfillment.invoiced')}</th>
-                        <th className="py-2 text-right">{t('fulfillment.returned')}</th>
-                        <th className="py-2 text-right" style={{ minWidth: '120px' }}>{t('fulfillment.title')}</th>
+                        <th className="py-2 pr-4 text-left">{t('sales.soDetail.fulfillmentItemHeader')}</th>
+                        <th className="py-2 px-4 text-right">{t('fulfillment.ordered')}</th>
+                        <th className="py-2 px-4 text-right">{t('fulfillment.delivered')}</th>
+                        <th className="py-2 px-4 text-right">{t('fulfillment.invoiced')}</th>
+                        <th className="py-2 px-4 text-right">{t('fulfillment.returned')}</th>
+                        <th className="py-2 pl-4 text-right" style={{ minWidth: '120px' }}>{t('fulfillment.title')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1309,17 +1309,17 @@ const SalesOrderDetailPage: React.FC = () => {
                         const pct = line.orderedQty > 0 ? Math.round((line.deliveredQty / line.orderedQty) * 100) : 0;
                         return (
                           <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100">
-                            <td className="py-2">
+                            <td className="py-2 pr-4">
                               {line.itemCode || line.itemName || t('sales.soDetail.fulfillmentLineFallback', { n: index + 1 })}
                               {(line.itemCode && line.itemName) && (
                                 <div className="text-xs text-slate-500">{line.itemName}</div>
                               )}
                             </td>
-                            <td className="py-2 text-right">{line.orderedQty}</td>
-                            <td className="py-2 text-right">{line.deliveredQty}</td>
-                            <td className="py-2 text-right">{line.invoicedQty}</td>
-                            <td className="py-2 text-right">{line.returnedQty}</td>
-                            <td className="py-2">
+                            <td className="py-2 px-4 text-right">{line.orderedQty}</td>
+                            <td className="py-2 px-4 text-right">{line.deliveredQty}</td>
+                            <td className="py-2 px-4 text-right">{line.invoicedQty}</td>
+                            <td className="py-2 px-4 text-right">{line.returnedQty}</td>
+                            <td className="py-2 pl-4">
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 rounded-full bg-slate-200 h-2 overflow-hidden" style={{ minWidth: '60px' }}>
                                   <div

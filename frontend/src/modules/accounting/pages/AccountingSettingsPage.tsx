@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Settings, Shield, Lock, Unlock, Pencil, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Spinner } from '../../../components/ui/Spinner';
 
 import FXRevaluationTab from './settings/FXRevaluationTab';
 import AccountSelector from '../components/shared/AccountSelector';
@@ -728,7 +729,7 @@ const AccountingSettingsPageContent: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-full p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <Spinner size="lg" variant="indigo" className="mx-auto mb-3" />
           <p className="mt-4 text-gray-500">{t('settings.loading')}</p>
         </div>
       </div>
@@ -2366,7 +2367,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                             }`}
                           >
                             {fiscalLoading ? (
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+                              <Spinner size="sm" variant="white" className="mx-auto" />
                             ) : (
                               t(`settings.fiscal.confirmations.${
                                 genericConfirm.type === 'CLOSE_PERIOD' ? 'closePeriod' :

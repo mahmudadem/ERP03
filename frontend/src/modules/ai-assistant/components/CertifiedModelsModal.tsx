@@ -20,6 +20,7 @@ import {
   ExternalLink,
   AlertTriangle,
 } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import {
   aiAssistantApi,
   CertifiedProfileEntry,
@@ -183,7 +184,7 @@ export const CertifiedModelsModal: React.FC<CertifiedModelsModalProps> = ({
           <div className="px-6 py-4">
             {loading && (
               <div className="flex items-center justify-center py-12">
-                <div className="h-8 w-8 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+                <Spinner size="lg" variant="indigo" />
                 <span className="ml-3 text-sm text-gray-500">
                   {t('settings.certifiedModels.loading', 'Loading certified models...')}
                 </span>

@@ -4,6 +4,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
@@ -175,7 +176,7 @@ export const SettingsPage: React.FC = () => {
     return (
       <CompanyAdminLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <Spinner size="xl" variant="indigo" />
         </div>
       </CompanyAdminLayout>
     );

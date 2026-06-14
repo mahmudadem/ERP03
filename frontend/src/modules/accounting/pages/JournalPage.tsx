@@ -9,6 +9,7 @@ import { DatePicker } from '../components/shared/DatePicker';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { CalendarDays } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
 
 /* ── Types ────────────────────────────────────────────── */
@@ -274,7 +275,7 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
           <div className="bg-white border rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-center min-h-[180px]">
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+                <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
                 <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('journal.processing', { defaultValue: 'Processing...' })}</p>
               </div>
             </div>

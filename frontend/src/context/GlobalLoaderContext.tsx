@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Spinner } from '../components/ui/Spinner';
 
 export interface LoaderTask {
   id: string;
@@ -62,7 +62,7 @@ export const GlobalLoaderProvider: React.FC<{ children: React.ReactNode }> = ({ 
             <div className="relative">
               <div className="absolute inset-0 bg-primary-100 dark:bg-primary-900/30 rounded-full animate-ping opacity-75"></div>
               <div className="relative bg-white dark:bg-slate-800 rounded-full p-4 shadow-sm border border-slate-100 dark:border-slate-700">
-                <Loader2 className="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin" />
+                <Spinner size="lg" />
               </div>
             </div>
             

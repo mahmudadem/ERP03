@@ -4,6 +4,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyModules } from '../../../hooks/useCompanyAdmin';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
@@ -83,7 +84,7 @@ export const ModulesPage: React.FC = () => {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <Spinner size="xl" variant="indigo" />
         </div>
       ) : isError ? (
         <Card className="p-6 border-red-200 bg-red-50">

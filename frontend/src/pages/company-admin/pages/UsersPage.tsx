@@ -5,6 +5,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyUsers, useCompanyRoles } from '../../../hooks/useCompanyAdmin';
 import { Edit2, Search, Shield, User as UserIcon, Mail, Power, UserPlus, X, Save, CheckCircle, Ban, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -154,7 +155,7 @@ export const UsersPage: React.FC = () => {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <Spinner size="xl" variant="indigo" />
         </div>
       ) : filteredUsers.length === 0 ? (
         <EmptyState 
@@ -349,7 +350,7 @@ export const UsersPage: React.FC = () => {
                 className="min-w-[100px]"
               >
                 {isUpdatingRole ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" /> 
+                  <Spinner size="sm" variant="white" className="mr-2" />
                 ) : (
                   <Save size={16} className="mr-2" />
                 )}

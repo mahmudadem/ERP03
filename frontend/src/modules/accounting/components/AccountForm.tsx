@@ -18,6 +18,7 @@ import { useCompanyModules } from '../../../hooks/useCompanyModules';
 import { Shield, UserCheck, Lock, Settings, FileCode, CheckCircle2, DollarSign, ChevronRight, LayoutGrid, Info, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { errorHandler } from '../../../services/errorHandler';
+import { Spinner } from '../../../components/ui/Spinner';
 
 interface AccountFormProps {
     mode: 'create' | 'edit';
@@ -684,7 +685,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     >
                         {isSubmitting ? (
                             <>
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <Spinner size="sm" variant="white" />
                                 <span>Securing Data...</span>
                             </>
                         ) : (mode === 'create' ? (

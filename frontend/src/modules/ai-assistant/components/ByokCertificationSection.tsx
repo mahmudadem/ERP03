@@ -16,6 +16,7 @@ import {
   XCircle,
   ExternalLink,
 } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import type {
   CertifiedProfileEntry,
   ProviderHealthResponse,
@@ -275,7 +276,7 @@ export const ByokCertificationSection: React.FC<ByokCertificationSectionProps> =
                 className="inline-flex items-center justify-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isRunningDiag ? (
-                  <div className="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                  <Spinner size="xs" variant="indigo" />
                 ) : (
                   <Activity className="h-4 w-4" />
                 )}
@@ -340,7 +341,7 @@ export const ByokCertificationSection: React.FC<ByokCertificationSectionProps> =
               >
                 {isRunningCert ? (
                   <>
-                    <div className="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                    <Spinner size="xs" variant="indigo" />
                     {t('settings.customModel.certRunning', 'Running certification...')}
                   </>
                 ) : (
@@ -422,7 +423,7 @@ export const ByokCertificationSection: React.FC<ByokCertificationSectionProps> =
             >
               {isDeprecating ? (
                 <>
-                  <div className="h-4 w-4 rounded-full border-2 border-gray-600 border-t-transparent animate-spin" />
+                  <Spinner size="xs" variant="secondary" />
                   {t('settings.customModel.deprecating', 'Deprecating...')}
                 </>
               ) : (
@@ -453,7 +454,7 @@ export const ByokCertificationSection: React.FC<ByokCertificationSectionProps> =
           >
             {isRegistering ? (
               <>
-                <div className="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                <Spinner size="xs" variant="indigo" />
                 {t('settings.certificationStatus.registering', 'Registering...')}
               </>
             ) : (

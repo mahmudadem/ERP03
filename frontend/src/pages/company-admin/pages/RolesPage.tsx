@@ -5,6 +5,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { Spinner } from '../../../components/ui/Spinner';
 import { Input } from '../../../components/ui/Input';
 import { useCompanyRoles } from '../../../hooks/useCompanyAdmin';
 import { Edit2, Trash2, Shield, Search } from 'lucide-react';
@@ -78,7 +79,7 @@ export const RolesPage: React.FC = () => {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <Spinner size="xl" variant="indigo" />
         </div>
       ) : filteredRoles.length === 0 ? (
         <EmptyState 
