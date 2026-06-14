@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { superAdminApi, SuperAdminUser, SuperAdminCompany } from '../../../api/superAdmin';
 import { Button } from '../../../components/ui/Button';
+import { Spinner } from '../../../components/ui/Spinner';
 import { Users, Building2, Shield, Crown, Search, Filter, ChevronRight, Mail, Calendar } from 'lucide-react';
 import { errorHandler } from '../../../services/errorHandler';
 import { formatCompanyDate } from '../../../utils/dateUtils';
@@ -160,7 +161,7 @@ export default function SuperAdminUsersManagementPage() {
           >
             {loading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                <Spinner size="sm" variant="primary" />
                 {t('superAdmin.usersManagement.refreshing')}
               </>
             ) : (
@@ -228,7 +229,7 @@ export default function SuperAdminUsersManagementPage() {
           {loading && users.length === 0 ? (
             <div className="col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
               <div className="flex items-center justify-center gap-3 text-slate-500">
-                <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-500 border-t-transparent" />
+                <Spinner size="lg" variant="primary" />
                 <span className="text-lg">{t('superAdmin.usersManagement.loadingUsers')}</span>
               </div>
             </div>

@@ -226,6 +226,21 @@ const findPOLine = (po: PurchaseOrder, poLineId?: string, itemId?: string) => {
 const hasGRNForThisLine = (line: PurchaseInvoiceLine): boolean =>
   !!line.grnLineId;
 
+// True when this PI line's goods have already been received into stock by a posted
+// Goods Receipt — either because the line carries an explicit grnLineId, or because
+// it is backed by a PO line that a GRN has already received against (poLine.receivedQty > 0).
+// In a PO→GRN→PI flow the GRN is the stock-movement document, so the PI must NOT re-receive.
+// This guards the common case where a PI is built from the PO (poLineId only, no grnLineId):
+// without it the posting double-receives the goods (and, in PERPETUAL mode, double-debits
+// inventory instead of clearing GRNI). Direct invoicing (no PO / unreceived PO line) is
+// unaffected — there the PI legitimately receives the stock.
+const goodsAlreadyReceived = (line: PurchaseInvoiceLine, po: PurchaseOrder | null): boolean => {
+  if (hasGRNForThisLine(line)) return true;
+  if (!po) return false;
+  const poLine = findPOLine(po, line.poLineId, line.itemId);
+  return !!poLine && (poLine.receivedQty || 0) > 0;
+};
+
 const assertValidPurchaseTaxCode = (taxCode: TaxCode, taxCodeId: string): void => {
   if (!taxCode.active || (taxCode.scope !== 'PURCHASE' && taxCode.scope !== 'BOTH')) {
     throw new Error(`Tax code is not valid for purchase: ${taxCodeId}`);
@@ -574,7 +589,7 @@ export class PostPurchaseInvoiceUseCase {
     // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
     const stockLevelMap = new Map<string, StockLevel>();
     for (const line of pi.lines) {
-      if (settings.allowDirectInvoicing && line.trackInventory && !hasGRNForThisLine(line)) {
+      if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
         const warehouseId = line.warehouseId || settings.defaultWarehouseId;
         if (warehouseId && line.itemId) {
           const key = `${line.itemId}|${warehouseId}`;
@@ -589,7 +604,7 @@ export class PostPurchaseInvoiceUseCase {
     // PHASE 1C: PRE-FETCH UOM CONVERSIONS (bare reads before transaction)
     const uomConversionMap = new Map<string, any>();
     for (const line of pi.lines) {
-      if (settings.allowDirectInvoicing && line.trackInventory && !hasGRNForThisLine(line)) {
+      if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
         const item = itemsMap.get(line.itemId);
         if (item && !uomConversionMap.has(item.id)) {
           const convs = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
@@ -609,7 +624,7 @@ export class PostPurchaseInvoiceUseCase {
       const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
       this.freezeTaxSnapshotSync(line, pi.exchangeRate, taxCode || undefined);
 
-      const hasReceiptBackedFlow = line.trackInventory && (!settings.allowDirectInvoicing || hasGRNForThisLine(line));
+      const hasReceiptBackedFlow = line.trackInventory && (!settings.allowDirectInvoicing || goodsAlreadyReceived(line, po));
       const clearsGRNI = DocumentPolicyResolver.shouldPurchaseInvoiceClearGRNI(
         accountingMode,
         hasReceiptBackedFlow
@@ -625,7 +640,7 @@ export class PostPurchaseInvoiceUseCase {
         settings.defaultGRNIAccountId
       );
 
-      if (settings.allowDirectInvoicing && line.trackInventory && !hasGRNForThisLine(line)) {
+      if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
         const warehouseId = line.warehouseId || settings.defaultWarehouseId;
         const warehouse = warehouseId ? warehousesMap.get(warehouseId) : null;
         if (!warehouse) throw new Error(`Warehouse required for ${line.itemName}`);
@@ -990,11 +1005,21 @@ export class PostPurchaseInvoiceUseCase {
     const inclusive = line.priceIsInclusive === true;
     const divisor = inclusive ? 1 + line.taxRate : 1;
     const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    line.lineTotalDoc = roundMoney(grossLineTotalDoc / divisor);
+    // Apply the line discount BEFORE tax, mirroring SalesInvoice.calculateDiscountAmountDoc.
+    // Without this the posting recomputed lineTotal from GROSS, so the inventory debit
+    // and AP credit ignored the line discount (vendor over-credited by the discount).
+    const lineDiscountDoc = line.discountType === 'PERCENT'
+      ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * ((line.discountValue || 0) / 100))))
+      : line.discountType === 'AMOUNT'
+        ? roundMoney(Math.max(0, Math.min(line.discountValue || 0, grossLineTotalDoc)))
+        : 0;
+    const postDiscountDoc = roundMoney(grossLineTotalDoc - lineDiscountDoc);
+    line.discountAmountDoc = lineDiscountDoc;
+    line.lineTotalDoc = roundMoney(postDiscountDoc / divisor);
     line.unitPriceBase = roundMoney(line.unitPriceDoc * rate);
     line.lineTotalBase = roundMoney(line.lineTotalDoc * rate);
     line.taxAmountDoc = inclusive
-      ? roundMoney(grossLineTotalDoc - line.lineTotalDoc)
+      ? roundMoney(postDiscountDoc - line.lineTotalDoc)
       : roundMoney(line.lineTotalDoc * line.taxRate);
     line.taxAmountBase = roundMoney(line.taxAmountDoc * rate);
   }
@@ -1467,38 +1492,48 @@ export class UnpostPurchaseInvoiceUseCase {
       po = await this.purchaseOrderRepo.getById(companyId, pi.purchaseOrderId);
     }
 
+    // Firestore requires ALL reads before ALL writes within a single transaction.
+    // Both the voucher deletion (it queries the ledger entries to delete) and each
+    // inventory movement reversal (it reads the stock level to rebuild it) are
+    // read-then-write blocks, so they cannot legally share one transaction. Run
+    // each as its own transaction (each is internally read-before-write). Order is
+    // voucher -> inventory -> PO/PI so a mid-way failure leaves the PI still POSTED
+    // in the DB and the unpost can be safely retried.
+
+    // 1. Delete the accounting voucher (own transaction).
+    if (shouldPostAccounting && pi.voucherId) {
+      const voucherId = pi.voucherId;
+      await this.transactionManager.runTransaction(async (transaction) => {
+        await this.accountingPostingService.deleteVoucherInTransaction(companyId, voucherId, transaction);
+      });
+      pi.voucherId = null;
+    }
+
+    // 2. Reverse inventory movements — each deleteMovement runs in its own
+    //    transaction (no shared txn passed), keeping its reads before its writes.
+    for (const line of pi.lines) {
+      if (line.stockMovementId) {
+        await this.inventoryService.deleteMovement(companyId, line.stockMovementId);
+        line.stockMovementId = null;
+      }
+
+      // Reverse PO invoicedQty (in-memory; persisted in step 3).
+      if (po) {
+        const poLine = findPOLine(po, line.poLineId, line.itemId);
+        if (poLine) {
+          poLine.invoicedQty = roundMoney(Math.max(0, poLine.invoicedQty - line.invoicedQty));
+        }
+      }
+    }
+
+    // 3. Update PO status + revert PI to DRAFT (own transaction; pure writes).
     await this.transactionManager.runTransaction(async (transaction) => {
-      if (shouldPostAccounting) {
-      if (pi.voucherId) {
-        await this.accountingPostingService.deleteVoucherInTransaction(companyId, pi.voucherId, transaction);
-        pi.voucherId = null;
-      }
-      }
-
-      // 2. Reverse inventory movements (direct invoicing lines)
-      for (const line of pi.lines) {
-        if (line.stockMovementId) {
-          await this.inventoryService.deleteMovement(companyId, line.stockMovementId, transaction);
-          line.stockMovementId = null;
-        }
-
-        // 3. Reverse PO invoicedQty
-        if (po) {
-          const poLine = findPOLine(po, line.poLineId, line.itemId);
-          if (poLine) {
-            poLine.invoicedQty = roundMoney(Math.max(0, poLine.invoicedQty - line.invoicedQty));
-          }
-        }
-      }
-
-      // 4. Update PO status
       if (po) {
         po.status = updatePOStatus(po);
         po.updatedAt = new Date();
         await this.purchaseOrderRepo.update(po, transaction);
       }
 
-      // 5. Revert PI to DRAFT
       pi.status = 'DRAFT';
       pi.postedAt = undefined;
       pi.updatedAt = new Date();

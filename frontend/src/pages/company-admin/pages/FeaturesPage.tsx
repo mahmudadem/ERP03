@@ -4,6 +4,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyFeatures } from '../../../hooks/useCompanyAdmin';
 import { useTranslation } from 'react-i18next';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -45,7 +46,7 @@ export const FeaturesPage: React.FC = () => {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <Spinner size="xl" variant="indigo" />
         </div>
       ) : features.length === 0 ? (
         <EmptyState 

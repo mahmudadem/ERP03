@@ -689,15 +689,20 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     />
   );
 
+  const isFilledLine = (line: EditableLine): boolean =>
+    Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId);
+
   const validateBeforeSave = (): string | null => {
     if (!form.vendorId) return t('purchases.invoiceDetail.validation.vendorRequired', 'Vendor is required.');
     if (!form.invoiceDate) return t('purchases.invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
     if (!form.currency.trim()) return t('purchases.invoiceDetail.validation.currencyRequired', 'Currency is required.');
     if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('purchases.invoiceDetail.validation.exchangeRateInvalid', 'Exchange rate must be greater than 0.');
-    if (!form.lines.length) return t('purchases.invoiceDetail.validation.linesRequired', 'At least one line is required.');
+    // Validate only filled lines — ignore the line table's trailing empty working row.
+    const filled = form.lines.filter(isFilledLine);
+    if (!filled.length) return t('purchases.invoiceDetail.validation.linesRequired', 'At least one line is required.');
 
-    for (let i = 0; i < form.lines.length; i += 1) {
-      const line = form.lines[i];
+    for (let i = 0; i < filled.length; i += 1) {
+      const line = filled[i];
       const item = itemById[line.itemId];
       if (!line.itemId) return t('purchases.invoiceDetail.validation.lineItemRequired', 'Line {{n}}: item is required.', { n: i + 1 });
       if (Number.isNaN(line.invoicedQty) || line.invoicedQty <= 0) return t('purchases.invoiceDetail.validation.lineQtyInvalid', 'Line {{n}}: quantity must be greater than 0.', { n: i + 1 });
@@ -799,7 +804,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         dueDate: form.dueDate || undefined,
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
-        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        lines: form.lines.filter(isFilledLine).map((line, index) => buildLinePayload(line, index)),
         charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
           chargeId: charge.chargeId,
           kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,
@@ -869,7 +874,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         dueDate: form.dueDate || undefined,
         currency: form.currency.toUpperCase(),
         exchangeRate: form.exchangeRate,
-        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        lines: form.lines.filter(isFilledLine).map((line, index) => buildLinePayload(line, index)),
         charges: form.charges.filter((c) => c.name?.trim() && (c.amountDoc || 0) > 0).map((charge) => ({
           chargeId: charge.chargeId,
           kind: charge.kind === 'DISCOUNT' ? 'DISCOUNT' as const : 'CHARGE' as const,

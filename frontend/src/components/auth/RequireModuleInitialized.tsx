@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanyModules } from '../../hooks/useCompanyModules';
-import { Loader2 } from 'lucide-react';
+import { Spinner } from '../ui/Spinner';
 import { useTranslation } from 'react-i18next';
 
 interface RequireModuleInitializedProps {
@@ -46,7 +46,7 @@ export const RequireModuleInitialized: React.FC<RequireModuleInitializedProps> =
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <Spinner size="lg" />
           <p className="text-sm text-gray-600">{t('auth.moduleInit.checkingStatus')}</p>
         </div>
       </div>
@@ -58,7 +58,7 @@ export const RequireModuleInitialized: React.FC<RequireModuleInitializedProps> =
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <Spinner size="lg" />
           <p className="text-sm text-gray-600">{t('auth.moduleInit.redirecting')}</p>
         </div>
       </div>

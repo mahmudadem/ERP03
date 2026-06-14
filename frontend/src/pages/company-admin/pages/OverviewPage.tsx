@@ -4,6 +4,7 @@ import { CompanyAdminLayout } from '../layout/CompanyAdminLayout';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyProfile, useCompanyUsers, useCompanyRoles, useCompanyModules, useCompanyFeatures } from '../../../hooks/useCompanyAdmin';
 import { useTranslation } from 'react-i18next';
 
@@ -78,7 +79,7 @@ export const OverviewPage: React.FC = () => {
           <h2 className="text-lg font-bold mb-4">{t('companyAdmin.overview.companyInformation')}</h2>
           {isLoading ? (
             <div className="flex items-center justify-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <Spinner size="lg" variant="indigo" />
             </div>
           ) : profile ? (
             <div className="space-y-4">

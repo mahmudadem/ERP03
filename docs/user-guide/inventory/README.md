@@ -36,7 +36,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
    - Category, brand, tags
    - Min / max stock levels (drives the Low Stock alert)
    - *(Optional)* GL accounts for inventory asset, revenue, and COGS — defaults come from category or company settings
-6. **Opening Stock:** `Inventory → Opening Stock → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead).
+6. **Opening Stock:** `Inventory → Opening Stock → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, choose an Opening Balance Equity / retained-earnings style account as the offset. Do not use Inventory, COGS, revenue, AP, or AR as the offset.
 
 ---
 

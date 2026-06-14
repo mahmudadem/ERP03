@@ -895,7 +895,16 @@ const DeliveryNoteDetailPage: React.FC = () => {
     <>
     <DocumentDetailScaffold
       title={deliveryNote.dnNumber}
-      subtitle={t('sales.dnDetail.viewSubtitle', { customerName: deliveryNote.customerName, soRef: deliveryNote.salesOrderId ? salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId : '' })}
+      subtitle={
+        deliveryNote.salesOrderId
+          ? t('sales.dnDetail.viewSubtitle', {
+              customerName: deliveryNote.customerName,
+              soLabel: salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId,
+            })
+          : t('sales.dnDetail.viewSubtitleDirect', 'Customer: {{customerName}}', {
+              customerName: deliveryNote.customerName,
+            })
+      }
       icon={Truck}
       backLabel={t('sales.dnDetail.backToList')}
       onBack={() => navigate('/sales/delivery-notes')}
@@ -1025,12 +1034,12 @@ const DeliveryNoteDetailPage: React.FC = () => {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="py-2 text-left">{t('sales.dnDetail.itemColumn')}</th>
-                    {linkedSO && <th className="py-2 text-right">{t('fulfillment.ordered')}</th>}
-                    <th className="py-2 text-right">{t('sales.dnDetail.deliveredQtyColumn')}</th>
-                    <th className="py-2 text-left">{t('sales.dnDetail.uomColumn')}</th>
-                    <th className="py-2 text-right">{t('sales.dnDetail.unitCostBaseColumn')}</th>
-                    <th className="py-2 text-right">{t('sales.dnDetail.lineCostBaseColumn')}</th>
+                    <th className="py-2 pr-4 text-left">{t('sales.dnDetail.itemColumn')}</th>
+                    {linkedSO && <th className="py-2 px-4 text-right">{t('fulfillment.ordered')}</th>}
+                    <th className="py-2 px-4 text-right">{t('sales.dnDetail.deliveredQtyColumn')}</th>
+                    <th className="py-2 px-4 text-left">{t('sales.dnDetail.uomColumn')}</th>
+                    <th className="py-2 px-4 text-right">{t('sales.dnDetail.unitCostBaseColumn')}</th>
+                    <th className="py-2 pl-4 text-right">{t('sales.dnDetail.lineCostBaseColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1041,13 +1050,13 @@ const DeliveryNoteDetailPage: React.FC = () => {
                     const isFulfilled = orderedQty !== undefined && line.deliveredQty >= orderedQty;
                     return (
                       <tr key={line.lineId} className="border-b border-slate-100">
-                        <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
+                        <td className="py-2 pr-4">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
                         {linkedSO && (
-                          <td className="py-2 text-right">
+                          <td className="py-2 px-4 text-right">
                             {orderedQty ?? '—'}
                           </td>
                         )}
-                        <td className="py-2 text-right">
+                        <td className="py-2 px-4 text-right">
                           {line.deliveredQty}
                           {linkedSO && (
                             isPartial ? (
@@ -1061,9 +1070,9 @@ const DeliveryNoteDetailPage: React.FC = () => {
                             ) : null
                           )}
                         </td>
-                        <td className="py-2">{line.uom}</td>
-                        <td className="py-2 text-right">{line.unitCostBase.toFixed(2)}</td>
-                        <td className="py-2 text-right">{line.lineCostBase.toFixed(2)}</td>
+                        <td className="py-2 px-4">{line.uom}</td>
+                        <td className="py-2 px-4 text-right">{line.unitCostBase.toFixed(2)}</td>
+                        <td className="py-2 pl-4 text-right">{line.lineCostBase.toFixed(2)}</td>
                       </tr>
                     );
                   })}

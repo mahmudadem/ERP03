@@ -4,6 +4,7 @@ import { SalesSettingsDTO, salesApi } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
+import { Spinner } from '../../../components/ui/Spinner';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { WarehouseSelector } from '../../../components/shared/selectors/WarehouseSelector';
 import { ShieldCheck, DollarSign, Hash, Shield, Settings, Info, Save, RotateCcw, AlertTriangle } from 'lucide-react';
@@ -63,7 +64,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <Spinner size="lg" variant="indigo" />
       </div>
     );
   }
@@ -281,7 +282,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
               className="flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-xs font-bold rounded-xl shadow-lg transition-all active:scale-95"
             >
               {saving ? (
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <Spinner size="xs" variant="white" />
               ) : (
                 <Save size={14} />
               )}

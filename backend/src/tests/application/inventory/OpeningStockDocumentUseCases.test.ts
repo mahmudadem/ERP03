@@ -89,6 +89,7 @@ describe('PostOpeningStockDocumentUseCase', () => {
       getById: jest.fn(async (_companyId: string, accountId: string) => ({
         id: accountId,
         accountRole: 'POSTING',
+        classification: accountId === 'OPEN-100' ? 'EQUITY' : 'ASSET',
         status: 'ACTIVE',
       })),
     };
@@ -201,5 +202,49 @@ describe('PostOpeningStockDocumentUseCase', () => {
 
     expect(result.status).toBe('POSTED');
     expect(result.voucherId).toBeUndefined();
+  });
+
+  it('rejects COGS or other P&L accounts as the opening stock offset', async () => {
+    const document = makeDocument({ openingBalanceAccountId: 'COGS-100' });
+
+    const useCase = new PostOpeningStockDocumentUseCase(
+      { getDocument: jest.fn(async () => document), updateDocument: jest.fn() } as any,
+      { getItem: jest.fn(async () => ({ id: 'item-1', companyId: COMPANY_ID, code: 'ITEM-1', name: 'Tracked Item', type: 'PRODUCT', trackInventory: true, active: true, inventoryAssetAccountId: 'INV-100' })) } as any,
+      { getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID, code: 'MAIN', active: true })) } as any,
+      { getSettings: jest.fn(async () => ({ defaultInventoryAssetAccountId: 'INV-999' })) } as any,
+      { findById: jest.fn(async () => ({ id: COMPANY_ID, baseCurrency: 'USD' })) } as any,
+      { get: jest.fn(async () => ({ initialized: true })) } as any,
+      { getById: jest.fn(async (_companyId: string, accountId: string) => ({ id: accountId, accountRole: 'POSTING', classification: 'EXPENSE', status: 'ACTIVE' })) } as any,
+      { processIN: jest.fn(async () => undefined) } as any,
+      { postInTransaction: jest.fn(async () => ({ id: 'vch-1' })) } as any,
+      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-3' })) } as any
+    );
+
+    await expect(useCase.execute(COMPANY_ID, document.id, USER_ID)).rejects.toThrow(
+      'Opening Stock Clearing / Opening Balance account must be an EQUITY account'
+    );
+  });
+
+  it('rejects using the inventory asset account as its own opening stock offset', async () => {
+    const document = makeDocument({ openingBalanceAccountId: 'INV-100' });
+
+    const useCase = new PostOpeningStockDocumentUseCase(
+      { getDocument: jest.fn(async () => document), updateDocument: jest.fn() } as any,
+      { getItem: jest.fn(async () => ({ id: 'item-1', companyId: COMPANY_ID, code: 'ITEM-1', name: 'Tracked Item', type: 'PRODUCT', trackInventory: true, active: true, inventoryAssetAccountId: 'INV-100' })) } as any,
+      { getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID, code: 'MAIN', active: true })) } as any,
+      { getSettings: jest.fn(async () => ({ defaultInventoryAssetAccountId: 'INV-999' })) } as any,
+      { findById: jest.fn(async () => ({ id: COMPANY_ID, baseCurrency: 'USD' })) } as any,
+      { get: jest.fn(async () => ({ initialized: true })) } as any,
+      { getById: jest.fn(async (_companyId: string, accountId: string) => ({ id: accountId, accountRole: 'POSTING', classification: 'EQUITY', status: 'ACTIVE' })) } as any,
+      { processIN: jest.fn(async () => undefined) } as any,
+      { postInTransaction: jest.fn(async () => ({ id: 'vch-1' })) } as any,
+      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-4' })) } as any
+    );
+
+    await expect(useCase.execute(COMPANY_ID, document.id, USER_ID)).rejects.toThrow(
+      'Opening Stock offset account cannot be the same as the Inventory Asset account'
+    );
   });
 });

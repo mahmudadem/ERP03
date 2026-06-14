@@ -3032,6 +3032,7 @@
       "sourceTitle": "المصدر",
       "customerLabel": "العميل",
       "viewSubtitle": "العميل: {{customerName}} | أمر بيع: {{soLabel}}",
+      "viewSubtitleDirect": "العميل: {{customerName}}",
       "backToListButton": "العودة للقائمة",
       "createReturn": "إنشاء مردودات",
       "glImpact": "أثر دفتر الأستاذ",

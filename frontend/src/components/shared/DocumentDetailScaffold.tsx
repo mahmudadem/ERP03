@@ -985,21 +985,28 @@ export function DocumentDetailScaffold({
           {scaffoldBody}
         </section>
         {showInlineRail && (
-          <aside className="relative grid min-h-0 auto-rows-min gap-2 2xl:grid-rows-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] 2xl:overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setRailPinned(false)}
-              title={railLabel}
-              className={clsx(
-                'absolute top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
-                isRtl ? '-right-3' : '-left-3',
-              )}
-            >
-              <RailCloseIcon className="h-4 w-4" />
-              <span className="sr-only">{railLabel}</span>
-            </button>
-            {scaffoldRail}
-          </aside>
+          <div className="relative flex flex-col min-h-0 h-full gap-2">
+            <div className="flex h-11 shrink-0 items-center justify-between border border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900 rounded-lg shadow-sm">
+              <div className="flex min-w-0 items-center gap-2">
+                <RailOpenIcon className="h-4 w-4 text-slate-500" />
+                <span className="truncate text-xs font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">
+                  {railLabel}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRailPinned(false)}
+                title={railLabel}
+                className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <RailCloseIcon className="h-4 w-4" />
+                <span className="sr-only">{railLabel}</span>
+              </button>
+            </div>
+            <aside className="grid flex-1 min-h-0 auto-rows-min gap-2 2xl:grid-rows-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] 2xl:overflow-hidden">
+              {scaffoldRail}
+            </aside>
+          </div>
         )}
       </div>
 

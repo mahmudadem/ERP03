@@ -126,7 +126,10 @@ Document posting is immutable; corrections require a separate adjustment.
 Inventory documents **do** post to the GL when the Accounting module is enabled. The integration points:
 
 - **Opening Stock Document** — produces an inventory-valuation voucher (Dr Inventory Asset / Cr opening-balance
-  offset).
+  offset). When accounting effect is enabled, the offset account must be an active POSTING **EQUITY** account
+  such as Opening Balance Equity or retained earnings. The backend rejects P&L accounts (COGS/revenue), ordinary
+  liabilities, and using the same inventory asset account as its own offset; those choices would make the Trial
+  Balance balance while corrupting inventory valuation or P&L.
 - **Stock Adjustment** (Task 221) — posts a journal valued from the **actual posted movement cost**
   (`movement.totalCostBase`), not the user-typed cost. Write-downs (ADJUSTMENT_OUT) debit the **Inventory Loss**
   account; write-ups (ADJUSTMENT_IN) credit the **Inventory Gain** account. Offset resolution chain:

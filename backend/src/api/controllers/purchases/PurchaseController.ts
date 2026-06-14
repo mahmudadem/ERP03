@@ -944,10 +944,15 @@ export class PurchaseController {
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
         diContainer.companyCurrencyRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        diContainer.accountRepository,
+        diContainer.partyRepository
       );
       const result = await useCase.execute(companyId, userId, id, {
-        settlementMode: body.settlementMode || 'CASH_FULL',
+        // Record-Payment is an inherently flexible payment: MULTI handles partial
+        // (→ PARTIALLY_PAID), full (→ PAID) and over-payment (→ vendor credit).
+        // CASH_FULL would wrongly force the payment to equal the full outstanding.
+        settlementMode: body.settlementMode || 'MULTI',
         receivablePayableAccountId: body.receivablePayableAccountId || body.apAccountId,
         settlements: [{
           settlementAccountId: body.settlementAccountId || body.cashAccountId,

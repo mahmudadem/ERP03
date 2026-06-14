@@ -13,6 +13,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { onboardingApi } from '../api/onboardingApi';
 import { authApi } from '../../../api/auth';
 import { cn } from '../../../lib/utils';
+import { Spinner } from '../../../components/ui/Spinner';
 
 const LandingPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -282,7 +283,7 @@ const LandingPage: React.FC = () => {
                       className="w-full flex items-center justify-center py-3.5 px-6 border border-transparent rounded-xl shadow-lg shadow-primary-500/25 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all active:scale-[0.98] disabled:opacity-70 disabled:grayscale disabled:cursor-not-allowed mt-4 uppercase tracking-widest"
                     >
                       {isLoading ? (
-                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <Spinner size="md" variant="white" />
                         ) : (
                         <>
                           {authMode === 'signup' ? t('onboarding.landing.form.submitCreate', { defaultValue: 'Create Account' }) : t('onboarding.landing.form.submitSignIn', { defaultValue: 'Sign In' })}

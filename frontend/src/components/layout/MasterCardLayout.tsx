@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { clsx } from 'clsx';
+import { Spinner } from '../ui/Spinner';
 import { 
   X, 
   Save, 
@@ -151,7 +152,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                     onClick={onSave}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg text-[11px] font-bold hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all uppercase tracking-normal"
                 >
-                    {saving ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-b-white" /> : <Save size={14} />}
+                    {saving ? <Spinner size="xs" variant="white" /> : <Save size={14} />}
                     {isNew ? 'SAVE NEW RECORD' : 'UPDATE MASTER RECORD'}
                 </button>
              </div>

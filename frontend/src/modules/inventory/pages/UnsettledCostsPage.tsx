@@ -9,6 +9,7 @@ import {
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { Spinner } from '../../../components/ui/Spinner';
 
 type CostBasisFilter = 'ALL' | 'AVG' | 'LAST_KNOWN' | 'MISSING';
 
@@ -262,7 +263,7 @@ const ReportContent: React.FC<{
         {loading ? (
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
-              <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+              <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
               <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading...</p>
             </div>
           </div>

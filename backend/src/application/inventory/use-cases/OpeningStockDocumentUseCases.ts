@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
+import { Account } from '../../../domain/accounting/models/Account';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import {
   OpeningStockDocument,
@@ -58,6 +59,14 @@ const isStockEligibleItem = (item: { type?: string; trackInventory?: boolean; ac
   item.active !== false &&
   item.trackInventory === true &&
   item.type !== 'SERVICE';
+
+const assertOpeningBalanceOffsetAccount = (account: { classification?: string }, label: string): void => {
+  if (account.classification !== 'EQUITY') {
+    throw new Error(
+      `${label} must be an EQUITY account. Opening stock must offset to Opening Balance Equity / retained earnings, not inventory, COGS, revenue, or ordinary liabilities.`
+    );
+  }
+};
 
 const computeUnitCostBase = (
   unitCostInMoveCurrency: number,
@@ -136,6 +145,7 @@ const prepareDraftDocumentState = async (
     if (account.status !== 'ACTIVE') {
       throw new Error('Opening Stock Clearing / Opening Balance account must be ACTIVE');
     }
+    assertOpeningBalanceOffsetAccount(account, 'Opening Stock Clearing / Opening Balance account');
   }
 
   const itemIds = [...new Set((input.lines || []).map((line) => line.itemId))];
@@ -384,9 +394,13 @@ export class PostOpeningStockDocumentUseCase {
         );
       }
 
-      await this.assertPostingAccount(
+      const openingBalanceAccount = await this.assertPostingAccount(
         companyId,
         document.openingBalanceAccountId,
+        'Opening Stock Clearing / Opening Balance account'
+      );
+      assertOpeningBalanceOffsetAccount(
+        openingBalanceAccount,
         'Opening Stock Clearing / Opening Balance account'
       );
 
@@ -417,6 +431,12 @@ export class PostOpeningStockDocumentUseCase {
           inventoryAssetAccountId,
           `Inventory Asset account for item "${item.code} - ${item.name}"`
         );
+
+        if (inventoryAssetAccountId === document.openingBalanceAccountId) {
+          throw new Error(
+            `Line ${index + 1}: Opening Stock offset account cannot be the same as the Inventory Asset account for item "${item.code} - ${item.name}". Select an Opening Balance Equity account.`
+          );
+        }
 
         if (line.totalValueBase > 0) {
           const existing = accountBuckets.get(inventoryAssetAccountId) || 0;
@@ -545,7 +565,7 @@ export class PostOpeningStockDocumentUseCase {
     companyId: string,
     accountId: string,
     label: string
-  ): Promise<void> {
+  ): Promise<Account> {
     const account = await this.accountRepo.getById(companyId, accountId);
     if (!account) {
       throw new Error(`${label} does not exist`);
@@ -556,5 +576,6 @@ export class PostOpeningStockDocumentUseCase {
     if (account.status !== 'ACTIVE') {
       throw new Error(`${label} must be ACTIVE`);
     }
+    return account;
   }
 }
