@@ -221,6 +221,81 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
     expect(deps.purchaseInvoiceRepo.update).not.toHaveBeenCalled();
   });
 
+  it('resolves AP from the vendor sub-account when receivablePayableAccountId is omitted (Record-Payment dialog path; GP04-step9 regression)', async () => {
+    // The shared RecordPaymentDialog sends only the cash account + amount, never the
+    // AP account. Before the fix the use case required receivablePayableAccountId and
+    // 500'd with "receivablePayableAccountId is required" on every tenant whose
+    // settings.defaultAPAccountId was unset — even though the vendor already had an AP
+    // sub-account. Mirrors the Sales-side GP03-step13a fix.
+    const invoice = buildPostedInvoice(100, 0);
+    const deps = makeDeps(invoice);
+    // No settings default AP — force the vendor fallback to be the only resolver.
+    deps.purchaseSettingsRepo.getSettings = jest.fn().mockResolvedValue({});
+    const partyRepo = {
+      getById: jest.fn().mockResolvedValue({ defaultAPAccountId: '20100-VEND-1' }),
+    };
+    const accountRepo = {
+      getById: jest.fn(async (_c: string, id: string) => ({ id })),
+      getByUserCode: jest.fn().mockResolvedValue(null),
+    };
+    const useCase = new RecordPurchaseInvoicePaymentUseCase(
+      deps.purchaseInvoiceRepo as any,
+      deps.paymentHistoryRepo as any,
+      deps.purchaseSettingsRepo as any,
+      deps.voucherRepo as any,
+      deps.voucherSequenceRepo as any,
+      deps.ledgerRepo as any,
+      deps.companyCurrencyRepo as any,
+      deps.transactionManager as any,
+      accountRepo as any,
+      partyRepo as any
+    );
+
+    const result = await useCase.execute('cmp-1', 'u-1', 'pi-1', {
+      settlementMode: 'MULTI',
+      // receivablePayableAccountId intentionally omitted — as the dialog sends it.
+      settlements: [{ settlementAccountId: 'CASH-1', amountBase: 100, paymentMethod: 'CASH', paymentDate: '2026-05-02' }],
+    });
+
+    expect(result.invoice.paymentStatus).toBe('PAID');
+    expect(result.invoice.outstandingAmountBase).toBe(0);
+    expect(partyRepo.getById).toHaveBeenCalledWith('cmp-1', 'vendor-1');
+
+    // The payment voucher debits the vendor's own AP sub-account (not a settings default).
+    const savedVoucher = deps.voucherRepo.save.mock.calls[0][0];
+    const debitLines = savedVoucher.lines.filter((l: any) => l.side === 'Debit');
+    expect(debitLines).toHaveLength(1);
+    expect(debitLines[0].accountId).toBe('20100-VEND-1');
+    expect(debitLines[0].debitAmount).toBe(100);
+    const creditLines = savedVoucher.lines.filter((l: any) => l.side === 'Credit');
+    expect(creditLines[0].accountId).toBe('CASH-1');
+  });
+
+  it('throws a clear error when no AP account can be resolved (no explicit id, no vendor AP, no settings default)', async () => {
+    const invoice = buildPostedInvoice(100, 0);
+    const deps = makeDeps(invoice);
+    deps.purchaseSettingsRepo.getSettings = jest.fn().mockResolvedValue({});
+    const partyRepo = { getById: jest.fn().mockResolvedValue({}) };
+    const useCase = new RecordPurchaseInvoicePaymentUseCase(
+      deps.purchaseInvoiceRepo as any,
+      deps.paymentHistoryRepo as any,
+      deps.purchaseSettingsRepo as any,
+      deps.voucherRepo as any,
+      deps.voucherSequenceRepo as any,
+      deps.ledgerRepo as any,
+      deps.companyCurrencyRepo as any,
+      deps.transactionManager as any,
+      undefined,
+      partyRepo as any
+    );
+
+    await expect(useCase.execute('cmp-1', 'u-1', 'pi-1', {
+      settlementMode: 'MULTI',
+      settlements: [{ settlementAccountId: 'CASH-1', amountBase: 100, paymentMethod: 'CASH' }],
+    })).rejects.toThrow('Purchase default AP account must be configured');
+    expect(deps.voucherRepo.save).not.toHaveBeenCalled();
+  });
+
   it('allows MULTI over-payment when allowOverpayment is on, debiting AP in full (vendor credit) and marking PAID', async () => {
     const invoice = buildPostedInvoice(100, 0);
     const deps = makeDeps(invoice);

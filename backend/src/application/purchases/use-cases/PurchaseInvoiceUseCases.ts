@@ -226,6 +226,21 @@ const findPOLine = (po: PurchaseOrder, poLineId?: string, itemId?: string) => {
 const hasGRNForThisLine = (line: PurchaseInvoiceLine): boolean =>
   !!line.grnLineId;
 
+// True when this PI line's goods have already been received into stock by a posted
+// Goods Receipt — either because the line carries an explicit grnLineId, or because
+// it is backed by a PO line that a GRN has already received against (poLine.receivedQty > 0).
+// In a PO→GRN→PI flow the GRN is the stock-movement document, so the PI must NOT re-receive.
+// This guards the common case where a PI is built from the PO (poLineId only, no grnLineId):
+// without it the posting double-receives the goods (and, in PERPETUAL mode, double-debits
+// inventory instead of clearing GRNI). Direct invoicing (no PO / unreceived PO line) is
+// unaffected — there the PI legitimately receives the stock.
+const goodsAlreadyReceived = (line: PurchaseInvoiceLine, po: PurchaseOrder | null): boolean => {
+  if (hasGRNForThisLine(line)) return true;
+  if (!po) return false;
+  const poLine = findPOLine(po, line.poLineId, line.itemId);
+  return !!poLine && (poLine.receivedQty || 0) > 0;
+};
+
 const assertValidPurchaseTaxCode = (taxCode: TaxCode, taxCodeId: string): void => {
   if (!taxCode.active || (taxCode.scope !== 'PURCHASE' && taxCode.scope !== 'BOTH')) {
     throw new Error(`Tax code is not valid for purchase: ${taxCodeId}`);
@@ -574,7 +589,7 @@ export class PostPurchaseInvoiceUseCase {
     // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
     const stockLevelMap = new Map<string, StockLevel>();
     for (const line of pi.lines) {
-      if (settings.allowDirectInvoicing && line.trackInventory && !hasGRNForThisLine(line)) {
+      if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
         const warehouseId = line.warehouseId || settings.defaultWarehouseId;
         if (warehouseId && line.itemId) {
           const key = `${line.itemId}|${warehouseId}`;
@@ -589,7 +604,7 @@ export class PostPurchaseInvoiceUseCase {
     // PHASE 1C: PRE-FETCH UOM CONVERSIONS (bare reads before transaction)
     const uomConversionMap = new Map<string, any>();
     for (const line of pi.lines) {
-      if (settings.allowDirectInvoicing && line.trackInventory && !hasGRNForThisLine(line)) {
+      if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
         const item = itemsMap.get(line.itemId);
         if (item && !uomConversionMap.has(item.id)) {
           const convs = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
@@ -609,7 +624,7 @@ export class PostPurchaseInvoiceUseCase {
       const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
       this.freezeTaxSnapshotSync(line, pi.exchangeRate, taxCode || undefined);
 
-      const hasReceiptBackedFlow = line.trackInventory && (!settings.allowDirectInvoicing || hasGRNForThisLine(line));
+      const hasReceiptBackedFlow = line.trackInventory && (!settings.allowDirectInvoicing || goodsAlreadyReceived(line, po));
       const clearsGRNI = DocumentPolicyResolver.shouldPurchaseInvoiceClearGRNI(
         accountingMode,
         hasReceiptBackedFlow
@@ -625,7 +640,7 @@ export class PostPurchaseInvoiceUseCase {
         settings.defaultGRNIAccountId
       );
 
-      if (settings.allowDirectInvoicing && line.trackInventory && !hasGRNForThisLine(line)) {
+      if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
         const warehouseId = line.warehouseId || settings.defaultWarehouseId;
         const warehouse = warehouseId ? warehousesMap.get(warehouseId) : null;
         if (!warehouse) throw new Error(`Warehouse required for ${line.itemName}`);

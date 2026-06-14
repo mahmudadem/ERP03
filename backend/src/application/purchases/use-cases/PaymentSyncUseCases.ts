@@ -8,6 +8,8 @@ import { IVoucherRepository } from '../../../domain/accounting/repositories/IVou
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
+import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
@@ -29,7 +31,7 @@ export interface SettlementRow {
 
 export interface PostPurchaseInvoiceWithSettlementInput {
   settlementMode: SettlementMode;
-  receivablePayableAccountId: string;
+  receivablePayableAccountId?: string;
   settlements: SettlementRow[];
 }
 
@@ -79,8 +81,19 @@ export class PostPurchaseInvoiceWithSettlementUseCase {
     private readonly voucherSequenceRepo: IVoucherSequenceRepository,
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly accountRepo?: IAccountRepository,
+    private readonly partyRepo?: IPartyRepository
   ) {}
+
+  private async resolveAccountId(companyId: string, idOrCode: string): Promise<string> {
+    if (!idOrCode) return '';
+    if (!this.accountRepo) return idOrCode;
+    const account =
+      (await this.accountRepo.getById(companyId, idOrCode)) ||
+      (await this.accountRepo.getByUserCode(companyId, idOrCode));
+    return account ? account.id : idOrCode;
+  }
 
   async execute(
     companyId: string,
@@ -94,10 +107,6 @@ export class PostPurchaseInvoiceWithSettlementUseCase {
       throw new Error(`Invalid settlementMode: ${settlementMode}. Must be one of: ${SETTLEMENT_MODES.join(', ')}`);
     }
 
-    if (!receivablePayableAccountId?.trim()) {
-      throw new Error('receivablePayableAccountId is required');
-    }
-
     const invoice = await this.purchaseInvoiceRepo.getById(companyId, invoiceId);
     if (!invoice) throw new Error(`Purchase invoice not found: ${invoiceId}`);
     if (invoice.status !== 'POSTED') {
@@ -106,6 +115,20 @@ export class PostPurchaseInvoiceWithSettlementUseCase {
 
     const baseCurrency = await this.companyCurrencyRepo.getBaseCurrency(companyId);
     if (!baseCurrency) throw new Error('Company base currency is not configured');
+
+    // Prefer the explicit caller value, then the vendor's OWN AP account (the
+    // sub-account the invoice posted to), then the settings default. Without the
+    // vendor fallback, Record-Payment fails whenever settings.defaultAPAccountId
+    // is unset — even though the vendor already has an AP sub-account. Mirrors the
+    // Sales-side Record-Payment fix (GP03-step13a / customer.defaultARAccountId).
+    const settings = await this.purchaseSettingsRepo.getSettings(companyId);
+    const vendor = this.partyRepo ? await this.partyRepo.getById(companyId, invoice.vendorId) : null;
+    const effectiveReceivablePayableAccountId =
+      receivablePayableAccountId?.trim() || vendor?.defaultAPAccountId || settings?.defaultAPAccountId;
+    if (!effectiveReceivablePayableAccountId) {
+      throw new Error('receivablePayableAccountId is required or Purchase default AP account must be configured');
+    }
+    const resolvedReceivablePayableAccountId = await this.resolveAccountId(companyId, effectiveReceivablePayableAccountId);
 
     const settlementTotal = settlements.reduce((sum, s) => sum + roundMoney(s.amountBase), 0);
 
@@ -121,7 +144,7 @@ export class PostPurchaseInvoiceWithSettlementUseCase {
 
     if (settlementMode === 'MULTI') {
       const outstanding = roundPurchMoney(invoice.grandTotalBase - (invoice.paidAmountBase || 0));
-      const allowOverpayment = (await this.purchaseSettingsRepo.getSettings(companyId))?.allowOverpayment === true;
+      const allowOverpayment = settings?.allowOverpayment === true;
       if (!allowOverpayment && settlementTotal > outstanding + 0.01) {
         throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Purchase settings to record the excess as a vendor credit.`);
       }
@@ -161,10 +184,11 @@ export class PostPurchaseInvoiceWithSettlementUseCase {
 
         const docAmount = roundMoney(settlementAmountBase / invoice.exchangeRate);
         const baseCurrencyUpper = baseCurrency.toUpperCase();
+        const resolvedSettlementAccountId = await this.resolveAccountId(companyId, settlement.settlementAccountId);
 
         const drLine = new VoucherLineEntity(
           1,
-          receivablePayableAccountId,
+          resolvedReceivablePayableAccountId,
           'Debit',
           settlementAmountBase,
           baseCurrencyUpper,
@@ -175,7 +199,7 @@ export class PostPurchaseInvoiceWithSettlementUseCase {
         );
         const crLine = new VoucherLineEntity(
           2,
-          settlement.settlementAccountId,
+          resolvedSettlementAccountId,
           'Credit',
           settlementAmountBase,
           baseCurrencyUpper,
@@ -279,7 +303,9 @@ export class RecordPurchaseInvoicePaymentUseCase {
     private readonly voucherSequenceRepo: IVoucherSequenceRepository,
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly accountRepo?: IAccountRepository,
+    private readonly partyRepo?: IPartyRepository
   ) {}
 
   async execute(
@@ -296,7 +322,9 @@ export class RecordPurchaseInvoicePaymentUseCase {
       this.voucherSequenceRepo,
       this.ledgerRepo,
       this.companyCurrencyRepo,
-      this.transactionManager
+      this.transactionManager,
+      this.accountRepo,
+      this.partyRepo
     );
     return useCase.execute(companyId, userId, invoiceId, input);
   }

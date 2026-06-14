@@ -774,6 +774,96 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
     expect(purchaseInvoiceRepo.update).toHaveBeenCalledTimes(1);
     expect(pi.outstandingAmountBase).toBe(33);
   });
+
+  it('8) AFTER_INVOICE return honors the inherited line discount in the GL (AP reversal = NET, not gross) [GP04-step10 regression]', async () => {
+    // PI line: 5 @ 10 = 50 gross, 5% line discount -> net 47.5 (no tax).
+    // Before the fix the posting recompute + recalcReturnTotals used GROSS, so the
+    // AP reversal posted 50 (vendor over-credited by the 2.5 discount) while the
+    // document total was 47.5. Mirrors the PI line-discount fix (GP04-step5to8a).
+    const settings = makeSettings('SIMPLE');
+    const vendor = makeVendor();
+    const item = makeItem();
+
+    const pi = new PurchaseInvoice({
+      id: 'pi-d', companyId: COMPANY_ID, invoiceNumber: 'PI-D', formType: 'purchase_invoice_linked',
+      voucherType: 'purchase_invoice', persona: 'linked', vendorId: 'ven-1', vendorName: 'Vendor One',
+      invoiceDate: '2026-01-12', dueDate: '2026-02-11', currency: 'USD', exchangeRate: 1,
+      lines: [{
+        lineId: 'pi-line-d', lineNo: 1, itemId: 'item-1', itemCode: 'IT-1', itemName: 'Stock Item',
+        trackInventory: true, invoicedQty: 50, uom: 'EA', unitPriceDoc: 10, lineTotalDoc: 475,
+        unitPriceBase: 10, lineTotalBase: 475, discountType: 'PERCENT', discountValue: 5,
+        taxRate: 0, taxAmountDoc: 0, taxAmountBase: 0, warehouseId: 'wh-1', accountId: 'INV-100',
+        stockMovementId: 'mov-origin-d',
+      }],
+      subtotalDoc: 475, taxTotalDoc: 0, grandTotalDoc: 475, subtotalBase: 475, taxTotalBase: 0, grandTotalBase: 475,
+      paymentTermsDays: 30, paymentStatus: 'UNPAID', paidAmountBase: 0, outstandingAmountBase: 475,
+      status: 'POSTED', voucherId: 'v-pi-d', createdBy: USER_ID, createdAt: nowDate(), updatedAt: nowDate(), postedAt: nowDate(),
+    });
+
+    const purchaseReturn = new PurchaseReturn({
+      id: 'pr-d', companyId: COMPANY_ID, returnNumber: 'PR-D', purchaseInvoiceId: 'pi-d',
+      vendorId: 'ven-1', vendorName: 'Vendor One', returnContext: 'AFTER_INVOICE', returnDate: '2026-01-15',
+      warehouseId: 'wh-1', currency: 'USD', exchangeRate: 1,
+      lines: [{
+        lineId: 'pr-line-d', lineNo: 1, piLineId: 'pi-line-d', itemId: 'item-1', itemCode: 'IT-1', itemName: 'Stock Item',
+        returnQty: 5, uom: 'EA', unitCostDoc: 10, unitCostBase: 10, discountType: 'PERCENT', discountValue: 5,
+        fxRateMovToBase: 1, fxRateCCYToBase: 1, taxRate: 0, taxAmountDoc: 0, taxAmountBase: 0,
+        accountId: 'INV-100', stockMovementId: null,
+      }],
+      subtotalDoc: 47.5, taxTotalDoc: 0, grandTotalDoc: 47.5, subtotalBase: 47.5, taxTotalBase: 0, grandTotalBase: 47.5,
+      reason: 'Damaged goods', status: 'DRAFT', createdBy: USER_ID, createdAt: nowDate(), updatedAt: nowDate(),
+    });
+
+    const returnStore = new Map([[purchaseReturn.id, purchaseReturn]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+
+    const useCase = new PostPurchaseReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
+      {
+        getById: jest.fn(async (_c: string, id: string) => returnStore.get(id) ?? null),
+        list: jest.fn(async () => []),
+        update: jest.fn(async (entity: PurchaseReturn) => { returnStore.set(entity.id, entity); }),
+      } as any,
+      { getSettings: jest.fn(async () => null) } as any,
+      { getById: jest.fn(async () => pi), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      makeAccountRepo() as any,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);
+    expect(posted.status).toBe('POSTED');
+    expect(posted.grandTotalBase).toBeCloseTo(47.5, 2);
+
+    const savedVoucher = (voucherRepo.save as any).mock.calls[0][0];
+    const apLine = savedVoucher.lines.find((l: any) => l.accountId === 'AP-200' && l.side === 'Debit');
+    const invLine = savedVoucher.lines.find((l: any) => l.accountId === 'INV-100' && l.side === 'Credit');
+    expect(apLine).toBeTruthy();
+    expect(invLine).toBeTruthy();
+    // The whole point: NET 47.5, not GROSS 50.
+    expect(apLine.baseAmount).toBeCloseTo(47.5, 2);
+    expect(invLine.baseAmount).toBeCloseTo(47.5, 2);
+    expect(apLine.baseAmount).not.toBeCloseTo(50, 2);
+    // Voucher balances at the net.
+    expect(savedVoucher.totalDebit).toBeCloseTo(savedVoucher.totalCredit, 2);
+    expect(savedVoucher.totalDebit).toBeCloseTo(47.5, 2);
+  });
 });
 
 

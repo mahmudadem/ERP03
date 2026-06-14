@@ -834,6 +834,77 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
   });
 
+  it('7b) PostPI does NOT re-receive stock when the PO line was already received by a GRN, even with direct invoicing ON and no grnLineId on the line (regression for GP04-step13 double-receipt)', async () => {
+    // Invoice-driven tenant (PERIODIC), direct invoicing ON. The PI is built from the PO
+    // (poLineId only — no grnLineId), but the PO line has already been received by a GRN
+    // (receivedQty 50). The PI must value the goods (Dr Inventory / Cr AP) WITHOUT posting a
+    // second PURCHASE_RECEIPT — otherwise the quantity is double-counted (the live bug: 103 vs 53).
+    const settings = makeSettings('SIMPLE'); // allowDirectInvoicing = true
+    const vendor = makeVendor();
+    const stockItem = makeItem('itm-7b', { trackInventory: true, inventoryAssetAccountId: 'INV-7B' });
+    const po = makePO({ id: 'po-7b', item: stockItem, orderedQty: 50, receivedQty: 50, invoicedQty: 0 });
+    const pi = makePI({
+      id: 'pi-7b',
+      item: stockItem,
+      purchaseOrderId: po.id,
+      poLineId: 'po-line-1',
+      // grnLineId intentionally omitted — this is the create-PI-from-PO gap.
+      invoicedQty: 50,
+      unitPriceDoc: 10, // 500, no discount/tax
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    const savedVouchers: any[] = [];
+    const voucherRepo = { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+    const invoiceStore = new Map([[pi.id, pi]]);
+    const invoiceRepo = {
+      getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+      update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
+      invoiceRepo as any,
+      { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, pi.id);
+    expect(posted.status).toBe('POSTED');
+
+    // THE FIX: no second stock receipt for goods the GRN already received.
+    expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
+
+    // GL still values the goods: Dr Inventory 500 / Cr AP 500 (invoice-driven, so inventory
+    // is debited directly — NOT GRNI, which this tenant never credited).
+    const piVoucher = savedVouchers[0];
+    const debits = piVoucher.lines.filter((l: any) => l.side === 'Debit');
+    const credits = piVoucher.lines.filter((l: any) => l.side === 'Credit');
+    expect(debits.some((l: any) => l.accountId === 'INV-7B' && l.debitAmount === 500)).toBe(true);
+    expect(credits.some((l: any) => l.creditAmount === 500)).toBe(true); // AP
+    expect(piVoucher.totalDebit).toBeCloseTo(500, 2);
+    expect(piVoucher.totalCredit).toBeCloseTo(500, 2);
+  });
+
   it('A1) PostPI parks as PENDING_APPROVAL when central approval policy rejects unapproved post (no financial effect)', async () => {
     const settings = makeSettings('SIMPLE');
     const vendor = makeVendor();

@@ -2,6 +2,72 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-14 — Loading Spinner Unification (Premium Option A implemented)
+
+- **Goal:** Unify loading spinners across the entire application using the developer's selected style—Premium Option A: Smooth Gradient Sweep.
+- **Completed:**
+  1. Modified `Spinner.tsx` to implement Premium Option A utilizing an SVG linear gradient sweep. Incorporated React's `useId` to resolve gradient ID collisions when multiple spinners are rendered.
+  2. Integrated `<Spinner />` into `<Button />` with dynamic variant-based color adjustments.
+  3. Integrated `<Spinner size="lg" />` into the central overlay of `GlobalLoaderContext.tsx` to handle authentication loading screens and startup overlays.
+  4. Created a visual gallery at `SpinnerGalleryPage.tsx` and registered `/dev/spinners` to preview all 9 loader designs.
+  5. Swept the remaining 18 files (pages, dialogs, panels) in the accounting, inventory, admin, and AI modules, replacing legacy custom border loaders and raw `Loader2` spinners.
+- **Verified:** Ran `npx tsc --noEmit` and `npm run build` on `frontend/`—both finished with zero errors, confirming type safety and build packaging remain completely healthy.
+- **Time spent:** ~0.7h.
+- **Next:** Resume addressing GP04 steps (fixing the PI double-receipt/inventory costing quantity-doubling bug) and continue to GP05.
+
+### Session: 2026-06-14 — GP04 steps 11-14 (Reports & controls); found PI double-receipt bug
+
+- **Goal:** Verify the four GP04 report/control steps — Vendor Statement, AP Aging, Stock Levels + Movements, Trial Balance (TESTCO, live emulator, Claude verifying via report APIs).
+- **Result:** Steps 11, 12, 14 PASS; **step 13 FAIL** (new bug).
+  - **Step 11 Vendor Statement VEND-1:** BILL PI-00001 Cr 495 → PAYMENT PV-0001 Dr 495 → DEBIT_NOTE PR-00001 Dr 47.50; closing −47.50.
+  - **Step 12 AP Aging:** VEND-1 ledger −47.50 in `unallocated`, all aging buckets 0 (correct — it's an unapplied debit note, not an aged payable).
+  - **Step 14 Trial Balance:** balanced, Dr 2616.97 = Cr 2616.97; AP sub-account 20100-VEND-1 net −47.50 ties to the statement + aging.
+  - **Step 13 Stock — FAIL:** ITEM-A on hand 103 (MAIN 92 + G2 11) is consistent with its 15 movement rows, but the history holds a **duplicate receipt**: two PURCHASE_RECEIPT +50 (one GOODS_RECEIPT from GRN-00001, one PURCHASE_INVOICE from PI-00001 itself). The **linked PI re-received** 50 units already received by the GRN. True on hand should be 53. Step-4 had recorded 58 (one receipt); PI posting bumped it to 108 → the doubling slipped through because step 8 only checked GL/AP, not stock qty.
+- **Root cause:** PI-00001 is persona=linked (from PO-00001) but its line carries `poLineId` only — no `grnLineId`; the posting receipt gate `allowDirectInvoicing && trackInventory && !hasGRNForThisLine(line)` fires and posts a fresh receipt. Frontend `toEditableLinesFromPurchaseOrder` (PurchaseInvoiceDetailPage.tsx:355) never maps `grnLineId`, and there's no "create PI from GRN" builder. GL is invoice-driven (GRN posts no GRNI; PI books Dr Inventory 475 / Cr AP 495) so the value side is single-counted but **quantity is double-counted** → corrupted avg cost; compounds the backlog-223 GL-vs-stock drift.
+- **FIXED (same session) + verified live.** Key insight: `clearsGRNI` keys on PERPETUAL mode, not on `grnLineId` — so recognising "already received" only suppresses the duplicate quantity and leaves the invoice-driven Dr Inventory / Cr AP value posting untouched (and correctly clears GRNI in PERPETUAL). New helper `goodsAlreadyReceived(line, po)` = `hasGRNForThisLine(line) || (poLine && poLine.receivedQty > 0)`; replaced `!hasGRNForThisLine(line)` with `!goodsAlreadyReceived(line, po)` in the three receipt gates + `hasReceiptBackedFlow` (PurchaseInvoiceUseCases.ts). Regression test 7b (PERIODIC + allowDirectInvoicing + PO receivedQty 50 + no grnLineId → no writeStockMovement; GL Dr Inventory 500 / Cr AP 500). 17/17 posting + 74/74 purchases green; backend rebuilt (lib/).
+- **Live proof:** fresh PO-00002 → GRN-00002 (receipts 2→3) → PI-00002 built from the PO (poLineId only, no grnLineId) → POSTED, GL Dr Finished Goods 20 / Cr AP-VEND-1 20, receipts **stayed 3** (pre-fix would be 4). Cycle then unposted (PI+GRN) → receipts back to 2, ITEM-A on hand back to 103.
+- **Scope:** only the quantity double-count is fixed; the invoice-driven cost-basis drift (backlog 223) is deliberately untouched.
+- **Note:** the preview renderer wedged twice mid-run; recovered by killing the lingering Vite PID and restarting the preview browser (auth persisted in IndexedDB). Verification done by calling the report/voucher/movement APIs directly with the live session token.
+- **Next:** GP05 cross-module books check (revisit backlog 223 there). Tenant residue: PO-00002 + DRAFT GRN-00002/PI-00002 (zero posted effect).
+
+### Session: 2026-06-14 — Delivery Note subtitle & read-only item table horizontal separation & unified Spinner component
+
+- **Goal:** Fix the `((soLabel))` subtitle placeholder bug, improve read-only item table horizontal separation (missing cell padding), and unify loading spinners across the entire app as requested by the user.
+- **Fixed:**
+  1. Corrected `soRef` to `soLabel` in `DeliveryNoteDetailPage.tsx` to match translation strings, and added conditional `viewSubtitleDirect` when there's no linked sales order.
+  2. Added the new `viewSubtitleDirect` keys to `ar/common.json`, `en/common.json`, and `tr/common.json`.
+  3. Added proper horizontal padding (`px-4`, `pr-4 pl-0` for first column, `pl-4 pr-0` for last column) to table headers (`<th>`) and cells (`<td>`) in `DeliveryNoteDetailPage.tsx`, `GoodsReceiptDetailPage.tsx`, `SalesOrderDetailPage.tsx`, and `SalesReturnDetailPage.tsx` (all 3 tables).
+  4. Created a unified, themed `<Spinner />` component using Lucide's `Loader2` SVG in `frontend/src/components/ui/Spinner.tsx`.
+  5. Replaced scattered, custom CSS border spinners and direct `Loader2` direct wrappers with the new `<Spinner />` component in `ArAgingReportPage.tsx`, `ApAgingReportPage.tsx`, `SuperAdminRedirect.tsx`, `SuperAdminUsersManagementPage.tsx`, `AdminLoginPage.tsx`, `RequireModuleInitialized.tsx`, and `WorkflowModeGuard.tsx`.
+- **Verified:** Ran `npx tsc --noEmit` and a full production `npm run build` in `frontend/` — both completed with zero errors, confirming the build remains healthy and all custom report/confirmation rules pass.
+- **Time spent:** ~0.6h.
+- **Next:** Resume GP04 steps 11-14 (Vendor Statement full, AP Aging, Stock Levels/Movements, Trial Balance) then GP05.
+
+### Session: 2026-06-14 — GP04 step 10 (Purchase Return): discount-honored GL + return-unpost txn fix
+
+- **Goal:** Post a 5-unit Purchase Return against PI-00001 and verify stock −5, AP/debit-note reversal, inherited line discount (TESTCO, live emulator, Claude driving).
+- **3 bugs found + fixed:**
+  1. **Return unit price not inherited (frontend):** `fetchSourceData` mapped the PI line's discount but not its price — PI uses `unitPriceDoc`, the return row reads `unitCostDoc` (and `availableQty` was unset), so the inherited price rendered empty and would post AP at 0. Fixed by mapping both (PI + GRN branches), mirroring `handleItemSelect`.
+  2. **Line discount dropped from the return GL (backend, money):** PR-00001 doc total was net 47.50 but the voucher posted Cr Inventory 50 / Dr AP 50 (gross) — vendor AP over-reduced by the 2.50 discount. Two causes in `PurchaseReturnUseCases`: the posting recompute netted only tax (not the discount), and `recalcReturnTotals` recomputed totals from gross, overwriting the entity's net and driving the AP debit. Same class as the PI bug (GP04-step5to8a) and the sales-return bug (GP03-step14a). Fixed: discount-before-tax in the recompute + net `recalcReturnTotals` (new `returnLineNetDoc/Base` helpers mirroring `PurchaseReturn.addLine`).
+  3. **Return unpost txn read/write ordering (backend, blocker):** "Unpost Return" 409'd INFRA_005 — same defect the PI unpost had in the step-9 session. Fixed by mirroring the PI-unpost split: voucher delete → each `deleteMovement` (own txn) → PO/PI/PR writes in a final txn.
+- **Verified LIVE:** unposted the buggy PR-00001 (POSTED→DRAFT), re-posted with the fixes → voucher RET-VCH-PR-00001 = **Cr Inventory 47.50 / Dr AP 47.50, balanced** (was 50/50); stock GP02-130818 **108→103** (MAIN 92 + G2 11). Step 10 PASS.
+- **Regression locked:** `PurchaseReturnUseCases.test.ts` case 8 (AP reversal = net 47.50, not gross 50, balanced). `npm run build` (lib/) clean; return suite **8/8**, purchases suite **73/73** green.
+- **Files:** `frontend/.../PurchaseReturnDetailPage.tsx`, `backend/.../PurchaseReturnUseCases.ts`, `backend/.../PurchaseReturnUseCases.test.ts`.
+- **Observation (not the discount bug):** the return credits GL inventory at net price (47.50) while stock leaves at avg cost (MAIN 10 → 50) → 2.50 GL-vs-stock drift, rooted in invoice-driven GRN-gross-vs-PI-net valuation (Inventory Revaluation backlog 223). Revisit in GP05.
+- **Note:** the line-entry cell (Return Qty) is a `ClassicLineItemsTable` number cell that resists automation, so the post itself was driven via the same `createReturn`/`post` API the UI calls (authenticated via the live token) — GL verified end-to-end.
+- **Next:** GP04 steps 11–14 (Vendor Statement full, AP Aging, Stock Levels/Movements, Trial Balance), then GP05.
+
+### Session: 2026-06-14 — GP04 step 9 (record vendor payment): Purchases Record-Payment AP-resolution fix
+
+- **Goal:** Resume GP04 from step 9 — record the full vendor payment on PI-00001 (TESTCO, live emulator, Claude driving the browser + verifying GL).
+- **Found (bug, money path):** Record Payment 500'd with `receivablePayableAccountId is required`. The Purchases Record-Payment path (`PaymentSyncUseCases`) required the AP account from the caller, but the shared `RecordPaymentDialog` sends only the cash account + amount. It never resolved the vendor's own AP sub-account — the **exact GP03-step13a Sales bug, fixed on Sales but never mirrored to Purchases.** With no `settings.defaultAPAccountId` on TESTCO, every vendor payment failed.
+- **Fixed:** Mirrored the Sales fix — added optional `accountRepo` + `partyRepo` to `PostPurchaseInvoiceWithSettlementUseCase` / `RecordPurchaseInvoicePaymentUseCase`; AP resolves **explicit → `vendor.defaultAPAccountId` → `settings.defaultAPAccountId`**, then code→account.id; the settlement (cash) account id is resolved too. `PurchaseController.recordPayment` now passes `accountRepository`+`partyRepository` and defaults `settlementMode` to **MULTI** (parity with Sales; supports partial/full/over and avoids the GP03-step13b CASH_FULL trap).
+- **Verified LIVE (emulator round-trip):** re-ran Record Payment of 495 from Cash 10101 → POST 200; PI-00001 **PAID**, paid 495, outstanding 0, payment **PV-0001** linked. Vendor Statement VEND-1: BILL Cr 495 → PAYMENT Dr AP 495 → **CLOSING 0.00** (proves Dr AP / Cr Cash and AP zero for the bill; also pre-validates step 11).
+- **Regression locked:** added 2 cases to `PurchasePaymentSyncUseCases.test.ts` (vendor-AP fallback when `receivablePayableAccountId` omitted; clear error when none resolvable). `tsc` clean; `npm run build` (lib/) clean; purchases suite **9/9** new file + **72/72** module green.
+- **Files:** `backend/src/application/purchases/use-cases/PaymentSyncUseCases.ts`, `backend/src/api/controllers/purchases/PurchaseController.ts`, `backend/src/tests/application/purchases/PurchasePaymentSyncUseCases.test.ts`. Detail in [planning/qa/findings.md](./qa/findings.md).
+- **Also noted (cosmetic):** PI-00001 posted-view allocation grid shows "no rows" while the invoice JSON still carries the freight 30 + discount 10 charges (subtotal 495) — display quirk only, data intact.
+- **Next:** GP04 steps 10-14 (Purchase Return, Vendor Statement full, AP Aging, Stock Levels/Movements, Trial Balance), then GP05. Empty-trailing-row pattern still likely affects PR/GRN pages.
+
 ### Session: 2026-06-13 — GP03 (Sales) golden-path QA + 7 fixes (PR #8)
 
 - **Goal:** Run the full GP03 Sales order-to-cash golden path on fresh tenant TESTCO (Claude driving the browser + owner doing line-item entry), fix what it surfaces.
@@ -3514,3 +3580,17 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Known issue:** Whole-tenant Inventory GL Reconciliation still does not pass on the reused TESTCO tenant because older pre-fix stock rows remain out of sync with the ledger (stock 13,119.35 vs GL 346). The new GP02 item itself tied through its generated vouchers; a fresh tenant or cleanup of historical drift is still required before marking whole-tenant reconciliation as passed.
 - **Time spent:** ~1.4h.
 - **Next:** Run GP02 once on a fresh tenant after the owner approves this code state, then commit the Task 221 inventory stabilization batch if the fresh-tenant reconciliation gate passes.
+
+### Session: 2026-06-14 (Side-Rail Toggle Button Sizing Fix)
+
+- **Goal:** Fix the side-rail toggle (collapse) button on the document detail pages (under `DocumentDetailScaffold.tsx`) being half-shown/clipped at the left boundary of the rail column at `2xl` viewports.
+- **What was done:** 
+  - Identified that the `aside` element wrapping the side-rail components has `2xl:overflow-hidden` applied to constrain its content.
+  - Because the collapse button is positioned absolutely with a negative left offset (`-left-3`/`-right-3`), the overflow constraint clipped the left half of the button.
+  - Wrapped the `aside` element inside `DocumentDetailScaffold.tsx` in a relative flexbox div container (`relative flex flex-col min-h-0 h-full`) and moved the collapse button out of the `aside` and into this wrapper. This allows the button to overlap the main panel boundary without being clipped by the `aside`'s overflow rules, while preserving the exact layout, width, and height behavior of the rail itself.
+- **Accounting/ERP impact:** None. Visual layout/UX fix only.
+- **Verification:** 
+  - Run `npm --prefix frontend run typecheck` (tsc check passed with zero errors).
+  - Run `npm --prefix frontend run build` (full frontend build script passed including custom CI checks).
+- **Time spent:** ~0.2h.
+- **Next:** Proceed with fixing the Purchase Invoice double-receipt bug in GP04, then GP05 cross-module books check.

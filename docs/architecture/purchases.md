@@ -233,8 +233,10 @@ All vouchers carry `sourceModule='purchases'`, `sourceType=<doctype>`, `sourceId
 
 Purchases calls the inventory contract `IPurchasesInventoryService`:
 - `processIN()` for GRN postings — creates `PURCHASE_RECEIPT` movement with the unit cost from the PI/PO.
-- `processIN()` for PI postings in SIMPLE mode when there's no prior GRN — creates `PURCHASE_RECEIPT` directly.
+- `processIN()` for PI postings in SIMPLE mode (direct invoicing) — creates `PURCHASE_RECEIPT` directly, but **only when the goods were not already received by a GRN** (see "PI does not re-receive GRN-received goods" below).
 - `processOUT()` for returns — creates `PURCHASE_RETURN` movement, reversing the cost.
+
+**PI does not re-receive GRN-received goods.** A PI receives stock itself only for true direct invoicing — i.e. when its line is **not** backed by a Goods Receipt. The posting gate is `goodsAlreadyReceived(line, po)` (`PurchaseInvoiceUseCases.ts`), which is true when the line carries a `grnLineId` **or** is backed by a PO line whose `receivedQty > 0`. The `receivedQty` check matters because a PI built from a PO (the common UI path, `toEditableLinesFromPurchaseOrder`) carries `poLineId` but **not** `grnLineId`; without the check, a linked PI for already-received goods would post a second `PURCHASE_RECEIPT` and double-count the quantity (GP04-step13). The same predicate drives `hasReceiptBackedFlow` (and thus GRNI clearing), so the rule is mode-safe: in invoice-driven (PERIODIC) tenants the PI still books `Dr Inventory / Cr AP` (value posts once, only the duplicate quantity is suppressed); in PERPETUAL tenants it correctly clears GRNI instead of double-debiting inventory.
 
 **No GRNI accrual in V1.** The system does not maintain a "Goods Received Not Invoiced" interim account. Inventory cost lands at GRN, AP lands at PI — there is a timing gap, but it's acceptable because the cost is correct from GRN and the AP is recognized at PI.
 
