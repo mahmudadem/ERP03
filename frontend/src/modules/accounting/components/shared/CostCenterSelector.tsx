@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useCostCenters } from '../../../../context/CostCentersContext';
 import { CostCenterDTO } from '../../../../api/accountingApi';
 import { Search, X, RefreshCw } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 
 interface CostCenterSelectorProps {
   value?: string;  // Cost center code or ID
@@ -340,7 +341,7 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
               <div className="flex-1 overflow-y-auto custom-scroll p-1">
                 {loading ? (
                   <div className="p-8 text-center text-[var(--color-text-muted)] text-sm flex flex-col items-center gap-3">
-                    <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    <Spinner size="md" variant="primary" />
                     {t('costCenterSelector.loading', 'Loading cost centers...')}
                   </div>
                 ) : filteredCenters.length === 0 ? (

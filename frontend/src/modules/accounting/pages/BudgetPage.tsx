@@ -11,6 +11,7 @@ import {
   accountingApi
 } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
+import { Spinner } from '../../../components/ui/Spinner';
 
 const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const ACTIVE_BUDGET_CLASSES = new Set(['EXPENSE', 'REVENUE', 'INCOME']);
@@ -355,7 +356,7 @@ const BudgetPage: React.FC = () => {
   if (loading) {
     return (
       <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <Spinner size="lg" variant="indigo" />
         <span className="ml-3 text-gray-500">{t('budget.loading', { defaultValue: 'Loading budgets...' })}</span>
       </div>
     );

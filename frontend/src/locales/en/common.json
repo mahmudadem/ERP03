@@ -2959,6 +2959,7 @@
       "sourceTitle": "Source",
       "customerLabel": "Customer",
       "viewSubtitle": "Customer: {{customerName}} | SO: {{soLabel}}",
+      "viewSubtitleDirect": "Customer: {{customerName}}",
       "backToListButton": "Back to List",
       "createReturn": "Create Return",
       "glImpact": "GL Impact",

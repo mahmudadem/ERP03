@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LucideIcon, Save, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
+import { Spinner } from '../ui/Spinner';
 
 interface Tab {
   id: string;
@@ -131,7 +132,7 @@ export const ModuleSettingsLayout: React.FC<ModuleSettingsLayoutProps> = ({
                   className="flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-xs font-bold rounded-lg shadow-lg transition-all active:scale-95"
                 >
                   {saving ? (
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <Spinner size="xs" variant="white" />
                   ) : (
                     <Save size={14} />
                   )}
@@ -182,7 +183,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
               className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm font-bold active:scale-95 whitespace-nowrap"
             >
               {saving ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <Spinner size="sm" variant="white" />
               ) : (
                 <Save size={18} />
               )}

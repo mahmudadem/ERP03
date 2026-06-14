@@ -1,6 +1,6 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { Spinner } from './Spinner';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'success';
@@ -78,7 +78,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {isLoading ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <Spinner size="sm" variant={variant === 'primary' || variant === 'danger' || variant === 'success' ? 'white' : 'primary'} />
       ) : leftIcon}
       {children}
       {!isLoading && rightIcon}

@@ -13,6 +13,7 @@ import { Search, X, Plus, RefreshCw, AlertCircle, Filter, Lock } from 'lucide-re
 import { useRBAC } from '../../../../api/rbac/useRBAC';
 import { AccountForm } from '../AccountForm';
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { createPortal } from 'react-dom';
 import { useSelectorModalFocus } from '../../../../components/shared/selectors/useSelectorModalFocus';
 
@@ -539,7 +540,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
               <div className="flex-1 overflow-y-auto custom-scroll p-1">
                 {isLoading ? (
                   <div className="p-8 text-center text-[var(--color-text-muted)] text-sm flex flex-col items-center gap-3">
-                    <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    <Spinner size="md" variant="primary" />
                     {t('accountSelector.loading', 'Loading accounts...')}
                   </div>
                 ) : filteredAccounts.length === 0 ? (

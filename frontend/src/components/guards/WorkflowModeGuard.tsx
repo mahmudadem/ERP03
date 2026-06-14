@@ -1,5 +1,6 @@
 import React from 'react';
-import { Loader2, Settings, Workflow } from 'lucide-react';
+import { Settings, Workflow } from 'lucide-react';
+import { Spinner } from '../ui/Spinner';
 import { Link } from 'react-router-dom';
 import { useDocumentPolicies } from '../../hooks/useDocumentPolicies';
 
@@ -18,7 +19,7 @@ export const WorkflowModeGuard: React.FC<WorkflowModeGuardProps> = ({
   if (loading) {
     return (
       <div className="flex min-h-[320px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Spinner size="lg" />
       </div>
     );
   }

@@ -952,21 +952,21 @@ const GoodsReceiptDetailPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Received Qty</th>
-                <th className="py-2 text-left">UOM</th>
-                <th className="py-2 text-right">Unit Cost</th>
-                <th className="py-2 text-left">Currency</th>
+                <th className="py-2 pr-4 text-left">Item</th>
+                <th className="py-2 px-4 text-right">Received Qty</th>
+                <th className="py-2 px-4 text-left">UOM</th>
+                <th className="py-2 px-4 text-right">Unit Cost</th>
+                <th className="py-2 pl-4 text-left">Currency</th>
               </tr>
             </thead>
             <tbody>
               {grn.lines.map((line) => (
                 <tr key={line.lineId} className="border-b border-slate-100">
-                  <td className="py-2">{getLineItemLabel(line)}</td>
-                  <td className="py-2 text-right">{line.receivedQty}</td>
-                  <td className="py-2">{line.uom}</td>
-                  <td className="py-2 text-right">{line.unitCostDoc.toFixed(2)}</td>
-                  <td className="py-2">{line.moveCurrency}</td>
+                  <td className="py-2 pr-4">{getLineItemLabel(line)}</td>
+                  <td className="py-2 px-4 text-right">{line.receivedQty}</td>
+                  <td className="py-2 px-4">{line.uom}</td>
+                  <td className="py-2 px-4 text-right">{line.unitCostDoc.toFixed(2)}</td>
+                  <td className="py-2 pl-4">{line.moveCurrency}</td>
                 </tr>
               ))}
             </tbody>

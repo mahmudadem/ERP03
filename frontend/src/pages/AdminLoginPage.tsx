@@ -5,6 +5,7 @@ import { Shield, Lock, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '../api/auth';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
+import { Spinner } from '../components/ui/Spinner';
 
 /**
  * Super Admin Login Page
@@ -149,7 +150,7 @@ export const AdminLoginPage: React.FC = () => {
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <Spinner size="sm" variant="white" />
                   {t('auth.admin.authenticating')}
                 </span>
               ) : (

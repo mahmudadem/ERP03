@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
+import { Spinner } from '../ui/Spinner';
 
 /**
  * SuperAdminRedirect
@@ -28,7 +29,7 @@ export const SuperAdminRedirect: React.FC<{ children: React.ReactNode }> = ({ ch
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+        <Spinner size="lg" variant="primary" />
       </div>
     );
   }

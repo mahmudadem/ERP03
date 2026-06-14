@@ -7,6 +7,7 @@ import { DatePicker } from '../components/shared/DatePicker';
 import { CalendarDays } from 'lucide-react';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
+import { Spinner } from '../../../components/ui/Spinner';
 import { exportToExcel } from '../../../utils/exportUtils';
 import { useNavigate } from 'react-router-dom';
 import i18n from '../../../i18n/config';
@@ -252,7 +253,7 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
           <div className="bg-white border rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-center min-h-[180px]">
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+                <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
                 <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">
                   {t('cashFlow.processing', { defaultValue: 'Processing...' })}
                 </p>
@@ -341,7 +342,7 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
           <div className="bg-white border rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-center min-h-[180px]">
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+                <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
                 <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">
                   {t('cashFlow.processing', { defaultValue: 'Processing...' })}
                 </p>

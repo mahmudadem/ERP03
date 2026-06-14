@@ -912,13 +912,13 @@ const SalesReturnDetailPage: React.FC = () => {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200">
-                      <th className="py-2 text-left w-10">{t('sales.returnDetail.returnColumn')}</th>
-                      <th className="py-2 text-left">{t('sales.returnDetail.itemColumn')}</th>
-                      <th className="py-2 text-right">{t('sales.returnDetail.invoicedQtyColumn')}</th>
-                      <th className="py-2 text-left">{t('sales.returnDetail.uomColumn')}</th>
-                      <th className="py-2 text-right">{t('sales.returnDetail.unitPriceColumn')}</th>
-                      <th className="py-2 text-right w-32">{t('sales.returnDetail.returnQtyColumn')}</th>
-                      <th className="py-2 text-right">{t('sales.returnDetail.lineTotalColumn')}</th>
+                      <th className="py-2 pr-4 text-left w-10">{t('sales.returnDetail.returnColumn')}</th>
+                      <th className="py-2 px-4 text-left">{t('sales.returnDetail.itemColumn')}</th>
+                      <th className="py-2 px-4 text-right">{t('sales.returnDetail.invoicedQtyColumn')}</th>
+                      <th className="py-2 px-4 text-left">{t('sales.returnDetail.uomColumn')}</th>
+                      <th className="py-2 px-4 text-right">{t('sales.returnDetail.unitPriceColumn')}</th>
+                      <th className="py-2 px-4 text-right w-32">{t('sales.returnDetail.returnQtyColumn')}</th>
+                      <th className="py-2 pl-4 text-right">{t('sales.returnDetail.lineTotalColumn')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -928,7 +928,7 @@ const SalesReturnDetailPage: React.FC = () => {
                       const lineTotal = sel.include ? qty * line.unitPriceDoc : 0;
                       return (
                         <tr key={line.lineId} className="border-b border-slate-100">
-                          <td className="py-2">
+                          <td className="py-2 pr-4">
                             <input
                               type="checkbox"
                               checked={!!sel.include}
@@ -936,11 +936,11 @@ const SalesReturnDetailPage: React.FC = () => {
                               disabled={busy}
                             />
                           </td>
-                          <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                          <td className="py-2 text-right">{line.invoicedQty}</td>
-                          <td className="py-2">{line.uom}</td>
-                          <td className="py-2 text-right">{line.unitPriceDoc.toFixed(2)}</td>
-                          <td className="py-2 text-right">
+                          <td className="py-2 px-4">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
+                          <td className="py-2 px-4 text-right">{line.invoicedQty}</td>
+                          <td className="py-2 px-4">{line.uom}</td>
+                          <td className="py-2 px-4 text-right">{line.unitPriceDoc.toFixed(2)}</td>
+                          <td className="py-2 px-4 text-right">
                             <input
                               type="number"
                               min={0}
@@ -952,7 +952,7 @@ const SalesReturnDetailPage: React.FC = () => {
                               disabled={busy || !sel.include}
                             />
                           </td>
-                          <td className="py-2 text-right">{lineTotal.toFixed(2)}</td>
+                          <td className="py-2 pl-4 text-right">{lineTotal.toFixed(2)}</td>
                         </tr>
                       );
                     })}
@@ -973,11 +973,11 @@ const SalesReturnDetailPage: React.FC = () => {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200">
-                      <th className="py-2 text-left w-10">{t('sales.returnDetail.returnColumn')}</th>
-                      <th className="py-2 text-left">{t('sales.returnDetail.itemColumn')}</th>
-                      <th className="py-2 text-right">{t('sales.returnDetail.deliveredQtyColumn')}</th>
-                      <th className="py-2 text-left">{t('sales.returnDetail.uomColumn')}</th>
-                      <th className="py-2 text-right w-32">{t('sales.returnDetail.returnQtyColumn')}</th>
+                      <th className="py-2 pr-4 text-left w-10">{t('sales.returnDetail.returnColumn')}</th>
+                      <th className="py-2 px-4 text-left">{t('sales.returnDetail.itemColumn')}</th>
+                      <th className="py-2 px-4 text-right">{t('sales.returnDetail.deliveredQtyColumn')}</th>
+                      <th className="py-2 px-4 text-left">{t('sales.returnDetail.uomColumn')}</th>
+                      <th className="py-2 pl-4 text-right w-32">{t('sales.returnDetail.returnQtyColumn')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -985,7 +985,7 @@ const SalesReturnDetailPage: React.FC = () => {
                       const sel = lineSelections[line.lineId] || { include: false, returnQty: '0' };
                       return (
                         <tr key={line.lineId} className="border-b border-slate-100">
-                          <td className="py-2">
+                          <td className="py-2 pr-4">
                             <input
                               type="checkbox"
                               checked={!!sel.include}
@@ -993,10 +993,10 @@ const SalesReturnDetailPage: React.FC = () => {
                               disabled={busy}
                             />
                           </td>
-                          <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                          <td className="py-2 text-right">{line.deliveredQty}</td>
-                          <td className="py-2">{line.uom}</td>
-                          <td className="py-2 text-right">
+                          <td className="py-2 px-4">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
+                          <td className="py-2 px-4 text-right">{line.deliveredQty}</td>
+                          <td className="py-2 px-4">{line.uom}</td>
+                          <td className="py-2 pl-4 text-right">
                             <input
                               type="number"
                               min={0}
@@ -1421,21 +1421,21 @@ const SalesReturnDetailPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">{t('sales.returnDetail.itemColumn')}</th>
-                <th className="py-2 text-right">{t('sales.returnDetail.returnQtyColumn')}</th>
-                <th className="py-2 text-left">{t('sales.returnDetail.uomColumn')}</th>
-                <th className="py-2 text-right">{t('sales.returnDetail.unitCostColumn')}</th>
-                <th className="py-2 text-right">{t('sales.returnDetail.lineCostColumn')}</th>
+                <th className="py-2 pr-4 text-left">{t('sales.returnDetail.itemColumn')}</th>
+                <th className="py-2 px-4 text-right">{t('sales.returnDetail.returnQtyColumn')}</th>
+                <th className="py-2 px-4 text-left">{t('sales.returnDetail.uomColumn')}</th>
+                <th className="py-2 px-4 text-right">{t('sales.returnDetail.unitCostColumn')}</th>
+                <th className="py-2 pl-4 text-right">{t('sales.returnDetail.lineCostColumn')}</th>
               </tr>
             </thead>
             <tbody>
               {salesReturn.lines.map((line) => (
                 <tr key={line.lineId} className="border-b border-slate-100">
-                  <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
-                  <td className="py-2 text-right">{line.returnQty}</td>
-                  <td className="py-2">{line.uom}</td>
-                  <td className="py-2 text-right">{line.unitCostBase.toFixed(2)}</td>
-                  <td className="py-2 text-right">{(line.returnQty * line.unitCostBase).toFixed(2)}</td>
+                  <td className="py-2 pr-4">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
+                  <td className="py-2 px-4 text-right">{line.returnQty}</td>
+                  <td className="py-2 px-4">{line.uom}</td>
+                  <td className="py-2 px-4 text-right">{line.unitCostBase.toFixed(2)}</td>
+                  <td className="py-2 pl-4 text-right">{(line.returnQty * line.unitCostBase).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

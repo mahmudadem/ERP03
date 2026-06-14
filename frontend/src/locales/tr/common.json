@@ -3032,6 +3032,7 @@
       "sourceTitle": "Kaynak",
       "customerLabel": "Müşteri",
       "viewSubtitle": "Müşteri: {{customerName}} | SS: {{soLabel}}",
+      "viewSubtitleDirect": "Müşteri: {{customerName}}",
       "backToListButton": "Listeye Dön",
       "createReturn": "İade Oluştur",
       "glImpact": "Defter Etkisi",
