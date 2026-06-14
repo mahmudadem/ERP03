@@ -79,7 +79,9 @@ This protection applies to manual Accounting vouchers and automatic vouchers cre
 
 ## Fixing a mistake after posting: Reverse & Replace
 
-You can't edit a posted voucher (this is by design — financial records must be auditable). Instead:
+Most posted vouchers are treated as locked for audit reasons. In Flexible mode, if your company enables **Allow Edit/Delete Posted**, you may be able to edit some posted vouchers. Period locks still block the edit if the voucher date is inside a locked period.
+
+When a posted voucher is locked, use Reverse & Replace instead:
 
 1. Open the posted voucher you want to fix.
 2. Click **Correct** (or use the menu → Reverse & Replace).
@@ -131,7 +133,10 @@ Once a month/year is closed:
 1. Go to `Accounting → Settings → Fiscal Year`.
 2. Set the **Locked Through** date.
 3. The system will reject any new postings to dates on or before that date.
-4. To re-open, change the date (admin-only, audited).
+4. If Flexible mode allows editing or deleting posted vouchers, the period lock still applies. A
+   posted voucher dated inside the locked period cannot be edited, cancelled, or deleted through the
+   ledger cleanup path.
+5. To re-open, change the date (admin-only, audited).
 
 If your company allows soft-lock overrides and your role has permission, some posting screens may ask for an override reason instead of blocking immediately. That reason becomes part of the posting control trail. A closed fiscal period cannot be overridden; post the document in an open period or ask an administrator to reopen the period if that is a valid business decision.
 
@@ -190,7 +195,9 @@ A: An admin closed that period. Either ask them to unlock it, or post your entry
 A: It's only visible if your company has Approval Required policy turned on AND you have the `accounting.vouchers.approve` permission.
 
 **Q: Can I delete a voucher?**
-A: DRAFT vouchers — yes. Posted vouchers — no (use Reverse & Replace instead). This is a hard rule to keep audit trails honest.
+A: DRAFT vouchers — yes. Posted vouchers are normally locked, so use Reverse & Replace instead. If
+your company deliberately enables Flexible mode with posted delete allowed, the delete still cannot
+touch a locked accounting period.
 
 ---
 

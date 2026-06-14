@@ -22,9 +22,8 @@ const compareVoucherNo = (a: any, b: any) =>
 /**
  * DeleteVoucherLedgerUseCase
  * 
- * Removes ledger entries for a voucher.
- * CAUTION: Should only be used for corrections/unposting where allowed by policy.
- * Standard accounting practice prefers reversal entries.
+ * Deprecated direct ledger cleanup path. Ledger mutations require voucher context and must go
+ * through PostingGateway; this class is kept only to fail closed if an old route tries to call it.
  */
 export class DeleteVoucherLedgerUseCase {
   constructor(
@@ -33,8 +32,12 @@ export class DeleteVoucherLedgerUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string) {
+    void this.ledgerRepo;
+    void voucherId;
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.cancel');
-    await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+    throw new Error(
+      'Direct ledger deletion is forbidden. Use the guarded posting service with voucher context.'
+    );
   }
 }
 

@@ -2,6 +2,44 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-14 — Ledger one-door mutation boundary fixed
+
+- **Goal:** Fix the architecture bug where ledger mutation could happen through more than one application path.
+- **Root cause:** Stage 4 only protected `recordForVoucher`; posted-voucher edit/resync and other cleanup/metadata paths could still call ledger mutation methods outside the guarded gateway.
+- **Fixed:** `PostingGateway` now owns voucher ledger replace, voucher ledger delete, and reconciliation marking in addition to normal record. Posted-voucher edit/resync, posted cancel/delete cleanup, subledger voucher cleanup, and bank-reconciliation marking now route through those gateway methods. The old standalone `DeleteVoucherLedgerUseCase` now fails closed instead of deleting ledger rows without voucher context.
+- **Architecture guard:** `PostingAuthority.test.ts` now fails if any production file outside `PostingGateway.ts` calls `ILedgerRepository.recordForVoucher`, `deleteForVoucher`, or `markReconciled`.
+- **Docs updated:** `docs/architecture/posting-authority.md`, `docs/architecture/accounting.md`, `docs/architecture/accounting-policy-configuration.md`, `docs/user-guide/accounting/README.md`, `planning/qa/findings.md`, `planning/ACTIVE.md`, and completion report `planning/done/229-ledger-one-door-mutation-boundary.md`.
+- **Verified:** focused accounting/purchases tests listed in the completion report; full backend suite `npm --prefix backend test -- --runInBand` passed (150 suites passed / 2 skipped; 1,392 tests passed / 18 skipped); `npm --prefix backend run build` passed.
+- **Time spent:** ~1.1h.
+- **Next:** Live-retest GP01 step 11 in the running app: confirm readable `PERIOD_LOCKED` UX and confirm posted edit/update cannot mutate ledger inside the locked period.
+
+### Session: 2026-06-14 — Ledger one-door architecture bug logged
+
+- **Finding:** Posted-voucher update uses a separate edit/resync path and explicitly bypasses posting policies with `enforcePolicies: false`, so it is not using the same ledger door as a fresh voucher post.
+- **Impact:** This violates the core architecture rule: there must be exactly one way to reach the ledger, and that one door is the guarded posting service. No alternate ledger path should exist now or in future. The bug is bigger than period lock: a second ledger path means policy enforcement can diverge from the single rulebook.
+- **Status:** Logged for follow-up. User stopped the session here; no further refactor was attempted.
+
+### Session: 2026-06-14 — GP01 posted-voucher edit period-lock fix
+
+- **Goal:** Close the control gap where a voucher already posted inside a locked period could still be edited in Flexible mode.
+- **Root cause:** `UpdateVoucherUseCase` only checked `VoucherEntity.assertCanEdit()` for governance mode/toggle and then resynced the ledger; it never re-ran the period-lock policy for the posted voucher date before saving the edit.
+- **Fixed:** Added a posted-edit period-lock validation step in `backend/src/application/accounting/use-cases/VoucherUseCases.ts` that rechecks both the original posted date and the edited date through the shared `period-lock` policy before any transaction or ledger resync. Added a regression test in `backend/src/tests/application/accounting/use-cases/VoucherPersistence.test.ts`.
+- **Docs updated:** `docs/architecture/accounting.md`, `docs/user-guide/accounting/README.md`, `planning/ACTIVE.md`, `planning/qa/findings.md`, and completion report `planning/done/228-gp01-posted-voucher-edit-lock-block.md`.
+- **Accounting/ERP impact:** Posted vouchers inside a locked accounting period are now blocked from edit resync even when Flexible mode allows posted edits. Draft behavior is unchanged.
+- **Verified:** `npm --prefix backend test -- --runInBand backend/src/tests/application/accounting/use-cases/VoucherPersistence.test.ts`; `npm --prefix backend test -- --runInBand backend/src/application/accounting/use-cases/__tests__/GovernancePolicy.test.ts`; `npm --prefix backend run build`.
+- **Time spent:** ~0.7h.
+- **Next:** Live-retest GP01 step 11 and confirm both the post rejection and posted-edit rejection surface the clear period-lock reason.
+
+### Session: 2026-06-14 — GP01 period-lock error message fix
+
+- **Goal:** Fix GP01 step 11 UX: period lock correctly blocked a backdated JV, but the voucher modal only showed `Request failed with status code 400`.
+- **Root cause:** `VoucherEntryModal` caught Axios errors and displayed `err.message` directly, bypassing the backend's structured `PERIOD_LOCKED` payload.
+- **Fixed:** Added modal-local API error normalization through `errorHandler.normalizeError` + `translateError` and used it for save, approval, custody confirmation, reject, and post failures.
+- **Accounting/ERP impact:** No posting-rule change. Period-lock enforcement remains the same; only the user-facing policy-block message is now readable and actionable.
+- **Verified:** `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~0.3h.
+- **Next:** Rerun GP01 step 11 on the fresh tenant and confirm the displayed message contains the period-lock reason/code, then continue GP01 steps 12-18.
+
 ### Session: 2026-06-14 — GP05 cross-module books check + Opening Stock offset guard
 
 - **Goal:** Run GP05 cross-module books check on TESTCO and decide whether the golden paths are ship-green.
@@ -3621,3 +3659,21 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Time spent:** ~0.6h.
 - **Git state note:** GP04 code fixes and this UI detour are committed locally on `fix/purchases-module-gp04` (`eb712996`, `0a42a405`); the branch is ahead of origin by 2 commits. Current dirty tree also includes planning-doc wording plus three small frontend icon-only tweaks (`frontend/src/layout/Sidebar.tsx`, `frontend/src/modules/sales/pages/SalesHomePage.tsx`, `frontend/src/pages/dev/apex-ledger/components/Sidebar.tsx`) that should stay separate from the GP04 accounting PR unless intentionally approved.
 - **Next:** Push/open the GP04 branch, then run GP05 cross-module books check. Do not start further UI polish during feature freeze unless it directly blocks golden-path QA or fixes a P0 accounting/control issue.
+
+### Session: 2026-06-14 (GP01 Voucher Web Modal State Reset)
+
+- **Goal:** Fix the Accounting Vouchers web-mode modal retaining stale error state after a failed period-lock save/post and close/reopen.
+- **What was done:** Updated `VoucherEntryModal` to clear transient UI state on each open session, including error banners, dirty flags, pending dialogs, local voucher override, and rate-deviation state. Updated `VouchersListPage` to key the web-mode voucher modal by voucher type plus voucher id/new state so new voucher sessions do not reuse a stale closed instance.
+- **Accounting impact:** UI lifecycle only. No voucher posting rules, period-lock enforcement, ledger writes, approval behavior, audit behavior, or accounting calculations changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report/no-confirm/SoD checks; existing bundle/browser-data warnings remain.
+- **Docs:** Updated `planning/qa/findings.md`, `planning/done/227-gp01-period-lock-error-message.md`, and `planning/ACTIVE.md`.
+- **Time spent:** ~0.2h.
+- **Next:** Hard refresh/restart the frontend, rerun GP01 step 11 in web mode, confirm readable `PERIOD_LOCKED` text, then close/reopen New voucher and confirm no stale error banner remains.
+
+### Session: 2026-06-14 (GP01 Live Retest Pass Confirmation)
+
+- **Goal:** Record owner live QA result after the period-lock UX, posted-edit lock, web-mode modal reset, and ledger one-door fixes.
+- **Result:** Owner confirmed GP01 passed live after retest.
+- **Docs updated:** `planning/qa/findings.md`, `planning/done/227-gp01-period-lock-error-message.md`, `planning/done/228-gp01-posted-voucher-edit-lock-block.md`, and `planning/ACTIVE.md` now mark the GP01 period-lock/control-boundary path as passed.
+- **Accounting impact:** Confirmation only. The live result validates that period-lock blocks are readable, posted voucher edits in locked periods are blocked, and the web-mode voucher modal no longer carries stale error state.
+- **Next:** Package the GP01 fix set for review/merge, then continue the next golden-path gate on a clean tenant.

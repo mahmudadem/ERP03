@@ -140,8 +140,15 @@ export class BankReconciliationUseCases {
 
     // Mark matched ledger entries as reconciled
     const matched = statement.lines.filter((l) => l.matchedLedgerEntryId);
+    const gateway = new PostingGateway(this.ledgerRepo, new VoucherValidationService());
     for (const line of matched) {
-      await this.ledgerRepo.markReconciled(companyId, line.matchedLedgerEntryId!, reconciliation.id, line.id);
+      await gateway.markLedgerEntryReconciled({
+        companyId,
+        ledgerEntryId: line.matchedLedgerEntryId!,
+        reconciliationId: reconciliation.id,
+        bankStatementLineId: line.id,
+        userId,
+      });
     }
 
     return reconciliation;

@@ -73,22 +73,15 @@ class ErrorHandlerService {
    * Normalize any error-like object into an ApiError
    */
   normalizeError(error: any): ApiError {
-    if (error?.code && error?.message) {
-      return {
-        ...error,
-        code: String(error.code).toUpperCase() as any,
-        severity: error.severity || ErrorSeverity.ERROR,
-        timestamp: error.timestamp || new Date().toISOString(),
-      };
-    }
-
     // Handle Axios Error
     if (error?.isAxiosError) {
       const apiError = error.response?.data?.error;
       if (apiError) {
         return {
           ...apiError,
-          code: String(apiError.code).toUpperCase() as any
+          code: String(apiError.code).toUpperCase() as any,
+          severity: apiError.severity || ErrorSeverity.ERROR,
+          timestamp: apiError.timestamp || new Date().toISOString(),
         };
       }
 
@@ -108,6 +101,26 @@ class ErrorHandlerService {
         message: error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : null) || error.message || 'Network request failed',
         severity: ErrorSeverity.ERROR,
         timestamp: new Date().toISOString()
+      };
+    }
+
+    // Handle already-unwrapped backend envelopes, e.g. { success: false, error: { ... } }.
+    if (error?.success === false && error?.error) {
+      const apiError = error.error;
+      return {
+        ...apiError,
+        code: String(apiError.code || 'INFRA_999').toUpperCase() as any,
+        severity: apiError.severity || ErrorSeverity.ERROR,
+        timestamp: apiError.timestamp || new Date().toISOString(),
+      };
+    }
+
+    if (error?.code && error?.message) {
+      return {
+        ...error,
+        code: String(error.code).toUpperCase() as any,
+        severity: error.severity || ErrorSeverity.ERROR,
+        timestamp: error.timestamp || new Date().toISOString(),
       };
     }
 

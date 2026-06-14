@@ -44,14 +44,14 @@ export interface PostingContext {
 }
 
 /**
- * PostingGateway — the single, mandatory choke point in front of every ledger write.
+ * PostingGateway — the single, mandatory choke point in front of every ledger mutation.
  *
  * Stage 4 of the posting-authority hardening (see docs/architecture/posting-authority.md): nothing
- * may call `ILedgerRepository.recordForVoucher` directly. Every posting path constructs a gateway
- * and calls {@link PostingGateway.record}, which guarantees the iron laws run, optionally runs the
- * full policy set with the caller's honest approval state, and only then writes the ledger. An
- * architecture test (tests/architecture/PostingAuthority.test.ts) forbids any other caller of
- * `recordForVoucher`, so the door cannot be bypassed.
+ * may call ledger mutation repository methods directly. Every posting path constructs a gateway
+ * and calls one of its mutation methods, which runs the applicable rulebook before touching the
+ * ledger. An architecture test (tests/architecture/PostingAuthority.test.ts) forbids any other
+ * caller of `recordForVoucher`, `deleteForVoucher`, or `markReconciled`, so the door cannot be
+ * bypassed.
  *
  * Exemptions are not silent: a caller that legitimately skips the policy set (e.g. a system-
  * generated settlement or year-end closing voucher) must pass `enforcePolicies: false` with an
@@ -75,12 +75,74 @@ export class PostingGateway {
     ctx: PostingContext,
     transaction?: unknown
   ): Promise<void> {
+    await this.validateRecordIntent(voucher, ctx);
+
+    await this.ledgerRepo.recordForVoucher(voucher, transaction);
+  }
+
+  /**
+   * Replace all ledger rows for an already-posted voucher. This is the sanctioned path for
+   * editable-posted-voucher resyncs: policy validation and ledger delete+record happen behind the
+   * same guarded door.
+   */
+  async replaceForVoucher(
+    voucher: VoucherEntity,
+    ctx: PostingContext,
+    transaction?: unknown
+  ): Promise<void> {
+    await this.validateRecordIntent(voucher, ctx);
+    await this.ledgerRepo.deleteForVoucher(voucher.companyId, voucher.id, transaction);
+    await this.ledgerRepo.recordForVoucher(voucher, transaction);
+  }
+
+  /**
+   * Remove ledger rows for an existing voucher. Used by approved cancel/delete/unpost flows.
+   * Deletion does not rerun core voucher balancing because historical malformed vouchers may need
+   * cleanup, but it does run the central policy set unless the caller records an explicit exemption.
+   */
+  async deleteVoucherLedger(
+    voucher: VoucherEntity,
+    ctx: PostingContext,
+    transaction?: unknown
+  ): Promise<void> {
+    await this.validatePolicyIntent(voucher, ctx);
+    await this.ledgerRepo.deleteForVoucher(voucher.companyId, voucher.id, transaction);
+  }
+
+  /**
+   * Mark a ledger entry as reconciled. Bank reconciliation does not have a voucher policy context,
+   * but it is still a ledger mutation and must go through the only ledger door.
+   */
+  async markLedgerEntryReconciled(input: {
+    companyId: string;
+    ledgerEntryId: string;
+    reconciliationId: string;
+    bankStatementLineId: string;
+    userId: string;
+  }): Promise<void> {
+    if (!input.userId || !input.userId.trim()) {
+      throw new Error('PostingGateway: markReconciled requires an acting user');
+    }
+
+    await this.ledgerRepo.markReconciled(
+      input.companyId,
+      input.ledgerEntryId,
+      input.reconciliationId,
+      input.bankStatementLineId
+    );
+  }
+
+  private async validateRecordIntent(voucher: VoucherEntity, ctx: PostingContext): Promise<void> {
     // Iron laws — always, no exemption.
     this.validationService.validateCore(voucher, ctx.correlationId);
     if (this.accountRepo) {
       await this.validationService.validateAccounts(voucher, this.accountRepo);
     }
 
+    await this.validatePolicyIntent(voucher, ctx);
+  }
+
+  private async validatePolicyIntent(voucher: VoucherEntity, ctx: PostingContext): Promise<void> {
     if (ctx.enforcePolicies === false) {
       // Explicit, auditable exemption. The reason is mandatory so the skip is greppable.
       if (!ctx.exemptionReason || !ctx.exemptionReason.trim()) {
@@ -88,11 +150,10 @@ export class PostingGateway {
           'PostingGateway: enforcePolicies=false requires an exemptionReason documenting the skip'
         );
       }
-    } else {
-      await this.runPolicies(voucher, ctx);
+      return;
     }
 
-    await this.ledgerRepo.recordForVoucher(voucher, transaction);
+    await this.runPolicies(voucher, ctx);
   }
 
   private async runPolicies(voucher: VoucherEntity, ctx: PostingContext): Promise<void> {

@@ -168,7 +168,31 @@ export class SubledgerVoucherPostingService {
     transaction?: unknown
   ): Promise<void> {
     if (!voucherId) return;
-    await this.ledgerRepo.deleteForVoucher(companyId, voucherId, transaction);
+    const voucher = await this.voucherRepo.findById(companyId, voucherId);
+    if (!voucher) {
+      throw new Error(
+        `Cannot delete ledger rows for missing voucher ${voucherId}; guarded deletion requires voucher context`
+      );
+    }
+
+    const gateway = new PostingGateway(
+      this.ledgerRepo,
+      this.validationService,
+      this.policyRegistry,
+      this.accountRepo
+    );
+    await gateway.deleteVoucherLedger(
+      voucher,
+      {
+        userId:
+          (voucher as any).updatedBy ||
+          (voucher as any).postedBy ||
+          (voucher as any).createdBy ||
+          'system',
+        approved: true,
+      },
+      transaction
+    );
     await this.voucherRepo.delete(companyId, voucherId, transaction);
   }
 
