@@ -152,6 +152,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           companyId: voucher.companyId,
           accountId: line.accountId,
           voucherId: voucher.id,
+          voucherNo: voucher.voucherNo || '',
           voucherLineId: line.id,
           date: toTimestamp(voucher.date),
           debit,
@@ -390,6 +391,38 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           )
         );
 
+      // Collect voucher IDs that are missing a stored voucherNo (legacy entries written before this fix).
+      // We batch-fetch the voucher documents to back-fill the human-readable number.
+      const missingNoIds = new Set<string>();
+      orderedRows.forEach(({ e }) => {
+        if (!e.voucherNo && e.voucherId) missingNoIds.add(e.voucherId);
+      });
+
+      // Batch-fetch voucher docs (max 10 at a time — Firestore `in` limit).
+      const voucherNoMap: Record<string, string> = {};
+      if (missingNoIds.size > 0) {
+        const ids = Array.from(missingNoIds);
+        const vouchersCol = this.db
+          .collection('companies')
+          .doc(companyId)
+          .collection('accounting')
+          .doc('Data')
+          .collection('vouchers');
+        const chunks: string[][] = [];
+        for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+        await Promise.all(
+          chunks.map(async (chunk) => {
+            const snap = await vouchersCol.where('id', 'in', chunk).get();
+            snap.docs.forEach((d) => {
+              const raw = d.data() as any;
+              const vid = raw?.id || d.id;
+              const vno = raw?.voucherNo || raw?.voucherNumber || '';
+              if (vid && vno) voucherNoMap[vid] = vno;
+            });
+          })
+        );
+      }
+
       orderedRows.forEach(({ doc, e, date, timeMs }) => {
         const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e, accountCurrency, baseCurrency);
         running += side === 'Debit' ? debit : -credit;
@@ -399,12 +432,15 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
         totalBaseDebit += baseDebit;
         totalBaseCredit += baseCredit;
 
+        const resolvedVoucherNo =
+          e.voucherNo || voucherNoMap[e.voucherId] || e.voucherId || '';
+
         entries.push({
           id: e.id || doc.id,
           date,
           time: timeMs ? new Date(timeMs).toISOString() : undefined,
           voucherId: e.voucherId,
-          voucherNo: e.voucherNo || e.voucherId || '',
+          voucherNo: resolvedVoucherNo,
           description: e.notes || e.description || '',
           debit,
           credit,

@@ -56,8 +56,18 @@ When physical reality differs from what the system says:
 
 1. `Inventory → Transfers → New Transfer`.
 2. Pick source warehouse, destination warehouse, items, and quantities.
-3. **Confirm** (or post directly if you don't need a transit stage).
-4. Status flows: DRAFT → IN_TRANSIT → COMPLETED. The system creates two paired movements (OUT from source, IN to destination) — they stay linked.
+3. Save the transfer as a draft, then review it.
+4. If the draft is wrong, use **Edit** or **Delete**. Drafts have not moved stock or posted accounting yet.
+5. When it is correct, choose **Complete**. The system creates two paired movements (OUT from source, IN to destination) — they stay linked.
+6. If a completed transfer was a mistake, choose **Undo**. ERP03 creates a linked reverse transfer for you. The original stays in history for audit, but the stock is moved back through a simple one-click action.
+
+For small teams, this means you do not need to manually build a reversal document. For larger companies, the audit trail still shows both the original transfer and the reversing transfer.
+
+Transfer costing rules:
+- A normal transfer moves stock at the source warehouse's current average cost. It does not create profit, loss, clearing, or extra inventory value.
+- Added transfer costs such as freight or customs must be entered as added cost. ERP03 posts that amount to Inventory Transfer Clearing so a later supplier bill can clear it.
+- If the item value itself needs to change, use an explicit revaluation value. ERP03 posts the difference to the Inventory Revaluation account, not to Gain/Loss and not to Transfer Clearing.
+- A zero-cost item transfers at zero unless you explicitly revalue it first.
 
 ### Viewing what's on hand — Stock Levels
 
@@ -92,15 +102,15 @@ This is the standard approach for businesses that don't need batch-level or FIFO
 
 ## Negative stock
 
-The system **allows** negative stock by default — you can sell items you don't have on paper.
+The system **blocks** negative stock by default. This means an issue, delivery, transfer, or adjustment OUT that would make an item go below zero is rejected before stock or accounting is changed.
 
-When that happens:
+An admin can enable **Allow Negative Stock** in `Inventory → Settings → Operational Rules` if the business intentionally allows stock to go below zero.
+
+When negative stock is enabled and an OUT movement creates a deficit:
 - The OUT movement is recorded normally.
 - The system flags the part of the issue that's "unsettled" (issued from a deficit).
 - The Unsettled Costs report (`Inventory → Reports → Unsettled Costs`) lists movements where the cost is uncertain because there was no prior IN to derive a cost from.
 - When you later receive stock that covers the deficit, the books reconcile via reporting — *but the original OUT movements are not retroactively rewritten*. Their cost is what it was at posting time.
-
-If you'd rather block negative stock entirely, your admin can flip `allowNegativeStock = false` in inventory settings (currently backend-only; UI toggle is planned).
 
 ---
 
@@ -123,7 +133,7 @@ The alert is a list, not a notification — there's no email or push (yet). Chec
 ## Multi-warehouse
 
 - Stock is tracked per (item, warehouse) pair. Item X can have 100 units in Warehouse A and 50 in Warehouse B.
-- Transfers move stock between warehouses. The destination inherits the cost from the source.
+- Transfers move stock between warehouses. The destination inherits the cost from the source unless the transfer explicitly declares added cost or revaluation.
 - If you have only one warehouse, set it as default and everything happens there transparently.
 
 ---

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ArrowLeftRight } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { DatePicker, WarehouseSelector, ItemSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import {
@@ -55,6 +56,12 @@ const StockTransfersPage: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [mode, setMode] = useState<TransferMode>('FLAT');
   const [lines, setLines] = useState<TLine[]>([emptyLine()]);
+  const [editingTransferId, setEditingTransferId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<null | {
+    kind: 'delete-draft' | 'complete' | 'undo';
+    transfer: StockTransferDTO;
+  }>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const [expandedTransferId, setExpandedTransferId] = useState<string | null>(null);
   const [transferMovements, setTransferMovements] = useState<Record<string, StockMovementDTO[]>>({});
@@ -120,7 +127,46 @@ const StockTransfersPage: React.FC = () => {
     setLines(updated);
   };
 
-  const handleCreateTransfer = async () => {
+  const resetForm = () => {
+    setEditingTransferId(null);
+    setSourceWarehouseId('');
+    setDestinationWarehouseId('');
+    setDate(todayIso());
+    setNotes('');
+    setMode('FLAT');
+    setLines([emptyLine()]);
+  };
+
+  const loadTransferForEdit = (transfer: StockTransferDTO) => {
+    if (transfer.status !== 'DRAFT') {
+      toast.error('Only draft transfers can be edited.');
+      return;
+    }
+    setEditingTransferId(transfer.id);
+    setSourceWarehouseId(transfer.sourceWarehouseId);
+    setDestinationWarehouseId(transfer.destinationWarehouseId);
+    setDate(transfer.date);
+    setNotes(transfer.notes || '');
+    setMode(transfer.mode || 'FLAT');
+    setLines(transfer.lines.map((line) => ({
+      _key: newKey(),
+      itemId: line.itemId,
+      qty: line.qty,
+      sourceCostBase: line.unitCostBaseAtTransfer,
+      sourceCostCCY: line.unitCostCCYAtTransfer,
+      landedCostBase: line.unitCostBaseAtTransfer,
+      landedCostCCY: line.unitCostCCYAtTransfer,
+      ...(line.revaluationUnitCostBaseAtTransfer !== undefined
+        ? {
+            landedCostBase: line.revaluationUnitCostBaseAtTransfer,
+            landedCostCCY: line.revaluationUnitCostCCYAtTransfer ?? line.revaluationUnitCostBaseAtTransfer,
+          }
+        : {}),
+    })));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveTransfer = async () => {
     const filled = lines.filter((l) => l.itemId && l.qty > 0);
     if (!sourceWarehouseId || !destinationWarehouseId) {
       toast.error('Source and destination warehouses are required.');
@@ -136,7 +182,7 @@ const StockTransfersPage: React.FC = () => {
     }
     try {
       setSaving(true);
-      await inventoryApi.createTransfer({
+      const payload = {
         sourceWarehouseId,
         destinationWarehouseId,
         date,
@@ -144,18 +190,27 @@ const StockTransfersPage: React.FC = () => {
         mode,
         lines: filled.map((l) =>
           mode === 'VALUED'
-            ? { itemId: l.itemId, qty: Number(l.qty), unitCostBaseAtTransfer: Number(l.landedCostBase), unitCostCCYAtTransfer: Number(l.landedCostCCY) }
+            ? {
+                itemId: l.itemId,
+                qty: Number(l.qty),
+                revaluationUnitCostBaseAtTransfer: Number(l.landedCostBase),
+                revaluationUnitCostCCYAtTransfer: Number(l.landedCostCCY),
+              }
             : { itemId: l.itemId, qty: Number(l.qty) }
         ),
-      });
-      toast.success('Stock transfer created.');
-      setLines([emptyLine()]);
-      setNotes('');
-      setDate(todayIso());
+      };
+      if (editingTransferId) {
+        await inventoryApi.updateTransfer(editingTransferId, payload);
+        toast.success('Draft transfer updated.');
+      } else {
+        await inventoryApi.createTransfer(payload);
+        toast.success('Stock transfer created.');
+      }
+      resetForm();
       await load();
     } catch (error) {
-      console.error('Failed to create stock transfer', error);
-      toast.error((error as any)?.response?.data?.error?.message || 'Failed to create stock transfer.');
+      console.error('Failed to save stock transfer', error);
+      toast.error((error as any)?.response?.data?.error?.message || 'Failed to save stock transfer.');
     } finally {
       setSaving(false);
     }
@@ -169,6 +224,45 @@ const StockTransfersPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to complete stock transfer', error);
       toast.error((error as any)?.response?.data?.error?.message || 'Failed to complete stock transfer.');
+    }
+  };
+
+  const handleCancelTransfer = async (id: string) => {
+    try {
+      await inventoryApi.cancelTransfer(id);
+      toast.success('Draft transfer cancelled.');
+      await load();
+    } catch (error) {
+      console.error('Failed to cancel stock transfer', error);
+      toast.error((error as any)?.response?.data?.error?.message || 'Failed to cancel stock transfer.');
+    }
+  };
+
+  const handleUndoTransfer = async (id: string) => {
+    try {
+      await inventoryApi.undoTransfer(id, todayIso());
+      toast.success('Stock transfer undone with a linked reverse transfer.');
+      await load();
+    } catch (error) {
+      console.error('Failed to undo stock transfer', error);
+      toast.error((error as any)?.response?.data?.error?.message || 'Failed to undo stock transfer.');
+    }
+  };
+
+  const confirmPendingAction = async () => {
+    if (!pendingAction) return;
+    try {
+      setActionBusy(true);
+      if (pendingAction.kind === 'delete-draft') {
+        await handleCancelTransfer(pendingAction.transfer.id);
+      } else if (pendingAction.kind === 'complete') {
+        await handleCompleteTransfer(pendingAction.transfer.id);
+      } else {
+        await handleUndoTransfer(pendingAction.transfer.id);
+      }
+      setPendingAction(null);
+    } finally {
+      setActionBusy(false);
     }
   };
 
@@ -218,7 +312,7 @@ const StockTransfersPage: React.FC = () => {
           { id: 'sourceCost', label: 'Source Cost', kind: 'computed', width: '120px', compute: (l: TLine) => l.sourceCostBase } as ColumnDef<TLine>,
           {
             id: 'landedCost',
-            label: 'Landed Unit Cost',
+            label: 'Revaluation Unit Cost',
             kind: 'custom',
             width: '150px',
             align: 'right',
@@ -239,7 +333,7 @@ const StockTransfersPage: React.FC = () => {
               />
             ),
           } as ColumnDef<TLine>,
-          { id: 'uplift', label: 'Uplift', kind: 'computed', width: '120px', compute: (l: TLine) => (Number(l.landedCostBase) - Number(l.sourceCostBase)) * Number(l.qty) } as ColumnDef<TLine>,
+          { id: 'variance', label: 'Variance', kind: 'computed', width: '120px', compute: (l: TLine) => (Number(l.landedCostBase) - Number(l.sourceCostBase)) * Number(l.qty) } as ColumnDef<TLine>,
         ]
       : []),
   ];
@@ -252,6 +346,11 @@ const StockTransfersPage: React.FC = () => {
       </div>
 
       <Card className="p-4">
+        {editingTransferId && (
+          <div className="mb-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+            Editing draft transfer. Posted transfers use Undo instead of direct edit.
+          </div>
+        )}
         <div className="grid gap-3 md:grid-cols-5">
           <div>
             <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Source Warehouse</label>
@@ -293,7 +392,7 @@ const StockTransfersPage: React.FC = () => {
         <p className="mt-2 text-[10px] uppercase tracking-tighter text-slate-400">
           {mode === 'FLAT'
             ? 'Flat: move stock A→B at source cost. No ledger effect.'
-            : 'Valued: override the landing cost (e.g. capitalized freight). The uplift posts to GL via the Inventory Transfer Clearing account.'}
+            : 'Valued: explicit revaluation. The variance posts to the Inventory Revaluation account; freight/customs belong to added-cost transfer handling.'}
         </p>
 
         <div className="mt-3">
@@ -316,12 +415,22 @@ const StockTransfersPage: React.FC = () => {
         </div>
 
         <div className="mt-4 flex justify-end border-t border-slate-200 pt-3 dark:border-slate-700">
+          {editingTransferId && (
+            <button
+              className="mr-2 rounded border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              onClick={resetForm}
+              disabled={saving}
+              type="button"
+            >
+              Cancel Edit
+            </button>
+          )}
           <button
             className="rounded bg-slate-900 px-5 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-            onClick={handleCreateTransfer}
+            onClick={handleSaveTransfer}
             disabled={saving}
           >
-            {saving ? 'Saving…' : 'Create Transfer'}
+            {saving ? 'Saving…' : editingTransferId ? 'Save Draft' : 'Create Transfer'}
           </button>
         </div>
       </Card>
@@ -371,9 +480,28 @@ const StockTransfersPage: React.FC = () => {
                     <td className="py-2">{transfer.voucherId ? '✓' : '—'}</td>
                     <td className="py-2 text-right space-x-2">
                       {transfer.status === 'DRAFT' && (
-                        <button className="rounded bg-blue-600 px-3 py-1 text-xs text-white" onClick={() => handleCompleteTransfer(transfer.id)}>
-                          Complete
+                        <>
+                          <button className="rounded border border-slate-300 px-3 py-1 text-xs dark:border-slate-600" onClick={() => loadTransferForEdit(transfer)}>
+                            Edit
+                          </button>
+                          <button className="rounded bg-blue-600 px-3 py-1 text-xs text-white" onClick={() => setPendingAction({ kind: 'complete', transfer })}>
+                            Complete
+                          </button>
+                          <button className="rounded border border-red-300 px-3 py-1 text-xs text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/30" onClick={() => setPendingAction({ kind: 'delete-draft', transfer })}>
+                            Delete
+                          </button>
+                        </>
+                      )}
+                      {transfer.status === 'COMPLETED' && !transfer.reversedByTransferId && !transfer.reversesTransferId && (
+                        <button className="rounded border border-amber-300 px-3 py-1 text-xs text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/30" onClick={() => setPendingAction({ kind: 'undo', transfer })}>
+                          Undo
                         </button>
+                      )}
+                      {transfer.reversedByTransferId && (
+                        <span className="text-xs font-medium text-slate-500">Undone</span>
+                      )}
+                      {transfer.reversesTransferId && (
+                        <span className="text-xs font-medium text-slate-500">Reversal</span>
                       )}
                       <button className="rounded border border-slate-300 px-3 py-1 text-xs dark:border-slate-600" onClick={() => toggleDetails(transfer.id)}>
                         {expandedTransferId === transfer.id ? 'Hide' : 'Details'}
@@ -452,6 +580,36 @@ const StockTransfersPage: React.FC = () => {
           </table>
         </div>
       </Card>
+
+      <ConfirmDialog
+        isOpen={!!pendingAction}
+        title={
+          pendingAction?.kind === 'delete-draft'
+            ? 'Delete draft transfer?'
+            : pendingAction?.kind === 'complete'
+              ? 'Complete transfer?'
+              : 'Undo completed transfer?'
+        }
+        message={
+          pendingAction?.kind === 'delete-draft'
+            ? 'This removes the draft only. No stock or ledger entries are affected.'
+            : pendingAction?.kind === 'complete'
+              ? 'This will post the paired stock movements and any valued-transfer accounting entry.'
+              : 'This creates and posts a linked reverse transfer. The original remains in history for audit.'
+        }
+        confirmLabel={
+          pendingAction?.kind === 'delete-draft'
+            ? 'Delete Draft'
+            : pendingAction?.kind === 'complete'
+              ? 'Complete'
+              : 'Undo Transfer'
+        }
+        cancelLabel="Keep"
+        tone={pendingAction?.kind === 'delete-draft' ? 'danger' : pendingAction?.kind === 'undo' ? 'warning' : 'info'}
+        isConfirming={actionBusy}
+        onConfirm={confirmPendingAction}
+        onCancel={() => !actionBusy && setPendingAction(null)}
+      />
     </div>
   );
 };

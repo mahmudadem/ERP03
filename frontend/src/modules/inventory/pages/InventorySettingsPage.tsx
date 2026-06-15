@@ -83,6 +83,8 @@ const InventorySettingsPage: React.FC = () => {
         defaultInventoryGainAccountId: settings.defaultInventoryGainAccountId || undefined,
         defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId || undefined,
         defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId || undefined,
+        defaultInventoryRevaluationAccountId: settings.defaultInventoryRevaluationAccountId || undefined,
+        allowNegativeInventoryValue: settings.allowNegativeInventoryValue || false,
       };
 
       const result = await inventoryApi.updateSettings(payload);
@@ -144,7 +146,6 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
-          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">
@@ -261,7 +262,20 @@ const InventorySettingsPage: React.FC = () => {
                       accounts={allAccounts.filter(a => a.accountRole === 'POSTING')}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      Used by valued (ledger-affecting) stock transfers to absorb a cost uplift such as capitalized freight/handling, so the transfer voucher stays balanced.
+                      Used only for explicit added transfer costs such as freight, customs, or handling. Value-only corrections use Inventory Revaluation instead.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Revaluation Account</label>
+                    <AccountSelector
+                      value={settings.defaultInventoryRevaluationAccountId}
+                      onChange={(acc) => updateSetting('defaultInventoryRevaluationAccountId', acc?.id || '')}
+                      placeholder="Select inventory revaluation account"
+                      accounts={allAccounts.filter(a => a.accountRole === 'POSTING')}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      Used only when stock transfer value is explicitly revalued. Do not use gain/loss or transfer clearing for value-only cost corrections.
                     </p>
                   </div>
                 </div>
@@ -279,7 +293,6 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
-          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">
@@ -341,7 +354,6 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
-          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">

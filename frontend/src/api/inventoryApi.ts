@@ -204,6 +204,8 @@ export interface InventorySettingsDTO {
   defaultInventoryGainAccountId?: string;
   defaultInventoryLossAccountId?: string;
   defaultInventoryTransferClearingAccountId?: string;
+  defaultInventoryRevaluationAccountId?: string;
+  allowNegativeInventoryValue?: boolean;
   allowNegativeStock: boolean;
   allowDeferredCost: boolean;
   defaultWarehouseId?: string;
@@ -333,6 +335,8 @@ export interface StockTransferDTO {
   status: 'DRAFT' | 'IN_TRANSIT' | 'COMPLETED';
   voucherId?: string;
   transferPairId: string;
+  reversesTransferId?: string;
+  reversedByTransferId?: string;
   createdBy: string;
   createdAt: string;
   completedAt?: string;
@@ -341,6 +345,10 @@ export interface StockTransferDTO {
     qty: number;
     unitCostBaseAtTransfer: number;
     unitCostCCYAtTransfer: number;
+    addedCostBaseAtTransfer?: number;
+    addedCostCCYAtTransfer?: number;
+    revaluationUnitCostBaseAtTransfer?: number;
+    revaluationUnitCostCCYAtTransfer?: number;
   }>;
 }
 
@@ -663,11 +671,44 @@ export const inventoryApi = {
     date: string;
     notes?: string;
     mode?: 'FLAT' | 'VALUED';
-    lines: Array<{ itemId: string; qty: number; unitCostBaseAtTransfer?: number; unitCostCCYAtTransfer?: number }>;
+    lines: Array<{
+      itemId: string;
+      qty: number;
+      unitCostBaseAtTransfer?: number;
+      unitCostCCYAtTransfer?: number;
+      addedCostBaseAtTransfer?: number;
+      addedCostCCYAtTransfer?: number;
+      revaluationUnitCostBaseAtTransfer?: number;
+      revaluationUnitCostCCYAtTransfer?: number;
+    }>;
   }): Promise<StockTransferDTO> => client.post('/tenant/inventory/transfers', payload),
+
+  updateTransfer: (id: string, payload: {
+    sourceWarehouseId: string;
+    destinationWarehouseId: string;
+    date: string;
+    notes?: string;
+    mode?: 'FLAT' | 'VALUED';
+    lines: Array<{
+      itemId: string;
+      qty: number;
+      unitCostBaseAtTransfer?: number;
+      unitCostCCYAtTransfer?: number;
+      addedCostBaseAtTransfer?: number;
+      addedCostCCYAtTransfer?: number;
+      revaluationUnitCostBaseAtTransfer?: number;
+      revaluationUnitCostCCYAtTransfer?: number;
+    }>;
+  }): Promise<StockTransferDTO> => client.put(`/tenant/inventory/transfers/${id}`, payload),
 
   completeTransfer: (id: string): Promise<StockTransferDTO> =>
     client.post(`/tenant/inventory/transfers/${id}/complete`, {}),
+
+  undoTransfer: (id: string, date?: string): Promise<StockTransferDTO> =>
+    client.post(`/tenant/inventory/transfers/${id}/undo`, { date }),
+
+  cancelTransfer: (id: string): Promise<void> =>
+    client.delete(`/tenant/inventory/transfers/${id}`),
 
   listTransfers: (status?: 'DRAFT' | 'IN_TRANSIT' | 'COMPLETED'): Promise<StockTransferDTO[]> =>
     client.get('/tenant/inventory/transfers', { params: { status } }),

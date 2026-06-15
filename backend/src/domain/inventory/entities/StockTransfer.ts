@@ -3,17 +3,23 @@ export type StockTransferStatus = 'DRAFT' | 'IN_TRANSIT' | 'COMPLETED';
 /**
  * FLAT  — pure stock move A→B; destination inherits the source moving-average
  *         cost; no GL voucher (value-neutral).
- * VALUED — ledger-affecting; the destination may land at an overridden/uplifted
- *         cost (e.g. capitalized freight). The uplift posts to GL with the
- *         credit going to the Inventory Transfer Clearing account.
+ * VALUED — ledger-affecting only when a line declares added cost or
+ *         revaluation. Pure journaled transfers remain value-neutral.
  */
 export type StockTransferMode = 'FLAT' | 'VALUED';
 
 export interface StockTransferLine {
   itemId: string;
   qty: number;
+  /** Completed landed-cost snapshot. Derived from source cost plus explicit deltas. */
   unitCostBaseAtTransfer: number;
   unitCostCCYAtTransfer: number;
+  /** Explicit real transfer cost to capitalize (freight/customs/handling). */
+  addedCostBaseAtTransfer?: number;
+  addedCostCCYAtTransfer?: number;
+  /** Explicit value-only revaluation unit cost. Not inferred from landed cost. */
+  revaluationUnitCostBaseAtTransfer?: number;
+  revaluationUnitCostCCYAtTransfer?: number;
 }
 
 export interface StockTransferProps {
@@ -28,6 +34,8 @@ export interface StockTransferProps {
   status: StockTransferStatus;
   voucherId?: string;
   transferPairId: string;
+  reversesTransferId?: string;
+  reversedByTransferId?: string;
   createdBy: string;
   createdAt: Date;
   completedAt?: Date;
@@ -55,6 +63,8 @@ export class StockTransfer {
   status: StockTransferStatus;
   voucherId?: string;
   transferPairId: string;
+  reversesTransferId?: string;
+  reversedByTransferId?: string;
   readonly createdBy: string;
   readonly createdAt: Date;
   completedAt?: Date;
@@ -92,6 +102,24 @@ export class StockTransfer {
       if (Number.isNaN(line.unitCostBaseAtTransfer) || Number.isNaN(line.unitCostCCYAtTransfer)) {
         throw new Error(`StockTransfer line ${index + 1}: unit costs must be valid numbers`);
       }
+      const numericFields = [
+        ['addedCostBaseAtTransfer', line.addedCostBaseAtTransfer],
+        ['addedCostCCYAtTransfer', line.addedCostCCYAtTransfer],
+        ['revaluationUnitCostBaseAtTransfer', line.revaluationUnitCostBaseAtTransfer],
+        ['revaluationUnitCostCCYAtTransfer', line.revaluationUnitCostCCYAtTransfer],
+      ] as const;
+      for (const [field, value] of numericFields) {
+        if (value !== undefined && (Number.isNaN(value) || value < 0)) {
+          throw new Error(`StockTransfer line ${index + 1}: ${field} must be a valid non-negative number`);
+        }
+      }
+      const hasAddedCost = (line.addedCostBaseAtTransfer ?? 0) > 0 || (line.addedCostCCYAtTransfer ?? 0) > 0;
+      const hasRevaluation =
+        line.revaluationUnitCostBaseAtTransfer !== undefined ||
+        line.revaluationUnitCostCCYAtTransfer !== undefined;
+      if (hasAddedCost && hasRevaluation) {
+        throw new Error(`StockTransfer line ${index + 1}: added cost and revaluation must be separate transfers`);
+      }
     });
 
     this.id = props.id;
@@ -105,6 +133,8 @@ export class StockTransfer {
     this.status = props.status;
     this.voucherId = props.voucherId;
     this.transferPairId = props.transferPairId;
+    this.reversesTransferId = props.reversesTransferId;
+    this.reversedByTransferId = props.reversedByTransferId;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
     this.completedAt = props.completedAt;
@@ -123,6 +153,8 @@ export class StockTransfer {
       status: this.status,
       voucherId: this.voucherId,
       transferPairId: this.transferPairId,
+      reversesTransferId: this.reversesTransferId,
+      reversedByTransferId: this.reversedByTransferId,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
       completedAt: this.completedAt,
@@ -142,6 +174,8 @@ export class StockTransfer {
       status: data.status || 'DRAFT',
       voucherId: data.voucherId,
       transferPairId: data.transferPairId || data.id,
+      reversesTransferId: data.reversesTransferId,
+      reversedByTransferId: data.reversedByTransferId,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt || new Date()),
       completedAt: toDate(data.completedAt),

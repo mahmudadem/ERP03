@@ -12,6 +12,21 @@
 > `ILedgerRepository.recordForVoucher`, `deleteForVoucher`, or `markReconciled` outside the
 > gateway.
 
+> **⚠️ Known gap (flagged 2026-06-15) — Law 7 is NOT actually satisfied for approval.**
+> §7/§8 below claim "approval is derived from the caller's real state" and mark "No forged
+> 'approved' stamp ✅". In reality the guard reads `ctx.approved`, a boolean the **caller passes**,
+> which **defaults to approved when omitted** (`PostingGateway.ts` `runPolicies`). So a caller still
+> *asserts* its own approval (the exact thing Law 7 forbids), and any path that omits the flag
+> bypasses `ApprovalRequiredPolicy` by omission. The **Inventory** module exploited this
+> (valued transfer, stock adjustment, opening stock all force-approved in strict mode); Delivery Note
+> and Goods Receipt do the same in PERPETUAL+strict. The full fix — approval becomes a verifiable
+> **record** the guard checks, never a caller flag — is specified in
+> [planning/briefs/20260615-approval-record-redesign.md](../../planning/briefs/20260615-approval-record-redesign.md).
+> **Interim hotfix shipped 2026-06-15:** `SubledgerVoucherPostingService.resolveApproved` fails
+> closed for inventory-origin postings (they now block in strict mode instead of silently posting);
+> DN/GRN still rely on the fail-open default pending the redesign. Until it lands, treat the
+> conformance rows for Law 7 / "No forged approved stamp" as **partial**.
+
 ## 1. The mental model
 
 The **ledger is the vault.** Writing to it is the only truly irreversible act in the system, so

@@ -47,7 +47,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
   const [defaultCostCurrency, setDefaultCostCurrency] = useState('');
   const [defaultInventoryAssetAccountId, setDefaultInventoryAssetAccountId] = useState('');
   const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
-  const [allowNegativeStock, setAllowNegativeStock] = useState(true);
+  const [allowNegativeStock, setAllowNegativeStock] = useState(false);
   const [autoGenerateItemCode, setAutoGenerateItemCode] = useState(false);
   const [itemCodePrefix, setItemCodePrefix] = useState('ITM');
   const [itemCodeNextSeq, setItemCodeNextSeq] = useState(1);

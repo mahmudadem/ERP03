@@ -121,6 +121,8 @@ export interface InventorySettingsDTO {
   defaultInventoryGainAccountId?: string;
   defaultInventoryLossAccountId?: string;
   defaultInventoryTransferClearingAccountId?: string;
+  defaultInventoryRevaluationAccountId?: string;
+  allowNegativeInventoryValue: boolean;
 }
 
 export interface OpeningStockDocumentDTO {
@@ -247,6 +249,8 @@ export interface StockTransferDTO {
   status: 'DRAFT' | 'IN_TRANSIT' | 'COMPLETED';
   voucherId?: string;
   transferPairId: string;
+  reversesTransferId?: string;
+  reversedByTransferId?: string;
   createdBy: string;
   createdAt: string;
   completedAt?: string;
@@ -255,6 +259,10 @@ export interface StockTransferDTO {
     qty: number;
     unitCostBaseAtTransfer: number;
     unitCostCCYAtTransfer: number;
+    addedCostBaseAtTransfer?: number;
+    addedCostCCYAtTransfer?: number;
+    revaluationUnitCostBaseAtTransfer?: number;
+    revaluationUnitCostCCYAtTransfer?: number;
   }>;
 }
 
@@ -401,6 +409,8 @@ export class InventoryDTOMapper {
       defaultInventoryGainAccountId: settings.defaultInventoryGainAccountId,
       defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId,
+      defaultInventoryRevaluationAccountId: settings.defaultInventoryRevaluationAccountId,
+      allowNegativeInventoryValue: settings.allowNegativeInventoryValue,
     };
   }
 
@@ -520,6 +530,8 @@ export class InventoryDTOMapper {
       status: transfer.status,
       voucherId: transfer.voucherId,
       transferPairId: transfer.transferPairId,
+      reversesTransferId: transfer.reversesTransferId,
+      reversedByTransferId: transfer.reversedByTransferId,
       createdBy: transfer.createdBy,
       createdAt: transfer.createdAt.toISOString(),
       completedAt: transfer.completedAt?.toISOString(),

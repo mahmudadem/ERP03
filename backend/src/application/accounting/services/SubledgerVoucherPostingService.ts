@@ -142,6 +142,17 @@ export class SubledgerVoucherPostingService {
     // derives approval from the caller's REAL state (`input.approved`), never the voucher's own
     // stamp (Law 7), so an active ApprovalRequiredPolicy rejects an unapproved subledger posting
     // before any ledger row is written.
+    //
+    // INTERIM fail-closed for inventory (see planning/briefs/20260615-approval-record-redesign.md):
+    // historically `approved` defaulted to TRUE when omitted — a fail-OPEN default that let
+    // inventory GL postings (valued transfer, stock adjustment, opening stock) silently bypass an
+    // active ApprovalRequiredPolicy in strict mode. Until the approval-record redesign lands, when
+    // an inventory-origin posting does NOT state its approval, resolve the REAL requirement from the
+    // accounting config instead of assuming approved. An explicit `input.approved` (Sales/Purchases)
+    // always wins; other omitting callers keep the legacy default to avoid unrelated blast radius
+    // (DN/GRN are tracked for the full redesign, not changed here).
+    const approved = await this.resolveApproved(input);
+
     const gateway = new PostingGateway(
       this.ledgerRepo,
       this.validationService,
@@ -152,7 +163,7 @@ export class SubledgerVoucherPostingService {
       postedVoucher,
       {
         userId: input.createdBy,
-        approved: input.approved !== false,
+        approved,
         enforcePolicies: true,
       },
       transaction
@@ -160,6 +171,29 @@ export class SubledgerVoucherPostingService {
 
     await this.voucherRepo.save(postedVoucher, transaction);
     return postedVoucher;
+  }
+
+  /**
+   * Decide the approval state to present to the guard. Precedence:
+   *  1. Explicit `input.approved` from the caller (Sales/Purchases) — always honored.
+   *  2. Inventory-origin postings that omit it — resolve the REAL requirement from accounting
+   *     config (fail closed): if approval is required for this voucher type, present NOT approved so
+   *     ApprovalRequiredPolicy blocks it instead of the old fail-open default silently posting.
+   *  3. Any other omitting caller — legacy default (approved) to avoid unrelated blast radius.
+   * Interim measure; the full fix removes the boolean entirely (see the redesign brief).
+   */
+  private async resolveApproved(input: PostSubledgerVoucherInput): Promise<boolean> {
+    if (input.approved !== undefined) return input.approved;
+
+    const isInventoryOrigin = input.metadata?.sourceModule === 'inventory';
+    if (isInventoryOrigin && this.policyRegistry) {
+      const config = await this.policyRegistry.getConfig(input.companyId);
+      const exempt = (config as any).approvalExemptVoucherTypes ?? [];
+      const approvalRequired = !!(config as any).approvalRequired && !exempt.includes(input.voucherType);
+      return !approvalRequired;
+    }
+
+    return true;
   }
 
   async deleteVoucherInTransaction(

@@ -2,6 +2,87 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-15 (Journaled stock transfer costing fix)
+
+- **Goal:** Implement the approved decision brief `planning/briefs/20260615-journaled-stock-transfer-costing.md` so stock transfers no longer infer value from `IN − OUT`.
+- **What changed:** removed automatic transfer uplift posting; added explicit transfer line fields for added cost and revaluation; added locked `defaultInventoryRevaluationAccountId` and `allowNegativeInventoryValue=false`; updated Inventory Settings UI/API; kept Sales/Purchases/Adjustment posting unchanged; extended Prisma transfer-line compatibility encoding for the new transfer-only fields.
+- **Accounting/ERP impact:** plain/journaled transfers now move at source carrying cost only; added cost posts to Transfer Clearing; value-only correction posts to dedicated Inventory Revaluation; zero-cost source transfers at zero unless explicitly revalued. Source OUT average integrity and subledger/GL control tie-out are now covered by regression tests.
+- **Verification:** focused transfer/settings/global/negative-stock tests passed (45/45); full backend inventory/domain slice passed (13 suites, 76 tests); `npm --prefix backend run build` passed; `npm --prefix frontend run typecheck` passed; compiled-`lib` Firestore emulator smoke passed (`cmp_cost_smoke_mqeik949`, transfer `745a7cbd-fafc-41cd-87d4-e2dd714ccaca`, OUT 10 / IN 15, source avg 10 / destination avg 15).
+- **Docs:** updated `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, and added [done/231-journaled-stock-transfer-costing.md](./done/231-journaled-stock-transfer-costing.md).
+- **Time spent:** ~2.4h.
+- **Next:** restart/reload the running backend/frontend and rerun GP02 stock-transfer costing on a fresh tenant with accounting enabled and Financial Approval configured for QA. Confirm inventory valuation ties to GL after plain, added-cost, revaluation, and zero-cost transfer scenarios.
+
+### Session: 2026-06-15 (Stock-transfer simple correction layer)
+
+- **Goal:** Make Inventory Transfers simple enough for small companies without allowing unsafe deletion of posted stock/GL effects.
+- **Decision:** DRAFT transfers get normal **Edit** and **Delete**. COMPLETED transfers get **Undo**, not Delete. Undo creates and completes a linked reverse transfer behind the scenes, so the user has one simple action while the audit trail and valuation history remain intact.
+- **What changed:** added `UpdateStockTransferUseCase` (`PUT /transfers/:id`, DRAFT-only), `UndoStockTransferUseCase` (`POST /transfers/:id/undo`, COMPLETED-only), reversal links on `StockTransfer` (`reversesTransferId`, `reversedByTransferId`), DTO/API wiring, Prisma schema/repository parity, and Stock Transfers page actions (**Edit**, **Delete**, **Undo**) with shared `ConfirmDialog`.
+- **Controls:** completed transfers cannot be edited/deleted; drafts cannot be undone; already-undone transfers cannot be undone again; reversal transfers cannot be undone. Undo runs the normal complete path, so negative-stock and valued-transfer GL guards still apply.
+- **Accounting/ERP impact:** no posted stock movement or voucher is erased. Corrections are visible as linked reverse transfers, which is the market-standard control posture hidden behind a small-company-friendly button.
+- **Verification:** `npm --prefix backend test -- --runInBand backend/src/tests/application/inventory/CancelStockTransferUseCase.test.ts backend/src/tests/application/inventory/StockTransferCorrectionUseCase.test.ts backend/src/tests/application/inventory/StockTransferValuedVoucher.test.ts` passed (12/12); `npm --prefix backend run build` passed; `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~1.0h.
+- **Next:** rerun GP02 transfer step in the running app after backend/frontend restart/hard refresh; confirm DRAFT Edit/Delete and COMPLETED Undo behavior on a clean item/warehouses. Then apply the same "simple action, controlled reversal" pattern to Stock Adjustments/Opening Stock only if GP02 exposes the same UX gap.
+
+### Session: 2026-06-15 (Stock-transfer correction surface — doc sync)
+
+- **Context:** the stock-transfer feature gained two correction capabilities (`UpdateStockTransferUseCase` = edit a DRAFT via `PUT /transfers/:id`; `UndoStockTransferUseCase` = reverse a COMPLETED transfer via `POST /transfers/:id/undo`) alongside the Cancel (DELETE) I added earlier. These were in code + tested (`StockTransferCorrectionUseCase.test.ts`) but **not documented**.
+- **Undo design:** does not delete history — it creates + completes a mirror-image transfer (source/destination swapped) and links the pair via `reversesTransferId` / `reversedByTransferId`. The reverse runs the normal complete path, so it posts its own paired movements (+ reversing uplift voucher for VALUED, through the guard) and is itself subject to the negative-stock guard. Guards: only COMPLETED can be undone, not an already-undone one, and a reversal can't be undone.
+- **Done:** documented the full transfer lifecycle (create → edit draft → cancel draft → complete → undo completed) in `docs/architecture/inventory.md`. No code changed.
+- **Now fully documented:** transfer negative-stock guard, cancel, edit, undo, and the approval-leak finding + interim hotfix + redesign brief.
+
+### Session: 2026-06-15 (Approval-leak root cause + redesign design note)
+
+- **Trigger:** Owner pushed on "strict mode needs approval, but the valued transfer auto-approved — how can anything bypass the guard?"
+- **Root cause found:** the one-door guard enforces that the rulebook *runs*, but it derives approval from `ctx.approved` — a boolean the **caller passes**, defaulting to approved when omitted (`PostingGateway.ts` runPolicies). So approval is caller-asserted (violates the project's own Law 7) and bypassable by omission. Audited all ~16 posting callers: Sales/Purchases pass the real state; **Inventory** (valued transfer `StockTransferUseCases.ts:348`, stock adjustment `:344`, opening stock `OpeningStockDocumentUseCases.ts:515`) passes nothing → force-approved in strict mode. `isApprovalRequiredForVoucherType` is wired nowhere; the architecture test checks routing only, not approval — so CI never caught it.
+- **Key realization:** `docs/architecture/posting-authority.md` already *claims* this is solved (Law 7 ✅, "no forged approved stamp ✅") — the implementation contradicts its own documented architecture.
+- **Deliverable:** design note `planning/briefs/20260615-approval-record-redesign.md` — replace caller-asserted approval with an **approval record (stamp)** the guard verifies (fail closed: no record → refuse). Two anti-leak properties: (A) stamp bound to voucher content fingerprint (kills approve-then-edit), (B) issuer ≠ poster (SoD). Plus a **grant** model so approval can later be delegated to other modules via a stamping service (the owner's "approval gateway" idea), and "auto-post" becomes an explicit auditable grant instead of a silent default. Phased migration; deletes `ctx.approved` entirely. Flagged the gap at the top of the SSOT doc.
+- **Owner decisions:** require approval (A), full content fingerprint, and ship the interim hotfix now.
+- **Interim hotfix shipped:** while auditing for the safe quick patch I found a global default-flip was UNsafe — Delivery Note (`DeliveryNoteUseCases.ts:515`) and Goods Receipt also omit `approved`, so flipping the default would also block DN/GRN in PERPETUAL+strict. So the hotfix is surgical and central: `SubledgerVoucherPostingService.resolveApproved` fails closed only for inventory-origin postings (`metadata.sourceModule === 'inventory'`) — they resolve the real approval requirement from config and block in strict mode instead of silently posting. Explicit `input.approved` (Sales/Purchases) still wins; DN/GRN intentionally untouched (blocking them needs the approve flow; tracked for the full redesign). Tests: SubledgerVoucherPostingServicePolicy.test.ts +3; full inventory+sales+purchases suites 394/394; backend rebuilt.
+- **Consequence to flag to owner:** in strict mode, valued transfers / stock adjustments / opening-stock GL postings now BLOCK with APPROVAL_REQUIRED (no approve UI yet). To keep doing inventory QA, either turn off Financial Approval temporarily, or wait for the full approval-record flow.
+- **Next:** implement the full record model phased (per §5 of the brief), starting with the shadow record + manual-path stamping.
+
+### Session: 2026-06-15 (GP02 — cancel draft transfers + valued-transfer guard clarification)
+
+- **Goal:** Two owner findings during live transfer QA: (1) a blocked DRAFT transfer was a dead document — no way to edit/cancel/remove it; (2) "how did the valued-transfer ledger entry bypass the guard and auto-approve?"
+- **Finding 1 (bug, fixed):** Stock Transfers had only create/complete/list — no edit, cancel, or delete. Added `CancelStockTransferUseCase` (DRAFT-only hard delete; refuses COMPLETED/not-found/cross-company), `DELETE /tenant/inventory/transfers/:id`, `inventoryApi.cancelTransfer`, and a red **Cancel** button on DRAFT rows. The repo's `deleteTransfer` already existed — just unwired. A DRAFT has posted no stock/GL, so the delete is safe; COMPLETED transfers would need a reversing flow.
+- **Finding 2 (not a bug, clarified + documented):** The VALUED uplift voucher posts through `SubledgerVoucherPostingService.postInTransaction` → `PostingGateway.record()` — the GP01 one-door — which enforces period lock and the enabled policy set. It posts APPROVED because the completion action is its authorization (same as a posted SI auto-creating its COGS voucher), not a bypass. And since movements run before `postUpliftVoucher` in the same transaction, a negative-stock block rolls back the voucher atomically.
+- **Verification:** CancelStockTransferUseCase.test.ts 4/4; valued-voucher + negative-stock suites green (13/13 across the 3 files); `npm --prefix backend run build` passed; `npm --prefix frontend run typecheck` passed. Docs: inventory architecture (transfer lifecycle + one-door note), GP02 findings, report 230, ACTIVE updated.
+- **Time spent:** ~0.6h.
+- **Next:** Owner cancels the stuck draft, clears the leftover negative stock (adjustment/transfer), and re-confirms GP02 step 9 clean.
+
+### Session: 2026-06-14 (GP02 Step 9 — transfer path negative-stock guard)
+
+- **Goal:** Owner fresh-company retest of GP02 step 9 still failed: a **stock transfer** drove Main Warehouse to −15,149,704 (WH2 +15,149,799) while **Allow Negative Stock** was unchecked and saved.
+- **Root cause:** the default-hardening fix (same day) made `allowNegativeStock=false` stick, and `processOUT` enforces it — but the negative-stock guard lived **only** in `processOUT`. Stock transfers issue from the source via `RecordStockMovementUseCase.processTRANSFER` (WAREHOUSE) and `processTRANSFERGlobal` (GLOBAL), which decremented `srcLevel.qtyOnHand` with no guard at all.
+- **What was done:** `processTRANSFER` now loads `InventorySettings` once (drives the costing basis **and** the guard, mirroring `processOUT`) and threads it into `processTRANSFERGlobal`; both paths throw `NegativeStockError` (`NEGATIVE_STOCK_BLOCKED`) before mutating the source level when projected source qty < 0 and `allowNegativeStock===false`. Destination IN leg stays unguarded. Added 3 regression tests (WAREHOUSE blocks, WAREHOUSE allows when opt-in, GLOBAL blocks). Updated inventory architecture doc, GP02 findings, ACTIVE, and completion report 230.
+- **Accounting/ERP impact:** every stock-issuing path (sale, purchase return, adjustment OUT, **transfer**) now honors the same negative-stock policy; no source warehouse can go negative unless explicitly allowed.
+- **Verification:** `NegativeStockEnforcement.test.ts` 7/7 (incl. 3 transfer cases); full inventory suite 56/56; `npm --prefix backend run build` passed; compiled `lib/` carries the guard.
+- **Time spent:** ~0.5h.
+- **Next:** Owner clears the existing negative rows (correcting transfer or adjustment IN) and re-confirms GP02 step 9 on the fresh company.
+
+### Session: 2026-06-14 (GP02 Step 9 Negative-Stock Default Hardening)
+
+- **Goal:** Fix owner-reported fresh-company GP02 step 9 failure where an OUT adjustment was allowed to drive stock to `-1` while the Inventory Settings UI showed **Allow Negative Stock** unchecked.
+- **Root cause:** `RecordStockMovementUseCase.processOUT` already blocks correctly when persisted `allowNegativeStock=false`, but new inventory defaults were permissive (`true`) in the domain, initialization use case, controller fallback, and frontend initialization wizard. Inventory Settings also hid its section-level Save button, so an unchecked local UI state could be mistaken for saved policy.
+- **What was done:** Defaulted new/hydrated inventory settings and initialization/update fallbacks to `allowNegativeStock=false`; changed the inventory setup wizard default to unchecked; restored visible **Save Settings** buttons in Inventory Settings sections; added domain regression tests for the default/hydration behavior; updated inventory architecture/user docs, GP02 findings, ACTIVE, and completion report 230.
+- **Accounting/ERP impact:** Negative stock is now opt-in, matching standard inventory control. When disabled, stock OUT still fails before stock-level mutation or any accounting effect.
+- **Verification:** Focused backend tests for InventorySettings + NegativeStockEnforcement passed; `npm --prefix backend run build` passed; `npm --prefix frontend run typecheck` passed; `npm --prefix frontend run build` passed with existing bundle/Browserslist warnings.
+- **Time spent:** ~0.5h.
+- **Next:** Restart/hard-refresh the running app and rerun GP02 step 9 on the fresh company. If the existing test row already reached `-1`, correct/recreate the test item before judging the retest.
+
+### Session: 2026-06-14 — Account Statement voucher mapping fix
+
+- **Goal:** Fix the Account Statement report VOUCHER column showing raw UUIDs instead of human-readable voucher numbers (e.g., `JV-00001`).
+- **Root cause:** `FirestoreLedgerRepository.recordForVoucher` wrote `voucherId` (UUID) to every ledger document but never wrote `voucherNo`. The read path's fallback `e.voucherNo || e.voucherId` therefore always returned the UUID for existing data.
+- **Fix (two-part):**
+  1. **Write** — added `voucherNo: voucher.voucherNo || ''` to the ledger document in `recordForVoucher`. All new postings now store the readable number.
+  2. **Read / legacy backfill** — in `getAccountStatement`, after building the ordered rows, any entry with a blank `voucherNo` is collected into a set of `voucherId`s and batch-fetched from the vouchers collection (chunks of 10, Firestore `in` limit). The returned `voucherNo` values are substituted into the entry before the array is returned. No data migration required — existing data resolves on the next statement load.
+- **File changed:** `backend/src/infrastructure/firestore/repositories/accounting/FirestoreLedgerRepository.ts`
+- **Verified:** `npm --prefix backend run build` (`tsc`) passed with zero errors.
+- **Time spent:** ~0.3h.
+- **Next:** Restart/redeploy the backend emulator so the new `voucherNo` write path is active. Load the Account Statement and confirm vouchers show as `JV-00001`, `RV-00001`, etc.
+
+
 ### Session: 2026-06-14 — Ledger one-door mutation boundary fixed
 
 - **Goal:** Fix the architecture bug where ledger mutation could happen through more than one application path.

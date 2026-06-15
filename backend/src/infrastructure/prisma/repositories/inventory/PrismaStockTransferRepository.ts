@@ -16,6 +16,10 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
         date: new Date(transfer.date),
         status: transfer.status,
         notes: transfer.notes || null,
+        transferPairId: transfer.transferPairId,
+        reversesTransferId: transfer.reversesTransferId || null,
+        reversedByTransferId: transfer.reversedByTransferId || null,
+        completedAt: transfer.completedAt || null,
         createdBy: transfer.createdBy,
         lines: {
           create: transfer.lines.map((line, index) => ({
@@ -23,7 +27,7 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
             itemId: line.itemId,
             quantity: line.qty,
             qtyReceived: 0,
-            notes: `${line.unitCostBaseAtTransfer}|${line.unitCostCCYAtTransfer}`,
+            notes: this.packLineCosts(line),
           })),
         },
       } as any,
@@ -43,6 +47,8 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.transferPairId !== undefined) updateData.transferPairId = data.transferPairId;
+    if (data.reversesTransferId !== undefined) updateData.reversesTransferId = data.reversesTransferId;
+    if (data.reversedByTransferId !== undefined) updateData.reversedByTransferId = data.reversedByTransferId;
     if (data.completedAt !== undefined) updateData.completedAt = data.completedAt;
     if (data.lines !== undefined) {
       updateData.lines = {
@@ -52,7 +58,7 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
           itemId: line.itemId,
           quantity: line.qty,
           qtyReceived: existing?.lines?.[index]?.qtyReceived ?? 0,
-          notes: `${line.unitCostBaseAtTransfer}|${line.unitCostCCYAtTransfer}`,
+          notes: this.packLineCosts(line),
         })),
       };
     }
@@ -107,6 +113,10 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
         qty: line.quantity,
         unitCostBaseAtTransfer: parseFloat(costParts[0]) || 0,
         unitCostCCYAtTransfer: parseFloat(costParts[1]) || 0,
+        addedCostBaseAtTransfer: this.parseOptionalCost(costParts[2]),
+        addedCostCCYAtTransfer: this.parseOptionalCost(costParts[3]),
+        revaluationUnitCostBaseAtTransfer: this.parseOptionalCost(costParts[4]),
+        revaluationUnitCostCCYAtTransfer: this.parseOptionalCost(costParts[5]),
       };
     });
 
@@ -120,9 +130,28 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
       lines,
       status: record.status,
       transferPairId: (record as any).transferPairId || record.id,
+      reversesTransferId: (record as any).reversesTransferId,
+      reversedByTransferId: (record as any).reversedByTransferId,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
       completedAt: (record as any).completedAt,
     });
+  }
+
+  private packLineCosts(line: any): string {
+    return [
+      line.unitCostBaseAtTransfer,
+      line.unitCostCCYAtTransfer,
+      line.addedCostBaseAtTransfer ?? '',
+      line.addedCostCCYAtTransfer ?? '',
+      line.revaluationUnitCostBaseAtTransfer ?? '',
+      line.revaluationUnitCostCCYAtTransfer ?? '',
+    ].join('|');
+  }
+
+  private parseOptionalCost(value: string | undefined): number | undefined {
+    if (value === undefined || value === '') return undefined;
+    const parsed = parseFloat(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
   }
 }

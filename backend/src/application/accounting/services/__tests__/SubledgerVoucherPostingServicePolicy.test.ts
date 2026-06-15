@@ -113,12 +113,12 @@ describe('SubledgerVoucherPostingService policy guard', () => {
     ],
   };
 
-  const buildService = (policy: IPostingPolicy) => {
+  const buildService = (policy: IPostingPolicy, config: Record<string, any> = { policyErrorMode: 'FAIL_FAST' }) => {
     const voucherRepo = { save: jest.fn(), delete: jest.fn() } as any;
     const ledgerRepo = { recordForVoucher: jest.fn(), deleteForVoucher: jest.fn() } as any;
     const companyCurrencyRepo = { getBaseCurrency: jest.fn().mockResolvedValue('USD' as never) } as any;
     const policyRegistry = {
-      getConfig: jest.fn().mockResolvedValue({ policyErrorMode: 'FAIL_FAST' } as never),
+      getConfig: jest.fn().mockResolvedValue(config as never),
       getEnabledPolicies: jest.fn().mockResolvedValue([policy] as never),
     };
     const service = new SubledgerVoucherPostingService(
@@ -145,5 +145,56 @@ describe('SubledgerVoucherPostingService policy guard', () => {
 
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  // Interim inventory fail-closed (planning/briefs/20260615-approval-record-redesign.md):
+  // an inventory-origin posting that OMITS approval must NOT fail open. When the company requires
+  // approval, the service resolves that from config and presents the posting as NOT approved, so the
+  // approval policy blocks it — closing the silent inventory bypass.
+  it('blocks an inventory-origin posting that omits approval when the company requires approval', async () => {
+    const { service, voucherRepo, ledgerRepo } = buildService(approvalPolicy, {
+      policyErrorMode: 'FAIL_FAST',
+      approvalRequired: true,
+    });
+
+    await expect(
+      service.postInTransaction({
+        ...baseInput,
+        metadata: { sourceModule: 'inventory', referenceType: 'STOCK_TRANSFER' },
+      } as any)
+    ).rejects.toBeInstanceOf(PostingError);
+
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('posts an inventory-origin posting when the company does not require approval', async () => {
+    const { service, voucherRepo, ledgerRepo } = buildService(approvalPolicy, {
+      policyErrorMode: 'FAIL_FAST',
+      approvalRequired: false,
+    });
+
+    await service.postInTransaction({
+      ...baseInput,
+      metadata: { sourceModule: 'inventory', referenceType: 'STOCK_TRANSFER' },
+    } as any);
+
+    expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
+    expect(voucherRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT block an inventory-origin posting for an approval-EXEMPT voucher type', async () => {
+    const { service, ledgerRepo } = buildService(approvalPolicy, {
+      policyErrorMode: 'FAIL_FAST',
+      approvalRequired: true,
+      approvalExemptVoucherTypes: [VoucherType.JOURNAL_ENTRY],
+    });
+
+    await service.postInTransaction({
+      ...baseInput,
+      metadata: { sourceModule: 'inventory', referenceType: 'STOCK_TRANSFER' },
+    } as any);
+
+    expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
   });
 });

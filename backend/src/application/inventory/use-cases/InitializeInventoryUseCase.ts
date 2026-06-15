@@ -29,6 +29,8 @@ export interface InitializeInventoryInput {
   defaultInventoryGainAccountId?: string;
   defaultInventoryLossAccountId?: string;
   defaultInventoryTransferClearingAccountId?: string;
+  defaultInventoryRevaluationAccountId?: string;
+  allowNegativeInventoryValue?: boolean;
   /**
    * IDs of system Inventory voucher templates the user picked in the wizard.
    * `undefined` keeps legacy behavior (no voucher templates copied — Inventory
@@ -93,7 +95,7 @@ export class InitializeInventoryUseCase {
         input.defaultInventoryAssetAccountId
         ?? currentSettings?.defaultInventoryAssetAccountId
         ?? undefined,
-      allowNegativeStock: input.allowNegativeStock ?? currentSettings?.allowNegativeStock ?? true,
+      allowNegativeStock: input.allowNegativeStock ?? currentSettings?.allowNegativeStock ?? false,
       defaultWarehouseId: currentSettings?.defaultWarehouseId || defaultWarehouse.id,
       autoGenerateItemCode: input.autoGenerateItemCode ?? currentSettings?.autoGenerateItemCode ?? false,
       itemCodePrefix: input.itemCodePrefix ?? currentSettings?.itemCodePrefix,
@@ -105,6 +107,10 @@ export class InitializeInventoryUseCase {
         input.defaultInventoryLossAccountId ?? currentSettings?.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId:
         input.defaultInventoryTransferClearingAccountId ?? currentSettings?.defaultInventoryTransferClearingAccountId,
+      defaultInventoryRevaluationAccountId:
+        input.defaultInventoryRevaluationAccountId ?? currentSettings?.defaultInventoryRevaluationAccountId,
+      allowNegativeInventoryValue:
+        input.allowNegativeInventoryValue ?? currentSettings?.allowNegativeInventoryValue ?? false,
     });
 
     await this.settingsRepo.saveSettings(settings);
