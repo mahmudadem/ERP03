@@ -59,6 +59,7 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "grandTotal": "Grand Total",
+    "balanced": "Balanced",
     "unbalancedDiff": "Unbalanced — Diff: {{diff}}",
     "asOfInline": "As of {{date}}",
     "exportExcel": "Export Excel",

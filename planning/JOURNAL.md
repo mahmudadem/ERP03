@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-16 (GP01 rerun on fresh starter tenant + i18n fixes)
+
+- **Goal:** Commit the finished Simple Trading Company starter template (task 232), then rerun GP01 on a fresh starter-seeded tenant.
+- **Committed:** task 232 (`1e242740`) — code, tests, docs, report; verification re-confirmed green (initializer test + frontend typecheck) before commit.
+- **GP01 run (browser-driven on a fresh `GP01 Trading Co`, SYP/Damascus/DD-MM-YYYY):** Steps 1–5 PASS — the new **Company Setup** wizard step auto-fills regional defaults from country, auto-init produces GLOBAL costing + negative-stock-off inventory, both Sales & Purchases show **Financial Integration Active** (AP-link fix confirmed), and the COA + module settings match the Company Policy Summary. Accounting engine PASS — owner typed JV (Dr Cash 10101 / Cr Paid-in Capital 30101 1,000) posted as JOU-0001; Trial Balance, Balance Sheet, and Cash ledger all tie at 1,000.00. Full per-step log in `planning/qa/findings.md`.
+- **Findings:** two raw i18n keys (`sidebar.currencies`, `trialBalance.balanced`) — **fixed** by adding them to en/ar/tr `common.json` / `accounting.json`, verified live (no raw keys remain, badge renders "Balanced"). One open question: a POSTED+APPROVED voucher opens with editable financial fields + enabled "Update & Post" in an open period (vs. step-10 "read-only" expectation) — left for owner judgment; not mutated.
+- **Not done:** GP01 steps 12–16 (period lock + approval) need owner-typed vouchers — the line-amount cells resist automation (synthetic events and preview_fill both fail to update React state), so they can't be run unattended. They passed in the 2026-06-14 live retest.
+- **Verification:** locale JSON parses for all 6 files; both fixed keys resolve in EN/AR/TR; live page shows zero raw keys.
+- **Next:** owner to (a) decide the posted-voucher editability question, (b) type vouchers for GP01 steps 12–16, (c) continue GP02 on the same clean tenant.
+
 ### Session: 2026-06-15 (Journaled stock transfer costing fix)
 
 - **Goal:** Implement the approved decision brief `planning/briefs/20260615-journaled-stock-transfer-costing.md` so stock transfers no longer infer value from `IN − OUT`.

@@ -59,6 +59,7 @@
     "collapse": "Kapat",
     "expand": "Aç",
     "grandTotal": "Genel Toplam",
+    "balanced": "Dengeli",
     "unbalancedDiff": "Dengesiz — Fark: {{diff}}",
     "asOfInline": "{{date}} tarihi itibarıyla",
     "exportExcel": "Excel'e Aktar",
