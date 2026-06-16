@@ -3758,3 +3758,23 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs updated:** `planning/qa/findings.md`, `planning/done/227-gp01-period-lock-error-message.md`, `planning/done/228-gp01-posted-voucher-edit-lock-block.md`, and `planning/ACTIVE.md` now mark the GP01 period-lock/control-boundary path as passed.
 - **Accounting impact:** Confirmation only. The live result validates that period-lock blocks are readable, posted voucher edits in locked periods are blocked, and the web-mode voucher modal no longer carries stale error state.
 - **Next:** Package the GP01 fix set for review/merge, then continue the next golden-path gate on a clean tenant.
+
+### Session: 2026-06-16 (Simple Trading Company Starter Template)
+
+- **Goal:** Reduce repeated fresh-company setup work and give simple companies a real user-facing starter setup instead of forcing manual initialization of Accounting, Inventory, Sales, and Purchases.
+- **What was done:** Added `SimpleTradingCompanyInitializer`, wired it into the onboarding create-company endpoint, and added a final **Company Setup** wizard step before Review. The step collects base currency, timezone, date format, language, and optional **Auto initialize Trading Company - Simple**. The auto-init flow initializes Accounting, Inventory, Sales, and Purchases using the existing module initialization use cases, links default posting accounts, creates missing simple-company accounts, and returns a visible Company Policy Summary on the success screen.
+- **Accounting/ERP impact:** This is a financial setup feature. Defaults are intentionally conservative: standard COA, invoice-driven inventory, global moving average, negative stock off, SIMPLE direct invoicing for Sales/Purchases, approval off/flexible, and tax-ready only. No legal tax rate is silently applied.
+- **Verification:** `npm --prefix backend test -- --runInBand backend/src/application/onboarding/use-cases/__tests__/SimpleTradingCompanyInitializer.test.ts` passed. `npm --prefix backend run build` passed. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed. Browser QA created a fresh `Wholesale Trading` company with Syria defaults (`SYP`, `Asia/Damascus`, `DD/MM/YYYY`, `ar`) and reached the **Company Policy Summary** showing linked accounts and tax-ready/no-hidden-rate policy.
+- **Docs:** Added `docs/architecture/onboarding.md`, `docs/user-guide/settings/company-starter-template.md`, and [done/232-simple-trading-company-starter-template.md](./done/232-simple-trading-company-starter-template.md). Updated GP01 to use the starter option.
+- **Time spent:** ~2.5h.
+- **Next:** Continue GP01 from the new company/dashboard, confirm Chart of Accounts and module settings match the policy summary, then continue GP02 on that clean tenant.
+
+### Session: 2026-06-16 (Starter Template QA Correction)
+
+- **Goal:** Fix the first browser QA findings from the Simple Trading Company starter: Purchases still showed Financial Integration Pending, and Inventory initialized with per-warehouse costing instead of the desired global simple-company costing.
+- **Root cause:** The starter passed an AP parent account but left `defaultAPAccountId` empty, so Purchase Settings correctly warned that posting defaults were incomplete. Inventory initialization did not expose a `costingBasis` input, so the starter inherited the normal `WAREHOUSE` default.
+- **What was done:** Added `costingBasis?: 'WAREHOUSE' | 'GLOBAL'` to `InitializeInventoryUseCase`, passed `GLOBAL` from `SimpleTradingCompanyInitializer`, linked default AP to `20100 - Accounts Payable - General`, updated the policy summary text/docs, and extended the initializer test to assert both defaults.
+- **Accounting/ERP impact:** New simple trading companies are now immediately purchase-posting ready and use one company-wide moving average per item, which matches the simple-company behavior requested for direct buying/selling/stock movement QA. Existing companies are unchanged.
+- **Verification:** Focused initializer test passed; backend build passed; frontend typecheck passed; frontend production build passed. Browser QA created `QA Simple Trading 102654`, confirmed the setup/review text shows global average cost, Purchase Settings shows **Financial Integration Active** with default AP `20100`, Inventory Settings shows **Global (one company-wide average per item)**, and browser console errors were empty.
+- **Time spent:** ~0.8h.
+- **Next:** Use the new starter company flow for GP01/GP02 clean-tenant retests.

@@ -30,6 +30,7 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
     { id: WizardStep.BasicInfo, label: t('onboarding.companyWizard.stepper.basicInfo', { defaultValue: 'Basic Info' }) },
     { id: WizardStep.BundleSelection, label: t('onboarding.companyWizard.stepper.selectBundle', { defaultValue: 'Select Bundle' }) },
     { id: WizardStep.ContactInfo, label: t('onboarding.companyWizard.stepper.contactInfo', { defaultValue: 'Contact Info' }) },
+    { id: WizardStep.BasicNeeds, label: t('onboarding.companyWizard.stepper.companySetup', { defaultValue: 'Company Setup' }) },
     { id: WizardStep.Review, label: t('onboarding.companyWizard.stepper.review', { defaultValue: 'Review' }) },
   ];
 
@@ -62,7 +63,7 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
         
         {/* Stepper */}
         {!isComplete && (
-          <div className="mt-6 mx-auto max-w-3xl w-full">
+          <div className="mt-6 mx-auto max-w-4xl w-full">
             <nav aria-label="Progress">
               <ol role="list" className="flex items-center w-full">
                 {steps.map((step, stepIdx) => {

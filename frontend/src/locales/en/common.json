@@ -1672,7 +1672,8 @@
           "creatingCompany": "Creating company record...",
           "installingModules": "Installing modules...",
           "settingPermissions": "Setting up permissions...",
-          "finalizing": "Finalizing workspace..."
+          "finalizing": "Finalizing workspace...",
+          "initializingTemplate": "Applying starter template"
         },
         "errors": {
           "missingInfo": "Please go back and fill in all required information.",
@@ -1687,6 +1688,19 @@
         },
         "defaults": {
           "country": "International"
+        },
+        "starter": {
+          "title": "Auto initialize modules with Trading Company - Simple",
+          "description": "Creates the standard chart of accounts, initializes Accounting, Inventory, Sales, and Purchases, links default posting accounts, uses simple direct invoicing, invoice-driven inventory, and blocks negative stock.",
+          "inventory": "Invoice-driven stock, global average cost, negative stock off",
+          "tax": "Tax-ready, no hidden legal rate applied",
+          "currency": "Base currency: {{currency}}",
+          "workflow": "Simple sales and purchases",
+          "manualTitle": "Manual module setup",
+          "manualDescription": "Modules will be installed from the selected bundle, but setup wizards will remain manual.",
+          "timezone": "Timezone: {{timezone}}",
+          "dateFormat": "Date format: {{dateFormat}}",
+          "language": "Language: {{language}}"
         }
       },
       "success": {
@@ -1697,13 +1711,80 @@
           "setupAccounting": "Complete the accounting setup wizard",
           "inviteUsers": "Invite your team members to join"
         },
-        "goToDashboard": "Go to Dashboard"
+        "goToDashboard": "Go to Dashboard",
+        "policy": {
+          "title": "Company Policy Summary",
+          "template": "Template",
+          "currency": "Base Currency",
+          "inventory": "Inventory",
+          "sales": "Sales/Purchases",
+          "linkedAccounts": "Linked Accounts",
+          "accounts": {
+            "cash": "Cash",
+            "bank": "Bank",
+            "inventoryAsset": "Inventory Asset",
+            "arParent": "Customers Receivable",
+            "apParent": "Accounts Payable",
+            "salesRevenue": "Sales Revenue",
+            "cogs": "Cost of Goods Sold"
+          }
+        }
       },
       "stepper": {
         "basicInfo": "Basic Info",
         "selectBundle": "Select Bundle",
         "contactInfo": "Contact Info",
-        "review": "Review"
+        "review": "Review",
+        "companySetup": "Company Setup"
+      },
+      "needs": {
+        "title": "Company Setup",
+        "subtitle": "Confirm currency, date, time, and starter setup before review.",
+        "currency": {
+          "title": "Base Currency",
+          "description": "This currency becomes the company ledger and stock valuation currency.",
+          "field": "Currency Code",
+          "placeholder": "Select currency",
+          "noteTitle": "Accounting note",
+          "note": "Changing base currency after posting transactions is normally restricted in ERP systems."
+        },
+        "starter": {
+          "title": "Auto initialize Trading Company - Simple",
+          "description": "Best for a small company that wants to start buying, selling, and moving stock immediately with standard controls."
+        },
+        "summary": {
+          "title": "Company Setup Summary",
+          "accounting": "Standard chart of accounts",
+          "fiscal": "Calendar fiscal year and company date defaults",
+          "inventory": "Invoice-driven stock with global average cost and negative stock blocked",
+          "warehouse": "Default MAIN warehouse",
+          "sales": "Simple direct sales invoicing",
+          "purchases": "Simple direct purchase invoicing",
+          "tax": "Tax-ready setup without hidden legal rates",
+          "policy": "The final policy summary will show the linked accounts and operational settings after creation.",
+          "companyDefaults": "Currency {{currency}}, timezone {{timezone}}",
+          "manual": "Modules will be installed, but each setup wizard remains manual"
+        },
+        "actions": {
+          "back": "Back",
+          "nextStep": "Continue"
+        },
+        "errors": {
+          "currencyRequired": "Base currency is required before initializing modules."
+        },
+        "company": {
+          "title": "Company Defaults",
+          "description": "Set the financial and regional defaults every company needs before review."
+        },
+        "timezone": {
+          "field": "Timezone"
+        },
+        "dateFormat": {
+          "field": "Date Format"
+        },
+        "language": {
+          "field": "Language"
+        }
       }
     }
   },

@@ -1745,7 +1745,8 @@
           "creatingCompany": "Şirket kaydı oluşturuluyor...",
           "installingModules": "Modüller yükleniyor...",
           "settingPermissions": "İzinler ayarlanıyor...",
-          "finalizing": "Çalışma alanı tamamlanıyor..."
+          "finalizing": "Çalışma alanı tamamlanıyor...",
+          "initializingTemplate": "Baslangic sablonu uygulanıyor"
         },
         "errors": {
           "missingInfo": "Lütfen geri dönün ve gerekli tüm bilgileri doldurun.",
@@ -1760,6 +1761,19 @@
         },
         "defaults": {
           "country": "Uluslararası"
+        },
+        "starter": {
+          "title": "Modulleri Ticaret Sirketi - Basit ile otomatik baslat",
+          "description": "Standart hesap planini olusturur, Muhasebe, Stok, Satis ve Satinalma modullerini baslatir, varsayilan muhasebe hesaplarini baglar, basit dogrudan faturalama ve invoice-driven stok kullanir, negatif stogu engeller.",
+          "inventory": "Invoice-driven stok, negatif stok kapali",
+          "tax": "Vergiye hazir, gizli yasal oran uygulanmaz",
+          "currency": "Ana para birimi: {{currency}}",
+          "workflow": "Basit satis ve alis",
+          "manualTitle": "Manuel modul kurulumu",
+          "manualDescription": "Moduller secilen paketten kurulur, ancak kurulum sihirbazlari manuel kalir.",
+          "timezone": "Saat dilimi: {{timezone}}",
+          "dateFormat": "Tarih formati: {{dateFormat}}",
+          "language": "Dil: {{language}}"
         }
       },
       "success": {
@@ -1770,13 +1784,80 @@
           "setupAccounting": "Muhasebe kurulum sihirbazını tamamlayın",
           "inviteUsers": "Ekip üyelerinizi katılmaya davet edin"
         },
-        "goToDashboard": "Panele Git"
+        "goToDashboard": "Panele Git",
+        "policy": {
+          "title": "Sirket Politika Ozeti",
+          "template": "Sablon",
+          "currency": "Temel Para Birimi",
+          "inventory": "Stok",
+          "sales": "Satis/Satinalma",
+          "linkedAccounts": "Bagli Hesaplar",
+          "accounts": {
+            "cash": "Kasa",
+            "bank": "Banka",
+            "inventoryAsset": "Stok Varligi",
+            "arParent": "Musteri Alacaklari",
+            "apParent": "Satici Borclari",
+            "salesRevenue": "Satis Geliri",
+            "cogs": "Satilan Malin Maliyeti"
+          }
+        }
       },
       "stepper": {
         "basicInfo": "Temel Bilgiler",
         "selectBundle": "Paket Seçimi",
         "contactInfo": "İletişim Bilgileri",
-        "review": "İnceleme"
+        "review": "İnceleme",
+        "companySetup": "Sirket Kurulumu"
+      },
+      "needs": {
+        "title": "Sirket Kurulumu",
+        "subtitle": "Incelemeden once para birimi, tarih, saat ve baslangic kurulumunu onaylayin.",
+        "currency": {
+          "title": "Ana Para Birimi",
+          "description": "Bu para birimi sirket defteri ve stok degerleme para birimi olur.",
+          "field": "Para Birimi Kodu",
+          "placeholder": "Para birimi sec",
+          "noteTitle": "Muhasebe notu",
+          "note": "Kayitlar islendikten sonra ana para birimini degistirmek ERP sistemlerinde normalde kisitlanir."
+        },
+        "starter": {
+          "title": "Ticaret Sirketi - Basit otomatik baslat",
+          "description": "Standart kontrollerle hemen alim, satis ve stok hareketi yapmak isteyen kucuk sirketler icin uygundur."
+        },
+        "summary": {
+          "title": "Sirket Kurulum Ozeti",
+          "accounting": "Standart hesap plani",
+          "fiscal": "Takvim mali yili ve sirket tarih varsayilanlari",
+          "inventory": "Fatura bazli stok ve negatif stok engeli",
+          "warehouse": "Varsayilan MAIN depo",
+          "sales": "Basit dogrudan satis faturasi",
+          "purchases": "Basit dogrudan alis faturasi",
+          "tax": "Gizli yasal oran olmadan vergiye hazir kurulum",
+          "policy": "Son politika ozeti, olusturma sonrasi bagli hesaplari ve operasyonel ayarlari gosterir.",
+          "companyDefaults": "Para birimi {{currency}}, saat dilimi {{timezone}}",
+          "manual": "Moduller kurulur, ancak her kurulum sihirbazi manuel kalir"
+        },
+        "actions": {
+          "back": "Geri",
+          "nextStep": "Devam"
+        },
+        "errors": {
+          "currencyRequired": "Moduller baslatilmadan once ana para birimi gereklidir."
+        },
+        "company": {
+          "title": "Sirket Varsayilanlari",
+          "description": "Incelemeden once her sirketin ihtiyac duydugu finansal ve bolgesel varsayilanlari ayarlayin."
+        },
+        "timezone": {
+          "field": "Saat Dilimi"
+        },
+        "dateFormat": {
+          "field": "Tarih Formati"
+        },
+        "language": {
+          "field": "Dil"
+        }
       }
     }
   },

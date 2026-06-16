@@ -1,11 +1,24 @@
 
 import React from 'react';
 import { WizardStepProps } from './types';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-export const StepSuccess: React.FC<WizardStepProps & { onComplete: () => void }> = ({ onComplete }) => {
+export const StepSuccess: React.FC<WizardStepProps & { onComplete: () => void }> = ({ data, onComplete }) => {
   const { t } = useTranslation('common');
+  const summary = data.starterPolicySummary;
+  const accountRows = summary
+    ? [
+        ['cash', t('onboarding.companyWizard.success.policy.accounts.cash', { defaultValue: 'Cash' })],
+        ['bank', t('onboarding.companyWizard.success.policy.accounts.bank', { defaultValue: 'Bank' })],
+        ['inventoryAsset', t('onboarding.companyWizard.success.policy.accounts.inventoryAsset', { defaultValue: 'Inventory Asset' })],
+        ['arParent', t('onboarding.companyWizard.success.policy.accounts.arParent', { defaultValue: 'Customers Receivable' })],
+        ['apParent', t('onboarding.companyWizard.success.policy.accounts.apParent', { defaultValue: 'Accounts Payable' })],
+        ['salesRevenue', t('onboarding.companyWizard.success.policy.accounts.salesRevenue', { defaultValue: 'Sales Revenue' })],
+        ['cogs', t('onboarding.companyWizard.success.policy.accounts.cogs', { defaultValue: 'Cost of Goods Sold' })],
+      ]
+    : [];
+
   return (
     <div className="flex flex-col items-center justify-center h-full py-6 md:py-12 text-center animate-in zoom-in-95 duration-500">
       <div className="h-16 w-16 md:h-24 md:w-24 rounded-full bg-green-100 flex items-center justify-center mb-4 md:mb-6">
@@ -30,6 +43,55 @@ export const StepSuccess: React.FC<WizardStepProps & { onComplete: () => void }>
           </li>
         </ul>
       </div>
+
+      {summary && (
+        <div className="bg-white p-4 rounded-lg border border-slate-200 mb-6 md:mb-8 max-w-2xl w-full text-left mx-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-primary-600" />
+            <h4 className="font-semibold text-xs md:text-sm text-slate-800">
+              {t('onboarding.companyWizard.success.policy.title', { defaultValue: 'Company Policy Summary' })}
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 mb-4">
+            <div>
+              <span className="font-medium text-slate-500">{t('onboarding.companyWizard.success.policy.template', { defaultValue: 'Template' })}: </span>
+              <span className="font-semibold text-slate-900">{summary.templateName}</span>
+            </div>
+            <div>
+              <span className="font-medium text-slate-500">{t('onboarding.companyWizard.success.policy.currency', { defaultValue: 'Base Currency' })}: </span>
+              <span className="font-semibold text-slate-900">{summary.baseCurrency}</span>
+            </div>
+            <div>
+              <span className="font-medium text-slate-500">{t('onboarding.companyWizard.success.policy.inventory', { defaultValue: 'Inventory' })}: </span>
+              <span className="font-semibold text-slate-900">
+                {summary.inventory.accountingMode} / {summary.inventory.costingBasis}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium text-slate-500">{t('onboarding.companyWizard.success.policy.sales', { defaultValue: 'Sales/Purchases' })}: </span>
+              <span className="font-semibold text-slate-900">{summary.sales.workflowMode}</span>
+            </div>
+          </div>
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-[11px] font-semibold text-slate-500 uppercase mb-2">
+              {t('onboarding.companyWizard.success.policy.linkedAccounts', { defaultValue: 'Linked Accounts' })}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+              {accountRows.map(([key, label]) => {
+                const account = summary.linkedAccounts[key];
+                if (!account) return null;
+                return (
+                  <div key={key} className="flex justify-between gap-3">
+                    <span className="text-slate-500">{label}</span>
+                    <span className="font-medium text-slate-900 truncate">{account.code} · {account.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-3">{summary.tax.note}</p>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={onComplete}

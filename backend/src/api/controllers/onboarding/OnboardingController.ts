@@ -10,6 +10,7 @@ import { SignupUseCase } from '../../../application/auth/use-cases/SignupUseCase
 import { SelectPlanUseCase } from '../../../application/auth/use-cases/SelectPlanUseCase';
 import { GetOnboardingStatusUseCase } from '../../../application/auth/use-cases/GetOnboardingStatusUseCase';
 import { CreateCompanyUseCase } from '../../../application/onboarding/use-cases/CreateCompanyUseCase';
+import { SimpleTradingCompanyInitializer } from '../../../application/onboarding/use-cases/SimpleTradingCompanyInitializer';
 import { CompanyRolePermissionResolver } from '../../../application/rbac/CompanyRolePermissionResolver';
 import { ApiError } from '../../errors/ApiError';
 
@@ -160,7 +161,25 @@ export class OnboardingController {
         return next(ApiError.unauthorized('Authentication required'));
       }
 
-      const { companyName, description, country, email, bundleId, logoData, currency, language, timezone, dateFormat } = req.body;
+      const {
+        companyName,
+        description,
+        country,
+        email,
+        bundleId,
+        logoData,
+        currency,
+        language,
+        timezone,
+        dateFormat,
+        autoInitializeModules,
+        starterTemplateId,
+      } = req.body;
+      const normalizedCurrency = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
+
+      if (autoInitializeModules && !normalizedCurrency) {
+        return next(ApiError.badRequest('Base currency is required before auto-initializing the Simple Trading Company template.'));
+      }
 
       // We need a resolver instance
       const resolver = new CompanyRolePermissionResolver(
@@ -189,15 +208,52 @@ const useCase = new CreateCompanyUseCase(
         email,
         bundleId,
         logoData,
-        currency, 
+        currency: normalizedCurrency || currency,
         language, 
         timezone, 
-        dateFormat
+        dateFormat,
+        autoInitializeModules,
+        starterTemplateId,
       });
+
+      let starterPolicySummary = null;
+      if (autoInitializeModules) {
+        const selectedTemplateId = starterTemplateId || 'simple-trading-company';
+        if (selectedTemplateId !== 'simple-trading-company') {
+          return next(ApiError.badRequest(`Unsupported starter template: ${selectedTemplateId}`));
+        }
+
+        const initializer = new SimpleTradingCompanyInitializer({
+          companyRepo: diContainer.companyRepository,
+          companyModuleRepo: diContainer.companyModuleRepository,
+          accountRepo: diContainer.accountRepository,
+          systemMetadataRepo: diContainer.systemMetadataRepository,
+          companyModuleSettingsRepo: diContainer.companyModuleSettingsRepository,
+          companySettingsRepo: diContainer.companySettingsRepository,
+          currencyRepo: diContainer.currencyRepository,
+          fiscalYearRepo: diContainer.fiscalYearRepository,
+          voucherTypeRepo: diContainer.voucherTypeDefinitionRepository,
+          voucherFormRepo: diContainer.voucherFormRepository,
+          inventorySettingsRepo: diContainer.inventorySettingsRepository,
+          warehouseRepo: diContainer.warehouseRepository,
+          uomRepo: diContainer.uomRepository,
+          salesSettingsRepo: diContainer.salesSettingsRepository,
+          purchaseSettingsRepo: diContainer.purchaseSettingsRepository,
+        });
+
+        starterPolicySummary = await initializer.execute({
+          companyId: result.companyId,
+          userId,
+          baseCurrency: normalizedCurrency,
+        });
+      }
 
       res.json({
         success: true,
-        data: result,
+        data: {
+          ...result,
+          starterPolicySummary,
+        },
       });
     } catch (error) {
       next(error);

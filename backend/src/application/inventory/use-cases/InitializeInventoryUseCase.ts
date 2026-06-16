@@ -21,6 +21,7 @@ export interface InitializeInventoryInput {
   defaultWarehouseCode?: string;
   defaultInventoryAssetAccountId?: string;
   defaultCostCurrency?: string;
+  costingBasis?: 'WAREHOUSE' | 'GLOBAL';
   allowNegativeStock?: boolean;
   autoGenerateItemCode?: boolean;
   itemCodePrefix?: string;
@@ -89,7 +90,7 @@ export class InitializeInventoryUseCase {
         || currentSettings?.inventoryAccountingMethod
         || DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(input.accountingMode || currentSettings?.accountingMode || 'PERPETUAL'),
       defaultCostingMethod: 'MOVING_AVG',
-      costingBasis: currentSettings?.costingBasis ?? 'WAREHOUSE',
+      costingBasis: input.costingBasis ?? currentSettings?.costingBasis ?? 'WAREHOUSE',
       defaultCostCurrency: input.defaultCostCurrency || currentSettings?.defaultCostCurrency || company.baseCurrency,
       defaultInventoryAssetAccountId:
         input.defaultInventoryAssetAccountId
