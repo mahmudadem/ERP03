@@ -17,6 +17,7 @@ const COMPANY_ID = 'cmp-1';
 const USER_ID = 'u-1';
 
 const nowDate = () => new Date('2026-01-01T00:00:00.000Z');
+const round2 = (value: number) => Math.round(value * 100) / 100;
 
 const makeSettings = (
   mode: 'SIMPLE' | 'CONTROLLED',
@@ -774,12 +775,94 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const piVoucher = savedVouchers[0];
     const debits = piVoucher.lines.filter((l: any) => l.side === 'Debit');
     const credits = piVoucher.lines.filter((l: any) => l.side === 'Credit');
-    // Inventory debited at NET 475 (not gross 500), AP credited NET 475.
+    // Receipt-backed perpetual PI clears GRNI at NET 475 and must not post a second stock receipt.
+    expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
+    expect(debits.some((l: any) => l.accountId === 'GRNI-100' && l.debitAmount === 475)).toBe(true);
     expect(debits.some((l: any) => l.debitAmount === 475)).toBe(true);
     expect(debits.some((l: any) => l.debitAmount === 500)).toBe(false);
     expect(credits.some((l: any) => l.creditAmount === 475)).toBe(true);
     expect(piVoucher.totalDebit).toBeCloseTo(475, 2);
     expect(piVoucher.totalCredit).toBeCloseTo(475, 2);
+  });
+
+  it('6d) PostPI uses the discounted net cost for invoice-driven stock receipt and keeps stock value tied to the GL debit (backlog-223)', async () => {
+    const settings = makeSettings('SIMPLE');
+    const vendor = makeVendor();
+    const stockItem = makeItem('itm-6d', { trackInventory: true, inventoryAssetAccountId: 'INV-106D' });
+    const pi = makePI({
+      id: 'pi-6d',
+      item: stockItem,
+      invoicedQty: 50,
+      unitPriceDoc: 10,      // gross line = 500
+      discountType: 'PERCENT',
+      discountValue: 5,      // 5% -> discount 25 -> net 475 -> 9.5/unit
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    inventoryService.preFetchStockLevel.mockResolvedValue(
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1')
+    );
+
+    const savedVouchers: any[] = [];
+    const voucherRepo = { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+    const invoiceStore = new Map([[pi.id, pi]]);
+    const invoiceRepo = {
+      getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+      update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      invoiceRepo as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, pi.id);
+    expect(posted.status).toBe('POSTED');
+    expect(posted.subtotalBase).toBe(475);
+    expect(posted.grandTotalBase).toBe(475);
+
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockLevel).toHaveBeenCalledTimes(1);
+
+    const movement = (inventoryService.writeStockMovement as any).mock.calls[0][0];
+    expect(movement.unitCostBase).toBeCloseTo(9.5, 2);
+    expect(movement.totalCostBase).toBeCloseTo(475, 2);
+    expect(movement.unitCostCCY).toBeCloseTo(9.5, 2);
+    expect(movement.totalCostCCY).toBeCloseTo(475, 2);
+    expect(movement.avgCostBaseAfter).toBeCloseTo(9.5, 2);
+
+    const level = (inventoryService.writeStockLevel as any).mock.calls[0][0];
+    expect(level.qtyOnHand).toBeCloseTo(50, 2);
+    expect(level.avgCostBase).toBeCloseTo(9.5, 2);
+    expect(level.lastCostBase).toBeCloseTo(9.5, 2);
+    expect(round2(level.avgCostBase * level.qtyOnHand)).toBeCloseTo(475, 2);
+
+    const piVoucher = savedVouchers[0];
+    const inventoryDebit = piVoucher.lines.find((l: any) => l.accountId === 'INV-106D' && l.side === 'Debit');
+    expect(inventoryDebit).toBeTruthy();
+    expect(inventoryDebit.debitAmount).toBeCloseTo(475, 2);
+    expect(round2(level.avgCostBase * level.qtyOnHand)).toBeCloseTo(inventoryDebit.debitAmount, 2);
   });
 
   it('7) PostPI (SIMPLE standalone): creates inventory movement + GL voucher', async () => {

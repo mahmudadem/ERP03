@@ -51,3 +51,7 @@ A new **Inventory Revaluation** document:
 - Out of scope: bulk/CSV revaluation, FX revaluation of foreign-currency cost layers.
 - Relates to: [221 inventory deep stabilization epic](./221-inventory-deep-stabilization-epic.md),
   the GL reconciliation report (`ReconcileInventoryGLUseCase`).
+- Cross-note: the separate Purchase Invoice **discount cost-basis mismatch** is closed by
+  [240b phase 2](./240b-phase2-discount-cost-basis-fix.md). Task 223 remains the backlog item
+  for **value-only revaluation/correction** cases where quantity stays unchanged but valuation
+  must be restated.

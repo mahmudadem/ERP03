@@ -1,6 +1,6 @@
 # Architecture: Inventory Module
 
-**Last updated:** 2026-06-13 (Task 221 — deep stabilization)
+**Last updated:** 2026-06-18 (Task 240b — PI discount cost-basis fix)
 **Status:** V1 implemented. Moving-average costing live, on either a **per-warehouse** or **company-wide
 (GLOBAL)** basis (see Costing basis). GL posting from inventory documents IS implemented
 (see Accounting Integration). FIFO deferred to a follow-up.
@@ -142,6 +142,30 @@ Inventory documents **do** post to the GL when the Accounting module is enabled.
     Transfer Clearing** account (Cr). Zero uplift → no GL.
 - **Sales** calls `ISalesInventoryService.processOUT()` and posts COGS itself using the returned unit cost.
 - **Purchases** calls `IPurchasesInventoryService.processIN()` to record the receipt (GRN posts the GRNI cycle).
+
+### Purchase-invoice discount cost basis
+
+For tracked Purchase Invoices in the perpetual modes:
+- `INVOICE_DRIVEN`
+- `PERPETUAL`
+
+the stock receipt must capitalize at the **net discounted line total**, not the gross unit price. The accounting invariant is:
+
+- stock movement total cost
+- resulting moving average
+- Inventory GL debit
+
+must all use the same discounted basis.
+
+Applied rule:
+- direct PI receipts derive `unitCostBase` from `line.lineTotalBase / qtyInBaseUom`
+- `totalCostBase` is `line.lineTotalBase`
+- `unitCostCCY` / `totalCostCCY` mirror the discounted document totals
+
+Boundary:
+- in the two-step perpetual flow, the **GRN remains the stock-receipt authority**
+- the later PI clears **GRNI** and must not create a second receipt
+- `PERIODIC` is unaffected because it does not post inventory-asset lines per transaction
 
 GL accounts for adjustments/transfers are configured in **Inventory Settings → Accounting** (`defaultInventoryGainAccountId`,
 `defaultInventoryLossAccountId`, `defaultInventoryTransferClearingAccountId`).

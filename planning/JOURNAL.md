@@ -3621,3 +3621,29 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Time spent:** ~0.6h.
 - **Git state note:** GP04 code fixes and this UI detour are committed locally on `fix/purchases-module-gp04` (`eb712996`, `0a42a405`); the branch is ahead of origin by 2 commits. Current dirty tree also includes planning-doc wording plus three small frontend icon-only tweaks (`frontend/src/layout/Sidebar.tsx`, `frontend/src/modules/sales/pages/SalesHomePage.tsx`, `frontend/src/pages/dev/apex-ledger/components/Sidebar.tsx`) that should stay separate from the GP04 accounting PR unless intentionally approved.
 - **Next:** Push/open the GP04 branch, then run GP05 cross-module books check. Do not start further UI polish during feature freeze unless it directly blocks golden-path QA or fixes a P0 accounting/control issue.
+
+### Session: 2026-06-18 (Task 240b — PI discount cost-basis fix)
+
+- **Goal:** Close the purchase-invoice stock-cost vs Inventory-GL mismatch caused by line discounts, strictly for `INVOICE_DRIVEN` and `PERPETUAL`, without touching `PERIODIC` or AP/AR/tax behavior.
+- **What was done:**
+  - Created branch `codex/240b-discount-cost-basis-fix` from `main` after checkpointing the prior dirty branch state.
+  - Fixed `PurchaseInvoiceUseCases.ts` so direct tracked-item PI receipts capitalize stock from the **net discounted line total** instead of the gross unit price.
+  - Updated the direct PI receipt path to persist the recomputed moving-average / last-cost figures on the written `StockLevel`, keeping the stock ledger aligned with the Inventory GL basis immediately after posting.
+  - Rechecked the GRN-backed perpetual path and locked it with regression assertions so PI clears GRNI at the discounted amount without posting a second stock receipt.
+  - Added regression coverage for both invoice-driven direct PI and perpetual GRN→PI discounted flows.
+  - Ran a real emulator round-trip against compiled `backend/lib` on a fresh throwaway tenant and confirmed reconciliation drift = `0`.
+- **Accounting/ERP impact:** Corrected a real valuation-control defect. Before the fix, Purchase Invoice discounts reduced the Inventory GL debit but did not reduce direct-PI stock capitalization, producing stock-vs-ledger drift equal to the discount. After the fix, stock value, moving average, and the Inventory GL debit all use the same net discounted basis. Voucher balancing, AP, tax, and periodic-mode behavior are unchanged.
+- **Verification:**
+  - `npm test -- --runInBand src/tests/application/purchases/PurchasePostingUseCases.test.ts` ✅ (18/18)
+  - `npm test -- --runInBand src/tests/application/purchases src/tests/application/inventory` ✅ (19 suites, 128 tests)
+  - `npm run build` ✅
+  - Emulator round-trip on compiled backend (`lib/`) ✅
+    - posted PI subtotal / grand total base = `475`
+    - stock qty = `50`
+    - stock avg cost base = `9.5`
+    - Inventory GL reconciliation stock value = `475`
+    - Inventory GL reconciliation balance = `475`
+    - drift = `0`
+- **Docs:** Added [done/240b-phase2-discount-cost-basis-fix.md](./done/240b-phase2-discount-cost-basis-fix.md), updated [docs/architecture/inventory.md](../docs/architecture/inventory.md), and cross-noted [223 inventory revaluation](./tasks/223-inventory-revaluation-value-only-correction.md).
+- **Time spent:** ~2.2h.
+- **Next:** Recommended next slice is [240c](./tasks/240c-phase3-item-costing-stats.md) because it is independent of 240b and unblocks later periodic valuation/reporting work without reopening posted-books logic.

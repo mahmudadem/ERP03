@@ -1,5 +1,20 @@
 # 🎯 Current Focus
 
+## Epic 240 follow-on (owner-authorized 2026-06-18)
+
+- ✅ **Task 240b complete on branch `codex/240b-discount-cost-basis-fix`.**
+- Fixed the Purchase Invoice line-discount cost-basis mismatch for `INVOICE_DRIVEN` and `PERPETUAL` only.
+- Backend regression coverage added and green.
+- Real round-trip verified against compiled `backend/lib` through the emulator:
+  - posted PI subtotal / grand total = `475`
+  - stock qty = `50`
+  - avg cost base = `9.5`
+  - Inventory GL reconciliation drift = `0`
+- Backlog note: [223 inventory revaluation](./tasks/223-inventory-revaluation-value-only-correction.md) remains valid only for **value-only revaluation/correction**. The discount mismatch itself is now closed by [240b](./tasks/240b-phase2-discount-cost-basis-fix.md).
+- **Next recommended task:** [240c — Phase 3 item costing stats](./tasks/240c-phase3-item-costing-stats.md). Reason: it is independent of 240b, mode-agnostic, and the cleanest next dependency for periodic valuation/reporting work.
+
+---
+
 ## 🧊 FEATURE FREEZE + SHIP PLAN (declared 2026-06-13 — overrides all active threads below)
 
 **CTO audit delivered 2026-06-13:** [CTO-AUDIT-2026-06-13.md](./CTO-AUDIT-2026-06-13.md) (Arabic: [CTO-AUDIT-2026-06-13.ar.md](./CTO-AUDIT-2026-06-13.ar.md)). Verdict: v1 build phase is done; the project now ships a pilot instead of building features. **The freeze and the phased ship plan live in [PRIORITIES.md](./PRIORITIES.md) — read that first.**

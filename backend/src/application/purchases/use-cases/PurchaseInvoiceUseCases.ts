@@ -683,6 +683,18 @@ export class PostPurchaseInvoiceUseCase {
         const settlesNegativeQty = Math.min(qtyInBaseUom, Math.max(-qtyBefore, 0));
         const newPositiveQty = qtyInBaseUom - settlesNegativeQty;
         const qtyAfter = qtyBefore + qtyInBaseUom;
+        const netUnitCostBase = qtyInBaseUom > 0
+          ? roundMoney(line.lineTotalBase / qtyInBaseUom)
+          : 0;
+        const netUnitCostCCY = qtyInBaseUom > 0
+          ? roundMoney(line.lineTotalDoc / qtyInBaseUom)
+          : 0;
+        const nextAvgCostBase = roundMoney(
+          (level.avgCostBase * Math.max(qtyBefore, 0) + netUnitCostBase * newPositiveQty) / Math.max(qtyAfter, 1)
+        );
+        const nextAvgCostCCY = roundMoney(
+          (level.avgCostCCY * Math.max(qtyBefore, 0) + netUnitCostCCY * newPositiveQty) / Math.max(qtyAfter, 1)
+        );
         const movement = new StockMovement({
           id: movementId,
           companyId,
@@ -702,16 +714,16 @@ export class PostPurchaseInvoiceUseCase {
           referenceLineId: line.lineId,
           reversesMovementId: undefined,
           transferPairId: undefined,
-          unitCostBase: line.unitPriceBase,
-          totalCostBase: roundMoney(line.unitPriceBase * qtyInBaseUom),
-          unitCostCCY: line.unitPriceDoc,
-          totalCostCCY: roundMoney(line.unitPriceDoc * qtyInBaseUom),
+          unitCostBase: netUnitCostBase,
+          totalCostBase: line.lineTotalBase,
+          unitCostCCY: netUnitCostCCY,
+          totalCostCCY: line.lineTotalDoc,
           movementCurrency: pi.currency,
           fxRateMovToBase: pi.exchangeRate,
           fxRateCCYToBase,
           fxRateKind: 'EFFECTIVE',
-          avgCostBaseAfter: roundMoney((level.avgCostBase * Math.max(qtyBefore, 0) + line.unitPriceBase * newPositiveQty) / Math.max(qtyAfter, 1)),
-          avgCostCCYAfter: level.avgCostCCY,
+          avgCostBaseAfter: nextAvgCostBase,
+          avgCostCCYAfter: nextAvgCostCCY,
           qtyBefore,
           qtyAfter,
           settlesNegativeQty,
@@ -736,6 +748,10 @@ export class PostPurchaseInvoiceUseCase {
         });
 
         level.qtyOnHand += qtyInBaseUom;
+        level.avgCostBase = nextAvgCostBase;
+        level.avgCostCCY = nextAvgCostCCY;
+        level.lastCostBase = netUnitCostBase;
+        level.lastCostCCY = netUnitCostCCY;
         level.postingSeq += 1;
         level.version += 1;
         level.totalMovements += 1;
