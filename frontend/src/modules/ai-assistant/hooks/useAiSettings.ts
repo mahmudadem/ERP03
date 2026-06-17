@@ -22,6 +22,7 @@ import {
 import type { AiProviderType, ConversationContextMode } from '../utils/settingsHelpers';
 import { PROVIDER_PRESETS, resolvePresetId, resolveProviderChange } from '../utils/settingsHelpers';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { notifySettingsChanged } from '../../../utils/settingsSync';
 
 export function useAiSettings(canView: boolean, canManage: boolean) {
   const { t } = useTranslation('aiAssistant');
@@ -356,6 +357,13 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
           showFloatingAssistant: result.config.showFloatingAssistant !== false,
         },
       }));
+      
+      // Notify other tabs and local listeners
+      const companyId = localStorage.getItem('activeCompanyId') || '';
+      if (companyId) {
+        notifySettingsChanged(companyId);
+      }
+
       setApiKey('');
       const usage = await aiAssistantApi.getUsageAnalytics(50);
       setUsageAnalytics(usage);
@@ -524,6 +532,31 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     }
   }, [registeredProfileId, canManage, t, handleCancelRegistration]);
 
+  const discardChanges = useCallback(() => {
+    if (!settings) return;
+    setProvider(settings.provider as AiProviderType);
+    setModel(settings.model || '');
+    setApiEndpoint(settings.apiEndpoint || '');
+    setMaxTokens(settings.maxTokensPerRequest || 4096);
+    setMaxRequestsPerDay(settings.maxRequestsPerDay || 100);
+    setConversationContextMode(settings.conversationContextMode || 'balanced');
+    setIncludePreviousToolResults(settings.includePreviousToolResults !== false);
+    setIsEnabled(settings.isEnabled);
+    setShowFloatingAssistant(settings.showFloatingAssistant !== false);
+    setPresetId(resolvePresetId(settings.provider, settings.apiEndpoint || ''));
+    if (settings.runtimeMode) setRuntimeMode(settings.runtimeMode as any);
+    if (settings.providerId) {
+      setSelectedProviderId(settings.providerId);
+    } else if (settings.provider === 'mock') {
+      setSelectedProviderId('__mock__');
+    } else {
+      setSelectedProviderId('');
+    }
+    setApiKey('');
+    setSelectedErp03Profile(null);
+    setSelectedCertifiedProfile(null);
+  }, [settings]);
+
   // ── Computed: has changes ──────────────────────────────────────────────────
 
   const hasChanges = settings && (
@@ -579,7 +612,7 @@ export function useAiSettings(canView: boolean, canManage: boolean) {
     handleProviderChange, handleSave, handleRunDiagnostics,
     handleSelectCertifiedProfile, handleRegisterAndCertify,
     handleRunRegisteredDiagnostics, handleRunRegisteredCertification,
-    handleCancelRegistration, handleDeprecateProfile,
+    handleCancelRegistration, handleDeprecateProfile, discardChanges,
     confirmDialog,
   };
 }

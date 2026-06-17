@@ -7,7 +7,8 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, ExternalLink, MoreVertical, Loader2, RefreshCw, LogOut } from 'lucide-react';
+import { Plus, Building2, ExternalLink, MoreVertical, RefreshCw, LogOut } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanies } from '../../company-selector/hooks/useCompanies';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
@@ -51,7 +52,7 @@ const CompaniesListPage: React.FC = () => {
   if (loading && companies.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        <Spinner size="lg" />
       </div>
     );
   }

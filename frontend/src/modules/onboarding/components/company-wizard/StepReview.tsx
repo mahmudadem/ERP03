@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { WizardStepProps } from './types';
-import { Building2, Globe, Box, Mail, Loader2, AlertCircle, CheckCircle, X, ShieldCheck } from 'lucide-react';
+import { Building2, Globe, Box, Mail, AlertCircle, CheckCircle, X, ShieldCheck } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { onboardingApi } from '../../api/onboardingApi';
 import { useTranslation } from 'react-i18next';
 
@@ -278,7 +279,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Spinner size="sm" variant="white" className="mr-2" />
               {t('onboarding.companyWizard.review.actions.creating')}
             </>
           ) : (
@@ -309,7 +310,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                 <div key={index} className="flex items-center gap-3">
                   <div className="shrink-0">
                     {step.status === 'loading' && (
-                      <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                      <Spinner size="sm" variant="indigo" className="h-5 w-5" />
                     )}
                     {step.status === 'done' && (
                       <CheckCircle className="w-5 h-5 text-green-600" />

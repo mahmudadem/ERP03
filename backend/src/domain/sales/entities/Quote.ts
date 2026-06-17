@@ -1,3 +1,5 @@
+import { SalesRuleError } from '../errors/SalesRuleError';
+
 export type QuoteStatus =
   | 'DRAFT'
   | 'SENT'
@@ -158,7 +160,9 @@ export class Quote {
 
   markSent(): void {
     if (this.status !== 'DRAFT') {
-      throw new Error(`Cannot mark quote as SENT from status: ${this.status}`);
+      throw new SalesRuleError('QUOTE_INVALID_STATE', `Cannot mark quote as SENT from status: ${this.status}`, {
+        fieldHints: ['status'],
+      });
     }
     this.status = 'SENT';
     this.updatedAt = new Date();
@@ -166,7 +170,9 @@ export class Quote {
 
   markAccepted(): void {
     if (this.status !== 'SENT') {
-      throw new Error(`Cannot mark quote as ACCEPTED from status: ${this.status}`);
+      throw new SalesRuleError('QUOTE_INVALID_STATE', `Cannot mark quote as ACCEPTED from status: ${this.status}`, {
+        fieldHints: ['status'],
+      });
     }
     this.status = 'ACCEPTED';
     this.updatedAt = new Date();
@@ -174,7 +180,9 @@ export class Quote {
 
   markRejected(): void {
     if (this.status !== 'SENT') {
-      throw new Error(`Cannot mark quote as REJECTED from status: ${this.status}`);
+      throw new SalesRuleError('QUOTE_INVALID_STATE', `Cannot mark quote as REJECTED from status: ${this.status}`, {
+        fieldHints: ['status'],
+      });
     }
     this.status = 'REJECTED';
     this.updatedAt = new Date();
@@ -182,7 +190,9 @@ export class Quote {
 
   markExpired(): void {
     if (this.status !== 'DRAFT' && this.status !== 'SENT') {
-      throw new Error(`Cannot mark quote as EXPIRED from status: ${this.status}`);
+      throw new SalesRuleError('QUOTE_INVALID_STATE', `Cannot mark quote as EXPIRED from status: ${this.status}`, {
+        fieldHints: ['status'],
+      });
     }
     this.status = 'EXPIRED';
     this.updatedAt = new Date();
@@ -190,7 +200,9 @@ export class Quote {
 
   markConverted(type: 'SALES_ORDER' | 'SALES_INVOICE', id: string): void {
     if (this.status !== 'ACCEPTED') {
-      throw new Error(`Cannot mark quote as CONVERTED from status: ${this.status}`);
+      throw new SalesRuleError('QUOTE_INVALID_STATE', `Cannot mark quote as CONVERTED from status: ${this.status}`, {
+        fieldHints: ['status'],
+      });
     }
     this.status = 'CONVERTED';
     this.convertedToType = type;

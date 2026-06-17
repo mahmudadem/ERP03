@@ -17,6 +17,7 @@ import { User } from '../../../domain/core/entities/User';
 
 export interface GeneralLedgerFilters {
   accountId?: string;
+  voucherId?: string;
   fromDate?: string;
   toDate?: string;
   costCenterId?: string;
@@ -108,6 +109,7 @@ export class GetGeneralLedgerUseCase {
 
     // 2. Fetch entries (for count + pagination)
     const baseQuery: any = {
+      voucherId: filters.voucherId,
       fromDate: filters.fromDate,
       toDate: filters.toDate,
       costCenterId: filters.costCenterId,

@@ -1,8 +1,6 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
-import { JournalRow } from '../../forms-designer/types';
-import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save, Send, FileText, Check, X, Upload, FileSpreadsheet } from 'lucide-react';
+import { useTranslation } from 'react-i18next'; import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition'; import { JournalRow } from '../../forms-designer/types'; import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Printer, Mail, Save, Send, FileText, Check, X, Upload, FileSpreadsheet } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 import { AccountSelector } from './AccountSelector';
 import { CostCenterSelector } from './CostCenterSelector';

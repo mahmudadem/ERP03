@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { useCompanyCurrencies } from '../../../../hooks/useCompanyCurrencies';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { useCompanyCurrencies } from '../../../../hooks/useCompanyCurrencies'; import { ChevronDown} from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { useTranslation } from 'react-i18next';
 
 interface CurrencyDropdownProps {
@@ -37,7 +37,7 @@ export const CurrencyDropdown: React.FC<CurrencyDropdownProps> = ({
       </select>
       <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center pointer-events-none text-[var(--color-text-muted)]">
         {isLoading ? (
-          <Loader2 size={12} className="animate-spin" />
+          <Spinner size="xs" />
         ) : (
           <ChevronDown size={14} />
         )}

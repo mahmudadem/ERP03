@@ -2,6 +2,102 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-17 (GP04 + GP05 + GP01 12-16 — golden paths completed autonomously)
+
+- **Goal:** Owner away — run all remaining golden-path tests on the clean `GP01 Trading Co` tenant (GP04 Purchases, GP05 books check, and the pending GP01 period-lock/approval steps 12-16).
+- **What was done:** API-driven + Firestore-verified. **GP04 (14/14 PASS):** VEND-1 + AP sub-account, PO-00001→GRN-00001 (stock +50, GL deferred — invoice-driven)→PI-00001 (5% line discount, Freight 30 / Discount 10, net 495, balanced)→PV-0001 full payment→PR-00001 return 5; vendor statement = AP aging = −47.5. **GP05 (9/10):** TB, Balance Sheet, P&L, AR recon (−27), AP recon (−47.5), GRNI=0, posting-log, audit-trail, idempotency all green; only inventory reconciliation fails (GL 1277.5 vs valuation 1300, drift 22.5 = known backlog-223 invoice-driven line-discount cost basis). **GP01 12-16 (PASS):** period lock rejects backdated JV (HTTP 400), today posts, approval maker(`/approve` submit)→checker(`/verify` approve+post) flow works, restored off. Recorded all per-step results in findings.md; updated ACTIVE.
+- **Accounting/ERP impact:** QA only on the emulator. Every voucher balanced. The one reconciliation gap (22.5) is the documented backlog-223 costing-policy issue, not a posting error.
+- **Verification:** GP01 ✅19/19 · GP02 ✅12/12 · GP03 ✅17/17 · GP04 ✅14/14 · GP05 🔶9/10 on one clean tenant. Bugs: recurring error-taxonomy (business-rule rejections → HTTP 500/INFRA_999 instead of 4xx — quote lifecycle, over-payment, voucher re-submit/re-post; spawned fix task task_93b9e9f6); list no-auto-refresh; API JV numbering (`journal_entry-000X` vs `JOU-`). Mapping observations logged (discounts→expense, freight not capitalized, over-payment→negative AR).
+- **Time spent:** ~2h.
+- **Next:** Fix or formally accept backlog 223 so GP05 step 4 reconciles → then declare "golden paths green" (gates Phase 2). Fix the error-taxonomy bug. Tenant left in OPERATIONAL (both Sales + Purchases); approval/lock off.
+
+### Session: 2026-06-17 (GP03 Sales golden path — clean tenant)
+
+- **Goal:** Run Golden Path 03 (Sales / order-to-cash) on the clean `GP01 Trading Co` tenant so the golden paths are green on one fresh tenant.
+- **What was done:** Drove GP03 end-to-end. Pre-flight: switched Sales workflow SIMPLE→OPERATIONAL. Owner chose "create via API, verify UI after," so documents were created through authenticated REST against the running Functions emulator and verified directly in Firestore. Created CUST-1 (UI; auto AR sub-account `10401-CUST-1`), Quote QT-00001→SO-00001→DN-00001→SI-00001 (10% line discount, Freight 50 / Discount 20, CASH-full settle), over-payment SI-00002 (500 credit) + flag-off rejection, pay-later SI-00003 (Record Payment half → PARTIALLY_PAID), return SR-00001 (2 units). Recorded all 17 step results + findings in `planning/qa/findings.md`; updated ACTIVE "Next agent" pointer.
+- **Accounting/ERP impact:** QA only on a pre-alpha emulator tenant — no product code changed. Every voucher balanced; Inventory GL 950→850 = physical 85×10; CUST-1 statement = AR aging = −27; Trial Balance balanced 4,950=4,950.
+- **Verification:** All 17 GP03 steps PASS (Firestore-verified). No posting/correctness bugs. Findings: recurring error-taxonomy bug (business-rule rejections → HTTP 500/INFRA_999 instead of 4xx); customer list no auto-refresh; accounting-mapping observations (discounts→S&M expense w/ gross revenue, freight→Sales Revenue, over-payment→negative AR, SI gross vs SR net discount). Governance: OPERATIONAL blocks `direct` persona by design (used a temporary allow/direct rule for Section C, removed after). Tenant left OPERATIONAL (posted DN blocks reverting to SIMPLE).
+- **Time spent:** ~1.5h.
+- **Next:** GP04 (Purchases) rerun on this clean tenant, then GP05 cross-module books check. Then fix the error-taxonomy bug + GP02/GP03 display findings; GP01 steps 12–16 still pending owner-typed vouchers.
+
+### Session: 2026-06-17 (Voucher/Ledger Previous-Next Navigation)
+
+- **Goal:** Add a compact `Previous < current voucher or ledger number > Next` surf panel at the top-right of voucher view and voucher ledger-impact pages, with LTR/RTL support.
+- **What was done:** Added previous/next resolution on voucher and ledger-impact detail pages using the existing voucher list API without applying list filters/search/date context, kept the active record centered in the panel, and added localized labels for English, Arabic, and Turkish.
+- **Accounting/ERP impact:** Read-only navigation only. The change does not alter voucher posting, approval, reversal, ledger entries, balances, audit trail, period locks, AR/AP, tax, or inventory valuation.
+- **Verification:** `npm --prefix frontend run typecheck` passed; accounting locale JSON parse check passed; `npm --prefix frontend run build` passed.
+- **Time spent:** ~1.4h.
+- **Next:** Browser-check the All Vouchers list to voucher view to ledger-impact flow in LTR and RTL, including first/last record disabled states.
+
+### Session: 2026-06-17 (Voucher List Number Link)
+
+- **Goal:** Make the voucher number in the All Vouchers list open the read-only voucher view route.
+- **What was done:** Converted the voucher number cell in `VoucherTable` from plain text to a React Router link targeting `/accounting/vouchers/:id/view`, while stopping event bubbling so the existing row edit/modal click behavior remains unchanged.
+- **Accounting/ERP impact:** UI navigation only. No voucher posting, approval, reversal, period-lock, ledger mutation, AR/AP, tax, inventory valuation, audit trail, or tenant isolation behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~0.2h.
+- **Next:** Browser-check the All Vouchers list and confirm clicking the number opens `#/accounting/vouchers/<uuid>/view`.
+
+### Session: 2026-06-17 (Standardizing Stock Transfers list view)
+
+- **Trigger:** Rebuild Stock Transfers list view to look exactly like the Sales Invoices list page, using `OperationalListLayout` and standardizing columns, filters, tabs, sorting, pagination, and kebab row actions.
+- **Estimated Time:** 1.5 hours
+- **Actual Time Spent**: 1.0 hour
+- **Changes**:
+  - Rebuilt the list view of `StockTransfersPage.tsx` using `OperationalListLayout` and standard `DataTable` components.
+  - Implemented high-density horizontal filter bar (Search query matching notes/items/warehouses, Source Warehouse, Destination Warehouse, Mode, Date From, Date To).
+  - Standardized columns (Transfer ID, Date, Source, Destination, Mode, Status, GL, Created By).
+  - Resolved `createdBy` user IDs to names and emails using `listUsers` API.
+  - Grouped row actions (`Details`, `Edit`, `Complete`, `Delete`, `Undo`) in a clean three-dot kebab menu.
+  - Standardized click/double-click behaviors: editing draft transfers, and toggling detail row expansion for completed ones.
+  - Bound table inline expansion (`expandable={true}`, `renderExpanded={renderExpandedContent}`) to show transfer lines and movements.
+- **Verification:** Frontend typecheck and build verified (verification pending).
+- **Docs:** Updated `docs/architecture/operational-lists.md`, `docs/user-guide/inventory/stock-adjustments-and-transfers.md`, `planning/done/235-stock-transfers-list-standardization.md`, and `planning/ACTIVE.md`.
+
+### Session: 2026-06-16 (Tenant isolation hardening for voucher-link concern)
+
+- **Trigger:** Owner challenged whether direct voucher UUID links could leak records across companies, especially if voucher numbers duplicate between tenants.
+- **Finding:** Voucher controllers/repositories are company-scoped, and direct Firestore rules already test cross-tenant isolation. However, shared `authMiddleware` only logged when a normal user supplied an `x-company-id` for a company where they had no membership; it still carried the requested company id forward.
+- **Fix:** `authMiddleware` now rejects forged company headers with `403 COMPANY_ACCESS_DENIED`. If a stored active company is stale and the user no longer has membership, the middleware strips company context to `null` instead of trusting it. Super-admin behavior remains unchanged.
+- **Follow-up route audit:** Tenant-context controllers already use authenticated `tenantContext`/`req.user.companyId`; super-admin/platform routes intentionally carry explicit company ids behind platform guards. Patched remaining legacy tenant surfaces: `/api/v1/company-modules/:companyId...`, `/api/v1/tenant/companies/:companyId/module-settings/:moduleId`, and `/api/v1/core/company/settings` now reject/ignore caller-selected company ids for normal users.
+- **User-level endpoint regression fix:** The global frontend API client was still attaching stale `x-company-id` to no-company-context endpoints (`/auth/me/permissions`, `/user/preferences`, `/users/me/companies`, `/users/me/switch-company`, `/users/me/active-company`), causing the new fail-closed auth rule to block the company selector and preferences loading. Backend now strips that header on user company/preference routes, and frontend skips attaching it for those user-level endpoints.
+- **Verification:** `npm --prefix backend test -- --runInBand backend/src/tests/api/middlewares/authMiddleware.test.ts backend/src/tests/api/middlewares/companyContextGuard.test.ts backend/src/tests/api/controllers/core/CompanySettingsController.test.ts` passed; `npm --prefix backend run build` passed.
+- **Docs:** updated `docs/architecture/accounting.md`, `docs/architecture/security-rules.md`, `docs/user-guide/accounting/vouchers-and-ledger-impact.md`, `planning/done/233-voucher-ledger-impact-view.md`, and `planning/ACTIVE.md`.
+- **Time spent:** ~0.4h.
+- **Next:** browser-check the voucher ledger-impact route on a live posted voucher, then continue the GP02 display/UX findings before GP03.
+
+### Session: 2026-06-16 (Loading Spinner Unification)
+
+- **Goal:** Scan the entire project for old/legacy Loader2 spinner occurrences and replace them with the unified `<Spinner />` component.
+- **What changed:**
+  - Updated 60 TSX files across MDI, wizards, onboarding, accounting, inventory, sales, purchases, super-admin, settings, and AI modules.
+  - Removed direct Lucide-react `Loader2` imports and replaced them with imports of our unified `<Spinner />` component from `frontend/src/components/ui/Spinner.tsx`.
+  - Mapped sizing and variants intelligently (e.g. `size="xs"` / `size="sm"` for small icons, `variant="white"` for dark colored buttons, `variant="indigo"` for local highlights, and `size="lg"` / `size="xl"` for page-level loaders).
+- **Verification:**
+  - Full TypeScript compilation check (`npx tsc --noEmit`) passed with zero errors.
+  - Production Vite assets build (`npm run build`) completed successfully in 52.50s, passing all scripts and validation rules.
+- **Docs:**
+  - Added walkthrough and completion report at `planning/done/234-spinner-unification.md`.
+- **Time spent:** ~0.9h.
+- **Next:** Resume golden paths or continue Phase 1 stabilization.
+
+### Session: 2026-06-16 (GP02 follow-up: blocking-error UX + inventory scaffold plan)
+
+- **Context:** after GP02 passed, owner asked for UI work — (1) inventory document forms on the scaffold like Sales (list + scaffold form + unified New button), (2) blocking/policy errors readable + shown in a dialog (not a toast) with translations, (3) flagged the FLAT-transfer Complete confirm wording as misleading.
+- **Done + verified (error infra):** `NegativeStockError` now renders readable item/warehouse labels + structured `context`; **all 4** throw sites in `RecordStockMovementUseCase` pass labels (the GLOBAL transfer path was first missed — that was the live UUID-in-modal bug, now fixed); `AppError` gained optional `context`; i18n `errors.NEGATIVE_STOCK_BLOCKED` + `errorModal.*` in en/ar/tr; `ErrorModal` chrome translated. Backend build clean, `NegativeStockEnforcement` 7/7, frontend typecheck clean.
+- **Course-correction (owner feedback):** the critical red modal is **wrong** for policy limits, and predictable blocks should stop the user **before** completing. Added `errorHandler.showOperationError(err)` — policy/validation → non-alarming warning; system errors → blocking modal.
+- **Decisions locked for the rebuild:** Transfers first (negative-stock UX lives there); pre-flight guard on Complete = inline availability hint + a warning dialog with **Back** (open draft to edit) / **Save as Draft** (keep unposted); mode-aware Complete confirm (FLAT = no accounting entry). Full executable spec: [tasks/233-inventory-forms-scaffold-and-blocking-ux.md](./tasks/233-inventory-forms-scaffold-and-blocking-ux.md).
+- **Next:** rebuild `StockTransfersPage` onto `DocumentDetailScaffold` + list restyle + pre-flight guard (task 6), then Adjustments + Opening Stock (task 7). Do NOT restart the Firebase emulator — the in-memory `GP01 Trading Co` QA tenant lives there.
+
+### Session: 2026-06-16 (GP02 Inventory golden path on fresh tenant — all 12 steps PASS)
+
+- **Goal:** Run GP02 (Inventory) end-to-end on the fresh `GP01 Trading Co` tenant (cmp_mqg8ta2c_24c21c; SYP / FLEXIBLE; GLOBAL costing, negative stock OFF, invoice-driven).
+- **Method:** Claude drove master data + setup via preview (:5199) and verified every result directly against the Firestore emulator REST (both preview browser sessions were signed out mid-run, so UI login wasn't needed for verification); owner typed the line-cell entries on :5173 (the inline item-line selector resists automation — header rich selectors do drive via real-click → fill → click-option).
+- **Result: all 12 steps PASS.** Master data (PCS/General, ITEM-A buy10/sell15, SRV-1 service, WH-2); opening stock 100@10 → Dr Inventory(Finished Goods)/Cr Opening Balance Equity 1,000; transfer 20 MAIN→WH-2 (no GL, GLOBAL same-cost); damage adjustment −5 → Dr Inventory Loss/Cr Inventory 50; negative-stock guard proven twice (adjustment NEW QTY clamps ≥0 **and** transfer engine rejects oversized OUT); movements ordered; valuation 95 qty / 950 value; trial balance Inventory GL 950 = valuation, whole TB balanced (Dr 3,550 = Cr 3,550).
+- **Detour absorbed:** owner accidentally zeroed MAIN via a "set NEW QTY" adjustment (removed 75); recovered with a +75 restore. The −75 loss and +75 gain cancel in the books, leaving exactly the legitimate 50 damage expense. Data is clean for GP03.
+- **Findings (display/UX only — no posting/costing bugs):** (1) recent-adjustments list shows raw warehouse UUID + lacks item/qty/direction columns; (2) negative-stock error message prints raw item/warehouse UUIDs; (3) Stock Adjustment "NEW QTY" column easily mistaken for a delta (root of the detour) — needs clearer labelling; (4) SRV-1 quick-add defaulted cost currency to USD not base SYP; (5) warehouse list didn't auto-refresh after create. All logged in `planning/qa/findings.md` (GP02 block).
+- **Next:** fix the GP02 display/UX findings, then run GP03 (Sales) on this same clean tenant.
+
 ### Session: 2026-06-16 (GP01 rerun on fresh starter tenant + i18n fixes)
 
 - **Goal:** Commit the finished Simple Trading Company starter template (task 232), then rerun GP01 on a fresh starter-seeded tenant.
@@ -3578,6 +3674,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Time spent:** ~1.0h.
 - **Next:** Manual visual QA for `/#/sales/invoices/new` Direct and From SO modes, then continue Task 177/184 as separate slices.
 
+### Session: 2026-06-17 (Inventory Document Scaffold Refactor)
+
+- **Goal:** Refactor Stock Adjustments and Opening Stock Documents to match the Sales Invoice / Stock Transfer document workflow: list page first, New opens a dedicated scaffold form, and document details use the shared form shell with sections, rail, and footer actions.
+- **What was done:** Rebuilt `StockAdjustmentPage.tsx` and `OpeningStockPage.tsx` around `OperationalListLayout` and `DocumentDetailScaffold`, added hidden `new` and `:id` routes, moved Opening Stock **Create Accounting Effect** into the scaffold control section, and added `InventorySettings.defaultOpeningBalanceAccountId` so Opening Stock pre-fills the offset account from settings while still allowing per-document override. Inventory Settings now exposes the default as a posting EQUITY account selector.
+- **Accounting impact:** No costing, movement, voucher, or ledger posting math changed. Opening Stock still validates the selected offset account server-side as an active POSTING EQUITY account. The new setting prevents the UI from defaulting to unrelated gain/loss/COGS/clearing accounts.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix backend run build` passed. `npm --prefix frontend run build` passed, including report/no-confirm/SoD checks; existing browser-data/chunk warnings remain.
+- **Not verified:** Browser visual QA is still pending.
+- **Time spent:** ~2.6h.
+- **Next:** Browser-check `/inventory/adjustments`, `/inventory/adjustments/new`, `/inventory/opening-stock`, and `/inventory/opening-stock/new` in web and Windows modes; then decide whether Stock Adjustments should get DRAFT update/delete API parity later.
+
 ### Session: 2026-06-07 (Sales Invoice Responsive Window Layout)
 
 - **Goal:** Fix the Sales Invoice page so smaller available view areas and Windows-mode invoice windows do not hide invoice sections.
@@ -3788,3 +3894,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused initializer test passed; backend build passed; frontend typecheck passed; frontend production build passed. Browser QA created `QA Simple Trading 102654`, confirmed the setup/review text shows global average cost, Purchase Settings shows **Financial Integration Active** with default AP `20100`, Inventory Settings shows **Global (one company-wide average per item)**, and browser console errors were empty.
 - **Time spent:** ~0.8h.
 - **Next:** Use the new starter company flow for GP01/GP02 clean-tenant retests.
+
+### Session: 2026-06-16 (Voucher Ledger Impact View)
+
+- **Goal:** Add a voucher-level read-only view showing what a posted voucher actually did to the general ledger.
+- **What was done:** Extended the existing General Ledger report endpoint to accept `voucherId`, added a hidden `#/accounting/vouchers/:id/ledger` route, created `VoucherLedgerImpactPage`, and added a **Ledger impact** action to the voucher read view. The page shows voucher context, posted ledger rows, debit/credit totals, balance check, base amount, exchange rate, and cost center where available.
+- **Accounting/ERP impact:** Read-only inspection only. No voucher posting, approval, reversal, period-lock, ledger mutation, AR/AP, tax, inventory valuation, or correction behavior changed. Draft/unposted vouchers show no ledger impact until posting succeeds.
+- **Verification:** Focused backend test passed; locale JSON parse check passed; backend build passed; frontend typecheck passed; frontend production build passed with existing bundle/Browserslist warnings.
+- **Docs:** Updated `docs/architecture/accounting.md`, added `docs/user-guide/accounting/vouchers-and-ledger-impact.md`, and added [done/233-voucher-ledger-impact-view.md](./done/233-voucher-ledger-impact-view.md).
+- **Time spent:** ~1.3h.
+- **Next:** Browser-check `#/accounting/vouchers/:id/ledger` on a live posted voucher when the stack is running; separately decide whether the older voucher read page should be made fully Web/Windows-mode aware.

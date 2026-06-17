@@ -1,5 +1,6 @@
 import React from 'react';
-import { AlertTriangle, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 
 type ModuleInitStatus = 'loading' | 'not_installed' | 'not_initialized' | 'initializing' | 'ready';
 
@@ -30,7 +31,7 @@ export const ModuleStatusBanner: React.FC<Props> = ({ moduleName, status }) => {
   if (status === 'initializing') {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700">
-        <Loader2 className="animate-spin" size={18} />
+        <Spinner size="sm" />
         <div>
           <p className="font-bold">Setting up {label}...</p>
           <p className="text-sm text-blue-600">The module is being configured. Forms will be available once setup is complete.</p>

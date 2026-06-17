@@ -83,6 +83,12 @@ export interface AppError {
   };
 
   /**
+   * Optional structured, human-readable context for the frontend to interpolate
+   * into a translated message (e.g. readable item/warehouse labels and quantities).
+   */
+  context?: Record<string, unknown>;
+
+  /**
    * Request correlation ID for tracing
    */
   correlationId?: string;

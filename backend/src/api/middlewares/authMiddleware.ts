@@ -46,7 +46,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     
     // Fallback to stored active company if header is missing
     const userStoredActiveCompany = await diContainer.userRepository.getUserActiveCompany(uid);
-    const activeCompanyId = headerCompanyId || userStoredActiveCompany;
+    let activeCompanyId = headerCompanyId || userStoredActiveCompany;
 
     let roleId: string | null = null;
     let permissions: string[] = [];
@@ -60,12 +60,14 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         isOwner = !!membership.isOwner;
         // Permissions lookup not fully implemented; placeholder empty array
         permissions = [];
-      } else if (headerCompanyId && !userEntity?.isAdmin()) {
-         // If header was provided but user has no membership, and is not super admin
-         // Then this is an illicit access attempt to another company
-         console.warn(`User ${uid} attempted to access company ${headerCompanyId} without membership.`);
-         // We could throw 403 here, but for now let's just nullify the companyId to prevent data access
-         // activeCompanyId = null; // (commented out to avoid breaking mixed access patterns for now)
+      } else if (!userEntity?.isAdmin()) {
+        // Tenant context is security-critical. Never let a caller-selected or stale
+        // company id continue unless the user has an explicit company membership.
+        if (headerCompanyId) {
+          console.warn(`User ${uid} attempted to access company ${headerCompanyId} without membership.`);
+          return next(ApiError.forbidden('Company access denied', 'COMPANY_ACCESS_DENIED'));
+        }
+        activeCompanyId = null;
       }
     }
 

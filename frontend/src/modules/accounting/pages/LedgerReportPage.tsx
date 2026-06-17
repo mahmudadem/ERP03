@@ -200,8 +200,8 @@ const LedgerReportContent: React.FC<{
         const response = await accountingApi.getGeneralLedger(params.accountId, params.fromDate, params.toDate, pagination?.pageSize || 100, offset, params.costCenterId);
         setEntries(response.data || []);
         if (setTotalItems && response.meta) {
-          setTotalItems(response.meta.totalItems);
-          setOpeningBalance(response.meta.openingBalance || 0);
+          setTotalItems(response.meta.totalItems ?? response.meta.pagination?.totalItems ?? 0);
+          setOpeningBalance(response.meta.openingBalance ?? response.meta.pagination?.openingBalance ?? 0);
         }
       } catch (error) { console.error('Ledger error:', error); } finally { setLoading(false); }
     };

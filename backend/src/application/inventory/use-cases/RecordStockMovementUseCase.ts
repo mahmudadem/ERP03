@@ -290,6 +290,7 @@ export class RecordStockMovementUseCase {
       const projectedQty = qtyBefore - input.qty;
       if (projectedQty < 0) {
         if (settings && settings.allowNegativeStock === false) {
+          const whLabel = await this.resolveWarehouseLabel(input.warehouseId);
           throw new NegativeStockError({
             companyId: input.companyId,
             itemId: item.id,
@@ -297,6 +298,10 @@ export class RecordStockMovementUseCase {
             qtyBefore,
             requested: input.qty,
             resultingQty: projectedQty,
+            itemCode: item.code,
+            itemName: item.name,
+            warehouseCode: whLabel.code,
+            warehouseName: whLabel.name,
           });
         }
       }
@@ -422,6 +427,7 @@ export class RecordStockMovementUseCase {
 
       const projectedSrcQty = srcQtyBefore - input.qty;
       if (projectedSrcQty < 0 && settings && settings.allowNegativeStock === false) {
+        const whLabel = await this.resolveWarehouseLabel(input.sourceWarehouseId);
         throw new NegativeStockError({
           companyId: input.companyId,
           itemId: item.id,
@@ -429,6 +435,10 @@ export class RecordStockMovementUseCase {
           qtyBefore: srcQtyBefore,
           requested: input.qty,
           resultingQty: projectedSrcQty,
+          itemCode: item.code,
+          itemName: item.name,
+          warehouseCode: whLabel.code,
+          warehouseName: whLabel.name,
         });
       }
 
@@ -810,6 +820,7 @@ export class RecordStockMovementUseCase {
 
     const projectedQty = qtyBefore - input.qty;
     if (projectedQty < 0 && settings && settings.allowNegativeStock === false) {
+      const whLabel = await this.resolveWarehouseLabel(input.warehouseId);
       throw new NegativeStockError({
         companyId: input.companyId,
         itemId: item.id,
@@ -817,6 +828,10 @@ export class RecordStockMovementUseCase {
         qtyBefore,
         requested: input.qty,
         resultingQty: projectedQty,
+        itemCode: item.code,
+        itemName: item.name,
+        warehouseCode: whLabel.code,
+        warehouseName: whLabel.name,
       });
     }
 
@@ -931,6 +946,7 @@ export class RecordStockMovementUseCase {
 
     const projectedSrcQty = srcQtyBefore - input.qty;
     if (projectedSrcQty < 0 && settings && settings.allowNegativeStock === false) {
+      const whLabel = await this.resolveWarehouseLabel(input.sourceWarehouseId);
       throw new NegativeStockError({
         companyId: input.companyId,
         itemId: item.id,
@@ -938,6 +954,10 @@ export class RecordStockMovementUseCase {
         qtyBefore: srcQtyBefore,
         requested: input.qty,
         resultingQty: projectedSrcQty,
+        itemCode: item.code,
+        itemName: item.name,
+        warehouseCode: whLabel.code,
+        warehouseName: whLabel.name,
       });
     }
 
@@ -1256,6 +1276,20 @@ export class RecordStockMovementUseCase {
     const warehouse = await this.deps.warehouseRepository.getWarehouse(warehouseId);
     if (!warehouse) {
       throw new Error(`Warehouse not found: ${warehouseId}`);
+    }
+  }
+
+  /**
+   * Best-effort readable warehouse label for user-facing errors (e.g. negative stock).
+   * Never throws — this only runs on an already-failing path, so a missing lookup just
+   * falls back to the id.
+   */
+  private async resolveWarehouseLabel(warehouseId: string): Promise<{ code?: string; name?: string }> {
+    try {
+      const warehouse = await this.deps.warehouseRepository.getWarehouse(warehouseId);
+      return { code: warehouse?.code, name: warehouse?.name };
+    } catch {
+      return {};
     }
   }
 

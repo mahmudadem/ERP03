@@ -13,6 +13,8 @@ import { ModuleSettingsLayout, SettingsSection } from '../../../components/share
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
 import toast from 'react-hot-toast';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { notifySettingsChanged } from '../../../utils/settingsSync';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,
@@ -33,6 +35,7 @@ const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
 const SalesSettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { companyId } = useCompanyAccess();
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<SalesSettingsDTO | null>(null);
@@ -250,6 +253,9 @@ const SalesSettingsPage: React.FC = () => {
       setOriginalSettings(saved);
       setCredentialDraftByAccountId({});
       errorHandler.showSuccess('Sales settings updated successfully.');
+      if (companyId) {
+        notifySettingsChanged(companyId);
+      }
     } catch (err: any) {
       console.error('Failed to save sales settings', err);
       errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to save sales settings.');

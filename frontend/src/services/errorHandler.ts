@@ -188,6 +188,24 @@ class ErrorHandlerService {
   }
 
   /**
+   * Show an operation failure with the right weight:
+   * - Policy/validation blocks (e.g. negative stock) are predictable business rules,
+   *   not system failures — surface them as a non-alarming warning, never the critical modal.
+   * - Anything else (unexpected/system error) gets the blocking modal.
+   * The real fix for predictable blocks is to guard the action up-front; this is the safety net.
+   */
+  showOperationError(err: any) {
+    const normalized = this.normalizeError(err);
+    const category = String((normalized as any).category || '').toLowerCase();
+    const isPolicy = category === 'policy' || String(normalized.code) === 'NEGATIVE_STOCK_BLOCKED';
+    if (isPolicy) {
+      this.showWarning(this.translateError(normalized));
+      return;
+    }
+    this.showError(err, { useModal: true });
+  }
+
+  /**
    * Show success message
    */
   showSuccess(messageKey: string, context?: Record<string, any>) {

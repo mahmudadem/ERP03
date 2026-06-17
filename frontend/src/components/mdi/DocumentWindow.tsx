@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Save, Send, Loader2, CheckCircle, XCircle, Printer } from 'lucide-react';
+import { Save, Send, CheckCircle, XCircle, Printer } from 'lucide-react';
+import { Spinner } from '../ui/Spinner';
 import { UIWindow, useWindowManager } from '../../context/WindowManagerContext';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from '../../modules/accounting/components/shared/GenericVoucherRenderer';
 import { MdiWindowFrame } from './MdiWindowFrame';
@@ -404,7 +405,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy || !isDirty}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] disabled:opacity-50"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="secondary" /> : <Save className="w-3.5 h-3.5" />}
             {win.data?.id ? t('saveChanges') : t('createDraft')}
           </button>
         )}
@@ -416,7 +417,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <CheckCircle className="w-3.5 h-3.5" />}
             Post Invoice
           </button>
         )}
@@ -428,7 +429,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <CheckCircle className="w-3.5 h-3.5" />}
             Post Invoice
           </button>
         )}
@@ -440,7 +441,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <Send className="w-3.5 h-3.5" />}
             Confirm Order
           </button>
         )}
@@ -450,7 +451,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 rounded-lg hover:bg-danger-100 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="secondary" /> : <XCircle className="w-3.5 h-3.5" />}
             Cancel Order
           </button>
         )}
@@ -462,7 +463,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <CheckCircle className="w-3.5 h-3.5" />}
             Post DN
           </button>
         )}
@@ -474,7 +475,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <CheckCircle className="w-3.5 h-3.5" />}
             Post Return
           </button>
         )}
@@ -486,7 +487,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <Send className="w-3.5 h-3.5" />}
             Confirm Order
           </button>
         )}
@@ -496,7 +497,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 rounded-lg hover:bg-danger-100 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="secondary" /> : <XCircle className="w-3.5 h-3.5" />}
             Cancel Order
           </button>
         )}
@@ -508,7 +509,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <CheckCircle className="w-3.5 h-3.5" />}
             Post Receipt
           </button>
         )}
@@ -518,7 +519,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 rounded-lg hover:bg-danger-100 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="secondary" /> : <XCircle className="w-3.5 h-3.5" />}
             Unpost Receipt
           </button>
         )}
@@ -530,7 +531,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="white" /> : <CheckCircle className="w-3.5 h-3.5" />}
             Post Return
           </button>
         )}
@@ -540,7 +541,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 rounded-lg hover:bg-danger-100 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="secondary" /> : <XCircle className="w-3.5 h-3.5" />}
             Unpost Return
           </button>
         )}
@@ -552,7 +553,7 @@ export const DocumentWindow: React.FC<DocumentWindowProps> = ({ win, onSalesActi
             disabled={busy}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 rounded-lg hover:bg-danger-100 transition-all active:scale-[0.98]"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+            {busy ? <Spinner size="xs" variant="secondary" /> : <XCircle className="w-3.5 h-3.5" />}
             Unpost Invoice
           </button>
         )}

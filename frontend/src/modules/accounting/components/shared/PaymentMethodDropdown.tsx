@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { useAccountingSettings } from '../../hooks/useAccountingSettings';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { useAccountingSettings } from '../../hooks/useAccountingSettings'; import { ChevronDown} from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { useTranslation } from 'react-i18next';
 
 interface PaymentMethodDropdownProps {
@@ -48,7 +48,7 @@ export const PaymentMethodDropdown: React.FC<PaymentMethodDropdownProps> = ({
       </select>
       <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center pointer-events-none text-[var(--color-text-muted)]">
         {isLoading ? (
-          <Loader2 size={12} className="animate-spin" />
+          <Spinner size="xs" />
         ) : (
           <ChevronDown size={14} />
         )}

@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
 import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
+import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
+import { ErrorCategory } from '../../../domain/shared/errors/AppError';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
@@ -130,13 +132,20 @@ export class PostSalesInvoiceWithSettlementUseCase {
     const { settlementMode, receivablePayableAccountId, settlements } = input;
 
     if (!SETTLEMENT_MODES.includes(settlementMode)) {
-      throw new Error(`Invalid settlementMode: ${settlementMode}. Must be one of: ${SETTLEMENT_MODES.join(', ')}`);
+      throw new SalesRuleError(
+        'SETTLEMENT_RULE_VIOLATION',
+        `Invalid settlementMode: ${settlementMode}. Must be one of: ${SETTLEMENT_MODES.join(', ')}`,
+        { fieldHints: ['settlementMode'], category: ErrorCategory.VALIDATION }
+      );
     }
 
     const invoice = await this.salesInvoiceRepo.getById(companyId, siId);
     if (!invoice) throw new Error(`Sales invoice not found: ${siId}`);
     if (invoice.status !== 'POSTED') {
-      throw new Error('Settlement can only be posted for posted sales invoices');
+      throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', 'Settlement can only be posted for posted sales invoices', {
+        fieldHints: ['status'],
+        category: ErrorCategory.CONFLICT,
+      });
     }
 
     const baseCurrency = await this.companyCurrencyRepo.getBaseCurrency(companyId);
@@ -169,10 +178,17 @@ export class PostSalesInvoiceWithSettlementUseCase {
     if (settlementMode === 'CASH_FULL') {
       const outstanding = roundSalesMoney(invoice.grandTotalBase - (invoice.paidAmountBase || 0));
       if (Math.abs(arReducingTotal - outstanding) > 0.01) {
-        throw new Error(`CASH_FULL settlement total (${arReducingTotal}) must equal outstanding amount (${outstanding})`);
+        throw new SalesRuleError(
+          'SETTLEMENT_RULE_VIOLATION',
+          `CASH_FULL settlement total (${arReducingTotal}) must equal outstanding amount (${outstanding})`,
+          { fieldHints: ['settlementTotal'], category: ErrorCategory.VALIDATION }
+        );
       }
       if (settlements.length !== 1) {
-        throw new Error('CASH_FULL mode requires exactly one settlement row');
+        throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', 'CASH_FULL mode requires exactly one settlement row', {
+          fieldHints: ['settlements'],
+          category: ErrorCategory.VALIDATION,
+        });
       }
     }
 
@@ -180,21 +196,38 @@ export class PostSalesInvoiceWithSettlementUseCase {
       const outstanding = roundSalesMoney(invoice.grandTotalBase - (invoice.paidAmountBase || 0));
       const allowOverpayment = settings?.allowOverpayment === true;
       if (!allowOverpayment && arReducingTotal > outstanding + 0.01) {
-        throw new Error(`MULTI settlement total (${arReducingTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Sales settings to record the excess as a customer credit.`);
+        throw new SalesRuleError(
+          'OVERPAYMENT_NOT_ALLOWED',
+          `MULTI settlement total (${arReducingTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Sales settings to record the excess as a customer credit.`,
+          { fieldHints: ['settlementTotal'], category: ErrorCategory.VALIDATION }
+        );
       }
       if (settlements.length === 0) {
-        throw new Error('MULTI mode requires at least one settlement row');
+        throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', 'MULTI mode requires at least one settlement row', {
+          fieldHints: ['settlements'],
+          category: ErrorCategory.VALIDATION,
+        });
       }
       for (const s of settlements) {
         if (s.amountBase <= 0 || Number.isNaN(s.amountBase)) {
-          throw new Error('Each settlement row amount must be positive');
+          throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', 'Each settlement row amount must be positive', {
+            fieldHints: ['settlements'],
+            category: ErrorCategory.VALIDATION,
+          });
         }
         if (s.paymentMethod && !VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
-          throw new Error(`Invalid paymentMethod: ${s.paymentMethod}`);
+          throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', `Invalid paymentMethod: ${s.paymentMethod}`, {
+            fieldHints: ['paymentMethod'],
+            category: ErrorCategory.VALIDATION,
+          });
         }
         const effectiveSettlementAccountId = s.settlementAccountId?.trim() || resolvePaymentMethodAccount(settings, s.paymentMethod);
         if (!effectiveSettlementAccountId) {
-          throw new Error('Each settlement row requires a settlementAccountId or configured paymentMethod mapping');
+          throw new SalesRuleError(
+            'SETTLEMENT_RULE_VIOLATION',
+            'Each settlement row requires a settlementAccountId or configured paymentMethod mapping',
+            { fieldHints: ['settlementAccountId'], category: ErrorCategory.VALIDATION }
+          );
         }
       }
     }

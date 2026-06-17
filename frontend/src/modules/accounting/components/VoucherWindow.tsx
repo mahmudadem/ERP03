@@ -6,8 +6,8 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check, Lock, Zap, Globe, FileText, Mail, ImageIcon, Download, FileSpreadsheet } from 'lucide-react';
+import { useTranslation } from 'react-i18next'; import { X, Minus, Square, ChevronDown, Save, Printer, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check, Lock, Zap, Globe, FileText, Mail, ImageIcon, Download, FileSpreadsheet } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { UIWindow as UIWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -990,7 +990,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
             if (settingsLoading || policyLoading) {
               return (
                 <div className="flex items-center gap-2 px-6 py-2 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg animate-pulse">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                   <span className="text-xs font-bold">{t('voucherWindow.loadingPolicies', 'Loading Policies...')}</span>
                 </div>
               );
@@ -1074,7 +1074,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                 >
                   {isSaving || settingsLoading || policyLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Spinner size="sm" />
                       {settingsLoading || policyLoading ? t('voucherWindow.loading', 'Loading...') : (forceStrictMode ? t('voucherWindow.saving', 'Saving...') : t('voucherWindow.posting', 'Posting...'))}
                     </>
                   ) : (
@@ -1116,7 +1116,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                 }
               >
                 {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
@@ -1146,7 +1146,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                 className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                 disabled={isSubmitting || !win.data?.metadata?.pendingFinancialApproval}
               >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                {isSubmitting ? <Spinner size="sm" /> : <CheckCircle className="w-4 h-4" />}
                 {t('voucherWindow.approve', 'Approve')}
               </button>
 
@@ -1173,7 +1173,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                   className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check size={16} />}
+                  {isSubmitting ? <Spinner size="sm" /> : <Check size={16} />}
                   {t('voucherWindow.confirmCustody', 'Confirm Custody')}
                 </button>
               )}
@@ -1221,7 +1221,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
               className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
               disabled={isSubmitting}
             >
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              {isSubmitting ? <Spinner size="sm" /> : <CheckCircle className="w-4 h-4" />}
               {t('voucherWindow.post', 'Post to Ledger')}
             </button>
           )}

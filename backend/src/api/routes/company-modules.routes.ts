@@ -4,6 +4,7 @@ import { CompanyModulesController } from '../controllers/company/CompanyModulesC
 import { FirestoreCompanyModuleRepository } from '../../infrastructure/firestore/repositories/company/FirestoreCompanyModuleRepository';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
+import { requireCompanyParamMatchesContext } from '../middlewares/guards/companyContextGuard';
 
 const router = Router();
 const companyModuleRepo = new FirestoreCompanyModuleRepository(admin.firestore());
@@ -18,6 +19,7 @@ router.get(
   '/:companyId',
   authMiddleware,
   companyContextMiddleware,
+  requireCompanyParamMatchesContext(),
   (req, res) => controller.listModules(req, res)
 );
 
@@ -26,6 +28,7 @@ router.get(
   '/:companyId/:moduleCode',
   authMiddleware,
   companyContextMiddleware,
+  requireCompanyParamMatchesContext(),
   (req, res) => controller.getModule(req, res)
 );
 
@@ -34,6 +37,7 @@ router.patch(
   '/:companyId/:moduleCode/initialize',
   authMiddleware,
   companyContextMiddleware,
+  requireCompanyParamMatchesContext(),
   (req, res) => controller.initializeModule(req, res)
 );
 
@@ -42,6 +46,7 @@ router.post(
   '/:companyId/:moduleCode/start-initialization',
   authMiddleware,
   companyContextMiddleware,
+  requireCompanyParamMatchesContext(),
   (req, res) => controller.startInitialization(req, res)
 );
 

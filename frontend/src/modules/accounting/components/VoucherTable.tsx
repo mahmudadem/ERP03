@@ -3,6 +3,7 @@
  */
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { Badge } from '../../../components/ui/Badge';
@@ -120,6 +121,22 @@ export const VoucherTable: React.FC<Props> = ({
   const { getAccountById } = useAccounts();
   const { user } = useAuth();
   const { t } = useTranslation('accounting');
+
+  const voucherViewSearch = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('nav', 'vouchers');
+    params.set('page', String(pageInfo.page || 1));
+    params.set('pageSize', String(pageInfo.pageSize || 20));
+
+    if (dateRange?.from) params.set('from', dateRange.from);
+    if (dateRange?.to) params.set('to', dateRange.to);
+    if (externalFilters.search) params.set('search', externalFilters.search);
+    if (externalFilters.type && externalFilters.type !== 'ALL') params.set('type', externalFilters.type);
+    if (externalFilters.status && externalFilters.status !== 'ALL') params.set('status', externalFilters.status);
+    if (externalFilters.formId && externalFilters.formId !== 'ALL') params.set('formId', externalFilters.formId);
+
+    return `?${params.toString()}`;
+  }, [dateRange, externalFilters, pageInfo.page, pageInfo.pageSize]);
 
   // Build translated column labels
   const COLUMN_LABELS: Record<string, string> = useMemo(() => {
@@ -963,12 +980,20 @@ export const VoucherTable: React.FC<Props> = ({
                                </span>
                              )
                            )}
-                           <span className={clsx(
-                             voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && "font-bold text-[var(--color-text-primary)]",
-                             isNested && "italic"
-                           )}>
+                           <Link
+                             to={{
+                               pathname: `/accounting/vouchers/${voucher.id}/view`,
+                               search: voucherViewSearch,
+                             }}
+                             onClick={(event) => event.stopPropagation()}
+                             className={clsx(
+                               "rounded-sm text-primary-700 underline-offset-2 hover:text-primary-800 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300 dark:hover:text-primary-200",
+                               voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && "font-bold",
+                               isNested && "italic"
+                             )}
+                           >
                               {voucher.voucherNo || voucher.id.slice(-8)}
-                           </span>
+                           </Link>
                         </div>
                       </td>
                     )}

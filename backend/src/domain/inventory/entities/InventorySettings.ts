@@ -52,6 +52,11 @@ export interface InventorySettingsProps {
    */
   defaultInventoryRevaluationAccountId?: string;
   /**
+   * Default EQUITY offset account for Opening Stock Documents.
+   * The document may override it, but posting still validates the chosen account.
+   */
+  defaultOpeningBalanceAccountId?: string;
+  /**
    * Optional escape hatch for negative-value inventory shortcuts. Default false;
    * normal transfer flows should push users to an explicit revaluation instead.
    */
@@ -77,6 +82,7 @@ export class InventorySettings {
   defaultInventoryLossAccountId?: string;
   defaultInventoryTransferClearingAccountId?: string;
   defaultInventoryRevaluationAccountId?: string;
+  defaultOpeningBalanceAccountId?: string;
   allowNegativeInventoryValue: boolean;
 
   constructor(props: InventorySettingsProps) {
@@ -119,6 +125,7 @@ export class InventorySettings {
       props.defaultInventoryTransferClearingAccountId?.trim() || undefined;
     this.defaultInventoryRevaluationAccountId =
       props.defaultInventoryRevaluationAccountId?.trim() || undefined;
+    this.defaultOpeningBalanceAccountId = props.defaultOpeningBalanceAccountId?.trim() || undefined;
     this.allowNegativeInventoryValue = props.allowNegativeInventoryValue ?? false;
   }
 
@@ -161,6 +168,7 @@ export class InventorySettings {
       defaultInventoryLossAccountId: this.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId: this.defaultInventoryTransferClearingAccountId,
       defaultInventoryRevaluationAccountId: this.defaultInventoryRevaluationAccountId,
+      defaultOpeningBalanceAccountId: this.defaultOpeningBalanceAccountId,
       allowNegativeInventoryValue: this.allowNegativeInventoryValue,
     };
   }
@@ -188,6 +196,7 @@ export class InventorySettings {
       defaultInventoryLossAccountId: data.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId: data.defaultInventoryTransferClearingAccountId,
       defaultInventoryRevaluationAccountId: data.defaultInventoryRevaluationAccountId,
+      defaultOpeningBalanceAccountId: data.defaultOpeningBalanceAccountId,
       allowNegativeInventoryValue: data.allowNegativeInventoryValue ?? false,
     });
   }

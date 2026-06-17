@@ -31,6 +31,7 @@ export interface InitializeInventoryInput {
   defaultInventoryLossAccountId?: string;
   defaultInventoryTransferClearingAccountId?: string;
   defaultInventoryRevaluationAccountId?: string;
+  defaultOpeningBalanceAccountId?: string;
   allowNegativeInventoryValue?: boolean;
   /**
    * IDs of system Inventory voucher templates the user picked in the wizard.
@@ -110,6 +111,8 @@ export class InitializeInventoryUseCase {
         input.defaultInventoryTransferClearingAccountId ?? currentSettings?.defaultInventoryTransferClearingAccountId,
       defaultInventoryRevaluationAccountId:
         input.defaultInventoryRevaluationAccountId ?? currentSettings?.defaultInventoryRevaluationAccountId,
+      defaultOpeningBalanceAccountId:
+        input.defaultOpeningBalanceAccountId ?? currentSettings?.defaultOpeningBalanceAccountId,
       allowNegativeInventoryValue:
         input.allowNegativeInventoryValue ?? currentSettings?.allowNegativeInventoryValue ?? false,
     });

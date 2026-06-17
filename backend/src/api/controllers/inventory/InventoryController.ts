@@ -186,6 +186,7 @@ export class InventoryController {
         defaultInventoryLossAccountId: (req as any).body.defaultInventoryLossAccountId,
         defaultInventoryTransferClearingAccountId: (req as any).body.defaultInventoryTransferClearingAccountId,
         defaultInventoryRevaluationAccountId: (req as any).body.defaultInventoryRevaluationAccountId,
+        defaultOpeningBalanceAccountId: (req as any).body.defaultOpeningBalanceAccountId,
         allowNegativeInventoryValue: (req as any).body.allowNegativeInventoryValue,
         selectedVoucherTypes: (req as any).body.selectedVoucherTypes,
       });
@@ -274,6 +275,9 @@ export class InventoryController {
         defaultInventoryRevaluationAccountId: (req as any).body.defaultInventoryRevaluationAccountId !== undefined
           ? (req as any).body.defaultInventoryRevaluationAccountId
           : current?.defaultInventoryRevaluationAccountId,
+        defaultOpeningBalanceAccountId: (req as any).body.defaultOpeningBalanceAccountId !== undefined
+          ? (req as any).body.defaultOpeningBalanceAccountId
+          : current?.defaultOpeningBalanceAccountId,
         allowNegativeInventoryValue: (req as any).body.allowNegativeInventoryValue ?? current?.allowNegativeInventoryValue ?? false,
       });
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Shield, Info, AlertTriangle, Database, Check, Loader2 } from 'lucide-react';
+import { Bell, Shield, Info, AlertTriangle, Database, Check} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useTranslation } from 'react-i18next';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -76,7 +77,7 @@ export const NotificationSettingsPage: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div className="p-8 flex justify-center text-slate-400"><Loader2 className="animate-spin w-6 h-6" /></div>;
+  if (isLoading) return <div className="p-8 flex justify-center text-slate-400"><Spinner  /></div>;
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6">
@@ -98,7 +99,7 @@ export const NotificationSettingsPage: React.FC = () => {
           disabled={saving}
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
         >
-          {saving ? <Loader2 className="animate-spin w-4 h-4" /> : <Check className="w-4 h-4" />}
+          {saving ? <Spinner size="sm" /> : <Check className="w-4 h-4" />}
           {t('settings.notifications.save', { defaultValue: 'Save Company Defaults' })}
         </button>
       </div>

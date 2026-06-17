@@ -14,6 +14,7 @@ const SubgroupTaggingPage = lazy(() => import('../modules/accounting/pages/Subgr
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
 const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/VoucherEditorPage'));
 const VoucherViewPage = lazy(() => import('../modules/accounting/pages/VoucherViewPage'));
+const VoucherLedgerImpactPage = lazy(() => import('../modules/accounting/pages/VoucherLedgerImpactPage'));
 const BalanceSheetPage = lazy(() => import('../modules/accounting/pages/BalanceSheetPage'));
 const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBalancePage'));
 const ProfitAndLossPage = lazy(() => import('../modules/accounting/pages/ProfitAndLossPage'));
@@ -202,6 +203,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/accounts', label: 'Chart of Accounts', component: AccountsListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/settings/subgroup-tagging', label: 'Subgroup Tagging', component: SubgroupTaggingPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.edit', requiredModule: 'accounting' },
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
+  { path: '/accounting/vouchers/:id/ledger', label: 'Voucher Ledger Impact', component: VoucherLedgerImpactPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id/view', label: 'View Voucher', component: VoucherViewPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.edit', requiredModule: 'accounting' },
   { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
@@ -239,12 +241,16 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/warehouses', label: 'Warehouses', component: WarehousesPage, section: 'INVENTORY', requiredPermission: 'inventory.warehouses.view', requiredModule: 'inventory' },
   { path: '/inventory/stock-levels', label: 'Stock Levels', component: StockLevelsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/movements', label: 'Movements', component: StockMovementsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
+  { path: '/inventory/adjustments/new', label: 'New Adjustment', component: StockAdjustmentPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+  { path: '/inventory/adjustments/:id', label: 'Adjustment Detail', component: StockAdjustmentPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/adjustments', label: 'Adjustments', component: StockAdjustmentPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/valuation', label: 'Inventory Valuation', component: InventoryValuationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/gl-reconciliation', label: 'Inventory ↔ GL Reconciliation', component: InventoryGLReconciliationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
+  { path: '/inventory/opening-stock/new', label: 'New Opening Stock Document', component: OpeningStockPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
+  { path: '/inventory/opening-stock/:id', label: 'Opening Stock Document Detail', component: OpeningStockPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
   { path: '/inventory/opening-stock', label: 'Opening Stock Documents', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
   { path: '/inventory/uoms', label: 'UOM Master', component: UomsPage, section: 'INVENTORY', requiredPermission: 'inventory.uom.view', requiredModule: 'inventory' },
   { path: '/inventory/settings', label: 'Settings', component: InventorySettingsPage, section: 'INVENTORY', requiredPermission: 'inventory.settings.manage', requiredModule: 'inventory' },

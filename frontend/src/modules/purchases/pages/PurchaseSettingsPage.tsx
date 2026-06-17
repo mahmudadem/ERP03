@@ -12,6 +12,8 @@ import { ModuleSettingsLayout, SettingsSection } from '../../../components/share
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
 import toast from 'react-hot-toast';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { notifySettingsChanged } from '../../../utils/settingsSync';
 import {
   getAccountingModeLabel,
   getWorkflowModeLabel,

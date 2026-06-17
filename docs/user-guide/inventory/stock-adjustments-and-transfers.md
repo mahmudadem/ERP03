@@ -12,6 +12,9 @@ Go to **Inventory → Settings → Accounting** and set:
   expiry). If you leave it blank, the item's COGS account is used.
 - **Inventory Gain / Write-up Account** — used when you add stock you found. Falls back to COGS if blank.
 - **Inventory Transfer Clearing Account** — used by *valued* transfers (see below).
+- **Default Opening Balance Account** — prefills Opening Stock Documents when you choose **Inventory + Accounting**.
+  This should be an Opening Balance Equity / retained-earnings style account. You can override it on a document
+  if a specific migration batch needs a different equity offset.
 - **Costing Basis** — **Per Warehouse** (default) keeps a separate moving-average cost for each
   item in each warehouse. **Global** keeps a single company-wide average per item, so every warehouse
   issues stock at the same cost and a purchase into one warehouse re-prices the item everywhere. Both
@@ -30,18 +33,33 @@ list applies. (The multi-tier **Price Groups** below it still work as before.)
 Use this to correct stock quantities (count corrections, damage, found stock).
 
 1. Go to **Inventory → Adjustments**.
-2. Pick the **Warehouse**, **Date**, and **Reason**.
-3. Add item lines. When you pick an item, the page **auto-fills the current quantity and the current average
+2. The page opens as a list. Click **New Adjustment** to open the document form.
+3. Pick the **Warehouse**, **Date**, and **Reason**.
+4. Add item lines. When you pick an item, the page **auto-fills the current quantity and the current average
    cost** for that warehouse.
-4. Change the **New Qty** to the counted quantity. The **Adj Qty** and **Adj Value** are calculated for you.
+5. Change the **New Qty** to the counted quantity. The **Adj Qty** and **Adj Value** are calculated for you.
    - You normally do **not** change the unit cost — it is already the real average cost. Only change it for a
      deliberate revaluation.
-5. Click **Create Adjustment**, then **Post** it from the list below.
+6. Click **Create Adjustment**, review the document, then **Post** it from the document or the list.
 
 **What posts to the books:** a write-down (negative adjustment) debits the Inventory Loss account; a write-up
 (positive adjustment) credits the Inventory Gain account. The value is always the item's *real* average cost,
 so your stock value and your General Ledger stay in step. If a required account is missing you get a clear
 message instead of a silent half-post.
+
+## Opening Stock Documents
+
+Use this when you start using ERP03 and need to enter stock that already exists.
+
+1. Go to **Inventory → Opening Stock Documents**.
+2. The page opens as a list. Click **New Document** to open the form.
+3. Choose the warehouse and document date.
+4. In the **Create Accounting Effect** control section, choose:
+   - **No** for inventory-only migration batches.
+   - **Yes** to create the opening inventory accounting voucher.
+5. When **Yes** is selected, the **Opening Balance / Clearing Account** is filled from Inventory Settings. You can override it for the document, but it must be an equity account such as Opening Balance Equity or retained earnings.
+6. Add stock-tracked item lines with quantity, unit cost, currency, and FX rates where needed.
+7. Save as draft, then post when reviewed. Drafts can be edited or deleted. Posted documents are locked.
 
 ## Stock Transfers — Flat vs Valued
 

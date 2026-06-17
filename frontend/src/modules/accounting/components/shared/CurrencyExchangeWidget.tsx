@@ -8,7 +8,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { accountingApi, RateDeviationWarning } from '../../../../api/accountingApi';
 import { useTranslation } from 'react-i18next';
 
@@ -190,7 +191,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   };
 
   const getStatusIcon = () => {
-    if (loading) return <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />;
+    if (loading) return <Spinner size="xs" variant="indigo" />;
     if (warnings.length > 0) return <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />;
     if (rateSource === 'SAME_CURRENCY') return <span className="text-xs font-bold text-gray-400">=</span>;
     if (hasOverride) return <div className="w-2 h-2 rounded-full bg-blue-500" />;

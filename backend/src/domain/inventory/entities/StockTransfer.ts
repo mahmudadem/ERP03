@@ -20,6 +20,7 @@ export interface StockTransferLine {
   /** Explicit value-only revaluation unit cost. Not inferred from landed cost. */
   revaluationUnitCostBaseAtTransfer?: number;
   revaluationUnitCostCCYAtTransfer?: number;
+  notes?: string;
 }
 
 export interface StockTransferProps {

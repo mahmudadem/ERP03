@@ -32,6 +32,7 @@ export interface CreateStockTransferInput {
     /** Explicit revaluation landing unit cost for this line. */
     revaluationUnitCostBaseAtTransfer?: number;
     revaluationUnitCostCCYAtTransfer?: number;
+    notes?: string;
   }>;
   createdBy: string;
 }
@@ -152,6 +153,7 @@ export class CreateStockTransferUseCase {
         revaluationUnitCostCCYAtTransfer: hasRevaluation
           ? (line.revaluationUnitCostCCYAtTransfer ?? line.revaluationUnitCostBaseAtTransfer ?? 0)
           : undefined,
+        notes: line.notes || undefined,
       });
     }
 
@@ -543,6 +545,7 @@ export class UndoStockTransferUseCase {
       lines: original.lines.map((line) => ({
         itemId: line.itemId,
         qty: line.qty,
+        notes: line.notes,
       })),
       createdBy: userId,
     });

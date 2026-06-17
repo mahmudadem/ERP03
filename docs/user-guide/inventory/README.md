@@ -36,7 +36,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
    - Category, brand, tags
    - Min / max stock levels (drives the Low Stock alert)
    - *(Optional)* GL accounts for inventory asset, revenue, and COGS — defaults come from category or company settings
-6. **Opening Stock:** `Inventory → Opening Stock → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, choose an Opening Balance Equity / retained-earnings style account as the offset. Do not use Inventory, COGS, revenue, AP, or AR as the offset.
+6. **Opening Stock:** `Inventory → Opening Stock Documents → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, the offset account is prefilled from Inventory Settings and can be overridden per document. It must be an Opening Balance Equity / retained-earnings style account. Do not use Inventory, COGS, revenue, AP, or AR as the offset.
 
 ---
 
@@ -47,10 +47,10 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
 When physical reality differs from what the system says:
 
 1. `Inventory → Adjustments → New Adjustment`.
-2. Pick the warehouse and the items being adjusted.
-3. For each line: choose IN (found / over-counted) or OUT (damage / loss / under-counted).
-4. Pick a **reason** (Damage, Loss, Correction, Expiry, Found Stock).
-5. Save as DRAFT, review, **Post**. Stock level updates immediately.
+2. Pick the warehouse and adjustment date.
+3. Pick a **reason** (Damage, Loss, Correction, Expiry, Found Stock).
+4. Add item lines. The form shows the current quantity, new counted quantity, adjustment quantity, and value.
+5. Create the adjustment, review it, then **Post**. Stock level updates immediately.
 
 ### Moving stock between warehouses — Stock Transfer
 

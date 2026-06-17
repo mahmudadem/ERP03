@@ -1,6 +1,6 @@
 # Architecture: Accounting Module
 
-**Last updated:** 2026-06-01
+**Last updated:** 2026-06-16
 **Status:** Implemented (core), with explicitly deferred features listed below.
 **Code-near docs:** [`backend/src/domain/accounting/ARCHITECTURE.md`](../../backend/src/domain/accounting/ARCHITECTURE.md), [`backend/src/domain/accounting/CORRECTIONS.md`](../../backend/src/domain/accounting/CORRECTIONS.md)
 
@@ -140,6 +140,13 @@ Required infrastructure hardening before production:
 
 This is a defense-in-depth rule: the application validates at the posting service and the ledger repository; infrastructure must still prevent direct database writes that bypass the application entirely.
 
+### Tenant isolation for voucher routes
+
+- Voucher URLs use the internal voucher UUID (`#/accounting/vouchers/:id/view`) rather than the human voucher number because voucher numbers can repeat across companies.
+- The UUID is not the security boundary. Every Accounting API request must resolve the company from the authenticated user context and verify company membership before controllers or repositories run.
+- `authMiddleware` now fails closed for a caller-supplied `x-company-id` that the user is not a member of (`403 COMPANY_ACCESS_DENIED`). A stale stored active company without membership is stripped to `null` so tenant routes cannot silently use it.
+- Voucher and ledger repositories remain company-scoped (`companies/{companyId}/accounting/Data/...` in Firestore), so a valid voucher UUID from another company does not resolve through the current company's repository path.
+
 ## Voucher Correction Flow (Reverse & Replace)
 
 See [CORRECTIONS.md](../../backend/src/domain/accounting/CORRECTIONS.md) for the canonical reference.
@@ -173,6 +180,11 @@ Summary:
 
 - Module root: [`frontend/src/modules/accounting/`](../../frontend/src/modules/accounting/)
 - Key pages: Vouchers list/detail, Chart of Accounts, Cost Centers, Approvals, Reports (one page per report), Recurring Vouchers, Forms Designer, Settings.
+- Voucher document inspection and ledger-effect inspection are separate routes:
+  - `#/accounting/vouchers/:id/view` renders the source voucher record: header, status, source lines, audit metadata, and workflow actions.
+  - `#/accounting/vouchers/:id/ledger` renders the read-only posted ledger impact for that voucher by calling `GET /tenant/accounting/reports/general-ledger?voucherId=:id`.
+- The ledger-impact route must stay read-only. It displays actual posted ledger rows only; draft/unposted vouchers show an empty state rather than a simulated preview.
+- Voucher and ledger-impact detail routes expose a read-only previous/current/next panel. The panel intentionally ignores list filters and resolves neighboring vouchers from the company voucher collection using the repository's default order (`date desc`, then stable ID ordering where supported). It does not query by human voucher number and it does not mutate vouchers or ledger rows.
 - Forms designer produces user-defined voucher layouts via the `designer-engine` package (`frontend/src/designer-engine/`).
 
 ## Cross-Module Touchpoints

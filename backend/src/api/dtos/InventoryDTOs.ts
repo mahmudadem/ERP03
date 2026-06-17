@@ -122,6 +122,7 @@ export interface InventorySettingsDTO {
   defaultInventoryLossAccountId?: string;
   defaultInventoryTransferClearingAccountId?: string;
   defaultInventoryRevaluationAccountId?: string;
+  defaultOpeningBalanceAccountId?: string;
   allowNegativeInventoryValue: boolean;
 }
 
@@ -263,6 +264,7 @@ export interface StockTransferDTO {
     addedCostCCYAtTransfer?: number;
     revaluationUnitCostBaseAtTransfer?: number;
     revaluationUnitCostCCYAtTransfer?: number;
+    notes?: string;
   }>;
 }
 
@@ -410,6 +412,7 @@ export class InventoryDTOMapper {
       defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId,
       defaultInventoryRevaluationAccountId: settings.defaultInventoryRevaluationAccountId,
+      defaultOpeningBalanceAccountId: settings.defaultOpeningBalanceAccountId,
       allowNegativeInventoryValue: settings.allowNegativeInventoryValue,
     };
   }

@@ -5,6 +5,7 @@ import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { SalesOrder, SalesOrderLine, SOItemType, SOStatus } from '../../../domain/sales/entities/SalesOrder';
 import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
+import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
@@ -432,7 +433,9 @@ export class UpdateSalesOrderUseCase {
     const current = await this.salesOrderRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Sales order not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
-      throw new Error('Only draft sales orders can be updated');
+      throw new SalesRuleError('SALES_ORDER_INVALID_STATE', 'Only draft sales orders can be updated', {
+        fieldHints: ['status'],
+      });
     }
 
     const before = current.toJSON();
@@ -593,7 +596,11 @@ export class ConfirmSalesOrderUseCase {
     // --- existing guards ---
     const so = await this.salesOrderRepo.getById(companyId, id);
     if (!so) throw new Error(`Sales order not found: ${id}`);
-    if (so.status !== 'DRAFT') throw new Error('Only draft sales orders can be confirmed');
+    if (so.status !== 'DRAFT') {
+      throw new SalesRuleError('SALES_ORDER_INVALID_STATE', 'Only draft sales orders can be confirmed', {
+        fieldHints: ['status'],
+      });
+    }
     if (!so.lines.length) throw new Error('Sales order must contain at least one line');
 
     // --- credit check ---
@@ -675,12 +682,18 @@ export class CancelSalesOrderUseCase {
     const so = await this.salesOrderRepo.getById(companyId, id);
     if (!so) throw new Error(`Sales order not found: ${id}`);
     if (!['DRAFT', 'CONFIRMED'].includes(so.status)) {
-      throw new Error('Only draft or confirmed sales orders can be cancelled');
+      throw new SalesRuleError('SALES_ORDER_INVALID_STATE', 'Only draft or confirmed sales orders can be cancelled', {
+        fieldHints: ['status'],
+      });
     }
 
     const hasLinkedActivity = so.lines.some((line) => line.deliveredQty > 0 || line.invoicedQty > 0);
     if (hasLinkedActivity) {
-      throw new Error('Cannot cancel sales order with delivered or invoiced quantities');
+      throw new SalesRuleError(
+        'SALES_ORDER_INVALID_STATE',
+        'Cannot cancel sales order with delivered or invoiced quantities',
+        { fieldHints: ['status'] }
+      );
     }
 
     so.status = 'CANCELLED';
@@ -697,7 +710,9 @@ export class CloseSalesOrderUseCase {
     const so = await this.salesOrderRepo.getById(companyId, id);
     if (!so) throw new Error(`Sales order not found: ${id}`);
     if (!['CONFIRMED', 'PARTIALLY_DELIVERED', 'FULLY_DELIVERED'].includes(so.status)) {
-      throw new Error('Only confirmed or delivered sales orders can be closed');
+      throw new SalesRuleError('SALES_ORDER_INVALID_STATE', 'Only confirmed or delivered sales orders can be closed', {
+        fieldHints: ['status'],
+      });
     }
 
     so.status = 'CLOSED';

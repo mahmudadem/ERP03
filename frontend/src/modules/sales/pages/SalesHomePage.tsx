@@ -37,6 +37,7 @@ import {
   resolveSalesWorkflowMode,
   shouldShowOperationalDocuments,
 } from '../../../utils/documentPolicy';
+import { subscribeToSettingsChanges } from '../../../utils/settingsSync';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -434,6 +435,16 @@ const SalesHomePage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    return subscribeToSettingsChanges((changedCompanyId) => {
+      if (!changedCompanyId || changedCompanyId === companyId) {
+        setRefreshTrigger((prev) => prev + 1);
+      }
+    });
+  }, [companyId]);
+
   const didInit = useRef(false);
 
   // ── Cache helpers scoped to company ───────────────────────────────────────
@@ -583,10 +594,15 @@ const SalesHomePage: React.FC = () => {
   }, [companyId, fetchSettings, fetchInvoices, fetchReturns, fetchOrders, fetchDNs]);
 
   useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-    void boot();
-  }, [boot]);
+    if (refreshTrigger > 0) {
+      _cache.clear();
+      void boot();
+    } else {
+      if (didInit.current) return;
+      didInit.current = true;
+      void boot();
+    }
+  }, [boot, refreshTrigger]);
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const showOperationalDocuments = shouldShowOperationalDocuments(resolveSalesWorkflowMode(settings));

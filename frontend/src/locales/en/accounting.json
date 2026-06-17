@@ -151,6 +151,57 @@
     "origCurrency": "Orig. Currency",
     "exchangeRate": "Exch. Rate"
   },
+  "voucherLedgerImpact": {
+    "title": "Ledger Impact",
+    "subtitle": "Posted ledger entries created by voucher {{voucherNo}}.",
+    "readOnly": "Read only",
+    "loading": "Loading ledger impact",
+    "loadFailed": "Failed to load ledger impact.",
+    "notFound": "Voucher not found.",
+    "goBack": "Go back",
+    "back": "Back",
+    "viewVoucher": "View voucher",
+    "balanced": "Balanced",
+    "emptyTitle": "No ledger entries yet",
+    "emptyDraft": "This voucher has not posted to the ledger yet. Ledger impact appears only after posting succeeds.",
+    "emptyPosted": "This posted voucher has no ledger rows. That may indicate a data integrity issue and should be reviewed.",
+    "meta": {
+      "voucher": "Voucher",
+      "date": "Date",
+      "status": "Status",
+      "currency": "Currency",
+      "lines": "Ledger lines"
+    },
+    "summary": {
+      "totalDebit": "Total debit",
+      "totalCredit": "Total credit",
+      "balanceCheck": "Balance check"
+    },
+    "columns": {
+      "date": "Date",
+      "account": "Account",
+      "description": "Description",
+      "costCenter": "Cost Center",
+      "debit": "Debit",
+      "credit": "Credit",
+      "baseAmount": "Base Amount",
+      "rate": "Rate"
+    }
+  },
+  "voucherNavigation": {
+    "ariaLabel": "Record navigation",
+    "previous": "Previous",
+    "next": "Next",
+    "currentVoucher": "Current voucher",
+    "currentLedger": "Current ledger",
+    "noPrevious": "No previous voucher",
+    "noNext": "No next voucher"
+  },
+  "voucherView": {
+    "actions": {
+      "ledgerImpact": "Ledger impact"
+    }
+  },
   "cashFlow": {
     "title": "Cash Flow Statement (Indirect)",
     "period": "Period: {{from}} → {{to}}",

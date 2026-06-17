@@ -8,20 +8,8 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { clsx } from 'clsx';
-import {
-  AlertTriangle,
-  Check,
-  CheckCircle2,
-  Key,
-  Loader2,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Server,
-  Trash2,
-  XCircle,
-} from 'lucide-react';
+import { clsx } from 'clsx'; import { AlertTriangle, Check, CheckCircle2, Key, Pencil, Plus, RefreshCw, Server, Trash2, XCircle} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import {
   AiPlatformApiKey,
   AiProvider,
@@ -236,7 +224,7 @@ export const AiApiKeysPage: React.FC = () => {
               disabled={saving}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {saving ? <Spinner size="sm" /> : <Check className="h-4 w-4" />}
               Save key
             </button>
             <button
@@ -253,7 +241,7 @@ export const AiApiKeysPage: React.FC = () => {
       {/* Key list */}
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Spinner size="sm" />
           Loading vault…
         </div>
       ) : keys.length === 0 ? (
@@ -313,7 +301,7 @@ export const AiApiKeysPage: React.FC = () => {
                               disabled={saving}
                               className="inline-flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
                             >
-                              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                              {saving ? <Spinner size="sm" /> : <Check className="h-3 w-3" />}
                               Save
                             </button>
                             <button
@@ -357,7 +345,7 @@ export const AiApiKeysPage: React.FC = () => {
                               title="Test that this key authenticates against the provider"
                             >
                               {validatingId === k.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <Spinner size="xs" />
                               ) : (
                                 <RefreshCw className="h-3.5 w-3.5" />
                               )}

@@ -111,6 +111,9 @@ export const validateInitializeInventoryInput = (body: any) => {
   if (body.defaultInventoryRevaluationAccountId) {
     ensureUuid(body.defaultInventoryRevaluationAccountId, 'defaultInventoryRevaluationAccountId');
   }
+  if (body.defaultOpeningBalanceAccountId) {
+    ensureUuid(body.defaultOpeningBalanceAccountId, 'defaultOpeningBalanceAccountId');
+  }
 
   if (body.defaultWarehouseCode && typeof body.defaultWarehouseCode !== 'string') {
     throw ApiError.badRequest('defaultWarehouseCode must be a string');
@@ -342,6 +345,7 @@ export const validateCreateStockTransferInput = (body: any) => {
     ensureOptionalNonNegativeNumber(line.addedCostCCYAtTransfer, `lines[${index}].addedCostCCYAtTransfer`);
     ensureOptionalNonNegativeNumber(line.revaluationUnitCostBaseAtTransfer, `lines[${index}].revaluationUnitCostBaseAtTransfer`);
     ensureOptionalNonNegativeNumber(line.revaluationUnitCostCCYAtTransfer, `lines[${index}].revaluationUnitCostCCYAtTransfer`);
+    ensureOptionalString(line.notes, `lines[${index}].notes`);
   });
 };
 
@@ -408,6 +412,9 @@ export const validateUpdateSettingsInput = (body: any) => {
   }
   if (body.defaultInventoryRevaluationAccountId) {
     ensureUuid(body.defaultInventoryRevaluationAccountId, 'defaultInventoryRevaluationAccountId');
+  }
+  if (body.defaultOpeningBalanceAccountId) {
+    ensureUuid(body.defaultOpeningBalanceAccountId, 'defaultOpeningBalanceAccountId');
   }
   if (body.allowNegativeInventoryValue !== undefined) {
     ensureBoolean(body.allowNegativeInventoryValue, 'allowNegativeInventoryValue');

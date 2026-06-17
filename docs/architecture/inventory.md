@@ -1,6 +1,6 @@
 # Architecture: Inventory Module
 
-**Last updated:** 2026-06-14 (GP02 step 9 — negative-stock default hardening)
+**Last updated:** 2026-06-17 (inventory document scaffold refactor)
 **Status:** V1 implemented. Moving-average costing live, on either a **per-warehouse** or **company-wide
 (GLOBAL)** basis (see Costing basis). GL posting from inventory documents IS implemented
 (see Accounting Integration). FIFO deferred to a follow-up.
@@ -124,6 +124,17 @@ Allowed. Movement `date` can be earlier than prior movements. Flagged with `isBa
 
 Document posting is immutable; corrections require a separate adjustment.
 
+### Frontend document shell
+
+Inventory document workflows now follow the same list-to-form shell used by Sales/Purchases documents:
+
+- `/inventory/adjustments` and `/inventory/opening-stock` are list pages built on `OperationalListLayout`.
+- `/inventory/adjustments/new` and `/inventory/opening-stock/new` open dedicated form routes.
+- `/inventory/adjustments/:id` and `/inventory/opening-stock/:id` open scaffold-backed document views.
+- Forms use `DocumentDetailScaffold` with the same body slots as the native Sales Invoice pattern: `control`, `header`, `lines`, rail readiness/totals, and footer actions.
+
+Opening Stock places the **Create Accounting Effect** toggle and warning in the scaffold `control` section. When accounting effect is enabled, the document pre-fills its offset account from `InventorySettings.defaultOpeningBalanceAccountId`, while still allowing a per-document override. The backend remains authoritative: the selected account must be an active POSTING EQUITY account.
+
 ## Accounting Integration
 
 Inventory documents **do** post to the GL when the Accounting module is enabled. The integration points:
@@ -133,6 +144,8 @@ Inventory documents **do** post to the GL when the Accounting module is enabled.
   such as Opening Balance Equity or retained earnings. The backend rejects P&L accounts (COGS/revenue), ordinary
   liabilities, and using the same inventory asset account as its own offset; those choices would make the Trial
   Balance balance while corrupting inventory valuation or P&L.
+  `InventorySettings.defaultOpeningBalanceAccountId` is the optional company default used to prefill new Opening
+  Stock Documents. Users may override it per document, but not bypass the EQUITY validation.
 - **Stock Adjustment** (Task 221) — posts a journal valued from the **actual posted movement cost**
   (`movement.totalCostBase`), not the user-typed cost. Write-downs (ADJUSTMENT_OUT) debit the **Inventory Loss**
   account; write-ups (ADJUSTMENT_IN) credit the **Inventory Gain** account. Offset resolution chain:

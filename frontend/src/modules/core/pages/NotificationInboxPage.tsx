@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check, Loader2, Search } from 'lucide-react';
+import { Bell, Check, Search } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useNavigate } from 'react-router-dom';
 import { client } from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
@@ -188,7 +189,7 @@ export const NotificationInboxPage: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center p-12 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin mb-4" />
+            <Spinner size="lg" className="mb-4" />
             <p>{t('notifications.inbox.loading', { defaultValue: 'Loading notifications...' })}</p>
           </div>
         ) : filteredNotifications.length === 0 ? (

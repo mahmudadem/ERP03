@@ -1,18 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  AlertTriangle,
-  Calculator,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  FileCheck,
-  Info,
-  Loader2,
-  Settings,
-  ShoppingCart,
-} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Calculator, CheckCircle, ChevronLeft, ChevronRight, DollarSign, FileCheck, Info, Settings, ShoppingCart} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { InitializePurchasesPayload, purchasesApi } from '../../../api/purchasesApi';
 import { WorkflowMode } from '../../../api/salesApi';
@@ -729,7 +717,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
           <div className="min-h-[540px] px-8 py-10">
             {isLoading ? (
               <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                <Spinner size="lg" />
               </div>
             ) : (
               content
@@ -773,7 +761,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      <Spinner className="mr-2" />
                       Initializing...
                     </>
                   ) : (
