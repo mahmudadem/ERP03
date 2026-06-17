@@ -19,6 +19,7 @@ import {
 import {
   inventoryApi,
   InventoryCategoryDTO,
+  InventoryCostPointDTO,
   InventoryItemDTO,
   InventoryUomDTO,
   UomConversionDTO,
@@ -315,6 +316,38 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     }
   };
 
+  const formatMoney = (value?: number, currency?: string) => {
+    if (value === undefined || value === null || Number.isNaN(value)) return '—';
+    const code = currency || 'USD';
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: code,
+        maximumFractionDigits: 2,
+      }).format(value);
+    } catch {
+      return `${value.toFixed(2)} ${code}`;
+    }
+  };
+
+  const renderCostPoint = (
+    label: string,
+    point?: InventoryCostPointDTO
+  ) => (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/40">
+      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+        {point ? formatMoney(point.ccy, point.currency) : '—'}
+      </div>
+      <div className="mt-1 text-xs text-slate-500">
+        Base: {point ? formatMoney(point.base, currencies[0] || item.costCurrency || point.currency) : '—'}
+      </div>
+      <div className="mt-1 text-[11px] text-slate-400">
+        {point ? `${point.asOf} • FX ${point.fxRateToBase}` : 'No posted value yet'}
+      </div>
+    </div>
+  );
+
   if (loading) return <div className="p-20 text-center opacity-50">Loading Item Master...</div>;
 
   return (
@@ -385,6 +418,17 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
       {activeTab === 'PRICING' && (
         <div className="space-y-6">
+          <FormSection title="Live Costing Snapshot">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {renderCostPoint('Average Cost', item.costingStats?.avgCost)}
+              {renderCostPoint('Last Purchase', item.costingStats?.lastPurchaseCost)}
+              {renderCostPoint('Last Sale', item.costingStats?.lastSalePrice)}
+            </div>
+            <p className="mt-2 text-[10px] text-slate-400 italic uppercase tracking-tighter">
+              Live values update from posted stock receipts and sales. They do not replace per-warehouse stock-level costs.
+            </p>
+          </FormSection>
+
           <FormSection title="Default Prices">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Default Sale Price">

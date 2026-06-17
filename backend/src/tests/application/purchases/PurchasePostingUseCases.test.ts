@@ -159,6 +159,10 @@ const makeGRN = (input: {
   purchaseOrderId: string;
   item: Item;
   receivedQty: number;
+  unitCostDoc?: number;
+  moveCurrency?: string;
+  fxRateMovToBase?: number;
+  fxRateCCYToBase?: number;
 }): GoodsReceipt =>
   new GoodsReceipt({
     id: input.id,
@@ -179,11 +183,11 @@ const makeGRN = (input: {
         itemName: input.item.name,
         receivedQty: input.receivedQty,
         uom: 'EA',
-        unitCostDoc: 10,
-        unitCostBase: 10,
-        moveCurrency: 'USD',
-        fxRateMovToBase: 1,
-        fxRateCCYToBase: 1,
+        unitCostDoc: input.unitCostDoc ?? 10,
+        unitCostBase: (input.unitCostDoc ?? 10) * (input.fxRateMovToBase ?? 1),
+        moveCurrency: input.moveCurrency ?? 'USD',
+        fxRateMovToBase: input.fxRateMovToBase ?? 1,
+        fxRateCCYToBase: input.fxRateCCYToBase ?? 1,
       },
     ],
     status: 'DRAFT',
@@ -321,11 +325,17 @@ const makeInventoryService = () => {
     processIN: jest.fn(async () => ({ id: `mov-${seq++}` })),
     processOUT: jest.fn(async () => ({ id: `mov-out-${seq++}` })),
     preFetchStockLevel: jest.fn(async () => makeStockLevel()),
+    preFetchLevelsByItem: jest.fn(async () => [makeStockLevel()]),
     writeStockMovement: jest.fn(async () => {}),
     writeStockLevel: jest.fn(async () => {}),
     deleteMovement: jest.fn(async () => {}),
   };
 };
+
+const makeItemRepo = (item: Item) => ({
+  getItem: jest.fn(async () => item),
+  updateItemInTransaction: jest.fn(async () => undefined),
+});
 
 const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL') => ({
   getSettings: jest.fn(async () => ({
@@ -375,7 +385,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       getById: jest.fn(async (_companyId: string, id: string) => poStore.get(id) ?? null),
       update: jest.fn(async (entity: PurchaseOrder) => { poStore.set(entity.id, entity); }),
     };
-    const itemRepo = { getItem: jest.fn(async () => item) };
+    const itemRepo = makeItemRepo(item);
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
     const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
@@ -406,6 +416,86 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(movement.referenceId).toBe(grn.id);
   });
 
+  it('1a) PostGRN keeps item average cost in item cost currency when receipt is in base currency', async () => {
+    const settings = makeSettings('CONTROLLED');
+    const item = makeItem('stock-1a', {
+      trackInventory: true,
+      inventoryAssetAccountId: 'INV-1A',
+      costCurrency: 'USD',
+    });
+    const po = makePO({ id: 'po-1a', item, orderedQty: 10, receivedQty: 0 });
+    const grn = makeGRN({
+      id: 'grn-1a',
+      purchaseOrderId: po.id,
+      item,
+      receivedQty: 2,
+      unitCostDoc: 100,
+      moveCurrency: 'SYP',
+      fxRateMovToBase: 1,
+      fxRateCCYToBase: 10,
+    });
+
+    const transactionManager = makeTransactionManager();
+    const inventoryService = makeInventoryService();
+    inventoryService.preFetchStockLevel.mockResolvedValue(
+      StockLevel.createNew(COMPANY_ID, item.id, 'wh-1')
+    );
+    inventoryService.preFetchLevelsByItem.mockResolvedValue([
+      StockLevel.createNew(COMPANY_ID, item.id, 'wh-1'),
+    ]);
+    const goodsReceiptRepo = {
+      getById: jest.fn(async () => grn),
+      update: jest.fn(async () => undefined),
+    };
+    const purchaseOrderRepo = {
+      getById: jest.fn(async () => po),
+      update: jest.fn(async () => undefined),
+    };
+    const itemRepo = makeItemRepo(item);
+
+    const useCase = new PostGoodsReceiptUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
+      goodsReceiptRepo as any,
+      purchaseOrderRepo as any,
+      itemRepo as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'SYP') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      makeAccountingPostingService(
+        { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) },
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) }
+      ),
+      undefined,
+      transactionManager as any
+    );
+
+    await useCase.execute(COMPANY_ID, grn.id);
+
+    const movement = (inventoryService.writeStockMovement as any).mock.calls[0][0];
+    expect(movement.unitCostBase).toBeCloseTo(100, 2);
+    expect(movement.unitCostCCY).toBeCloseTo(10, 2);
+    expect(movement.movementCurrency).toBe('SYP');
+    expect(movement.fxRateMovToBase).toBe(1);
+    expect(movement.fxRateCCYToBase).toBe(10);
+
+    const writtenLevel = (inventoryService.writeStockLevel as any).mock.calls[0][0] as StockLevel;
+    expect(writtenLevel.avgCostBase).toBeCloseTo(100, 2);
+    expect(writtenLevel.avgCostCCY).toBeCloseTo(10, 2);
+
+    const itemUpdate = (itemRepo.updateItemInTransaction as any).mock.calls[0][2];
+    expect(itemUpdate.costingStats.avgCost.base).toBeCloseTo(100, 2);
+    expect(itemUpdate.costingStats.avgCost.ccy).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.avgCost.currency).toBe('USD');
+    expect(itemUpdate.costingStats.avgCost.fxRateToBase).toBeCloseTo(10, 6);
+    expect(itemUpdate.costingStats.lastPurchaseCost.base).toBeCloseTo(100, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCost.ccy).toBeCloseTo(100, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCost.currency).toBe('SYP');
+    expect(itemUpdate.costingStats.lastPurchaseCost.fxRateToBase).toBeCloseTo(1, 6);
+  });
+
   it('2) PostGRN updates PO line receivedQty', async () => {
     const settings = makeSettings('CONTROLLED');
     const item = makeItem('stock-2', { trackInventory: true });
@@ -423,7 +513,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       getById: jest.fn(async () => po),
       update: jest.fn(async () => undefined),
     };
-    const itemRepo = { getItem: jest.fn(async () => item) };
+    const itemRepo = makeItemRepo(item);
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
     const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
@@ -460,7 +550,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const settingsRepo = { getSettings: jest.fn(async () => settings) };
     const goodsReceiptRepo = { getById: jest.fn(async () => grn), update: jest.fn(async () => undefined) };
     const purchaseOrderRepo = { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) };
-    const itemRepo = { getItem: jest.fn(async () => item) };
+    const itemRepo = makeItemRepo(item);
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
     const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
@@ -497,7 +587,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const settingsRepo = { getSettings: jest.fn(async () => settings) };
     const goodsReceiptRepo = { getById: jest.fn(async () => grn), update: jest.fn(async () => undefined) };
     const purchaseOrderRepo = { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) };
-    const itemRepo = { getItem: jest.fn(async () => item) };
+    const itemRepo = makeItemRepo(item);
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
     const voucherRepo = { save: jest.fn(async (voucher: any) => ({ ...voucher, id: 'v-grn-1' })), delete: jest.fn(async () => true) };
@@ -555,7 +645,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -608,7 +698,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => serviceItem) } as any,
+      makeItemRepo(serviceItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -678,7 +768,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => serviceItem) } as any,
+      makeItemRepo(serviceItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -750,7 +840,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -803,6 +893,9 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     inventoryService.preFetchStockLevel.mockResolvedValue(
       StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1')
     );
+    inventoryService.preFetchLevelsByItem.mockResolvedValue([
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1'),
+    ]);
 
     const savedVouchers: any[] = [];
     const voucherRepo = { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) };
@@ -820,7 +913,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -893,7 +986,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -954,7 +1047,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1038,7 +1131,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1104,7 +1197,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1155,7 +1248,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1204,7 +1297,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async (_companyId: string, id: string) => taxStore.get(id) ?? null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1237,7 +1330,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const stockItem = makeItem('stock-10', {
       trackInventory: true,
       inventoryAssetAccountId: 'INV-1000',
-      costCurrency: 'USD',
+      costCurrency: 'EUR',
     });
     const pi = makePI({
       id: 'pi-10',
@@ -1252,9 +1345,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
 
     const taxCode = makeTaxCode(0.1);
     const inventoryService = makeInventoryService();
+    inventoryService.preFetchStockLevel.mockResolvedValue(
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1')
+    );
+    inventoryService.preFetchLevelsByItem.mockResolvedValue([
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1'),
+    ]);
     const savedVouchers: any[] = [];
     const voucherRepo = { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) };
     const invoiceStore = new Map([[pi.id, pi]]);
+    const itemRepo = makeItemRepo(stockItem);
 
     const useCase = new PostPurchaseInvoiceUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
@@ -1266,7 +1366,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      itemRepo as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1299,6 +1399,164 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(voucher.metadata.sourceModule).toBe('purchases');
     expect(voucher.metadata.sourceType).toBe('PURCHASE_INVOICE');
     expect(voucher.metadata.sourceId).toBe(pi.id);
+
+    expect(itemRepo.updateItemInTransaction).toHaveBeenCalledTimes(1);
+    const itemUpdate = (itemRepo.updateItemInTransaction as any).mock.calls[0][2];
+    expect(itemUpdate.costingStats.avgCost.base).toBeCloseTo(15, 2);
+    expect(itemUpdate.costingStats.avgCost.ccy).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.avgCost.currency).toBe('EUR');
+    expect(itemUpdate.costingStats.avgCost.fxRateToBase).toBeCloseTo(1.5, 6);
+    expect(itemUpdate.costingStats.avgCost.asOf).toBe('2026-01-12');
+    expect(itemUpdate.costingStats.lastPurchaseCost.base).toBeCloseTo(15, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCost.ccy).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCost.currency).toBe('EUR');
+    expect(itemUpdate.costingStats.lastPurchaseCost.fxRateToBase).toBeCloseTo(1.5, 6);
+    expect(itemUpdate.costingStats.lastPurchaseCost.asOf).toBe('2026-01-12');
+  });
+
+  it('10b) PostPI keeps item average cost in item cost currency when invoice is in base currency', async () => {
+    const settings = makeSettings('SIMPLE');
+    const vendor = makeVendor();
+    const stockItem = makeItem('stock-10b', {
+      trackInventory: true,
+      inventoryAssetAccountId: 'INV-10B',
+      costCurrency: 'USD',
+    });
+    const pi = makePI({
+      id: 'pi-10b',
+      item: stockItem,
+      currency: 'SYP',
+      exchangeRate: 1,
+      invoicedQty: 2,
+      unitPriceDoc: 100,
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    inventoryService.preFetchStockLevel.mockResolvedValue(
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1')
+    );
+    inventoryService.preFetchLevelsByItem.mockResolvedValue([
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1'),
+    ]);
+    const invoiceStore = new Map([[pi.id, pi]]);
+    const itemRepo = makeItemRepo(stockItem);
+    const exchangeRateRepo = {
+      getMostRecentRateBeforeDate: jest.fn(async () => ({ rate: 10 })),
+    };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      itemRepo as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'SYP') } as any,
+      exchangeRateRepo as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'SYP') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, pi.id);
+    expect(posted.subtotalDoc).toBe(200);
+    expect(posted.subtotalBase).toBe(200);
+
+    expect(exchangeRateRepo.getMostRecentRateBeforeDate as jest.Mock).toHaveBeenCalledWith(
+      COMPANY_ID,
+      'USD',
+      'SYP',
+      expect.any(Date)
+    );
+    const writtenLevel = (inventoryService.writeStockLevel as any).mock.calls[0][0] as StockLevel;
+    expect(writtenLevel.avgCostBase).toBeCloseTo(100, 2);
+    expect(writtenLevel.avgCostCCY).toBeCloseTo(10, 2);
+    expect(writtenLevel.lastCostBase).toBeCloseTo(100, 2);
+    expect(writtenLevel.lastCostCCY).toBeCloseTo(10, 2);
+
+    expect(itemRepo.updateItemInTransaction).toHaveBeenCalledTimes(1);
+    const itemUpdate = (itemRepo.updateItemInTransaction as any).mock.calls[0][2];
+    expect(itemUpdate.costingStats.avgCost.base).toBeCloseTo(100, 2);
+    expect(itemUpdate.costingStats.avgCost.ccy).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.avgCost.currency).toBe('USD');
+    expect(itemUpdate.costingStats.avgCost.fxRateToBase).toBeCloseTo(10, 6);
+    expect(itemUpdate.costingStats.lastPurchaseCost.base).toBeCloseTo(100, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCost.ccy).toBeCloseTo(100, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCost.currency).toBe('SYP');
+    expect(itemUpdate.costingStats.lastPurchaseCost.fxRateToBase).toBeCloseTo(1, 6);
+  });
+
+  it('10a) PostPI re-post attempt does not double-apply inventory or item costing stats', async () => {
+    const settings = makeSettings('SIMPLE');
+    const vendor = makeVendor();
+    const stockItem = makeItem('stock-10a', {
+      trackInventory: true,
+      inventoryAssetAccountId: 'INV-10A',
+    });
+    const pi = makePI({
+      id: 'pi-10a',
+      item: stockItem,
+      invoicedQty: 2,
+      unitPriceDoc: 10,
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    const itemRepo = makeItemRepo(stockItem);
+    const invoiceStore = new Map([[pi.id, pi]]);
+    const invoiceRepo = {
+      getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+      update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+    };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      invoiceRepo as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      itemRepo as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const first = await useCase.execute(COMPANY_ID, pi.id);
+    expect(first.status).toBe('POSTED');
+
+    await expect(useCase.execute(COMPANY_ID, pi.id)).rejects.toThrow('Only DRAFT purchase invoices can be posted');
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockLevel).toHaveBeenCalledTimes(1);
+    expect(itemRepo.updateItemInTransaction).toHaveBeenCalledTimes(1);
+    expect(voucherRepo.save).toHaveBeenCalledTimes(1);
   });
 
   it('11) PostGRN skips GL voucher when accounting module is not initialized', async () => {
@@ -1324,7 +1582,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
         getById: jest.fn(async () => po),
         update: jest.fn(async () => undefined),
       } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -1370,7 +1628,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,

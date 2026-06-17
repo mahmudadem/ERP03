@@ -37,6 +37,7 @@ export class PrismaItemRepository implements IItemRepository {
         reorderPoint: item.reorderPoint ?? null,
         salePrice: item.salePrice ?? null,
         purchasePrice: item.purchasePrice ?? null,
+        costingStats: (item.costingStats as any) || null,
         imageUrl: item.imageUrl || null,
         metadata: (item.metadata as any) || null,
         active: item.active,
@@ -47,6 +48,14 @@ export class PrismaItemRepository implements IItemRepository {
 
   async updateItem(id: string, data: Partial<Item>): Promise<void> {
     await this.prisma.item.update({
+      where: { id },
+      data: data as any,
+    });
+  }
+
+  async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void> {
+    const tx = transaction as any;
+    await tx.item.update({
       where: { id },
       data: data as any,
     });
@@ -194,6 +203,7 @@ export class PrismaItemRepository implements IItemRepository {
       reorderPoint: record.reorderPoint,
       salePrice: record.salePrice,
       purchasePrice: record.purchasePrice,
+      costingStats: record.costingStats,
       imageUrl: record.imageUrl,
       metadata: record.metadata,
       active: record.active,

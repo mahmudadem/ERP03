@@ -60,6 +60,7 @@ export interface ISalesInventoryService {
   processIN(input: InventoryProcessINContractInput): Promise<StockMovement>;
   deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void>;
   preFetchStockLevel(companyId: string, itemId: string, warehouseId: string): Promise<StockLevel | null>;
+  preFetchLevelsByItem(companyId: string, itemId: string): Promise<StockLevel[]>;
   writeStockMovement(movement: StockMovement, transaction?: unknown): Promise<void>;
   writeStockLevel(level: StockLevel, transaction?: unknown): Promise<void>;
 }
@@ -69,6 +70,7 @@ export interface IPurchasesInventoryService {
   processOUT(input: InventoryProcessOUTContractInput): Promise<StockMovement>;
   deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void>;
   preFetchStockLevel(companyId: string, itemId: string, warehouseId: string): Promise<StockLevel | null>;
+  preFetchLevelsByItem(companyId: string, itemId: string): Promise<StockLevel[]>;
   writeStockMovement(movement: StockMovement, transaction?: unknown): Promise<void>;
   writeStockLevel(level: StockLevel, transaction?: unknown): Promise<void>;
 }

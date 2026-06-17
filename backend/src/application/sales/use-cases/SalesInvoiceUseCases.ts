@@ -68,6 +68,11 @@ import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
+import {
+  buildAverageCostPoint,
+  buildSalePricePoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
 import { addDaysToISODate, roundMoney } from './SalesPostingHelpers';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import {
@@ -1029,14 +1034,24 @@ export class PostSalesInvoiceUseCase {
 
     // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
     const stockLevelMap = new Map<string, StockLevel>();
+    const levelsByItemMap = new Map<string, StockLevel[]>();
+    for (const itemId of distinctItemIds) {
+      const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
+      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+    }
     for (const line of si.lines) {
       if (line.trackInventory) {
         const warehouseId = line.warehouseId || settings.defaultWarehouseId;
         if (warehouseId && line.itemId) {
           const key = `${line.itemId}|${warehouseId}`;
           if (!stockLevelMap.has(key)) {
-            const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, warehouseId);
-            stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, warehouseId));
+            const levels = levelsByItemMap.get(line.itemId) || [];
+            let existing = levels.find((level) => level.warehouseId === warehouseId);
+            if (!existing) {
+              existing = StockLevel.createNew(companyId, line.itemId, warehouseId);
+              levels.push(existing);
+            }
+            stockLevelMap.set(key, existing);
           }
         }
       }
@@ -1068,18 +1083,27 @@ export class PostSalesInvoiceUseCase {
     // This sets line.trackInventory, line.stockMovementId, line.unitCostBase, line.lineCostBase
     // which are needed for COGS account resolution below.
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel; qtyInBaseUom: number }>();
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
     for (const line of si.lines) {
       line.trackInventory = itemsMap.get(line.itemId)?.trackInventory ?? false;
-      if (!line.trackInventory) continue;
-
       const item = itemsMap.get(line.itemId);
       if (!item) continue;
+
+      const salePricePoint = buildSalePricePoint({
+        unitPriceDoc: line.unitPriceDoc,
+        currency: si.currency,
+        exchangeRate: si.exchangeRate,
+        baseCurrency: (baseCurrency || si.currency || 'USD').toUpperCase(),
+        asOf: si.invoiceDate,
+        refType: 'SALES_INVOICE',
+        refId: si.id,
+      });
 
       const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
       const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
       const hasOperationalDelivery = matchedDeliveryLines.length > 0;
 
-      if (!hasOperationalDelivery && settings.allowDirectInvoicing) {
+      if (line.trackInventory && !hasOperationalDelivery && settings.allowDirectInvoicing) {
         const warehouseId = line.warehouseId || settings.defaultWarehouseId;
         if (!warehouseId || !warehousesMap.has(warehouseId)) throw new Error(`Warehouse required for ${item.name}`);
 
@@ -1194,7 +1218,7 @@ export class PostSalesInvoiceUseCase {
         }
 
         inventoryMovements.set(line.lineId, { movement, updatedLevel: level, qtyInBaseUom });
-      } else {
+      } else if (line.trackInventory) {
         const operationalQty = roundMoney(line.invoicedQty);
         line.unitCostBase = roundMoney(this.resolveControlledUnitCost(line, soLine, postedDNs));
         line.lineCostBase = roundMoney(operationalQty * line.unitCostBase);
@@ -1207,6 +1231,18 @@ export class PostSalesInvoiceUseCase {
           );
         }
       }
+
+      const itemLevels = levelsByItemMap.get(item.id) || [];
+      const avgCost = buildAverageCostPoint(
+        itemLevels,
+        item,
+        (baseCurrency || si.currency || 'USD').toUpperCase(),
+        invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+        item.costingStats?.avgCost
+      );
+      const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastSalePrice: salePricePoint });
+      item.costingStats = costingStats;
+      itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
     }
 
     // PHASE 1E: PRE-RESOLVE ALL ACCOUNT IDS (bare reads before transaction)
@@ -1354,6 +1390,17 @@ export class PostSalesInvoiceUseCase {
       for (const [lineId, { movement, updatedLevel }] of inventoryMovements) {
         await this.inventoryService.writeStockMovement(movement, transaction);
         await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+      }
+      for (const [itemId, update] of itemCostingStatsUpdates) {
+        await this.itemRepo.updateItemInTransaction(
+          companyId,
+          itemId,
+          {
+            costingStats: update.costingStats,
+            updatedAt: update.updatedAt,
+          } as Partial<Item>,
+          transaction
+        );
       }
 
       // --- Accumulate voucher lines using pre-resolved accounts ---

@@ -590,6 +590,7 @@ model Item {
   reorderPoint              Float?
   salePrice                 Float?
   purchasePrice             Float?
+  costingStats              Json?
   imageUrl                  String?
   metadata                  Json?
   active                    Boolean  @default(true)

@@ -1,4 +1,4 @@
-import { DocumentReference, Firestore, Query } from 'firebase-admin/firestore';
+import { DocumentReference, Firestore, Query, Transaction } from 'firebase-admin/firestore';
 import { Item } from '../../../../domain/inventory/entities/Item';
 import { IItemRepository, ItemListOptions } from '../../../../repository/interfaces/inventory/IItemRepository';
 import { ItemMapper } from '../../mappers/InventoryMappers';
@@ -17,6 +17,11 @@ export class FirestoreItemRepository implements IItemRepository {
     return snap.docs[0].ref;
   }
 
+  private asTransaction(transaction?: unknown): Transaction | undefined {
+    if (!transaction) return undefined;
+    return transaction as Transaction;
+  }
+
   private applyListOptions(query: Query, opts?: ItemListOptions): Query {
     let ref = query;
     if (opts?.offset) ref = ref.offset(opts.offset);
@@ -32,6 +37,16 @@ export class FirestoreItemRepository implements IItemRepository {
     const ref = await this.resolveRefById(id);
     if (!ref) return;
     await ref.update(data as any);
+  }
+
+  async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void> {
+    const txn = this.asTransaction(transaction);
+    if (!txn) {
+      await this.updateItem(id, data);
+      return;
+    }
+
+    txn.set(this.collection(companyId).doc(id), data as any, { merge: true });
   }
 
   async setItemActive(id: string, active: boolean): Promise<void> {

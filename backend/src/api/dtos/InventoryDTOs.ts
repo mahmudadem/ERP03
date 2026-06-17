@@ -45,6 +45,40 @@ export interface ItemDTO {
   reorderPoint?: number;
   salePrice?: number;
   purchasePrice?: number;
+  costingStats?: {
+    avgCost: {
+      base: number;
+      ccy: number;
+      currency: string;
+      fxRateToBase: number;
+      asOf: string;
+      source?: { movementId?: string; refType?: string; refId?: string };
+    };
+    lastPurchaseCost?: {
+      base: number;
+      ccy: number;
+      currency: string;
+      fxRateToBase: number;
+      asOf: string;
+      source?: { movementId?: string; refType?: string; refId?: string };
+    };
+    lastSalePrice?: {
+      base: number;
+      ccy: number;
+      currency: string;
+      fxRateToBase: number;
+      asOf: string;
+      source?: { movementId?: string; refType?: string; refId?: string };
+    };
+    extra?: Record<string, {
+      base: number;
+      ccy: number;
+      currency: string;
+      fxRateToBase: number;
+      asOf: string;
+      source?: { movementId?: string; refType?: string; refId?: string };
+    }>;
+  };
   metadata?: Record<string, any>;
   active: boolean;
   createdBy: string;
@@ -107,7 +141,7 @@ export interface InventorySettingsDTO {
   companyId: string;
   accountingMode: 'INVOICE_DRIVEN' | 'PERPETUAL';
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
-  defaultCostingMethod: 'MOVING_AVG';
+  defaultCostingMethod: InventorySettings['defaultCostingMethod'];
   costingBasis: 'WAREHOUSE' | 'GLOBAL';
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
@@ -325,6 +359,7 @@ export class InventoryDTOMapper {
       reorderPoint: item.reorderPoint,
       salePrice: item.salePrice,
       purchasePrice: item.purchasePrice,
+      costingStats: item.costingStats ? { ...item.costingStats } : undefined,
       metadata: item.metadata ? { ...item.metadata } : undefined,
       active: item.active,
       createdBy: item.createdBy,

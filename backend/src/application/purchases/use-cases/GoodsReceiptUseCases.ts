@@ -22,8 +22,14 @@ import { SubledgerVoucherPostingService } from '../../accounting/services/Subled
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
+import {
+  buildAverageCostPoint,
+  buildPurchaseCostPoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
+import { roundByCurrency } from '../../../domain/accounting/entities/CurrencyPrecisionHelpers';
 
 export interface GoodsReceiptLineInput {
   lineId?: string;
@@ -287,11 +293,21 @@ export class PostGoodsReceiptUseCase {
 
     // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
     const stockLevelMap = new Map<string, StockLevel>();
+    const levelsByItemMap = new Map<string, StockLevel[]>();
+    for (const itemId of distinctItemIds) {
+      const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
+      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+    }
     for (const line of grn.lines) {
+      const levels = levelsByItemMap.get(line.itemId) || [];
       const key = `${line.itemId}|${grn.warehouseId}`;
       if (!stockLevelMap.has(key)) {
-        const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, grn.warehouseId);
-        stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, grn.warehouseId));
+        let existing = levels.find((level) => level.warehouseId === grn.warehouseId);
+        if (!existing) {
+          existing = StockLevel.createNew(companyId, line.itemId, grn.warehouseId);
+          levels.push(existing);
+        }
+        stockLevelMap.set(key, existing);
       }
     }
 
@@ -307,6 +323,7 @@ export class PostGoodsReceiptUseCase {
 
     // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION (pure computation)
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel }>();
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
     const receiptAccountingBucket = new Map<string, number>();
 
     for (const line of grn.lines) {
@@ -360,13 +377,13 @@ export class PostGoodsReceiptUseCase {
 
       const qtyBefore = level.qtyOnHand;
       const oldMaxBusinessDate = level.maxBusinessDate;
-      const unitCostBase = roundMoney(line.unitCostDoc * line.fxRateMovToBase);
-      const unitCostCCY = roundMoney(line.unitCostDoc * (line.fxRateCCYToBase || line.fxRateMovToBase));
-      const totalCostBase = roundMoney(unitCostBase * qtyInBaseUom);
-      const totalCostCCY = roundMoney(unitCostCCY * qtyInBaseUom);
       const moveCurrency = (line.moveCurrency || item.costCurrency || 'USD').toUpperCase();
       const fxRateMovToBase = line.fxRateMovToBase || 1;
       const fxRateCCYToBase = line.fxRateCCYToBase || fxRateMovToBase;
+      const unitCostBase = roundMoney(line.unitCostDoc * fxRateMovToBase);
+      const unitCostCCY = roundByCurrency(unitCostBase / fxRateCCYToBase, item.costCurrency);
+      const totalCostBase = roundMoney(unitCostBase * qtyInBaseUom);
+      const totalCostCCY = roundByCurrency(unitCostCCY * qtyInBaseUom, item.costCurrency);
 
       // AVG cost recalculation
       let newAvgBase = unitCostBase;
@@ -446,6 +463,19 @@ export class PostGoodsReceiptUseCase {
       line.stockMovementId = movement.id;
       line.unitCostBase = roundMoney(movement.unitCostBase || line.unitCostBase);
 
+      const itemLevels = levelsByItemMap.get(item.id) || [level];
+      const lastPurchaseCost = buildPurchaseCostPoint(movement);
+      const avgCost = buildAverageCostPoint(
+        itemLevels,
+        item,
+        baseCurrency,
+        invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+        lastPurchaseCost
+      );
+      const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastPurchaseCost });
+      item.costingStats = costingStats;
+      itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
+
       if (poLine) {
         poLine.receivedQty = roundMoney(poLine.receivedQty + line.receivedQty);
       }
@@ -476,6 +506,17 @@ export class PostGoodsReceiptUseCase {
       for (const [, { movement, updatedLevel }] of inventoryMovements) {
         await this.inventoryService.writeStockMovement(movement, transaction);
         await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+      }
+      for (const [itemId, update] of itemCostingStatsUpdates) {
+        await this.itemRepo.updateItemInTransaction(
+          companyId,
+          itemId,
+          {
+            costingStats: update.costingStats,
+            updatedAt: update.updatedAt,
+          } as Partial<Item>,
+          transaction
+        );
       }
 
       // Create GRNI voucher if needed

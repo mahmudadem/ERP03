@@ -2,6 +2,26 @@ import client from './client';
 
 export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
 
+export interface InventoryCostPointDTO {
+  base: number;
+  ccy: number;
+  currency: string;
+  fxRateToBase: number;
+  asOf: string;
+  source?: {
+    movementId?: string;
+    refType?: string;
+    refId?: string;
+  };
+}
+
+export interface InventoryItemCostingStatsDTO {
+  avgCost: InventoryCostPointDTO;
+  lastPurchaseCost?: InventoryCostPointDTO;
+  lastSalePrice?: InventoryCostPointDTO;
+  extra?: Record<string, InventoryCostPointDTO>;
+}
+
 export interface InventoryItemDTO {
   id: string;
   companyId: string;
@@ -32,6 +52,7 @@ export interface InventoryItemDTO {
   reorderPoint?: number;
   salePrice?: number;
   purchasePrice?: number;
+  costingStats?: InventoryItemCostingStatsDTO;
   imageUrl?: string;
   metadata?: Record<string, any>;
   active: boolean;
@@ -196,7 +217,7 @@ export interface InventorySettingsDTO {
   companyId: string;
   accountingMode: InventoryAccountingMode;
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
-  defaultCostingMethod: 'MOVING_AVG';
+  defaultCostingMethod: string;
   costingBasis?: 'WAREHOUSE' | 'GLOBAL';
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;

@@ -58,6 +58,10 @@ processOUT(input: InventoryProcessOUTContractInput) {
     return this.movementUseCase.preFetchStockLevel(companyId, itemId, warehouseId);
   }
 
+  preFetchLevelsByItem(companyId: string, itemId: string): Promise<StockLevel[]> {
+    return this.movementUseCase.preFetchLevelsByItem(companyId, itemId);
+  }
+
   writeStockMovement(movement: StockMovement, transaction?: unknown): Promise<void> {
     return this.movementUseCase.writeStockMovement(movement, transaction);
   }

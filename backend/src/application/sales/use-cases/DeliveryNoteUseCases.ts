@@ -25,6 +25,11 @@ import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
+import {
+  buildAverageCostPoint,
+  buildSalePricePoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { roundMoney, updateSOStatus } from './SalesPostingHelpers';
 
@@ -296,11 +301,21 @@ export class PostDeliveryNoteUseCase {
 
     // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
     const stockLevelMap = new Map<string, StockLevel>();
+    const levelsByItemMap = new Map<string, StockLevel[]>();
+    for (const itemId of distinctItemIds) {
+      const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
+      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+    }
     for (const line of dn.lines) {
+      const levels = levelsByItemMap.get(line.itemId) || [];
       const key = `${line.itemId}|${dn.warehouseId}`;
       if (!stockLevelMap.has(key)) {
-        const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, dn.warehouseId);
-        stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, dn.warehouseId));
+        let existing = levels.find((level) => level.warehouseId === dn.warehouseId);
+        if (!existing) {
+          existing = StockLevel.createNew(companyId, line.itemId, dn.warehouseId);
+          levels.push(existing);
+        }
+        stockLevelMap.set(key, existing);
       }
     }
 
@@ -316,6 +331,7 @@ export class PostDeliveryNoteUseCase {
 
     // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION (pure computation)
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel; qtyInBaseUom: number }>();
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
     const cogsBucket = new Map<string, AccumulatedCOGS>();
 
     for (const line of dn.lines) {
@@ -445,6 +461,29 @@ export class PostDeliveryNoteUseCase {
       line.fxRateMovToBase = movement.fxRateMovToBase;
       line.fxRateCCYToBase = movement.fxRateCCYToBase;
 
+      const itemLevels = levelsByItemMap.get(item.id) || [level];
+      const avgCost = buildAverageCostPoint(
+        itemLevels,
+        item,
+        baseCurrency,
+        invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+        item.costingStats?.avgCost
+      );
+      const salePricePoint = soLine
+        ? buildSalePricePoint({
+            unitPriceDoc: soLine.unitPriceDoc,
+            currency: so.currency,
+            exchangeRate: so.exchangeRate,
+            baseCurrency,
+            asOf: dn.deliveryDate,
+            refType: 'DELIVERY_NOTE',
+            refId: dn.id,
+          })
+        : undefined;
+      const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastSalePrice: salePricePoint });
+      item.costingStats = costingStats;
+      itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
+
       inventoryMovements.set(line.lineId, { movement, updatedLevel: level, qtyInBaseUom });
 
       // PHASE 1E: PRE-RESOLVE COGS ACCOUNTS (bare reads before transaction)
@@ -494,6 +533,17 @@ export class PostDeliveryNoteUseCase {
       for (const [, { movement, updatedLevel }] of inventoryMovements) {
         await this.inventoryService.writeStockMovement(movement, transaction);
         await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+      }
+      for (const [itemId, update] of itemCostingStatsUpdates) {
+        await this.itemRepo.updateItemInTransaction(
+          companyId,
+          itemId,
+          {
+            costingStats: update.costingStats,
+            updatedAt: update.updatedAt,
+          } as Partial<Item>,
+          transaction
+        );
       }
 
       // Create COGS voucher if needed

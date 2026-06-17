@@ -46,6 +46,12 @@ import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
+import {
+  buildAverageCostPoint,
+  buildPurchaseCostPoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
+import { roundByCurrency } from '../../../domain/accounting/entities/CurrencyPrecisionHelpers';
 import { addDaysToISODate, roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
 import { PostingError } from '../../../domain/shared/errors/AppError';
@@ -588,13 +594,23 @@ export class PostPurchaseInvoiceUseCase {
 
     // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
     const stockLevelMap = new Map<string, StockLevel>();
+    const levelsByItemMap = new Map<string, StockLevel[]>();
+    for (const itemId of distinctItemIds) {
+      const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
+      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+    }
     for (const line of pi.lines) {
       if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
         const warehouseId = line.warehouseId || settings.defaultWarehouseId;
         if (warehouseId && line.itemId) {
           const key = `${line.itemId}|${warehouseId}`;
           if (!stockLevelMap.has(key)) {
-            const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, warehouseId);
+            const levels = levelsByItemMap.get(line.itemId) || [];
+            let existing = levels.find((level) => level.warehouseId === warehouseId);
+            if (!existing) {
+              existing = StockLevel.createNew(companyId, line.itemId, warehouseId);
+              levels.push(existing);
+            }
             stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, warehouseId));
           }
         }
@@ -615,6 +631,7 @@ export class PostPurchaseInvoiceUseCase {
 
     // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel; qtyInBaseUom: number }>();
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
     for (const line of pi.lines) {
       line.trackInventory = itemsMap.get(line.itemId)?.trackInventory ?? false;
 
@@ -687,8 +704,9 @@ export class PostPurchaseInvoiceUseCase {
           ? roundMoney(line.lineTotalBase / qtyInBaseUom)
           : 0;
         const netUnitCostCCY = qtyInBaseUom > 0
-          ? roundMoney(line.lineTotalDoc / qtyInBaseUom)
+          ? roundByCurrency(netUnitCostBase / fxRateCCYToBase, item.costCurrency)
           : 0;
+        const netTotalCostCCY = roundByCurrency(netUnitCostCCY * qtyInBaseUom, item.costCurrency);
         const nextAvgCostBase = roundMoney(
           (level.avgCostBase * Math.max(qtyBefore, 0) + netUnitCostBase * newPositiveQty) / Math.max(qtyAfter, 1)
         );
@@ -717,7 +735,7 @@ export class PostPurchaseInvoiceUseCase {
           unitCostBase: netUnitCostBase,
           totalCostBase: line.lineTotalBase,
           unitCostCCY: netUnitCostCCY,
-          totalCostCCY: line.lineTotalDoc,
+          totalCostCCY: netTotalCostCCY,
           movementCurrency: pi.currency,
           fxRateMovToBase: pi.exchangeRate,
           fxRateCCYToBase,
@@ -761,6 +779,19 @@ export class PostPurchaseInvoiceUseCase {
 
         line.stockMovementId = movement.id;
         line.warehouseId = warehouseId;
+
+        const itemLevels = levelsByItemMap.get(item.id) || [level];
+        const lastPurchaseCost = buildPurchaseCostPoint(movement);
+        const avgCost = buildAverageCostPoint(
+          itemLevels,
+          item,
+          baseCurrency,
+          invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+          lastPurchaseCost
+        );
+        const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastPurchaseCost });
+        item.costingStats = costingStats;
+        itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
 
         inventoryMovements.set(line.lineId, { movement, updatedLevel: level, qtyInBaseUom });
       }
@@ -828,6 +859,17 @@ export class PostPurchaseInvoiceUseCase {
         for (const [lineId, { movement, updatedLevel }] of inventoryMovements) {
           await this.inventoryService.writeStockMovement(movement, transaction);
           await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+        }
+        for (const [itemId, update] of itemCostingStatsUpdates) {
+          await this.itemRepo.updateItemInTransaction(
+            companyId,
+            itemId,
+            {
+              costingStats: update.costingStats,
+              updatedAt: update.updatedAt,
+            } as Partial<Item>,
+            transaction
+          );
         }
 
         // Build the posting plan — one debit entry per source line (+ its tax),

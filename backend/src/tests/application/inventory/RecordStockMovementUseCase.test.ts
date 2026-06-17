@@ -93,6 +93,12 @@ class InMemoryItemRepository implements IItemRepository {
     Object.assign(item, data);
   }
 
+  async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>): Promise<void> {
+    const item = this.items.get(id);
+    if (!item || item.companyId !== companyId) return;
+    Object.assign(item, data);
+  }
+
   async setItemActive(id: string, active: boolean): Promise<void> {
     const item = this.items.get(id);
     if (!item) return;

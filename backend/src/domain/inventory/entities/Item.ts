@@ -1,6 +1,29 @@
 
 export type ItemType = 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
-export type ItemCostingMethod = 'MOVING_AVG';
+export type ItemCostingMethod = 'MOVING_AVG' | 'STANDARD' | 'FIFO' | (string & {});
+export type InventoryPricingPolicy = 'AVERAGE' | 'LAST_PURCHASE' | 'STANDARD' | (string & {});
+
+export interface CostPointSource {
+  movementId?: string;
+  refType?: string;
+  refId?: string;
+}
+
+export interface CostPoint {
+  base: number;
+  ccy: number;
+  currency: string;
+  fxRateToBase: number;
+  asOf: string;
+  source?: CostPointSource;
+}
+
+export interface ItemCostingStats {
+  avgCost: CostPoint;
+  lastPurchaseCost?: CostPoint;
+  lastSalePrice?: CostPoint;
+  extra?: Record<string, CostPoint>;
+}
 
 export interface ItemProps {
   id: string;
@@ -34,6 +57,7 @@ export interface ItemProps {
   salePrice?: number;
   /** Default unit purchase price (company base currency), shown as a buying hint. */
   purchasePrice?: number;
+  costingStats?: ItemCostingStats;
   imageUrl?: string;
   metadata?: Record<string, any>;
   active: boolean;
@@ -80,6 +104,7 @@ export class Item {
   reorderPoint?: number;
   salePrice?: number;
   purchasePrice?: number;
+  costingStats?: ItemCostingStats;
   imageUrl?: string;
   metadata?: Record<string, any>;
   active: boolean;
@@ -153,6 +178,7 @@ export class Item {
     this.reorderPoint = props.reorderPoint;
     this.salePrice = props.salePrice;
     this.purchasePrice = props.purchasePrice;
+    this.costingStats = Item.normalizeCostingStats(props.costingStats);
     this.imageUrl = props.imageUrl;
     this.metadata = props.metadata ? { ...props.metadata } : undefined;
     this.active = props.active;
@@ -203,6 +229,7 @@ export class Item {
       reorderPoint: this.reorderPoint,
       salePrice: this.salePrice,
       purchasePrice: this.purchasePrice,
+      costingStats: this.costingStats ? Item.cloneCostingStats(this.costingStats) : undefined,
       imageUrl: this.imageUrl,
       metadata: this.metadata ? { ...this.metadata } : undefined,
       active: this.active,
@@ -243,6 +270,7 @@ export class Item {
       reorderPoint: data.reorderPoint,
       salePrice: data.salePrice,
       purchasePrice: data.purchasePrice,
+      costingStats: data.costingStats,
       imageUrl: data.imageUrl,
       metadata: data.metadata,
       active: data.active ?? true,
@@ -250,5 +278,75 @@ export class Item {
       createdAt: toDate(data.createdAt || new Date()),
       updatedAt: toDate(data.updatedAt || new Date()),
     });
+  }
+
+  private static cloneCostPoint(point: CostPoint): CostPoint {
+    return {
+      base: point.base,
+      ccy: point.ccy,
+      currency: point.currency,
+      fxRateToBase: point.fxRateToBase,
+      asOf: point.asOf,
+      source: point.source ? { ...point.source } : undefined,
+    };
+  }
+
+  private static cloneCostingStats(stats: ItemCostingStats): ItemCostingStats {
+    return {
+      avgCost: Item.cloneCostPoint(stats.avgCost),
+      lastPurchaseCost: stats.lastPurchaseCost ? Item.cloneCostPoint(stats.lastPurchaseCost) : undefined,
+      lastSalePrice: stats.lastSalePrice ? Item.cloneCostPoint(stats.lastSalePrice) : undefined,
+      extra: stats.extra
+        ? Object.fromEntries(
+            Object.entries(stats.extra).map(([key, value]) => [key, Item.cloneCostPoint(value)])
+          )
+        : undefined,
+    };
+  }
+
+  private static normalizeCostPoint(point: any): CostPoint {
+    if (!point || typeof point !== 'object') {
+      throw new Error('Item costingStats point is required');
+    }
+
+    if (!point.currency?.trim()) {
+      throw new Error('Item costingStats currency is required');
+    }
+
+    if (!point.asOf?.trim()) {
+      throw new Error('Item costingStats asOf is required');
+    }
+
+    const base = Number(point.base);
+    const ccy = Number(point.ccy);
+    const fxRateToBase = Number(point.fxRateToBase);
+
+    if (Number.isNaN(base) || Number.isNaN(ccy) || Number.isNaN(fxRateToBase) || fxRateToBase <= 0) {
+      throw new Error('Item costingStats point values are invalid');
+    }
+
+    return {
+      base,
+      ccy,
+      currency: String(point.currency).toUpperCase().trim(),
+      fxRateToBase,
+      asOf: String(point.asOf),
+      source: point.source ? { ...point.source } : undefined,
+    };
+  }
+
+  private static normalizeCostingStats(stats?: ItemCostingStats): ItemCostingStats | undefined {
+    if (!stats) return undefined;
+
+    return {
+      avgCost: Item.normalizeCostPoint(stats.avgCost),
+      lastPurchaseCost: stats.lastPurchaseCost ? Item.normalizeCostPoint(stats.lastPurchaseCost) : undefined,
+      lastSalePrice: stats.lastSalePrice ? Item.normalizeCostPoint(stats.lastSalePrice) : undefined,
+      extra: stats.extra
+        ? Object.fromEntries(
+            Object.entries(stats.extra).map(([key, value]) => [key, Item.normalizeCostPoint(value)])
+          )
+        : undefined,
+    };
   }
 }

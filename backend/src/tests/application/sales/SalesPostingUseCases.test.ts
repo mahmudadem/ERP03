@@ -344,11 +344,17 @@ const makeInventoryService = (costBase = 10) => {
     })),
     processIN: jest.fn(async () => ({ id: `mov-in-${seq++}` })),
     preFetchStockLevel: jest.fn(async () => makeStockLevel(costBase)),
+    preFetchLevelsByItem: jest.fn(async () => [makeStockLevel(costBase)]),
     writeStockMovement: jest.fn(async () => {}),
     writeStockLevel: jest.fn(async () => {}),
     deleteMovement: jest.fn(async () => {}),
   };
 };
+
+const makeItemRepo = (item: Item) => ({
+  getItem: jest.fn(async () => item),
+  updateItemInTransaction: jest.fn(async () => undefined),
+});
 
 const makeInventorySettingsRepository = (
   method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL',
@@ -383,7 +389,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -425,7 +431,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -475,7 +481,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       }) as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -511,7 +517,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -542,7 +548,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -587,7 +593,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -642,7 +648,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => serviceItem) } as any,
+      makeItemRepo(serviceItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -702,7 +708,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -780,7 +786,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -860,7 +866,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -941,7 +947,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -992,7 +998,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1043,7 +1049,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async (_companyId: string, id: string) => taxStore.get(id) ?? null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1092,6 +1098,8 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const taxCode = makeTaxCode(0.1);
     const invoiceStore = new Map([[si.id, si]]);
     const savedVouchers: any[] = [];
+    const itemRepo = makeItemRepo(stockItem);
+    const inventoryService = makeInventoryService();
 
     const useCase = new PostSalesInvoiceUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
@@ -1106,12 +1114,12 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      itemRepo as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
-      makeInventoryService() as any,
+      inventoryService as any,
       makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }), delete: jest.fn(async () => true) } as any,
@@ -1138,6 +1146,76 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(revenueVoucher.metadata.sourceModule).toBe('sales');
     expect(revenueVoucher.metadata.sourceType).toBe('SALES_INVOICE');
     expect(revenueVoucher.metadata.sourceId).toBe(si.id);
+    expect(itemRepo.updateItemInTransaction).toHaveBeenCalledTimes(1);
+
+    const itemUpdate = (itemRepo.updateItemInTransaction as any).mock.calls[0][2];
+    expect(itemUpdate.costingStats.avgCost.base).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.lastSalePrice.base).toBeCloseTo(15, 2);
+    expect(itemUpdate.costingStats.lastSalePrice.ccy).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.lastSalePrice.currency).toBe('EUR');
+    expect(itemUpdate.costingStats.lastSalePrice.fxRateToBase).toBeCloseTo(1.5, 6);
+    expect(itemUpdate.costingStats.lastSalePrice.asOf).toBe('2026-01-12');
+  });
+
+  it('10a) PostSI re-post attempt does not double-apply inventory or item sale stats', async () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const stockItem = makeItem('stock-10a', {
+      trackInventory: true,
+      cogsAccountId: 'COGS-10A',
+      inventoryAssetAccountId: 'INV-10A',
+      revenueAccountId: 'REV-10A',
+    });
+    const si = makeSI({
+      id: 'si-10a',
+      item: stockItem,
+      invoicedQty: 2,
+      unitPriceDoc: 10,
+      warehouseId: 'wh-1',
+    });
+
+    const invoiceStore = new Map([[si.id, si]]);
+    const itemRepo = makeItemRepo(stockItem);
+    const inventoryService = makeInventoryService();
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
+
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => {
+          invoiceStore.set(entity.id, entity);
+        }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      itemRepo as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const first = await useCase.execute(COMPANY_ID, si.id);
+    expect(first.status).toBe('POSTED');
+
+    await expect(useCase.execute(COMPANY_ID, si.id)).rejects.toThrow('Invalid sales invoice state');
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockLevel).toHaveBeenCalledTimes(1);
+    expect(itemRepo.updateItemInTransaction).toHaveBeenCalledTimes(1);
+    expect(voucherRepo.save).toHaveBeenCalledTimes(2);
   });
 
   it('10b) PostSI applies discount and charges to totals and revenue voucher', async () => {
@@ -1182,7 +1260,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
-      { getItem: jest.fn(async () => serviceItem) } as any,
+      makeItemRepo(serviceItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1263,7 +1341,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => serviceItem) } as any,
+      makeItemRepo(serviceItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1340,7 +1418,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
-      { getItem: jest.fn(async () => serviceItem) } as any,
+      makeItemRepo(serviceItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1404,7 +1482,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       makeInventorySettingsRepository() as any,
       dnRepo as any,
       soRepo as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1463,7 +1541,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1526,7 +1604,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1571,7 +1649,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       makeInventorySettingsRepository() as any,
       deliveryNoteRepo as any,
       salesOrderRepo as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1625,7 +1703,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       }) as any,
       deliveryNoteRepo as any,
       salesOrderRepo as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
@@ -1683,7 +1761,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { list: jest.fn(async () => []) } as any,
       { getById: jest.fn(async () => customer) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => stockItem) } as any,
+      makeItemRepo(stockItem) as any,
       { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
       { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,

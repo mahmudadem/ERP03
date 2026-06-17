@@ -16,6 +16,7 @@ export interface ItemListOptions {
 export interface IItemRepository {
   createItem(item: Item): Promise<void>;
   updateItem(id: string, data: Partial<Item>): Promise<void>;
+  updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void>;
   setItemActive(id: string, active: boolean): Promise<void>;
   getItem(id: string): Promise<Item | null>;
   getCompanyItems(companyId: string, opts?: ItemListOptions): Promise<Item[]>;

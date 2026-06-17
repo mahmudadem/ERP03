@@ -1,5 +1,6 @@
 export type LegacyInventoryAccountingMethod = 'PERIODIC' | 'PERPETUAL';
 export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
+export type InventoryPricingPolicy = 'AVERAGE' | 'LAST_PURCHASE' | 'STANDARD' | (string & {});
 /**
  * WAREHOUSE — one moving-average cost per (item, warehouse). Default; precise
  *   per-location valuation; supports valued inter-warehouse transfers.
@@ -7,12 +8,13 @@ export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
  *   warehouse). Set once at setup; switching after movements exist is unsafe.
  */
 export type InventoryCostingBasis = 'WAREHOUSE' | 'GLOBAL';
+export type InventoryDefaultCostingMethod = 'MOVING_AVG' | 'STANDARD' | 'FIFO' | (string & {});
 
 export interface InventorySettingsProps {
   companyId: string;
   inventoryAccountingMethod?: LegacyInventoryAccountingMethod;
   accountingMode?: InventoryAccountingMode;
-  defaultCostingMethod: 'MOVING_AVG';
+  defaultCostingMethod: InventoryDefaultCostingMethod;
   costingBasis?: InventoryCostingBasis;
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
@@ -67,7 +69,7 @@ export class InventorySettings {
   readonly companyId: string;
   inventoryAccountingMethod: LegacyInventoryAccountingMethod;
   accountingMode: InventoryAccountingMode;
-  defaultCostingMethod: 'MOVING_AVG';
+  defaultCostingMethod: InventoryDefaultCostingMethod;
   costingBasis: InventoryCostingBasis;
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
@@ -98,8 +100,8 @@ export class InventorySettings {
     );
     // Note: Requiredness for defaultInventoryAssetAccountId in PERPETUAL mode 
     // is enforced at the Use Case and Validator level to allow hydration of partial legacy data.
-    if (props.defaultCostingMethod !== 'MOVING_AVG') {
-      throw new Error(`Invalid defaultCostingMethod: ${props.defaultCostingMethod}`);
+    if (!props.defaultCostingMethod?.trim()) {
+      throw new Error('InventorySettings defaultCostingMethod is required');
     }
     if (props.itemCodeNextSeq <= 0 || Number.isNaN(props.itemCodeNextSeq)) {
       throw new Error('InventorySettings itemCodeNextSeq must be greater than 0');

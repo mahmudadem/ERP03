@@ -18,6 +18,13 @@ import { IWarehouseRepository } from '../../../repository/interfaces/inventory/I
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { InventorySettings, InventoryCostingBasis } from '../../../domain/inventory/entities/InventorySettings';
 import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
+import {
+  buildAverageCostPoint,
+  buildPurchaseCostPoint,
+  buildUpdatedItemCostingStats,
+  mergeLevelSnapshot,
+  mergeLevelSnapshots,
+} from '../services/ItemCostingStatsService';
 
 interface MovementRefs {
   type: ReferenceType;
@@ -215,9 +222,20 @@ export class RecordStockMovementUseCase {
       });
 
       level.lastMovementId = movement.id;
+      const levels = await this.deps.stockLevelRepository.getLevelsByItemInTransaction(txn, input.companyId, item.id);
+      const prospectiveLevels = mergeLevelSnapshot(levels, level);
+      const lastPurchaseCost = buildPurchaseCostPoint(movement);
 
       await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, level);
       await this.deps.stockMovementRepository.recordMovement(movement, txn);
+      await this.persistItemCostingStats(
+        txn,
+        item,
+        baseCurrency,
+        costingBasis,
+        prospectiveLevels,
+        { lastPurchaseCost }
+      );
 
       return movement;
     };
@@ -360,9 +378,12 @@ export class RecordStockMovementUseCase {
       });
 
       level.lastMovementId = movement.id;
+      const levels = await this.deps.stockLevelRepository.getLevelsByItemInTransaction(txn, input.companyId, item.id);
+      const prospectiveLevels = mergeLevelSnapshot(levels, level);
 
       await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, level);
       await this.deps.stockMovementRepository.recordMovement(movement, txn);
+      await this.persistItemCostingStats(txn, item, await this.getBaseCurrency(input.companyId), costingBasis, prospectiveLevels);
 
       return movement;
     };
@@ -577,10 +598,20 @@ export class RecordStockMovementUseCase {
 
       dstLevel.lastMovementId = inMov.id;
 
+      const levels = await this.deps.stockLevelRepository.getLevelsByItemInTransaction(txn, input.companyId, item.id);
+      const prospectiveLevels = mergeLevelSnapshots(levels, [srcLevel, dstLevel]);
+
       await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, srcLevel);
       await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, dstLevel);
       await this.deps.stockMovementRepository.recordMovement(outMov, txn);
       await this.deps.stockMovementRepository.recordMovement(inMov, txn);
+      await this.persistItemCostingStats(
+        txn,
+        item,
+        await this.getBaseCurrency(input.companyId),
+        costingBasis,
+        prospectiveLevels
+      );
 
       return { outMov, inMov };
     };
@@ -753,10 +784,23 @@ export class RecordStockMovementUseCase {
     });
 
     dest.lastMovementId = movement.id;
+    const prospectiveLevels = mergeLevelSnapshot(
+      this.restateLevelSnapshot(levels, newAvgBase, newAvgCCY),
+      dest
+    );
+    const lastPurchaseCost = buildPurchaseCostPoint(movement);
 
     await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, dest);
     await this.deps.stockMovementRepository.recordMovement(movement, txn);
     await this.restateAverageAcrossLevels(txn, otherLevels, newAvgBase, newAvgCCY, now);
+    await this.persistItemCostingStats(
+      txn,
+      item,
+      baseCurrency,
+      'GLOBAL',
+      prospectiveLevels,
+      { lastPurchaseCost }
+    );
 
     return movement;
   }
@@ -893,9 +937,14 @@ export class RecordStockMovementUseCase {
     });
 
     source.lastMovementId = movement.id;
+    const prospectiveLevels = mergeLevelSnapshot(
+      this.restateLevelSnapshot(levels, globalAvgBase, globalAvgCCY),
+      source
+    );
 
     await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, source);
     await this.deps.stockMovementRepository.recordMovement(movement, txn);
+    await this.persistItemCostingStats(txn, item, baseCurrency, 'GLOBAL', prospectiveLevels);
 
     return movement;
   }
@@ -1068,6 +1117,10 @@ export class RecordStockMovementUseCase {
       metadata: input.metadata,
     });
     dst.lastMovementId = inMov.id;
+    const prospectiveLevels = mergeLevelSnapshots(
+      this.restateLevelSnapshot(levels, newGlobalAvgBase, newGlobalAvgCCY),
+      [src, dst]
+    );
 
     await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, src);
     await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, dst);
@@ -1076,6 +1129,7 @@ export class RecordStockMovementUseCase {
     if (explicitDeltaBase !== 0 || explicitDeltaCCY !== 0) {
       await this.restateAverageAcrossLevels(txn, otherLevels, newGlobalAvgBase, newGlobalAvgCCY, now);
     }
+    await this.persistItemCostingStats(txn, item, baseCurrency, 'GLOBAL', prospectiveLevels);
 
     return { outMov, inMov };
   }
@@ -1218,6 +1272,10 @@ export class RecordStockMovementUseCase {
     return this.deps.stockLevelRepository.getLevel(companyId, itemId, warehouseId);
   }
 
+  async preFetchLevelsByItem(companyId: string, itemId: string): Promise<StockLevel[]> {
+    return this.deps.stockLevelRepository.getLevelsByItem(companyId, itemId);
+  }
+
   async preFetchItemContext(
     companyId: string,
     itemId: string
@@ -1311,6 +1369,38 @@ export class RecordStockMovementUseCase {
 
   private maxDate(a: string, b: string): string {
     return b > a ? b : a;
+  }
+
+  private restateLevelSnapshot(levels: StockLevel[], avgBase: number, avgCCY: number): StockLevel[] {
+    return levels.map((level) => {
+      const next = StockLevel.fromJSON(level.toJSON());
+      next.avgCostBase = avgBase;
+      next.avgCostCCY = avgCCY;
+      return next;
+    });
+  }
+
+  private async persistItemCostingStats(
+    txn: unknown,
+    item: Item,
+    baseCurrency: string,
+    costingBasis: InventoryCostingBasis,
+    levels: StockLevel[],
+    patch?: Partial<Pick<ReturnType<typeof buildUpdatedItemCostingStats>, 'lastPurchaseCost' | 'lastSalePrice'>>
+  ): Promise<void> {
+    const avgCost = buildAverageCostPoint(levels, item, baseCurrency, costingBasis, patch?.lastPurchaseCost);
+    const costingStats = buildUpdatedItemCostingStats(item, avgCost, patch);
+    item.costingStats = costingStats;
+    item.updatedAt = new Date();
+    await this.deps.itemRepository.updateItemInTransaction(
+      item.companyId,
+      item.id,
+      {
+        costingStats,
+        updatedAt: item.updatedAt,
+      } as Partial<Item>,
+      txn
+    );
   }
 
   private rebuildLevelFromMovements(
