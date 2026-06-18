@@ -16,7 +16,7 @@ export interface InitializeInventoryInput {
   companyId: string;
   userId: string;
   inventoryAccountingMethod?: 'PERIODIC' | 'PERPETUAL';
-  accountingMode?: 'INVOICE_DRIVEN' | 'PERPETUAL';
+  accountingMode?: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
   defaultWarehouseName?: string;
   defaultWarehouseCode?: string;
   defaultInventoryAssetAccountId?: string;

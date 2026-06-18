@@ -334,6 +334,32 @@ export const useSidebarConfig = () => {
     }, []);
   };
 
+  const applyWorkflowVisibility = (moduleId: string, items: SidebarItem[]): SidebarItem[] => {
+    return items.reduce<SidebarItem[]>((visibleItems, item) => {
+      const hiddenForCurrentMode =
+        !!(item as any).hideInSimpleMode
+        && (
+          (moduleId === 'sales' && !showSalesOperationalDocs)
+          || (moduleId === 'purchase' && !showPurchaseOperationalDocs)
+        );
+
+      if (hiddenForCurrentMode) {
+        return visibleItems;
+      }
+
+      const children = item.children
+        ? applyWorkflowVisibility(moduleId, item.children)
+        : undefined;
+
+      visibleItems.push({
+        ...item,
+        children,
+      });
+
+      return visibleItems;
+    }, []);
+  };
+
   const sidebarSections = useMemo(() => {
     const sections: Record<string, { icon: string; items: SidebarItem[]; path?: string }> = {};
 
@@ -418,24 +444,8 @@ export const useSidebarConfig = () => {
         icon: 'LayoutGrid',
         items: []
       };
-      let items = filterSidebarItems(def.items);
-      items = items.filter((item) => {
-        if (
-          moduleId === 'sales'
-          && !showSalesOperationalDocs
-          && (item.path === '/sales/orders' || item.path === '/sales/delivery-notes')
-        ) {
-          return false;
-        }
-        if (
-          moduleId === 'purchase'
-          && !showPurchaseOperationalDocs
-          && (item.path === '/purchases/orders' || item.path === '/purchases/goods-receipts')
-        ) {
-          return false;
-        }
-        return true;
-      });
+      let items = applyWorkflowVisibility(moduleId, def.items as SidebarItem[]);
+      items = filterSidebarItems(items);
       
       // === DYNAMIC FORM INJECTION ===
       // Insertion order within a module section:

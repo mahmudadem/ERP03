@@ -50,6 +50,7 @@ export interface SalesSettingsDTO {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultSalesReturnAccountId?: string;
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
@@ -420,6 +421,7 @@ export class SalesDTOMapper {
       defaultCOGSAccountId: settings.defaultCOGSAccountId,
       defaultInventoryAccountId: settings.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId,
+      defaultSalesReturnAccountId: settings.defaultSalesReturnAccountId,
       defaultRefundAccountId: settings.defaultRefundAccountId,
       restockingFeeAccountId: settings.restockingFeeAccountId,
       allowOverDelivery: settings.allowOverDelivery,

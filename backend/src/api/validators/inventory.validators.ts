@@ -78,8 +78,8 @@ const ensureInventoryAccountingMethod = (value: any, fieldName: string) => {
 
 const ensureAccountingMode = (value: any, fieldName: string) => {
   ensureRequiredString(value, fieldName);
-  if (value !== 'INVOICE_DRIVEN' && value !== 'PERPETUAL') {
-    throw ApiError.badRequest(`${fieldName} must be INVOICE_DRIVEN or PERPETUAL`);
+  if (value !== 'PERIODIC' && value !== 'INVOICE_DRIVEN' && value !== 'PERPETUAL') {
+    throw ApiError.badRequest(`${fieldName} must be PERIODIC, INVOICE_DRIVEN or PERPETUAL`);
   }
 };
 
@@ -93,7 +93,7 @@ export const validateInitializeInventoryInput = (body: any) => {
 
   const effectiveAccountingMode =
     body.accountingMode
-    || (body.inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN');
+    || (body.inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : body.inventoryAccountingMethod === 'PERIODIC' ? 'PERIODIC' : 'INVOICE_DRIVEN');
 
   if (effectiveAccountingMode === 'PERPETUAL') {
     ensureUuid(body.defaultInventoryAssetAccountId, 'defaultInventoryAssetAccountId');

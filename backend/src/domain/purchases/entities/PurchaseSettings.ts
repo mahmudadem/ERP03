@@ -23,6 +23,8 @@ export interface PurchaseSettingsProps {
   /** Template used when auto-creating per-vendor AP sub-accounts. Tokens: {parent}, {partyCode}, {seq3}. */
   partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
+  defaultPurchaseReturnAccountId?: string;
+  defaultPurchaseDiscountAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   /** Governance: when true, a settlement may exceed the invoice outstanding; the excess
@@ -55,6 +57,8 @@ export class PurchaseSettings {
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
+  defaultPurchaseReturnAccountId?: string;
+  defaultPurchaseDiscountAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   allowOverpayment: boolean;
@@ -86,6 +90,8 @@ export class PurchaseSettings {
     this.apParentAccountId = props.apParentAccountId?.trim() || undefined;
     this.partyAccountCodeFormat = props.partyAccountCodeFormat?.trim() || undefined;
     this.defaultPurchaseExpenseAccountId = props.defaultPurchaseExpenseAccountId;
+    this.defaultPurchaseReturnAccountId = props.defaultPurchaseReturnAccountId?.trim() || undefined;
+    this.defaultPurchaseDiscountAccountId = props.defaultPurchaseDiscountAccountId?.trim() || undefined;
     this.defaultGRNIAccountId = props.defaultGRNIAccountId?.trim() || undefined;
     this.allowOverDelivery = props.allowOverDelivery;
     this.allowOverpayment = props.allowOverpayment === true;
@@ -140,6 +146,8 @@ export class PurchaseSettings {
       apParentAccountId: this.apParentAccountId,
       partyAccountCodeFormat: this.partyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: this.defaultPurchaseExpenseAccountId,
+      defaultPurchaseReturnAccountId: this.defaultPurchaseReturnAccountId,
+      defaultPurchaseDiscountAccountId: this.defaultPurchaseDiscountAccountId,
       defaultGRNIAccountId: this.defaultGRNIAccountId,
       allowOverDelivery: this.allowOverDelivery,
       allowOverpayment: this.allowOverpayment,
@@ -172,6 +180,8 @@ export class PurchaseSettings {
       apParentAccountId: data.apParentAccountId,
       partyAccountCodeFormat: data.partyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: data.defaultPurchaseExpenseAccountId,
+      defaultPurchaseReturnAccountId: data.defaultPurchaseReturnAccountId,
+      defaultPurchaseDiscountAccountId: data.defaultPurchaseDiscountAccountId,
       defaultGRNIAccountId: data.defaultGRNIAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,
       allowOverpayment: data.allowOverpayment ?? false,

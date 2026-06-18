@@ -78,6 +78,8 @@ export interface InitializePurchasesInput {
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
   defaultPurchaseExpenseAccountId?: string;
+  defaultPurchaseReturnAccountId?: string;
+  defaultPurchaseDiscountAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;
   allowOverpayment?: boolean;
@@ -112,6 +114,8 @@ export interface UpdatePurchasesSettingsInput {
   apParentAccountId?: string;
   partyAccountCodeFormat?: string;
   defaultPurchaseExpenseAccountId?: string;
+  defaultPurchaseReturnAccountId?: string;
+  defaultPurchaseDiscountAccountId?: string;
   defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;
   allowOverpayment?: boolean;
@@ -218,6 +222,8 @@ export class InitializePurchasesUseCase {
       apParentAccountId: input.apParentAccountId,
       partyAccountCodeFormat: input.partyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: input.defaultPurchaseExpenseAccountId,
+      defaultPurchaseReturnAccountId: input.defaultPurchaseReturnAccountId,
+      defaultPurchaseDiscountAccountId: input.defaultPurchaseDiscountAccountId,
       defaultGRNIAccountId: input.defaultGRNIAccountId,
       allowOverDelivery: input.allowOverDelivery ?? false,
       allowOverpayment: input.allowOverpayment ?? false,
@@ -390,6 +396,8 @@ export class UpdatePurchaseSettingsUseCase {
       apParentAccountId: nextAPParentAccountId,
       partyAccountCodeFormat: nextPartyAccountCodeFormat,
       defaultPurchaseExpenseAccountId: input.defaultPurchaseExpenseAccountId ?? existing.defaultPurchaseExpenseAccountId,
+      defaultPurchaseReturnAccountId: input.defaultPurchaseReturnAccountId ?? existing.defaultPurchaseReturnAccountId,
+      defaultPurchaseDiscountAccountId: input.defaultPurchaseDiscountAccountId ?? existing.defaultPurchaseDiscountAccountId,
       defaultGRNIAccountId: nextGRNIAccountId,
       allowOverDelivery: input.allowOverDelivery ?? existing.allowOverDelivery,
       allowOverpayment: input.allowOverpayment ?? existing.allowOverpayment,

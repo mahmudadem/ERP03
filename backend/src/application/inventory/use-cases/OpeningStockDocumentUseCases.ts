@@ -16,6 +16,7 @@ import { IOpeningStockDocumentRepository } from '../../../repository/interfaces/
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { ProcessINInput, RecordStockMovementUseCase } from './RecordStockMovementUseCase';
 
 export interface CreateOpeningStockDocumentInput {
@@ -380,6 +381,7 @@ export class PostOpeningStockDocumentUseCase {
     const categoriesById = new Map(categories.map((category) => [category.id, category]));
 
     const accountBuckets = new Map<string, number>();
+    const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
 
     if (document.createAccountingEffect) {
       if (!accountingModule?.initialized) {
@@ -416,9 +418,11 @@ export class PostOpeningStockDocumentUseCase {
         }
 
         const inventoryAssetAccountId =
-          item.inventoryAssetAccountId ||
-          (item.categoryId ? categoriesById.get(item.categoryId)?.defaultInventoryAssetAccountId : undefined) ||
-          inventorySettings?.defaultInventoryAssetAccountId;
+          accountingMode === 'PERIODIC'
+            ? inventorySettings?.defaultInventoryAssetAccountId
+            : item.inventoryAssetAccountId ||
+              (item.categoryId ? categoriesById.get(item.categoryId)?.defaultInventoryAssetAccountId : undefined) ||
+              inventorySettings?.defaultInventoryAssetAccountId;
 
         if (!inventoryAssetAccountId) {
           throw new Error(

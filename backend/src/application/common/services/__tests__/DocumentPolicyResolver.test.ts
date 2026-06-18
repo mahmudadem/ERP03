@@ -3,8 +3,8 @@ import { DocumentPolicyResolver } from '../DocumentPolicyResolver';
 import { GovernanceRule } from '../../../../domain/sales/entities/SalesSettings';
 
 describe('DocumentPolicyResolver', () => {
-  it('maps legacy PERIODIC to INVOICE_DRIVEN', () => {
-    expect(DocumentPolicyResolver.legacyInventoryMethodToAccountingMode('PERIODIC')).toBe('INVOICE_DRIVEN');
+  it('maps legacy PERIODIC to PERIODIC', () => {
+    expect(DocumentPolicyResolver.legacyInventoryMethodToAccountingMode('PERIODIC')).toBe('PERIODIC');
   });
 
   it('maps PERPETUAL accounting mode back to legacy PERPETUAL', () => {
@@ -22,8 +22,25 @@ describe('DocumentPolicyResolver', () => {
     expect(DocumentPolicyResolver.shouldInvoiceRecognizeInventory('INVOICE_DRIVEN', true)).toBe(true);
   });
 
+  it('suppresses inventory recognition in periodic mode', () => {
+    expect(DocumentPolicyResolver.shouldInvoiceRecognizeInventory('PERIODIC', false)).toBe(false);
+    expect(DocumentPolicyResolver.shouldInvoiceRecognizeInventory('PERIODIC', true)).toBe(false);
+    expect(DocumentPolicyResolver.shouldSalesReturnReverseInventoryAccounting('PERIODIC', 'AFTER_INVOICE')).toBe(false);
+    expect(DocumentPolicyResolver.shouldSalesReturnReverseInventoryAccounting('PERIODIC', 'DIRECT')).toBe(false);
+  });
+
   it('locks the supported workflow/accounting combinations as an explicit matrix', () => {
     const supportedModes = [
+      {
+        name: 'simple + periodic',
+        workflowMode: 'SIMPLE' as const,
+        accountingMode: 'PERIODIC' as const,
+        showOperationalDocuments: false,
+        postDeliveryNoteAccounting: false,
+        postGoodsReceiptAccounting: false,
+        invoiceRecognizesInventoryWithOperationalPosting: false,
+        invoiceRecognizesInventoryStandalone: false,
+      },
       {
         name: 'simple + invoice-driven',
         workflowMode: 'SIMPLE' as const,

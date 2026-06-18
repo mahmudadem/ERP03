@@ -6,7 +6,12 @@ export const resolveInventoryAccountingMode = (
   settings?: Pick<Partial<InventorySettingsDTO>, 'accountingMode' | 'inventoryAccountingMethod'> | null
 ): InventoryAccountingMode => {
   if (!settings) return 'INVOICE_DRIVEN';
-  return settings.accountingMode || (settings.inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN');
+  return settings.accountingMode
+    || (settings.inventoryAccountingMethod === 'PERPETUAL'
+      ? 'PERPETUAL'
+      : settings.inventoryAccountingMethod === 'PERIODIC'
+        ? 'PERIODIC'
+        : 'INVOICE_DRIVEN');
 };
 
 export const resolveWorkflowMode = (mode?: string | null): WorkflowMode =>
@@ -16,7 +21,7 @@ export const shouldShowOperationalDocuments = (workflowMode: WorkflowMode): bool
   workflowMode === 'OPERATIONAL';
 
 export const getAccountingModeLabel = (mode: InventoryAccountingMode): string =>
-  mode === 'PERPETUAL' ? 'Perpetual' : 'Invoice-driven';
+  mode === 'PERPETUAL' ? 'Perpetual' : mode === 'PERIODIC' ? 'Periodic' : 'Invoice-driven';
 
 export const getWorkflowModeLabel = (mode: WorkflowMode): string =>
   mode === 'SIMPLE' ? 'Simple' : 'Operational';

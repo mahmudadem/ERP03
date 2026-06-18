@@ -1303,6 +1303,8 @@ export class PostSalesInvoiceUseCase {
 
       if (!line.trackInventory) {
         cogsStatus = 'SKIPPED_SERVICE_ITEM';
+      } else if (accountingMode === 'PERIODIC') {
+        cogsStatus = 'SKIPPED_DEFERRED_POLICY';
       } else if (!(line.lineCostBase! > 0)) {
         // Catches undefined, null, NaN, 0, and negative values — all mean
         // "no settled cost basis available for this line".

@@ -17,6 +17,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
 | **Opening Stock** | Initial stock entry when you start using the system. |
 | **Stock Adjustments** | Record damage, loss, or found stock. |
 | **Stock Transfers** | Move goods between warehouses. |
+| **Inventory Accounting Mode** | Choose whether inventory accounting is Periodic, Invoice-Driven, or Perpetual. |
 | **Stock Levels** | See what's on hand, what's reserved, and the running average cost. |
 | **Stock Movements** | The full append-only ledger of every movement. |
 | **Alerts** | Items below minimum stock level. |

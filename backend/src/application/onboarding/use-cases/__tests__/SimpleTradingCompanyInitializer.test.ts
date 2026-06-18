@@ -1,14 +1,15 @@
 import { SimpleTradingCompanyInitializer } from '../SimpleTradingCompanyInitializer';
 
-const standardAccounts = [
+const periodicAccounts = [
   ['1', 'Assets', 'asset', null],
   ['101', 'Cash & Petty Cash', 'asset', '1'],
   ['10101', 'Cash - Head Office', 'asset', '101'],
   ['102', 'Bank Accounts', 'asset', '1'],
   ['10201', 'Bank - Operating', 'asset', '102'],
-  ['103', 'Inventory', 'asset', '1'],
-  ['10301', 'Finished Goods', 'asset', '103'],
-  ['10302', 'In-Transit Inventory', 'asset', '103'],
+  ['103', 'Goods Inventory', 'asset', '1'],
+  ['10301', 'Goods / Opening Inventory', 'asset', '103'],
+  ['10302', 'Goods / Closing Inventory', 'asset', '103'],
+  ['10303', 'Inventory Transfer Clearing', 'asset', '103'],
   ['104', 'Accounts Receivable', 'asset', '1'],
   ['10401', 'Customers Receivable', 'asset', '104'],
   ['2', 'Liabilities', 'liability', null],
@@ -16,14 +17,22 @@ const standardAccounts = [
   ['20100', 'Accounts Payable - General', 'liability', '201'],
   ['209', 'GRNI', 'liability', '2'],
   ['3', 'Equity', 'equity', null],
+  ['303', 'Opening Balance Equity', 'equity', '3'],
+  ['304', 'Inventory Revaluation Reserve', 'equity', '3'],
   ['4', 'Revenue', 'revenue', null],
-  ['400', 'Sales Revenue', 'revenue', '4'],
+  ['400', 'Sales', 'revenue', '4'],
+  ['401', 'Sales Returns', 'revenue', '4'],
+  ['402', 'Sales Discounts', 'revenue', '4'],
+  ['406', 'Inventory Adjustment Gain', 'revenue', '4'],
   ['5', 'Expenses', 'expense', null],
   ['501', 'Cost of Goods Sold', 'expense', '5'],
-  ['50100', 'Cost of Goods Sold - General', 'expense', '501'],
   ['50101', 'Purchases', 'expense', '501'],
+  ['50103', 'Purchase Returns', 'expense', '501'],
+  ['50104', 'Purchase Discounts Received', 'expense', '501'],
   ['502', 'Operating Expenses', 'expense', '5'],
-  ['50202', 'Sales & Marketing', 'expense', '502'],
+  ['50202', 'Sales Discounts', 'expense', '502'],
+  ['50203', 'Inventory Adjustment Loss', 'expense', '502'],
+  ['50204', 'Inventory Revaluation Expense', 'expense', '502'],
 ].map(([code, name, type, parentCode]) => ({ code, name, type, parentCode }));
 
 describe('SimpleTradingCompanyInitializer', () => {
@@ -76,7 +85,7 @@ describe('SimpleTradingCompanyInitializer', () => {
       accountRepo,
       systemMetadataRepo: {
         getMetadata: jest.fn(async (key: string) => {
-          if (key === 'coa_templates') return [{ id: 'standard', accounts: standardAccounts }];
+          if (key === 'coa_templates') return [{ id: 'periodic_trading', accounts: periodicAccounts }];
           if (key === 'currencies') return [{ code: 'SYP', name: 'Syrian Pound', symbol: 'SYP', decimalPlaces: 2 }];
           return [];
         }),
@@ -123,7 +132,13 @@ describe('SimpleTradingCompanyInitializer', () => {
 
     expect(summary.templateId).toBe('simple-trading-company');
     expect(summary.modulesInitialized).toEqual(['accounting', 'inventory', 'sales', 'purchase']);
+    expect(summary.accounting.coaTemplate).toBe('periodic_trading');
+    expect(summary.inventory.accountingMode).toBe('PERIODIC');
     expect(summary.linkedAccounts.inventoryAsset.code).toBe('10301');
+    expect(summary.linkedAccounts.transferClearing.code).toBe('10303');
+    expect(summary.linkedAccounts.salesReturn.code).toBe('401');
+    expect(summary.linkedAccounts.purchaseReturn.code).toBe('50103');
+    expect(summary.linkedAccounts.purchaseDiscount.code).toBe('50104');
     expect(summary.linkedAccounts.inventoryGain.code).toBe('406');
     expect(summary.linkedAccounts.inventoryLoss.code).toBe('50203');
     expect(summary.linkedAccounts.revaluationReserve.code).toBe('304');
@@ -132,11 +147,15 @@ describe('SimpleTradingCompanyInitializer', () => {
     expect(inventorySettings[0].defaultInventoryTransferClearingAccountId).toBe(summary.linkedAccounts.transferClearing.id);
     expect(inventorySettings[0].allowNegativeStock).toBe(false);
     expect(inventorySettings[0].costingBasis).toBe('GLOBAL');
+    expect(inventorySettings[0].accountingMode).toBe('PERIODIC');
     expect(summary.inventory.costingBasis).toBe('GLOBAL');
     expect(salesSettings[0].workflowMode).toBe('SIMPLE');
     expect(salesSettings[0].arParentAccountId).toBe(summary.linkedAccounts.arParent.id);
+    expect(salesSettings[0].defaultSalesReturnAccountId).toBe(summary.linkedAccounts.salesReturn.id);
     expect(purchaseSettings[0].workflowMode).toBe('SIMPLE');
     expect(purchaseSettings[0].defaultAPAccountId).toBe(summary.linkedAccounts.apParent.id);
     expect(purchaseSettings[0].apParentAccountId).toBe(summary.linkedAccounts.apParent.id);
+    expect(purchaseSettings[0].defaultPurchaseReturnAccountId).toBe(summary.linkedAccounts.purchaseReturn.id);
+    expect(purchaseSettings[0].defaultPurchaseDiscountAccountId).toBe(summary.linkedAccounts.purchaseDiscount.id);
   });
 });

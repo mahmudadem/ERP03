@@ -62,13 +62,13 @@ export interface StarterPolicySummary {
   modulesInitialized: string[];
   baseCurrency: string;
   accounting: {
-    coaTemplate: 'standard';
+    coaTemplate: 'periodic_trading';
     fiscalYearStart: string;
     fiscalYearEnd: string;
     approvalRequired: false;
   };
   inventory: {
-    accountingMode: 'INVOICE_DRIVEN';
+    accountingMode: 'PERIODIC';
     costingMethod: 'MOVING_AVG';
     costingBasis: 'WAREHOUSE' | 'GLOBAL';
     allowNegativeStock: false;

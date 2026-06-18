@@ -1,5 +1,5 @@
 export type LegacyInventoryAccountingMethod = 'PERIODIC' | 'PERPETUAL';
-export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
+export type InventoryAccountingMode = 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
 export type InventoryPricingPolicy = 'AVERAGE' | 'LAST_PURCHASE' | 'STANDARD' | (string & {});
 /**
  * WAREHOUSE — one moving-average cost per (item, warehouse). Default; precise
@@ -140,7 +140,7 @@ export class InventorySettings {
     return new InventorySettings({
       companyId,
       inventoryAccountingMethod,
-      accountingMode: inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN',
+      accountingMode: inventoryAccountingMethod,
       defaultCostingMethod: 'MOVING_AVG',
       defaultCostCurrency: baseCurrency.toUpperCase(),
       defaultInventoryAssetAccountId,
@@ -207,11 +207,11 @@ export class InventorySettings {
     accountingMode?: InventoryAccountingMode,
     inventoryAccountingMethod?: LegacyInventoryAccountingMethod
   ): InventoryAccountingMode {
-    if (accountingMode === 'INVOICE_DRIVEN' || accountingMode === 'PERPETUAL') {
+    if (accountingMode === 'PERIODIC' || accountingMode === 'INVOICE_DRIVEN' || accountingMode === 'PERPETUAL') {
       return accountingMode;
     }
 
-    if (inventoryAccountingMethod === 'PERIODIC') return 'INVOICE_DRIVEN';
+    if (inventoryAccountingMethod === 'PERIODIC') return 'PERIODIC';
     if (inventoryAccountingMethod === 'PERPETUAL') return 'PERPETUAL';
 
     return 'PERPETUAL';

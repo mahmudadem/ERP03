@@ -650,6 +650,7 @@ export class PostPurchaseInvoiceUseCase {
       line.accountId = this.resolveDebitAccountSync(
         companyId,
         itemsMap.get(line.itemId)!,
+        accountingMode,
         clearsGRNI,
         categoriesMap,
         settings.defaultPurchaseExpenseAccountId,
@@ -845,7 +846,8 @@ export class PostPurchaseInvoiceUseCase {
     const resolvedChargeAccounts = new Map<string, string>();
     for (const charge of pi.charges || []) {
       const fallback = settings.defaultPurchaseExpenseAccountId;
-      const accountSource = charge.accountId || fallback;
+      const discountFallback = settings.defaultPurchaseDiscountAccountId || settings.defaultPurchaseExpenseAccountId;
+      const accountSource = charge.accountId || (charge.kind === 'DISCOUNT' ? discountFallback : fallback);
       if (!accountSource) {
         throw new Error(`No GL account for ${charge.kind === 'DISCOUNT' ? 'discount' : 'charge'} "${charge.name}". Set a Default Purchase Expense account or choose one on the row.`);
       }
@@ -880,7 +882,7 @@ export class PostPurchaseInvoiceUseCase {
 
         for (const line of pi.lines) {
           postingEntries.push({
-            role: line.trackInventory ? 'inventory' : 'expense',
+            role: accountingMode === 'PERIODIC' ? 'expense' : line.trackInventory ? 'inventory' : 'expense',
             accountId: resolvedDebitAccounts.get(line.lineId) || undefined,
             side: 'Debit',
             baseAmount: line.lineTotalBase,
@@ -1103,6 +1105,7 @@ export class PostPurchaseInvoiceUseCase {
   private resolveDebitAccountSync(
     companyId: string,
     item: Item,
+    accountingMode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL',
     clearsGRNI: boolean,
     cats: Map<string, any>,
     dExp?: string,
@@ -1110,6 +1113,12 @@ export class PostPurchaseInvoiceUseCase {
     dGRNI?: string
   ): string {
     if (item.trackInventory) {
+      if (accountingMode === 'PERIODIC') {
+        const category = item.categoryId ? cats.get(item.categoryId) : null;
+        const resolved = category?.defaultPurchaseExpenseAccountId || dExp;
+        if (!resolved) throw new Error(`No purchase expense account for item ${item.name}`);
+        return resolved;
+      }
       if (clearsGRNI) {
         if (!dGRNI) throw new Error(`No GRNI account configured for item ${item.name}`);
         return dGRNI;

@@ -29,7 +29,7 @@ const CURRENCIES = [
   { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا', locale: 'ar-JO', decimalPlaces: 3 },
 ];
 
-import { StandardCOA, SimplifiedCOA, ComprehensiveCOA } from '../application/accounting/templates/COATemplates';
+import { StandardCOA, SimplifiedCOA, ComprehensiveCOA, PeriodicTradingCOA } from '../application/accounting/templates/COATemplates';
 import { ManufacturingCOA, ServicesCOA, RetailCOA } from '../application/accounting/templates/IndustryCOATemplates';
 
 const COA_TEMPLATES = [
@@ -61,6 +61,15 @@ const COA_TEMPLATES = [
     accountCount: ServicesCOA.length,
     complexity: 'low',
     accounts: ServicesCOA
+  },
+  {
+    id: 'periodic_trading',
+    name: 'Trading Company - Periodic',
+    description: 'Simple trading books with Purchases and Sales accounts, no live inventory/COGS postings',
+    recommended: 'Best for: small trading companies that want simple day-to-day entry with report-time inventory valuation',
+    accountCount: PeriodicTradingCOA.length,
+    complexity: 'medium',
+    accounts: PeriodicTradingCOA
   },
   {
     id: 'standard',

@@ -247,4 +247,72 @@ describe('PostOpeningStockDocumentUseCase', () => {
       'Opening Stock offset account cannot be the same as the Inventory Asset account'
     );
   });
+
+  it('uses the inventory settings asset account in periodic mode even when item-level asset accounts differ', async () => {
+    const document = makeDocument({ openingBalanceAccountId: 'OPEN-100' });
+    const posted = makeDocument({
+      status: 'POSTED',
+      voucherId: 'vch-periodic-1',
+      postedAt: new Date('2026-04-10T01:00:00.000Z'),
+    });
+
+    const documentRepo = {
+      getDocument: jest.fn().mockResolvedValueOnce(document).mockResolvedValueOnce(posted),
+      updateDocument: jest.fn(async () => undefined),
+    };
+    const accountingPostingService = {
+      postInTransaction: jest.fn(async () => ({ id: 'vch-periodic-1' })),
+    };
+
+    const useCase = new PostOpeningStockDocumentUseCase(
+      documentRepo as any,
+      {
+        getItem: jest.fn(async () => ({
+          id: 'item-1',
+          companyId: COMPANY_ID,
+          code: 'ITEM-1',
+          name: 'Tracked Item',
+          type: 'PRODUCT',
+          trackInventory: true,
+          active: true,
+          inventoryAssetAccountId: 'INV-ITEM-100',
+        })),
+      } as any,
+      { getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID, code: 'MAIN', active: true })) } as any,
+      {
+        getSettings: jest.fn(async () => ({
+          accountingMode: 'PERIODIC',
+          inventoryAccountingMethod: 'PERIODIC',
+          defaultInventoryAssetAccountId: 'GOODS-OPEN-100',
+        })),
+      } as any,
+      { findById: jest.fn(async () => ({ id: COMPANY_ID, baseCurrency: 'USD' })) } as any,
+      { get: jest.fn(async () => ({ initialized: true })) } as any,
+      {
+        getById: jest.fn(async (_companyId: string, accountId: string) => ({
+          id: accountId,
+          accountRole: 'POSTING',
+          classification: accountId === 'OPEN-100' ? 'EQUITY' : 'ASSET',
+          status: 'ACTIVE',
+        })),
+      } as any,
+      { processIN: jest.fn(async () => undefined) } as any,
+      accountingPostingService as any,
+      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-periodic' })) } as any
+    );
+
+    await useCase.execute(COMPANY_ID, document.id, USER_ID);
+
+    const payload = (accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    expect(payload.strategyPayload.balances).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ accountId: 'GOODS-OPEN-100', debitBalance: 50 }),
+        expect.objectContaining({ accountId: 'OPEN-100', creditBalance: 50 }),
+      ])
+    );
+    expect(payload.strategyPayload.balances).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ accountId: 'INV-ITEM-100' })])
+    );
+  });
 });

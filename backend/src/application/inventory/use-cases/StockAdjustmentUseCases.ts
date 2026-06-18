@@ -7,6 +7,7 @@ import { IItemRepository } from '../../../repository/interfaces/inventory/IItemR
 import { IStockAdjustmentRepository } from '../../../repository/interfaces/inventory/IStockAdjustmentRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { ProcessINInput, ProcessOUTInput, RecordStockMovementUseCase } from './RecordStockMovementUseCase';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
@@ -85,7 +86,7 @@ export class PostStockAdjustmentUseCase {
       throw new Error(`Stock adjustment not found: ${adjustmentId}`);
     }
 
-    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
+    const accountingEnabled = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     if (adjustment.status !== 'DRAFT') {
       throw new Error('Only DRAFT adjustments can be posted');
@@ -114,9 +115,12 @@ export class PostStockAdjustmentUseCase {
     }
 
     // Resolve dedicated inventory gain/loss + asset fallbacks once per post.
-    const settings = shouldPostAccounting && this.inventorySettingsRepo
+    const settings = this.inventorySettingsRepo
       ? await this.inventorySettingsRepo.getSettings(companyId)
       : null;
+    const shouldPostAccounting =
+      accountingEnabled
+      && DocumentPolicyResolver.resolveAccountingMode(settings) !== 'PERIODIC';
 
     await this.transactionManager.runTransaction(async (transaction) => {
       // Capture the ACTUAL posted movements so the GL voucher is valued from the

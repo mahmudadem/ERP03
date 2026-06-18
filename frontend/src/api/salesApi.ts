@@ -66,6 +66,7 @@ export interface SalesSettingsDTO {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultSalesReturnAccountId?: string;
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
@@ -394,6 +395,7 @@ export interface InitializeSalesPayload {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultSalesReturnAccountId?: string;
   allowOverDelivery?: boolean;
   allowOverpayment?: boolean;
   overDeliveryTolerancePct?: number;

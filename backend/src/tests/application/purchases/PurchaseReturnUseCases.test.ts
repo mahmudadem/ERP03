@@ -374,9 +374,12 @@ const makeAccountRepo = () => ({
   getByUserCode: jest.fn(async (_companyId: string, code: string) => ({ id: code })),
 });
 
-const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERIODIC') => ({
+const makeInventorySettingsRepository = (
+  mode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL' = 'PERIODIC'
+) => ({
   getSettings: jest.fn(async () => ({
-    inventoryAccountingMethod: method,
+    accountingMode: mode,
+    inventoryAccountingMethod: mode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC',
     defaultInventoryAssetAccountId: 'INV-100',
   })),
 });
@@ -390,8 +393,10 @@ const makeCompanyModuleRepo = (initialized = true) => ({
 });
 
 describe('PurchaseReturn posting use-case (Phase 3)', () => {
-  it('1) AFTER_INVOICE return: creates PURCHASE_RETURN OUT movement + GL voucher (Dr AP, Cr Inventory)', async () => {
-    const settings = makeSettings('SIMPLE');
+  it('1) AFTER_INVOICE return in PERIODIC mode: creates PURCHASE_RETURN OUT movement + GL voucher (Dr AP, Cr Purchase Returns)', async () => {
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseReturnAccountId: 'PUR-RET-100',
+    });
     const vendor = makeVendor();
     const item = makeItem();
     const taxCode = makeTaxCode();
@@ -453,9 +458,11 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
     const savedVoucher = (voucherRepo.save as any).mock.calls[0][0];
     expect(savedVoucher.type).toBe(VoucherType.PURCHASE_RETURN);
     const hasAPDebit = savedVoucher.lines.some((line: any) => line.accountId === 'AP-200' && line.side === 'Debit');
+    const hasPeriodicReturnCredit = savedVoucher.lines.some((line: any) => line.accountId === 'PUR-RET-100' && line.side === 'Credit');
     const hasInventoryCredit = savedVoucher.lines.some((line: any) => line.accountId === 'INV-100' && line.side === 'Credit');
     expect(hasAPDebit).toBe(true);
-    expect(hasInventoryCredit).toBe(true);
+    expect(hasPeriodicReturnCredit).toBe(true);
+    expect(hasInventoryCredit).toBe(false);
   });
 
   it('2) BEFORE_INVOICE return: creates PURCHASE_RETURN OUT movement, NO GL voucher', async () => {
@@ -556,7 +563,9 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
   });
 
   it('4) Return qty > invoiced qty blocks posting', async () => {
-    const settings = makeSettings('SIMPLE');
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseReturnAccountId: 'PUR-RET-100',
+    });
     const vendor = makeVendor();
     const item = makeItem();
     const po = makePO();
@@ -650,7 +659,9 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
   it('6) Multi-currency return with rate difference: posts exchange difference to global account if module account is missing', async () => {
     // Original Invoice: Rate 1.2
     // Return: Rate 1.5
-    const settings = makeSettings('SIMPLE'); 
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseReturnAccountId: 'PUR-RET-100',
+    });
     const vendor = makeVendor({ defaultCurrency: 'EUR' });
     const item = makeItem();
     const pi = makePostedPI(); 
@@ -721,7 +732,9 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
   });
 
   it('7) AFTER_INVOICE return skips voucher creation when accounting module is not initialized', async () => {
-    const settings = makeSettings('SIMPLE');
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseReturnAccountId: 'PUR-RET-100',
+    });
     const vendor = makeVendor();
     const item = makeItem();
     const taxCode = makeTaxCode();
@@ -780,7 +793,9 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
     // Before the fix the posting recompute + recalcReturnTotals used GROSS, so the
     // AP reversal posted 50 (vendor over-credited by the 2.5 discount) while the
     // document total was 47.5. Mirrors the PI line-discount fix (GP04-step5to8a).
-    const settings = makeSettings('SIMPLE');
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseReturnAccountId: 'PUR-RET-100',
+    });
     const vendor = makeVendor();
     const item = makeItem();
 
@@ -853,7 +868,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
 
     const savedVoucher = (voucherRepo.save as any).mock.calls[0][0];
     const apLine = savedVoucher.lines.find((l: any) => l.accountId === 'AP-200' && l.side === 'Debit');
-    const invLine = savedVoucher.lines.find((l: any) => l.accountId === 'INV-100' && l.side === 'Credit');
+    const invLine = savedVoucher.lines.find((l: any) => l.accountId === 'PUR-RET-100' && l.side === 'Credit');
     expect(apLine).toBeTruthy();
     expect(invLine).toBeTruthy();
     // The whole point: NET 47.5, not GROSS 50.

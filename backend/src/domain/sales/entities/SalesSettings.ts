@@ -58,6 +58,7 @@ export interface SalesSettingsProps {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultSalesReturnAccountId?: string;
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   exchangeGainLossAccountId?: string;
@@ -99,6 +100,7 @@ export class SalesSettings {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultSalesReturnAccountId?: string;
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   exchangeGainLossAccountId?: string;
@@ -140,6 +142,7 @@ export class SalesSettings {
     this.defaultCOGSAccountId = props.defaultCOGSAccountId;
     this.defaultInventoryAccountId = props.defaultInventoryAccountId;
     this.defaultSalesExpenseAccountId = props.defaultSalesExpenseAccountId;
+    this.defaultSalesReturnAccountId = props.defaultSalesReturnAccountId?.trim() || undefined;
     this.defaultRefundAccountId = props.defaultRefundAccountId?.trim() || undefined;
     this.restockingFeeAccountId = props.restockingFeeAccountId?.trim() || undefined;
     this.exchangeGainLossAccountId = props.exchangeGainLossAccountId?.trim() || undefined;
@@ -264,6 +267,7 @@ export class SalesSettings {
       defaultCOGSAccountId: this.defaultCOGSAccountId,
       defaultInventoryAccountId: this.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: this.defaultSalesExpenseAccountId,
+      defaultSalesReturnAccountId: this.defaultSalesReturnAccountId,
       defaultRefundAccountId: this.defaultRefundAccountId,
       restockingFeeAccountId: this.restockingFeeAccountId,
       exchangeGainLossAccountId: this.exchangeGainLossAccountId,
@@ -305,6 +309,7 @@ export class SalesSettings {
       defaultCOGSAccountId: data.defaultCOGSAccountId,
       defaultInventoryAccountId: data.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: data.defaultSalesExpenseAccountId,
+      defaultSalesReturnAccountId: data.defaultSalesReturnAccountId,
       defaultRefundAccountId: data.defaultRefundAccountId,
       restockingFeeAccountId: data.restockingFeeAccountId,
       exchangeGainLossAccountId: data.exchangeGainLossAccountId,
