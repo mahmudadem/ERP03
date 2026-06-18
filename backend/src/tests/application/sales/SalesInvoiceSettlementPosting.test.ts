@@ -84,6 +84,7 @@ const makeDeps = (invoice: SalesInvoice, opts?: { settlementFail?: boolean }) =>
     companyCurrencyRepo: { getBaseCurrency: jest.fn().mockResolvedValue(baseCurrency) },
     inventoryService: {
       preFetchStockLevel: jest.fn().mockResolvedValue(null),
+      preFetchLevelsByItem: jest.fn().mockResolvedValue([]),
       recordStockMovement: jest.fn().mockResolvedValue(undefined),
     },
     companyModuleRepo: { get: jest.fn().mockResolvedValue({ initialized: true }) },

@@ -80,6 +80,7 @@ const makeDeps = (invoice: PurchaseInvoice, opts?: { settlementFail?: boolean })
     exchangeRateRepo: { getMostRecentRateBeforeDate: jest.fn().mockResolvedValue(null) },
     inventoryService: {
       preFetchStockLevel: jest.fn().mockResolvedValue(null),
+      preFetchLevelsByItem: jest.fn().mockResolvedValue([]),
       recordStockMovement: jest.fn().mockResolvedValue(undefined),
     },
     companyModuleRepo: { get: jest.fn().mockResolvedValue({ initialized: true }) },

@@ -243,6 +243,7 @@ const makeSettlementDeps = (invoice: SalesInvoice) => {
     companyCurrencyRepo: { getBaseCurrency: jest.fn<any>().mockResolvedValue('USD') },
     inventoryService: {
       preFetchStockLevel: jest.fn<any>().mockResolvedValue(null),
+      preFetchLevelsByItem: jest.fn<any>().mockResolvedValue([]),
       recordStockMovement: jest.fn<any>().mockResolvedValue(undefined),
     },
     companyModuleRepo: { get: jest.fn<any>().mockResolvedValue({ initialized: true }) },
