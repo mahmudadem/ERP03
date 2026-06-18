@@ -492,7 +492,7 @@ const OpeningStockPage: React.FC = () => {
     return next;
   }, [filteredData, sortDirection, sortField]);
 
-  if (isFormRoute) {
+  const formView = isFormRoute ? (() => {
     const notFound = Boolean(id && !loading && !selectedDocument && !isNewRoute);
     const accountingControlTone = accountingEnabled && form.createAccountingEffect ? 'blue' : 'amber';
     const accountingControlMessage = !accountingEnabled
@@ -712,7 +712,7 @@ const OpeningStockPage: React.FC = () => {
         />
       </>
     );
-  }
+  })() : null;
 
   const statusFilterConfig = {
     activeValue: statusFilter,
@@ -788,6 +788,10 @@ const OpeningStockPage: React.FC = () => {
     { key: 'post', label: 'Post', icon: Check, variant: 'success', isEnabled: (row) => row.status === 'DRAFT', onClick: (row) => void postExistingDraft(row.id), primary: false },
     { key: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', isEnabled: (row) => row.status === 'DRAFT', onClick: (row) => void deleteDraft(row.id), primary: false },
   ];
+
+  if (formView) {
+    return formView;
+  }
 
   return (
     <>

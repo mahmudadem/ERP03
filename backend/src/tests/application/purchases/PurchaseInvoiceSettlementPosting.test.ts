@@ -72,7 +72,7 @@ const makeDeps = (invoice: PurchaseInvoice, opts?: { settlementFail?: boolean })
     purchaseOrderRepo: { update: jest.fn().mockResolvedValue(undefined) },
     partyRepo: { getById: jest.fn().mockResolvedValue(party) },
     taxCodeRepo: { listByCompany: jest.fn().mockResolvedValue([]) },
-    itemRepo: { getItem: jest.fn().mockResolvedValue(item), listByIds: jest.fn().mockResolvedValue([item]) },
+    itemRepo: { getItem: jest.fn().mockResolvedValue(item), listByIds: jest.fn().mockResolvedValue([item]), updateItemInTransaction: jest.fn().mockResolvedValue(undefined) },
     itemCategoryRepo: { getCompanyCategories: jest.fn().mockResolvedValue([]), listByIds: jest.fn().mockResolvedValue([]) },
     warehouseRepo: { listByIds: jest.fn().mockResolvedValue([]) },
     uomConversionRepo: { getConversionsForItem: jest.fn().mockResolvedValue([]) },

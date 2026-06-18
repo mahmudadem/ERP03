@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-18 (Inventory document hook-order crash hotfix)
+
+- **Goal:** Fix the React `Rendered fewer hooks than expected` crash reported on the inventory document scaffold routes without widening the freeze scope.
+- **What was done:** Patched the remaining mixed list/form inventory pages that still returned the form branch before all list-side hooks had executed. `OpeningStockPage.tsx` and `StockAdjustmentPage.tsx` now compute `formView` first and only return it after the list-side `useMemo` hooks have run, matching the safe route-switch pattern already used elsewhere. No posting, voucher, inventory valuation, approval, or data contracts changed.
+- **Accounting/ERP impact:** UI lifecycle fix only. No stock quantities, opening balances, GL posting logic, audit trail, period-lock behavior, or tenant scoping changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. In-app browser smoke could reach the app host, but it landed on the public sign-in surface with no active authenticated session, so route-level live QA still needs a signed-in browser pass on `#/inventory/adjustments`, `#/inventory/adjustments/new`, `#/inventory/opening-stock`, and `#/inventory/opening-stock/new`.
+- **Time spent:** ~0.4h.
+- **Next:** Run the four inventory routes in an authenticated browser session and confirm list → form → back navigation stays crash-free in both web/windows modes.
+
 ### Session: 2026-06-17 (GP04 + GP05 + GP01 12-16 — golden paths completed autonomously)
 
 - **Goal:** Owner away — run all remaining golden-path tests on the clean `GP01 Trading Co` tenant (GP04 Purchases, GP05 books check, and the pending GP01 period-lock/approval steps 12-16).

@@ -76,7 +76,7 @@ const buildUseCase = (
   } as any;
 
   const useCase = new RecordStockMovementUseCase({
-    itemRepository: { findById: async () => makeItem() } as any,
+    itemRepository: { findById: async () => makeItem(), updateItemInTransaction: async () => {} } as any,
     warehouseRepository: { findById: async () => ({ id: WH_ID }) } as any,
     stockMovementRepository,
     stockLevelRepository,

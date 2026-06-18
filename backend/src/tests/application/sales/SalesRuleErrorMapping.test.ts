@@ -233,7 +233,7 @@ const makeSettlementDeps = (invoice: SalesInvoice) => {
     deliveryNoteRepo: { listByCompany: jest.fn<any>().mockResolvedValue([]) },
     partyRepo: { getById: jest.fn<any>().mockResolvedValue(party) },
     taxCodeRepo: { listByCompany: jest.fn<any>().mockResolvedValue([]) },
-    itemRepo: { getItem: jest.fn<any>().mockResolvedValue(item), listByIds: jest.fn<any>().mockResolvedValue([item]) },
+    itemRepo: { getItem: jest.fn<any>().mockResolvedValue(item), listByIds: jest.fn<any>().mockResolvedValue([item]), updateItemInTransaction: jest.fn<any>().mockResolvedValue(undefined) },
     itemCategoryRepo: {
       getCompanyCategories: jest.fn<any>().mockResolvedValue([]),
       listByIds: jest.fn<any>().mockResolvedValue([]),

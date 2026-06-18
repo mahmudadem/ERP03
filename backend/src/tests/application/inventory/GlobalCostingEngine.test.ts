@@ -100,7 +100,7 @@ const build = (costingBasis: 'GLOBAL' | 'WAREHOUSE' = 'GLOBAL') => {
   const item = makeItem();
 
   const useCase = new RecordStockMovementUseCase({
-    itemRepository: { getItem: async () => item } as any,
+    itemRepository: { getItem: async () => item, updateItemInTransaction: async () => {} } as any,
     warehouseRepository: { getWarehouse: async (id: string) => ({ id }) } as any,
     stockMovementRepository: movementRepo as any,
     stockLevelRepository: levelRepo as any,

@@ -278,7 +278,7 @@ const StockAdjustmentPage: React.FC = () => {
     { id: 'adjValue', label: 'Adj Value', kind: 'computed', width: '130px', compute: (line) => Math.abs(Number(line.newQty) - Number(line.currentQty)) * Number(line.unitCostBase) },
   ];
 
-  if (isFormRoute) {
+  const formView = isFormRoute ? (() => {
     const notFound = Boolean(id && !loading && !selectedAdjustment && !isNewRoute);
     const railReady: Array<{ state: 'ok' | 'warn' | 'info'; label: React.ReactNode }> = [
       { state: warehouseId ? 'ok' : 'info', label: 'Warehouse selected' },
@@ -448,7 +448,7 @@ const StockAdjustmentPage: React.FC = () => {
         }
       />
     );
-  }
+  })() : null;
 
   const statusFilterConfig = {
     activeValue: statusFilter,
@@ -569,6 +569,10 @@ const StockAdjustmentPage: React.FC = () => {
       primary: false,
     },
   ];
+
+  if (formView) {
+    return formView;
+  }
 
   return (
     <OperationalListLayout<StockAdjustmentDTO>
