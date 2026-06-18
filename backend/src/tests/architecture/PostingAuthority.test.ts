@@ -64,7 +64,11 @@ describe('Architecture guard: posting authority', () => {
       'utf8'
     );
     expect(subledger).toMatch(/approved\?: boolean/);     // input carries the real approval state
-    expect(subledger).toMatch(/approved: input\.approved !== false/); // passed honestly to the gateway
+    // Approval is derived from the caller's input via resolveApproved (never self-stamped from
+    // voucher status). Explicit caller approval is honored honestly; inventory-origin omitters
+    // fail closed against the policy config. (Approval-leak hotfix; see redesign brief.)
+    expect(subledger).toMatch(/const approved = await this\.resolveApproved\(input\)/);
+    expect(subledger).toMatch(/if \(input\.approved !== undefined\) return input\.approved/);
 
     const gateway = fs.readFileSync(
       path.resolve(SRC, 'application/accounting/services/PostingGateway.ts'),
