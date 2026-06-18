@@ -127,14 +127,20 @@ export class InitializeAccountingUseCase {
       const forcedRole = isParentInTemplate ? 'HEADER' : (tpl.role || 'POSTING');
 
       const input = {
-        id: tpl.id, 
+        id: tpl.id,
         userCode: tpl.code,
         name: tpl.name,
-        classification: tpl.type, 
+        classification: tpl.type,
         accountRole: forcedRole,
         parentId: parentId, // Use resolved UUID
         fixedCurrencyCode: config.baseCurrency,
         currencyPolicy: 'FIXED' as const,
+        // Carry the template's reporting classification onto the created account.
+        // These drive P&L sub-categorisation, Balance Sheet equity grouping, and the
+        // periodic Trading Account (which keys entirely off plSubgroup SALES/COST_OF_SALES);
+        // dropping them left every seeded account untagged and the Trading Account empty.
+        plSubgroup: tpl.plSubgroup,
+        equitySubgroup: tpl.equitySubgroup,
         createdBy: 'SYSTEM'
       };
 

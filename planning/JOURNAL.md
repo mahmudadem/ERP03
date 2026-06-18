@@ -2,6 +2,37 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Epic 240 Phase 7 — periodic Trading Account blocker root-caused + fixed)
+
+- **Goal:** Investigate and fix the remaining Epic 240 final-gate blocker from the 240g QA run — the live periodic **Trading Account** endpoint returning `hasData=false`/zeroes on `cmp_mqk28li8_dcor0q` despite real GP03/GP04 activity and a populated P&L + Balance Sheet valuation.
+- **Root cause (confirmed end-to-end):** `GetTradingAccountUseCase` keys entirely off account `plSubgroup` tags (`SALES` / `COST_OF_SALES`) — both for `hasData` and the whole computation. The COA templates *do* carry those tags (`PeriodicTradingCOA`/`StandardCOA` in `COATemplates.ts`), and the Firestore account repo *does* persist them, but `InitializeAccountingUseCase` built its account-create input field-by-field and **silently dropped `plSubgroup`/`equitySubgroup`**. So every seeded account was written untagged → Trading Account always empty. P&L survived only because it counts untagged REVENUE/EXPENSE accounts as "unclassified" rather than ignoring them. Unit tests passed because they mocked tagged accounts.
+- **Fix:** Thread `plSubgroup` + `equitySubgroup` from the template row onto the account-create input in `InitializeAccountingUseCase`. One-line data-path fix; no use-case logic changed. This also improves P&L sub-categorisation and Balance Sheet equity grouping for all newly-seeded tenants. Added focused regression test `InitializeAccountingUseCase.test.ts` locking the contract.
+- **Verification:** focused suites `InitializeAccountingUseCase | GetTradingAccountUseCase | GetProfitAndLossUseCase | SimpleTradingCompanyInitializer` 4 suites / 8 tests pass; `npm --prefix backend run build` green; **full backend suite 163 suites / 1456 tests / 0 failures.**
+- **Re-verify needed (handoff):** the fix only affects accounts created *after* it lands. The existing QA tenant `cmp_mqk28li8_dcor0q` has already-untagged accounts and will NOT self-heal. To close GP05: rebuild backend (`npm --prefix backend run build`, since the emulator serves compiled `lib/`), restart the emulator, create a **fresh** periodic tenant, replay minimal GP03/GP04 activity, and confirm the Trading Account endpoint returns `Sales − (Opening + Net Purchases − Closing)`. Then flip `golden-paths-green`.
+- **Scope note:** unrelated dirty AI-assistant / designer / locale files in the worktree were left untouched, per the owner's instruction; only the backend fix + its test + Phase-7 planning docs were committed.
+
+### Session: 2026-06-19 (Epic 240 Phase 7 — 240g periodic golden-path QA)
+
+- **Goal:** Run the final Epic 240 fresh-tenant QA gate: GP01-GP05 on a fresh PERIODIC tenant, then one perpetual comparison pass to confirm the old GP05 step-4 drift stays at zero.
+- **Method / environment:** The owner explicitly warned not to touch unrelated dirty AI-assistant files. Those files currently break Vite with a JSX parse error, so the browser wizard path was blocked by the overlay. I kept them untouched and used the same onboarding/document/report contracts through authenticated REST against the Functions emulator, verifying stock/voucher/report results directly in Firestore + report endpoints. I also had to refresh stale system metadata once (`npm --prefix backend run seed:system`) because the emulator initially rejected `periodic_trading` as missing.
+- **What was done:** Created a fresh periodic tenant (`cmp_mqk28li8_dcor0q`) with Syria defaults and ran the phase-7 QA there. GP01 controls were green on that tenant (TB/BS balanced; period-lock + approval flow pass). GP02 inventory was green with the approved **periodic adaptations**: opening stock still posted Dr `10301` / Cr `303`, but transfer/adjustment stayed quantity-only, negative-stock guard rejected oversized OUT, and valuation ended at 95 units / 950. Switched Sales to OPERATIONAL for one pass and verified GP03: DN was quantity-only (`cogsVoucherId=null`), linked SI posted Dr AR / Dr Sales Discounts / Cr Sales with no COGS voucher, over-payment worked only through the **record-payment** path when allowed, direct SI partial payment worked, sales return restored stock, and AR aging = statement = control at `-27`. Switched Purchases to OPERATIONAL and verified GP04: GRN was quantity-only (`voucherId=null`), linked PI posted Dr Purchases / Dr Freight / Cr Discount / Cr AP with no inventory/GRNI lines, payment linked cleanly, purchase return reduced stock, and AP aging = statement = control at `-47.5`. Final quantity tied exactly to movement math at 130 units.
+- **Main finding / blocker:** GP05 is **not fully green yet**. The periodic Trial Balance is balanced, the Balance Sheet is balanced and correctly overrides inventory to **1300** from report-time valuation, and periodic GP05 step 4 is now **N/A / pass by construction** because periodic has no per-transaction inventory GL to drift. However, the live **Trading Account** endpoint still returned `hasData=false` / all zeroes on the same tenant despite the GP03/GP04 activity and a populated periodic P&L. This is the remaining Epic 240 blocker. I did **not** flip `golden-paths-green`.
+- **Perpetual comparison:** On the fresh perpetual tenant (`cmp_mqk20i75_09f0tq`), a targeted opening-stock + PO→GRN→discounted-PI pass showed Inventory GL Reconciliation `stock=1500`, `GL=1500`, `difference=0` — the old step-4 drift did **not** reappear there.
+- **Docs:** Added [done/240g](./done/240g-phase7-golden-path-periodic-qa.md) and updated `planning/qa/findings.md` with the periodic/perpetual QA evidence.
+- **Time spent:** ~3.4h.
+- **Next:** Investigate/fix the live periodic Trading Account endpoint, then rerun GP05 on `cmp_mqk28li8_dcor0q`. Once Trading is green, Epic 240 can finally flip the `golden-paths-green` gate.
+
+### Session: 2026-06-19 (Translation key updates - Onboarding Company Wizard)
+
+- **Goal:** Correct and sync translations for the onboarding Company Wizard in Arabic and Turkish.
+- **What was done:**
+  - Changed `"optional"` key from `"خياري"` to `"اختياري"` in `ar/common.json`.
+  - Replaced all instances of `"cancel": "يلغي"` with `"إلغاء"` (noun form) and `"nextStep": "الخطوة التالية"` with `"التالي"` in `ar/common.json`.
+  - Added missing `"title"` and `"subtitle"` keys under `"companyWizard.basic"` in both `ar/common.json` (Arabic) and `tr/common.json` (Turkish) to align with `en/common.json`.
+- **Verification:** Ran `npm --prefix frontend run typecheck` and `npm --prefix frontend run build` successfully.
+- **Time spent:** ~0.2h.
+- **Next:** Resume Phase 7 QA or other prioritized items in `ACTIVE.md`.
+
 ### Session: 2026-06-19 (Epic 240 Phase 6 — 240f audit + reseed-policy hardening)
 
 - **Goal:** Independently audit the uncommitted 240f mode-lock/wizard/COA work (not just trust the self-report), then close any real findings.
