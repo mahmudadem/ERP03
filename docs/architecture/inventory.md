@@ -1,6 +1,6 @@
 # Architecture: Inventory Module
 
-**Last updated:** 2026-06-18 (Task 240b — PI discount cost-basis fix)
+**Last updated:** 2026-06-18 (Epic 240 Phase 3 — item costing statistics)
 **Status:** V1 implemented. Moving-average costing live, on either a **per-warehouse** or **company-wide
 (GLOBAL)** basis (see Costing basis). GL posting from inventory documents IS implemented
 (see Accounting Integration). FIFO deferred to a follow-up.
@@ -115,6 +115,23 @@ On IN movements that cover a prior deficit:
 Allowed. Movement `date` can be earlier than prior movements. Flagged with `isBackdated = true`.
 
 **Cost replay uses `postingSeq`, NOT `date`.** This is a deliberate trade-off — backdated movements apply to the *current* running average, not retroactively rebuild history. This is documented in `MASTER_PLAN.md`.
+
+## Item costing statistics (Epic 240 Phase 3)
+
+Beyond the per-warehouse cost on `StockLevel` (which the engine uses to cost issues), each `Item` carries a **read/reporting rollup** of cost & price statistics in `Item.costingStats`. This feeds the Item card, the report-time inventory valuation (Phase 5), and party×item price memory (Task 241). It does **not** change any GL posting.
+
+**Schema** (`domain/inventory/entities/Item.ts`):
+- `CostPoint` = `{ base, ccy, currency, fxRateToBase, asOf, source? }` — every figure is stored in **company base currency AND the original transaction currency**, with the FX rate and date, so a later FX revaluation can recompute.
+- `ItemCostingStats` = `{ avgCost, lastPurchaseCost?, lastSalePrice?, extra? }`. `extra: Record<string, CostPoint>` is reserved for future methods (standard / FIFO / highest / lowest) **without a schema migration**. `ItemCostingMethod` is an open union (only `MOVING_AVG` is enforced).
+
+**How each point updates** (`application/inventory/services/ItemCostingStatsService.ts`):
+| Point | Updated on | Source |
+|---|---|---|
+| `avgCost` | every IN | `buildAverageCostPoint` — GLOBAL = company-wide average; WAREHOUSE = qty-weighted across the item's levels |
+| `lastPurchaseCost` | every `PURCHASE_RECEIPT` IN | `buildPurchaseCostPoint(movement)` (movement unit cost, FX-split) |
+| `lastSalePrice` | every sale (SI / DN) | `buildSalePricePoint(line)` — the **selling price** (`unitPriceDoc × rate`), NOT COGS |
+
+**Two purchase IN paths are both hooked:** the generic `RecordStockMovementUseCase` (incl. GLOBAL fan-out) **and** the inline receipt block in `PurchaseInvoiceUseCases` (plus `GoodsReceiptUseCases`). Sale-price capture lives in `SalesInvoiceUseCases` + `DeliveryNoteUseCases`. All writes persist via `IItemRepository.updateItemInTransaction` inside the posting transaction (idempotent on re-post), implemented in **both** the Firestore and Prisma repositories.
 
 ## Documents (User-facing workflows)
 

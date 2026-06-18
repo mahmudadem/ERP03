@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-18 (Epic 240 Phase 3 — item costing stats + branch consolidation)
+
+- **Goal:** Land Phase 3 (per-item costing statistics) and consolidate the diverged branches onto `main`.
+- **Branch consolidation:** Merged the week-of-work branch (`codex/simple-trading-company-template`, 186 files) into `main` alongside the 240 Phase 2 fix and plan docs — 3 doc conflicts only, no code conflicts. `main` builds (backend tsc + frontend tsc).
+- **Phase 3:** Rebased the item-costing WIP onto the consolidated `main` (zero conflicts). Implements `CostPoint`/`ItemCostingStats` on `Item` (avgCost / lastPurchaseCost / lastSalePrice, FX-accurate, extensible `extra` map), `ItemCostingStatsService`, posting hooks in all IN paths (engine + inline PI + GRN) and sale paths (SI/DN), Firestore+Prisma repo parity (`updateItemInTransaction`), and Item card UI.
+- **Integration fixes (reviewer):** added `updateItemInTransaction` to 5 stale item-repo mocks; `preFetchLevelsByItem` to 3 settlement mocks; updated the `PostingAuthority` guard assertion to the new `resolveApproved` pattern (a **pre-existing** week's-work approval-leak hotfix gap, not Phase 3) without weakening the control.
+- **Accounting/ERP impact:** Costing stats are read/reporting metadata — **no GL posting change**. Feeds Phase 5 valuation and Task 241 (party×item prices).
+- **Verification:** full backend suite **1,436 tests pass, 0 failures**; `npm run build` clean.
+- **Docs:** [done/240c](./done/240c-phase3-item-costing-stats.md), `docs/architecture/inventory.md` (costing-stats section), `docs/user-guide/inventory/item-costing-stats.md`.
+- **Next:** Owner review → merge Phase 3 to `main` (not pushed) → start Phase 4 (periodic posting mode).
+
 ### Session: 2026-06-18 (Inventory document hook-order crash hotfix)
 
 - **Goal:** Fix the React `Rendered fewer hooks than expected` crash reported on the inventory document scaffold routes without widening the freeze scope.
