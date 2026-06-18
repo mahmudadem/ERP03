@@ -337,10 +337,16 @@ const makeItemRepo = (item: Item) => ({
   updateItemInTransaction: jest.fn(async () => undefined),
 });
 
-const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL') => ({
+const makeInventorySettingsRepository = (
+  mode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL' = 'PERPETUAL',
+  overrides: Record<string, any> = {}
+) => ({
   getSettings: jest.fn(async () => ({
-    inventoryAccountingMethod: method,
+    accountingMode: mode,
+    inventoryAccountingMethod: mode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC',
     defaultInventoryAssetAccountId: 'INV-100',
+    defaultCOGSAccountId: 'COGS-100',
+    ...overrides,
   })),
 });
 
@@ -640,7 +646,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
     const useCase = new PostPurchaseInvoiceUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
-      makeInventorySettingsRepository() as any,
+      makeInventorySettingsRepository('INVOICE_DRIVEN') as any,
       { getById: jest.fn(async () => pi), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
@@ -1010,10 +1016,10 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
   });
 
-  it('7b) PostPI does NOT re-receive stock when the PO line was already received by a GRN, even with direct invoicing ON and no grnLineId on the line (regression for GP04-step13 double-receipt)', async () => {
-    // Invoice-driven tenant (PERIODIC), direct invoicing ON. The PI is built from the PO
+  it('7b) PostPI does NOT re-receive stock when the PO line was already received by a GRN in periodic mode', async () => {
+    // Periodic tenant, direct invoicing ON. The PI is built from the PO
     // (poLineId only — no grnLineId), but the PO line has already been received by a GRN
-    // (receivedQty 50). The PI must value the goods (Dr Inventory / Cr AP) WITHOUT posting a
+    // (receivedQty 50). The PI must post the purchase expense (Dr Purchases / Cr AP) WITHOUT posting a
     // second PURCHASE_RECEIPT — otherwise the quantity is double-counted (the live bug: 103 vs 53).
     const settings = makeSettings('SIMPLE'); // allowDirectInvoicing = true
     const vendor = makeVendor();
@@ -1070,15 +1076,87 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     // THE FIX: no second stock receipt for goods the GRN already received.
     expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
 
-    // GL still values the goods: Dr Inventory 500 / Cr AP 500 (invoice-driven, so inventory
-    // is debited directly — NOT GRNI, which this tenant never credited).
+    // GL stays periodic: Dr Purchases 500 / Cr AP 500. No inventory/GRNI line is allowed.
     const piVoucher = savedVouchers[0];
     const debits = piVoucher.lines.filter((l: any) => l.side === 'Debit');
     const credits = piVoucher.lines.filter((l: any) => l.side === 'Credit');
-    expect(debits.some((l: any) => l.accountId === 'INV-7B' && l.debitAmount === 500)).toBe(true);
+    expect(debits.some((l: any) => l.accountId === 'EXP-100' && l.debitAmount === 500)).toBe(true);
+    expect(debits.some((l: any) => l.accountId === 'INV-7B')).toBe(false);
+    expect(debits.some((l: any) => l.accountId === 'GRNI-100')).toBe(false);
     expect(credits.some((l: any) => l.creditAmount === 500)).toBe(true); // AP
     expect(piVoucher.totalDebit).toBeCloseTo(500, 2);
     expect(piVoucher.totalCredit).toBeCloseTo(500, 2);
+  });
+
+  it('7c) PostPI in PERIODIC mode posts Dr Purchases / Cr AP, moves quantity when there is no GRN, and creates no inventory/GRNI lines', async () => {
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseExpenseAccountId: 'PUR-500',
+      defaultPurchaseDiscountAccountId: 'PUR-DISC-500',
+    });
+    const vendor = makeVendor();
+    const stockItem = makeItem('stock-7c', { trackInventory: true, inventoryAssetAccountId: 'INV-7C' });
+    const pi = makePI({
+      id: 'pi-7c',
+      item: stockItem,
+      invoicedQty: 4,
+      unitPriceDoc: 25,
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    inventoryService.preFetchStockLevel.mockResolvedValue(
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1')
+    );
+    inventoryService.preFetchLevelsByItem.mockResolvedValue([
+      StockLevel.createNew(COMPANY_ID, stockItem.id, 'wh-1'),
+    ]);
+
+    const savedVouchers: any[] = [];
+    const invoiceStore = new Map([[pi.id, pi]]);
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      makeItemRepo(stockItem) as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) } as any,
+        { recordForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, pi.id);
+    expect(posted.status).toBe('POSTED');
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+
+    const movement = (inventoryService.writeStockMovement as any).mock.calls[0][0];
+    expect(movement.movementType).toBe('PURCHASE_RECEIPT');
+    expect(movement.totalCostBase).toBe(100);
+
+    const voucher = savedVouchers[0];
+    const debitLines = voucher.lines.filter((line: any) => line.side === 'Debit');
+    const creditLines = voucher.lines.filter((line: any) => line.side === 'Credit');
+    expect(debitLines.some((line: any) => line.accountId === 'PUR-500' && line.debitAmount === 100)).toBe(true);
+    expect(debitLines.some((line: any) => line.accountId === 'INV-7C')).toBe(false);
+    expect(debitLines.some((line: any) => line.accountId === 'GRNI-100')).toBe(false);
+    expect(creditLines.some((line: any) => line.accountId === 'AP-200' && line.creditAmount === 100)).toBe(true);
+    expect(voucher.totalDebit).toBeCloseTo(100, 2);
+    expect(voucher.totalCredit).toBeCloseTo(100, 2);
   });
 
   it('A1) PostPI parks as PENDING_APPROVAL when central approval policy rejects unapproved post (no financial effect)', async () => {

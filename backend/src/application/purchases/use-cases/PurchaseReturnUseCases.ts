@@ -676,7 +676,10 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         line.taxCodeId = undefined;
         line.taxCode = undefined;
       } else if (isDirect) {
-        line.accountId = line.accountId || settings.defaultPurchaseExpenseAccountId;
+        const periodicDirectAccount = accountingMode === 'PERIODIC'
+          ? (settings.defaultPurchaseReturnAccountId || settings.defaultPurchaseExpenseAccountId)
+          : settings.defaultPurchaseExpenseAccountId;
+        line.accountId = line.accountId || periodicDirectAccount;
         if (!line.accountId) throw new Error(`Account is required for manual return line ${line.lineId}`);
         line.unitCostBase = roundMoney(line.unitCostDoc * purchaseReturn.exchangeRate);
         line.taxRate = 0;
@@ -817,9 +820,12 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
 
       // Pre-resolve account IDs for voucher lines (synchronous, uses pre-fetched data)
       if (isAfterInvoice && shouldCreateVoucher) {
-        const creditAccountId = item.trackInventory
-          ? (item.inventoryAssetAccountId || invSettings?.defaultInventoryAssetAccountId)
-          : line.accountId;
+        const periodicReturnAccount = settings.defaultPurchaseReturnAccountId || line.accountId || settings.defaultPurchaseExpenseAccountId;
+        const creditAccountId = accountingMode === 'PERIODIC'
+          ? periodicReturnAccount
+          : item.trackInventory
+            ? (item.inventoryAssetAccountId || invSettings?.defaultInventoryAssetAccountId)
+            : line.accountId;
         if (!creditAccountId) throw new Error(`accountId is required for AFTER_INVOICE return line ${line.lineId}`);
 
         voucherLines.push({
@@ -886,9 +892,12 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
           },
         });
       } else if (isDirect && shouldCreateVoucher) {
-        if (!line.accountId) throw new Error(`Account is required for direct return line ${line.lineId}`);
+        const directReturnAccount = line.accountId
+          || settings.defaultPurchaseReturnAccountId
+          || settings.defaultPurchaseExpenseAccountId;
+        if (!directReturnAccount) throw new Error(`Account is required for direct return line ${line.lineId}`);
         voucherLines.push({
-          accountId: line.accountId,
+          accountId: directReturnAccount,
           side: 'Credit',
           baseAmount: lineTotalBase,
           docAmount: lineTotalDoc,

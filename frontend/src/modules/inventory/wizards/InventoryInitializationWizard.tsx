@@ -32,7 +32,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
   const [defaultWarehouseCode, setDefaultWarehouseCode] = useState('MAIN');
   const [defaultWarehouseAddress, setDefaultWarehouseAddress] = useState('');
 
-  const [accountingMode, setAccountingMode] = useState<'INVOICE_DRIVEN' | 'PERPETUAL'>('INVOICE_DRIVEN');
+  const [accountingMode, setAccountingMode] = useState<'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL'>('INVOICE_DRIVEN');
   const [defaultCostCurrency, setDefaultCostCurrency] = useState('');
   const [defaultInventoryAssetAccountId, setDefaultInventoryAssetAccountId] = useState('');
   const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
@@ -219,6 +219,19 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
             <input
               type="radio"
               name="inventory-accounting-mode"
+              checked={accountingMode === 'PERIODIC'}
+              onChange={() => setAccountingMode('PERIODIC')}
+            />
+            <div>
+              <div className="font-semibold text-gray-900">Periodic</div>
+              <div className="text-sm text-gray-600">Invoices post Sales and Purchases only. Stock quantities still move, but inventory and COGS stay out of the ledger until reporting time.</div>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
+            <input
+              type="radio"
+              name="inventory-accounting-mode"
               checked={accountingMode === 'INVOICE_DRIVEN'}
               onChange={() => setAccountingMode('INVOICE_DRIVEN')}
             />
@@ -328,7 +341,9 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
                 <p className="mt-1 text-xs text-gray-600">
                   {accountingMode === 'PERPETUAL'
                     ? 'Required for perpetual inventory. This is the balance sheet account that holds the value of stock on hand.'
-                    : 'Recommended fallback for invoice-driven stock purchases and inventory recognition.'}
+                    : accountingMode === 'PERIODIC'
+                      ? 'Recommended for periodic opening stock and report-time goods inventory. Periodic documents do not post live inventory or COGS.'
+                      : 'Recommended fallback for invoice-driven stock purchases and inventory recognition.'}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
                   Type an account code or name, then press Enter or Alt+Down to search. If no match exists, you can create a new account from the selector dialog.

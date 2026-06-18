@@ -1,6 +1,6 @@
 import client from './client';
 
-export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
+export type InventoryAccountingMode = 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
 
 export interface InventoryCostPointDTO {
   base: number;
@@ -770,7 +770,7 @@ export const inventoryApi = {
 
   configureFinancialIntegration: (payload: {
     accountingMethod: 'PERIODIC' | 'PERPETUAL';
-    accountingMode: 'INVOICE_DRIVEN' | 'PERPETUAL';
+    accountingMode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
     defaultInventoryAssetAccountId?: string;
     defaultCOGSAccountId?: string;
     accountingStartDate?: string;

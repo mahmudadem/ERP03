@@ -37,6 +37,7 @@ export interface InitializeSalesInput {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultSalesReturnAccountId?: string;
   allowOverDelivery?: boolean;
   allowOverpayment?: boolean;
   overDeliveryTolerancePct?: number;
@@ -77,6 +78,7 @@ export interface UpdateSalesSettingsInput {
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
+  defaultSalesReturnAccountId?: string;
   defaultRefundAccountId?: string;
   restockingFeeAccountId?: string;
   allowOverDelivery?: boolean;
@@ -236,6 +238,7 @@ export class InitializeSalesUseCase {
       defaultCOGSAccountId: input.defaultCOGSAccountId,
       defaultInventoryAccountId: input.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: input.defaultSalesExpenseAccountId,
+      defaultSalesReturnAccountId: input.defaultSalesReturnAccountId,
       allowOverDelivery: input.allowOverDelivery ?? false,
       allowOverpayment: input.allowOverpayment ?? false,
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? 0,
@@ -406,6 +409,7 @@ export class UpdateSalesSettingsUseCase {
       defaultCOGSAccountId: input.defaultCOGSAccountId ?? existing.defaultCOGSAccountId,
       defaultInventoryAccountId: nextDefaultInventoryAccountId,
       defaultSalesExpenseAccountId: input.defaultSalesExpenseAccountId ?? existing.defaultSalesExpenseAccountId,
+      defaultSalesReturnAccountId: input.defaultSalesReturnAccountId ?? existing.defaultSalesReturnAccountId,
       defaultRefundAccountId: input.defaultRefundAccountId ?? existing.defaultRefundAccountId,
       restockingFeeAccountId: input.restockingFeeAccountId ?? existing.restockingFeeAccountId,
       allowOverDelivery: input.allowOverDelivery ?? existing.allowOverDelivery,

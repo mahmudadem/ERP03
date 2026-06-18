@@ -54,7 +54,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
   const [inventorySettings, setInventorySettings] = useState<{
     defaultInventoryAssetAccountId?: string;
     defaultCOGSAccountId?: string;
-    accountingMode?: 'INVOICE_DRIVEN' | 'PERPETUAL';
+    accountingMode?: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
     inventoryAccountingMethod?: 'PERIODIC' | 'PERPETUAL';
   } | null>(null);
 

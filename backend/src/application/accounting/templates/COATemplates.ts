@@ -480,6 +480,53 @@ export const SimplifiedCOA = [
   },
 ];
 
+export const PeriodicTradingCOA = [
+  { code: "1", name: "Assets", type: "asset", parentCode: null, isProtected: true },
+  { code: "101", name: "Cash & Petty Cash", type: "asset", parentCode: "1", isProtected: true },
+  { code: "10101", name: "Cash - Head Office", type: "asset", parentCode: "101", isProtected: false },
+  { code: "102", name: "Bank Accounts", type: "asset", parentCode: "1", isProtected: true },
+  { code: "10201", name: "Bank - Operating", type: "asset", parentCode: "102", isProtected: false },
+  { code: "103", name: "Goods Inventory", type: "asset", parentCode: "1", isProtected: true },
+  { code: "10301", name: "Goods / Opening Inventory", type: "asset", parentCode: "103", isProtected: false },
+  { code: "10302", name: "Goods / Closing Inventory", type: "asset", parentCode: "103", isProtected: false },
+  { code: "10303", name: "Inventory Transfer Clearing", type: "asset", parentCode: "103", isProtected: false },
+  { code: "104", name: "Accounts Receivable", type: "asset", parentCode: "1", isProtected: true },
+  { code: "10401", name: "Customers Receivable", type: "asset", parentCode: "104", isProtected: true },
+
+  { code: "2", name: "Liabilities", type: "liability", parentCode: null, isProtected: true },
+  { code: "201", name: "Accounts Payable", type: "liability", parentCode: "2", isProtected: true },
+  { code: "20100", name: "Accounts Payable - General", type: "liability", parentCode: "201", isProtected: false },
+  { code: "202", name: "Taxes & Duties", type: "liability", parentCode: "2", isProtected: true },
+  { code: "20201", name: "VAT Payable", type: "liability", parentCode: "202", isProtected: true },
+  { code: "209", name: "GRNI - Goods Received Not Invoiced", type: "liability", parentCode: "2", isProtected: false },
+
+  { code: "3", name: "Equity", type: "equity", parentCode: null, isProtected: true },
+  { code: "301", name: "Owner Capital", type: "equity", parentCode: "3", isProtected: true, equitySubgroup: "CONTRIBUTED_CAPITAL" },
+  { code: "30101", name: "Paid-in Capital", type: "equity", parentCode: "301", isProtected: false, equitySubgroup: "CONTRIBUTED_CAPITAL" },
+  { code: "302", name: "Retained Earnings", type: "equity", parentCode: "3", isProtected: false, equitySubgroup: "RETAINED_EARNINGS" },
+  { code: "30201", name: "Accumulated Profit", type: "equity", parentCode: "302", isProtected: false, equitySubgroup: "RETAINED_EARNINGS" },
+  { code: "303", name: "Opening Balance Equity", type: "equity", parentCode: "3", isProtected: false, equitySubgroup: "RESERVES" },
+  { code: "304", name: "Inventory Revaluation Reserve", type: "equity", parentCode: "3", isProtected: false, equitySubgroup: "RESERVES" },
+
+  { code: "4", name: "Revenue", type: "revenue", parentCode: null, isProtected: true },
+  { code: "400", name: "Sales", type: "revenue", parentCode: "4", isProtected: false, plSubgroup: "SALES" },
+  { code: "401", name: "Sales Returns", type: "revenue", parentCode: "4", isProtected: false, plSubgroup: "SALES" },
+  { code: "402", name: "Sales Discounts", type: "revenue", parentCode: "4", isProtected: false, plSubgroup: "SALES" },
+  { code: "403", name: "Trading Account", type: "revenue", parentCode: "4", isProtected: false, plSubgroup: "SALES" },
+  { code: "406", name: "Inventory Adjustment Gain", type: "revenue", parentCode: "4", isProtected: false, plSubgroup: "OTHER_REVENUE" },
+
+  { code: "5", name: "Expenses", type: "expense", parentCode: null, isProtected: true },
+  { code: "501", name: "Cost of Sales", type: "expense", parentCode: "5", isProtected: true, plSubgroup: "COST_OF_SALES" },
+  { code: "50101", name: "Purchases", type: "expense", parentCode: "501", isProtected: false, plSubgroup: "COST_OF_SALES" },
+  { code: "50102", name: "Freight Inward", type: "expense", parentCode: "501", isProtected: false, plSubgroup: "COST_OF_SALES" },
+  { code: "50103", name: "Purchase Returns", type: "expense", parentCode: "501", isProtected: false, plSubgroup: "COST_OF_SALES" },
+  { code: "50104", name: "Purchase Discounts Received", type: "expense", parentCode: "501", isProtected: false, plSubgroup: "COST_OF_SALES" },
+  { code: "502", name: "Operating Expenses", type: "expense", parentCode: "5", isProtected: true, plSubgroup: "OPERATING_EXPENSES" },
+  { code: "50202", name: "Sales Discounts", type: "expense", parentCode: "502", isProtected: false, plSubgroup: "OPERATING_EXPENSES" },
+  { code: "50203", name: "Inventory Adjustment Loss", type: "expense", parentCode: "502", isProtected: false, plSubgroup: "OPERATING_EXPENSES" },
+  { code: "50204", name: "Inventory Revaluation Expense", type: "expense", parentCode: "502", isProtected: false, plSubgroup: "OPERATING_EXPENSES" },
+];
+
 /**
  * Comprehensive Chart of Accounts Template
  * Full enterprise-grade structure for established businesses

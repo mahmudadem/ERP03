@@ -725,7 +725,13 @@ export class PostSalesReturnUseCase {
           const category = item.categoryId ? categoriesMap.get(item.categoryId) : null;
           line.revenueAccountId = item.revenueAccountId || category?.defaultRevenueAccountId || settings.defaultRevenueAccountId;
         }
-        addToBucket(revenueDebitBucket, line.revenueAccountId, lineTotalBase, lineTotalDoc);
+        const revenueReversalAccountId = accountingMode === 'PERIODIC'
+          ? (settings.defaultSalesReturnAccountId || line.revenueAccountId || settings.defaultRevenueAccountId)
+          : line.revenueAccountId;
+        if (!revenueReversalAccountId) {
+          throw new Error(`No sales return account configured for line ${line.lineNo}`);
+        }
+        addToBucket(revenueDebitBucket, revenueReversalAccountId, lineTotalBase, lineTotalDoc);
 
         if (line.taxAmountBase > 0 && line.taxCodeId) {
           const sTaxCode = taxCodesMap.get(line.taxCodeId);

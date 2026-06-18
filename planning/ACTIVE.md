@@ -2,6 +2,23 @@
 
 ## Epic 240 follow-on (owner-authorized 2026-06-18)
 
+- ✅ **Task 240d complete on branch `codex/240d-periodic-posting-mode`.**
+- `PERIODIC` is now a real inventory accounting mode, distinct from `INVOICE_DRIVEN` and `PERPETUAL`.
+- Posting behavior now matches the approved simple-trading model:
+  - PI → Dr Purchases / Cr AP (+ tax), no Inventory / GRNI line
+  - SI → Dr AR / Cr Sales (+ tax), no Inventory / COGS line
+  - returns hit contra accounts
+  - GRN / DN / adjustments are quantity-only in periodic mode
+  - opening stock remains Dr Goods / Opening Inventory / Cr Opening Balance Equity
+- Quantity gates were preserved: invoice quantity moves only when a GRN / DN did not already move it.
+- Added the `periodic_trading` COA, made the Simple Trading Company starter default to `PERIODIC`, and hid SO / DN / PO / GRN by default for simple companies through sidebar policy wiring.
+- Verification completed:
+  - targeted periodic/mode suites green
+  - full backend suite green: 159 passed / 2 skipped suites, 1,444 passed / 18 skipped tests
+  - `npm --prefix backend run build` green
+  - `npm --prefix frontend run build` green
+  - root `npm run build` is **not defined** in this repo (`build:web` / `build:api` exist instead)
+
 - ✅ **Task 240b complete on branch `codex/240b-discount-cost-basis-fix`.**
 - Fixed the Purchase Invoice line-discount cost-basis mismatch for `INVOICE_DRIVEN` and `PERPETUAL` only.
 - Backend regression coverage added and green.
@@ -15,7 +32,7 @@
 - ✅ **Branch consolidation (2026-06-18):** the week-of-work branch (`codex/simple-trading-company-template`, 186 files), the 240 Phase 2 fix, and all the epic-240 plan docs are now merged onto `main` as the single baseline (`main` builds: backend + frontend tsc). Future phases branch fresh from `main`.
 - ✅ **Task 240c (Phase 3 — item costing stats) is now on `main`.** Per-item `costingStats` (avgCost / lastPurchaseCost / lastSalePrice, FX-accurate, extensible), `ItemCostingStatsService`, hooks in all IN paths (engine + inline PI + GRN) and sale paths (SI/DN), Firestore+Prisma parity, Item card UI. **No GL posting change.** Full backend suite **1,436 tests pass**; build clean. Report: [done/240c](./done/240c-phase3-item-costing-stats.md).
   - Integration fixes during landing: stale test mocks (`updateItemInTransaction` ×5, `preFetchLevelsByItem` ×3) and the **pre-existing** `PostingAuthority` guard (week's approval-leak hotfix → `resolveApproved`) updated without weakening it.
-- **Next recommended task:** [240d — Phase 4 periodic posting mode](./tasks/240d-phase4-periodic-posting-mode.md) (the pilot's high-value core), branched fresh from `main`. Task [241](./tasks/241-party-item-price-memory.md) can also start (depends on Phase 3).
+- **Next recommended task:** [240e — Phase 5 report-time valuation and trading](./tasks/240e-phase5-report-time-valuation-and-trading.md). `240d` made periodic posting real; the next missing accounting deliverable is the period-end valuation / Trading Account layer. Task [241](./tasks/241-party-item-price-memory.md) can also still start independently (depends on Phase 3, not 240e).
 
 ---
 

@@ -357,11 +357,12 @@ const makeItemRepo = (item: Item) => ({
 });
 
 const makeInventorySettingsRepository = (
-  method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL',
+  mode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL' = 'PERPETUAL',
   overrides: Record<string, any> = {}
 ) => ({
   getSettings: jest.fn(async () => ({
-    inventoryAccountingMethod: method,
+    accountingMode: mode,
+    inventoryAccountingMethod: mode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC',
     defaultInventoryAssetAccountId: 'INV-100',
     defaultCOGSAccountId: 'COGS-100',
     ...overrides,
@@ -729,6 +730,74 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
     expect(voucherRepo.save).toHaveBeenCalledTimes(2);
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(2);
+  });
+
+  it('7b) PostSI in PERIODIC mode posts only revenue voucher, still moves quantity, and creates no COGS/inventory GL lines', async () => {
+    const settings = makeSettings('SIMPLE', {
+      defaultRevenueAccountId: 'SALES-700',
+      defaultSalesReturnAccountId: 'SALES-RET-700',
+    });
+    const customer = makeCustomer();
+    const stockItem = makeItem('stock-7b', {
+      trackInventory: true,
+      cogsAccountId: 'COGS-700',
+      inventoryAssetAccountId: 'INV-700',
+      revenueAccountId: 'REV-700',
+    });
+    const si = makeSI({
+      id: 'si-7b',
+      item: stockItem,
+      invoicedQty: 2,
+      unitPriceDoc: 15,
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    const invoiceStore = new Map([[si.id, si]]);
+    const savedVouchers: any[] = [];
+
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => {
+          invoiceStore.set(entity.id, entity);
+        }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      makeItemRepo(stockItem) as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) } as any,
+        { recordForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, si.id);
+    expect(posted.status).toBe('POSTED');
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    expect(savedVouchers).toHaveLength(1);
+    expect(posted.cogsVoucherId).toBeNull();
+
+    const voucher = savedVouchers[0];
+    const debitLines = voucher.lines.filter((line: any) => line.side === 'Debit');
+    const creditLines = voucher.lines.filter((line: any) => line.side === 'Credit');
+    expect(debitLines.some((line: any) => line.accountId === 'AR-200' && line.debitAmount === 30)).toBe(true);
+    expect(creditLines.some((line: any) => line.accountId === 'REV-700' && line.creditAmount === 30)).toBe(true);
+    expect(voucher.lines.some((line: any) => line.accountId === 'INV-700')).toBe(false);
+    expect(voucher.lines.some((line: any) => line.accountId === 'COGS-700')).toBe(false);
   });
 
   it('A1) PostSI parks as PENDING_APPROVAL when central approval policy rejects unapproved post (no financial effect)', async () => {
@@ -1697,7 +1766,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
-      makeInventorySettingsRepository('PERIODIC', {
+      makeInventorySettingsRepository('INVOICE_DRIVEN', {
         defaultCOGSAccountId: undefined,
         defaultInventoryAssetAccountId: undefined,
       }) as any,

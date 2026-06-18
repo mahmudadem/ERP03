@@ -29,7 +29,8 @@ export const moduleMenuMap: Record<
       path?: string;
       permission?: string;
       icon?: string;
-      children?: Array<{ label: string; path: string; permission?: string; icon?: string }>;
+      hideInSimpleMode?: boolean;
+      children?: Array<{ label: string; path: string; permission?: string; icon?: string; hideInSimpleMode?: boolean }>;
     }>;
   }
 > = {
@@ -122,8 +123,8 @@ export const moduleMenuMap: Record<
         icon: 'FolderOpen',
         children: [
           { label: 'Quotations', path: '/sales/quotes', icon: 'FileText' },
-          { label: 'Sales Orders', path: '/sales/orders', icon: 'ShoppingCart' },
-          { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },
+          { label: 'Sales Orders', path: '/sales/orders', icon: 'ShoppingCart', hideInSimpleMode: true },
+          { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck', hideInSimpleMode: true },
           { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
           { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
         ],
@@ -163,8 +164,8 @@ export const moduleMenuMap: Record<
         label: 'Forms',
         icon: 'FolderOpen',
         children: [
-          { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
-          { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
+          { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart', hideInSimpleMode: true },
+          { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck', hideInSimpleMode: true },
           { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
           { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
         ],

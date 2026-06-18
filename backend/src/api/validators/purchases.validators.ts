@@ -235,6 +235,8 @@ export const validateInitializePurchasesInput = (body: any) => {
   ensureOptionalString(body.apParentAccountId, 'apParentAccountId');
   ensureOptionalString(body.partyAccountCodeFormat, 'partyAccountCodeFormat');
   ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
+  ensureOptionalString(body.defaultPurchaseReturnAccountId, 'defaultPurchaseReturnAccountId');
+  ensureOptionalString(body.defaultPurchaseDiscountAccountId, 'defaultPurchaseDiscountAccountId');
   ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
   ensureOptionalString(body.purchaseVoucherTypeId, 'purchaseVoucherTypeId');
   ensureOptionalString(body.defaultWarehouseId, 'defaultWarehouseId');
@@ -264,6 +266,8 @@ export const validateUpdatePurchaseSettingsInput = (body: any) => {
   if (body.apParentAccountId !== undefined) ensureOptionalString(body.apParentAccountId, 'apParentAccountId');
   if (body.partyAccountCodeFormat !== undefined) ensureOptionalString(body.partyAccountCodeFormat, 'partyAccountCodeFormat');
   if (body.defaultPurchaseExpenseAccountId !== undefined) ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
+  if (body.defaultPurchaseReturnAccountId !== undefined) ensureOptionalString(body.defaultPurchaseReturnAccountId, 'defaultPurchaseReturnAccountId');
+  if (body.defaultPurchaseDiscountAccountId !== undefined) ensureOptionalString(body.defaultPurchaseDiscountAccountId, 'defaultPurchaseDiscountAccountId');
   if (body.defaultGRNIAccountId !== undefined) ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');

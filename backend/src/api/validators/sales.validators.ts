@@ -317,6 +317,7 @@ export const validateInitializeSalesInput = (body: any) => {
   ensureOptionalString(body.partyAccountCodeFormat, 'partyAccountCodeFormat');
   ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
+  ensureOptionalString(body.defaultSalesReturnAccountId, 'defaultSalesReturnAccountId');
   if (body.governanceRules !== undefined) {
     if (!Array.isArray(body.governanceRules)) {
       throw ApiError.badRequest('governanceRules must be an array');
@@ -371,6 +372,7 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.defaultCOGSAccountId !== undefined) ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
   if (body.defaultInventoryAccountId !== undefined) ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   if (body.defaultSalesExpenseAccountId !== undefined) ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
+  if (body.defaultSalesReturnAccountId !== undefined) ensureOptionalString(body.defaultSalesReturnAccountId, 'defaultSalesReturnAccountId');
   if (body.defaultRefundAccountId !== undefined) ensureOptionalString(body.defaultRefundAccountId, 'defaultRefundAccountId');
   if (body.restockingFeeAccountId !== undefined) ensureOptionalString(body.restockingFeeAccountId, 'restockingFeeAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');

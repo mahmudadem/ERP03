@@ -1,9 +1,9 @@
 # Architecture: Inventory Module
 
-**Last updated:** 2026-06-18 (Epic 240 Phase 3 — item costing statistics)
+**Last updated:** 2026-06-18 (Epic 240 Phase 4 — periodic posting mode)
 **Status:** V1 implemented. Moving-average costing live, on either a **per-warehouse** or **company-wide
-(GLOBAL)** basis (see Costing basis). GL posting from inventory documents IS implemented
-(see Accounting Integration). FIFO deferred to a follow-up.
+(GLOBAL)** basis (see Costing basis). Inventory accounting now supports **three distinct modes**:
+`PERIODIC`, `INVOICE_DRIVEN`, and `PERPETUAL`. FIFO deferred to a follow-up.
 **Module-level docs:** [`docs/modules/inventory/MASTER_PLAN.md`](../modules/inventory/MASTER_PLAN.md), [`docs/modules/inventory/ALGORITHMS.md`](../modules/inventory/ALGORITHMS.md), [`docs/modules/inventory/SCHEMAS.md`](../modules/inventory/SCHEMAS.md)
 
 ---
@@ -13,6 +13,18 @@
 The Inventory module tracks physical stock and its cost. Every movement (receipt, issue, transfer, adjustment, opening balance) creates an immutable ledger entry, and the running stock level + average cost are maintained atomically.
 
 Inventory is the **cost engine** for the system. Sales asks Inventory "what does this item cost to deliver?" and Inventory answers with the current weighted average. Purchases asks Inventory "record that we received X units at price Y" and Inventory updates the running average.
+
+## Inventory accounting modes
+
+ERP03 now supports three distinct inventory-accounting modes:
+
+| Mode | Inventory / COGS GL timing | Operational docs (GRN / DN) | Invoice quantity move | Typical use |
+|---|---|---|---|---|
+| `PERIODIC` | **No per-transaction Inventory or COGS GL.** Purchases and Sales hit trading-book accounts only. | Quantity only, no GL. | Yes, but only if a GRN / DN did not already move the quantity. | Simple trading books where closing inventory and trading result are handled at report time. |
+| `INVOICE_DRIVEN` | Invoice creates inventory/COGS-style GL when the operational doc did not already do it. | Quantity only, no GL. | Yes, and it may also recognize inventory / COGS when no GRN / DN exists. | Simple direct-invoice companies that still want inventory asset and COGS per invoice. |
+| `PERPETUAL` | Inventory / COGS GL recognized continuously at the stock-operational boundary. | GRN / DN own the stock GL. | Invoice clears GRNI / posts revenue and does not re-recognize stock already handled operationally. | Full perpetual inventory accounting. |
+
+`PERIODIC` is now a **real first-class mode**. Legacy `inventoryAccountingMethod = PERIODIC` no longer gets remapped to `INVOICE_DRIVEN`; it resolves to `accountingMode = PERIODIC`.
 
 ## Core Concepts
 
@@ -156,6 +168,25 @@ Opening Stock places the **Create Accounting Effect** toggle and warning in the 
 
 Inventory documents **do** post to the GL when the Accounting module is enabled. The integration points:
 
+### Mode matrix
+
+The posting rules are now:
+
+| Document | `PERIODIC` | `INVOICE_DRIVEN` | `PERPETUAL` |
+|---|---|---|---|
+| Purchase Invoice | Dr **Purchases** / Cr AP (+ tax). No Inventory / GRNI line. | If no GRN already handled stock: quantity + Dr Inventory / Cr AP. | If GRN already posted: Dr GRNI / Cr AP (+ tax). No double receipt. |
+| Sales Invoice | Dr AR / Cr **Sales** (+ tax). No COGS / Inventory line. | If no DN already handled stock: quantity + COGS / Inventory recognition. | Revenue voucher +, when needed, separate COGS / Inventory voucher only for stock the DN did not already handle. |
+| Purchase Return | Dr AP / Cr **Purchase Returns**. No Inventory line. | Dr AP / Cr Inventory (after-invoice/direct) per existing behavior. | Before-invoice: reverses GRNI path. After-invoice/direct: reverses Inventory. |
+| Sales Return | Dr **Sales Returns** / Cr AR. No COGS / Inventory reversal. | Revenue reversal + inventory reversal for after-invoice/direct returns. | Revenue reversal + inventory / COGS reversal. |
+| Goods Receipt / Delivery Note | No GL. Quantity only. | No GL. Quantity only. | Own stock GL (GRNI or COGS / Inventory). |
+| Stock Adjustment | No GL. Quantity only. | Existing behavior unchanged. | Existing behavior unchanged. |
+| Opening Stock | Dr **Goods / Opening Inventory** / Cr Opening Balance Equity. | Existing opening-stock behavior. | Existing opening-stock behavior. |
+
+Two control rules matter:
+
+- **No-double-count quantity rule:** invoice posting reuses the existing `goodsAlreadyReceived(...)` / operational-delivery gates. In all modes, the invoice moves quantity **only if** the GRN / DN did not already move it.
+- **Opening stock is the periodic exception:** even in `PERIODIC`, opening stock may post GL because the company still needs an audited opening Inventory-vs-Equity entry.
+
 - **Opening Stock Document** — produces an inventory-valuation voucher (Dr Inventory Asset / Cr opening-balance
   offset). When accounting effect is enabled, the offset account must be an active POSTING **EQUITY** account
   such as Opening Balance Equity or retained earnings. The backend rejects P&L accounts (COGS/revenue), ordinary
@@ -168,6 +199,7 @@ Inventory documents **do** post to the GL when the Accounting module is enabled.
   account; write-ups (ADJUSTMENT_IN) credit the **Inventory Gain** account. Offset resolution chain:
   dedicated gain/loss (Inventory Settings) → item COGS → settings COGS. Inventory-asset side: item → settings.
   Missing accounts produce a readable blocking error (never a silent skip).
+  In `PERIODIC`, adjustments still change quantity and costing stats, but they post **no GL voucher**.
 - **Stock Transfer** (Task 221 / 231) has two persisted modes, but four strict economic cases:
   - **Plain / Journaled** — pure A→B move. OUT value = IN value = `qty × source carrying cost`. The source
     average is not changed by the outbound leg. With the current single inventory control account model this is
@@ -204,6 +236,23 @@ Inventory documents **do** post to the GL when the Accounting module is enabled.
     single ledger door), so they honor period locks and the enabled policy set.
 - **Sales** calls `ISalesInventoryService.processOUT()` and posts COGS itself using the returned unit cost.
 - **Purchases** calls `IPurchasesInventoryService.processIN()` to record the receipt (GRN posts the GRNI cycle).
+
+### Periodic trading COA + starter
+
+Epic 240 Phase 4 adds a dedicated **`periodic_trading`** COA template. It includes:
+
+- Purchases
+- Purchase Returns
+- Purchase Discounts Received
+- Sales
+- Sales Returns
+- Sales Discounts
+- Goods / Opening Inventory
+- Goods / Closing Inventory
+- Trading Account
+- the normal AR / AP / Cash / Bank / Equity / Tax support accounts
+
+The **Simple Trading Company** starter now defaults to this COA and to `InventorySettings.accountingMode = PERIODIC`. In the sidebar, operational stock-flow documents (`Sales Orders`, `Delivery Notes`, `Purchase Orders`, `Goods Receipts`) are hidden by default for simple companies, but can still be surfaced if the workflow later needs them.
 
 ### Purchase-invoice discount cost basis
 

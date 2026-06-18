@@ -56,7 +56,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   const [selectedTypeKeys, setSelectedTypeKeys] = useState<string[]>([]);
   const [inventorySettings, setInventorySettings] = useState<{
     defaultInventoryAssetAccountId?: string;
-    accountingMode?: 'INVOICE_DRIVEN' | 'PERPETUAL';
+    accountingMode?: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
     inventoryAccountingMethod?: 'PERIODIC' | 'PERPETUAL';
   } | null>(null);
 

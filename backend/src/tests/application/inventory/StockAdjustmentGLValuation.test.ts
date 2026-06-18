@@ -181,4 +181,71 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
     expect(debit.accountId).toBe('COGS-100'); // graceful fallback to item COGS
     expect(debit.baseAmount).toBe(25);
   });
+
+  it('skips GL posting entirely in periodic mode while still posting the stock adjustment', async () => {
+    const adjustment = new StockAdjustment({
+      id: 'adj-periodic-1',
+      companyId: COMPANY_ID,
+      warehouseId: 'wh-1',
+      date: '2026-04-07',
+      reason: 'FOUND',
+      lines: [
+        {
+          itemId: ITEM.id,
+          currentQty: 10,
+          newQty: 12,
+          adjustmentQty: 2,
+          unitCostBase: 10,
+          unitCostCCY: 10,
+        },
+      ],
+      status: 'DRAFT',
+      adjustmentValueBase: 20,
+      createdBy: USER_ID,
+      createdAt: new Date('2026-04-07T00:00:00.000Z'),
+    });
+
+    const adjustmentRepo = {
+      getAdjustment: jest
+        .fn()
+        .mockResolvedValueOnce(adjustment)
+        .mockResolvedValueOnce(
+          new StockAdjustment({ ...adjustment.toJSON(), status: 'POSTED', voucherId: null } as any)
+        ),
+      updateAdjustment: jest.fn(async () => undefined),
+    };
+
+    const movementUseCase = {
+      processIN: jest.fn(async () => ({ id: 'sm-periodic-1', direction: 'IN', totalCostBase: 20 })),
+      processOUT: jest.fn(async () => ({ id: 'sm-periodic-out', direction: 'OUT', totalCostBase: 0 })),
+      preFetchItemContext: jest.fn(async () => ({ item: ITEM, baseCurrency: 'USD' })),
+      preFetchStockLevel: jest.fn(async () => null),
+    };
+
+    const accountingPostingService = {
+      postInTransaction: jest.fn(async () => ({ id: 'vch-periodic-1' })),
+    };
+
+    const useCase = new PostStockAdjustmentUseCase(
+      adjustmentRepo as any,
+      { getItem: jest.fn(async () => ITEM) } as any,
+      movementUseCase as any,
+      { runTransaction: jest.fn(async (op: (t: unknown) => Promise<unknown>) => op({ id: 'txn-periodic' })) } as any,
+      { get: jest.fn(async () => ({ initialized: true })) } as any,
+      accountingPostingService as any,
+      { getSettings: jest.fn(async () => ({ accountingMode: 'PERIODIC', inventoryAccountingMethod: 'PERIODIC' })) } as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, adjustment.id, USER_ID);
+
+    expect(posted.status).toBe('POSTED');
+    expect(movementUseCase.processIN).toHaveBeenCalledTimes(1);
+    expect(accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+    expect(adjustmentRepo.updateAdjustment).toHaveBeenCalledWith(
+      COMPANY_ID,
+      adjustment.id,
+      expect.objectContaining({ status: 'POSTED', voucherId: null, adjustmentValueBase: 20 }),
+      expect.anything()
+    );
+  });
 });

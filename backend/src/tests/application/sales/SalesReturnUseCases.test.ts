@@ -382,9 +382,12 @@ const makeInventoryService = () => ({
   writeStockLevel: jest.fn(async () => undefined),
 });
 
-const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL') => ({
+const makeInventorySettingsRepository = (
+  mode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL' = 'PERPETUAL'
+) => ({
   getSettings: jest.fn(async () => ({
-    inventoryAccountingMethod: method,
+    accountingMode: mode,
+    inventoryAccountingMethod: mode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC',
     defaultInventoryAssetAccountId: 'INV-100',
   })),
 });
@@ -881,7 +884,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostSalesReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
-      makeInventorySettingsRepository('PERIODIC') as any, // maps to INVOICE_DRIVEN
+      makeInventorySettingsRepository('INVOICE_DRIVEN') as any,
       {
         getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
         list: jest.fn(async () => []),
@@ -956,7 +959,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostSalesReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
-      makeInventorySettingsRepository('PERIODIC') as any,
+      makeInventorySettingsRepository('INVOICE_DRIVEN') as any,
       {
         getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
         list: jest.fn(async () => []),
@@ -987,6 +990,60 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     expect(posted.revenueVoucherId).toBeTruthy();
     const savedVouchers = (voucherRepo.save as any).mock.calls.map((args: any[]) => args[0]);
     expect(savedVouchers.some((v: any) => v.voucherNo.startsWith('SR-REV-'))).toBe(true);
+  });
+
+  it('21b) AFTER_INVOICE return in PERIODIC mode posts revenue reversal only and never creates a COGS reversal voucher', async () => {
+    const settings = makeSettings('SIMPLE', {
+      defaultSalesReturnAccountId: 'SALES-RET-100',
+    });
+    const customer = makeCustomer();
+    const item = makeItem();
+    const so = makeSO();
+    const si = makePostedSI();
+    const salesReturn = makeAfterInvoiceReturn();
+
+    const returnStore = new Map([[salesReturn.id, salesReturn]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const inventoryService = makeInventoryService();
+
+    const useCase = new PostSalesReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
+        list: jest.fn(async () => []),
+        update: jest.fn(async (entity: SalesReturn) => { returnStore.set(entity.id, entity); }),
+      } as any,
+      { getById: jest.fn(async () => si), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, salesReturn.id);
+    expect(posted.status).toBe('POSTED');
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    expect(voucherRepo.save).toHaveBeenCalledTimes(1);
+    expect(posted.cogsVoucherId).toBeNull();
+
+    const revenueVoucher = (voucherRepo.save as any).mock.calls[0][0];
+    expect(revenueVoucher.lines.some((line: any) => line.accountId === 'SALES-RET-100' && line.side === 'Debit')).toBe(true);
+    expect(revenueVoucher.lines.some((line: any) => line.accountId === 'COGS-100')).toBe(false);
+    expect(revenueVoucher.lines.some((line: any) => line.accountId === 'INV-100')).toBe(false);
   });
 
   it('22) DIRECT standalone return blocked in PERPETUAL mode', async () => {

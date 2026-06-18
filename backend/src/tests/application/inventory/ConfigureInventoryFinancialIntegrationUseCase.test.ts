@@ -7,7 +7,7 @@ const COMPANY_ID = 'cmp-1';
 const makeSettings = (overrides: Partial<InventorySettings> = {}) =>
   new InventorySettings({
     companyId: COMPANY_ID,
-    accountingMode: 'INVOICE_DRIVEN',
+    accountingMode: 'PERIODIC',
     inventoryAccountingMethod: 'PERIODIC',
     defaultCostingMethod: 'MOVING_AVG',
     defaultCostCurrency: 'USD',
@@ -158,10 +158,39 @@ describe('ConfigureInventoryFinancialIntegrationUseCase', () => {
     expect(savedSettings.itemCodeNextSeq).toBe(42);
   });
 
-  it('saves invoice-driven configuration without looking up accounts', async () => {
+  it('saves periodic configuration without looking up accounts', async () => {
     const saveSettings = jest.fn(async (_settings: InventorySettings) => undefined);
     const settingsRepo = {
       getSettings: jest.fn(async () => makeSettings({ accountingMode: 'PERPETUAL', inventoryAccountingMethod: 'PERPETUAL' })),
+      saveSettings,
+    };
+    const accountRepo = { getById: jest.fn(async () => makeAccount()) };
+
+    const useCase = new ConfigureInventoryFinancialIntegrationUseCase(
+      settingsRepo as any,
+      makeCompanyModuleRepo() as any,
+      accountRepo as any,
+      { getItemMovements: jest.fn(async () => []), getMovementsByDateRange: jest.fn(async () => []), hasAnyMovements: jest.fn(async () => false) } as any
+    );
+
+    await useCase.execute({
+      companyId: COMPANY_ID,
+      accountingMethod: 'PERIODIC',
+      accountingMode: 'PERIODIC',
+    });
+
+    expect(accountRepo.getById).not.toHaveBeenCalled();
+    const savedSettings = saveSettings.mock.calls[0][0];
+    expect(savedSettings.inventoryAccountingMethod).toBe('PERIODIC');
+    expect(savedSettings.accountingMode).toBe('PERIODIC');
+    expect(savedSettings.defaultInventoryAssetAccountId).toBeUndefined();
+    expect(savedSettings.defaultCOGSAccountId).toBeUndefined();
+  });
+
+  it('still allows explicit invoice-driven configuration without looking up accounts', async () => {
+    const saveSettings = jest.fn(async (_settings: InventorySettings) => undefined);
+    const settingsRepo = {
+      getSettings: jest.fn(async () => makeSettings()),
       saveSettings,
     };
     const accountRepo = { getById: jest.fn(async () => makeAccount()) };

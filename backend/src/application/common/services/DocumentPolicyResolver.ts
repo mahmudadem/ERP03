@@ -13,7 +13,9 @@ export class DocumentPolicyResolver {
   static legacyInventoryMethodToAccountingMode(
     method: LegacyInventoryAccountingMethod | undefined | null
   ): SupportedAccountingMode {
-    return method === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN';
+    if (method === 'PERPETUAL') return 'PERPETUAL';
+    if (method === 'PERIODIC') return 'PERIODIC';
+    return 'INVOICE_DRIVEN';
   }
 
   static accountingModeToLegacyInventoryMethod(
@@ -58,6 +60,7 @@ export class DocumentPolicyResolver {
     mode: SupportedAccountingMode,
     hasExistingOperationalPosting: boolean
   ): boolean {
+    if (mode === 'PERIODIC') return false;
     if (mode === 'INVOICE_DRIVEN') return true;
     return !hasExistingOperationalPosting;
   }
@@ -66,6 +69,7 @@ export class DocumentPolicyResolver {
     mode: SupportedAccountingMode,
     returnContext: 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT'
   ): boolean {
+    if (mode === 'PERIODIC') return false;
     if (mode === 'PERPETUAL') return true;
     return returnContext === 'AFTER_INVOICE' || returnContext === 'DIRECT';
   }

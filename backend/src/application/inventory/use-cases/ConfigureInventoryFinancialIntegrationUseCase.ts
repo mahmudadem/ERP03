@@ -7,7 +7,7 @@ import { InventorySettings } from '../../../domain/inventory/entities/InventoryS
 export interface ConfigureInventoryFinancialIntegrationInput {
   companyId: string;
   accountingMethod: 'PERIODIC' | 'PERPETUAL';
-  accountingMode: 'INVOICE_DRIVEN' | 'PERPETUAL';
+  accountingMode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
   defaultInventoryAssetAccountId?: string;
   defaultCOGSAccountId?: string;
   accountingStartDate?: string;

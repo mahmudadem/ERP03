@@ -25,13 +25,13 @@ export interface SimpleTradingCompanyPolicySummary {
   modulesInitialized: string[];
   baseCurrency: string;
   accounting: {
-    coaTemplate: 'standard';
+    coaTemplate: 'periodic_trading';
     fiscalYearStart: string;
     fiscalYearEnd: string;
     approvalRequired: false;
   };
   inventory: {
-    accountingMode: 'INVOICE_DRIVEN';
+    accountingMode: 'PERIODIC';
     costingMethod: 'MOVING_AVG';
     costingBasis: 'GLOBAL';
     allowNegativeStock: false;
@@ -125,15 +125,18 @@ const REQUIRED_ACCOUNT_CODES = {
   cash: '10101',
   bank: '10201',
   inventoryAsset: '10301',
-  transferClearing: '10302',
+  transferClearing: '10303',
   arParent: '10401',
   apParent: '20100',
   grni: '209',
   openingEquity: '303',
   revaluationReserve: '304',
   salesRevenue: '400',
-  cogs: '50100',
+  salesReturn: '401',
+  cogs: '50101',
   purchaseExpense: '50101',
+  purchaseReturn: '50103',
+  purchaseDiscount: '50104',
   salesExpense: '50202',
   inventoryGain: '406',
   inventoryLoss: '50203',
@@ -171,7 +174,7 @@ export class SimpleTradingCompanyInitializer {
         fiscalYearStart: '01-01',
         fiscalYearEnd: '12-31',
         baseCurrency,
-        coaTemplate: 'standard',
+        coaTemplate: 'periodic_trading',
         selectedVoucherTypes: await this.getDefaultAccountingVoucherTemplateIds(),
         periodScheme: 'MONTHLY',
       },
@@ -192,7 +195,7 @@ export class SimpleTradingCompanyInitializer {
     const inventoryResult = await inventoryUseCase.execute({
       companyId: input.companyId,
       userId: input.userId,
-      accountingMode: 'INVOICE_DRIVEN',
+      accountingMode: 'PERIODIC',
       defaultWarehouseName: 'Main Warehouse',
       defaultWarehouseCode: 'MAIN',
       defaultCostCurrency: baseCurrency,
@@ -240,6 +243,7 @@ export class SimpleTradingCompanyInitializer {
       defaultCOGSAccountId: accounts.cogs.id,
       defaultInventoryAccountId: accounts.inventoryAsset.id,
       defaultSalesExpenseAccountId: accounts.salesExpense.id,
+      defaultSalesReturnAccountId: accounts.salesReturn.id,
       allowOverpayment: true,
     });
 
@@ -263,6 +267,8 @@ export class SimpleTradingCompanyInitializer {
       apParentAccountId: accounts.apParent.id,
       partyAccountCodeFormat: '{parent}-{partyCode}',
       defaultPurchaseExpenseAccountId: accounts.purchaseExpense.id,
+      defaultPurchaseReturnAccountId: accounts.purchaseReturn.id,
+      defaultPurchaseDiscountAccountId: accounts.purchaseDiscount.id,
       defaultGRNIAccountId: accounts.grni.id,
       allowOverpayment: true,
     });
@@ -273,13 +279,13 @@ export class SimpleTradingCompanyInitializer {
       modulesInitialized: ['accounting', 'inventory', 'sales', 'purchase'],
       baseCurrency,
       accounting: {
-        coaTemplate: 'standard',
+        coaTemplate: 'periodic_trading',
         fiscalYearStart: '01-01',
         fiscalYearEnd: '12-31',
         approvalRequired: false,
       },
       inventory: {
-        accountingMode: 'INVOICE_DRIVEN',
+        accountingMode: 'PERIODIC',
         costingMethod: 'MOVING_AVG',
         costingBasis: 'GLOBAL',
         allowNegativeStock: false,
