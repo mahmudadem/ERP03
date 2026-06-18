@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Quote, QuoteLine } from '../../../domain/sales/entities/Quote';
+import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { IQuoteRepository } from '../../../repository/interfaces/sales/IQuoteRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import {
@@ -188,7 +189,9 @@ export class UpdateQuoteUseCase {
     const current = await this.quoteRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Quote not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
-      throw new Error('Only DRAFT quotes can be updated');
+      throw new SalesRuleError('QUOTE_INVALID_STATE', 'Only DRAFT quotes can be updated', {
+        fieldHints: ['status'],
+      });
     }
 
     const exchangeRate = input.exchangeRate ?? current.exchangeRate;
@@ -298,7 +301,9 @@ export class DeleteQuoteUseCase {
     const quote = await this.quoteRepo.getById(companyId, id);
     if (!quote) throw new Error(`Quote not found: ${id}`);
     if (quote.status !== 'DRAFT') {
-      throw new Error('Only DRAFT quotes can be deleted');
+      throw new SalesRuleError('QUOTE_INVALID_STATE', 'Only DRAFT quotes can be deleted', {
+        fieldHints: ['status'],
+      });
     }
     await this.quoteRepo.delete(companyId, id);
   }
@@ -434,7 +439,11 @@ export class ConvertQuoteToSalesOrderUseCase {
     const quote = await this.quoteRepo.getById(companyId, quoteId);
     if (!quote) throw new Error(`Quote not found: ${quoteId}`);
     if (quote.status !== 'ACCEPTED') {
-      throw new Error(`Quote must be ACCEPTED to convert to a Sales Order (current: ${quote.status})`);
+      throw new SalesRuleError(
+        'QUOTE_INVALID_STATE',
+        `Quote must be ACCEPTED to convert to a Sales Order (current: ${quote.status})`,
+        { fieldHints: ['status'] }
+      );
     }
 
     const soInput: CreateSalesOrderInput = {
@@ -485,7 +494,11 @@ export class ConvertQuoteToSalesInvoiceUseCase {
     const quote = await this.quoteRepo.getById(companyId, quoteId);
     if (!quote) throw new Error(`Quote not found: ${quoteId}`);
     if (quote.status !== 'ACCEPTED') {
-      throw new Error(`Quote must be ACCEPTED to convert to a Sales Invoice (current: ${quote.status})`);
+      throw new SalesRuleError(
+        'QUOTE_INVALID_STATE',
+        `Quote must be ACCEPTED to convert to a Sales Invoice (current: ${quote.status})`,
+        { fieldHints: ['status'] }
+      );
     }
 
     const siInput: CreateSalesInvoiceInput = {

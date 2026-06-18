@@ -1,9 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { JournalRow, Currency } from '../types';
-import { Button } from './ui/Button';
-import { 
-  Plus, Loader2, Download, Image as ImageIcon, Wand2, Calendar, ChevronDown, Trash2
-} from 'lucide-react';
+import { JournalRow, Currency } from '../types'; import { Button } from './ui/Button'; import { Plus, Download, Image as ImageIcon, Wand2, Calendar, ChevronDown, Trash2 } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { generateJournalSuggestion, analyzeImageForJournal } from '../services/geminiService';
 import { useLanguage } from '../LanguageContext';
 import { errorHandler } from '../../../../services/errorHandler';

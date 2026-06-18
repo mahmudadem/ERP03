@@ -1,6 +1,6 @@
 # Architecture: Accounting Module
 
-**Last updated:** 2026-06-01
+**Last updated:** 2026-06-16
 **Status:** Implemented (core), with explicitly deferred features listed below.
 **Code-near docs:** [`backend/src/domain/accounting/ARCHITECTURE.md`](../../backend/src/domain/accounting/ARCHITECTURE.md), [`backend/src/domain/accounting/CORRECTIONS.md`](../../backend/src/domain/accounting/CORRECTIONS.md)
 
@@ -56,10 +56,10 @@ Notes:
 
 1. **Posting strategies, not handlers.** Each voucher type has a posting strategy (`JournalEntryStrategy`, `PaymentVoucherStrategy`, `SalesInvoiceStrategy`, etc.). The single `PostVoucherUseCase` resolves the strategy and applies it. New voucher types add a strategy; the posting pipeline does not change.
 2. **Ledger always in base currency.** A voucher can be in any currency, but ledger entries are converted to the company base currency at posting time. FX amounts are tracked per line. The frontend cannot override this.
-3. **Immutable posted entries.** Once a voucher is posted, its ledger lines are immutable. Mistakes are corrected via the **Reverse & Replace** flow ([CORRECTIONS.md](../../backend/src/domain/accounting/CORRECTIONS.md)), which creates a paired reversal voucher and (optionally) a replacement DRAFT.
+3. **Posted entries are protected.** In Strict mode, once a voucher is posted its ledger lines are immutable and mistakes are corrected via **Reverse & Replace** ([CORRECTIONS.md](../../backend/src/domain/accounting/CORRECTIONS.md)). If Flexible mode deliberately allows posted edit/delete, the resulting ledger replace/delete still goes through the guarded `PostingGateway` and the same accounting policies.
 4. **Repository pattern.** All persistence is behind interfaces (`IVoucherRepository`, `ILedgerRepository`, `IAccountRepository`, etc.) so the system can migrate from Firestore to SQL without touching domain or application code.
 5. **Policy enforcement at every posting gate.** `PostVoucherUseCase` applies posting policies for manual Accounting vouchers. `SubledgerVoucherPostingService` applies the same policy registry for automatic vouchers originating in Sales, Purchases, and Inventory. Core invariants, account validity, company policies, and override checks must run before ledger rows are written.
-6. **Final ledger boundary is also guarded.** Because a cross-module caller once bypassed the normal posting gate, `ILedgerRepository.recordForVoucher()` now also invokes `VoucherValidationService.validateCore()` and `validateAccounts()` before any ledger rows are persisted. This is the non-negotiable last line of backend defense.
+6. **One guarded ledger door.** Application code must not mutate the ledger repository directly. `PostingGateway` is the only production caller allowed to invoke `ILedgerRepository.recordForVoucher()`, `deleteForVoucher()`, or `markReconciled()`, and the architecture test fails if a second path appears.
 
 ## Key Use Cases
 
@@ -79,7 +79,7 @@ Notes:
 ## Repository Interfaces (key)
 
 - `IVoucherRepository` — voucher CRUD, find by status / date / type
-- `ILedgerRepository` — ledger entry read and controlled posting persistence via `recordForVoucher()`. Direct callers are allowed only through DI and still pass the final `VoucherValidationService` guard before write.
+- `ILedgerRepository` — ledger entry reads plus low-level mutation primitives. Production application code must reach mutation methods only through `PostingGateway`.
 - `IAccountRepository` — chart of accounts, account-active checks
 - `ICompanyModuleSettingsRepository` — base currency, exchange rates, policy flags, default accounts
 
@@ -105,25 +105,26 @@ The intended accounting path is:
    - account is `ACTIVE`
    - account has not been replaced
    - account has no children
-5. Posting policies run, then ledger rows are written.
+5. Posting policies run, then `PostingGateway` writes or replaces ledger rows.
 
-There are two entry points into this boundary:
+There are two business entry points into this boundary:
 
 - Manual Accounting vouchers use `PostVoucherUseCase`.
 - Source-module postings use `SubledgerVoucherPostingService`.
 
-Both must use `AccountingPolicyRegistry` before ledger persistence. This keeps future controls, such as cost-center rules, account access, period locks, and approval-related posting guards, from becoming Sales-only or manual-voucher-only behavior.
+Both converge on `PostingGateway` before any ledger mutation. This keeps future controls, such as cost-center rules, account access, period locks, and approval-related posting guards, from becoming Sales-only or manual-voucher-only behavior.
 
 ### Discovered bypass and fix
 
 Manual QA found a critical bypass in the Sales receipt settlement path. Sales created a receipt `VoucherEntity`, marked it posted, and called `ledgerRepo.recordForVoucher()` / `voucherRepo.save()` directly. The Accounting validation rule was correct, but this path skipped `VoucherValidationService.validateAccounts()`, so a HEADER account selected through a free-text UI field reached the ledger.
 
-The fix has two layers:
+The fix has three layers:
 
 - Sales receipt paths now validate before ledger, voucher, payment-history, or invoice-status writes.
 - `ILedgerRepository.recordForVoucher()` now runs `VoucherValidationService.validateCore()` and `validateAccounts()` itself in both Firestore and SQL implementations.
+- `PostingGateway` is now the only production application path allowed to call ledger mutation methods; `PostingAuthority.test.ts` blocks any future direct `recordForVoucher`, `deleteForVoucher`, or `markReconciled` caller outside the gateway.
 
-This means future backend callers cannot reach the ledger with an invalid voucher or non-posting account just by forgetting to use the higher-level posting service.
+This means future backend callers cannot add another application-layer route to the ledger just by forgetting to use the guarded posting service.
 
 ### Remaining security gap
 
@@ -139,12 +140,20 @@ Required infrastructure hardening before production:
 
 This is a defense-in-depth rule: the application validates at the posting service and the ledger repository; infrastructure must still prevent direct database writes that bypass the application entirely.
 
+### Tenant isolation for voucher routes
+
+- Voucher URLs use the internal voucher UUID (`#/accounting/vouchers/:id/view`) rather than the human voucher number because voucher numbers can repeat across companies.
+- The UUID is not the security boundary. Every Accounting API request must resolve the company from the authenticated user context and verify company membership before controllers or repositories run.
+- `authMiddleware` now fails closed for a caller-supplied `x-company-id` that the user is not a member of (`403 COMPANY_ACCESS_DENIED`). A stale stored active company without membership is stripped to `null` so tenant routes cannot silently use it.
+- Voucher and ledger repositories remain company-scoped (`companies/{companyId}/accounting/Data/...` in Firestore), so a valid voucher UUID from another company does not resolve through the current company's repository path.
+
 ## Voucher Correction Flow (Reverse & Replace)
 
 See [CORRECTIONS.md](../../backend/src/domain/accounting/CORRECTIONS.md) for the canonical reference.
 
 Summary:
-- A posted voucher cannot be edited.
+- A posted voucher is normally treated as immutable, but in Flexible mode the `Allow Edit/Delete Posted` setting can permit editing or deletion for vouchers that were posted under Flexible lock policy.
+- Period lock still wins: if the voucher date is inside a locked period, editing remains blocked even when posted edits are otherwise allowed.
 - The user invokes `POST /api/v1/companies/:companyId/accounting/vouchers/:id/correct` with an optional flag to also create a replacement.
 - Backend creates a reversal voucher (lines with debit/credit swapped, defaulting to the original voucher's date so period alignment is preserved).
 - If a replacement was requested, a DRAFT copy of the original is created. The user edits and posts it manually.
@@ -171,6 +180,11 @@ Summary:
 
 - Module root: [`frontend/src/modules/accounting/`](../../frontend/src/modules/accounting/)
 - Key pages: Vouchers list/detail, Chart of Accounts, Cost Centers, Approvals, Reports (one page per report), Recurring Vouchers, Forms Designer, Settings.
+- Voucher document inspection and ledger-effect inspection are separate routes:
+  - `#/accounting/vouchers/:id/view` renders the source voucher record: header, status, source lines, audit metadata, and workflow actions.
+  - `#/accounting/vouchers/:id/ledger` renders the read-only posted ledger impact for that voucher by calling `GET /tenant/accounting/reports/general-ledger?voucherId=:id`.
+- The ledger-impact route must stay read-only. It displays actual posted ledger rows only; draft/unposted vouchers show an empty state rather than a simulated preview.
+- Voucher and ledger-impact detail routes expose a read-only previous/current/next panel. The panel intentionally ignores list filters and resolves neighboring vouchers from the company voucher collection using the repository's default order (`date desc`, then stable ID ordering where supported). It does not query by human voucher number and it does not mutate vouchers or ledger rows.
 - Forms designer produces user-defined voucher layouts via the `designer-engine` package (`frontend/src/designer-engine/`).
 
 ## Cross-Module Touchpoints

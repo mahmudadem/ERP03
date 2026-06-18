@@ -44,9 +44,12 @@ import { ReconcileStockUseCase } from '../../../application/inventory/use-cases/
 import { ReconcileInventoryGLUseCase } from '../../../application/inventory/use-cases/ReconcileInventoryGLUseCase';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
 import {
+  CancelStockTransferUseCase,
   CompleteStockTransferUseCase,
   CreateStockTransferUseCase,
   ListStockTransfersUseCase,
+  UndoStockTransferUseCase,
+  UpdateStockTransferUseCase,
 } from '../../../application/inventory/use-cases/StockTransferUseCases';
 import { ProcessReturnUseCase } from '../../../application/inventory/use-cases/ReturnUseCases';
 import {
@@ -179,6 +182,12 @@ export class InventoryController {
         accountingMode: (req as any).body.accountingMode,
         inventoryAccountingMethod: (req as any).body.inventoryAccountingMethod,
         defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId,
+        defaultInventoryGainAccountId: (req as any).body.defaultInventoryGainAccountId,
+        defaultInventoryLossAccountId: (req as any).body.defaultInventoryLossAccountId,
+        defaultInventoryTransferClearingAccountId: (req as any).body.defaultInventoryTransferClearingAccountId,
+        defaultInventoryRevaluationAccountId: (req as any).body.defaultInventoryRevaluationAccountId,
+        defaultOpeningBalanceAccountId: (req as any).body.defaultOpeningBalanceAccountId,
+        allowNegativeInventoryValue: (req as any).body.allowNegativeInventoryValue,
         selectedVoucherTypes: (req as any).body.selectedVoucherTypes,
       });
 
@@ -245,7 +254,7 @@ export class InventoryController {
         costingBasis: (req as any).body.costingBasis ?? current?.costingBasis ?? 'WAREHOUSE',
         defaultCostCurrency: (req as any).body.defaultCostCurrency || current?.defaultCostCurrency || company.baseCurrency,
         defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId ?? current?.defaultInventoryAssetAccountId,
-        allowNegativeStock: (req as any).body.allowNegativeStock ?? current?.allowNegativeStock ?? true,
+        allowNegativeStock: (req as any).body.allowNegativeStock ?? current?.allowNegativeStock ?? false,
         allowDeferredCost: (req as any).body.allowDeferredCost ?? current?.allowDeferredCost ?? false,
         defaultWarehouseId: (req as any).body.defaultWarehouseId ?? current?.defaultWarehouseId,
         autoGenerateItemCode: (req as any).body.autoGenerateItemCode ?? current?.autoGenerateItemCode ?? false,
@@ -263,6 +272,13 @@ export class InventoryController {
         defaultInventoryTransferClearingAccountId: (req as any).body.defaultInventoryTransferClearingAccountId !== undefined
           ? (req as any).body.defaultInventoryTransferClearingAccountId
           : current?.defaultInventoryTransferClearingAccountId,
+        defaultInventoryRevaluationAccountId: (req as any).body.defaultInventoryRevaluationAccountId !== undefined
+          ? (req as any).body.defaultInventoryRevaluationAccountId
+          : current?.defaultInventoryRevaluationAccountId,
+        defaultOpeningBalanceAccountId: (req as any).body.defaultOpeningBalanceAccountId !== undefined
+          ? (req as any).body.defaultOpeningBalanceAccountId
+          : current?.defaultOpeningBalanceAccountId,
+        allowNegativeInventoryValue: (req as any).body.allowNegativeInventoryValue ?? current?.allowNegativeInventoryValue ?? false,
       });
 
       await diContainer.inventorySettingsRepository.saveSettings(settings);
@@ -1345,12 +1361,7 @@ export class InventoryController {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
 
-      const useCase = new CreateStockTransferUseCase(
-        diContainer.stockTransferRepository,
-        diContainer.warehouseRepository,
-        diContainer.itemRepository,
-        diContainer.stockLevelRepository
-      );
+      const useCase = InventoryController.buildCreateStockTransferUseCase();
 
       const transfer = await useCase.execute({
         companyId,
@@ -1372,22 +1383,33 @@ export class InventoryController {
     }
   }
 
+  private static buildCreateStockTransferUseCase(): CreateStockTransferUseCase {
+    return new CreateStockTransferUseCase(
+      diContainer.stockTransferRepository,
+      diContainer.warehouseRepository,
+      diContainer.itemRepository,
+      diContainer.stockLevelRepository
+    );
+  }
+
+  private static buildCompleteStockTransferUseCase(): CompleteStockTransferUseCase {
+    return new CompleteStockTransferUseCase(
+      diContainer.stockTransferRepository,
+      diContainer.itemRepository,
+      diContainer.stockLevelRepository,
+      InventoryController.buildMovementUseCase(),
+      diContainer.transactionManager,
+      diContainer.companyModuleRepository,
+      diContainer.inventorySettingsRepository,
+      InventoryController.buildAccountingPostingService()
+    );
+  }
+
   static async completeTransfer(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
-      const movementUseCase = InventoryController.buildMovementUseCase();
-
-      const useCase = new CompleteStockTransferUseCase(
-        diContainer.stockTransferRepository,
-        diContainer.itemRepository,
-        diContainer.stockLevelRepository,
-        movementUseCase,
-        diContainer.transactionManager,
-        diContainer.companyModuleRepository,
-        diContainer.inventorySettingsRepository,
-        InventoryController.buildAccountingPostingService()
-      );
+      const useCase = InventoryController.buildCompleteStockTransferUseCase();
 
       const transfer = await useCase.execute(companyId, (req as any).params.id, userId);
 
@@ -1395,6 +1417,69 @@ export class InventoryController {
         success: true,
         data: InventoryDTOMapper.toStockTransferDTO(transfer),
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateTransfer(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateCreateStockTransferInput((req as any).body);
+      const companyId = InventoryController.getCompanyId(req);
+      const userId = InventoryController.getUserId(req);
+      const useCase = new UpdateStockTransferUseCase(
+        diContainer.stockTransferRepository,
+        InventoryController.buildCreateStockTransferUseCase()
+      );
+
+      const transfer = await useCase.execute({
+        companyId,
+        transferId: (req as any).params.id,
+        sourceWarehouseId: (req as any).body.sourceWarehouseId,
+        destinationWarehouseId: (req as any).body.destinationWarehouseId,
+        date: (req as any).body.date,
+        notes: (req as any).body.notes,
+        mode: (req as any).body.mode,
+        lines: (req as any).body.lines || [],
+        createdBy: userId,
+      });
+
+      (res as any).json({
+        success: true,
+        data: InventoryDTOMapper.toStockTransferDTO(transfer),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async undoTransfer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const userId = InventoryController.getUserId(req);
+      const useCase = new UndoStockTransferUseCase(
+        diContainer.stockTransferRepository,
+        InventoryController.buildCreateStockTransferUseCase(),
+        InventoryController.buildCompleteStockTransferUseCase()
+      );
+
+      const transfer = await useCase.execute(companyId, (req as any).params.id, userId, (req as any).body?.date);
+
+      (res as any).json({
+        success: true,
+        data: InventoryDTOMapper.toStockTransferDTO(transfer),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async cancelTransfer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const useCase = new CancelStockTransferUseCase(diContainer.stockTransferRepository);
+      await useCase.execute(companyId, (req as any).params.id);
+      (res as any).json({ success: true });
     } catch (error) {
       next(error);
     }

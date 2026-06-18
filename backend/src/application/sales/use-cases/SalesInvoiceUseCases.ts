@@ -79,7 +79,8 @@ import { PromotionApplicationService, PromotionEvalLine } from '../services/Prom
 import { CreditCheckService, CreditCheckResult } from '../services/CreditCheckService';
 import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
-import { PostingError } from '../../../domain/shared/errors/AppError';
+import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
+import { ErrorCategory, PostingError } from '../../../domain/shared/errors/AppError';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -1764,10 +1765,17 @@ export class PostSalesInvoiceUseCase {
     if (settlementMode === 'CASH_FULL') {
       const outstanding = roundMoney(si.grandTotalBase - (si.paidAmountBase || 0));
       if (Math.abs(settlementTotal - outstanding) > 0.01) {
-        throw new Error(`CASH_FULL settlement total (${settlementTotal}) must equal outstanding amount (${outstanding})`);
+        throw new SalesRuleError(
+          'SETTLEMENT_RULE_VIOLATION',
+          `CASH_FULL settlement total (${settlementTotal}) must equal outstanding amount (${outstanding})`,
+          { fieldHints: ['settlementTotal'], category: ErrorCategory.VALIDATION }
+        );
       }
       if (settlements.length !== 1) {
-        throw new Error('CASH_FULL mode requires exactly one settlement row');
+        throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', 'CASH_FULL mode requires exactly one settlement row', {
+          fieldHints: ['settlements'],
+          category: ErrorCategory.VALIDATION,
+        });
       }
     }
 
@@ -1775,21 +1783,38 @@ export class PostSalesInvoiceUseCase {
       const outstanding = roundMoney(si.grandTotalBase - (si.paidAmountBase || 0));
       const allowOverpayment = settings?.allowOverpayment === true;
       if (!allowOverpayment && settlementTotal > outstanding + 0.01) {
-        throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Sales settings to record the excess as a customer credit.`);
+        throw new SalesRuleError(
+          'OVERPAYMENT_NOT_ALLOWED',
+          `MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding}). Enable "allow over-payment" in Sales settings to record the excess as a customer credit.`,
+          { fieldHints: ['settlementTotal'], category: ErrorCategory.VALIDATION }
+        );
       }
       if (settlements.length === 0) {
-        throw new Error('MULTI mode requires at least one settlement row');
+        throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', 'MULTI mode requires at least one settlement row', {
+          fieldHints: ['settlements'],
+          category: ErrorCategory.VALIDATION,
+        });
       }
       for (const s of settlements) {
         if (s.amountBase <= 0 || Number.isNaN(s.amountBase)) {
-          throw new Error('Each settlement row amount must be positive');
+          throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', 'Each settlement row amount must be positive', {
+            fieldHints: ['settlements'],
+            category: ErrorCategory.VALIDATION,
+          });
         }
         if (s.paymentMethod && !VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
-          throw new Error(`Invalid paymentMethod: ${s.paymentMethod}`);
+          throw new SalesRuleError('SETTLEMENT_RULE_VIOLATION', `Invalid paymentMethod: ${s.paymentMethod}`, {
+            fieldHints: ['paymentMethod'],
+            category: ErrorCategory.VALIDATION,
+          });
         }
         const effectiveSettlementAccountId = s.settlementAccountId?.trim() || resolvePaymentMethodAccount(settings, s.paymentMethod);
         if (!effectiveSettlementAccountId) {
-          throw new Error('Each settlement row requires a settlementAccountId or configured paymentMethod mapping');
+          throw new SalesRuleError(
+            'SETTLEMENT_RULE_VIOLATION',
+            'Each settlement row requires a settlementAccountId or configured paymentMethod mapping',
+            { fieldHints: ['settlementAccountId'], category: ErrorCategory.VALIDATION }
+          );
         }
       }
     }

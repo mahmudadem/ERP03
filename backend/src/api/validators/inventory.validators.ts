@@ -108,6 +108,12 @@ export const validateInitializeInventoryInput = (body: any) => {
   if (body.defaultInventoryTransferClearingAccountId) {
     ensureUuid(body.defaultInventoryTransferClearingAccountId, 'defaultInventoryTransferClearingAccountId');
   }
+  if (body.defaultInventoryRevaluationAccountId) {
+    ensureUuid(body.defaultInventoryRevaluationAccountId, 'defaultInventoryRevaluationAccountId');
+  }
+  if (body.defaultOpeningBalanceAccountId) {
+    ensureUuid(body.defaultOpeningBalanceAccountId, 'defaultOpeningBalanceAccountId');
+  }
 
   if (body.defaultWarehouseCode && typeof body.defaultWarehouseCode !== 'string') {
     throw ApiError.badRequest('defaultWarehouseCode must be a string');
@@ -122,6 +128,9 @@ export const validateInitializeInventoryInput = (body: any) => {
   }
 
   if (body.allowNegativeStock !== undefined) ensureBoolean(body.allowNegativeStock, 'allowNegativeStock');
+  if (body.allowNegativeInventoryValue !== undefined) {
+    ensureBoolean(body.allowNegativeInventoryValue, 'allowNegativeInventoryValue');
+  }
 
   if (body.allowDeferredCost !== undefined) ensureBoolean(body.allowDeferredCost, 'allowDeferredCost');
 
@@ -332,6 +341,11 @@ export const validateCreateStockTransferInput = (body: any) => {
     ensurePositiveNumber(line.qty, `lines[${index}].qty`);
     ensureOptionalNonNegativeNumber(line.unitCostBaseAtTransfer, `lines[${index}].unitCostBaseAtTransfer`);
     ensureOptionalNonNegativeNumber(line.unitCostCCYAtTransfer, `lines[${index}].unitCostCCYAtTransfer`);
+    ensureOptionalNonNegativeNumber(line.addedCostBaseAtTransfer, `lines[${index}].addedCostBaseAtTransfer`);
+    ensureOptionalNonNegativeNumber(line.addedCostCCYAtTransfer, `lines[${index}].addedCostCCYAtTransfer`);
+    ensureOptionalNonNegativeNumber(line.revaluationUnitCostBaseAtTransfer, `lines[${index}].revaluationUnitCostBaseAtTransfer`);
+    ensureOptionalNonNegativeNumber(line.revaluationUnitCostCCYAtTransfer, `lines[${index}].revaluationUnitCostCCYAtTransfer`);
+    ensureOptionalString(line.notes, `lines[${index}].notes`);
   });
 };
 
@@ -395,6 +409,15 @@ export const validateUpdateSettingsInput = (body: any) => {
   if (body.defaultInventoryLossAccountId) ensureUuid(body.defaultInventoryLossAccountId, 'defaultInventoryLossAccountId');
   if (body.defaultInventoryTransferClearingAccountId) {
     ensureUuid(body.defaultInventoryTransferClearingAccountId, 'defaultInventoryTransferClearingAccountId');
+  }
+  if (body.defaultInventoryRevaluationAccountId) {
+    ensureUuid(body.defaultInventoryRevaluationAccountId, 'defaultInventoryRevaluationAccountId');
+  }
+  if (body.defaultOpeningBalanceAccountId) {
+    ensureUuid(body.defaultOpeningBalanceAccountId, 'defaultOpeningBalanceAccountId');
+  }
+  if (body.allowNegativeInventoryValue !== undefined) {
+    ensureBoolean(body.allowNegativeInventoryValue, 'allowNegativeInventoryValue');
   }
   if (body.costingBasis !== undefined && body.costingBasis !== 'WAREHOUSE' && body.costingBasis !== 'GLOBAL') {
     throw ApiError.badRequest('costingBasis must be WAREHOUSE or GLOBAL');

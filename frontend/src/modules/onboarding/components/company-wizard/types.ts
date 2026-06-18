@@ -1,4 +1,6 @@
 
+import type { StarterPolicySummary } from '../../api/onboardingApi';
+
 export interface Bundle {
   id: string;
   name: string;
@@ -19,15 +21,19 @@ export interface CompanyFormData {
   logo: File | null;
   logoPreviewUrl: string | null;
   selectedBundleId: string | null;
+  autoInitializeModules?: boolean;
+  starterTemplateId?: 'simple-trading-company';
+  starterPolicySummary?: StarterPolicySummary | null;
   createdCompanyId?: string;
 }
 
 export enum WizardStep {
   BasicInfo = 0,
   BundleSelection = 1,
-  ContactInfo = 2, // New Step
-  Review = 3,
-  Success = 4,
+  ContactInfo = 2,
+  BasicNeeds = 3,
+  Review = 4,
+  Success = 5,
 }
 
 export interface WizardStepProps {

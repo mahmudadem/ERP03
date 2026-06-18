@@ -15,7 +15,8 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, ShieldCheck, ExternalLink, Globe, BarChart3, ToggleLeft, Loader2, BrainCircuit } from 'lucide-react';
+import { Shield, ShieldCheck, ExternalLink, Globe, BarChart3, ToggleLeft, BrainCircuit } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { CertifiedModelsModal } from '../components/CertifiedModelsModal';
@@ -64,29 +65,33 @@ export const AiAssistantSettingsPage: React.FC = () => {
       <ModuleSettingsLayout
         title={t('settings.title', 'AI Assistant Settings')}
         subtitle={t('settings.subtitle', 'Configure the AI provider and preferences for your company.')}
-      tabs={[
-        { id: 'provider', label: t('settings.providerTab', 'Provider'), icon: Globe },
-        { id: 'security', label: t('settings.securityTab', 'Security'), icon: Shield },
-        { id: 'analytics', label: t('settings.analyticsTab', 'Analytics'), icon: BarChart3 },
-      ]}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-    >
-      {activeTab === 'provider' && (
-        <SettingsSection
-          title={t('settings.providerTab', 'AI Provider')}
-          description={t('settings.providerDesc', 'Select and configure the AI provider for your company.')}
-          onSave={canManage ? ai.handleSave : () => {}}
-          disabled={!ai.hasChanges || ai.saving}
-          saving={ai.saving}
-          hideSaveButton={ai.loading}
-        >
-          {ai.loading && (
-            <div className="flex items-center justify-center py-16 text-sm text-gray-500">
-              <Loader2 className="w-5 h-5 mr-2 animate-spin text-indigo-600" />
-              {t('settings.loading', 'Loading settings...')}
-            </div>
-          )}
+        tabs={[
+          { id: 'provider', label: t('settings.providerTab', 'Provider'), icon: Globe },
+          { id: 'security', label: t('settings.securityTab', 'Security'), icon: Shield },
+          { id: 'analytics', label: t('settings.analyticsTab', 'Analytics'), icon: BarChart3 },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        hasChanges={ai.hasUnsavedChanges}
+        onSave={ai.handleSave}
+        onDiscard={ai.discardChanges}
+        saving={ai.saving}
+      >
+        {activeTab === 'provider' && (
+          <SettingsSection
+            title={t('settings.providerTab', 'AI Provider')}
+            description={t('settings.providerDesc', 'Select and configure the AI provider for your company.')}
+            onSave={canManage ? ai.handleSave : () => {}}
+            disabled={!ai.hasChanges || ai.saving}
+            saving={ai.saving}
+            hideSaveButton={true}
+          >
+            {ai.loading && (
+              <div className="flex items-center justify-center py-16 text-sm text-gray-500">
+                <Spinner variant="indigo" size="md" className="mr-2" />
+                {t('settings.loading', 'Loading settings...')}
+              </div>
+            )}
 
           {!ai.loading && (
             <>

@@ -65,9 +65,10 @@ GLOBAL is implemented inside `RecordStockMovementUseCase` as `processINGlobal` /
   is unchanged by an issue, so only the shipping warehouse's qty is written; availability is still checked
   per-warehouse. The defining property: a warehouse issues at the company cost, not the price it personally
   received.
-- **Transfer** — FLAT leaves the average flat (qty moves A→B). VALUED capitalizes the uplift
-  `qty × (landed − source)` into the company average; `inMov.totalCostBase − outMov.totalCostBase` still equals
-  the uplift, so the clearing-voucher logic in `CompleteStockTransferUseCase` is untouched.
+- **Transfer** — plain/journaled transfers move quantity A→B at the source carrying cost and leave the company
+  average flat. Value beyond source cost is never inferred from `IN − OUT`; it is applied only from an explicit
+  added-cost input or an explicit revaluation input. Added cost raises the company value and posts to Transfer
+  Clearing. Revaluation raises/lowers company value and posts to the dedicated Inventory Revaluation account.
 
 Switching basis after movements exist is not recommended (it is a one-time setup choice); the first GLOBAL
 movement after a switch will re-blend any divergent per-warehouse averages into the true company-wide figure.
@@ -88,12 +89,14 @@ FX rates are frozen on the movement:
 
 ### Negative stock
 
-Controlled by `InventorySettings.allowNegativeStock` (default `true`).
+Controlled by `InventorySettings.allowNegativeStock` (default `false` for new and hydrated settings).
 
-- **`allowNegativeStock = true`** — OUT movements that would drive `qtyOnHand` below zero succeed; the movement records `negativeQtyAtPosting = true` and `unsettledCostBasis` reflects how the cost was sourced (see below).
-- **`allowNegativeStock = false`** — `RecordStockMovementUseCase.processOUT` throws `NegativeStockError` **before** mutating the StockLevel. No movement is created, no ledger entry posted. Callers (Sales/Purchases posting flows) propagate the error to the API response.
+- **`allowNegativeStock = false`** — default and market-standard control posture. `RecordStockMovementUseCase.processOUT` throws `NegativeStockError` **before** mutating the StockLevel. No movement is created, no ledger entry posted. Callers (Sales/Purchases posting flows) propagate the error to the API response.
+- **`allowNegativeStock = true`** — explicit opt-in. OUT movements that would drive `qtyOnHand` below zero succeed; the movement records `negativeQtyAtPosting = true` and `unsettledCostBasis` reflects how the cost was sourced (see below).
 
-`processOUT` reads the settings record once up front — it drives **both** the costing basis (WAREHOUSE vs GLOBAL) and the negative-stock guard, so there is no second read. A settings read failure falls back to the WAREHOUSE path rather than aborting the posting. Callers may pre-fetch the settings record once per posting transaction and pass it via `preFetchedInventorySettings` to skip the read entirely.
+The guard covers **every stock-issuing path**, not just `processOUT`. A stock transfer issues from the source warehouse exactly like an OUT, so `processTRANSFER` and `processTRANSFERGlobal` apply the same guard to the source (OUT) leg before decrementing `qtyOnHand` — a transfer can no longer drive a source warehouse negative while the policy is off. The destination (IN) leg is never guarded (a receipt cannot create a deficit).
+
+`processOUT` and `processTRANSFER` each read the settings record once up front — it drives **both** the costing basis (WAREHOUSE vs GLOBAL) and the negative-stock guard, so there is no second read. A settings read failure falls back to the WAREHOUSE path rather than aborting the posting. Callers may pre-fetch the settings record once per posting transaction and pass it via `preFetchedInventorySettings` to skip the read entirely.
 
 When the deficit IS allowed:
 On OUT movements when stock is insufficient:
@@ -121,6 +124,17 @@ Allowed. Movement `date` can be earlier than prior movements. Flagged with `isBa
 
 Document posting is immutable; corrections require a separate adjustment.
 
+### Frontend document shell
+
+Inventory document workflows now follow the same list-to-form shell used by Sales/Purchases documents:
+
+- `/inventory/adjustments` and `/inventory/opening-stock` are list pages built on `OperationalListLayout`.
+- `/inventory/adjustments/new` and `/inventory/opening-stock/new` open dedicated form routes.
+- `/inventory/adjustments/:id` and `/inventory/opening-stock/:id` open scaffold-backed document views.
+- Forms use `DocumentDetailScaffold` with the same body slots as the native Sales Invoice pattern: `control`, `header`, `lines`, rail readiness/totals, and footer actions.
+
+Opening Stock places the **Create Accounting Effect** toggle and warning in the scaffold `control` section. When accounting effect is enabled, the document pre-fills its offset account from `InventorySettings.defaultOpeningBalanceAccountId`, while still allowing a per-document override. The backend remains authoritative: the selected account must be an active POSTING EQUITY account.
+
 ## Accounting Integration
 
 Inventory documents **do** post to the GL when the Accounting module is enabled. The integration points:
@@ -130,16 +144,47 @@ Inventory documents **do** post to the GL when the Accounting module is enabled.
   such as Opening Balance Equity or retained earnings. The backend rejects P&L accounts (COGS/revenue), ordinary
   liabilities, and using the same inventory asset account as its own offset; those choices would make the Trial
   Balance balance while corrupting inventory valuation or P&L.
+  `InventorySettings.defaultOpeningBalanceAccountId` is the optional company default used to prefill new Opening
+  Stock Documents. Users may override it per document, but not bypass the EQUITY validation.
 - **Stock Adjustment** (Task 221) — posts a journal valued from the **actual posted movement cost**
   (`movement.totalCostBase`), not the user-typed cost. Write-downs (ADJUSTMENT_OUT) debit the **Inventory Loss**
   account; write-ups (ADJUSTMENT_IN) credit the **Inventory Gain** account. Offset resolution chain:
   dedicated gain/loss (Inventory Settings) → item COGS → settings COGS. Inventory-asset side: item → settings.
   Missing accounts produce a readable blocking error (never a silent skip).
-- **Stock Transfer** (Task 221) has two modes:
-  - **FLAT** — pure A→B move; destination inherits source moving-average cost; **no GL** (value-neutral).
-  - **VALUED** — the destination may land at an overridden/uplifted cost (e.g. capitalized freight). The
-    uplift `qty × (landedCost − sourceCost)` is capitalized into inventory (Dr) against the **Inventory
-    Transfer Clearing** account (Cr). Zero uplift → no GL.
+- **Stock Transfer** (Task 221 / 231) has two persisted modes, but four strict economic cases:
+  - **Plain / Journaled** — pure A→B move. OUT value = IN value = `qty × source carrying cost`. The source
+    average is not changed by the outbound leg. With the current single inventory control account model this is
+    value-neutral and posts no GL; future per-warehouse inventory accounts may post `Dr Inv-Dest / Cr Inv-Source`
+    at the same source value.
+  - **Added-cost** — explicit freight/customs/handling cost. OUT remains at source cost; IN receives source cost
+    plus `addedCostBaseAtTransfer`. GL posts the inventory delta to Inventory and the opposite side to
+    `defaultInventoryTransferClearingAccountId`. Transfer Clearing is for real costs that a later AP/Cash bill
+    can clear.
+  - **Revaluation** — explicit value-only carrying-cost change. OUT remains at source cost; IN receives
+    `revaluationUnitCostBaseAtTransfer`. The variance posts to the dedicated
+    `defaultInventoryRevaluationAccountId` with sign-based sides: upward revaluation debits Inventory and
+    credits Inventory Revaluation; downward revaluation debits Inventory Revaluation and credits Inventory.
+    Do not reuse Inventory Gain/Loss for this path.
+  - **Zero-cost source** — a 0-cost item transfers at 0 unless the user declares an explicit revaluation. The
+    old automatic `uplift = IN − OUT` path is deleted, so a transfer can no longer mint inventory value from a
+    zero-cost source into Transfer Clearing.
+  - **Lifecycle:** `createTransfer` saves a **DRAFT** (no stock/GL effect); `completeTransfer` posts the paired
+    TRANSFER_OUT/TRANSFER_IN movements and any explicit valuation voucher **in one transaction** (so a negative-stock
+    block on the source OUT leg rolls back the voucher too).
+  - **Edit a draft** — `updateTransfer` (`PUT /transfers/:id`, `UpdateStockTransferUseCase`) rebuilds the draft
+    (re-snapshots source costs via `CreateStockTransferUseCase.buildDraft`) and overwrites the record. Allowed
+    **only** while `DRAFT`; a COMPLETED transfer is refused.
+  - **Cancel a draft** — `cancelTransfer` (`DELETE /transfers/:id`, `CancelStockTransferUseCase`) hard-deletes,
+    allowed **only** for DRAFT (it has posted nothing to reverse).
+  - **Undo a completed transfer** — `undoTransfer` (`POST /transfers/:id/undo`, `UndoStockTransferUseCase`) does
+    **not** delete history; it creates and completes a **mirror-image** transfer (source/destination swapped,
+    same lines/costs) and links the pair via `reversesTransferId` / `reversedByTransferId`. The reverse runs the
+    normal `complete` path, so it posts its own paired movements (and, for VALUED, a reversing uplift voucher
+    through the guard) and is itself subject to the negative-stock guard. Guards: only `COMPLETED` transfers can
+    be undone, not one already undone, and a reversal cannot itself be undone. Covered by
+    `StockTransferCorrectionUseCase.test.ts`.
+  - Transfer valuation vouchers post through `SubledgerVoucherPostingService` → `PostingGateway.record()` (the
+    single ledger door), so they honor period locks and the enabled policy set.
 - **Sales** calls `ISalesInventoryService.processOUT()` and posts COGS itself using the returned unit cost.
 - **Purchases** calls `IPurchasesInventoryService.processIN()` to record the receipt (GRN posts the GRNI cycle).
 
@@ -168,7 +213,10 @@ Boundary:
 - `PERIODIC` is unaffected because it does not post inventory-asset lines per transaction
 
 GL accounts for adjustments/transfers are configured in **Inventory Settings → Accounting** (`defaultInventoryGainAccountId`,
-`defaultInventoryLossAccountId`, `defaultInventoryTransferClearingAccountId`).
+`defaultInventoryLossAccountId`, `defaultInventoryTransferClearingAccountId`,
+`defaultInventoryRevaluationAccountId`). These accounts have separate meanings:
+Gain/Loss is for quantity adjustments, Transfer Clearing is for real added transfer costs, and Inventory
+Revaluation is for value-only cost corrections.
 
 ### Sales-mode behavior for missing cost
 

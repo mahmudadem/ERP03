@@ -72,6 +72,7 @@
     "collapse": "طي",
     "expand": "توسيع",
     "grandTotal": "الإجمالي",
+    "balanced": "متوازن",
     "unbalancedDiff": "غير متوازن — الفرق: {{diff}}",
     "asOfInline": "حتى {{date}}",
     "exportExcel": "تصدير إكسل",
@@ -163,6 +164,57 @@
     "origAmount": "المبلغ الأصلي",
     "origCurrency": "العملة الأصلية",
     "exchangeRate": "سعر الصرف"
+  },
+  "voucherLedgerImpact": {
+    "title": "أثر القيد على الأستاذ",
+    "subtitle": "قيود الأستاذ المرحلة الناتجة عن السند {{voucherNo}}.",
+    "readOnly": "للقراءة فقط",
+    "loading": "جارٍ تحميل أثر القيد",
+    "loadFailed": "فشل تحميل أثر القيد على الأستاذ.",
+    "notFound": "السند غير موجود.",
+    "goBack": "رجوع",
+    "back": "رجوع",
+    "viewVoucher": "عرض السند",
+    "balanced": "متوازن",
+    "emptyTitle": "لا توجد قيود أستاذ بعد",
+    "emptyDraft": "لم يتم ترحيل هذا السند إلى الأستاذ بعد. يظهر أثر الأستاذ فقط بعد نجاح الترحيل.",
+    "emptyPosted": "هذا السند المرحل لا يحتوي على قيود أستاذ. قد يشير ذلك إلى مشكلة في سلامة البيانات ويجب مراجعته.",
+    "meta": {
+      "voucher": "السند",
+      "date": "التاريخ",
+      "status": "الحالة",
+      "currency": "العملة",
+      "lines": "سطور الأستاذ"
+    },
+    "summary": {
+      "totalDebit": "إجمالي المدين",
+      "totalCredit": "إجمالي الدائن",
+      "balanceCheck": "فحص التوازن"
+    },
+    "columns": {
+      "date": "التاريخ",
+      "account": "الحساب",
+      "description": "الوصف",
+      "costCenter": "مركز التكلفة",
+      "debit": "مدين",
+      "credit": "دائن",
+      "baseAmount": "المبلغ الأساسي",
+      "rate": "السعر"
+    }
+  },
+  "voucherNavigation": {
+    "ariaLabel": "التنقل بين السجلات",
+    "previous": "السابق",
+    "next": "التالي",
+    "currentVoucher": "السند الحالي",
+    "currentLedger": "الأستاذ الحالي",
+    "noPrevious": "لا يوجد سند سابق",
+    "noNext": "لا يوجد سند تالٍ"
+  },
+  "voucherView": {
+    "actions": {
+      "ledgerImpact": "أثر الأستاذ"
+    }
   },
   "cashFlow": {
     "title": "بيان التدفقات النقدية (غير مباشر)",

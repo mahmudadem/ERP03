@@ -18,28 +18,8 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { clsx } from 'clsx';
-import { useNavigate } from 'react-router-dom';
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  Cpu,
-  HelpCircle,
-  Key,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Rocket,
-  Server,
-  Shield,
-  ShieldCheck,
-  Sparkles,
-  XCircle,
-} from 'lucide-react';
+import { clsx } from 'clsx'; import { useNavigate } from 'react-router-dom'; import { AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronRight, Cpu, HelpCircle, Key, Plus, RefreshCw, Rocket, Server, Shield, ShieldCheck, Sparkles, XCircle} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import {
   AiCertificationCategory,
   AiModelProfile,
@@ -192,7 +172,7 @@ const StepShell: React.FC<StepShellProps> = ({
           disabled={nextDisabled || nextLoading}
           className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {nextLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+          {nextLoading ? <Spinner size="sm" /> : <ArrowRight className="h-4 w-4" />}
           {nextLabel}
         </button>
       )}
@@ -515,7 +495,7 @@ const StepProvider: React.FC<{
                 disabled={saving}
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {saving ? <Spinner size="sm" /> : <Check className="h-4 w-4" />}
                 Create
               </button>
               <button
@@ -728,7 +708,7 @@ const StepModel: React.FC<{
                 disabled={saving}
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {saving ? <Spinner size="sm" /> : <Check className="h-4 w-4" />}
                 Create
               </button>
               <button
@@ -1014,7 +994,7 @@ const StepPlatformKey: React.FC<{
                     disabled={savingVault}
                     className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    {savingVault ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    {savingVault ? <Spinner size="sm" /> : <Check className="h-3 w-3" />}
                     Save to vault &amp; select
                   </button>
                   <button
@@ -1063,7 +1043,7 @@ const StepPlatformKey: React.FC<{
             disabled={saving || !provider || !model}
             className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+            {saving ? <Spinner size="sm" /> : <Key className="h-4 w-4" />}
             {existing ? 'Update and continue' : 'Save and continue'}
           </button>
         </div>
@@ -1134,7 +1114,7 @@ const StepTest: React.FC<{
             disabled={running || !model}
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {running ? <Spinner size="sm" /> : <RefreshCw className="h-4 w-4" />}
             {result ? 'Run again' : 'Run diagnostics'}
           </button>
         </div>
@@ -1283,7 +1263,7 @@ const StepCertify: React.FC<{
             className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
           >
             {certs[selectedCategory] === 'running' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Spinner size="sm" />
             ) : (
               <ShieldCheck className="h-4 w-4" />
             )}
@@ -1302,7 +1282,7 @@ const StepCertify: React.FC<{
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {runningAll ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Spinner size="sm" />
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
@@ -1317,7 +1297,7 @@ const StepCertify: React.FC<{
                 <div className="flex items-center gap-2">
                   {status === 'passed' && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                   {status === 'failed' && <XCircle className="h-4 w-4 text-red-600" />}
-                  {status === 'running' && <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />}
+                  {status === 'running' && <Spinner size="sm" variant="indigo" />}
                   <span className="font-medium text-sm text-slate-900">{cat}</span>
                   <span className="text-xs text-slate-500">{status}</span>
                 </div>

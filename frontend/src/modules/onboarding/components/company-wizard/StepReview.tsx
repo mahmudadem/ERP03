@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { WizardStepProps } from './types';
-import { Building2, Globe, Box, Mail, Loader2, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { Building2, Globe, Box, Mail, AlertCircle, CheckCircle, X, ShieldCheck } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { onboardingApi } from '../../api/onboardingApi';
 import { useTranslation } from 'react-i18next';
 
@@ -9,15 +10,22 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
   const { t } = useTranslation('common');
   
   const selectedBundle = bundles.find(b => b.id === data.selectedBundleId);
+  const isStarterEnabled = data.autoInitializeModules !== false;
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [showModal, setShowModal] = React.useState(false);
-  const [progressSteps, setProgressSteps] = React.useState<Array<{ label: string; status: 'pending' | 'loading' | 'done' | 'error' }>>([
-    { label: t('onboarding.companyWizard.review.progress.creatingCompany'), status: 'pending' },
-    { label: t('onboarding.companyWizard.review.progress.installingModules'), status: 'pending' },
-    { label: t('onboarding.companyWizard.review.progress.settingPermissions'), status: 'pending' },
-    { label: t('onboarding.companyWizard.review.progress.finalizing'), status: 'pending' },
-  ]);
+  const buildProgressSteps = React.useCallback((includeStarter: boolean) => [
+    { label: t('onboarding.companyWizard.review.progress.creatingCompany'), status: 'pending' as const },
+    { label: t('onboarding.companyWizard.review.progress.installingModules'), status: 'pending' as const },
+    ...(includeStarter
+      ? [{ label: t('onboarding.companyWizard.review.progress.initializingTemplate', { defaultValue: 'Applying starter template' }), status: 'pending' as const }]
+      : []),
+    { label: t('onboarding.companyWizard.review.progress.settingPermissions'), status: 'pending' as const },
+    { label: t('onboarding.companyWizard.review.progress.finalizing'), status: 'pending' as const },
+  ], [t]);
+  const [progressSteps, setProgressSteps] = React.useState<Array<{ label: string; status: 'pending' | 'loading' | 'done' | 'error' }>>(
+    () => buildProgressSteps(isStarterEnabled)
+  );
 
   const handleCreate = async () => {
     // Guard: prevent double submission
@@ -33,12 +41,22 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
     setIsSubmitting(true);
     setShowModal(true);
     setError(null);
+    setProgressSteps(buildProgressSteps(isStarterEnabled));
 
     try {
+      const markStep = (index: number, status: 'loading' | 'done' | 'error') => {
+        setProgressSteps(prev => prev.map((step, i) => i === index ? { ...step, status } : step));
+      };
+
       // Step 1: Creating company
-      setProgressSteps(prev => prev.map((step, i) => i === 0 ? { ...step, status: 'loading' } : step));
+      markStep(0, 'loading');
       
       const logoData = data.logoPreviewUrl || undefined;
+      const normalizedCurrency = data.currency?.trim().toUpperCase();
+
+      if (isStarterEnabled && !normalizedCurrency) {
+        throw new Error(t('onboarding.companyWizard.needs.errors.currencyRequired', { defaultValue: 'Base currency is required before initializing modules.' }));
+      }
 
       const result = await onboardingApi.createCompany({
         companyName: data.companyName,
@@ -47,32 +65,44 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
         email: data.email || '',
         bundleId: data.selectedBundleId,
         logoData,
-        currency: data.currency,
+        currency: normalizedCurrency,
         language: data.language,
         timezone: data.timezone,
-        dateFormat: data.dateFormat
+        dateFormat: data.dateFormat,
+        autoInitializeModules: isStarterEnabled,
+        starterTemplateId: isStarterEnabled ? (data.starterTemplateId || 'simple-trading-company') : undefined,
       });
 
       // Step 1 done
-      setProgressSteps(prev => prev.map((step, i) => i === 0 ? { ...step, status: 'done' } : step));
+      markStep(0, 'done');
       
       // Step 2: Installing modules (simulated - happens on backend)
-      setProgressSteps(prev => prev.map((step, i) => i === 1 ? { ...step, status: 'loading' } : step));
+      markStep(1, 'loading');
       await new Promise(resolve => setTimeout(resolve, 500));
-      setProgressSteps(prev => prev.map((step, i) => i === 1 ? { ...step, status: 'done' } : step));
+      markStep(1, 'done');
       
-      // Step 3: Setting up permissions (simulated)
-      setProgressSteps(prev => prev.map((step, i) => i === 2 ? { ...step, status: 'loading' } : step));
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProgressSteps(prev => prev.map((step, i) => i === 2 ? { ...step, status: 'done' } : step));
-      
-      // Step 4: Finalizing
-      setProgressSteps(prev => prev.map((step, i) => i === 3 ? { ...step, status: 'loading' } : step));
+      let nextProgressIndex = 2;
+      if (isStarterEnabled) {
+        // Step 3: Applying starter template
+        markStep(nextProgressIndex, 'loading');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        markStep(nextProgressIndex, 'done');
+        nextProgressIndex += 1;
+      }
+
+      // Setting up permissions
+      markStep(nextProgressIndex, 'loading');
       await new Promise(resolve => setTimeout(resolve, 300));
-      setProgressSteps(prev => prev.map((step, i) => i === 3 ? { ...step, status: 'done' } : step));
+      markStep(nextProgressIndex, 'done');
+      nextProgressIndex += 1;
+
+      // Finalizing
+      markStep(nextProgressIndex, 'loading');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      markStep(nextProgressIndex, 'done');
       
       // Success - store company ID and proceed
-      updateData({ createdCompanyId: result.companyId });
+      updateData({ createdCompanyId: result.companyId, starterPolicySummary: result.starterPolicySummary ?? null });
       
       // Wait a moment to show completion
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -102,7 +132,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
     if (!isSubmitting) {
       setShowModal(false);
       setError(null);
-      setProgressSteps(steps => steps.map(s => ({ ...s, status: 'pending' })));
+      setProgressSteps(buildProgressSteps(isStarterEnabled));
     }
   };
 
@@ -182,6 +212,53 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
           </div>
         </div>
 
+        <div className="bg-white border border-slate-200 rounded-lg p-4 md:p-6 shadow-sm mb-4">
+          <h4 className="font-medium text-sm md:text-base text-slate-900 mb-3">
+            {isStarterEnabled
+              ? t('onboarding.companyWizard.review.starter.title', { defaultValue: 'Auto initialize modules with Trading Company - Simple' })
+              : t('onboarding.companyWizard.review.starter.manualTitle', { defaultValue: 'Manual module setup' })}
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              {t('onboarding.companyWizard.review.starter.currency', { currency: data.currency || '-', defaultValue: 'Base currency: {{currency}}' })}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              {t('onboarding.companyWizard.review.starter.timezone', { timezone: data.timezone || 'UTC', defaultValue: 'Timezone: {{timezone}}' })}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              {t('onboarding.companyWizard.review.starter.dateFormat', { dateFormat: data.dateFormat || 'MM/DD/YYYY', defaultValue: 'Date format: {{dateFormat}}' })}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              {t('onboarding.companyWizard.review.starter.language', { language: data.language || 'en', defaultValue: 'Language: {{language}}' })}
+            </span>
+            {isStarterEnabled ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  {t('onboarding.companyWizard.review.starter.inventory', { defaultValue: 'Invoice-driven stock, global average cost, negative stock off' })}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  {t('onboarding.companyWizard.review.starter.workflow', { defaultValue: 'Simple sales and purchases' })}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  {t('onboarding.companyWizard.review.starter.tax', { defaultValue: 'Tax-ready, no hidden legal rate applied' })}
+                </span>
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1 sm:col-span-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-slate-500" />
+                {t('onboarding.companyWizard.review.starter.manualDescription', { defaultValue: 'Modules will be installed from the selected bundle, but setup wizards will remain manual.' })}
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="text-center text-xs text-slate-500 pb-2">
            {t('onboarding.companyWizard.review.legal')}
         </div>
@@ -202,7 +279,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Spinner size="sm" variant="white" className="mr-2" />
               {t('onboarding.companyWizard.review.actions.creating')}
             </>
           ) : (
@@ -233,7 +310,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                 <div key={index} className="flex items-center gap-3">
                   <div className="shrink-0">
                     {step.status === 'loading' && (
-                      <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                      <Spinner size="sm" variant="indigo" className="h-5 w-5" />
                     )}
                     {step.status === 'done' && (
                       <CheckCircle className="w-5 h-5 text-green-600" />

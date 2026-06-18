@@ -24,26 +24,8 @@
  *     Sales Return                                                     [Install]
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  CheckCircle2,
-  ChevronDown,
-  ChevronRight,
-  Download,
-  DownloadCloud,
-  Edit3,
-  FileJson,
-  FileText,
-  FolderTree,
-  HelpCircle,
-  Layers,
-  Loader2,
-  Lock,
-  MoreVertical,
-  PackageCheck,
-  Plus,
-  RefreshCw,
-  X,
-} from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight, Download, DownloadCloud, Edit3, FileJson, FileText, FolderTree, HelpCircle, Layers, Lock, MoreVertical, PackageCheck, Plus, RefreshCw, X} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { InstructionsModal } from '../../../components/instructions/InstructionsModal';
 import type { PageInstructions } from '../../../components/instructions/types';
 import { useQueryClient } from '@tanstack/react-query';
@@ -938,7 +920,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   if (loading && forms.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
-        <Loader2 className="animate-spin h-8 w-8 text-primary-600" />
+        <Spinner size="lg" />
         <span className="ml-3 text-slate-600">Loading {moduleLabel} forms management...</span>
       </div>
     );
@@ -1447,7 +1429,7 @@ const AvailableTypeRow: React.FC<AvailableTypeRowProps> = ({ node, installing, o
       >
         {installing ? (
           <>
-            <Loader2 className="h-3 w-3 animate-spin" /> Installing
+            <Spinner size="sm" /> Installing
           </>
         ) : (
           <>

@@ -8,10 +8,13 @@ import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
-import { Camera, Upload, Trash2, Loader2, Building2 } from 'lucide-react';
+import { Camera, Upload, Trash2, Building2 } from 'lucide-react';
 import { processImage } from '../../../lib/image-utils';
 import { cn } from '../../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { UnsavedChangesBanner } from '../../../components/shared/UnsavedChangesBanner';
+import { notifySettingsChanged } from '../../../utils/settingsSync';
 
 const MONTHS = [
   { value: 1 },
@@ -75,6 +78,7 @@ export const SettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation('common');
   const { profile, isLoading, updateProfile, isUpdating } = useCompanyProfile();
   const { settings, updateSettings } = useCompanySettings();
+  const { companyId, refreshCompany } = useCompanyAccess();
   const { theme, toggleTheme } = useUserPreferences();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
@@ -94,30 +98,35 @@ export const SettingsPage: React.FC = () => {
     language: 'en'
   });
 
-  useEffect(() => {
-    if (profile || settings) {
-      setFormData(prev => ({
-        ...prev,
-        ...(profile ? {
-          name: profile.name || '',
-          baseCurrency: (profile as any).baseCurrency || (profile as any).currency || '',
-          fiscalYearStart: Number((profile as any).fiscalYearStart) || 1,
-          fiscalYearEnd: Number((profile as any).fiscalYearEnd) || 12,
-          taxId: profile.taxId || '',
-          address: profile.address || '',
-          logoUrl: profile.logoUrl || '',
-        } : {}),
-        ...(settings ? {
-          timezone: settings.timezone || 'UTC',
-          dateFormat: settings.dateFormat || 'YYYY-MM-DD',
-          language: (settings as any).language || 'en',
-        } : {})
-      }));
-    }
+  const originalData = useMemo(() => {
+    if (!profile && !settings) return null;
+    return {
+      name: profile?.name || '',
+      baseCurrency: (profile as any)?.baseCurrency || (profile as any)?.currency || '',
+      fiscalYearStart: Number((profile as any)?.fiscalYearStart) || 1,
+      fiscalYearEnd: Number((profile as any)?.fiscalYearEnd) || 12,
+      taxId: profile?.taxId || '',
+      address: profile?.address || '',
+      logoUrl: profile?.logoUrl || '',
+      timezone: settings?.timezone || 'UTC',
+      dateFormat: settings?.dateFormat || 'YYYY-MM-DD',
+      language: (settings as any)?.language || 'en',
+    };
   }, [profile, settings]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const hasChanges = useMemo(() => {
+    if (!originalData) return false;
+    return JSON.stringify(formData) !== JSON.stringify(originalData);
+  }, [formData, originalData]);
+
+  useEffect(() => {
+    if (originalData) {
+      setFormData(originalData);
+    }
+  }, [originalData]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     // Update Profile
     updateProfile({
@@ -126,7 +135,12 @@ export const SettingsPage: React.FC = () => {
       fiscalYearStart: Number(formData.fiscalYearStart),
       fiscalYearEnd: Number(formData.fiscalYearEnd),
       logoUrl: formData.logoUrl,
-    } as any);
+    } as any, {
+      onSuccess: () => {
+        // Refresh company access context immediately to update topbar/widgets
+        refreshCompany();
+      }
+    });
 
     // Update Company Settings
     await updateSettings({
@@ -134,6 +148,16 @@ export const SettingsPage: React.FC = () => {
       dateFormat: formData.dateFormat,
       language: formData.language
     } as any);
+
+    // Apply language dynamically if changed
+    if (formData.language && i18n.language !== formData.language) {
+      i18n.changeLanguage(formData.language);
+    }
+
+    // Notify other tabs and listeners
+    if (companyId) {
+      notifySettingsChanged(companyId);
+    }
   };
 
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,7 +256,7 @@ export const SettingsPage: React.FC = () => {
                   )}
                   {isProcessingLogo && (
                     <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
-                      <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                      <Spinner size="md" variant="indigo" />
                       <p className="text-[10px] text-blue-600 mt-1 font-bold animate-pulse">
                         {t('companyAdmin.settings.wait', { defaultValue: 'Wait...' })}
                       </p>
@@ -476,22 +500,7 @@ export const SettingsPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 justify-end pt-6 border-t">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleReset}
-                disabled={isUpdating}
-              >
-                {t('companyAdmin.shared.reset', { defaultValue: 'Reset' })}
-              </Button>
-              <Button type="submit" disabled={isUpdating}>
-                {isUpdating
-                  ? t('companyAdmin.shared.saving', { defaultValue: 'Saving...' })
-                  : t('companyAdmin.shared.saveChanges', { defaultValue: 'Save Changes' })}
-              </Button>
-            </div>
+            {/* Action buttons removed in favor of floating UnsavedChangesBanner */}
           </form>
         </Card>
 
@@ -515,6 +524,12 @@ export const SettingsPage: React.FC = () => {
           </div>
         </Card>
       </div>
+      <UnsavedChangesBanner
+        hasChanges={hasChanges}
+        onSave={() => handleSubmit()}
+        onDiscard={handleReset}
+        saving={isUpdating}
+      />
     </CompanyAdminLayout>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { AmountInput } from './shared/AmountInput';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next'; import { AmountInput } from './shared/AmountInput'; import { Plus, Trash2} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { accountingApi } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
@@ -233,7 +232,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
               disabled={loading || !payFromAccountId || totalAmount === 0}
               className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white rounded-lg font-bold shadow-lg shadow-primary-500/20 transition-all flex items-center gap-2"
             >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading && <Spinner size="sm" />}
               {loading ? t('paymentVoucher.actions.processing', { defaultValue: 'Processing...' }) : t('paymentVoucher.actions.save', { defaultValue: 'Save Payment' })}
             </button>
           </div>

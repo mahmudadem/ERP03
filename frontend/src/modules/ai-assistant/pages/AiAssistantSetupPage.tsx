@@ -1,7 +1,6 @@
 import React from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Navigate, useNavigate } from 'react-router-dom'; import { useTranslation } from 'react-i18next'; import { } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { companyModulesApi } from '../../../api/companyModules';
@@ -38,7 +37,7 @@ export const AiAssistantSetupPage: React.FC = () => {
   if (modulesLoading) {
     return (
       <div className="flex items-center justify-center py-16 text-sm text-gray-500">
-        <Loader2 className="w-5 h-5 mr-2 animate-spin text-indigo-600" />
+        <Spinner variant="indigo" className="mr-2" />
         {t('settings.loading', 'Loading settings...')}
       </div>
     );

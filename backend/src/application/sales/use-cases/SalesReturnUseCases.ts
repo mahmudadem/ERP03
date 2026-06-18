@@ -19,6 +19,7 @@ import {
   SalesReturnLine,
   SRStatus,
 } from '../../../domain/sales/entities/SalesReturn';
+import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { Item } from '../../../domain/inventory/entities/Item';
@@ -499,7 +500,9 @@ export class PostSalesReturnUseCase {
     const salesReturn = await this.salesReturnRepo.getById(companyId, id);
     if (!salesReturn) throw new Error(`Sales return not found: ${id}`);
     if (salesReturn.status !== 'DRAFT') {
-      throw new Error('Only DRAFT sales returns can be posted');
+      throw new SalesRuleError('SALES_RETURN_INVALID_STATE', 'Only DRAFT sales returns can be posted', {
+        fieldHints: ['status'],
+      });
     }
 
     const isAfterInvoice = salesReturn.returnContext === 'AFTER_INVOICE';
@@ -1316,7 +1319,9 @@ export class UpdateSalesReturnUseCase {
     const current = await this.salesReturnRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Sales return not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
-      throw new Error('Only draft sales returns can be updated');
+      throw new SalesRuleError('SALES_RETURN_INVALID_STATE', 'Only draft sales returns can be updated', {
+        fieldHints: ['status'],
+      });
     }
 
     const before = current.toJSON();

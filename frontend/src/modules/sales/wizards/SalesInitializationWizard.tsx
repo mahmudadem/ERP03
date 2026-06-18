@@ -1,18 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  AlertTriangle,
-  Calculator,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  FileCheck,
-  Info,
-  Loader2,
-  Settings,
-  ShoppingCart,
-} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Calculator, CheckCircle, ChevronLeft, ChevronRight, DollarSign, FileCheck, Info, Settings, ShoppingCart} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useAccounts } from '../../../context/AccountsContext';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { inventoryApi } from '../../../api/inventoryApi';
@@ -737,7 +725,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                   Initializing...
                 </>
               ) : (

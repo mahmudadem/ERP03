@@ -1,17 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  AlertTriangle,
-  Calendar,
-  BookOpen,
-  TrendingUp,
-  Info,
-  X,
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; import { CheckCircle2, ChevronLeft, ChevronRight, AlertTriangle, Calendar, BookOpen, TrendingUp, Info, X} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { Account, useAccounts } from '../../../context/AccountsContext';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
@@ -297,7 +286,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
   if (modulesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -507,7 +496,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
               </button>
             ) : (
               <button type="button" onClick={submit} disabled={submitting} className="flex items-center gap-2 rounded-lg bg-primary-600 px-8 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50 transition">
-                {submitting ? (<><Loader2 className="w-4 h-4 animate-spin" /> Configuring...</>) : (<><CheckCircle2 className="w-4 h-4" /> Enable Integration</>)}
+                {submitting ? (<><Spinner size="sm" /> Configuring...</>) : (<><CheckCircle2 className="w-4 h-4" /> Enable Integration</>)}
               </button>
             )}
           </div>

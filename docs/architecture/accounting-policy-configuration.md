@@ -1,9 +1,9 @@
 # Policy Configuration Guide (Backend Only - NO UI)
 
 ## Overview
-The accounting policy system allows you to enable "Strict when needed" behavior through backend configuration. Policies are enforced at the validation gate in `PostVoucherUseCase` before normal ledger writes occur.
+The accounting policy system allows you to enable "Strict when needed" behavior through backend configuration. Policies are enforced at the validation gate before ledger mutations occur.
 
-Core accounting invariants are also enforced at the lower ledger persistence boundary. `ILedgerRepository.recordForVoucher()` runs `VoucherValidationService.validateCore()` and `validateAccounts()` before writing ledger rows, so direct backend callers cannot bypass basic voucher/account safety by skipping `PostVoucherUseCase`.
+Ledger mutation has one application-layer door: `PostingGateway`. Production code outside that gateway must not call `ILedgerRepository.recordForVoucher()`, `deleteForVoucher()`, or `markReconciled()` directly; `PostingAuthority.test.ts` enforces that boundary. Core voucher/account validation and policy checks run at the gateway before ledger write/replace/delete operations.
 
 ## Available Policies
 

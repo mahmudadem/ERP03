@@ -1,5 +1,6 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, History, User, Clock } from 'lucide-react';
+import { History, User, Clock } from 'lucide-react';
+import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { formatCompanyDate, formatCompanyTime } from '../../../../../utils/dateUtils';
 import { useCompanySettings } from '../../../../../hooks/useCompanySettings';
@@ -34,7 +35,7 @@ export const ExchangeRateHistory = forwardRef<ExchangeRateHistoryRef>((_, ref) =
   if (loading && rates.length === 0) {
     return (
       <div className="flex items-center justify-center p-12 bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl">
-        <Loader2 className="animate-spin text-indigo-600" size={24} />
+        <Spinner variant="indigo" />
       </div>
     );
   }

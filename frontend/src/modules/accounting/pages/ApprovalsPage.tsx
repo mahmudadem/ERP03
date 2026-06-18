@@ -5,15 +5,8 @@
  * Consolidates 'Awaiting Financial Approval' and 'Awaiting Custody Confirmation'.
  */
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { accountingApi, type PendingApprovalSourceDoc } from '../../../api/accountingApi';
-import { VoucherTable } from '../components/VoucherTable';
-import { useVoucherTypes } from '../../../hooks/useVoucherTypes';
-import { useVoucherActions } from '../../../hooks/useVoucherActions';
-import { useWindowManager } from '../../../context/WindowManagerContext';
-import { Shield, UserCheck, AlertCircle, Loader2, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; import { useTranslation } from 'react-i18next'; import { useQuery } from '@tanstack/react-query'; import { accountingApi, type PendingApprovalSourceDoc } from '../../../api/accountingApi'; import { VoucherTable } from '../components/VoucherTable'; import { useVoucherTypes } from '../../../hooks/useVoucherTypes'; import { useVoucherActions } from '../../../hooks/useVoucherActions'; import { useWindowManager } from '../../../context/WindowManagerContext'; import { Shield, UserCheck, AlertCircle, FileText } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { Badge } from '../../../components/ui/Badge';
 import { errorHandler } from '../../../services/errorHandler';
 import { AccountsProvider } from '../../../context/AccountsContext';
@@ -162,7 +155,7 @@ const ApprovalsPage: React.FC = () => {
               className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-full transition-colors"
               title={t('approvals.refresh')}
             >
-               {isLoading ? <Loader2 size={20} className="animate-spin text-primary-500" /> : <AlertCircle size={20} className="text-[var(--color-text-muted)]" />}
+               {isLoading ? <Spinner  /> : <AlertCircle size={20} className="text-[var(--color-text-muted)]" />}
             </button>
           </div>
 

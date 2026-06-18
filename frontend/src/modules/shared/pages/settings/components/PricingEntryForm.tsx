@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Save, Loader2, TrendingUp, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
+import { ArrowRight, Save, TrendingUp, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
+import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { errorHandler } from '../../../../../services/errorHandler';
 import { DatePicker } from '../../../../accounting/components/shared/DatePicker';
@@ -249,7 +250,7 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
           <div className={`flex items-center justify-between py-3 px-4 ${colors.bg} border ${colors.border} rounded-lg transition-all`}>
             <div className="flex items-center gap-2">
               {checking ? (
-                <Loader2 size={16} className={`${colors.icon} animate-spin`} />
+                <Spinner size="sm" className={`${colors.icon}`} />
               ) : deviation ? (
                 deviation.percentage >= 50 ? <AlertTriangle size={16} className={colors.icon} /> :
                 deviation.percentage >= 10 ? <AlertTriangle size={16} className={colors.icon} /> :
@@ -279,7 +280,7 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
             disabled={saving || !from || !to || !rate || from === to || parseFloat(rate) <= 0}
             className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-bold disabled:opacity-50 disabled:grayscale shadow-md hover:shadow-lg active:scale-95"
           >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {saving ? <Spinner size="sm" /> : <Save size={16} />}
             <span>Update Reference Rate</span>
           </button>
         </div>

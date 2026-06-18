@@ -670,7 +670,38 @@ describe('RecordStockMovementUseCase', () => {
     expect(result.outMov.unsettledCostBasis).toBe('LAST_KNOWN');
   });
 
-  it('Valued transfer: destination lands at the override cost while the source issues at its own cost', async () => {
+  it('Transfer: zero-cost source moves at zero without phantom value', async () => {
+    addDefaultContext('USD');
+
+    levelRepo.add(new StockLevel({
+      id: StockLevel.compositeId(itemId, whA),
+      companyId, itemId, warehouseId: whA,
+      qtyOnHand: 1, reservedQty: 0,
+      avgCostBase: 0, avgCostCCY: 0,
+      lastCostBase: 0, lastCostCCY: 0,
+      postingSeq: 1, maxBusinessDate: '2026-01-10', totalMovements: 1, lastMovementId: 'm1', version: 1, updatedAt: new Date(),
+    }));
+
+    const result = await useCase.processTRANSFER({
+      companyId,
+      itemId,
+      sourceWarehouseId: whA,
+      destinationWarehouseId: whB,
+      qty: 1,
+      date: '2026-01-12',
+      transferDocId: 'trf-zero',
+      currentUser: 'user-1',
+    });
+
+    expect(result.outMov.totalCostBase).toBe(0);
+    expect(result.inMov.totalCostBase).toBe(0);
+    const src = await levelRepo.getLevel(companyId, itemId, whA);
+    const dst = await levelRepo.getLevel(companyId, itemId, whB);
+    expect(src?.avgCostBase).toBe(0);
+    expect(dst?.avgCostBase).toBe(0);
+  });
+
+  it('Revaluation transfer: destination lands at the explicit revaluation cost while the source issues at its own cost', async () => {
     addDefaultContext('USD');
 
     levelRepo.add(new StockLevel({
@@ -691,7 +722,7 @@ describe('RecordStockMovementUseCase', () => {
       date: '2026-01-12',
       transferDocId: 'trf-valued',
       currentUser: 'user-1',
-      destUnitCostOverrideBase: 400, // landed cost = source 320 + 80 freight/unit
+      revaluationUnitCostBase: 400,
     });
 
     // Source OUT issues at the real source cost; destination IN lands at the override.

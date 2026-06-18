@@ -710,7 +710,10 @@ export class VoucherController {
         diContainer.voucherRepository as any, 
         diContainer.ledgerRepository as any, 
         permissionChecker,
-        diContainer.accountingPolicyConfigProvider as any
+        diContainer.accountingPolicyConfigProvider as any,
+        diContainer.policyRegistry as any,
+        diContainer.accountRepository as any,
+        new VoucherValidationService()
       );
       await useCase.execute(companyId, userId, req.params.id);
       res.json({ success: true });
@@ -730,7 +733,10 @@ export class VoucherController {
         diContainer.voucherRepository as any, 
         diContainer.ledgerRepository as any, 
         permissionChecker,
-        diContainer.accountingPolicyConfigProvider as any
+        diContainer.accountingPolicyConfigProvider as any,
+        diContainer.policyRegistry as any,
+        diContainer.accountRepository as any,
+        new VoucherValidationService()
       );
       
       await useCase.execute(companyId, userId, req.params.id);

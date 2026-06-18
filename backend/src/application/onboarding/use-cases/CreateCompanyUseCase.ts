@@ -31,6 +31,8 @@ interface Input {
   currency?: string;
   language?: string;
   dateFormat?: string;
+  autoInitializeModules?: boolean;
+  starterTemplateId?: 'simple-trading-company';
 }
 
 export class CreateCompanyUseCase {

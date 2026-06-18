@@ -5,10 +5,24 @@ import { ApiError } from '../../errors/ApiError';
 import { CompanySettingsDTOMapper } from '../../dtos/CompanySettingsDTO';
 
 export class CompanySettingsController {
+  private static resolveCompanyId(req: Request): string | null {
+    const user = (req as any).user;
+    const contextCompanyId = (req as any).companyId || user?.companyId;
+
+    if (contextCompanyId) {
+      return contextCompanyId;
+    }
+
+    if (user?.isSuperAdmin === true) {
+      return (req.query.companyId as string) || (req.body as any)?.companyId || null;
+    }
+
+    return null;
+  }
   
   static async getSettings(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = (req as any).companyId || (req.query.companyId as string) || (req.body as any)?.companyId;
+      const companyId = CompanySettingsController.resolveCompanyId(req);
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
 
       const settings = await diContainer.companySettingsRepository.getSettings(companyId);
@@ -24,7 +38,7 @@ export class CompanySettingsController {
 
   static async updateSettings(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = (req as any).companyId || (req.query.companyId as string) || (req.body as any)?.companyId;
+      const companyId = CompanySettingsController.resolveCompanyId(req);
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
 
       const {

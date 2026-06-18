@@ -1,5 +1,6 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi } from '../../../../../api/accountingApi';
 
 export interface ExchangeRateMatrixRef {
@@ -31,7 +32,7 @@ export const ExchangeRateMatrix = forwardRef<ExchangeRateMatrixRef, {}>((_, ref)
   if (loading && !data) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="animate-spin text-indigo-600" size={24} />
+        <Spinner variant="indigo" />
       </div>
     );
   }

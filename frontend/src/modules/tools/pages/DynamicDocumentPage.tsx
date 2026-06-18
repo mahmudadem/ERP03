@@ -1,26 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useCompanyAccess } from '../../../context/CompanyAccessContext';
-import { useAuth } from '../../../context/AuthContext';
-import { 
-  loadModuleDocumentForms, 
-  DocumentFormConfig,
-  AvailableField
-} from '../forms-designer';
-import { Card } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
-import { salesApi } from '../../../api/salesApi';
-import { purchasesApi } from '../../../api/purchasesApi';
-import { accountingApi } from '../../../api/accountingApi';
-import { voucherFormApi } from '../../../api/voucherFormApi';
-import { 
-  Loader2, 
-  Plus, 
-  RefreshCw, 
-  ArrowLeft,
-  FileText,
-  AlertCircle
-} from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom'; import { useCompanyAccess } from '../../../context/CompanyAccessContext'; import { useAuth } from '../../../context/AuthContext'; import { loadModuleDocumentForms, DocumentFormConfig, AvailableField } from '../forms-designer'; import { Card } from '../../../components/ui/Card'; import { Button } from '../../../components/ui/Button'; import { salesApi } from '../../../api/salesApi'; import { purchasesApi } from '../../../api/purchasesApi'; import { accountingApi } from '../../../api/accountingApi'; import { voucherFormApi } from '../../../api/voucherFormApi'; import { Plus, RefreshCw, ArrowLeft, FileText, AlertCircle } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { errorHandler } from '../../../services/errorHandler';
 // We'll try to reuse the Voucher renderer if possible, or build a simplified one
 import { GenericVoucherRenderer } from '../../accounting/components/shared/GenericVoucherRenderer';
@@ -444,7 +424,7 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
-        <Loader2 className="animate-spin h-8 w-8 text-indigo-600 mb-2" />
+        <Spinner size="lg" variant="indigo" className="mb-2" />
         <p className="text-slate-500 font-medium">Loading {formCode}...</p>
       </div>
     );
@@ -531,7 +511,7 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
            <Card className="flex-1 flex flex-col bg-white border-slate-200 shadow-sm overflow-hidden rounded-xl">
               {rowsLoading ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
-                  <Loader2 className="animate-spin h-8 w-8 text-indigo-600 mb-2" />
+                  <Spinner size="lg" variant="indigo" className="mb-2" />
                   <p className="text-slate-500 font-medium">Loading documents...</p>
                 </div>
               ) : rows.length === 0 ? (

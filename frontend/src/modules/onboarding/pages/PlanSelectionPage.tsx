@@ -7,7 +7,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ArrowRight, Star, Loader2, LogOut } from 'lucide-react';
+import { Check, ArrowRight, Star, LogOut } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { onboardingApi, Plan } from '../api/onboardingApi';
 import { cn } from '../../../lib/utils';
 import { useAuth } from '../../../context/AuthContext';
@@ -71,7 +72,7 @@ const PlanSelectionPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -212,7 +213,7 @@ const PlanSelectionPage: React.FC = () => {
                 className="inline-flex items-center justify-center rounded-md bg-primary-500 px-8 py-3 text-sm font-medium text-white shadow transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
               >
                 {isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Spinner size="sm" variant="white" />
                 ) : (
                   <>
                     Continue to Dashboard

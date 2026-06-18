@@ -23,11 +23,22 @@ export interface CreateStockTransferInput {
   lines: Array<{
     itemId: string;
     qty: number;
-    /** VALUED mode only: the cost the goods should land at in the destination. */
+    /** Deprecated input; use revaluationUnitCost* for explicit revaluations. */
     unitCostBaseAtTransfer?: number;
     unitCostCCYAtTransfer?: number;
+    /** Real added cost for this line, e.g. freight/customs/handling. */
+    addedCostBaseAtTransfer?: number;
+    addedCostCCYAtTransfer?: number;
+    /** Explicit revaluation landing unit cost for this line. */
+    revaluationUnitCostBaseAtTransfer?: number;
+    revaluationUnitCostCCYAtTransfer?: number;
+    notes?: string;
   }>;
   createdBy: string;
+}
+
+export interface UpdateStockTransferInput extends CreateStockTransferInput {
+  transferId: string;
 }
 
 export interface ListStockTransfersInput {
@@ -35,6 +46,8 @@ export interface ListStockTransfersInput {
   limit?: number;
   offset?: number;
 }
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export class CreateStockTransferUseCase {
   constructor(
@@ -45,6 +58,12 @@ export class CreateStockTransferUseCase {
   ) {}
 
   async execute(input: CreateStockTransferInput): Promise<StockTransfer> {
+    const transfer = await this.buildDraft(input);
+    await this.transferRepo.createTransfer(transfer);
+    return transfer;
+  }
+
+  async buildDraft(input: CreateStockTransferInput): Promise<StockTransfer> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
       throw new Error('date must be in YYYY-MM-DD format');
     }
@@ -102,17 +121,39 @@ export class CreateStockTransferUseCase {
         }
       }
 
-      const isValued = input.mode === 'VALUED';
-      const hasOverride = isValued && line.unitCostBaseAtTransfer !== undefined && line.unitCostBaseAtTransfer >= 0;
+      const addedCostBase = line.addedCostBaseAtTransfer ?? 0;
+      const addedCostCCY = line.addedCostCCYAtTransfer ?? addedCostBase;
+      const hasAddedCost = addedCostBase > 0 || addedCostCCY > 0;
+      const hasRevaluation =
+        line.revaluationUnitCostBaseAtTransfer !== undefined ||
+        line.revaluationUnitCostCCYAtTransfer !== undefined;
+      const hasLegacyOverride =
+        line.unitCostBaseAtTransfer !== undefined ||
+        line.unitCostCCYAtTransfer !== undefined;
+
+      if (hasAddedCost && hasRevaluation) {
+        throw new Error('Added cost and revaluation must be posted as separate stock transfers');
+      }
+      if (hasLegacyOverride && !hasAddedCost && !hasRevaluation) {
+        throw new Error(
+          'Valued stock transfers must declare addedCostBaseAtTransfer or revaluationUnitCostBaseAtTransfer; landed cost is no longer accepted as an implicit uplift.'
+        );
+      }
 
       lines.push({
         itemId: line.itemId,
         qty: line.qty,
-        // VALUED + override → the requested landing cost; otherwise the source cost snapshot.
-        unitCostBaseAtTransfer: hasOverride ? line.unitCostBaseAtTransfer! : sourceCostBase,
-        unitCostCCYAtTransfer: hasOverride
-          ? (line.unitCostCCYAtTransfer ?? line.unitCostBaseAtTransfer!)
-          : sourceCostCCY,
+        unitCostBaseAtTransfer: sourceCostBase,
+        unitCostCCYAtTransfer: sourceCostCCY,
+        addedCostBaseAtTransfer: hasAddedCost ? addedCostBase : undefined,
+        addedCostCCYAtTransfer: hasAddedCost ? addedCostCCY : undefined,
+        revaluationUnitCostBaseAtTransfer: hasRevaluation
+          ? (line.revaluationUnitCostBaseAtTransfer ?? line.revaluationUnitCostCCYAtTransfer ?? 0)
+          : undefined,
+        revaluationUnitCostCCYAtTransfer: hasRevaluation
+          ? (line.revaluationUnitCostCCYAtTransfer ?? line.revaluationUnitCostBaseAtTransfer ?? 0)
+          : undefined,
+        notes: line.notes || undefined,
       });
     }
 
@@ -130,9 +171,50 @@ export class CreateStockTransferUseCase {
       createdBy: input.createdBy,
       createdAt: new Date(),
     });
-
-    await this.transferRepo.createTransfer(transfer);
     return transfer;
+  }
+}
+
+export class UpdateStockTransferUseCase {
+  constructor(
+    private readonly transferRepo: IStockTransferRepository,
+    private readonly createUseCase: CreateStockTransferUseCase
+  ) {}
+
+  async execute(input: UpdateStockTransferInput): Promise<StockTransfer> {
+    const existing = await this.transferRepo.getTransfer(input.transferId);
+    if (!existing || existing.companyId !== input.companyId) {
+      throw new Error(`Stock transfer not found: ${input.transferId}`);
+    }
+    if (existing.status !== 'DRAFT') {
+      throw new Error('Only DRAFT stock transfers can be edited');
+    }
+
+    const candidate = await this.createUseCase.buildDraft({
+      companyId: input.companyId,
+      sourceWarehouseId: input.sourceWarehouseId,
+      destinationWarehouseId: input.destinationWarehouseId,
+      date: input.date,
+      notes: input.notes,
+      mode: input.mode,
+      lines: input.lines,
+      createdBy: input.createdBy,
+    });
+
+    await this.transferRepo.updateTransfer(existing.id, {
+      sourceWarehouseId: candidate.sourceWarehouseId,
+      destinationWarehouseId: candidate.destinationWarehouseId,
+      date: candidate.date,
+      notes: candidate.notes,
+      mode: candidate.mode,
+      lines: candidate.lines,
+    } as Partial<StockTransfer>);
+
+    const updated = await this.transferRepo.getTransfer(existing.id);
+    if (!updated) {
+      throw new Error(`Stock transfer not found after update: ${existing.id}`);
+    }
+    return updated;
   }
 }
 
@@ -180,7 +262,7 @@ export class CompleteStockTransferUseCase {
       })
     );
 
-    // Resolve accounting context once (VALUED transfers may post an uplift voucher).
+    // Resolve accounting context once (VALUED transfers may post explicit deltas).
     const shouldPostAccounting = isValued && (await this.isAccountingEnabled(companyId));
     const settings = shouldPostAccounting && this.inventorySettingsRepo
       ? await this.inventorySettingsRepo.getSettings(companyId)
@@ -190,10 +272,10 @@ export class CompleteStockTransferUseCase {
       : undefined;
 
     await this.transactionManager.runTransaction(async (txn) => {
-      // Each entry: the actual source (OUT) and landed (IN) costs, for GL uplift.
+      // Each entry: the actual source (OUT) and landed (IN) costs.
       const completed: Array<{ unitCostBase: number; unitCostCCY: number }> = [];
-      // Accumulate the transfer uplift (landed value − source value) per inventory account.
-      const upliftByInvAccount = new Map<string, number>();
+      const addedCostByInvAccount = new Map<string, number>();
+      const revaluationByInvAccount = new Map<string, number>();
 
       for (const context of lineContexts) {
         const result = await this.movementUseCase.processTRANSFER({
@@ -217,9 +299,10 @@ export class CompleteStockTransferUseCase {
           preFetchedSourceLevel: context.sourceLevel,
           preFetchedDestinationLevel: context.destinationLevel,
           skipWarehouseValidation: true,
-          // VALUED: land the goods at the requested cost; FLAT: inherit source.
-          destUnitCostOverrideBase: isValued ? context.line.unitCostBaseAtTransfer : undefined,
-          destUnitCostOverrideCCY: isValued ? context.line.unitCostCCYAtTransfer : undefined,
+          addedCostBase: isValued ? context.line.addedCostBaseAtTransfer : undefined,
+          addedCostCCY: isValued ? context.line.addedCostCCYAtTransfer : undefined,
+          revaluationUnitCostBase: isValued ? context.line.revaluationUnitCostBaseAtTransfer : undefined,
+          revaluationUnitCostCCY: isValued ? context.line.revaluationUnitCostCCYAtTransfer : undefined,
         });
 
         // Record the actual landed cost on the completed line.
@@ -229,23 +312,39 @@ export class CompleteStockTransferUseCase {
         });
 
         if (shouldPostAccounting) {
-          const uplift = roundMoney(result.inMov.totalCostBase - result.outMov.totalCostBase);
-          if (uplift !== 0) {
-            const invAccountId =
-              context.item.inventoryAssetAccountId || settings?.defaultInventoryAssetAccountId;
-            if (!invAccountId) {
-              throw new Error(
-                `Valued transfer cannot post because item ${context.item.code || context.item.id} has no Inventory Asset account. Set it on the item or in Inventory Settings.`
-              );
-            }
-            upliftByInvAccount.set(invAccountId, roundMoney((upliftByInvAccount.get(invAccountId) || 0) + uplift));
+          const invAccountId = context.item.inventoryAssetAccountId || settings?.defaultInventoryAssetAccountId;
+          const explicitAddedCost = roundMoney(context.line.addedCostBaseAtTransfer ?? 0);
+          const explicitRevaluationDelta =
+            context.line.revaluationUnitCostBaseAtTransfer !== undefined
+              ? roundMoney((context.line.revaluationUnitCostBaseAtTransfer - result.outMov.unitCostBase) * context.line.qty)
+              : 0;
+
+          if ((explicitAddedCost !== 0 || explicitRevaluationDelta !== 0) && !invAccountId) {
+            throw new Error(
+              `Valued transfer cannot post because item ${context.item.code || context.item.id} has no Inventory Asset account. Set it on the item or in Inventory Settings.`
+            );
+          }
+          if (explicitAddedCost !== 0) {
+            addedCostByInvAccount.set(invAccountId!, roundMoney((addedCostByInvAccount.get(invAccountId!) || 0) + explicitAddedCost));
+          }
+          if (explicitRevaluationDelta !== 0) {
+            revaluationByInvAccount.set(invAccountId!, roundMoney((revaluationByInvAccount.get(invAccountId!) || 0) + explicitRevaluationDelta));
           }
         }
       }
 
       let voucherId: string | undefined;
       if (shouldPostAccounting && this.accountingPostingService) {
-        voucherId = await this.postUpliftVoucher(companyId, userId, transfer, upliftByInvAccount, settings, baseCurrency, txn);
+        voucherId = await this.postUpliftVoucher(
+          companyId,
+          userId,
+          transfer,
+          addedCostByInvAccount,
+          revaluationByInvAccount,
+          settings,
+          baseCurrency,
+          txn
+        );
       }
 
       const completedLines = transfer.lines.map((line, index) => ({
@@ -271,29 +370,36 @@ export class CompleteStockTransferUseCase {
   }
 
   /**
-   * Posts the VALUED-transfer uplift: for each inventory account, the net uplift
-   * is capitalized into inventory (Dr) against the Inventory Transfer Clearing
-   * account (Cr). Negative uplift (write-down on transfer) flips the sides.
-   * Returns undefined when there is no net uplift to post.
+   * Posts explicit VALUED-transfer deltas only. Plain/journaled transfers are
+   * value-neutral with the current single inventory control account model.
    */
   private async postUpliftVoucher(
     companyId: string,
     userId: string,
     transfer: StockTransfer,
-    upliftByInvAccount: Map<string, number>,
-    settings: { defaultInventoryTransferClearingAccountId?: string } | null,
+    addedCostByInvAccount: Map<string, number>,
+    revaluationByInvAccount: Map<string, number>,
+    settings: {
+      defaultInventoryTransferClearingAccountId?: string;
+      defaultInventoryRevaluationAccountId?: string;
+    } | null,
     baseCurrency: string | undefined,
     transaction: unknown
   ): Promise<string | undefined> {
     if (!this.accountingPostingService) return undefined;
 
-    const entries = Array.from(upliftByInvAccount.entries()).filter(([, amount]) => Math.abs(amount) > 0.0001);
-    if (entries.length === 0) return undefined;
+    const addedEntries = Array.from(addedCostByInvAccount.entries()).filter(([, amount]) => Math.abs(amount) > 0.0001);
+    const revaluationEntries = Array.from(revaluationByInvAccount.entries()).filter(([, amount]) => Math.abs(amount) > 0.0001);
+    if (addedEntries.length === 0 && revaluationEntries.length === 0) return undefined;
 
-    const clearingAccountId = settings?.defaultInventoryTransferClearingAccountId;
-    if (!clearingAccountId) {
+    if (addedEntries.length > 0 && !settings?.defaultInventoryTransferClearingAccountId) {
       throw new Error(
-        'Valued transfer cannot post a cost uplift because no Inventory Transfer Clearing account is configured. Set it in Inventory Settings.'
+        'Added-cost stock transfer cannot post because no Inventory Transfer Clearing account is configured. Set it in Inventory Settings.'
+      );
+    }
+    if (revaluationEntries.length > 0 && !settings?.defaultInventoryRevaluationAccountId) {
+      throw new Error(
+        'Revaluation stock transfer cannot post because no Inventory Revaluation account is configured. Set defaultInventoryRevaluationAccountId in Inventory Settings.'
       );
     }
     if (!baseCurrency) {
@@ -312,10 +418,10 @@ export class CompleteStockTransferUseCase {
       metadata: Record<string, any>;
     }> = [];
 
-    let netUplift = 0;
-    for (const [invAccountId, amount] of entries) {
+    let netAddedCost = 0;
+    for (const [invAccountId, amount] of addedEntries) {
       const abs = Math.abs(amount);
-      netUplift = roundMoney(netUplift + amount);
+      netAddedCost = roundMoney(netAddedCost + amount);
       voucherLines.push({
         accountId: invAccountId,
         side: amount > 0 ? 'Debit' : 'Credit',
@@ -324,17 +430,16 @@ export class CompleteStockTransferUseCase {
         exchangeRate: 1,
         baseAmount: abs,
         docAmount: abs,
-        notes: `Stock transfer ${transfer.id} cost uplift`,
-        metadata: { source: 'stock-transfer', transferId: transfer.id, role: 'inventory-uplift' },
+        notes: `Stock transfer ${transfer.id} added cost`,
+        metadata: { source: 'stock-transfer', transferId: transfer.id, role: 'inventory-added-cost' },
       });
     }
 
-    // Clearing account takes the balancing side for the net uplift.
-    const clearingAbs = Math.abs(netUplift);
+    const clearingAbs = Math.abs(netAddedCost);
     if (clearingAbs > 0.0001) {
       voucherLines.push({
-        accountId: clearingAccountId,
-        side: netUplift > 0 ? 'Credit' : 'Debit',
+        accountId: settings!.defaultInventoryTransferClearingAccountId!,
+        side: netAddedCost > 0 ? 'Credit' : 'Debit',
         amount: clearingAbs,
         currency: baseCurrency,
         exchangeRate: 1,
@@ -345,12 +450,44 @@ export class CompleteStockTransferUseCase {
       });
     }
 
+    let netRevaluation = 0;
+    for (const [invAccountId, amount] of revaluationEntries) {
+      const abs = Math.abs(amount);
+      netRevaluation = roundMoney(netRevaluation + amount);
+      voucherLines.push({
+        accountId: invAccountId,
+        side: amount > 0 ? 'Debit' : 'Credit',
+        amount: abs,
+        currency: baseCurrency,
+        exchangeRate: 1,
+        baseAmount: abs,
+        docAmount: abs,
+        notes: `Stock transfer ${transfer.id} revaluation`,
+        metadata: { source: 'stock-transfer', transferId: transfer.id, role: 'inventory-revaluation' },
+      });
+    }
+
+    const revaluationAbs = Math.abs(netRevaluation);
+    if (revaluationAbs > 0.0001) {
+      voucherLines.push({
+        accountId: settings!.defaultInventoryRevaluationAccountId!,
+        side: netRevaluation > 0 ? 'Credit' : 'Debit',
+        amount: revaluationAbs,
+        currency: baseCurrency,
+        exchangeRate: 1,
+        baseAmount: revaluationAbs,
+        docAmount: revaluationAbs,
+        notes: `Stock transfer ${transfer.id} revaluation variance`,
+        metadata: { source: 'stock-transfer', transferId: transfer.id, role: 'inventory-revaluation-variance' },
+      });
+    }
+
     const voucher = await this.accountingPostingService.postInTransaction({
       companyId,
       voucherType: VoucherType.JOURNAL_ENTRY,
       voucherNo: `TRF-${transfer.id}`,
       date: transfer.date,
-      description: `Stock transfer ${transfer.id} cost uplift`,
+      description: `Stock transfer ${transfer.id} valuation entry`,
       currency: '',
       exchangeRate: 1,
       lines: voucherLines,
@@ -373,6 +510,82 @@ export class CompleteStockTransferUseCase {
     if (!this.companyModuleRepo) return false;
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
+  }
+}
+
+export class UndoStockTransferUseCase {
+  constructor(
+    private readonly transferRepo: IStockTransferRepository,
+    private readonly createUseCase: CreateStockTransferUseCase,
+    private readonly completeUseCase: CompleteStockTransferUseCase
+  ) {}
+
+  async execute(companyId: string, transferId: string, userId: string, date: string = todayIso()): Promise<StockTransfer> {
+    const original = await this.transferRepo.getTransfer(transferId);
+    if (!original || original.companyId !== companyId) {
+      throw new Error(`Stock transfer not found: ${transferId}`);
+    }
+    if (original.status !== 'COMPLETED') {
+      throw new Error('Only COMPLETED stock transfers can be undone');
+    }
+    if (original.reversedByTransferId) {
+      throw new Error('Stock transfer has already been undone');
+    }
+    if (original.reversesTransferId) {
+      throw new Error('Reversal stock transfers cannot be undone');
+    }
+
+    const reverse = await this.createUseCase.execute({
+      companyId,
+      sourceWarehouseId: original.destinationWarehouseId,
+      destinationWarehouseId: original.sourceWarehouseId,
+      date,
+      notes: `Undo transfer ${original.id}${original.notes ? ` — ${original.notes}` : ''}`,
+      mode: original.mode,
+      lines: original.lines.map((line) => ({
+        itemId: line.itemId,
+        qty: line.qty,
+        notes: line.notes,
+      })),
+      createdBy: userId,
+    });
+
+    await this.transferRepo.updateTransfer(reverse.id, {
+      reversesTransferId: original.id,
+    } as Partial<StockTransfer>);
+
+    const completedReverse = await this.completeUseCase.execute(companyId, reverse.id, userId);
+
+    await this.transferRepo.updateTransfer(original.id, {
+      reversedByTransferId: completedReverse.id,
+    } as Partial<StockTransfer>);
+
+    const updatedReverse = await this.transferRepo.getTransfer(completedReverse.id);
+    if (!updatedReverse) {
+      throw new Error(`Stock transfer not found after undo: ${completedReverse.id}`);
+    }
+    return updatedReverse;
+  }
+}
+
+export class CancelStockTransferUseCase {
+  constructor(private readonly transferRepo: IStockTransferRepository) {}
+
+  /**
+   * Hard-deletes a DRAFT stock transfer. Safe because a DRAFT has posted no
+   * movements and no GL voucher — nothing to reverse. COMPLETED transfers must
+   * NOT be deleted here (that would orphan stock movements and any uplift
+   * voucher); they require a reversing flow instead.
+   */
+  async execute(companyId: string, transferId: string): Promise<void> {
+    const transfer = await this.transferRepo.getTransfer(transferId);
+    if (!transfer || transfer.companyId !== companyId) {
+      throw new Error(`Stock transfer not found: ${transferId}`);
+    }
+    if (transfer.status !== 'DRAFT') {
+      throw new Error('Only DRAFT stock transfers can be cancelled');
+    }
+    await this.transferRepo.deleteTransfer(transferId);
   }
 }
 

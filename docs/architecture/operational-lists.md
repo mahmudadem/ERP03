@@ -16,6 +16,7 @@ The following operational lists have been fully standardized:
 - **Quotations List**: [QuotationsPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/sales/pages/QuotationsPage.tsx)
 - **Goods Receipts List**: [GoodsReceiptsListPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx)
 - **Purchase Returns List**: [PurchaseReturnsListPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx)
+- **Stock Transfers List**: [StockTransfersPage.tsx](file:///d:/DEV2026/ERP03/frontend/src/modules/inventory/pages/StockTransfersPage.tsx)
 
 ## Layout & Styling Standards
 

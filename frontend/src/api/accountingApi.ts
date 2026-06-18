@@ -84,11 +84,11 @@ export interface GeneralLedgerEntry {
   id: string;
   date: string;
   voucherId: string;
-  voucherNo?: string;
+  voucherNo: string;
   accountId: string;
-  accountCode?: string;
-  accountName?: string;
-  description?: string;
+  accountCode: string;
+  accountName: string;
+  description: string;
   debit: number;
   credit: number;
   currency: string;
@@ -97,6 +97,9 @@ export interface GeneralLedgerEntry {
   baseAmount: number;
   exchangeRate: number;
   runningBalance?: number;
+  costCenterId?: string;
+  costCenterCode?: string;
+  costCenterName?: string;
   
   // Audit Metadata
   createdAt?: string;
@@ -111,6 +114,20 @@ export interface GeneralLedgerEntry {
   postedBy?: string;
   postedByName?: string;
   postedByEmail?: string;
+}
+
+export interface GeneralLedgerResponse {
+  data: GeneralLedgerEntry[];
+  meta?: {
+    generatedAt?: string;
+    filters?: Record<string, unknown>;
+    totalItems?: number;
+    openingBalance?: number;
+    pagination?: {
+      totalItems?: number;
+      openingBalance?: number;
+    };
+  };
 }
 
 export interface BalanceSheetLine {
@@ -447,9 +464,10 @@ export const accountingApi = {
     return client.get(`/tenant/accounting/reports/balance-sheet${qs ? `?${qs}` : ''}`);
   },
 
-  getGeneralLedger: (accountId?: string, from?: string, to?: string, limit?: number, offset?: number, costCenterId?: string): Promise<any> => {
+  getGeneralLedger: (accountId?: string, from?: string, to?: string, limit?: number, offset?: number, costCenterId?: string, voucherId?: string): Promise<GeneralLedgerResponse> => {
     const params = new URLSearchParams();
     if (accountId) params.append('accountId', accountId);
+    if (voucherId) params.append('voucherId', voucherId);
     if (from) params.append('from', from);
     if (to) params.append('to', to);
     if (limit) params.append('limit', limit.toString());
@@ -457,6 +475,13 @@ export const accountingApi = {
     if (costCenterId) params.append('costCenterId', costCenterId);
     const queryString = params.toString();
     return client.get(`/tenant/accounting/reports/general-ledger${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getVoucherLedgerImpact: (voucherId: string): Promise<GeneralLedgerResponse> => {
+    const params = new URLSearchParams();
+    params.append('voucherId', voucherId);
+    params.append('limit', '500');
+    return client.get(`/tenant/accounting/reports/general-ledger?${params.toString()}`);
   },
 
   getCostCenterSummary: (costCenterId: string, from?: string, to?: string): Promise<any> => {

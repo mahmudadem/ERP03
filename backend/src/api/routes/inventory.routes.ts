@@ -64,7 +64,10 @@ router.get('/adjustments', permissionGuard('inventory.stock.adjust'), InventoryC
 router.post('/adjustments/:id/post', permissionGuard('inventory.stock.adjust'), InventoryController.postAdjustment);
 
 router.post('/transfers', permissionGuard('inventory.stock.adjust'), InventoryController.createTransfer);
+router.put('/transfers/:id', permissionGuard('inventory.stock.adjust'), InventoryController.updateTransfer);
 router.post('/transfers/:id/complete', permissionGuard('inventory.stock.adjust'), InventoryController.completeTransfer);
+router.post('/transfers/:id/undo', permissionGuard('inventory.stock.adjust'), InventoryController.undoTransfer);
+router.delete('/transfers/:id', permissionGuard('inventory.stock.adjust'), InventoryController.cancelTransfer);
 router.get('/transfers', permissionGuard('inventory.stock.view'), InventoryController.listTransfers);
 
 router.post('/snapshots', permissionGuard('inventory.valuation.view'), InventoryController.createSnapshot);

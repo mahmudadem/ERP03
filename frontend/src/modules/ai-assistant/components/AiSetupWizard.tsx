@@ -10,19 +10,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  Sparkles,
-  Key,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  ArrowLeft,
-  ArrowRight,
-  Zap,
-  ShieldCheck,
-  ChevronRight,
-} from 'lucide-react';
+import { useTranslation } from 'react-i18next'; import { Sparkles, Key, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Zap, ShieldCheck, ChevronRight} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import {
   aiAssistantApi,
   CertifiedProfileEntry,
@@ -404,7 +393,7 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
     if (certifiedModelsLoading) {
       return (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
+          <Spinner variant="indigo" />
           <span className="ml-3 text-sm text-gray-500">
             {t('settings.certifiedModels.loading', 'Loading certified models...')}
           </span>
@@ -486,7 +475,7 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
         </label>
         {providersLoading ? (
           <div className="flex items-center gap-2 py-2">
-            <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
+            <Spinner size="sm" variant="indigo" />
             <span className="text-sm text-gray-500">{t('settings.providersLoading', 'Loading providers...')}</span>
           </div>
         ) : (
@@ -518,7 +507,7 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
           </label>
           {modelsLoading ? (
             <div className="flex items-center gap-2 py-2">
-              <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
+              <Spinner size="sm" variant="indigo" />
               <span className="text-sm text-gray-500">{t('settings.modelsLoading', 'Loading models...')}</span>
             </div>
           ) : modelOptions.length > 0 ? (
@@ -610,7 +599,7 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
       }`}>
         {diagStatus === 'running' && (
           <>
-            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" />
+            <Spinner size="xl" variant="indigo" className="mx-auto mb-3" />
             <p className="text-sm text-gray-600 font-medium">
               {t('setupWizard.testingConnection', 'Testing your AI connection...')}
             </p>
@@ -763,7 +752,7 @@ export const AiSetupWizard: React.FC<AiSetupWizardProps> = ({
               >
                 {activating ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" />
                     {t('setupWizard.activating', 'Activating...')}
                   </>
                 ) : (

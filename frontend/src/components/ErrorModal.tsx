@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { ApiError, ErrorSeverity } from '../types/errors';
 import { errorHandler, ErrorHandlerOptions } from '../services/errorHandler';
 
 export const ErrorModal: React.FC = () => {
+  const { t } = useTranslation('common');
   const [error, setError] = useState<ApiError | null>(null);
   const [options, setOptions] = useState<ErrorHandlerOptions>({});
 
@@ -40,19 +42,18 @@ export const ErrorModal: React.FC = () => {
 
   const getTitle = () => {
     if (options.modalTitle) return options.modalTitle;
-    
+
     const severity = String(error.severity).toLowerCase();
     switch (severity) {
       case 'info':
-        return 'Information';
+        return t('errorModal.title.info', 'Information');
       case 'warning':
-        return 'Warning';
-      case 'error':
-        return 'Error';
+        return t('errorModal.title.warning', 'Warning');
       case 'critical':
-        return 'Critical Error';
+        return t('errorModal.title.critical', 'Critical Error');
+      case 'error':
       default:
-        return 'Error';
+        return t('errorModal.title.error', 'Error');
     }
   };
 
@@ -97,7 +98,7 @@ export const ErrorModal: React.FC = () => {
             onClick={handleClose}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
-            OK
+            {t('errorModal.ok', 'OK')}
           </button>
         </div>
       </div>

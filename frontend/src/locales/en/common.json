@@ -80,6 +80,7 @@
     "allVouchers": "All Vouchers",
     "formsDesigner": "Forms Designer",
     "windowDesigner": "Window Designer",
+    "currencies": "Currencies",
     "trialBalance": "Trial Balance",
     "subgroupTagging": "Subgroup Tagging",
     "accountStatement": "Account Statement",
@@ -274,7 +275,12 @@
     "clear": "Clear",
     "search": "Search",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "back": "Back",
+    "keep": "Keep",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel"
   },
   "notifications": {
     "title": "Notifications",
@@ -1672,7 +1678,8 @@
           "creatingCompany": "Creating company record...",
           "installingModules": "Installing modules...",
           "settingPermissions": "Setting up permissions...",
-          "finalizing": "Finalizing workspace..."
+          "finalizing": "Finalizing workspace...",
+          "initializingTemplate": "Applying starter template"
         },
         "errors": {
           "missingInfo": "Please go back and fill in all required information.",
@@ -1687,6 +1694,19 @@
         },
         "defaults": {
           "country": "International"
+        },
+        "starter": {
+          "title": "Auto initialize modules with Trading Company - Simple",
+          "description": "Creates the standard chart of accounts, initializes Accounting, Inventory, Sales, and Purchases, links default posting accounts, uses simple direct invoicing, invoice-driven inventory, and blocks negative stock.",
+          "inventory": "Invoice-driven stock, global average cost, negative stock off",
+          "tax": "Tax-ready, no hidden legal rate applied",
+          "currency": "Base currency: {{currency}}",
+          "workflow": "Simple sales and purchases",
+          "manualTitle": "Manual module setup",
+          "manualDescription": "Modules will be installed from the selected bundle, but setup wizards will remain manual.",
+          "timezone": "Timezone: {{timezone}}",
+          "dateFormat": "Date format: {{dateFormat}}",
+          "language": "Language: {{language}}"
         }
       },
       "success": {
@@ -1697,13 +1717,80 @@
           "setupAccounting": "Complete the accounting setup wizard",
           "inviteUsers": "Invite your team members to join"
         },
-        "goToDashboard": "Go to Dashboard"
+        "goToDashboard": "Go to Dashboard",
+        "policy": {
+          "title": "Company Policy Summary",
+          "template": "Template",
+          "currency": "Base Currency",
+          "inventory": "Inventory",
+          "sales": "Sales/Purchases",
+          "linkedAccounts": "Linked Accounts",
+          "accounts": {
+            "cash": "Cash",
+            "bank": "Bank",
+            "inventoryAsset": "Inventory Asset",
+            "arParent": "Customers Receivable",
+            "apParent": "Accounts Payable",
+            "salesRevenue": "Sales Revenue",
+            "cogs": "Cost of Goods Sold"
+          }
+        }
       },
       "stepper": {
         "basicInfo": "Basic Info",
         "selectBundle": "Select Bundle",
         "contactInfo": "Contact Info",
-        "review": "Review"
+        "review": "Review",
+        "companySetup": "Company Setup"
+      },
+      "needs": {
+        "title": "Company Setup",
+        "subtitle": "Confirm currency, date, time, and starter setup before review.",
+        "currency": {
+          "title": "Base Currency",
+          "description": "This currency becomes the company ledger and stock valuation currency.",
+          "field": "Currency Code",
+          "placeholder": "Select currency",
+          "noteTitle": "Accounting note",
+          "note": "Changing base currency after posting transactions is normally restricted in ERP systems."
+        },
+        "starter": {
+          "title": "Auto initialize Trading Company - Simple",
+          "description": "Best for a small company that wants to start buying, selling, and moving stock immediately with standard controls."
+        },
+        "summary": {
+          "title": "Company Setup Summary",
+          "accounting": "Standard chart of accounts",
+          "fiscal": "Calendar fiscal year and company date defaults",
+          "inventory": "Invoice-driven stock with global average cost and negative stock blocked",
+          "warehouse": "Default MAIN warehouse",
+          "sales": "Simple direct sales invoicing",
+          "purchases": "Simple direct purchase invoicing",
+          "tax": "Tax-ready setup without hidden legal rates",
+          "policy": "The final policy summary will show the linked accounts and operational settings after creation.",
+          "companyDefaults": "Currency {{currency}}, timezone {{timezone}}",
+          "manual": "Modules will be installed, but each setup wizard remains manual"
+        },
+        "actions": {
+          "back": "Back",
+          "nextStep": "Continue"
+        },
+        "errors": {
+          "currencyRequired": "Base currency is required before initializing modules."
+        },
+        "company": {
+          "title": "Company Defaults",
+          "description": "Set the financial and regional defaults every company needs before review."
+        },
+        "timezone": {
+          "field": "Timezone"
+        },
+        "dateFormat": {
+          "field": "Date Format"
+        },
+        "language": {
+          "field": "Language"
+        }
       }
     }
   },
@@ -2247,6 +2334,96 @@
         "created": "Item created",
         "createFailed": "Failed to create item",
         "loadFailed": "Failed to load inventory items"
+      }
+    },
+    "transfers": {
+      "title": "Stock Transfers",
+      "newButton": "New Transfer",
+      "newTitle": "New Stock Transfer",
+      "editTitle": "Edit Stock Transfer",
+      "subtitle": "Move stock between warehouses",
+      "details": "Transfer Details",
+      "sourceWarehouse": "Source Warehouse",
+      "destinationWarehouse": "Destination Warehouse",
+      "source": "Source",
+      "destination": "Destination",
+      "date": "Date",
+      "mode": "Mode",
+      "notes": "Notes",
+      "flat": "Flat",
+      "valued": "Valued",
+      "flatHint": "Flat: move stock A→B at source cost. No ledger effect.",
+      "valuedHint": "Valued: explicit revaluation. The variance posts to the Inventory Revaluation account.",
+      "overIssueHint": "Some lines move more than is available in the source warehouse. Negative stock is off, so this can be saved as a draft but not completed until you reduce the quantity or receive stock.",
+      "lines": "Transfer Lines",
+      "addItem": "Add Item",
+      "selectItem": "Select item",
+      "route": "Route",
+      "readiness": "Readiness",
+      "totals": "Totals",
+      "linesCount": "Lines",
+      "variance": "Variance",
+      "totalQty": "Total Qty",
+      "readyWarehouses": "Source & destination set",
+      "readyDifferent": "Warehouses are different",
+      "readyLines": "At least one item line",
+      "readyAvailWarn": "Some lines exceed available stock",
+      "readyAvailOk": "All lines within available stock",
+      "saveDraft": "Save Draft",
+      "create": "Create Transfer",
+      "filterAll": "All",
+      "filterDraft": "Draft",
+      "filterCompleted": "Completed",
+      "onlyDraftEdit": "Only draft transfers can be edited.",
+      "warehousesRequired": "Source and destination warehouses are required.",
+      "warehousesDifferent": "Source and destination must be different.",
+      "addLine": "Add at least one item line.",
+      "draftUpdated": "Draft transfer updated.",
+      "created": "Stock transfer created.",
+      "completed": "Stock transfer completed.",
+      "draftDeleted": "Draft transfer deleted.",
+      "undone": "Undone",
+      "deleteTitle": "Delete draft transfer?",
+      "completeTitle": "Complete transfer?",
+      "undoTitle": "Undo completed transfer?",
+      "deleteMsg": "This removes the draft only. No stock or ledger entries are affected.",
+      "completeMsgValued": "This posts the paired stock movements and the valued-transfer revaluation entry.",
+      "completeMsgFlat": "This posts the paired stock movements. No accounting entry is created (flat transfer).",
+      "undoMsg": "This creates and posts a linked reverse transfer. The original remains in history for audit.",
+      "deleteConfirm": "Delete Draft",
+      "completeConfirm": "Complete",
+      "undoConfirm": "Undo Transfer",
+      "undo": "Undo",
+      "reversal": "Reversal",
+      "hide": "Hide",
+      "pairedMovements": "Paired Movements",
+      "noMovements": "No movements found yet.",
+      "empty": "No transfers found.",
+      "guardTitle": "Can’t complete — stock would go below zero",
+      "guardMsg": "This transfer moves more than is available in the source warehouse:",
+      "guardHave": "have",
+      "guardMoving": "moving",
+      "guardTail": "Negative stock is off. Edit the quantity, or keep it as a draft.",
+      "guardEdit": "Edit Quantity",
+      "guardKeep": "Keep as Draft",
+      "col": {
+        "item": "Item",
+        "qty": "Qty",
+        "available": "Available",
+        "sourceCost": "Source Cost",
+        "revalCost": "Revaluation Unit Cost",
+        "variance": "Variance",
+        "date": "Date",
+        "source": "Source",
+        "destination": "Destination",
+        "mode": "Mode",
+        "status": "Status",
+        "gl": "GL",
+        "action": "Action",
+        "landedCost": "Landed Unit Cost",
+        "type": "Type",
+        "warehouse": "Warehouse",
+        "unitCostBase": "Unit Cost Base"
       }
     }
   },
@@ -3684,7 +3861,9 @@
     "edit": "Edit",
     "active": "Active",
     "inactive": "Inactive",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "optional": "Optional",
+    "checking": "Checking…"
   },
   "messaging": {
     "whatsapp": {
@@ -4147,5 +4326,18 @@
     "amount": "Amount",
     "voucher": "Voucher",
     "totalPaid": "Total paid"
+  },
+  "errorModal": {
+    "title": {
+      "info": "Information",
+      "warning": "Warning",
+      "error": "Error",
+      "critical": "Critical Error"
+    },
+    "ok": "OK",
+    "close": "Close"
+  },
+  "errors": {
+    "NEGATIVE_STOCK_BLOCKED": "Can’t issue {{itemLabel}} from warehouse {{warehouseLabel}} — only {{current}} in stock but {{requested}} requested (would leave {{resulting}}). Negative stock is turned off. Receive stock first, or enable negative stock in Inventory Settings."
   }
 }

@@ -144,7 +144,7 @@ const build = (costingBasis: 'GLOBAL' | 'WAREHOUSE' = 'GLOBAL') => {
 
   const TRANSFER = (
     qty: number,
-    opts: { landedCostBase?: number } = {},
+    opts: { revaluationUnitCostBase?: number; addedCostBase?: number } = {},
     date = '2026-01-12'
   ) =>
     useCase.processTRANSFER({
@@ -156,8 +156,10 @@ const build = (costingBasis: 'GLOBAL' | 'WAREHOUSE' = 'GLOBAL') => {
       date,
       transferDocId: 'trf-1',
       currentUser: 'u1',
-      destUnitCostOverrideBase: opts.landedCostBase,
-      destUnitCostOverrideCCY: opts.landedCostBase,
+      addedCostBase: opts.addedCostBase,
+      addedCostCCY: opts.addedCostBase,
+      revaluationUnitCostBase: opts.revaluationUnitCostBase,
+      revaluationUnitCostCCY: opts.revaluationUnitCostBase,
     });
 
   const avgAt = async (warehouseId: string) =>
@@ -224,14 +226,14 @@ describe('RecordStockMovementUseCase — GLOBAL costing basis', () => {
     expect(await qtyAt(WH_B)).toBe(14);
   });
 
-  it('VALUED transfer capitalizes the uplift into the company average', async () => {
+  it('explicit revaluation transfer changes the company average, but pure transfers do not', async () => {
     const { IN, TRANSFER, avgAt } = build('GLOBAL');
 
     await IN(WH_A, 10, 5);
     await IN(WH_B, 10, 5); // global avg 5, qty 20, value 100
 
     // Move 5 from A→B landing at 9 (e.g. +freight). Uplift = (9-5)*5 = 20.
-    const { outMov, inMov } = await TRANSFER(5, { landedCostBase: 9 });
+    const { outMov, inMov } = await TRANSFER(5, { revaluationUnitCostBase: 9 });
     expect(outMov.unitCostBase).toBe(5); // source issues at the company average
     expect(inMov.unitCostBase).toBe(9); // destination lands at the valued cost
     // inMov.total − outMov.total = uplift the clearing voucher will capitalize.

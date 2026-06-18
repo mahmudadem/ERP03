@@ -4,6 +4,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { WizardLayout } from './WizardLayout';
 import { StepBasicInfo } from './StepBasicInfo';
 import { StepBundleSelection } from './StepBundleSelection';
+import { StepBasicNeeds } from './StepBasicNeeds';
 import { StepContactInfo } from './StepContactInfo';
 import { StepReview } from './StepReview';
 import { StepSuccess } from './StepSuccess';
@@ -23,7 +24,10 @@ const initialData: CompanyFormData = {
   email: '', 
   logo: null,
   logoPreviewUrl: null,
-  selectedBundleId: null, 
+  selectedBundleId: null,
+  autoInitializeModules: true,
+  starterTemplateId: 'simple-trading-company',
+  starterPolicySummary: null,
 };
 
 const CompanyWizard: React.FC<CompanyWizardProps> = ({ onCancel, onComplete }) => {
@@ -68,6 +72,11 @@ const CompanyWizard: React.FC<CompanyWizardProps> = ({ onCancel, onComplete }) =
         return { 
           title: t('onboarding.companyWizard.bundle.title', { defaultValue: "Select a Bundle" }), 
           subtitle: t('onboarding.companyWizard.bundle.subtitle', { defaultValue: "Choose the feature set that fits your needs." }) 
+        };
+      case WizardStep.BasicNeeds:
+        return {
+          title: t('onboarding.companyWizard.needs.title', { defaultValue: "Company Setup" }),
+          subtitle: t('onboarding.companyWizard.needs.subtitle', { defaultValue: "Confirm currency, date, time, and starter setup before review." })
         };
       case WizardStep.ContactInfo:
         return { 
@@ -120,6 +129,8 @@ const CompanyWizard: React.FC<CompanyWizardProps> = ({ onCancel, onComplete }) =
         return React.createElement(StepBasicInfo, commonProps);
       case WizardStep.BundleSelection:
         return React.createElement(StepBundleSelection, commonProps);
+      case WizardStep.BasicNeeds:
+        return React.createElement(StepBasicNeeds, commonProps);
       case WizardStep.ContactInfo:
         return React.createElement(StepContactInfo, commonProps);
       case WizardStep.Review:

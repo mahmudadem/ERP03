@@ -56,6 +56,40 @@ export interface Bundle {
   recommended: boolean;
 }
 
+export interface StarterPolicySummary {
+  templateId: 'simple-trading-company';
+  templateName: string;
+  modulesInitialized: string[];
+  baseCurrency: string;
+  accounting: {
+    coaTemplate: 'standard';
+    fiscalYearStart: string;
+    fiscalYearEnd: string;
+    approvalRequired: false;
+  };
+  inventory: {
+    accountingMode: 'INVOICE_DRIVEN';
+    costingMethod: 'MOVING_AVG';
+    costingBasis: 'WAREHOUSE' | 'GLOBAL';
+    allowNegativeStock: false;
+    defaultWarehouseCode: 'MAIN';
+  };
+  sales: {
+    workflowMode: 'SIMPLE';
+    allowDirectInvoicing: true;
+    defaultSalesInvoicePersona: 'direct';
+  };
+  purchases: {
+    workflowMode: 'SIMPLE';
+    allowDirectInvoicing: true;
+  };
+  tax: {
+    status: 'READY_NOT_ASSUMED';
+    note: string;
+  };
+  linkedAccounts: Record<string, { code: string; id: string; name: string }>;
+}
+
 export const onboardingApi = {
   /**
    * Register a new user (public)
@@ -96,7 +130,7 @@ export const onboardingApi = {
   /**
    * Create a new company (authenticated)
    */
-  createCompany: async (data: CreateCompanyRequest): Promise<{ companyId: string }> => {
+  createCompany: async (data: CreateCompanyRequest): Promise<{ companyId: string; starterPolicySummary?: StarterPolicySummary | null }> => {
     return client.post('/onboarding/create-company', data);
   },
 };
@@ -112,5 +146,7 @@ export interface CreateCompanyRequest {
   language?: string;
   timezone?: string;
   dateFormat?: string;
+  autoInitializeModules?: boolean;
+  starterTemplateId?: 'simple-trading-company';
 }
 

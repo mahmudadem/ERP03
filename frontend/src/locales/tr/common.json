@@ -80,6 +80,7 @@
     "allVouchers": "Tüm Fişler",
     "formsDesigner": "Form Tasarımcısı",
     "windowDesigner": "Pencere Tasarımcısı",
+    "currencies": "Para Birimleri",
     "trialBalance": "Mizan",
     "subgroupTagging": "Alt Grup Etiketleme",
     "accountStatement": "Hesap Ekstresi",
@@ -274,7 +275,12 @@
     "clear": "Temizle",
     "search": "Ara",
     "previous": "Önceki",
-    "next": "Sonraki"
+    "next": "Sonraki",
+    "back": "Geri",
+    "keep": "Koru",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "cancel": "İptal"
   },
   "notifications": {
     "title": "Bildirimler",
@@ -1745,7 +1751,8 @@
           "creatingCompany": "Şirket kaydı oluşturuluyor...",
           "installingModules": "Modüller yükleniyor...",
           "settingPermissions": "İzinler ayarlanıyor...",
-          "finalizing": "Çalışma alanı tamamlanıyor..."
+          "finalizing": "Çalışma alanı tamamlanıyor...",
+          "initializingTemplate": "Baslangic sablonu uygulanıyor"
         },
         "errors": {
           "missingInfo": "Lütfen geri dönün ve gerekli tüm bilgileri doldurun.",
@@ -1760,6 +1767,19 @@
         },
         "defaults": {
           "country": "Uluslararası"
+        },
+        "starter": {
+          "title": "Modulleri Ticaret Sirketi - Basit ile otomatik baslat",
+          "description": "Standart hesap planini olusturur, Muhasebe, Stok, Satis ve Satinalma modullerini baslatir, varsayilan muhasebe hesaplarini baglar, basit dogrudan faturalama ve invoice-driven stok kullanir, negatif stogu engeller.",
+          "inventory": "Invoice-driven stok, negatif stok kapali",
+          "tax": "Vergiye hazir, gizli yasal oran uygulanmaz",
+          "currency": "Ana para birimi: {{currency}}",
+          "workflow": "Basit satis ve alis",
+          "manualTitle": "Manuel modul kurulumu",
+          "manualDescription": "Moduller secilen paketten kurulur, ancak kurulum sihirbazlari manuel kalir.",
+          "timezone": "Saat dilimi: {{timezone}}",
+          "dateFormat": "Tarih formati: {{dateFormat}}",
+          "language": "Dil: {{language}}"
         }
       },
       "success": {
@@ -1770,13 +1790,80 @@
           "setupAccounting": "Muhasebe kurulum sihirbazını tamamlayın",
           "inviteUsers": "Ekip üyelerinizi katılmaya davet edin"
         },
-        "goToDashboard": "Panele Git"
+        "goToDashboard": "Panele Git",
+        "policy": {
+          "title": "Sirket Politika Ozeti",
+          "template": "Sablon",
+          "currency": "Temel Para Birimi",
+          "inventory": "Stok",
+          "sales": "Satis/Satinalma",
+          "linkedAccounts": "Bagli Hesaplar",
+          "accounts": {
+            "cash": "Kasa",
+            "bank": "Banka",
+            "inventoryAsset": "Stok Varligi",
+            "arParent": "Musteri Alacaklari",
+            "apParent": "Satici Borclari",
+            "salesRevenue": "Satis Geliri",
+            "cogs": "Satilan Malin Maliyeti"
+          }
+        }
       },
       "stepper": {
         "basicInfo": "Temel Bilgiler",
         "selectBundle": "Paket Seçimi",
         "contactInfo": "İletişim Bilgileri",
-        "review": "İnceleme"
+        "review": "İnceleme",
+        "companySetup": "Sirket Kurulumu"
+      },
+      "needs": {
+        "title": "Sirket Kurulumu",
+        "subtitle": "Incelemeden once para birimi, tarih, saat ve baslangic kurulumunu onaylayin.",
+        "currency": {
+          "title": "Ana Para Birimi",
+          "description": "Bu para birimi sirket defteri ve stok degerleme para birimi olur.",
+          "field": "Para Birimi Kodu",
+          "placeholder": "Para birimi sec",
+          "noteTitle": "Muhasebe notu",
+          "note": "Kayitlar islendikten sonra ana para birimini degistirmek ERP sistemlerinde normalde kisitlanir."
+        },
+        "starter": {
+          "title": "Ticaret Sirketi - Basit otomatik baslat",
+          "description": "Standart kontrollerle hemen alim, satis ve stok hareketi yapmak isteyen kucuk sirketler icin uygundur."
+        },
+        "summary": {
+          "title": "Sirket Kurulum Ozeti",
+          "accounting": "Standart hesap plani",
+          "fiscal": "Takvim mali yili ve sirket tarih varsayilanlari",
+          "inventory": "Fatura bazli stok ve negatif stok engeli",
+          "warehouse": "Varsayilan MAIN depo",
+          "sales": "Basit dogrudan satis faturasi",
+          "purchases": "Basit dogrudan alis faturasi",
+          "tax": "Gizli yasal oran olmadan vergiye hazir kurulum",
+          "policy": "Son politika ozeti, olusturma sonrasi bagli hesaplari ve operasyonel ayarlari gosterir.",
+          "companyDefaults": "Para birimi {{currency}}, saat dilimi {{timezone}}",
+          "manual": "Moduller kurulur, ancak her kurulum sihirbazi manuel kalir"
+        },
+        "actions": {
+          "back": "Geri",
+          "nextStep": "Devam"
+        },
+        "errors": {
+          "currencyRequired": "Moduller baslatilmadan once ana para birimi gereklidir."
+        },
+        "company": {
+          "title": "Sirket Varsayilanlari",
+          "description": "Incelemeden once her sirketin ihtiyac duydugu finansal ve bolgesel varsayilanlari ayarlayin."
+        },
+        "timezone": {
+          "field": "Saat Dilimi"
+        },
+        "dateFormat": {
+          "field": "Tarih Formati"
+        },
+        "language": {
+          "field": "Dil"
+        }
       }
     }
   },
@@ -2320,6 +2407,96 @@
         "created": "Kalem oluşturuldu",
         "createFailed": "Kalem oluşturulamadı",
         "loadFailed": "Stok kalemleri yüklenemedi"
+      }
+    },
+    "transfers": {
+      "title": "Stok Transferleri",
+      "newButton": "Yeni Transfer",
+      "newTitle": "Yeni Stok Transferi",
+      "editTitle": "Stok Transferini Düzenle",
+      "subtitle": "Depolar arası stok taşı",
+      "details": "Transfer Detayları",
+      "sourceWarehouse": "Kaynak Depo",
+      "destinationWarehouse": "Hedef Depo",
+      "source": "Kaynak",
+      "destination": "Hedef",
+      "date": "Tarih",
+      "mode": "Mod",
+      "notes": "Notlar",
+      "flat": "Düz",
+      "valued": "Değerli",
+      "flatHint": "Düz: stoğu kaynak maliyetiyle A→B taşır. Muhasebe etkisi yok.",
+      "valuedHint": "Değerli: açık yeniden değerleme. Fark Stok Yeniden Değerleme hesabına işlenir.",
+      "overIssueHint": "Bazı satırlar kaynak depoda mevcut olandan fazlasını taşıyor. Negatif stok kapalı; taslak olarak kaydedilebilir ancak miktarı azaltana veya stok girene kadar tamamlanamaz.",
+      "lines": "Transfer Satırları",
+      "addItem": "Ürün Ekle",
+      "selectItem": "Ürün seç",
+      "route": "Güzergah",
+      "readiness": "Hazırlık",
+      "totals": "Toplamlar",
+      "linesCount": "Satırlar",
+      "variance": "Fark",
+      "totalQty": "Toplam Miktar",
+      "readyWarehouses": "Kaynak ve hedef seçildi",
+      "readyDifferent": "Depolar farklı",
+      "readyLines": "En az bir ürün satırı",
+      "readyAvailWarn": "Bazı satırlar mevcut stoğu aşıyor",
+      "readyAvailOk": "Tüm satırlar mevcut stok içinde",
+      "saveDraft": "Taslağı Kaydet",
+      "create": "Transfer Oluştur",
+      "filterAll": "Tümü",
+      "filterDraft": "Taslak",
+      "filterCompleted": "Tamamlandı",
+      "onlyDraftEdit": "Yalnızca taslak transferler düzenlenebilir.",
+      "warehousesRequired": "Kaynak ve hedef depo gereklidir.",
+      "warehousesDifferent": "Kaynak ve hedef farklı olmalıdır.",
+      "addLine": "En az bir ürün satırı ekleyin.",
+      "draftUpdated": "Taslak transfer güncellendi.",
+      "created": "Stok transferi oluşturuldu.",
+      "completed": "Stok transferi tamamlandı.",
+      "draftDeleted": "Taslak transfer silindi.",
+      "undone": "Geri alındı",
+      "deleteTitle": "Taslak transfer silinsin mi?",
+      "completeTitle": "Transfer tamamlansın mı?",
+      "undoTitle": "Tamamlanan transfer geri alınsın mı?",
+      "deleteMsg": "Yalnızca taslağı kaldırır. Stok veya muhasebe kaydı etkilenmez.",
+      "completeMsgValued": "Eşli stok hareketlerini ve değerli transfer yeniden değerleme kaydını işler.",
+      "completeMsgFlat": "Eşli stok hareketlerini işler. Muhasebe kaydı oluşturulmaz (düz transfer).",
+      "undoMsg": "Bağlantılı ters bir transfer oluşturup işler. Orijinal denetim için geçmişte kalır.",
+      "deleteConfirm": "Taslağı Sil",
+      "completeConfirm": "Tamamla",
+      "undoConfirm": "Transferi Geri Al",
+      "undo": "Geri Al",
+      "reversal": "Ters",
+      "hide": "Gizle",
+      "pairedMovements": "Eşli Hareketler",
+      "noMovements": "Henüz hareket yok.",
+      "empty": "Transfer bulunamadı.",
+      "guardTitle": "Tamamlanamıyor — stok sıfırın altına iner",
+      "guardMsg": "Bu transfer kaynak depoda mevcut olandan fazlasını taşıyor:",
+      "guardHave": "mevcut",
+      "guardMoving": "taşınan",
+      "guardTail": "Negatif stok kapalı. Miktarı düzenleyin veya taslak olarak tutun.",
+      "guardEdit": "Miktarı Düzenle",
+      "guardKeep": "Taslak Olarak Tut",
+      "col": {
+        "item": "Ürün",
+        "qty": "Miktar",
+        "available": "Mevcut",
+        "sourceCost": "Kaynak Maliyet",
+        "revalCost": "Yeniden Değerleme Birim Maliyeti",
+        "variance": "Fark",
+        "date": "Tarih",
+        "source": "Kaynak",
+        "destination": "Hedef",
+        "mode": "Mod",
+        "status": "Durum",
+        "gl": "Defter",
+        "action": "İşlem",
+        "landedCost": "Birim Maliyet",
+        "type": "Tür",
+        "warehouse": "Depo",
+        "unitCostBase": "Birim Maliyet (Baz)"
       }
     }
   },
@@ -3761,7 +3938,9 @@
     "edit": "Duzenle",
     "active": "Aktif",
     "inactive": "Pasif",
-    "loading": "Yukleniyor..."
+    "loading": "Yukleniyor...",
+    "optional": "İsteğe bağlı",
+    "checking": "Kontrol ediliyor…"
   },
   "messaging": {
     "whatsapp": {
@@ -4224,5 +4403,18 @@
     "amount": "Tutar",
     "voucher": "Fiş",
     "totalPaid": "Toplam ödenen"
+  },
+  "errorModal": {
+    "title": {
+      "info": "Bilgi",
+      "warning": "Uyarı",
+      "error": "Hata",
+      "critical": "Kritik Hata"
+    },
+    "ok": "Tamam",
+    "close": "Kapat"
+  },
+  "errors": {
+    "NEGATIVE_STOCK_BLOCKED": "{{itemLabel}} ürünü {{warehouseLabel}} deposundan çıkışı yapılamıyor — stokta yalnızca {{current}} var ancak {{requested}} istendi (kalan {{resulting}} olurdu). Negatif stok kapalı. Önce stok girişi yapın veya Envanter Ayarları’ndan negatif stoğu etkinleştirin."
   }
 }

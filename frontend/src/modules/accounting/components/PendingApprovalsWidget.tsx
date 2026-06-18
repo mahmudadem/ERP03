@@ -4,11 +4,8 @@
  * A compact dashboard widget showing the count of pending approval/custody actions.
  */
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { accountingApi } from '../../../api/accountingApi';
-import { Shield, UserCheck, ChevronRight, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query'; import { useNavigate } from 'react-router-dom'; import { useTranslation } from 'react-i18next'; import { accountingApi } from '../../../api/accountingApi'; import { Shield, UserCheck, ChevronRight} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { clsx } from 'clsx';
 
 export const PendingApprovalsWidget: React.FC = () => {
@@ -62,7 +59,7 @@ export const PendingApprovalsWidget: React.FC = () => {
             "p-2 rounded-xl transition-colors",
             total > 0 ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-400"
           )}>
-          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Shield size={18} />}
+          {isLoading ? <Spinner size="sm" /> : <Shield size={18} />}
         </div>
       </div>
 

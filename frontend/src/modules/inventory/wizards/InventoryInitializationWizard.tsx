@@ -1,17 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  AlertTriangle,
-  Box,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Info,
-  Loader2,
-  Settings,
-  Warehouse,
-  Wand2,
-} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Box, CheckCircle2, ChevronLeft, ChevronRight, Info, Settings, Warehouse, Wand2} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { Account, useAccounts } from '../../../context/AccountsContext';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -47,7 +36,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
   const [defaultCostCurrency, setDefaultCostCurrency] = useState('');
   const [defaultInventoryAssetAccountId, setDefaultInventoryAssetAccountId] = useState('');
   const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
-  const [allowNegativeStock, setAllowNegativeStock] = useState(true);
+  const [allowNegativeStock, setAllowNegativeStock] = useState(false);
   const [autoGenerateItemCode, setAutoGenerateItemCode] = useState(false);
   const [itemCodePrefix, setItemCodePrefix] = useState('ITM');
   const [itemCodeNextSeq, setItemCodeNextSeq] = useState(1);
@@ -556,7 +545,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" />
                     Initializing...
                   </>
                 ) : (

@@ -3,6 +3,7 @@ import { inventoryApi, InventorySettingsDTO } from '../api/inventoryApi';
 import { purchasesApi, PurchaseSettingsDTO } from '../api/purchasesApi';
 import { salesApi, SalesSettingsDTO } from '../api/salesApi';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
+import { subscribeToSettingsChanges } from '../utils/settingsSync';
 import {
   resolveInventoryAccountingMode,
   resolvePurchaseWorkflowMode,
@@ -27,6 +28,13 @@ export const useDocumentPolicies = () => {
   const [salesSettings, setSalesSettings] = useState<SalesSettingsDTO | null>(null);
   const [purchaseSettings, setPurchaseSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    return subscribeToSettingsChanges(() => {
+      setRefreshTrigger((prev) => prev + 1);
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +78,7 @@ export const useDocumentPolicies = () => {
     return () => {
       cancelled = true;
     };
-  }, [canLoad, hasInventory, hasSales, hasPurchase]);
+  }, [canLoad, hasInventory, hasSales, hasPurchase, refreshTrigger]);
 
   const accountingMode = resolveInventoryAccountingMode(inventorySettings);
   const salesWorkflowMode = resolveSalesWorkflowMode(salesSettings);

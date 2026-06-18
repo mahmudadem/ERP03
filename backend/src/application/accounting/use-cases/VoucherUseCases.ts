@@ -873,29 +873,24 @@ export class UpdateVoucherUseCase {
       // If the voucher was already POSTED, we must refresh ledger entries to reflect new changes
       if (voucher.isPosted) {
         if (!this.ledgerRepo) throw new Error('Ledger repository required for updating posted vouchers');
-        
-        // 1. Delete old ledger records
-        await this.ledgerRepo.deleteForVoucher(companyId, voucherId, transaction);
-        
-        // 2. Save updated voucher
-        await this.voucherRepo.save(updatedVoucher, transaction);
 
-        // 3. Re-record to ledger through the single sanctioned choke point. Policy re-validation on
-        //    the DRAFT→APPROVED transition already ran above; this re-record of an already-posted,
-        //    edited voucher carries that exemption explicitly.
+        // Posted-edit resync is a ledger replace, so it must pass through the guarded ledger door.
         const gateway = new PostingGateway(
           this.ledgerRepo,
-          this.validationService || new VoucherValidationService()
+          this.validationService || new VoucherValidationService(),
+          this.policyRegistry,
+          this.accountRepo
         );
-        await gateway.record(
+        await gateway.replaceForVoucher(
           updatedVoucher,
           {
             userId,
-            enforcePolicies: false,
-            exemptionReason: 'edited posted voucher re-record; policies validated on approval transition by UpdateVoucherUseCase (pre-gateway; Stage 4b folds them in)',
+            approved: true,
           },
           transaction
         );
+        
+        await this.voucherRepo.save(updatedVoucher, transaction);
       } else {
         // Standard save
         await this.voucherRepo.save(updatedVoucher, transaction);
@@ -1271,7 +1266,10 @@ export class CancelVoucherUseCase {
     private voucherRepo: IVoucherRepository,
     private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker,
-    private policyConfigProvider?: IAccountingPolicyConfigProvider
+    private policyConfigProvider?: IAccountingPolicyConfigProvider,
+    private policyRegistry?: any,
+    private accountRepo?: IAccountRepository,
+    private validationService: any = null
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
@@ -1313,9 +1311,17 @@ export class CancelVoucherUseCase {
       );
     }
     
-    // V1: If voucher was posted, delete ledger entries
     if (voucher.isPosted) {
-       await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+       const gateway = new PostingGateway(
+         this.ledgerRepo,
+         this.validationService || new VoucherValidationService(),
+         this.policyRegistry,
+         this.accountRepo
+       );
+       await gateway.deleteVoucherLedger(voucher, {
+         userId,
+         approved: true,
+       });
     }
     
     const cancelledVoucher = voucher.cancel(userId, new Date(), 'Deleted by user', voucher.isPosted);
@@ -1328,7 +1334,10 @@ export class DeleteVoucherUseCase {
     private voucherRepo: IVoucherRepository,
     private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker,
-    private configProvider: IAccountingPolicyConfigProvider
+    private configProvider: IAccountingPolicyConfigProvider,
+    private policyRegistry?: any,
+    private accountRepo?: IAccountRepository,
+    private validationService: any = null
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string) {
@@ -1367,9 +1376,17 @@ export class DeleteVoucherUseCase {
       );
     }
     
-    // Clean up ledger entries if posted
     if (voucher.isPosted) {
-       await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+       const gateway = new PostingGateway(
+         this.ledgerRepo,
+         this.validationService || new VoucherValidationService(),
+         this.policyRegistry,
+         this.accountRepo
+       );
+       await gateway.deleteVoucherLedger(voucher, {
+         userId,
+         approved: true,
+       });
     }
     
     // HARD DELETE the voucher record

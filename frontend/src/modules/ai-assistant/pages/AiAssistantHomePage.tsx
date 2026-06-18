@@ -7,8 +7,8 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Send, Bot, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, FileText, Wrench, Mic, PanelLeftClose, PanelLeft, Copy, Check, Pin, PinOff, Edit3, Download, Archive, Paperclip, Globe, Lightbulb, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next'; import { Send, Bot, Trash2, AlertCircle, AlertTriangle, Info, Plus, MessageSquare, Clock, Sparkles, FileText, Wrench, Mic, PanelLeftClose, PanelLeft, Copy, Check, Pin, PinOff, Edit3, Download, Archive, Paperclip, Globe, Lightbulb} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import {
   aiAssistantApi,
   ChatMessageDTO,
@@ -964,7 +964,7 @@ export const AiAssistantHomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pt-1">
-                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                    <Spinner size="sm" variant="indigo" />
                     <span className="text-sm text-gray-500 animate-pulse">
                       {streamingStage === 'thinking' && t('chat.status.thinking', 'Thinking...')}
                       {streamingStage === 'fetching_data' && t('chat.status.fetchingData', 'Fetching data...')}

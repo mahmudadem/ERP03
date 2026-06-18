@@ -506,6 +506,7 @@ const VouchersListPage: React.FC = () => {
         {/* Web View Modal */}
         {modalType && (
           <VoucherEntryModal
+            key={`${modalType.id || modalType.code || 'voucher'}:${editingVoucher?.id || 'new'}:${isModalOpen ? 'open' : 'closed'}`}
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             voucherType={modalType}

@@ -13,7 +13,8 @@ import { validateForm } from '../utils/validateForm';
 import { Button } from '../../components/ui/Button';
 import { errorHandler } from '../../services/errorHandler';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
-import { Loader2, Save, CheckCircle, Send } from 'lucide-react';
+import { Save, CheckCircle, Send } from 'lucide-react';
+import { Spinner } from '../../components/ui/Spinner';
 
 interface Props {
   definition: VoucherTypeDefinition;
@@ -186,7 +187,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
           >
             {isSaving || settingsLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Spinner size="sm" variant={settings?.strictApprovalMode === true ? 'secondary' : 'white'} />
                 {settingsLoading ? t('voucherRenderer.loading') : (settings?.strictApprovalMode === true ? t('voucherRenderer.saving') : t('voucherRenderer.posting'))}
               </>
             ) : (
@@ -205,7 +206,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
               disabled={isSubmitting || readOnly}
             >
               {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Spinner size="sm" variant="white" />
               ) : (
                 <>
                   <Send className="w-4 h-4" />

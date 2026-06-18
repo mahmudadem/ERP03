@@ -1,32 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  DocumentFormDesigner, 
-  DocumentFormConfig,
-  AvailableField,
-  loadModuleDocumentForms,
-  loadModuleDocumentDefinitions,
-  loadSystemVoucherTypes,
-  saveDocumentForm,
-  updateFormMetadata,
-  WizardProvider
-} from '../forms-designer';
-import { ModuleStatusBanner } from '../forms-designer/components/ModuleStatusBanner';
-import { useCompanyAccess } from '../../../context/CompanyAccessContext';
-import { useCompanyModules } from '../../../hooks/useCompanyModules';
-import { purchasesApi } from '../../../api/purchasesApi';
-import { salesApi } from '../../../api/salesApi';
-import { useAuth } from '../../../context/AuthContext';
-import { 
-  Loader2, 
-  FileText, 
-  ShoppingCart, 
-  Package, 
-  ChevronRight,
-  RefreshCw,
-  FileSpreadsheet,
-  Plus,
-  DownloadCloud
-} from 'lucide-react';
+import { DocumentFormDesigner, DocumentFormConfig, AvailableField, loadModuleDocumentForms, loadModuleDocumentDefinitions, loadSystemVoucherTypes, saveDocumentForm, updateFormMetadata, WizardProvider } from '../forms-designer'; import { ModuleStatusBanner } from '../forms-designer/components/ModuleStatusBanner'; import { useCompanyAccess } from '../../../context/CompanyAccessContext'; import { useCompanyModules } from '../../../hooks/useCompanyModules'; import { purchasesApi } from '../../../api/purchasesApi'; import { salesApi } from '../../../api/salesApi'; import { useAuth } from '../../../context/AuthContext'; import { FileText, ShoppingCart, Package, ChevronRight, RefreshCw, FileSpreadsheet, Plus, DownloadCloud } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { errorHandler } from '../../../services/errorHandler';
 
 type ERPModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
@@ -367,7 +341,7 @@ export default function ToolsFormsDesignerPage() {
   if (showLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
-        <Loader2 className="animate-spin h-10 w-10 text-indigo-600 mb-4" />
+        <Spinner size="xl" variant="indigo" className="mb-4" />
         <p className="text-slate-500 font-medium animate-pulse">Initializing {activeModule} Designer...</p>
       </div>
     );
@@ -484,7 +458,7 @@ export default function ToolsFormsDesignerPage() {
           {isSaving && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-[60] flex items-center justify-center">
               <div className="bg-white p-6 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-100">
-                  <Loader2 className="animate-spin text-indigo-600" size={32} />
+                  <Spinner size="lg" variant="indigo" />
                   <span className="text-lg font-bold text-slate-700">Saving Design Configuration...</span>
               </div>
             </div>

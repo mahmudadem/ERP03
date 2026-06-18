@@ -1,6 +1,6 @@
 import React from 'react';
-import { clsx } from 'clsx';
-import { AlertCircle, Database, Loader2 } from 'lucide-react';
+import { clsx } from 'clsx'; import { AlertCircle, Database} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 
 export type SortDirection = 'asc' | 'desc' | null;
 
@@ -121,7 +121,7 @@ export const SuperAdminEmptyState: React.FC<{ title: React.ReactNode; descriptio
 
 export const SuperAdminLoading: React.FC<{ label: React.ReactNode }> = ({ label }) => (
   <div className="flex items-center gap-2 rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface)] px-4 py-3 text-sm text-[var(--sa-muted)] shadow-sm">
-    <Loader2 className="h-4 w-4 animate-spin" />
+    <Spinner size="sm" />
     {label}
   </div>
 );

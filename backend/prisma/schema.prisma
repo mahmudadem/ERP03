@@ -841,6 +841,10 @@ model StockTransfer {
   date           DateTime
   status         String   @default("DRAFT")
   notes          String?
+  transferPairId String?
+  reversesTransferId String?
+  reversedByTransferId String?
+  completedAt    DateTime?
   createdBy      String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

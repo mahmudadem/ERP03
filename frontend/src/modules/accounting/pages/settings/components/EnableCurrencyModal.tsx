@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Check, Loader2, Info } from 'lucide-react';
+import { X, Check, Info } from 'lucide-react';
+import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi, CurrencyDTO } from '../../../../../api/accountingApi';
 import { errorHandler } from '../../../../../services/errorHandler';
 
@@ -111,7 +112,7 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
           >
             {saving ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
+                <Spinner size="sm" />
                 <span>Enabling...</span>
               </>
             ) : (

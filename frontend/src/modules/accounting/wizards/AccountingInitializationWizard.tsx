@@ -1,24 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { useCompanyAccess } from '../../../context/CompanyAccessContext';
-import { companyModulesApi } from '../../../api/companyModules';
-import { systemMetadataApi } from '../../../api/systemMetadata';
-import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
-import {
-  Calculator,
-  Calendar,
-  DollarSign,
-  BookOpen,
-  ChevronRight,
-  ChevronLeft,
-  CheckCircle,
-  Loader2,
-  Search,
-  Badge,
-  AlertTriangle,
-  FileCheck,
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; import { useQueryClient } from '@tanstack/react-query'; import { useCompanyAccess } from '../../../context/CompanyAccessContext'; import { companyModulesApi } from '../../../api/companyModules'; import { systemMetadataApi } from '../../../api/systemMetadata'; import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents'; import { Calculator, Calendar, DollarSign, BookOpen, ChevronRight, ChevronLeft, CheckCircle, Search, Badge, AlertTriangle, FileCheck} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { COATreePreview } from '../components/COATreePreview';
 import {
   loadSystemVoucherTypeGroups,
@@ -352,7 +334,7 @@ export const AccountingInitializationWizard: React.FC = () => {
 
             {isLoadingData ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+                <Spinner size="lg" />
                 <span className="ml-3 text-gray-600">Loading currencies...</span>
               </div>
             ) : (
@@ -446,7 +428,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <div className="space-y-4 flex-1 overflow-y-auto pr-2 min-h-0">
                 {isLoadingData ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+                    <Spinner size="lg" />
                     <span className="ml-3 text-gray-600">Loading templates...</span>
                   </div>
                 ) : filteredTemplates.length === 0 ? (
@@ -585,7 +567,7 @@ export const AccountingInitializationWizard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
               {isLoadingData ? (
                 <div className="col-span-2 flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+                  <Spinner size="lg" />
                   <span className="ml-3 text-gray-600">Loading voucher types...</span>
                 </div>
               ) : voucherTypeGroups.length === 0 ? (
@@ -836,7 +818,7 @@ export const AccountingInitializationWizard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
+          <Spinner size="xl" className="mx-auto mb-4" />
           <p className="text-gray-600">Loading wizard...</p>
         </div>
       </div>
@@ -997,7 +979,7 @@ export const AccountingInitializationWizard: React.FC = () => {
               >
                 {isCompleting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" />
                     Completing...
                   </>
                 ) : (

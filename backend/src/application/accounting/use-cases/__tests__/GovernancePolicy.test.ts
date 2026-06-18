@@ -158,7 +158,7 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
         });
 
         it('should ALLOW DELETE of posted voucher and remove ledger entries', async () => {
-            const postedVoucher = makePostedVoucher({ id: 'v-flex-on-del' });
+            const postedVoucher = makePostedVoucher({ id: 'v-flex-on-del', companyId: 'c1' });
             mockVoucherRepo.findById.mockResolvedValue(postedVoucher);
 
             const cancelUseCase = new CancelVoucherUseCase(
@@ -173,7 +173,7 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
             ).resolves.not.toThrow();
 
             // Verify ledger entries were deleted
-            expect(mockLedgerRepo.deleteForVoucher).toHaveBeenCalledWith('c1', 'v-flex-on-del');
+            expect(mockLedgerRepo.deleteForVoucher).toHaveBeenCalledWith('c1', 'v-flex-on-del', undefined);
             
             // Verify voucher was saved as cancelled
             expect(mockVoucherRepo.save).toHaveBeenCalled();

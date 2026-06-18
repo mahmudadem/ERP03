@@ -41,6 +41,79 @@ describe('PostingGateway', () => {
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
   });
 
+  it('replaces posted voucher ledger rows behind the same guarded door', async () => {
+    const ledgerRepo = {
+      deleteForVoucher: jest.fn(async () => undefined),
+      recordForVoucher: jest.fn(async () => undefined),
+    } as any;
+    const validation = makeValidationService();
+    const registry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [{ id: 'p', name: 'p', validate: jest.fn() }]),
+    } as any;
+    const gateway = new PostingGateway(ledgerRepo, validation as any, registry);
+
+    await gateway.replaceForVoucher(makeVoucher(), { userId: 'u-1', approved: true }, 'tx-1');
+
+    expect(validation.validateCore).toHaveBeenCalledTimes(1);
+    expect(validation.validatePolicies).toHaveBeenCalledTimes(1);
+    expect(ledgerRepo.deleteForVoucher).toHaveBeenCalledWith('c-1', 'v-1', 'tx-1');
+    expect(ledgerRepo.recordForVoucher).toHaveBeenCalledWith(expect.objectContaining({ id: 'v-1' }), 'tx-1');
+  });
+
+  it('blocks replace before deleting old rows when a policy rejects', async () => {
+    const ledgerRepo = {
+      deleteForVoucher: jest.fn(async () => undefined),
+      recordForVoucher: jest.fn(async () => undefined),
+    } as any;
+    const validation = makeValidationService();
+    validation.validatePolicies.mockRejectedValueOnce(new Error('PERIOD_LOCKED'));
+    const registry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [{ id: 'period-lock', name: 'period-lock', validate: jest.fn() }]),
+    } as any;
+    const gateway = new PostingGateway(ledgerRepo, validation as any, registry);
+
+    await expect(
+      gateway.replaceForVoucher(makeVoucher(), { userId: 'u-1', approved: true })
+    ).rejects.toThrow('PERIOD_LOCKED');
+
+    expect(ledgerRepo.deleteForVoucher).not.toHaveBeenCalled();
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+  });
+
+  it('runs policies before deleting voucher ledger rows', async () => {
+    const ledgerRepo = { deleteForVoucher: jest.fn(async () => undefined) } as any;
+    const validation = makeValidationService();
+    const registry = {
+      getConfig: jest.fn(async () => ({ policyErrorMode: 'FAIL_FAST' })),
+      getEnabledPolicies: jest.fn(async () => [{ id: 'p', name: 'p', validate: jest.fn() }]),
+    } as any;
+    const gateway = new PostingGateway(ledgerRepo, validation as any, registry);
+
+    await gateway.deleteVoucherLedger(makeVoucher(), { userId: 'u-1', approved: true }, 'tx-1');
+
+    expect(validation.validateCore).not.toHaveBeenCalled();
+    expect(validation.validatePolicies).toHaveBeenCalledTimes(1);
+    expect(ledgerRepo.deleteForVoucher).toHaveBeenCalledWith('c-1', 'v-1', 'tx-1');
+  });
+
+  it('marks reconciled ledger entries only through the gateway surface', async () => {
+    const ledgerRepo = { markReconciled: jest.fn(async () => undefined) } as any;
+    const validation = makeValidationService();
+    const gateway = new PostingGateway(ledgerRepo, validation as any);
+
+    await gateway.markLedgerEntryReconciled({
+      companyId: 'c-1',
+      ledgerEntryId: 'le-1',
+      reconciliationId: 'rec-1',
+      bankStatementLineId: 'line-1',
+      userId: 'u-1',
+    });
+
+    expect(ledgerRepo.markReconciled).toHaveBeenCalledWith('c-1', 'le-1', 'rec-1', 'line-1');
+  });
+
   it('runs the policy set with the caller-supplied approval state (approved)', async () => {
     const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) } as any;
     const validation = makeValidationService();

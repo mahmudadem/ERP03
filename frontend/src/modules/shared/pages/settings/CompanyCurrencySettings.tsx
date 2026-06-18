@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, X, Check, Loader2, AlertCircle, Info } from 'lucide-react';
+import { DollarSign, Plus, X, Check, AlertCircle, Info } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { accountingApi, CurrencyDTO, CompanyCurrencyDTO } from '../../../../api/accountingApi';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../../services/errorHandler';
@@ -81,7 +82,7 @@ export const CompanyCurrencySettings: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <Spinner size="lg" variant="indigo" />
       </div>
     );
   }
@@ -150,7 +151,7 @@ export const CompanyCurrencySettings: React.FC = () => {
                           title="Disable Currency"
                         >
                           {disabling === currency.code ? (
-                            <Loader2 size={16} className="animate-spin" />
+                            <Spinner size="sm" />
                           ) : (
                             <X size={16} strokeWidth={2.5} />
                           )}

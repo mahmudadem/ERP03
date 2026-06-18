@@ -107,17 +107,20 @@ describe('Architecture guard: posting authority', () => {
     expect(content).not.toContain('PeriodStatus.LOCKED');
   });
 
-  // Stage 4 — Law 1/7: recordForVoucher is reachable only through the PostingGateway (no bypass).
-  // The gateway is the single, mandatory choke point in front of every ledger write; any other
-  // caller would be able to skip the rulebook, so we forbid it at the source level.
-  it('Stage 4: ledger recordForVoucher is only called through the PostingGateway', () => {
-    // The method may be DECLARED on the ledger repository implementations and CALLED by the
-    // gateway. It must not be CALLED anywhere else in production code.
+  // Stage 4 — Law 1/7: ledger mutations are reachable only through the PostingGateway (no bypass).
+  // The gateway is the single, mandatory choke point in front of every ledger mutation; any other
+  // caller would be able to skip the rulebook, so we forbid those calls at the source level.
+  it('Stage 4: ledger mutation methods are only called through the PostingGateway', () => {
+    // The methods may be DECLARED on the ledger repository implementations and CALLED by the
+    // gateway. They must not be CALLED anywhere else in production code.
     const allowedCallers = [
       path.resolve(SRC, 'application/accounting/services/PostingGateway.ts'),
     ];
-    // Where the method is legitimately declared/implemented (declarations are `recordForVoucher(`
-    // without a leading dot, so they don't match a call pattern — listed here for clarity only).
+    const forbiddenCalls = [
+      /\.recordForVoucher\s*\(/,
+      /\.deleteForVoucher\s*\(/,
+      /\.markReconciled\s*\(/,
+    ];
     const offenders: string[] = [];
     for (const file of collectTsFiles(SRC)) {
       // Skip tests (they mock the repo) and the sanctioned caller.
@@ -126,7 +129,7 @@ describe('Architecture guard: posting authority', () => {
       const content = fs.readFileSync(file, 'utf8');
       // A CALL looks like `.recordForVoucher(` (invoked on a repo instance). Declarations on the
       // repo implementations look like `recordForVoucher(` / `async recordForVoucher(` (no dot).
-      if (/\.recordForVoucher\s*\(/.test(content)) {
+      if (forbiddenCalls.some((pattern) => pattern.test(content))) {
         offenders.push(path.relative(SRC, file));
       }
     }

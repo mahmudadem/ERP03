@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { InventorySettingsDTO, inventoryApi, InventoryWarehouseDTO } from '../../../api/inventoryApi';
-import { Card } from '../../../components/ui/Card';
-import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
-import { useAccounts } from '../../../context/AccountsContext';
-import { Loader2, Settings, Info, Warehouse, Hash, DollarSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; import { InventorySettingsDTO, inventoryApi, InventoryWarehouseDTO } from '../../../api/inventoryApi'; import { Card } from '../../../components/ui/Card'; import { AccountSelector } from '../../accounting/components/shared/AccountSelector'; import { useAccounts } from '../../../context/AccountsContext'; import { Settings, Info, Warehouse, Hash, DollarSign } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
@@ -83,6 +79,9 @@ const InventorySettingsPage: React.FC = () => {
         defaultInventoryGainAccountId: settings.defaultInventoryGainAccountId || undefined,
         defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId || undefined,
         defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId || undefined,
+        defaultInventoryRevaluationAccountId: settings.defaultInventoryRevaluationAccountId || undefined,
+        defaultOpeningBalanceAccountId: settings.defaultOpeningBalanceAccountId || undefined,
+        allowNegativeInventoryValue: settings.allowNegativeInventoryValue || false,
       };
 
       const result = await inventoryApi.updateSettings(payload);
@@ -101,7 +100,7 @@ const InventorySettingsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Spinner size="lg" variant="indigo" />
       </div>
     );
   }
@@ -144,7 +143,6 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
-          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">
@@ -205,6 +203,22 @@ const InventorySettingsPage: React.FC = () => {
                   </div>
 
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Opening Balance Account</label>
+                    <AccountSelector
+                      value={settings.defaultOpeningBalanceAccountId}
+                      onChange={(acc) => updateSetting('defaultOpeningBalanceAccountId', acc?.id || '')}
+                      placeholder="Select opening balance equity account"
+                      accounts={allAccounts.filter(a =>
+                        a.accountRole === 'POSTING' &&
+                        a.classification?.toUpperCase() === 'EQUITY'
+                      )}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      Prefills Opening Stock Documents. Users can override it per document, but posting still requires an active posting EQUITY account.
+                    </p>
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
                     <AccountSelector
                       value={settings.defaultCOGSAccountId}
@@ -261,7 +275,20 @@ const InventorySettingsPage: React.FC = () => {
                       accounts={allAccounts.filter(a => a.accountRole === 'POSTING')}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      Used by valued (ledger-affecting) stock transfers to absorb a cost uplift such as capitalized freight/handling, so the transfer voucher stays balanced.
+                      Used only for explicit added transfer costs such as freight, customs, or handling. Value-only corrections use Inventory Revaluation instead.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Revaluation Account</label>
+                    <AccountSelector
+                      value={settings.defaultInventoryRevaluationAccountId}
+                      onChange={(acc) => updateSetting('defaultInventoryRevaluationAccountId', acc?.id || '')}
+                      placeholder="Select inventory revaluation account"
+                      accounts={allAccounts.filter(a => a.accountRole === 'POSTING')}
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">
+                      Used only when stock transfer value is explicitly revalued. Do not use gain/loss or transfer clearing for value-only cost corrections.
                     </p>
                   </div>
                 </div>
@@ -279,7 +306,6 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
-          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">
@@ -341,7 +367,6 @@ const InventorySettingsPage: React.FC = () => {
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
-          hideSaveButton={true}
         >
           <Card className="p-6">
             <div className="space-y-6">

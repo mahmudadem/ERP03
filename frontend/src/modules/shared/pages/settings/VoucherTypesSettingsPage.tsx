@@ -14,17 +14,8 @@
  * company catalog as a locked + inactive default (see ff2307e4).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  AlertCircle,
-  CheckCircle2,
-  DownloadCloud,
-  FileCheck,
-  Info,
-  Layers,
-  Loader2,
-  PackageCheck,
-} from 'lucide-react';
+import { Link } from 'react-router-dom'; import { AlertCircle, CheckCircle2, DownloadCloud, FileCheck, Info, Layers, PackageCheck} from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { emitCompanyModulesRefresh } from '../../../../utils/companyModulesEvents';
@@ -210,7 +201,7 @@ const VoucherTypesSettingsPage: React.FC<VoucherTypesSettingsPageProps> = ({
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+            <Spinner size="lg" />
             <span className="ml-3 text-gray-600">Loading voucher type catalog...</span>
           </div>
         ) : (
@@ -344,7 +335,7 @@ const TypeGroupCard: React.FC<TypeGroupCardProps> = ({
             >
               {installing ? (
                 <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Spinner size="sm" />
                   Installing
                 </>
               ) : (

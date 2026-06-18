@@ -6,8 +6,8 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { X, Save, Loader2, Send, CheckCircle, Plus, RotateCcw, AlertTriangle, Check, RotateCw, Printer } from 'lucide-react';
+import { useTranslation } from 'react-i18next'; import { X, Save, Send, CheckCircle, Plus, RotateCcw, AlertTriangle, Check, RotateCw, Printer } from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { VoucherFormConfig } from '../voucher-wizard/types';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { UIMode } from '../../../api/companyApi';
@@ -207,6 +207,31 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     return status === 'locked';
   }, [effectiveData?.status, forceStrictMode]);
 
+  const getDisplayErrorMessage = (err: any, fallback: string): string => {
+    const normalized = errorHandler.normalizeError(err);
+    return errorHandler.translateError(normalized) || fallback;
+  };
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    setError(null);
+    setIsDirty(false);
+    setIsSaving(false);
+    setIsSubmitting(false);
+    setShowUnsavedModal(false);
+    setShowConfirmSubmitModal(false);
+    setShowSuccessModal(false);
+    setSuccessAction(null);
+    setIsCheckingRates(false);
+    setRateDeviationResult(null);
+    setPendingSaveData(null);
+    setShowCorrectionModal(false);
+    setCorrectionMode('REVERSE_ONLY');
+    setIsNewMode(false);
+    setLocalVoucherOverride(null);
+  }, [isOpen, voucherType?.id, initialData?.id]);
+
   if (!isOpen) return null;
 
   const handleCloseAttempt = () => {
@@ -250,9 +275,11 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
            type: err.savedVoucher.type || voucherType.code || voucherType.id
          });
          setIsDirty(false);
-         setError(`Voucher saved as draft, but couldn't be submitted: ${err.message || 'Unknown error'}`);
+         setError(
+           `Voucher saved as draft, but couldn't be submitted: ${getDisplayErrorMessage(err, 'Unknown error')}`
+         );
        } else {
-         setError(err.message || 'Failed to save voucher');
+         setError(getDisplayErrorMessage(err, 'Failed to save voucher'));
        }
     } finally {
       setIsSaving(false);
@@ -567,7 +594,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                 >
                   {isSaving || settingsLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Spinner size="sm" />
                       {settingsLoading ? 'Loading...' : (forceStrictMode ? 'Saving...' : 'Posting...')}
                     </>
                   ) : (
@@ -601,7 +628,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                   title={!isBalanced ? "Voucher must be balanced to submit" : ""}
                 >
                   {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" />
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
@@ -624,7 +651,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                           setSuccessAction('APPROVE');
                           setShowSuccessModal(true);
                         } catch (err: any) {
-                          setError(err.message || 'Approval failed');
+                          setError(getDisplayErrorMessage(err, 'Approval failed'));
                         } finally {
                           setIsSubmitting(false);
                         }
@@ -633,7 +660,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                     disabled={isSubmitting || !effectiveData?.metadata?.pendingFinancialApproval}
                   >
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    {isSubmitting ? <Spinner size="sm" /> : <CheckCircle className="w-4 h-4" />}
                     Approve
                   </button>
 
@@ -652,7 +679,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                             setSuccessAction('CONFIRM_CUSTODY');
                             setShowSuccessModal(true);
                           } catch (err: any) {
-                            setError(err.message || 'Confirmation failed');
+                            setError(getDisplayErrorMessage(err, 'Confirmation failed'));
                           } finally {
                             setIsSubmitting(false);
                           }
@@ -661,7 +688,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                       className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check size={16} />}
+                      {isSubmitting ? <Spinner size="sm" /> : <Check size={16} />}
                       Confirm Custody
                     </button>
                   )}
@@ -675,7 +702,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                           setIsDirty(false);
                           onClose();
                         } catch (err: any) {
-                          setError(err.message || 'Rejection failed');
+                          setError(getDisplayErrorMessage(err, 'Rejection failed'));
                         } finally {
                           setIsSubmitting(false);
                         }
@@ -701,7 +728,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                         setSuccessAction('POST');
                         setShowSuccessModal(true);
                       } catch (err: any) {
-                        setError(err.message || 'Posting failed');
+                        setError(getDisplayErrorMessage(err, 'Posting failed'));
                       } finally {
                         setIsSubmitting(false);
                       }
@@ -710,7 +737,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                   className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  {isSubmitting ? <Spinner size="sm" /> : <CheckCircle className="w-4 h-4" />}
                   Post to Ledger
                 </button>
               )}

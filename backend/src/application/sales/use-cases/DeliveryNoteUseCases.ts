@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { DeliveryNote, DeliveryNoteLine } from '../../../domain/sales/entities/DeliveryNote';
+import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
@@ -253,7 +254,11 @@ export class PostDeliveryNoteUseCase {
 
     const dn = await this.deliveryNoteRepo.getById(companyId, id);
     if (!dn) throw new Error(`Delivery note not found: ${id}`);
-    if (dn.status !== 'DRAFT') throw new Error('Only DRAFT delivery notes can be posted');
+    if (dn.status !== 'DRAFT') {
+      throw new SalesRuleError('DELIVERY_NOTE_INVALID_STATE', 'Only DRAFT delivery notes can be posted', {
+        fieldHints: ['status'],
+      });
+    }
 
     const warehouse = await this.warehouseRepo.getWarehouse(dn.warehouseId);
     if (!warehouse || warehouse.companyId !== companyId) {
@@ -647,7 +652,9 @@ export class UpdateDeliveryNoteUseCase {
     const current = await this.deliveryNoteRepo.getById(input.companyId, input.id);
     if (!current) throw new Error(`Delivery note not found: ${input.id}`);
     if (current.status !== 'DRAFT') {
-      throw new Error('Only draft delivery notes can be updated');
+      throw new SalesRuleError('DELIVERY_NOTE_INVALID_STATE', 'Only draft delivery notes can be updated', {
+        fieldHints: ['status'],
+      });
     }
 
     const before = current.toJSON();

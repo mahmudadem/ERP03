@@ -248,4 +248,87 @@ describe('Voucher Persistence Tests', () => {
         const saveCall = mockVoucherRepo.save.mock.calls[0];
         expect(saveCall[1]).toBe(mockTransaction);
     });
+
+    test('UpdateVoucherUseCase blocks updating a posted voucher in a locked period', async () => {
+        const lockedThroughDate = '2024-12-31';
+        const periodLockPolicy = {
+            id: 'period-lock',
+            validate: jest.fn(async (context: any) => {
+                if (context.voucherDate <= lockedThroughDate) {
+                    return {
+                        ok: false,
+                        error: {
+                            code: 'PERIOD_LOCKED',
+                            message: `Cannot post to locked period. Voucher date ${context.voucherDate} is on or before locked through date ${lockedThroughDate}`,
+                            fieldHints: ['date']
+                        }
+                    };
+                }
+
+                return { ok: true };
+            })
+        };
+
+        const policyRegistry = {
+            getConfig: jest.fn().mockResolvedValue({ policyErrorMode: 'FAIL_FAST' }),
+            getEnabledPolicies: jest.fn().mockResolvedValue([periodLockPolicy])
+        };
+
+        const validationService = {
+            validateCore: jest.fn(),
+            validateAccounts: jest.fn(async () => undefined),
+            validatePolicies: jest.fn(async (context: any, policies: any[]) => {
+                for (const policy of policies) {
+                    const result = await policy.validate(context);
+                    if (!result.ok) {
+                        throw new Error(result.error.message);
+                    }
+                }
+            })
+        };
+
+        const approvedVoucher = new VoucherEntity(
+            'v-posted-lock', 'c1', 'V-004', VoucherType.JOURNAL_ENTRY, lockedThroughDate, 'Locked Posted Voucher',
+            'USD', 'USD', 1,
+            [
+                new VoucherLineEntity(1, 'acc1', 'Debit', 100, 'USD', 100, 'USD', 1),
+                new VoucherLineEntity(2, 'acc2', 'Credit', 100, 'USD', 100, 'USD', 1)
+            ],
+            100, 100,
+            VoucherStatus.APPROVED,
+            {},
+            'user1', new Date(),
+            'user1', new Date()
+        );
+        const postedVoucher = approvedVoucher.post('user1', new Date(), PostingLockPolicy.FLEXIBLE_LOCKED);
+
+        mockVoucherRepo.findById.mockResolvedValue(postedVoucher);
+
+        const postedUpdateUseCase = new UpdateVoucherUseCase(
+            mockVoucherRepo,
+            mockAccountRepo,
+            mockPermissionChecker,
+            mockTransactionManager,
+            mockPolicyConfig,
+            mockLedgerRepo,
+            policyRegistry,
+            validationService as any
+        );
+
+        await expect(
+            postedUpdateUseCase.execute('c1', 'user1', 'v-posted-lock', {
+                description: 'Attempted edit inside locked period',
+                lines: [
+                    { accountId: 'acc1', side: 'Debit', amount: 100 },
+                    { accountId: 'acc2', side: 'Credit', amount: 100 }
+                ]
+            })
+        ).rejects.toThrow(/locked period/i);
+
+        expect(mockTransactionManager.runTransaction).toHaveBeenCalled();
+        expect(mockLedgerRepo.deleteForVoucher).not.toHaveBeenCalled();
+        expect(mockVoucherRepo.save).not.toHaveBeenCalled();
+        expect(policyRegistry.getConfig).toHaveBeenCalledWith('c1');
+        expect(policyRegistry.getEnabledPolicies).toHaveBeenCalledWith('c1');
+    });
 });

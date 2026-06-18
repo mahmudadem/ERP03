@@ -4,6 +4,7 @@ import { Check, RotateCcw, Save, Palette, Wand2, Type, Layers, Settings2, Code }
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { UnsavedChangesBanner } from '../../../components/shared/UnsavedChangesBanner';
 import {
   DEFAULT_USER_APPEARANCE,
   normalizeUserAppearance,
@@ -89,6 +90,10 @@ const AppearanceSettingsPage: React.FC = () => {
   
   const serialized = useMemo(() => JSON.stringify(draft, null, 2), [draft]);
 
+  const hasChanges = useMemo(() => {
+    return JSON.stringify(draft) !== JSON.stringify(normalizeUserAppearance(appearanceSettings));
+  }, [draft, appearanceSettings]);
+
   const applyDraft = (next: UserAppearanceSettings) => {
     const normalized = normalizeUserAppearance(next);
     setDraft(normalized);
@@ -136,7 +141,7 @@ const AppearanceSettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-8 p-[var(--app-content-padding,1.5rem)]">
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-8 p-[var(--app-content-padding,1.5rem)] pb-24">
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -146,10 +151,12 @@ const AppearanceSettingsPage: React.FC = () => {
             Design your personal workspace. Choose from beautiful presets, generate an auto-theme, or fine-tune every detail.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={reset} leftIcon={<RotateCcw className="h-4 w-4" />}>Reset to Default</Button>
-          <Button onClick={save} isLoading={saving} leftIcon={<Save className="h-4 w-4" />}>Save Preferences</Button>
-        </div>
+        {!hasChanges && (
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={reset} leftIcon={<RotateCcw className="h-4 w-4" />}>Reset to Default</Button>
+            <Button onClick={save} isLoading={saving} leftIcon={<Save className="h-4 w-4" />}>Save Preferences</Button>
+          </div>
+        )}
       </div>
 
       {message && (
@@ -523,6 +530,12 @@ const AppearanceSettingsPage: React.FC = () => {
           </Card>
         </div>
       </div>
+      <UnsavedChangesBanner
+        hasChanges={hasChanges}
+        onSave={save}
+        onDiscard={() => applyDraft(appearanceSettings)}
+        saving={saving}
+      />
     </div>
   );
 };

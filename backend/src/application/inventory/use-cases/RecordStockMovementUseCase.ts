@@ -80,14 +80,12 @@ export interface ProcessTRANSFERInput {
   preFetchedDestinationLevel?: StockLevel;
   preFetchedInventorySettings?: InventorySettings;
   skipWarehouseValidation?: boolean;
-  /**
-   * VALUED transfers only: the cost the stock should LAND at in the destination
-   * warehouse (e.g. source cost + capitalized freight). The source OUT leg still
-   * issues at the real source cost; the difference is the transfer uplift. When
-   * omitted the destination inherits the source cost (FLAT behavior).
-   */
-  destUnitCostOverrideBase?: number;
-  destUnitCostOverrideCCY?: number;
+  /** Explicit real transfer cost to capitalize across this transfer line. */
+  addedCostBase?: number;
+  addedCostCCY?: number;
+  /** Explicit revaluation unit cost for the destination IN leg. */
+  revaluationUnitCostBase?: number;
+  revaluationUnitCostCCY?: number;
 }
 
 export interface TransferResult {
@@ -292,6 +290,7 @@ export class RecordStockMovementUseCase {
       const projectedQty = qtyBefore - input.qty;
       if (projectedQty < 0) {
         if (settings && settings.allowNegativeStock === false) {
+          const whLabel = await this.resolveWarehouseLabel(input.warehouseId);
           throw new NegativeStockError({
             companyId: input.companyId,
             itemId: item.id,
@@ -299,6 +298,10 @@ export class RecordStockMovementUseCase {
             qtyBefore,
             requested: input.qty,
             resultingQty: projectedQty,
+            itemCode: item.code,
+            itemName: item.name,
+            warehouseCode: whLabel.code,
+            warehouseName: whLabel.name,
           });
         }
       }
@@ -385,11 +388,15 @@ export class RecordStockMovementUseCase {
       await this.ensureWarehouseExists(input.destinationWarehouseId);
     }
 
-    const costingBasis = await this.resolveCostingBasis(input.companyId, input.preFetchedInventorySettings);
+    // Loaded once: drives the costing basis AND the negative-stock guard on the
+    // source OUT leg below (a transfer issue can drive the source negative just
+    // like a plain OUT, so it must honor the same allowNegativeStock policy).
+    const settings = await this.loadSettingsSafe(input.companyId, input.preFetchedInventorySettings);
+    const costingBasis: InventoryCostingBasis = settings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
 
     const executeTransfer = async (txn: unknown): Promise<TransferResult> => {
       if (costingBasis === 'GLOBAL') {
-        return this.processTRANSFERGlobal(txn, input, item);
+        return this.processTRANSFERGlobal(txn, input, item, settings);
       }
 
       const pairId = input.transferPairId?.trim() || randomUUID();
@@ -418,6 +425,23 @@ export class RecordStockMovementUseCase {
       const srcSettledQty = Math.min(input.qty, Math.max(srcQtyBefore, 0));
       const srcUnsettledQty = input.qty - srcSettledQty;
 
+      const projectedSrcQty = srcQtyBefore - input.qty;
+      if (projectedSrcQty < 0 && settings && settings.allowNegativeStock === false) {
+        const whLabel = await this.resolveWarehouseLabel(input.sourceWarehouseId);
+        throw new NegativeStockError({
+          companyId: input.companyId,
+          itemId: item.id,
+          warehouseId: input.sourceWarehouseId,
+          qtyBefore: srcQtyBefore,
+          requested: input.qty,
+          resultingQty: projectedSrcQty,
+          itemCode: item.code,
+          itemName: item.name,
+          warehouseCode: whLabel.code,
+          warehouseName: whLabel.name,
+        });
+      }
+
       srcLevel.qtyOnHand -= input.qty;
       srcLevel.postingSeq += 1;
       srcLevel.version += 1;
@@ -429,22 +453,11 @@ export class RecordStockMovementUseCase {
       const srcIsBackdated = input.date < srcOldMaxDate;
       const srcFxRate = transferCostCCY > 0 ? transferCostBase / transferCostCCY : 1.0;
 
-      // VALUED transfer: the destination may land at an overridden cost. The OUT
-      // leg keeps the real source cost; only the IN/destination side uses the
-      // override. FLAT transfers pass no override → destination inherits source.
-      const hasDestOverride =
-        input.destUnitCostOverrideBase !== undefined &&
-        !Number.isNaN(input.destUnitCostOverrideBase) &&
-        input.destUnitCostOverrideBase >= 0;
-      const destCostBase = hasDestOverride ? input.destUnitCostOverrideBase! : transferCostBase;
-      const destCostCCY =
-        input.destUnitCostOverrideCCY !== undefined &&
-        !Number.isNaN(input.destUnitCostOverrideCCY) &&
-        input.destUnitCostOverrideCCY >= 0
-          ? input.destUnitCostOverrideCCY!
-          : hasDestOverride
-            ? destCostBase
-            : transferCostCCY;
+      const { destCostBase, destCostCCY } = this.resolveTransferDestinationCost(
+        input,
+        transferCostBase,
+        transferCostCCY
+      );
       const destFxRate = destCostCCY > 0 ? destCostBase / destCostCCY : 1.0;
 
       const outMov = new StockMovement({
@@ -807,6 +820,7 @@ export class RecordStockMovementUseCase {
 
     const projectedQty = qtyBefore - input.qty;
     if (projectedQty < 0 && settings && settings.allowNegativeStock === false) {
+      const whLabel = await this.resolveWarehouseLabel(input.warehouseId);
       throw new NegativeStockError({
         companyId: input.companyId,
         itemId: item.id,
@@ -814,6 +828,10 @@ export class RecordStockMovementUseCase {
         qtyBefore,
         requested: input.qty,
         resultingQty: projectedQty,
+        itemCode: item.code,
+        itemName: item.name,
+        warehouseCode: whLabel.code,
+        warehouseName: whLabel.name,
       });
     }
 
@@ -885,7 +903,8 @@ export class RecordStockMovementUseCase {
   private async processTRANSFERGlobal(
     txn: unknown,
     input: ProcessTRANSFERInput,
-    item: Item
+    item: Item,
+    settings: InventorySettings | null
   ): Promise<TransferResult> {
     const baseCurrency = await this.getBaseCurrency(input.companyId);
     const levels = await this.deps.stockLevelRepository.getLevelsByItemInTransaction(
@@ -910,37 +929,38 @@ export class RecordStockMovementUseCase {
     const srcCostCCY =
       totals.qty > 0 ? roundByCurrency(totals.avgCCY, item.costCurrency) : src.lastCostCCY;
 
-    // VALUED transfers may capitalize an uplift (e.g. freight) into the company
-    // average; FLAT transfers carry the source cost and leave the average flat.
-    const hasDestOverride =
-      input.destUnitCostOverrideBase !== undefined &&
-      !Number.isNaN(input.destUnitCostOverrideBase) &&
-      input.destUnitCostOverrideBase >= 0;
-    const destCostBase = hasDestOverride ? input.destUnitCostOverrideBase! : srcCostBase;
-    const destCostCCY =
-      input.destUnitCostOverrideCCY !== undefined &&
-      !Number.isNaN(input.destUnitCostOverrideCCY) &&
-      input.destUnitCostOverrideCCY >= 0
-        ? input.destUnitCostOverrideCCY!
-        : hasDestOverride
-          ? destCostBase
-          : srcCostCCY;
+    const { destCostBase, destCostCCY } = this.resolveTransferDestinationCost(input, srcCostBase, srcCostCCY);
+    const explicitDeltaBase = roundMoney((destCostBase - srcCostBase) * input.qty);
+    const explicitDeltaCCY = roundMoney((destCostCCY - srcCostCCY) * input.qty);
 
-    const upliftBase = (destCostBase - srcCostBase) * input.qty;
-    const upliftCCY = (destCostCCY - srcCostCCY) * input.qty;
-
-    // A transfer moves quantity between locations without changing the total, so
-    // only a VALUED uplift moves the company-wide average.
     const newGlobalAvgBase =
-      totals.qty > 0 ? roundByCurrency((totals.valueBase + upliftBase) / totals.qty, baseCurrency) : destCostBase;
+      totals.qty > 0 ? roundByCurrency((totals.valueBase + explicitDeltaBase) / totals.qty, baseCurrency) : srcCostBase;
     const newGlobalAvgCCY =
-      totals.qty > 0 ? roundByCurrency((totals.valueCCY + upliftCCY) / totals.qty, item.costCurrency) : destCostCCY;
+      totals.qty > 0 ? roundByCurrency((totals.valueCCY + explicitDeltaCCY) / totals.qty, item.costCurrency) : srcCostCCY;
 
     // ── Source OUT leg ──
     const srcQtyBefore = src.qtyOnHand;
     const srcOldMaxDate = src.maxBusinessDate;
     const srcSettledQty = Math.min(input.qty, Math.max(srcQtyBefore, 0));
     const srcUnsettledQty = input.qty - srcSettledQty;
+
+    const projectedSrcQty = srcQtyBefore - input.qty;
+    if (projectedSrcQty < 0 && settings && settings.allowNegativeStock === false) {
+      const whLabel = await this.resolveWarehouseLabel(input.sourceWarehouseId);
+      throw new NegativeStockError({
+        companyId: input.companyId,
+        itemId: item.id,
+        warehouseId: input.sourceWarehouseId,
+        qtyBefore: srcQtyBefore,
+        requested: input.qty,
+        resultingQty: projectedSrcQty,
+        itemCode: item.code,
+        itemName: item.name,
+        warehouseCode: whLabel.code,
+        warehouseName: whLabel.name,
+      });
+    }
+
     src.qtyOnHand -= input.qty;
     src.avgCostBase = newGlobalAvgBase;
     src.avgCostCCY = newGlobalAvgCCY;
@@ -1053,11 +1073,48 @@ export class RecordStockMovementUseCase {
     await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, dst);
     await this.deps.stockMovementRepository.recordMovement(outMov, txn);
     await this.deps.stockMovementRepository.recordMovement(inMov, txn);
-    if (upliftBase !== 0 || upliftCCY !== 0) {
+    if (explicitDeltaBase !== 0 || explicitDeltaCCY !== 0) {
       await this.restateAverageAcrossLevels(txn, otherLevels, newGlobalAvgBase, newGlobalAvgCCY, now);
     }
 
     return { outMov, inMov };
+  }
+
+  private resolveTransferDestinationCost(
+    input: ProcessTRANSFERInput,
+    sourceUnitCostBase: number,
+    sourceUnitCostCCY: number
+  ): { destCostBase: number; destCostCCY: number } {
+    const addedBase = input.addedCostBase ?? 0;
+    const addedCCY = input.addedCostCCY ?? addedBase;
+    const hasAddedCost = addedBase > 0 || addedCCY > 0;
+    const hasRevaluation =
+      input.revaluationUnitCostBase !== undefined ||
+      input.revaluationUnitCostCCY !== undefined;
+
+    if ([addedBase, addedCCY, input.revaluationUnitCostBase, input.revaluationUnitCostCCY].some((value) =>
+      value !== undefined && (Number.isNaN(value) || value < 0)
+    )) {
+      throw new Error('Transfer cost inputs must be valid non-negative numbers');
+    }
+    if (hasAddedCost && hasRevaluation) {
+      throw new Error('Added-cost and revaluation transfers must be posted as separate documents');
+    }
+
+    if (hasRevaluation) {
+      const destCostBase = input.revaluationUnitCostBase ?? input.revaluationUnitCostCCY ?? 0;
+      const destCostCCY = input.revaluationUnitCostCCY ?? input.revaluationUnitCostBase ?? destCostBase;
+      return { destCostBase, destCostCCY };
+    }
+
+    if (hasAddedCost) {
+      return {
+        destCostBase: roundMoney(sourceUnitCostBase + addedBase / input.qty),
+        destCostCCY: roundMoney(sourceUnitCostCCY + addedCCY / input.qty),
+      };
+    }
+
+    return { destCostBase: sourceUnitCostBase, destCostCCY: sourceUnitCostCCY };
   }
 
   /**
@@ -1219,6 +1276,20 @@ export class RecordStockMovementUseCase {
     const warehouse = await this.deps.warehouseRepository.getWarehouse(warehouseId);
     if (!warehouse) {
       throw new Error(`Warehouse not found: ${warehouseId}`);
+    }
+  }
+
+  /**
+   * Best-effort readable warehouse label for user-facing errors (e.g. negative stock).
+   * Never throws — this only runs on an already-failing path, so a missing lookup just
+   * falls back to the id.
+   */
+  private async resolveWarehouseLabel(warehouseId: string): Promise<{ code?: string; name?: string }> {
+    try {
+      const warehouse = await this.deps.warehouseRepository.getWarehouse(warehouseId);
+      return { code: warehouse?.code, name: warehouse?.name };
+    } catch {
+      return {};
     }
   }
 

@@ -47,6 +47,16 @@ client.interceptors.request.use(
     const isPublicEndpoint = publicEndpoints.some(endpoint => 
       config.url?.includes(endpoint)
     );
+    const noCompanyContextEndpoints = [
+      '/auth/me/permissions',
+      '/user/preferences',
+      '/users/me/companies',
+      '/users/me/switch-company',
+      '/users/me/active-company',
+    ];
+    const isNoCompanyContextEndpoint = noCompanyContextEndpoints.some(endpoint =>
+      config.url?.includes(endpoint)
+    );
 
     // Attach Auth Token
     if (authTokenGetter && !isPublicEndpoint) {
@@ -66,7 +76,7 @@ client.interceptors.request.use(
     }
 
     // Attach Company ID
-    if (companyIdGetter && !config.headers.get('x-company-id')) {
+    if (companyIdGetter && !isNoCompanyContextEndpoint && !config.headers.get('x-company-id')) {
       const companyId = companyIdGetter();
       if (companyId) {
         config.headers.set('x-company-id', companyId);

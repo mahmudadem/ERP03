@@ -26,6 +26,9 @@ import {
   RefreshCw,
   Check,
   Ban,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 /* ── Helpers ────────────────────────────────────────────── */
@@ -89,6 +92,23 @@ const normalizeDescription = (voucher: any) => {
   );
 };
 
+const NAVIGATION_PAGE_SIZE = 200;
+
+const normalizeVoucherListResponse = (response: any, page: number, pageSize: number) => {
+  const items = Array.isArray(response) ? response : Array.isArray(response?.items) ? response.items : [];
+  const pagination = Array.isArray(response)
+    ? { page: 1, pageSize: items.length, totalPages: 1 }
+    : response?.pagination || { page, pageSize, totalPages: items.length < pageSize ? page : page + 1 };
+
+  return { items, pagination };
+};
+
+const toNavigationItem = (item: any, page: number) => ({
+  id: item.id,
+  page,
+  label: normalizeReferenceLabel(item.voucherNo || item.id, 'VCH'),
+});
+
 const resolveActorLabel = (
   displayName: string | undefined | null,
   email: string | undefined | null,
@@ -114,7 +134,7 @@ const statusConfig: Record<string, { labelKey: string; defaultLabel: string; bg:
 /* ── Component ──────────────────────────────────────────── */
 
 const VoucherViewPage: React.FC = () => {
-  const { t } = useTranslation('accounting');
+  const { t, i18n } = useTranslation('accounting');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { settings } = useCompanySettings();
@@ -127,11 +147,17 @@ const VoucherViewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [runningAction, setRunningAction] = useState<VoucherActionType | null>(null);
+  const [recordNavigation, setRecordNavigation] = useState<{
+    previous: { id: string; page: number; label: string } | null;
+    next: { id: string; page: number; label: string } | null;
+    loading: boolean;
+  }>({ previous: null, next: null, loading: false });
   const tr = useCallback(
     (key: string, defaultValue: string, options?: Record<string, unknown>) =>
       t(key, { defaultValue, ...(options || {}) }),
     [t]
   );
+  const isRtl = i18n.dir() === 'rtl';
 
   const loadVoucher = useCallback(async () => {
     if (!id) return;
@@ -165,6 +191,77 @@ const VoucherViewPage: React.FC = () => {
   useEffect(() => {
     loadVoucher();
   }, [loadVoucher]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    const loadNavigation = async () => {
+      setRecordNavigation((prev) => ({ ...prev, loading: true }));
+      try {
+        let page = 1;
+        let previous: { id: string; page: number; label: string } | null = null;
+        let next: { id: string; page: number; label: string } | null = null;
+        let previousPageItems: any[] = [];
+
+        while (!cancelled) {
+          const response = await accountingApi.listVouchers({
+            page,
+            pageSize: NAVIGATION_PAGE_SIZE,
+            sort: 'date_desc',
+          });
+          const { items, pagination } = normalizeVoucherListResponse(response, page, NAVIGATION_PAGE_SIZE);
+          const currentIndex = items.findIndex((item: any) => item.id === id);
+
+          if (currentIndex >= 0) {
+            previous = currentIndex > 0
+              ? toNavigationItem(items[currentIndex - 1], page)
+              : previousPageItems.length > 0
+                ? toNavigationItem(previousPageItems[previousPageItems.length - 1], page - 1)
+                : null;
+
+            if (currentIndex < items.length - 1) {
+              next = toNavigationItem(items[currentIndex + 1], page);
+            } else if (page < pagination.totalPages) {
+              const nextResponse = await accountingApi.listVouchers({
+                page: page + 1,
+                pageSize: NAVIGATION_PAGE_SIZE,
+                sort: 'date_desc',
+              });
+              const nextItems = normalizeVoucherListResponse(nextResponse, page + 1, NAVIGATION_PAGE_SIZE).items;
+              if (nextItems[0]) next = toNavigationItem(nextItems[0], page + 1);
+            }
+
+            break;
+          }
+
+          if (page >= pagination.totalPages || items.length === 0) break;
+          previousPageItems = items;
+          page += 1;
+        }
+
+        if (!cancelled) setRecordNavigation({ previous, next, loading: false });
+      } catch {
+        if (!cancelled) setRecordNavigation({ previous: null, next: null, loading: false });
+      }
+    };
+
+    loadNavigation();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const buildVoucherRoute = useCallback(
+    (target: { id: string; page: number }, view: 'view' | 'ledger' = 'view') => {
+      const params = new URLSearchParams();
+      params.set('nav', 'all-vouchers');
+      params.set('page', String(target.page));
+      params.set('pageSize', String(NAVIGATION_PAGE_SIZE));
+      return `/accounting/vouchers/${target.id}/${view}?${params.toString()}`;
+    },
+    []
+  );
 
   const hasPermission = useCallback((permission: string) => {
     if (!permissionsLoaded) return true;
@@ -297,13 +394,15 @@ const VoucherViewPage: React.FC = () => {
     .replace(/\b\w/g, (c: string) => c.toUpperCase());
 
   const formattedDate = formatCompanyDate(voucher.date, settings);
+  const PreviousIcon = isRtl ? ChevronRight : ChevronLeft;
+  const NextIcon = isRtl ? ChevronLeft : ChevronRight;
 
   /* ── Render ──────────────────────────────────────────── */
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-5 print:space-y-3 print:px-0">
 
       {/* ── Top Bar ───────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-3 print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors font-medium"
@@ -312,7 +411,42 @@ const VoucherViewPage: React.FC = () => {
           {tr('voucherView.actions.back', 'Back')}
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="inline-flex h-9 min-w-[260px] items-center overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+            aria-label={tr('voucherNavigation.ariaLabel', 'Record navigation')}
+          >
+            <button
+              type="button"
+              disabled={!recordNavigation.previous || recordNavigation.loading}
+              onClick={() => recordNavigation.previous && navigate(buildVoucherRoute(recordNavigation.previous, 'view'))}
+              title={recordNavigation.previous?.label || tr('voucherNavigation.noPrevious', 'No previous voucher')}
+              className="flex h-full w-9 shrink-0 cursor-pointer items-center justify-center border-e border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <PreviousIcon className="h-4 w-4" />
+              <span className="sr-only">{tr('voucherNavigation.previous', 'Previous')}</span>
+            </button>
+            <div className="min-w-0 flex-1 px-3 text-center">
+              <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                {tr('voucherNavigation.currentVoucher', 'Current voucher')}
+              </div>
+              <div className="truncate font-mono text-xs font-bold text-slate-800" title={displayVoucherNo}>
+                {displayVoucherNo}
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={!recordNavigation.next || recordNavigation.loading}
+              onClick={() => recordNavigation.next && navigate(buildVoucherRoute(recordNavigation.next, 'view'))}
+              title={recordNavigation.next?.label || tr('voucherNavigation.noNext', 'No next voucher')}
+              className="flex h-full w-9 shrink-0 cursor-pointer items-center justify-center border-s border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <NextIcon className="h-4 w-4" />
+              <span className="sr-only">{tr('voucherNavigation.next', 'Next')}</span>
+            </button>
+          </div>
+
           {primaryWorkflowActions.map((action) => {
             const isRunning = runningAction === action.type;
             const commonClass = 'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors';
@@ -359,6 +493,14 @@ const VoucherViewPage: React.FC = () => {
               {tr('voucherView.actions.reject', 'Reject')}
             </button>
           )}
+
+          <button
+            onClick={() => navigate(buildVoucherRoute({ id: voucher.id || id!, page: 1 }, 'ledger'))}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            {tr('voucherView.actions.ledgerImpact', 'Ledger impact')}
+          </button>
 
           <button
             onClick={() => window.print()}

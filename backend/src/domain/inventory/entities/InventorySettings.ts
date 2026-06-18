@@ -42,10 +42,25 @@ export interface InventorySettingsProps {
    */
   defaultInventoryLossAccountId?: string;
   /**
-   * Clearing account used by VALUED stock transfers to absorb a cost uplift
-   * (e.g. capitalized freight/handling) so the transfer voucher stays balanced.
+   * Clearing account used only by explicit added-cost stock transfers
+   * (freight/customs/handling). It must not be used for inferred transfer value.
    */
   defaultInventoryTransferClearingAccountId?: string;
+  /**
+   * Dedicated account for explicit value-only inventory cost corrections.
+   * Used by revaluation transfers and future inventory revaluation documents.
+   */
+  defaultInventoryRevaluationAccountId?: string;
+  /**
+   * Default EQUITY offset account for Opening Stock Documents.
+   * The document may override it, but posting still validates the chosen account.
+   */
+  defaultOpeningBalanceAccountId?: string;
+  /**
+   * Optional escape hatch for negative-value inventory shortcuts. Default false;
+   * normal transfer flows should push users to an explicit revaluation instead.
+   */
+  allowNegativeInventoryValue?: boolean;
 }
 
 export class InventorySettings {
@@ -66,6 +81,9 @@ export class InventorySettings {
   defaultInventoryGainAccountId?: string;
   defaultInventoryLossAccountId?: string;
   defaultInventoryTransferClearingAccountId?: string;
+  defaultInventoryRevaluationAccountId?: string;
+  defaultOpeningBalanceAccountId?: string;
+  allowNegativeInventoryValue: boolean;
 
   constructor(props: InventorySettingsProps) {
     if (!props.companyId?.trim()) throw new Error('InventorySettings companyId is required');
@@ -105,6 +123,10 @@ export class InventorySettings {
     this.defaultInventoryLossAccountId = props.defaultInventoryLossAccountId?.trim() || undefined;
     this.defaultInventoryTransferClearingAccountId =
       props.defaultInventoryTransferClearingAccountId?.trim() || undefined;
+    this.defaultInventoryRevaluationAccountId =
+      props.defaultInventoryRevaluationAccountId?.trim() || undefined;
+    this.defaultOpeningBalanceAccountId = props.defaultOpeningBalanceAccountId?.trim() || undefined;
+    this.allowNegativeInventoryValue = props.allowNegativeInventoryValue ?? false;
   }
 
   static createDefault(
@@ -120,7 +142,7 @@ export class InventorySettings {
       defaultCostingMethod: 'MOVING_AVG',
       defaultCostCurrency: baseCurrency.toUpperCase(),
       defaultInventoryAssetAccountId,
-      allowNegativeStock: true,
+      allowNegativeStock: false,
       autoGenerateItemCode: false,
       itemCodeNextSeq: 1,
     });
@@ -145,6 +167,9 @@ export class InventorySettings {
       defaultInventoryGainAccountId: this.defaultInventoryGainAccountId,
       defaultInventoryLossAccountId: this.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId: this.defaultInventoryTransferClearingAccountId,
+      defaultInventoryRevaluationAccountId: this.defaultInventoryRevaluationAccountId,
+      defaultOpeningBalanceAccountId: this.defaultOpeningBalanceAccountId,
+      allowNegativeInventoryValue: this.allowNegativeInventoryValue,
     };
   }
 
@@ -160,7 +185,7 @@ export class InventorySettings {
       costingBasis: data.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
       defaultCostCurrency: data.defaultCostCurrency,
       defaultInventoryAssetAccountId: data.defaultInventoryAssetAccountId,
-      allowNegativeStock: data.allowNegativeStock ?? true,
+      allowNegativeStock: data.allowNegativeStock ?? false,
       allowDeferredCost: data.allowDeferredCost ?? false,
       defaultWarehouseId: data.defaultWarehouseId,
       autoGenerateItemCode: data.autoGenerateItemCode ?? false,
@@ -170,6 +195,9 @@ export class InventorySettings {
       defaultInventoryGainAccountId: data.defaultInventoryGainAccountId,
       defaultInventoryLossAccountId: data.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId: data.defaultInventoryTransferClearingAccountId,
+      defaultInventoryRevaluationAccountId: data.defaultInventoryRevaluationAccountId,
+      defaultOpeningBalanceAccountId: data.defaultOpeningBalanceAccountId,
+      allowNegativeInventoryValue: data.allowNegativeInventoryValue ?? false,
     });
   }
 

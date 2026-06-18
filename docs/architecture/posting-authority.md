@@ -6,6 +6,27 @@
 > This document is the **single source of truth** for how postings reach the ledger.
 > If you are adding a policy, an override, or a new posting path, read this first.
 
+> **One-door fix landed 2026-06-14:** the invariant is stronger than "validate before ledger CRUD."
+> There is exactly one application path to mutate the ledger, and that one door is
+> `PostingGateway`. The architecture test now fails if production code calls
+> `ILedgerRepository.recordForVoucher`, `deleteForVoucher`, or `markReconciled` outside the
+> gateway.
+
+> **⚠️ Known gap (flagged 2026-06-15) — Law 7 is NOT actually satisfied for approval.**
+> §7/§8 below claim "approval is derived from the caller's real state" and mark "No forged
+> 'approved' stamp ✅". In reality the guard reads `ctx.approved`, a boolean the **caller passes**,
+> which **defaults to approved when omitted** (`PostingGateway.ts` `runPolicies`). So a caller still
+> *asserts* its own approval (the exact thing Law 7 forbids), and any path that omits the flag
+> bypasses `ApprovalRequiredPolicy` by omission. The **Inventory** module exploited this
+> (valued transfer, stock adjustment, opening stock all force-approved in strict mode); Delivery Note
+> and Goods Receipt do the same in PERPETUAL+strict. The full fix — approval becomes a verifiable
+> **record** the guard checks, never a caller flag — is specified in
+> [planning/briefs/20260615-approval-record-redesign.md](../../planning/briefs/20260615-approval-record-redesign.md).
+> **Interim hotfix shipped 2026-06-15:** `SubledgerVoucherPostingService.resolveApproved` fails
+> closed for inventory-origin postings (they now block in strict mode instead of silently posting);
+> DN/GRN still rely on the fail-open default pending the redesign. Until it lands, treat the
+> conformance rows for Law 7 / "No forged approved stamp" as **partial**.
+
 ## 1. The mental model
 
 The **ledger is the vault.** Writing to it is the only truly irreversible act in the system, so
@@ -206,9 +227,10 @@ door and the uniform rejection contract (§7, Stage 5). No new bypass is introdu
 
 The literal door is one class: **`PostingGateway`**
 (`backend/src/application/accounting/services/PostingGateway.ts`). It is the **only** code permitted
-to call `ILedgerRepository.recordForVoucher`. An architecture test
+to call ledger mutation methods on `ILedgerRepository`. An architecture test
 (`backend/src/tests/architecture/PostingAuthority.test.ts`) scans all production source and fails the
-build if any other file calls `.recordForVoucher(` — so the door cannot be bypassed by a new caller.
+build if any other file calls `.recordForVoucher(`, `.deleteForVoucher(`, or `.markReconciled(` --
+so the door cannot be bypassed by a new caller.
 
 `PostingGateway.record(voucher, ctx, transaction)` does, in order:
 
@@ -218,6 +240,14 @@ build if any other file calls `.recordForVoucher(` — so the door cannot be byp
    full enabled policy set. **Approval is derived from `ctx.approved` (the caller's real state), never
    from the voucher's own status** — this is where Law 7 is enforced for every path.
 3. **The ledger write** — `recordForVoucher`.
+
+Other ledger mutations are also gateway-owned:
+
+| Gateway method | Repository mutation | Guard behavior |
+|---|---|---|
+| `replaceForVoucher` | `deleteForVoucher` then `recordForVoucher` | Runs core voucher validation, account validation when available, and the policy set before deleting old rows. Used by posted-voucher edit/resync. |
+| `deleteVoucherLedger` | `deleteForVoucher` | Runs the policy set before ledger cleanup. It intentionally does not rerun balance/account validation so historical malformed vouchers can still be cleaned up through an authorized guarded flow. |
+| `markLedgerEntryReconciled` | `markReconciled` | Centralizes bank-reconciliation ledger metadata mutation behind the same door. There is no voucher policy context for this metadata change, but it still cannot bypass the gateway. |
 
 **Explicit, auditable exemptions.** A few system-generated postings legitimately skip the policy set
 today (settlements, payment-sync receipts/payments, bank-rec adjustments, year-end closing &
@@ -231,19 +261,22 @@ Which paths enforce vs. exempt today:
 | Posting path | Gateway mode |
 |---|---|
 | Sales/Purchase subledger (`SubledgerVoucherPostingService`) | **enforce** (full policy set, approval from caller) |
-| Manual voucher (`PostVoucherUseCase`, auto-post, edit re-record) | exempt — policies validated inline by the caller (pre-gateway; Stage 4b folds in) |
+| Manual voucher post / auto-post (`PostVoucherUseCase`, create auto-post) | exempt — policies validated inline by the caller (pre-gateway; Stage 4b folds in) |
+| Posted manual voucher edit/resync | **enforce** through `replaceForVoucher` |
+| Posted voucher cancel/delete and subledger unpost cleanup | **enforce** through `deleteVoucherLedger` |
+| Bank reconciliation ledger marking | gateway-owned metadata mutation through `markLedgerEntryReconciled` |
 | Sales/Purchase invoice settlement; payment-sync | exempt — system-generated settlement (Stage 4b) |
 | Bank-reconciliation adjustment | exempt — system-generated adjustment (Stage 4b) |
 | Year-end closing & closing reversal | exempt — system event under strict lock (Stage 4b) |
 
-## 8. Current conformance (2026-06-03)
+## 8. Current conformance (2026-06-14)
 
 | Law / piece | State |
 |---|---|
 | Credit limit owned by Sales, accounting ignorant of it | ✅ holds (verified: zero `creditLimit` refs in accounting) |
 | Subledger postings run the accounting policy registry | ✅ holds (post-`ac963d32`; now via the gateway) |
 | `allowPeriodLockOverride` is an accounting concern | ✅ holds (accounting config) |
-| One accounting guard, literally at the ledger write | ✅ **Stage 4** — `PostingGateway` is the sole caller of `recordForVoucher`, enforced by an architecture test. Some system postings are explicitly policy-exempt (Stage 4b) but still pass through the door + iron laws |
+| One accounting guard, literally at the ledger mutation | ✅ **Stage 4 tightened 2026-06-14** — `PostingGateway` is the sole production caller of `recordForVoucher`, `deleteForVoucher`, and `markReconciled`, enforced by an architecture test. Some system postings are explicitly policy-exempt (Stage 4b) but still pass through the door + iron laws |
 | No forged "approved" stamp | ✅ **Stage 1 + 4** — approval is derived from the caller's *real* state inside the gateway, for every path |
 | Approval owned in Accounting (one rulebook + scope) | ✅ solved (Stage 2b/2c — per-module flag retired) |
 | SoD structurally enforced on the frontend (no source-module approve calls possible) | ✅ **2026-06-05** — three layers per §4.2: backend permission guard + frontend UI render gate + build-time `check-sod-approve.mjs`. API symbols `approveSI` / `approvePI` moved to `accountingApi` |

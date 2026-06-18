@@ -7,6 +7,7 @@ import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 const COMPANY_ID = 'cmp-neg-stock';
 const ITEM_ID = 'item-1';
 const WH_ID = 'wh-a';
+const WH_DEST_ID = 'wh-b';
 
 const makeItem = (): Item =>
   new Item({
@@ -25,12 +26,12 @@ const makeItem = (): Item =>
     updatedAt: new Date(),
   });
 
-const makeLevel = (qtyOnHand: number): StockLevel =>
+const makeLevel = (qtyOnHand: number, warehouseId: string = WH_ID): StockLevel =>
   new StockLevel({
-    id: `${ITEM_ID}-${WH_ID}`,
+    id: `${ITEM_ID}-${warehouseId}`,
     companyId: COMPANY_ID,
     itemId: ITEM_ID,
-    warehouseId: WH_ID,
+    warehouseId,
     qtyOnHand,
     reservedQty: 0,
     avgCostBase: 10,
@@ -45,7 +46,11 @@ const makeLevel = (qtyOnHand: number): StockLevel =>
     updatedAt: new Date(),
   });
 
-const buildUseCase = (allowNegativeStock: boolean | null) => {
+const buildUseCase = (
+  allowNegativeStock: boolean | null,
+  costingBasis: 'WAREHOUSE' | 'GLOBAL' = 'WAREHOUSE',
+  levelsForGlobal: StockLevel[] = []
+) => {
   const writeMovement = jest.fn(async () => undefined);
   const writeLevel = jest.fn(async () => undefined);
 
@@ -56,11 +61,12 @@ const buildUseCase = (allowNegativeStock: boolean | null) => {
   const stockLevelRepository = {
     upsertLevelInTransaction: writeLevel,
     getLevelInTransaction: async () => null,
+    getLevelsByItemInTransaction: async () => levelsForGlobal.map((l) => StockLevel.fromJSON(l.toJSON())),
   } as any;
 
   const inventorySettingsRepository = {
     getSettings: jest.fn(async () =>
-      allowNegativeStock === null ? null : ({ allowNegativeStock } as any)
+      allowNegativeStock === null ? null : ({ allowNegativeStock, costingBasis } as any)
     ),
     saveSettings: jest.fn(),
   } as any;
@@ -180,5 +186,86 @@ describe('RecordStockMovementUseCase — allowNegativeStock enforcement', () => 
 
     expect(movement.qtyAfter).toBe(-5);
     expect(inventorySettingsRepository.getSettings).toHaveBeenCalledWith(COMPANY_ID);
+  });
+
+  // A stock transfer issues from the source warehouse exactly like an OUT, so it
+  // must honor the same allowNegativeStock policy. Regression for GP02-step9: a
+  // transfer drove the source warehouse to a huge negative while the policy was
+  // off because processTRANSFER/processTRANSFERGlobal had no guard.
+  it('throws NegativeStockError when a WAREHOUSE transfer would drive the source negative', async () => {
+    const { useCase, writeMovement, writeLevel } = buildUseCase(false);
+    const source = makeLevel(5, WH_ID);
+    const destination = makeLevel(0, WH_DEST_ID);
+    const preFetchedItem = makeItem();
+
+    await expect(
+      useCase.processTRANSFER({
+        companyId: COMPANY_ID,
+        itemId: ITEM_ID,
+        sourceWarehouseId: WH_ID,
+        destinationWarehouseId: WH_DEST_ID,
+        qty: 10,
+        date: '2026-02-01',
+        transferDocId: 'trf-1',
+        currentUser: 'user-1',
+        preFetchedItem,
+        preFetchedSourceLevel: source,
+        preFetchedDestinationLevel: destination,
+        skipWarehouseValidation: true,
+      })
+    ).rejects.toBeInstanceOf(NegativeStockError);
+
+    expect(writeMovement).not.toHaveBeenCalled();
+    expect(writeLevel).not.toHaveBeenCalled();
+    expect(source.qtyOnHand).toBe(5);
+  });
+
+  it('allows a WAREHOUSE transfer to drive the source negative when allowNegativeStock=true', async () => {
+    const { useCase } = buildUseCase(true);
+    const source = makeLevel(5, WH_ID);
+    const destination = makeLevel(0, WH_DEST_ID);
+    const preFetchedItem = makeItem();
+
+    const { outMov, inMov } = await useCase.processTRANSFER({
+      companyId: COMPANY_ID,
+      itemId: ITEM_ID,
+      sourceWarehouseId: WH_ID,
+      destinationWarehouseId: WH_DEST_ID,
+      qty: 10,
+      date: '2026-02-01',
+      transferDocId: 'trf-1',
+      currentUser: 'user-1',
+      preFetchedItem,
+      preFetchedSourceLevel: source,
+      preFetchedDestinationLevel: destination,
+      skipWarehouseValidation: true,
+    });
+
+    expect(outMov.qtyAfter).toBe(-5);
+    expect(inMov.qtyAfter).toBe(10);
+  });
+
+  it('throws NegativeStockError when a GLOBAL transfer would drive the source negative', async () => {
+    const source = makeLevel(5, WH_ID);
+    const destination = makeLevel(0, WH_DEST_ID);
+    const { useCase, writeMovement } = buildUseCase(false, 'GLOBAL', [source, destination]);
+    const preFetchedItem = makeItem();
+
+    await expect(
+      useCase.processTRANSFER({
+        companyId: COMPANY_ID,
+        itemId: ITEM_ID,
+        sourceWarehouseId: WH_ID,
+        destinationWarehouseId: WH_DEST_ID,
+        qty: 10,
+        date: '2026-02-01',
+        transferDocId: 'trf-1',
+        currentUser: 'user-1',
+        preFetchedItem,
+        skipWarehouseValidation: true,
+      })
+    ).rejects.toBeInstanceOf(NegativeStockError);
+
+    expect(writeMovement).not.toHaveBeenCalled();
   });
 });

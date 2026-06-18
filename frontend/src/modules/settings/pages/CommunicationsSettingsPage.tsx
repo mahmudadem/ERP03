@@ -21,6 +21,9 @@ import { Badge } from '../../../components/ui/Badge';
 import { communicationsApi, MessagingAccountDTO } from '../../../api/communicationsApi';
 import { errorHandler } from '../../../services/errorHandler';
 import toast from 'react-hot-toast';
+import { UnsavedChangesBanner } from '../../../components/shared/UnsavedChangesBanner';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { notifySettingsChanged } from '../../../utils/settingsSync';
 
 const newId = (): string =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -63,6 +66,7 @@ const CHANNELS: ChannelDef[] = [
 
 const CommunicationsSettingsPage: React.FC = () => {
   const { t } = useTranslation('common');
+  const { companyId } = useCompanyAccess();
   const [accounts, setAccounts] = useState<MessagingAccountDTO[]>([]);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -157,6 +161,9 @@ const CommunicationsSettingsPage: React.FC = () => {
       setCredentials({});
       setDirty(false);
       toast.success(t('communications.saved', 'Communication settings saved.'));
+      if (companyId) {
+        notifySettingsChanged(companyId);
+      }
     } catch (err) {
       errorHandler.showError(err);
     } finally {
@@ -194,7 +201,7 @@ const CommunicationsSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-[var(--color-bg-primary)]">
+    <div className="min-h-full bg-gray-50 dark:bg-[var(--color-bg-primary)] pb-24">
       {/* Sticky save bar */}
       <div className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]/90">
         <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -209,16 +216,13 @@ const CommunicationsSettingsPage: React.FC = () => {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {dirty && (
-              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                {t('communications.unsaved', 'Unsaved changes')}
-              </span>
-            )}
-            <Button onClick={handleSave} isLoading={saving} disabled={!dirty || saving}>
-              {t('common.saveChanges', 'Save Changes')}
-            </Button>
-          </div>
+          {!dirty && (
+            <div className="flex items-center gap-3">
+              <Button onClick={handleSave} isLoading={saving} disabled={!dirty || saving}>
+                {t('common.saveChanges', 'Save Changes')}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -500,6 +504,12 @@ const CommunicationsSettingsPage: React.FC = () => {
           );
         })}
       </div>
+      <UnsavedChangesBanner
+        hasChanges={dirty}
+        onSave={handleSave}
+        onDiscard={load}
+        saving={saving}
+      />
     </div>
   );
 };

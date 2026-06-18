@@ -3,7 +3,8 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WizardStepProps } from './types';
 import { COUNTRIES } from './countries';
-import { Upload, X, Building2, Globe, Loader2, Search, Check, Info } from 'lucide-react';
+import { Upload, X, Building2, Globe, Search, Check, Info } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { cn } from '../../../../lib/utils';
 import { processImage } from '../../../../lib/image-utils';
 import { getCountryDefaults } from '../../../accounting/utils/countryDefaults';
@@ -243,7 +244,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                 <div className="text-center p-4">
                     {isProcessing ? (
                       <div className="flex flex-col items-center">
-                        <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
+                        <Spinner size="lg" />
                         <p className="text-[10px] text-slate-500 mt-2 font-medium uppercase tracking-wider">{t('onboarding.companyWizard.basic.optimizing', { defaultValue: 'Optimizing...' })}</p>
                       </div>
                     ) : (

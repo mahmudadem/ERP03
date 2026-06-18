@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { WizardStepProps, Bundle } from './types';
-import { CheckCircle2, ShieldAlert, Search, Loader2 } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Search } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { cn } from '../../../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -74,7 +75,7 @@ export const StepBundleSelection: React.FC<WizardStepProps> = ({ data, updateDat
       <div className="flex-1 overflow-y-auto min-h-0 pr-1 md:pr-2 -mr-1 md:-mr-2 relative">
         {loading ? (
              <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
-                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+                 <Spinner size="lg" />
              </div>
         ) : filteredBundles.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

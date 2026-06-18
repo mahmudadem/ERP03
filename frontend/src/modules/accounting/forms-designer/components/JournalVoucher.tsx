@@ -1,11 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { JournalRow, Currency } from '../types';
-import { Button } from './ui/Button';
-import { 
-  Plus, Trash2, X, Eye, Calculator, 
-  ChevronDown, Calendar, Wand2,
-  Copy, Image as ImageIcon, Loader2, Download
-} from 'lucide-react';
+import { JournalRow, Currency } from '../types'; import { Button } from './ui/Button'; import { Plus, Trash2, X, Eye, Calculator, ChevronDown, Calendar, Wand2, Copy, Image as ImageIcon, Download } from 'lucide-react';
+import { Spinner } from '../../../../components/ui/Spinner';
 import { generateJournalSuggestion, analyzeImageForJournal } from '../services/geminiService';
 import { useLanguage } from '../LanguageContext';
 import { errorHandler } from '../../../../services/errorHandler';
@@ -166,7 +161,7 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
            </h1>
            {loadingAI && (
             <span className="flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded animate-pulse border border-blue-100">
-              <Loader2 size={10} className="animate-spin" />
+              <Spinner size="xs" />
               AI Processing...
             </span>
            )}

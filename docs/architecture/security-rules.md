@@ -1,6 +1,6 @@
 # Firestore Security Rules
 
-**Last updated:** 2026-05-19
+**Last updated:** 2026-06-16
 **Status:** Production-shape rules in place (replaces dev-open rules that expired 2026-06-01). Test suite scaffolded; requires `@firebase/rules-unit-testing` install + emulator to run.
 **File:** [`firestore.rules`](../../firestore.rules) (deployed) — `backend/firestore.rules` is leftover and unused.
 
@@ -15,6 +15,23 @@
   - `companies/{cid}/{module}/Settings/voucher_types/**` (forms designer)
   - `companies/{cid}/documentTypes/**`, `companies/{cid}/voucherTypes/**`
 - **Frontend writes** are limited to settings paths under `companies/{cid}/{module}/Settings/**` (voucher wizard and forms designer). Everything else routes through backend POSTs.
+
+## Backend tenant context rules
+
+Because the backend uses Admin SDK, every backend route must fail closed before a controller reaches a company-scoped repository:
+
+- `authMiddleware` verifies token identity and resolves the active company from `x-company-id` or the stored active-company setting.
+- A normal user may continue only when `rbacCompanyUserRepository.getByUserAndCompany(userId, companyId)` returns membership. A forged `x-company-id` now returns `403 COMPANY_ACCESS_DENIED`.
+- If the stored active company is stale and membership no longer exists, auth strips company context to `null`; tenant routes then fail with missing company context instead of reading another company.
+- Routes that still carry `:companyId` in the URL must also use `requireCompanyParamMatchesContext()` so a user cannot authenticate into company A and pass company B in the path.
+- Super-admin/platform routes may intentionally carry explicit company ids, but must be behind `assertSuperAdmin` or an equivalent platform guard.
+
+Current legacy param-based tenant routes with explicit guard:
+
+- `/api/v1/company-modules/:companyId...`
+- `/api/v1/tenant/companies/:companyId/module-settings/:moduleId`
+
+Company settings resolution uses the authenticated company context for normal users. Query/body `companyId` is only honored for super-admin inspection.
 
 ## Posture
 

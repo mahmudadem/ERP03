@@ -59,6 +59,7 @@
     "collapse": "Kapat",
     "expand": "Aç",
     "grandTotal": "Genel Toplam",
+    "balanced": "Dengeli",
     "unbalancedDiff": "Dengesiz — Fark: {{diff}}",
     "asOfInline": "{{date}} tarihi itibarıyla",
     "exportExcel": "Excel'e Aktar",
@@ -149,6 +150,57 @@
     "origAmount": "Orijinal Tutar",
     "origCurrency": "Orijinal Para",
     "exchangeRate": "Kur"
+  },
+  "voucherLedgerImpact": {
+    "title": "Defter Etkisi",
+    "subtitle": "{{voucherNo}} fişinin oluşturduğu işlenmiş defter kayıtları.",
+    "readOnly": "Salt okunur",
+    "loading": "Defter etkisi yükleniyor",
+    "loadFailed": "Defter etkisi yüklenemedi.",
+    "notFound": "Fiş bulunamadı.",
+    "goBack": "Geri dön",
+    "back": "Geri",
+    "viewVoucher": "Fişi görüntüle",
+    "balanced": "Dengeli",
+    "emptyTitle": "Henüz defter kaydı yok",
+    "emptyDraft": "Bu fiş henüz deftere işlenmedi. Defter etkisi yalnızca başarılı kayıt sonrası görünür.",
+    "emptyPosted": "Bu işlenmiş fiş için defter satırı yok. Bu veri bütünlüğü sorunu olabilir ve incelenmelidir.",
+    "meta": {
+      "voucher": "Fiş",
+      "date": "Tarih",
+      "status": "Durum",
+      "currency": "Para birimi",
+      "lines": "Defter satırları"
+    },
+    "summary": {
+      "totalDebit": "Toplam borç",
+      "totalCredit": "Toplam alacak",
+      "balanceCheck": "Denge kontrolü"
+    },
+    "columns": {
+      "date": "Tarih",
+      "account": "Hesap",
+      "description": "Açıklama",
+      "costCenter": "Maliyet merkezi",
+      "debit": "Borç",
+      "credit": "Alacak",
+      "baseAmount": "Baz tutar",
+      "rate": "Kur"
+    }
+  },
+  "voucherNavigation": {
+    "ariaLabel": "Kayıt gezintisi",
+    "previous": "Önceki",
+    "next": "Sonraki",
+    "currentVoucher": "Geçerli fiş",
+    "currentLedger": "Geçerli defter",
+    "noPrevious": "Önceki fiş yok",
+    "noNext": "Sonraki fiş yok"
+  },
+  "voucherView": {
+    "actions": {
+      "ledgerImpact": "Defter etkisi"
+    }
   },
   "cashFlow": {
     "title": "Nakit Akış Tablosu (Dolaylı)",

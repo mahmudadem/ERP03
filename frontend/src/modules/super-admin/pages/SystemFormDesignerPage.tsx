@@ -11,19 +11,8 @@
  */
 
 import React, { useState, useEffect, createContext, useMemo, useCallback, ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  LayoutTemplate,
-  Pencil,
-  Save,
-  X,
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  FileJson,
-  Columns3,
-  Type,
-} from 'lucide-react';
+import { useTranslation } from 'react-i18next'; import { LayoutTemplate, Pencil, Save, X, CheckCircle, AlertTriangle, FileJson, Columns3, Type} from 'lucide-react';
+import { Spinner } from '../../../components/ui/Spinner';
 import { superAdminVoucherTypesApi } from '../../../api/superAdmin/voucherTypes';
 import { VoucherTypeDefinition } from '../../../designer-engine/types/VoucherTypeDefinition';
 import { DocumentDesigner } from '../../tools/forms-designer/components/DocumentDesigner';
@@ -333,7 +322,7 @@ const SystemFormDesignerPage: React.FC = () => {
             disabled={loading}
             className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
           >
-            <Loader2 size={16} className={loading ? 'animate-spin' : 'hidden'} />
+            <Spinner size="sm" />
             Refresh
           </button>
         </div>
@@ -366,7 +355,7 @@ const SystemFormDesignerPage: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-12 text-center">
-              <Loader2 className="animate-spin mx-auto mb-3 text-slate-400" size={32} />
+              <Spinner size="lg" variant="secondary" className="mx-auto mb-3" />
               <p className="text-slate-500 text-sm">Loading system templates...</p>
             </div>
           ) : templates.length === 0 ? (
@@ -476,7 +465,7 @@ const SystemFormDesignerPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 {saving && (
                   <span className="text-xs text-slate-400 flex items-center gap-1.5 mr-2">
-                    <Loader2 size={12} className="animate-spin" />
+                    <Spinner size="xs" />
                     Saving...
                   </span>
                 )}
