@@ -1699,9 +1699,14 @@
           "title": "Auto initialize modules with Trading Company - Simple",
           "description": "Creates the standard chart of accounts, initializes Accounting, Inventory, Sales, and Purchases, links default posting accounts, uses simple direct invoicing, invoice-driven inventory, and blocks negative stock.",
           "inventory": "Invoice-driven stock, global average cost, negative stock off",
+          "inventoryPeriodic": "Periodic stock valuation, global average cost, negative stock off",
+          "inventoryInvoiceDriven": "Live inventory value on invoices, global average cost, negative stock off",
+          "inventoryPerpetual": "Perpetual stock valuation with warehouse-level moving average costing",
           "tax": "Tax-ready, no hidden legal rate applied",
           "currency": "Base currency: {{currency}}",
           "workflow": "Simple sales and purchases",
+          "workflowSimple": "Simple sales and purchases",
+          "workflowOperational": "Operational sales and purchases with receiving and delivery documents",
           "manualTitle": "Manual module setup",
           "manualDescription": "Modules will be installed from the selected bundle, but setup wizards will remain manual.",
           "timezone": "Timezone: {{timezone}}",
@@ -1758,14 +1763,42 @@
           "title": "Auto initialize Trading Company - Simple",
           "description": "Best for a small company that wants to start buying, selling, and moving stock immediately with standard controls."
         },
+        "mode": {
+          "title": "Inventory Control Mode",
+          "description": "Choose the stock accounting behavior once. You can still change it before the first posted transaction.",
+          "options": {
+            "simple": {
+              "title": "Simple",
+              "description": "I just track sales, purchases, and stock value"
+            },
+            "standard": {
+              "title": "Standard",
+              "description": "Keep inventory value live, one invoice per transaction"
+            },
+            "advanced": {
+              "title": "Advanced",
+              "description": "Separate receiving and delivery, with full inventory control"
+            }
+          }
+        },
         "summary": {
           "title": "Company Setup Summary",
           "accounting": "Standard chart of accounts",
+          "accountingPeriodic": "Periodic trading chart of accounts",
+          "accountingStandard": "Inventory asset and COGS chart of accounts",
+          "accountingAdvanced": "Inventory asset, COGS, and GRNI chart of accounts",
           "fiscal": "Calendar fiscal year and company date defaults",
           "inventory": "Invoice-driven stock with global average cost and negative stock blocked",
+          "inventoryPeriodic": "Periodic valuation with one company-wide average cost per item",
+          "inventoryInvoiceDriven": "Invoice-driven inventory value with one company-wide average cost per item",
+          "inventoryPerpetual": "Perpetual inventory value with warehouse-level moving average costing",
           "warehouse": "Default MAIN warehouse",
           "sales": "Simple direct sales invoicing",
+          "salesSimple": "Simple direct sales invoicing",
+          "salesOperational": "Sales orders, delivery notes, and linked invoicing",
           "purchases": "Simple direct purchase invoicing",
+          "purchasesSimple": "Simple direct purchase invoicing",
+          "purchasesOperational": "Purchase orders, goods receipts, and linked invoicing",
           "tax": "Tax-ready setup without hidden legal rates",
           "policy": "The final policy summary will show the linked accounts and operational settings after creation.",
           "companyDefaults": "Currency {{currency}}, timezone {{timezone}}",
@@ -2291,6 +2324,18 @@
     "SAVE": "Saved successfully"
   },
   "inventory": {
+    "settings": {
+      "accountingMode": {
+        "label": "Accounting Mode",
+        "locked": "Inventory accounting mode is locked after the first posted stock or accounting transaction.",
+        "unlocked": "You can still change the mode until the first posted stock or accounting transaction.",
+        "options": {
+          "periodic": "Periodic",
+          "invoiceDriven": "Invoice-driven",
+          "perpetual": "Perpetual"
+        }
+      }
+    },
     "itemsList": {
       "title": "Inventory Items",
       "subtitle": "Search, create, and open item master records used by Sales, Purchases, and Inventory.",

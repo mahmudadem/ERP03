@@ -8,6 +8,8 @@
 
 import client from '../../../api/client';
 
+import { InventoryAccountingMode } from '../../../api/inventoryApi';
+
 export interface SignupRequest {
   email: string;
   password: string;
@@ -62,32 +64,32 @@ export interface StarterPolicySummary {
   modulesInitialized: string[];
   baseCurrency: string;
   accounting: {
-    coaTemplate: 'periodic_trading';
+    coaTemplate: 'periodic_trading' | 'standard';
     fiscalYearStart: string;
     fiscalYearEnd: string;
     approvalRequired: false;
   };
   inventory: {
-    accountingMode: 'PERIODIC';
+    accountingMode: InventoryAccountingMode;
     costingMethod: 'MOVING_AVG';
     costingBasis: 'WAREHOUSE' | 'GLOBAL';
     allowNegativeStock: false;
     defaultWarehouseCode: 'MAIN';
   };
   sales: {
-    workflowMode: 'SIMPLE';
-    allowDirectInvoicing: true;
-    defaultSalesInvoicePersona: 'direct';
+    workflowMode: 'SIMPLE' | 'OPERATIONAL';
+    allowDirectInvoicing: boolean;
+    defaultSalesInvoicePersona: 'direct' | 'linked';
   };
   purchases: {
-    workflowMode: 'SIMPLE';
-    allowDirectInvoicing: true;
+    workflowMode: 'SIMPLE' | 'OPERATIONAL';
+    allowDirectInvoicing: boolean;
   };
   tax: {
     status: 'READY_NOT_ASSUMED';
     note: string;
   };
-  linkedAccounts: Record<string, { code: string; id: string; name: string }>;
+  linkedAccounts: Partial<Record<string, { code: string; id: string; name: string }>>;
 }
 
 export const onboardingApi = {
@@ -148,5 +150,6 @@ export interface CreateCompanyRequest {
   dateFormat?: string;
   autoInitializeModules?: boolean;
   starterTemplateId?: 'simple-trading-company';
+  accountingMode?: InventoryAccountingMode;
 }
 

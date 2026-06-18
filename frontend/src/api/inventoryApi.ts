@@ -217,6 +217,8 @@ export interface InventoryUomDTO {
 export interface InventorySettingsDTO {
   companyId: string;
   accountingMode: InventoryAccountingMode;
+  accountingModeLocked?: boolean;
+  accountingModeLockReason?: string | null;
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: string;
   costingBasis?: 'WAREHOUSE' | 'GLOBAL';

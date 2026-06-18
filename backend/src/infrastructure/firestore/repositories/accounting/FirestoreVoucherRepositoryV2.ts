@@ -303,6 +303,24 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
 
+  async hasPostedVouchers(companyId: string): Promise<boolean> {
+    const postedAtFloor = '1970-01-01T00:00:00.000Z';
+    const modularQuery = this.getCollection(companyId)
+      .where('postedAt', '>=', postedAtFloor)
+      .limit(1)
+      .get();
+    const legacyQuery = this.db
+      .collection('companies')
+      .doc(companyId)
+      .collection('vouchers')
+      .where('postedAt', '>=', postedAtFloor)
+      .limit(1)
+      .get();
+
+    const [modularSnap, legacySnap] = await Promise.all([modularQuery, legacyQuery]);
+    return !modularSnap.empty || !legacySnap.empty;
+  }
+
   async getCounts(companyId: string, monthStart: string, monthEnd: string) {
     const coll = this.getCollection(companyId);
     const allSnap = await coll.limit(1000).get();

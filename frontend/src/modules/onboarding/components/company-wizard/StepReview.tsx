@@ -5,12 +5,14 @@ import { Building2, Globe, Box, Mail, AlertCircle, CheckCircle, X, ShieldCheck }
 import { Spinner } from '../../../../components/ui/Spinner';
 import { onboardingApi } from '../../api/onboardingApi';
 import { useTranslation } from 'react-i18next';
+import { getStarterModeOption } from './starterModeOptions';
 
 export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack, bundles = [] }) => {
   const { t } = useTranslation('common');
   
   const selectedBundle = bundles.find(b => b.id === data.selectedBundleId);
   const isStarterEnabled = data.autoInitializeModules !== false;
+  const selectedMode = getStarterModeOption(data.accountingMode);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [showModal, setShowModal] = React.useState(false);
@@ -71,6 +73,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
         dateFormat: data.dateFormat,
         autoInitializeModules: isStarterEnabled,
         starterTemplateId: isStarterEnabled ? (data.starterTemplateId || 'simple-trading-company') : undefined,
+        accountingMode: isStarterEnabled ? (data.accountingMode || 'PERIODIC') : undefined,
       });
 
       // Step 1 done
@@ -239,11 +242,11 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
               <>
                 <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  {t('onboarding.companyWizard.review.starter.inventory', { defaultValue: 'Invoice-driven stock, global average cost, negative stock off' })}
+                  {t(selectedMode.reviewInventoryKey, { defaultValue: selectedMode.reviewInventoryDefault })}
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  {t('onboarding.companyWizard.review.starter.workflow', { defaultValue: 'Simple sales and purchases' })}
+                  {t(selectedMode.reviewWorkflowKey, { defaultValue: selectedMode.reviewWorkflowDefault })}
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1">
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />

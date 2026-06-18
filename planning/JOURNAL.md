@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Epic 240 Phase 6 — 240f audit + reseed-policy hardening)
+
+- **Goal:** Independently audit the uncommitted 240f mode-lock/wizard/COA work (not just trust the self-report), then close any real findings.
+- **Audit done:** Re-ran all verification myself — backend `tsc` build, frontend typecheck + production build, focused 240f suites, and the **full backend suite (162 suites / 1454 tests, 0 failures)**. Traced reseed idempotency across every path the mode-change controller re-runs (COA accounts, supporting accounts, fiscal year, voucher types, forms, warehouse, UOM, module records, settings) — all guarded, **no duplication risk**. Confirmed the lock query is correct: `postedAt` is the domain's canonical posted signal (`isPosted() ≡ !!postedAt`), so the Firestore `hasPostedVouchers` filter matches posted vouchers exactly and excludes drafts.
+- **Findings fixed:** The mode-change reseed re-ran the full company initializer, which **silently reset the owner's approval mode and fiscal-year configuration** back to flexible/Jan–Dec defaults (pre-posting only, but a surprising config wipe). Added a `preserveCompanyPolicy` flag to `InitializeAccountingUseCase` + `SimpleTradingCompanyInitializer`; the `InventoryController` mode-switch path now passes it `true`. Effect: a reseed refreshes the COA template + module wiring for the new mode but **preserves `strictApprovalMode`, the accounting module's `approvalRequired`/`autoPostEnabled`/`allowEditDeletePosted`, and the fiscal-year settings**. First-time company creation (onboarding) does not pass the flag → original behavior unchanged.
+- **Accounting/ERP impact:** Prevents an inventory accounting-mode switch from silently downgrading a company's approval/posting controls or rewriting its fiscal calendar. No GL posting change.
+- **Verification:** focused suites `SimpleTradingCompanyInitializer | InventoryAccountingModeLockService | InitializeAccounting` 2 suites / **6 tests** pass (added a preserve-behavior regression test); `npm --prefix backend run build` green; **full backend suite 162 suites / 1455 tests, 0 failures.**
+- **Noted, not changed:** (1) Prisma `hasPostedVouchers` uses `status === APPROVED` as a proxy vs Firestore's `postedAt` — Firestore is the production path, code is commented, left as-is. (2) periodic↔standard switch leaves a merged superset COA — intentional additive-not-destructive reseed.
+- **Next:** Commit 240f + this hardening, then [240g](./tasks/240g-phase7-golden-path-periodic-qa.md) fresh-tenant periodic QA.
+
 ### Session: 2026-06-18 (Epic 240 Phase 5 — report-time valuation and trading)
 
 - **Goal:** Complete the periodic-mode reporting layer so a `PERIODIC` company can value inventory, open a usable Balance Sheet, and compute gross profit without a manual closing journal.
@@ -3978,3 +3988,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated `docs/architecture/inventory.md`, added `docs/user-guide/inventory/periodic-inventory-accounting-mode.md`, added [done/240d-phase4-periodic-posting-mode.md](./done/240d-phase4-periodic-posting-mode.md), and updated `planning/ACTIVE.md`.
 - **Time spent:** ~3.1h.
 - **Next:** Start [240e](./tasks/240e-phase5-report-time-valuation-and-trading.md) so periodic mode can produce period-end inventory valuation and Trading Account reporting. Task [241](./tasks/241-party-item-price-memory.md) remains parallel-safe if a non-posting slice is preferred.
+
+### Session: 2026-06-18 (Epic 240 Phase 6 — Mode Lock + Wizard/COA)
+
+- **Goal:** Close the setup-control gap after periodic-mode rollout by asking for the inventory mode once at company creation, seeding the matching COA and starter policy, and locking mode changes after the first posted history.
+- **What was done:** Extended the company wizard and onboarding API to carry `accountingMode` through the starter flow. Generalized `SimpleTradingCompanyInitializer` into a mode-driven policy initializer covering `PERIODIC`, `INVOICE_DRIVEN`, and `PERPETUAL`, with matching COA template selection (`periodic_trading` vs `standard`), workflow defaults, costing basis, and linked accounts. Added `InventoryAccountingModeLockService`, exposed lock metadata on Inventory Settings, and changed `InventoryController.updateSettings` so a pre-history mode change re-runs the same starter initializer while a post-history change is blocked. Added `IVoucherRepository.hasPostedVouchers()` across Firestore, Prisma, and in-memory repositories.
+- **Accounting/ERP impact:** This is a control-hardening slice. It prevents companies from drifting into an incompatible COA/mode combination after they start posting. Pre-posting changes are intentionally implemented as **additive reseeds**, not destructive chart cleanup, so draft references and auditability are not weakened. In Prisma, the closest persisted posted-history signal is `status = APPROVED`; Firestore still checks real `postedAt`.
+- **Verification:** `npm --prefix backend test -- --runTestsByPath src/application/onboarding/use-cases/__tests__/SimpleTradingCompanyInitializer.test.ts src/tests/application/inventory/InventoryAccountingModeLockService.test.ts` passed. `npm --prefix backend run build` passed. `npm --prefix frontend run build` passed.
+- **Docs:** Updated `docs/architecture/onboarding.md`, `docs/architecture/inventory.md`, and `docs/user-guide/settings/company-starter-template.md`. Added [done/240f-phase6-mode-lock-wizard-coa.md](./done/240f-phase6-mode-lock-wizard-coa.md). Updated `planning/ACTIVE.md`.
+- **Time spent:** ~2.4h.
+- **Next:** Run [240g](./tasks/240g-phase7-golden-path-periodic-qa.md) on fresh tenants for all three modes, with explicit proof that pre-posting switches reseed correctly and post-history switches block.

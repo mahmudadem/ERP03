@@ -69,6 +69,8 @@ import { GetCurrentCostUseCase } from '../../../application/inventory/use-cases/
 import { GetMovementForReferenceUseCase } from '../../../application/inventory/use-cases/ReferenceQueryUseCases';
 import { ConfigureInventoryFinancialIntegrationUseCase } from '../../../application/inventory/use-cases/ConfigureInventoryFinancialIntegrationUseCase';
 import { InventoryValuationService } from '../../../application/inventory/services/InventoryValuationService';
+import { InventoryAccountingModeLockService } from '../../../application/inventory/services/InventoryAccountingModeLockService';
+import { SimpleTradingCompanyInitializer } from '../../../application/onboarding/use-cases/SimpleTradingCompanyInitializer';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { InventoryDTOMapper } from '../../dtos/InventoryDTOs';
@@ -148,6 +150,46 @@ export class InventoryController {
     );
   }
 
+  private static buildAccountingModeLockService(): InventoryAccountingModeLockService {
+    return new InventoryAccountingModeLockService(
+      diContainer.voucherRepository,
+      diContainer.stockMovementRepository
+    );
+  }
+
+  private static buildSimpleTradingCompanyInitializer(): SimpleTradingCompanyInitializer {
+    return new SimpleTradingCompanyInitializer({
+      companyRepo: diContainer.companyRepository,
+      companyModuleRepo: diContainer.companyModuleRepository,
+      accountRepo: diContainer.accountRepository,
+      systemMetadataRepo: diContainer.systemMetadataRepository,
+      companyModuleSettingsRepo: diContainer.companyModuleSettingsRepository,
+      companySettingsRepo: diContainer.companySettingsRepository,
+      currencyRepo: diContainer.currencyRepository,
+      fiscalYearRepo: diContainer.fiscalYearRepository,
+      voucherTypeRepo: diContainer.voucherTypeDefinitionRepository,
+      voucherFormRepo: diContainer.voucherFormRepository,
+      inventorySettingsRepo: diContainer.inventorySettingsRepository,
+      warehouseRepo: diContainer.warehouseRepository,
+      uomRepo: diContainer.uomRepository,
+      salesSettingsRepo: diContainer.salesSettingsRepository,
+      purchaseSettingsRepo: diContainer.purchaseSettingsRepository,
+    });
+  }
+
+  private static async mapSettingsDTOWithLock(companyId: string, settings: InventorySettings | null) {
+    if (!settings) {
+      return null;
+    }
+
+    const lockState = await InventoryController.buildAccountingModeLockService().getLockState(companyId);
+    return {
+      ...InventoryDTOMapper.toSettingsDTO(settings),
+      accountingModeLocked: lockState.locked,
+      accountingModeLockReason: lockState.reason,
+    };
+  }
+
   private static buildUomImpactUseCase(): AnalyzeUomConversionImpactUseCase {
     return new AnalyzeUomConversionImpactUseCase(
       diContainer.uomConversionRepository,
@@ -219,7 +261,7 @@ export class InventoryController {
       const settings = await diContainer.inventorySettingsRepository.getSettings(companyId);
       (res as any).json({
         success: true,
-        data: settings ? InventoryDTOMapper.toSettingsDTO(settings) : null,
+        data: await InventoryController.mapSettingsDTOWithLock(companyId, settings),
       });
     } catch (error) {
       next(error);
@@ -230,8 +272,9 @@ export class InventoryController {
     try {
       validateUpdateSettingsInput((req as any).body);
       const companyId = InventoryController.getCompanyId(req);
+      const userId = InventoryController.getUserId(req);
 
-      const current = await diContainer.inventorySettingsRepository.getSettings(companyId);
+      let current = await diContainer.inventorySettingsRepository.getSettings(companyId);
       const company = await diContainer.companyRepository.findById(companyId);
       if (!company) throw new Error(`Company not found: ${companyId}`);
 
@@ -242,14 +285,31 @@ export class InventoryController {
             : undefined
         );
 
-      if (
+      const modeChanged = Boolean(
         requestedAccountingMode &&
         current &&
         requestedAccountingMode !== DocumentPolicyResolver.resolveAccountingMode(current)
-      ) {
-        throw ApiError.badRequest(
-          'The inventory accounting mode cannot be changed after initialization.'
-        );
+      );
+
+      if (modeChanged) {
+        try {
+          await InventoryController.buildAccountingModeLockService().assertModeChangeAllowed(companyId);
+        } catch (error: any) {
+          throw ApiError.badRequest(
+            error?.message || 'Inventory accounting mode is locked after the first posted transaction.'
+          );
+        }
+
+        await InventoryController.buildSimpleTradingCompanyInitializer().execute({
+          companyId,
+          userId,
+          baseCurrency: current.defaultCostCurrency || company.baseCurrency,
+          accountingMode: requestedAccountingMode,
+          // Reseed of an existing company: refresh the COA + module wiring for the new
+          // mode, but keep the owner's approval mode and fiscal-year configuration intact.
+          preserveCompanyPolicy: true,
+        });
+        current = await diContainer.inventorySettingsRepository.getSettings(companyId);
       }
 
       const effectiveAccountingMode = current
@@ -261,41 +321,59 @@ export class InventoryController {
         accountingMode: effectiveAccountingMode,
         inventoryAccountingMethod: DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(effectiveAccountingMode),
         defaultCostingMethod: 'MOVING_AVG',
-        costingBasis: (req as any).body.costingBasis ?? current?.costingBasis ?? 'WAREHOUSE',
+        costingBasis: modeChanged
+          ? current?.costingBasis ?? 'WAREHOUSE'
+          : ((req as any).body.costingBasis ?? current?.costingBasis ?? 'WAREHOUSE'),
         defaultCostCurrency: (req as any).body.defaultCostCurrency || current?.defaultCostCurrency || company.baseCurrency,
-        defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId ?? current?.defaultInventoryAssetAccountId,
+        defaultInventoryAssetAccountId: modeChanged
+          ? current?.defaultInventoryAssetAccountId
+          : ((req as any).body.defaultInventoryAssetAccountId ?? current?.defaultInventoryAssetAccountId),
         allowNegativeStock: (req as any).body.allowNegativeStock ?? current?.allowNegativeStock ?? false,
         allowDeferredCost: (req as any).body.allowDeferredCost ?? current?.allowDeferredCost ?? false,
         defaultWarehouseId: (req as any).body.defaultWarehouseId ?? current?.defaultWarehouseId,
         autoGenerateItemCode: (req as any).body.autoGenerateItemCode ?? current?.autoGenerateItemCode ?? false,
         itemCodePrefix: (req as any).body.itemCodePrefix ?? current?.itemCodePrefix,
         itemCodeNextSeq: (req as any).body.itemCodeNextSeq ?? current?.itemCodeNextSeq ?? 1,
-        defaultCOGSAccountId: (req as any).body.defaultCOGSAccountId !== undefined
-          ? (req as any).body.defaultCOGSAccountId
-          : current?.defaultCOGSAccountId,
-        defaultInventoryGainAccountId: (req as any).body.defaultInventoryGainAccountId !== undefined
-          ? (req as any).body.defaultInventoryGainAccountId
-          : current?.defaultInventoryGainAccountId,
-        defaultInventoryLossAccountId: (req as any).body.defaultInventoryLossAccountId !== undefined
-          ? (req as any).body.defaultInventoryLossAccountId
-          : current?.defaultInventoryLossAccountId,
-        defaultInventoryTransferClearingAccountId: (req as any).body.defaultInventoryTransferClearingAccountId !== undefined
-          ? (req as any).body.defaultInventoryTransferClearingAccountId
-          : current?.defaultInventoryTransferClearingAccountId,
-        defaultInventoryRevaluationAccountId: (req as any).body.defaultInventoryRevaluationAccountId !== undefined
-          ? (req as any).body.defaultInventoryRevaluationAccountId
-          : current?.defaultInventoryRevaluationAccountId,
-        defaultOpeningBalanceAccountId: (req as any).body.defaultOpeningBalanceAccountId !== undefined
-          ? (req as any).body.defaultOpeningBalanceAccountId
-          : current?.defaultOpeningBalanceAccountId,
-        allowNegativeInventoryValue: (req as any).body.allowNegativeInventoryValue ?? current?.allowNegativeInventoryValue ?? false,
+        defaultCOGSAccountId: modeChanged
+          ? current?.defaultCOGSAccountId
+          : ((req as any).body.defaultCOGSAccountId !== undefined
+            ? (req as any).body.defaultCOGSAccountId
+            : current?.defaultCOGSAccountId),
+        defaultInventoryGainAccountId: modeChanged
+          ? current?.defaultInventoryGainAccountId
+          : ((req as any).body.defaultInventoryGainAccountId !== undefined
+            ? (req as any).body.defaultInventoryGainAccountId
+            : current?.defaultInventoryGainAccountId),
+        defaultInventoryLossAccountId: modeChanged
+          ? current?.defaultInventoryLossAccountId
+          : ((req as any).body.defaultInventoryLossAccountId !== undefined
+            ? (req as any).body.defaultInventoryLossAccountId
+            : current?.defaultInventoryLossAccountId),
+        defaultInventoryTransferClearingAccountId: modeChanged
+          ? current?.defaultInventoryTransferClearingAccountId
+          : ((req as any).body.defaultInventoryTransferClearingAccountId !== undefined
+            ? (req as any).body.defaultInventoryTransferClearingAccountId
+            : current?.defaultInventoryTransferClearingAccountId),
+        defaultInventoryRevaluationAccountId: modeChanged
+          ? current?.defaultInventoryRevaluationAccountId
+          : ((req as any).body.defaultInventoryRevaluationAccountId !== undefined
+            ? (req as any).body.defaultInventoryRevaluationAccountId
+            : current?.defaultInventoryRevaluationAccountId),
+        defaultOpeningBalanceAccountId: modeChanged
+          ? current?.defaultOpeningBalanceAccountId
+          : ((req as any).body.defaultOpeningBalanceAccountId !== undefined
+            ? (req as any).body.defaultOpeningBalanceAccountId
+            : current?.defaultOpeningBalanceAccountId),
+        allowNegativeInventoryValue: modeChanged
+          ? current?.allowNegativeInventoryValue ?? false
+          : ((req as any).body.allowNegativeInventoryValue ?? current?.allowNegativeInventoryValue ?? false),
       });
 
       await diContainer.inventorySettingsRepository.saveSettings(settings);
 
       (res as any).json({
         success: true,
-        data: InventoryDTOMapper.toSettingsDTO(settings),
+        data: await InventoryController.mapSettingsDTOWithLock(companyId, settings),
       });
     } catch (error) {
       next(error);

@@ -140,6 +140,8 @@ export interface UomDTO {
 export interface InventorySettingsDTO {
   companyId: string;
   accountingMode: 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
+  accountingModeLocked?: boolean;
+  accountingModeLockReason?: string | null;
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: InventorySettings['defaultCostingMethod'];
   costingBasis: 'WAREHOUSE' | 'GLOBAL';

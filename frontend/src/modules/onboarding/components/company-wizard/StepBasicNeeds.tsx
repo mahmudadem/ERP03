@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Coins, ReceiptText, ShieldCheck, Wand2 } from 'lucide-react';
 import { WizardStepProps } from './types';
 import { getCountryDefaults } from '../../../accounting/utils/countryDefaults';
+import { STARTER_MODE_OPTIONS, getStarterModeOption } from './starterModeOptions';
 
 const COMMON_CURRENCIES = [
   'USD',
@@ -44,6 +45,7 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
   const { t } = useTranslation('common');
   const [error, setError] = React.useState('');
   const isStarterEnabled = data.autoInitializeModules !== false;
+  const selectedMode = getStarterModeOption(data.accountingMode);
 
   const countryDefaults = React.useMemo(() => {
     return data.country ? getCountryDefaults(data.country) : getCountryDefaults('');
@@ -79,6 +81,7 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
       language: data.language || countryDefaults.language || 'en',
       autoInitializeModules: data.autoInitializeModules !== false,
       starterTemplateId: data.autoInitializeModules === false ? undefined : 'simple-trading-company',
+      accountingMode: data.accountingMode || 'PERIODIC',
     });
     onNext();
   };
@@ -214,6 +217,51 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
                   </span>
                 </span>
               </label>
+
+              {isStarterEnabled && (
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      {t('onboarding.companyWizard.needs.mode.title', { defaultValue: 'Inventory Control Mode' })}
+                    </h4>
+                    <p className="mt-1 text-xs md:text-sm text-slate-600">
+                      {t('onboarding.companyWizard.needs.mode.description', {
+                        defaultValue: 'Choose the stock accounting behavior once. You can still change it before the first posted transaction.',
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {STARTER_MODE_OPTIONS.map((option) => {
+                      const active = (data.accountingMode || 'PERIODIC') === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => updateData({ accountingMode: option.value })}
+                          className={`rounded-lg border p-3 text-left transition ${
+                            active
+                              ? 'border-primary-600 bg-primary-50 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold text-slate-900">
+                                {t(option.titleKey, { defaultValue: option.titleDefault })}
+                              </div>
+                              <div className="mt-1 text-xs md:text-sm text-slate-600">
+                                {t(option.descriptionKey, { defaultValue: option.descriptionDefault })}
+                              </div>
+                            </div>
+                            {active && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary-600 mt-0.5" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </section>
           </div>
 
@@ -228,11 +276,11 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
                 t('onboarding.companyWizard.needs.summary.fiscal', { defaultValue: 'Calendar fiscal year and company date defaults' }),
                 ...(isStarterEnabled
                   ? [
-                    t('onboarding.companyWizard.needs.summary.accounting', { defaultValue: 'Standard chart of accounts' }),
-                    t('onboarding.companyWizard.needs.summary.inventory', { defaultValue: 'Invoice-driven stock with global average cost and negative stock blocked' }),
+                    t(selectedMode.summaryAccountingKey, { defaultValue: selectedMode.summaryAccountingDefault }),
+                    t(selectedMode.summaryInventoryKey, { defaultValue: selectedMode.summaryInventoryDefault }),
                     t('onboarding.companyWizard.needs.summary.warehouse', { defaultValue: 'Default MAIN warehouse' }),
-                    t('onboarding.companyWizard.needs.summary.sales', { defaultValue: 'Simple direct sales invoicing' }),
-                    t('onboarding.companyWizard.needs.summary.purchases', { defaultValue: 'Simple direct purchase invoicing' }),
+                    t(selectedMode.summarySalesKey, { defaultValue: selectedMode.summarySalesDefault }),
+                    t(selectedMode.summaryPurchasesKey, { defaultValue: selectedMode.summaryPurchasesDefault }),
                     t('onboarding.companyWizard.needs.summary.tax', { defaultValue: 'Tax-ready setup without hidden legal rates' }),
                   ]
                   : [

@@ -18,6 +18,7 @@ import { ApiError } from '../../../api/errors/ApiError';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 import { ICompanyEntitlementRepository, IBundleItemRepository } from '../../../repository/interfaces/super-admin/ICompanyEntitlementRepository';
 import { CompanyEntitlement, CompanyEntitlementItem } from '../../../domain/super-admin/EntitlementDefinition';
+import { SimpleTradingCompanyMode } from './SimpleTradingCompanyInitializer';
 
 interface Input {
   userId: string;
@@ -33,6 +34,7 @@ interface Input {
   dateFormat?: string;
   autoInitializeModules?: boolean;
   starterTemplateId?: 'simple-trading-company';
+  accountingMode?: SimpleTradingCompanyMode;
 }
 
 export class CreateCompanyUseCase {

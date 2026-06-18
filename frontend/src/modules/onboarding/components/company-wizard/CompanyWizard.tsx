@@ -27,6 +27,7 @@ const initialData: CompanyFormData = {
   selectedBundleId: null,
   autoInitializeModules: true,
   starterTemplateId: 'simple-trading-company',
+  accountingMode: 'PERIODIC',
   starterPolicySummary: null,
 };
 

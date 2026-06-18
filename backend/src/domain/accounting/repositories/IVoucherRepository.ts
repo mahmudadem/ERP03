@@ -162,6 +162,13 @@ export interface IVoucherRepository {
   findPendingCustodyConfirmations(companyId: string, custodianUserId: string, limit?: number): Promise<VoucherEntity[]>;
 
   /**
+   * Check whether the company has at least one posted voucher.
+   *
+   * Used by setup/migration guards that must stop once financial history exists.
+   */
+  hasPostedVouchers(companyId: string): Promise<boolean>;
+
+  /**
    * Dashboard helpers
    */
   getRecent(companyId: string, limit: number): Promise<VoucherEntity[]>;

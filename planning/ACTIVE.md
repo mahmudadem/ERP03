@@ -2,6 +2,23 @@
 
 ## Epic 240 follow-on (owner-authorized 2026-06-18)
 
+- ✅ **Task 240f complete (current worktree on `codex/240e-report-time-valuation`).**
+- Company creation now asks for the inventory/accounting mode once and uses that single answer to seed the starter policy consistently:
+  - `PERIODIC` → `periodic_trading` COA, simple direct workflows, global average cost
+  - `INVOICE_DRIVEN` → `standard` COA, simple direct workflows, live inventory on invoices
+  - `PERPETUAL` → `standard` COA, operational Sales/Purchases workflows, warehouse-level average cost
+- Inventory Settings now allows mode changes **only before** the first posted stock or accounting transaction. After the first posted history, mode change is blocked with a readable error and the page shows the lock state.
+- Pre-posting mode changes re-run the same starter initializer to re-seed the matching COA + module defaults. This is an **additive reseed**, not destructive chart cleanup, to avoid wiping draft references or weakening audit safety.
+- **Audit hardening (2026-06-19):** independent audit found the reseed silently reset the owner's approval mode + fiscal-year settings (pre-posting). Fixed with a `preserveCompanyPolicy` flag — the mode-switch reseed now refreshes COA/module wiring but preserves `strictApprovalMode`, accounting `approvalRequired`/`autoPostEnabled`/`allowEditDeletePosted`, and fiscal-year config. First-time onboarding unchanged. Regression test added; reseed idempotency + lock correctness independently confirmed. See [done/240f](./done/240f-phase6-mode-lock-wizard-coa.md) audit section.
+- Verification completed:
+  - focused backend suites green (`SimpleTradingCompanyInitializer` incl. preserve test, `InventoryAccountingModeLockService`, `InitializeAccounting`)
+  - **full backend suite green: 162 suites / 1455 tests / 0 failures**
+  - `npm --prefix backend run build` green
+  - `npm --prefix frontend run typecheck` + `npm --prefix frontend run build` green
+- Remaining Epic 240 work is now primarily **Phase 7 QA**:
+  - fresh-tenant golden-path walkthrough for each mode
+  - emulator/browser proof that pre-posting mode switches reseed correctly and post-history switches block
+
 - ✅ **Task 240e complete (current worktree on `main`).**
 - `PERIODIC` companies can now produce a **report-time inventory value** without posting a closing journal.
 - Added `InventoryValuationService` with policy-aware valuation (`AVERAGE`, `LAST_PURCHASE`) for current and as-of dates.
@@ -49,7 +66,7 @@
 - ✅ **Branch consolidation (2026-06-18):** the week-of-work branch (`codex/simple-trading-company-template`, 186 files), the 240 Phase 2 fix, and all the epic-240 plan docs are now merged onto `main` as the single baseline (`main` builds: backend + frontend tsc). Future phases branch fresh from `main`.
 - ✅ **Task 240c (Phase 3 — item costing stats) is now on `main`.** Per-item `costingStats` (avgCost / lastPurchaseCost / lastSalePrice, FX-accurate, extensible), `ItemCostingStatsService`, hooks in all IN paths (engine + inline PI + GRN) and sale paths (SI/DN), Firestore+Prisma parity, Item card UI. **No GL posting change.** Full backend suite **1,436 tests pass**; build clean. Report: [done/240c](./done/240c-phase3-item-costing-stats.md).
   - Integration fixes during landing: stale test mocks (`updateItemInTransaction` ×5, `preFetchLevelsByItem` ×3) and the **pre-existing** `PostingAuthority` guard (week's approval-leak hotfix → `resolveApproved`) updated without weakening it.
-- **Next recommended task:** [240f — Phase 6 mode lock + wizard/COA](./tasks/240f-phase6-mode-lock-wizard-coa.md). `240e` completes the periodic reporting layer; the next architecture-control gap is preventing companies from drifting into the wrong mode/COA combination after setup. Task [241](./tasks/241-party-item-price-memory.md) still remains parallel-safe because it depends on Phase 3, not on 240e/240f.
+- **Next recommended task:** [240g — Phase 7 golden-path periodic QA](./tasks/240g-phase7-golden-path-periodic-qa.md). `240f` closes the setup/control gap; the remaining risk is fresh-tenant proof that the three-mode onboarding + lock policy behaves correctly end-to-end. Task [241](./tasks/241-party-item-price-memory.md) still remains parallel-safe because it depends on Phase 3, not on 240f/240g.
 
 ---
 

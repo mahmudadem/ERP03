@@ -26,6 +26,34 @@ ERP03 now supports three distinct inventory-accounting modes:
 
 `PERIODIC` is now a **real first-class mode**. Legacy `inventoryAccountingMethod = PERIODIC` no longer gets remapped to `INVOICE_DRIVEN`; it resolves to `accountingMode = PERIODIC`.
 
+## Mode lock and re-seed policy
+
+Epic 240 Phase 6 adds a company-level safety rule around `InventorySettings.accountingMode`:
+
+- **Before the first posted history**: mode changes are allowed.
+- **After the first posted history**: mode changes are blocked.
+
+The lock state is evaluated from:
+
+- any posted accounting voucher
+- any stock movement
+
+`InventoryAccountingModeLockService` is the authoritative backend rule. The Inventory Settings API now returns:
+
+- `accountingModeLocked`
+- `accountingModeLockReason`
+
+### What happens before history exists
+
+Changing the mode does **not** just flip a flag. ERP03 re-runs the same starter initializer used by onboarding so the company gets the matching setup bundle again:
+
+- correct COA template (`periodic_trading` or `standard`)
+- matching inventory mode
+- matching Sales/Purchases workflow defaults
+- matching linked inventory-control accounts
+
+This is an **additive reseed**, not destructive chart cleanup. Existing accounts are preserved and missing ones are added. That is the safer ERP behavior while the company is still pre-live, because it avoids deleting accounts that drafts or references may already point at.
+
 ## Core Concepts
 
 - **Item** — what's tracked. Types: `PRODUCT` (physical), `RAW_MATERIAL`, `SERVICE` (non-stock). Costs are tracked per item, in the item's `costCurrency` (immutable once movements exist).
