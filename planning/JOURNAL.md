@@ -2,6 +2,14 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-18 (Epic 240 Phase 3 — merged to main and queued next branch)
+
+- **Goal:** Finalize the verified Phase 3 slice by moving it onto `main`, then prepare the repo for a fresh Phase 4 start.
+- **What was done:** Fast-forwarded `main` to the verified `codex/240c-item-costing-stats` tip, removed the stale "pending owner action" planning note, and kept Epic 240's next recommended task pointed at [240d](./tasks/240d-phase4-periodic-posting-mode.md). No production behavior changed in this step; it was a release/handoff state update after the verified merge.
+- **Accounting/ERP impact:** None beyond promoting the already-verified Phase 3 costing-stats work onto the mainline branch.
+- **Verification:** Re-ran focused 240c touchpoint tests (`inventory`, `purchases`, `sales`, `PostingAuthority`) plus backend build and frontend typecheck before the fast-forward.
+- **Next:** Push `main`, then branch fresh for Phase 4 periodic posting mode.
+
 ### Session: 2026-06-18 (Epic 240 Phase 3 — item costing stats + branch consolidation)
 
 - **Goal:** Land Phase 3 (per-item costing statistics) and consolidate the diverged branches onto `main`.

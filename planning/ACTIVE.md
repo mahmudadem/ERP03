@@ -12,10 +12,9 @@
   - Inventory GL reconciliation drift = `0`
 - Backlog note: [223 inventory revaluation](./tasks/223-inventory-revaluation-value-only-correction.md) remains valid only for **value-only revaluation/correction**. The discount mismatch itself is now closed by [240b](./tasks/240b-phase2-discount-cost-basis-fix.md).
 
-- ✅ **Branch consolidation (2026-06-18):** the week-of-work branch (`codex/simple-trading-company-template`, 186 files), the 240 Phase 2 fix, and all the epic-240 plan docs are now merged onto `main` as the single baseline (`main` builds: backend + frontend tsc). Future phases branch fresh from `main`. **`main` is local — not pushed.**
-- ✅ **Task 240c (Phase 3 — item costing stats) complete on branch `codex/240c-item-costing-stats`** (rebased onto consolidated `main`, zero conflicts). Per-item `costingStats` (avgCost / lastPurchaseCost / lastSalePrice, FX-accurate, extensible), `ItemCostingStatsService`, hooks in all IN paths (engine + inline PI + GRN) and sale paths (SI/DN), Firestore+Prisma parity, Item card UI. **No GL posting change.** Full backend suite **1,436 tests pass**; build clean. Report: [done/240c](./done/240c-phase3-item-costing-stats.md).
+- ✅ **Branch consolidation (2026-06-18):** the week-of-work branch (`codex/simple-trading-company-template`, 186 files), the 240 Phase 2 fix, and all the epic-240 plan docs are now merged onto `main` as the single baseline (`main` builds: backend + frontend tsc). Future phases branch fresh from `main`.
+- ✅ **Task 240c (Phase 3 — item costing stats) is now on `main`.** Per-item `costingStats` (avgCost / lastPurchaseCost / lastSalePrice, FX-accurate, extensible), `ItemCostingStatsService`, hooks in all IN paths (engine + inline PI + GRN) and sale paths (SI/DN), Firestore+Prisma parity, Item card UI. **No GL posting change.** Full backend suite **1,436 tests pass**; build clean. Report: [done/240c](./done/240c-phase3-item-costing-stats.md).
   - Integration fixes during landing: stale test mocks (`updateItemInTransaction` ×5, `preFetchLevelsByItem` ×3) and the **pre-existing** `PostingAuthority` guard (week's approval-leak hotfix → `resolveApproved`) updated without weakening it.
-- **Pending owner action:** review + merge Phase 3 → `main`; decide push timing.
 - **Next recommended task:** [240d — Phase 4 periodic posting mode](./tasks/240d-phase4-periodic-posting-mode.md) (the pilot's high-value core), branched fresh from `main`. Task [241](./tasks/241-party-item-price-memory.md) can also start (depends on Phase 3).
 
 ---
