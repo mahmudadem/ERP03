@@ -13,7 +13,7 @@ If you've used accounting software before (QuickBooks, Xero, SAP, etc.) the conc
 | **Chart of Accounts** | Set up the list of accounts (Cash, Accounts Receivable, Revenue, etc.) you'll use to classify transactions. |
 | **Vouchers** | Record any financial transaction: journal entries, payments, receipts, and specialized voucher types defined by your administrator. |
 | **Approvals** | Review and approve vouchers before they post to the ledger (if your company requires it). |
-| **Reports** | Trial Balance, Profit & Loss, Balance Sheet, General Ledger, Cash Flow, Account Statement, and more. |
+| **Reports** | Trial Balance, Trading Account, Profit & Loss, Balance Sheet, General Ledger, Cash Flow, Account Statement, and more. |
 | **Cost Centers** | Tag transactions to departments, projects, or branches so you can analyze costs by area. |
 | **Recurring Vouchers** | Set up vouchers that repeat automatically (e.g., monthly rent). |
 | **Forms Designer** | Customize voucher layouts without writing code. |
@@ -113,6 +113,20 @@ Available under `Accounting → Reports`. All reports read from the immutable le
 | **Consolidated Trial Balance** | If you have multiple companies, see them rolled up in a single reporting currency. |
 
 All reports have date filters and let you export to PDF or Excel.
+
+### Periodic companies: how ERP03 shows inventory and gross profit
+
+If your company uses **Periodic** inventory accounting:
+
+- the **Balance Sheet** shows inventory from report-time valuation, not from live Inventory-asset postings
+- the **Trading Account** computes gross profit as:
+  - `Sales − (Opening Inventory + Net Purchases − Closing Inventory)`
+- the **Profit & Loss** uses that same periodic cost-of-sales figure
+- the **Inventory Valuation** report lets you test the stock value using **Average** or **Last Purchase**
+
+These are reporting calculations only. ERP03 does **not** silently post a closing voucher when you open the reports.
+
+Full guide: [Periodic Trading and Inventory Valuation Reports](./periodic-trading-and-valuation-reports.md)
 
 ---
 

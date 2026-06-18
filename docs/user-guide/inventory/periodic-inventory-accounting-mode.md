@@ -62,9 +62,17 @@ In daily work:
 3. You will **not** see Inventory / COGS voucher lines on each invoice.
 4. Returns use separate contra accounts (`Sales Returns`, `Purchase Returns`) instead of reversing Inventory.
 
-What comes later:
+What is available now:
+- ERP03 now gives you:
+  - report-time inventory valuation
+  - Balance Sheet inventory based on report-time average valuation
+  - Trading Account gross profit based on opening inventory + net purchases - closing inventory
+  - Profit & Loss cost of sales derived from the same trading formula
 
-- report-time inventory valuation
-- closing inventory / trading-account reporting
+Important:
 
-Those are the next phases of Epic 240.
+- These figures are **report calculations**, not a hidden closing journal.
+- The Inventory Valuation report lets you switch the pricing policy between **Average** and **Last Purchase**.
+- The Balance Sheet / Trading / P&L periodic reports currently use **Average** so the books stay consistent.
+
+For the step-by-step reporting guide, see [Periodic Trading and Inventory Valuation Reports](../accounting/periodic-trading-and-valuation-reports.md).

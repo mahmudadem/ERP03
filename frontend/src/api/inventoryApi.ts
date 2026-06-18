@@ -1,6 +1,7 @@
 import client from './client';
 
 export type InventoryAccountingMode = 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
+export type InventoryPricingPolicy = 'AVERAGE' | 'LAST_PURCHASE';
 
 export interface InventoryCostPointDTO {
   base: number;
@@ -376,13 +377,20 @@ export interface StockTransferDTO {
 }
 
 export interface InventoryValuationDTO {
+  asOfDate: string;
+  pricingPolicy: InventoryPricingPolicy;
   totalValueBase: number;
   totalItems: number;
-  levels: Array<{
+  items: Array<{
     itemId: string;
     warehouseId: string;
     qtyOnHand: number;
     avgCostBase: number;
+    avgCostCCY: number;
+    lastPurchaseCostBase: number;
+    lastPurchaseCostCCY: number;
+    pricingUnitCostBase: number;
+    pricingUnitCostCCY: number;
     valueBase: number;
   }>;
 }
@@ -429,6 +437,7 @@ export interface InventoryPeriodSnapshotDTO {
 
 export interface AsOfValuationDTO {
   asOfDate: string;
+  pricingPolicy: InventoryPricingPolicy;
   snapshotPeriodKey?: string;
   totalValueBase: number;
   totalItems: number;
@@ -438,8 +447,10 @@ export interface AsOfValuationDTO {
     qtyOnHand: number;
     avgCostBase: number;
     avgCostCCY: number;
-    lastCostBase: number;
-    lastCostCCY: number;
+    lastPurchaseCostBase: number;
+    lastPurchaseCostCCY: number;
+    pricingUnitCostBase: number;
+    pricingUnitCostCCY: number;
     valueBase: number;
   }>;
 }
@@ -739,8 +750,8 @@ export const inventoryApi = {
   createSnapshot: (periodKey: string): Promise<InventoryPeriodSnapshotDTO> =>
     client.post('/tenant/inventory/snapshots', { periodKey }),
 
-  getAsOfValuation: (date: string): Promise<AsOfValuationDTO> =>
-    client.get('/tenant/inventory/valuation/as-of', { params: { date } }),
+  getAsOfValuation: (date: string, pricingPolicy: InventoryPricingPolicy = 'AVERAGE'): Promise<AsOfValuationDTO> =>
+    client.get('/tenant/inventory/valuation/as-of', { params: { date, pricingPolicy } }),
 
   getDashboard: (): Promise<InventoryDashboardDTO> =>
     client.get('/tenant/inventory/dashboard'),
@@ -759,8 +770,8 @@ export const inventoryApi = {
   }): Promise<UnsettledCostReportDTO> =>
     client.get('/tenant/inventory/reports/unsettled-costs', { params: filters }),
 
-  getValuation: (): Promise<InventoryValuationDTO> =>
-    client.get('/tenant/inventory/valuation'),
+  getValuation: (pricingPolicy: InventoryPricingPolicy = 'AVERAGE'): Promise<InventoryValuationDTO> =>
+    client.get('/tenant/inventory/valuation', { params: { pricingPolicy } }),
 
   reconcile: (): Promise<ReconcileResultDTO> =>
     client.post('/tenant/inventory/reconcile', {}),

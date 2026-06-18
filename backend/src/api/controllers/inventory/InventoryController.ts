@@ -68,6 +68,7 @@ import {
 import { GetCurrentCostUseCase } from '../../../application/inventory/use-cases/CostQueryUseCases';
 import { GetMovementForReferenceUseCase } from '../../../application/inventory/use-cases/ReferenceQueryUseCases';
 import { ConfigureInventoryFinancialIntegrationUseCase } from '../../../application/inventory/use-cases/ConfigureInventoryFinancialIntegrationUseCase';
+import { InventoryValuationService } from '../../../application/inventory/services/InventoryValuationService';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { InventoryDTOMapper } from '../../dtos/InventoryDTOs';
@@ -135,6 +136,15 @@ export class InventoryController {
       new VoucherValidationService(),
       undefined,
       diContainer.policyRegistry as any
+    );
+  }
+
+  private static buildInventoryValuationService(): InventoryValuationService {
+    return new InventoryValuationService(
+      diContainer.itemRepository,
+      diContainer.stockLevelRepository,
+      diContainer.stockMovementRepository,
+      diContainer.inventorySettingsRepository
     );
   }
 
@@ -1534,19 +1544,19 @@ export class InventoryController {
     try {
       const companyId = InventoryController.getCompanyId(req);
       const asOfDate = String((req as any).query.date || '');
+      const pricingPolicy = String((req as any).query.pricingPolicy || 'AVERAGE').toUpperCase();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(asOfDate)) {
         throw new Error('date query parameter must be in YYYY-MM-DD format');
       }
+      if (pricingPolicy !== 'AVERAGE' && pricingPolicy !== 'LAST_PURCHASE') {
+        throw new Error('pricingPolicy must be AVERAGE or LAST_PURCHASE');
+      }
 
-      const useCase = new GetAsOfValuationUseCase(
-        diContainer.inventoryPeriodSnapshotRepository,
-        diContainer.stockMovementRepository
-      );
-
-      const valuation = await useCase.execute({
+      const valuation = await InventoryController.buildInventoryValuationService().value(
         companyId,
         asOfDate,
-      });
+        pricingPolicy as 'AVERAGE' | 'LAST_PURCHASE'
+      );
 
       (res as any).json({
         success: true,
@@ -1560,8 +1570,16 @@ export class InventoryController {
   static async getValuation(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = InventoryController.getCompanyId(req);
-      const useCase = new GetInventoryValuationUseCase(diContainer.stockLevelRepository);
-      const valuation = await useCase.execute(companyId);
+      const pricingPolicy = String((req as any).query.pricingPolicy || 'AVERAGE').toUpperCase();
+      if (pricingPolicy !== 'AVERAGE' && pricingPolicy !== 'LAST_PURCHASE') {
+        throw new Error('pricingPolicy must be AVERAGE or LAST_PURCHASE');
+      }
+
+      const valuation = await InventoryController.buildInventoryValuationService().value(
+        companyId,
+        new Date().toISOString().slice(0, 10),
+        pricingPolicy as 'AVERAGE' | 'LAST_PURCHASE'
+      );
 
       (res as any).json({
         success: true,

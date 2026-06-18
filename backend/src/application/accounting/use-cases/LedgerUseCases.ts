@@ -1,8 +1,11 @@
 import { ILedgerRepository, TrialBalanceRow, GLFilters } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
+import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { getDefaultBalanceNature } from '../../../domain/accounting/entities/Account';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
+import { InventoryValuationService } from '../../inventory/services/InventoryValuationService';
 export { AccountStatementEntry } from '../../../repository/interfaces/accounting/ILedgerRepository';
 
 const toMillis = (value: any): number => {
@@ -401,7 +404,10 @@ export class GetBalanceSheetUseCase {
     private ledgerRepo: ILedgerRepository,
     private accountRepo: IAccountRepository,
     private permissionChecker: PermissionChecker,
-    private companyRepo?: ICompanyRepository
+    private companyRepo?: ICompanyRepository,
+    private inventorySettingsRepo?: IInventorySettingsRepository,
+    private itemRepo?: IItemRepository,
+    private inventoryValuationService?: InventoryValuationService
   ) {}
 
   async execute(
@@ -427,7 +433,9 @@ export class GetBalanceSheetUseCase {
       });
     });
 
-    const getNetBalance = (account: any) => {
+    const balanceOverrides = await this.buildPeriodicInventoryOverrides(companyId, effectiveDate);
+
+    const rawNetBalance = (account: any) => {
       const entry = balanceMap.get(account.id) || { debit: 0, credit: 0 };
       const debit = entry.debit || 0;
       const credit = entry.credit || 0;
@@ -444,6 +452,30 @@ export class GetBalanceSheetUseCase {
         ? credit - debit
         : debit - credit;
     };
+
+    const getNetBalance = (account: any) => {
+      const override = balanceOverrides.get(account.id);
+      if (override !== undefined) {
+        return override;
+      }
+      return rawNetBalance(account);
+    };
+
+    // Periodic mode replaces the GL inventory balance with a report-time
+    // valuation on the asset side. That uplift has no posted journal, so the
+    // equity side must move in lockstep or the Balance Sheet won't balance.
+    // This is the "virtual close": closing inventory recognised against the
+    // trading result. The adjustment = Σ(override − raw GL balance) over every
+    // overridden inventory account, booked into Current Year Earnings.
+    let periodicInventoryAdjustment = 0;
+    if (balanceOverrides.size > 0) {
+      accounts.forEach((acc) => {
+        const override = balanceOverrides.get(acc.id);
+        if (override !== undefined) {
+          periodicInventoryAdjustment += override - rawNetBalance(acc);
+        }
+      });
+    }
 
     const buildSection = (classification: string): BalanceSheetSection => {
       const relevantAccounts = accounts.filter((a) => a.classification === classification);
@@ -514,7 +546,7 @@ export class GetBalanceSheetUseCase {
       .filter((a) => a.classification === 'EQUITY' && isRetainedEarningsAccount(a))
       .reduce((sum, acc) => sum + getNetBalance(acc), 0);
 
-    const retainedEarnings = (revenueTotal - expenseTotal) - existingREBalance;
+    const retainedEarnings = (revenueTotal - expenseTotal) - existingREBalance + periodicInventoryAdjustment;
 
     const retainedLine: BalanceSheetLine = {
       accountId: 'retained-earnings',
@@ -545,6 +577,48 @@ export class GetBalanceSheetUseCase {
       totalLiabilitiesAndEquity,
       isBalanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01
     };
+  }
+
+  private async buildPeriodicInventoryOverrides(
+    companyId: string,
+    asOfDate: string
+  ): Promise<Map<string, number>> {
+    if (!this.inventorySettingsRepo || !this.itemRepo || !this.inventoryValuationService) {
+      return new Map();
+    }
+
+    const settings = await this.inventorySettingsRepo.getSettings(companyId).catch(() => null);
+    if (!settings || settings.accountingMode !== 'PERIODIC') {
+      return new Map();
+    }
+
+    const valuation = await this.inventoryValuationService.value(companyId, asOfDate, 'AVERAGE');
+    const items = await this.itemRepo.getCompanyItems(companyId, { limit: 100000 }).catch(() => []);
+    const inventoryAccountIds = new Set<string>();
+    if (settings.defaultInventoryAssetAccountId) {
+      inventoryAccountIds.add(settings.defaultInventoryAssetAccountId);
+    }
+    items.forEach((item) => {
+      if (item.inventoryAssetAccountId) {
+        inventoryAccountIds.add(item.inventoryAssetAccountId);
+      }
+    });
+
+    const primaryInventoryAccountId = settings.defaultInventoryAssetAccountId
+      || Array.from(inventoryAccountIds)[0];
+
+    if (!primaryInventoryAccountId) {
+      return new Map();
+    }
+
+    const overrides = new Map<string, number>();
+    overrides.set(primaryInventoryAccountId, valuation.totalValueBase);
+    inventoryAccountIds.forEach((accountId) => {
+      if (accountId !== primaryInventoryAccountId) {
+        overrides.set(accountId, 0);
+      }
+    });
+    return overrides;
   }
 }
 

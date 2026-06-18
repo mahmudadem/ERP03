@@ -109,4 +109,75 @@ describe('GetProfitAndLossUseCase', () => {
     expect(result.expenses).toBe(125);
     expect(result.netProfit).toBe(175);
   });
+
+  it('replaces periodic purchases with report-time cost of sales in totals and structured output', async () => {
+    const ledgerRepository = createLedgerRepository();
+    const accountRepository = createAccountRepository();
+    const inventorySettingsRepo = {
+      getSettings: jest.fn().mockResolvedValue({ accountingMode: 'PERIODIC' }),
+    } as any;
+    const inventoryValuationService = {
+      value: jest
+        .fn()
+        .mockResolvedValueOnce({ totalValueBase: 200 })
+        .mockResolvedValueOnce({ totalValueBase: 300 }),
+    } as any;
+
+    accountRepository.list.mockResolvedValue(
+      [
+        { id: 'sales', userCode: '400', name: 'Sales', classification: 'REVENUE', plSubgroup: 'SALES' },
+        { id: 'purchases', userCode: '50101', name: 'Purchases', classification: 'EXPENSE', plSubgroup: 'COST_OF_SALES' },
+        { id: 'rent', userCode: '50210', name: 'Rent', classification: 'EXPENSE', plSubgroup: 'OPERATING_EXPENSES' },
+      ] as any
+    );
+
+    ledgerRepository.getTrialBalance
+      .mockResolvedValueOnce(
+        [
+          { accountId: 'sales', debit: 0, credit: 0 },
+          { accountId: 'purchases', debit: 0, credit: 0 },
+          { accountId: 'rent', debit: 0, credit: 0 },
+        ] as any
+      )
+      .mockResolvedValueOnce(
+        [
+          { accountId: 'sales', debit: 0, credit: 1000 },
+          { accountId: 'purchases', debit: 400, credit: 0 },
+          { accountId: 'rent', debit: 100, credit: 0 },
+        ] as any
+      );
+
+    const useCase = new GetProfitAndLossUseCase(
+      ledgerRepository,
+      accountRepository,
+      permissionChecker,
+      inventorySettingsRepo,
+      inventoryValuationService
+    );
+    const result = await useCase.execute({
+      companyId: 'c1',
+      userId: 'u1',
+      fromDate: '2026-01-01',
+      toDate: '2026-01-31',
+    });
+
+    expect(result.revenue).toBe(1000);
+    expect(result.expenses).toBe(400);
+    expect(result.netProfit).toBe(600);
+    expect(result.expensesByAccount).toEqual([
+      { accountId: 'periodic-cost-of-sales', accountName: 'Periodic Cost of Sales', amount: 300 },
+      { accountId: 'rent', accountName: '50210 - Rent', amount: 100 },
+    ]);
+    expect(result.structured?.costOfSales).toBe(300);
+    expect(result.structured?.grossProfit).toBe(700);
+    expect(result.structured?.periodicTrading).toEqual({
+      pricingPolicy: 'AVERAGE',
+      openingInventory: 200,
+      netPurchases: 400,
+      closingInventory: 300,
+      purchaseByAccount: [
+        { accountId: 'purchases', accountName: '50101 - Purchases', amount: 400 },
+      ],
+    });
+  });
 });

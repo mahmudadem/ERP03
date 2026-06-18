@@ -1,6 +1,6 @@
 # Architecture: Accounting Module
 
-**Last updated:** 2026-06-16
+**Last updated:** 2026-06-18
 **Status:** Implemented (core), with explicitly deferred features listed below.
 **Code-near docs:** [`backend/src/domain/accounting/ARCHITECTURE.md`](../../backend/src/domain/accounting/ARCHITECTURE.md), [`backend/src/domain/accounting/CORRECTIONS.md`](../../backend/src/domain/accounting/CORRECTIONS.md)
 
@@ -71,7 +71,7 @@ Notes:
 | `ApproveVoucherUseCase` | DRAFT → APPROVED transition (if `ApprovalRequiredPolicy` is active). |
 | `ReverseAndReplaceVoucherUseCase` | Correction flow. Creates reversal voucher, optionally a replacement DRAFT. Links via `correctionGroupId`. |
 | `GetTrialBalanceUseCase` | Hierarchical ledger-sourced report by account classification. |
-| `GetProfitAndLossUseCase`, `GetBalanceSheetUseCase`, etc. | One use case per report. All read from the immutable ledger. |
+| `GetProfitAndLossUseCase`, `GetBalanceSheetUseCase`, `GetTradingAccountUseCase` | One use case per report. Reports read from the immutable ledger; `PERIODIC` mode may add report-time inventory valuation overrides without posting a closing journal. |
 | `CalculateFXRevaluationUseCase` + `GenerateFXRevaluationVoucherUseCase` | Computes unrealized FX gain/loss on foreign-currency balances; emits a DRAFT revaluation voucher. |
 | `GetConsolidatedTrialBalanceUseCase` | Multi-company consolidation with FX conversion to a reporting currency. |
 | `CreateRecurringTemplateUseCase` | Templated vouchers that auto-generate on schedule. |
@@ -176,6 +176,43 @@ Summary:
 - **FX revaluation** computes unrealized gain/loss on foreign-currency account balances and produces a DRAFT revaluation voucher the user reviews and posts.
 - **Consolidation** (multi-company): `GetConsolidatedTrialBalanceUseCase` aggregates across companies and converts to a reporting currency.
 
+## Periodic report-time trading layer
+
+Epic 240 Phase 5 adds the missing accounting-reporting layer for `InventorySettings.accountingMode = PERIODIC`.
+
+Rules:
+
+- `INVOICE_DRIVEN` and `PERPETUAL` reports keep their existing ledger-driven behavior.
+- `PERIODIC` reports perform a **virtual close at read time** using `InventoryValuationService`. This is a reporting override, not a journal-posting workflow.
+
+Implemented periodic behavior:
+
+- **Balance Sheet**
+  - inventory is overridden with report-time valuation at the requested `asOfDate`
+  - the default policy is `AVERAGE`
+  - the override is applied inside the use case before section totals are built, so parent balances stay mathematically correct
+  - **virtual close (keeps the statement balanced):** the inventory uplift `Σ(valuation − raw GL inventory balance)` has no posted journal, so the *same delta* is booked into **Current Year Earnings** on the equity side. Without this the asset side would rise while equity stayed flat and the Balance Sheet would not balance. The resulting retained-earnings figure equals periodic net profit (`Sales − COGS`), so the statement ties by construction.
+- **Trading Account**
+  - formula: `Sales − (Opening Inventory + Net Purchases − Closing Inventory)`
+  - opening inventory = valuation at the day before the report's `fromDate`
+  - closing inventory = valuation at `toDate`
+  - net purchases come from the ledger accounts tagged for periodic purchase flow
+- **Profit & Loss**
+  - the raw purchases expense bucket is replaced with the computed periodic cost of sales
+  - the response exposes the periodic breakdown so the UI/export can show the formula transparently
+
+**Valuation policy for statements.** The Balance Sheet, Trading Account, and P&L are *always* valued at `AVERAGE` (the costing method of record) so the three statements agree with each other and the books tie. The standalone **Inventory Valuation report** is the only surface that lets a user switch pricing policy (`AVERAGE` ↔ `LAST_PURCHASE`) — that is for analysis, not for the statutory statements.
+
+**Both reporting paths are wired.** The dedicated report controllers and the `ReportRunner` (which powers the AI-assistant report tools) both construct the report use cases with the valuation service, so periodic companies get identical numbers regardless of entry point.
+
+This keeps the books honest for simple trading companies:
+
+- stock quantities still come from immutable inventory movements
+- sales / purchases still come from immutable ledger rows
+- no hidden closing journal is manufactured behind the user's back
+
+If the company wants an actual posted period-close voucher, that remains a separate future workflow.
+
 ## Frontend
 
 - Module root: [`frontend/src/modules/accounting/`](../../frontend/src/modules/accounting/)
@@ -192,13 +229,14 @@ Summary:
 - **Sales** → posts AR + Revenue + (conditionally) COGS through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write.
 - **Purchases** → posts Inventory/Expense + AP through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write.
 - **Inventory** → Opening Stock can post an inventory-valuation voucher through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write. COGS auto-posting from sales delivery is **not yet implemented** — Sales posts COGS directly today.
+- **Inventory** → `InventoryValuationService` now also feeds the periodic reporting bridge: Balance Sheet inventory override, Trading Account, Profit & Loss periodic cost-of-sales, and the Inventory Valuation report's pricing-policy view.
 - **Multi-company** → consolidated reports reach across companies via `GetConsolidatedTrialBalanceUseCase`.
 
 ## What Is NOT Implemented
 
 | Feature | Why deferred |
 |---|---|
-| **Trading Account report** | Requires CoA sub-classification (SALES vs COGS) which is not yet in the account model. |
+| **Automatic period-close voucher** | Periodic reports do a virtual close at read time; ERP03 does not yet generate/post a formal closing inventory or trading-close journal automatically. |
 | **Aging report (full bucketing)** | Skeleton exists; receivable/payable bucketing across AR/AP is incomplete. |
 | **Bulk corrections** | Single-voucher corrections only. No batch reversal/replace UI. |
 | **Correction approval gate** | Reversals post immediately. No separate approval workflow for corrections. |

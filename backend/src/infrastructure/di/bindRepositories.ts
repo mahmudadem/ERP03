@@ -166,6 +166,7 @@ import { GetTopSuppliersTool } from '../../application/ai-assistant/tools/GetTop
 import { GetFinancialOverviewTool } from '../../application/ai-assistant/tools/GetFinancialOverviewTool';
 import { GetMonthlyComparisonTool } from '../../application/ai-assistant/tools/GetMonthlyComparisonTool';
 import { ReportRunner } from '../../application/reports/ReportRunner';
+import { InventoryValuationService } from '../../application/inventory/services/InventoryValuationService';
 import {
   RunProfitAndLossTool, RunTrialBalanceTool, RunBalanceSheetTool, RunCashFlowTool,
   RunGeneralLedgerTool, RunAccountStatementTool, RunAgingReceivablesTool, RunAgingPayablesTool,
@@ -1140,6 +1141,14 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
           this.accountRepository,
           this.companyRepository,
           this.permissionChecker,
+          this.inventorySettingsRepository,
+          this.itemRepository,
+          new InventoryValuationService(
+            this.itemRepository,
+            this.stockLevelRepository,
+            this.stockMovementRepository,
+            this.inventorySettingsRepository,
+          ),
         );
         return [
           new RunProfitAndLossTool(runner),

@@ -8,6 +8,9 @@ import { GetTrialBalanceUseCase, GetGeneralLedgerUseCase, GetAccountStatementUse
 import { GetCashFlowStatementUseCase } from '../accounting/use-cases/CashFlowUseCases';
 import { AgingReportUseCase } from '../accounting/use-cases/AgingReportUseCase';
 import { normalizeUserCode } from '../../domain/accounting/entities/Account';
+import { IInventorySettingsRepository } from '../../repository/interfaces/inventory/IInventorySettingsRepository';
+import { IItemRepository } from '../../repository/interfaces/inventory/IItemRepository';
+import { InventoryValuationService } from '../inventory/services/InventoryValuationService';
 
 const round2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
 
@@ -34,10 +37,18 @@ export class ReportRunner {
     private accountRepo: IAccountRepository,
     private companyRepo: ICompanyRepository,
     private permissionChecker: PermissionChecker,
+    inventorySettingsRepo?: IInventorySettingsRepository,
+    itemRepo?: IItemRepository,
+    inventoryValuationService?: InventoryValuationService,
   ) {
-    this.plUseCase = new GetProfitAndLossUseCase(ledgerRepo, accountRepo, permissionChecker);
+    this.plUseCase = new GetProfitAndLossUseCase(
+      ledgerRepo, accountRepo, permissionChecker, inventorySettingsRepo, inventoryValuationService,
+    );
     this.tbUseCase = new GetTrialBalanceUseCase(ledgerRepo, accountRepo, permissionChecker);
-    this.bsUseCase = new GetBalanceSheetUseCase(ledgerRepo, accountRepo, permissionChecker, companyRepo);
+    this.bsUseCase = new GetBalanceSheetUseCase(
+      ledgerRepo, accountRepo, permissionChecker, companyRepo,
+      inventorySettingsRepo, itemRepo, inventoryValuationService,
+    );
     this.cfUseCase = new GetCashFlowStatementUseCase(ledgerRepo, accountRepo, companyRepo, permissionChecker);
     this.glUseCase = new GetGeneralLedgerUseCase(ledgerRepo, permissionChecker);
     this.asUseCase = new GetAccountStatementUseCase(ledgerRepo, permissionChecker, accountRepo, companyRepo);

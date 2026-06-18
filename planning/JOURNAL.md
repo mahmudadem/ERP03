@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-18 (Epic 240 Phase 5 — report-time valuation and trading)
+
+- **Goal:** Complete the periodic-mode reporting layer so a `PERIODIC` company can value inventory, open a usable Balance Sheet, and compute gross profit without a manual closing journal.
+- **What was done:** Added `InventoryValuationService` for policy-aware current/as-of valuation (`AVERAGE`, `LAST_PURCHASE`), wired the inventory valuation endpoints to it, and extended the existing Inventory Valuation page with a pricing-policy selector. On the accounting side, added periodic-only report-time overrides: Balance Sheet inventory now comes from valuation, Trading Account now computes `Sales − (Opening Inventory + Net Purchases − Closing Inventory)`, and Profit & Loss replaces the raw purchases bucket with the periodic cost-of-sales result while exposing the formula breakdown for UI/export. Perpetual / invoice-driven report behavior was kept unchanged.
+- **Accounting/ERP impact:** This closes the biggest accounting gap in simple periodic mode. Periodic companies now get a defensible carrying inventory value and gross-profit view from stock-on-hand plus report-time costing, while preserving the audit boundary: no hidden closing voucher is posted, no historical ledger rows are rewritten, and the same inventory movements still drive quantities.
+- **Verification:** `npm --prefix backend test -- --runInBand backend/src/tests/application/inventory/services/InventoryValuationService.test.ts backend/src/tests/application/reporting/use-cases/GetTradingAccountUseCase.test.ts backend/src/tests/application/reporting/use-cases/GetProfitAndLossUseCase.test.ts backend/src/tests/application/accounting/use-cases/GetBalanceSheetUseCase.test.ts` passed (4 suites / 8 tests). `npm --prefix backend run build` passed. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed. **Not yet done in this session:** emulator/live-flow report proof on a fresh periodic tenant.
+- **Docs:** Updated `docs/architecture/inventory.md`, `docs/architecture/accounting.md`, `docs/user-guide/inventory/periodic-inventory-accounting-mode.md`, `docs/user-guide/inventory/README.md`, `docs/user-guide/accounting/README.md`, added `docs/user-guide/accounting/periodic-trading-and-valuation-reports.md`, and added [done/240e-phase5-report-time-valuation-and-trading.md](./done/240e-phase5-report-time-valuation-and-trading.md).
+- **Time spent:** ~3.0h.
+- **Next:** Start [240f](./tasks/240f-phase6-mode-lock-wizard-coa.md) to lock mode/COA choice before history exists and block unsafe changes after the first posted transaction. Then run [240g](./tasks/240g-phase7-golden-path-periodic-qa.md) on a fresh periodic tenant to prove the reporting layer end-to-end.
+
 ### Session: 2026-06-18 (Epic 240 Phase 3 — merged to main and queued next branch)
 
 - **Goal:** Finalize the verified Phase 3 slice by moving it onto `main`, then prepare the repo for a fresh Phase 4 start.
