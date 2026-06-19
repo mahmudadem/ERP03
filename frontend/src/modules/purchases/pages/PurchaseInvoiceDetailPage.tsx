@@ -497,12 +497,17 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const triggerLinePriceLookup = async (vendorId: string, itemId: string, qty: number, lineIndex: number) => {
     if (!vendorId || !itemId) return;
+    const line = form.lines[lineIndex];
     try {
       const result = await purchasesApi.getEffectivePurchasePrice({
         vendorId,
         itemId,
         qty,
         asOfDate: form.invoiceDate || undefined,
+        currency: form.currency,
+        exchangeRate: Number(form.exchangeRate || 1),
+        uomId: line?.uomId,
+        uom: line?.uom,
       });
       if (result && result.unitPrice != null) {
         setForm(currentForm => {

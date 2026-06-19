@@ -1,7 +1,7 @@
 # Architecture: Pricing — Price Lists and Customer Segmentation
 
-**Last updated:** 2026-05-20
-**Status:** Phase A complete. Price list CRUD, tiered pricing, effective-price resolution, customer group master data, and tax-inclusive pricing are all live.
+**Last updated:** 2026-06-19
+**Status:** Price list CRUD, tiered pricing, effective-price resolution, customer group master data, tax-inclusive pricing, and Task 241 party-item price memory are live.
 
 ---
 
@@ -128,6 +128,66 @@ interface GetEffectivePriceResult {
 }
 ```
 
+### Task 241 observed price memory
+
+Task 241 adds observed price memory beside configured price lists. The system now remembers real posted transaction prices at two levels:
+
+| Level | Scope | Storage |
+|---|---|---|
+| Last-event | Last sale / purchase price for an item from anyone | `Item.costingStats.lastSalePriceByCcyUom` and `lastPurchaseCostByCcyUom` |
+| Last-for-party | Last sale / purchase price for a specific party + item | `party_item_prices/{partyId}__{itemId}` and SQL `party_item_prices` |
+
+Observed price memory is stored natively per `(currency, uomId)`. The map key convention is `${currency}__${uomId}`, for example `USD__uom_box`. Every stored point carries `base`, `ccy`, `currency`, `fxRateToBase`, `asOf`, `qty`, `uomId`, and source document metadata.
+
+Average cost is intentionally different from price memory. The moving average remains a single base-currency, base-UOM cost point on the item. A document line in another currency or UOM derives cost from that one average using the document exchange rate, the item UOM conversion factor, and `InventorySettings.inventoryFxCostBasis` (`REPLACEMENT` default, `HISTORICAL` optional). There is no average selling price and no per-currency/per-UOM average cost store.
+
+### Resolution chain after Task 241
+
+Native sales and purchase line defaults now pass the document currency, exchange rate, and line UOM into the resolver. The chain is:
+
+1. Future contract / negotiated price, when implemented.
+2. Active price list.
+3. Last-for-party observed price for the exact `(currency, uomId)`.
+4. Item-level last-event observed price for the exact `(currency, uomId)`.
+5. Item default `salePrice` / `purchasePrice`.
+6. Manual blank line.
+
+The company setting `InventorySettings.defaultLinePriceSource` selects the preferred starting point while preserving the same fallbacks. The supported values are `PRICE_LIST`, `LAST_PARTY_PRICE`, and `ITEM_DEFAULT`; default is `PRICE_LIST`.
+
+Missing currency records are never auto-converted for prices. A USD document reads USD memory; an EUR document with no EUR record remains manual until the user types the first EUR price.
+
+Missing UOM records are controlled by module settings:
+
+| Setting | Default | Behavior |
+|---|---|---|
+| `salesSettings.deriveLinePriceAcrossUom` | `false` | If true, sales can derive same-party, same-currency remembered prices across UOMs using fixed item UOM factors. |
+| `purchaseSettings.deriveLinePriceAcrossUom` | `false` | If true, purchases can derive same-vendor, same-currency remembered prices across UOMs using fixed item UOM factors. |
+
+The derivation is same-currency only. Example: if a customer last bought a box for 10 USD and the box equals 4 units, a unit line can default to 2.5 USD only when the sales flag is on. The user can always override the default. Cost derivation is not optional; cost always derives across UOM/currency from the single average cost.
+
+### Write path and parity
+
+Posting `Sales Invoice`, `Sales Return`, `Purchase Invoice`, and `Purchase Return` updates price memory inside the same posting transaction:
+
+- Sales documents write selling price to item `lastSalePriceByCcyUom` and party `lastSaleByCcyUom`.
+- Purchase documents write purchase cost to item `lastPurchaseCostByCcyUom` and party `lastPurchaseByCcyUom`.
+- Firestore stores party memory in `companies/{companyId}/party_item_prices/{partyId}__{itemId}`.
+- SQL parity is `party_item_prices` with PK `(company_id, party_id, item_id)` and JSON maps for sale/purchase memory.
+
+Firestore writes strip nested `undefined` values before persisting optional source metadata; this is required because real emulator writes reject undefined nested fields.
+
+### Verification guard
+
+`backend/scripts/task241-emulator-smoke.cjs` is a compiled-backend smoke script. Run it against a Firestore emulator after `npm --prefix backend run build`:
+
+```powershell
+$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8080'
+$env:GCLOUD_PROJECT='erp-03'
+node backend/scripts/task241-emulator-smoke.cjs
+```
+
+The smoke posts a service Sales Invoice and Purchase Invoice through compiled `backend/lib` use cases, then reads back item-level and party-level `USD__uom_each` memory records from Firestore.
+
 ---
 
 ## Customer Groups and customer master fields
@@ -246,8 +306,8 @@ All under `frontend/src/modules/sales/pages/` and `frontend/src/modules/sales/se
 
 ## Known limitations / follow-ups
 
-**(a) Invoice currency vs customer default currency.**
-`GetEffectivePriceUseCase` derives the fallback currency from the customer's `Party.defaultCurrency`. A future revision should accept an explicit invoice-currency parameter so that a customer with `defaultCurrency = USD` but a one-off EUR invoice still resolves the EUR default price list correctly.
+**(a) Legacy callers may omit document currency.**
+Native sales/purchase line resolvers now pass document currency, exchange rate, and UOM into the backend resolver. Any older custom caller that still omits currency will fall back to the party default currency behavior and should be updated before relying on multi-currency price memory.
 
 **(b) `taxAmountBase` drift for inclusive pricing under FX.**
 `taxAmountBase` is computed as `lineTotalBase × taxRate` rather than back-calculating from the inclusive base amount. This means sub-cent drift is possible when the exchange rate is not 1:1. The simpler formula is acceptable for pre-alpha; revisit before the first multi-currency inclusive-price deployment.

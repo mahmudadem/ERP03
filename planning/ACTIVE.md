@@ -1,5 +1,14 @@
 # 🎯 Current Focus
 
+## Task 241 complete in code — awaiting owner commit/merge decision (2026-06-19)
+
+- **Task:** [241 — Party × Item price memory](./tasks/241-party-item-price-memory.md), owner-expanded to per `(currency × UOM)` price memory plus single base-currency/base-UOM average cost.
+- **Status:** Implemented and validated, but **not committed/merged** because Codex was not asked to commit.
+- **Docs/report:** [docs/architecture/pricing.md](../docs/architecture/pricing.md), [docs/user-guide/sales/party-item-price-memory.md](../docs/user-guide/sales/party-item-price-memory.md), and [done/241-party-item-price-memory.md](./done/241-party-item-price-memory.md).
+- **Validation:** backend build green; full backend suite green (164 passed, 2 skipped; 1460 tests passed); compiled-backend Firestore emulator smoke green via `backend/scripts/task241-emulator-smoke.cjs`; frontend build green.
+- **Next recommended action:** review the diff, then ask Codex to commit Task 241 if accepted. After that, return to the feature-freeze ship plan/golden-path QA discipline unless the owner explicitly authorizes another accounting-critical slice.
+- **Rabbit hole logged:** `IItemRepository.getItem(id)` remains a global-by-id lookup. The smoke script uses unique run ids to avoid stale emulator-data collisions; a future hardening slice should consider tenant-scoped item reads if item ids ever stop being globally unique.
+
 ## AI Settings Page Division & Switch Unification (2026-06-19)
 
 - ✅ **Refactored AI Settings Page Layout (`AiAssistantSettingsPage.tsx`)**:

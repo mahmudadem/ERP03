@@ -29,6 +29,7 @@ export interface PurchaseSettingsDTO {
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   allowOverpayment: boolean;
+  deriveLinePriceAcrossUom?: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -223,9 +224,14 @@ export interface PurchasePriceListDTO {
 
 export interface EffectivePurchasePriceDTO {
   unitPrice: number;
-  sourcePriceListId: string;
-  sourceLineId: string;
-  isDefault: boolean;
+  source?: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'LAST_EVENT' | 'ITEM_DEFAULT';
+  sourcePriceListId?: string;
+  sourceLineId?: string;
+  isDefault?: boolean;
+  currency?: string;
+  uomId?: string;
+  derived?: boolean;
+  derivedFromUomId?: string;
 }
 
 export interface PurchaseInvoiceAttachmentDTO {
@@ -803,7 +809,16 @@ export const purchasesApi = {
   deletePurchasePriceList: (id: string): Promise<{ success: boolean }> =>
     client.delete(`/tenant/purchase/price-lists/${id}`).then((r: any) => r?.data ?? r),
 
-  getEffectivePurchasePrice: (params: { vendorId: string; itemId: string; qty: number; asOfDate?: string }): Promise<EffectivePurchasePriceDTO> =>
+  getEffectivePurchasePrice: (params: {
+    vendorId: string;
+    itemId: string;
+    qty: number;
+    asOfDate?: string;
+    currency?: string;
+    exchangeRate?: number;
+    uomId?: string;
+    uom?: string;
+  }): Promise<EffectivePurchasePriceDTO> =>
     client.get('/tenant/purchase/price-lists/effective-price', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>

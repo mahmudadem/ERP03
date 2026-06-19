@@ -84,13 +84,16 @@ export interface CommissionTotalsDTO {
 }
 
 export interface EffectivePriceDTO {
-  itemId: string;
-  customerId: string;
-  qty: number;
   unitPrice: number;
+  source?: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'LAST_EVENT' | 'ITEM_DEFAULT';
   discountPct?: number;
   currency: string;
+  uomId?: string;
+  derived?: boolean;
+  derivedFromUomId?: string;
   priceListId?: string;
+  sourcePriceListId?: string;
+  sourceLineId?: string;
   priceListName?: string;
 }
 
@@ -117,7 +120,16 @@ export const salesMasterDataApi = {
   deletePriceList: (id: string): Promise<{ success: boolean }> =>
     client.delete(`/tenant/sales/price-lists/${id}`).then(unwrap<{ success: boolean }>),
 
-  getEffectivePrice: (params: { customerId: string; itemId: string; qty: number; asOfDate?: string }): Promise<EffectivePriceDTO> =>
+  getEffectivePrice: (params: {
+    customerId: string;
+    itemId: string;
+    qty: number;
+    asOfDate?: string;
+    currency?: string;
+    exchangeRate?: number;
+    uomId?: string;
+    uom?: string;
+  }): Promise<EffectivePriceDTO> =>
     client.get('/tenant/sales/price-lists/effective-price', { params }).then(unwrap<EffectivePriceDTO>),
 
   // Customer Groups

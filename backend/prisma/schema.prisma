@@ -42,6 +42,7 @@ model Company {
   items           Item[]
   employees       Employee[]
   parties         Party[]
+  partyItemPrices PartyItemPrice[]
   warehouses      Warehouse[]
   itemCategories  ItemCategory[]
   uoms            Uom[]
@@ -615,6 +616,7 @@ model Item {
   stockAdjustmentLines StockAdjustmentLine[]
   stockTransferLines StockTransferLine[]
   openingStockLines OpeningStockLine[]
+  partyItemPrices PartyItemPrice[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -1506,11 +1508,34 @@ model Party {
   updatedAt             DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  partyItemPrices PartyItemPrice[]
 
   @@unique([companyId, code])
   @@index([companyId])
   @@index([companyId, active])
   @@map("parties")
+}
+
+model PartyItemPrice {
+  companyId         String
+  partyId           String
+  itemId            String
+  lastSaleByCcyUom     Json?
+  lastPurchaseByCcyUom Json?
+  contractSale      Json?
+  contractPurchase  Json?
+  extra             Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  party   Party   @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  item    Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, partyId, itemId])
+  @@index([companyId, partyId])
+  @@index([companyId, itemId])
+  @@map("party_item_prices")
 }
 
 model TaxCode {

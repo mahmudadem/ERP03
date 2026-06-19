@@ -313,6 +313,7 @@ import { PrismaSalesReturnRepository } from '../prisma/repositories/sales/Prisma
 import { PrismaSalesSettingsRepository } from '../prisma/repositories/sales/PrismaSalesSettingsRepository';
 
 import { PrismaPartyRepository } from '../prisma/repositories/shared/PrismaPartyRepository';
+import { PrismaPartyItemPriceRepository } from '../prisma/repositories/shared/PrismaPartyItemPriceRepository';
 import { PrismaTaxCodeRepository } from '../prisma/repositories/shared/PrismaTaxCodeRepository';
 import { PrismaPaymentHistoryRepository } from '../prisma/repositories/shared/PrismaPaymentHistoryRepository';
 
@@ -333,10 +334,12 @@ import { PrismaModulePermissionsDefinitionRepository } from '../prisma/repositor
 
 import { ITransactionManager } from '../../repository/interfaces/shared/ITransactionManager';
 import { IPartyRepository } from '../../repository/interfaces/shared/IPartyRepository';
+import { IPartyItemPriceRepository } from '../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { ITaxCodeRepository } from '../../repository/interfaces/shared/ITaxCodeRepository';
 import { IPaymentHistoryRepository } from '../../repository/interfaces/shared/IPaymentHistoryRepository';
 import { FirestoreTransactionManager } from '../firestore/transaction/FirestoreTransactionManager';
 import { FirestorePartyRepository } from '../firestore/repositories/shared/FirestorePartyRepository';
+import { FirestorePartyItemPriceRepository } from '../firestore/repositories/shared/FirestorePartyItemPriceRepository';
 import { FirestoreTaxCodeRepository } from '../firestore/repositories/shared/FirestoreTaxCodeRepository';
 import { FirestorePaymentHistoryRepository } from '../firestore/repositories/shared/FirestorePaymentHistoryRepository';
 
@@ -881,6 +884,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaPartyRepository(getPrismaClient())
       : new FirestorePartyRepository(getDb());
+  },
+  get partyItemPriceRepository(): IPartyItemPriceRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPartyItemPriceRepository(getPrismaClient())
+      : new FirestorePartyItemPriceRepository(getDb());
   },
   get taxCodeRepository(): ITaxCodeRepository {
     return DB_TYPE === 'SQL'

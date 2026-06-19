@@ -22,6 +22,8 @@ export interface InitializeInventoryInput {
   defaultInventoryAssetAccountId?: string;
   defaultCostCurrency?: string;
   costingBasis?: 'WAREHOUSE' | 'GLOBAL';
+  inventoryFxCostBasis?: 'REPLACEMENT' | 'HISTORICAL';
+  defaultLinePriceSource?: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'ITEM_DEFAULT';
   allowNegativeStock?: boolean;
   autoGenerateItemCode?: boolean;
   itemCodePrefix?: string;
@@ -92,6 +94,8 @@ export class InitializeInventoryUseCase {
         || DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(input.accountingMode || currentSettings?.accountingMode || 'PERPETUAL'),
       defaultCostingMethod: 'MOVING_AVG',
       costingBasis: input.costingBasis ?? currentSettings?.costingBasis ?? 'WAREHOUSE',
+      inventoryFxCostBasis: input.inventoryFxCostBasis ?? currentSettings?.inventoryFxCostBasis ?? 'REPLACEMENT',
+      defaultLinePriceSource: input.defaultLinePriceSource ?? currentSettings?.defaultLinePriceSource ?? 'PRICE_LIST',
       defaultCostCurrency: input.defaultCostCurrency || currentSettings?.defaultCostCurrency || company.baseCurrency,
       defaultInventoryAssetAccountId:
         input.defaultInventoryAssetAccountId

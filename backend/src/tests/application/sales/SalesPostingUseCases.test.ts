@@ -1224,6 +1224,9 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(itemUpdate.costingStats.lastSalePrice.currency).toBe('EUR');
     expect(itemUpdate.costingStats.lastSalePrice.fxRateToBase).toBeCloseTo(1.5, 6);
     expect(itemUpdate.costingStats.lastSalePrice.asOf).toBe('2026-01-12');
+    expect(itemUpdate.costingStats.lastSalePrice.uomId).toBe('EA');
+    expect(itemUpdate.costingStats.lastSalePriceByCcyUom.EUR__EA.ccy).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.lastSalePriceByCcyUom.EUR__EA.uomId).toBe('EA');
   });
 
   it('10a) PostSI re-post attempt does not double-apply inventory or item sale stats', async () => {

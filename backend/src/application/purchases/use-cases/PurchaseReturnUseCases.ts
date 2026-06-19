@@ -3,7 +3,7 @@ import { AccountMappingError } from '../../../domain/accounting/errors/AccountMa
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { roundMoney as roundLedgerMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { Item } from '../../../domain/inventory/entities/Item';
+import { CostPoint, Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
 import { GoodsReceipt } from '../../../domain/purchases/entities/GoodsReceipt';
@@ -37,11 +37,20 @@ import { ICompanySettingsRepository } from '../../../repository/interfaces/core/
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import {
+  IPartyItemPriceRepository,
+  PartyItemPriceUpsertInput,
+} from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
+import {
+  buildAverageCostPoint,
+  buildDocumentPricePoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 
@@ -480,7 +489,8 @@ export class PostPurchaseReturnUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
   ) {}
 
 async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<PurchaseReturn> {
@@ -629,9 +639,12 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
 
     // PHASE 1D: COMPUTE ALL DATA OUTSIDE TRANSACTION
     const voucherLines: VoucherAccumulatedLine[] = [];
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
+    const partyItemPriceUpdates: PartyItemPriceUpsertInput[] = [];
 
     for (const line of purchaseReturn.lines) {
       const item = itemsMap.get(line.itemId)!;
+      let purchasePricePointForMemory: CostPoint | null = null;
 
       if (isAfterInvoice) {
         const sourceLine = findPILine(purchaseInvoice as PurchaseInvoice, line.piLineId, line.itemId);
@@ -712,6 +725,33 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
       line.taxAmountBase = line.priceIsInclusive
         ? roundMoney(postDiscountBase - lineTotalBase)
         : roundMoney(lineTotalBase * (line.taxRate || 0));
+
+      const hasNativeUnitCost = typeof line.unitCostDoc === 'number' && Number.isFinite(line.unitCostDoc);
+      if (hasNativeUnitCost) {
+        const purchasePricePoint = buildDocumentPricePoint({
+          unitPriceDoc: line.unitCostDoc || 0,
+          currency: purchaseReturn.currency,
+          exchangeRate: purchaseReturn.exchangeRate,
+          baseCurrency,
+          asOf: purchaseReturn.returnDate,
+          refType: 'PURCHASE_RETURN',
+          refId: purchaseReturn.id,
+          qty: line.returnQty,
+          uomId: line.uomId || item.purchaseUomId || item.baseUomId || line.uom || item.baseUom,
+          docType: 'PURCHASE_RETURN',
+          docId: purchaseReturn.id,
+          docNo: purchaseReturn.returnNumber,
+          lineId: line.lineId,
+        });
+        purchasePricePointForMemory = purchasePricePoint;
+        partyItemPriceUpdates.push({
+          companyId,
+          partyId: purchaseReturn.vendorId,
+          itemId: item.id,
+          direction: 'PURCHASE',
+          pricePoint: purchasePricePoint,
+        });
+      }
 
       // Compute inventory movement for tracked items
       if (item.trackInventory) {
@@ -816,6 +856,22 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         // Store for writing in transaction
         (line as any)._movement = movement;
         (line as any)._updatedLevel = level;
+      }
+
+      if (purchasePricePointForMemory) {
+        const itemLevels = Array.from(stockLevelMap.entries())
+          .filter(([key]) => key.startsWith(`${item.id}|`))
+          .map(([, level]) => level);
+        const avgCost = buildAverageCostPoint(
+          itemLevels,
+          item,
+          baseCurrency,
+          invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+          item.costingStats?.avgCost
+        );
+        const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastPurchaseCost: purchasePricePointForMemory });
+        item.costingStats = costingStats;
+        itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
       }
 
       // Pre-resolve account IDs for voucher lines (synchronous, uses pre-fetched data)
@@ -968,6 +1024,22 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
           await this.inventoryService.writeStockLevel(updatedLevel, transaction);
           delete (line as any)._movement;
           delete (line as any)._updatedLevel;
+        }
+      }
+      for (const [itemId, update] of itemCostingStatsUpdates) {
+        await this.itemRepo.updateItemInTransaction(
+          companyId,
+          itemId,
+          {
+            costingStats: update.costingStats,
+            updatedAt: update.updatedAt,
+          } as Partial<Item>,
+          transaction
+        );
+      }
+      if (this.partyItemPriceRepo) {
+        for (const update of partyItemPriceUpdates) {
+          await this.partyItemPriceRepo.upsertLastPrice(update, transaction);
         }
       }
 

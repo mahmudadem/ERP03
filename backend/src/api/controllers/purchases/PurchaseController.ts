@@ -743,7 +743,8 @@ export class PurchaseController {
         diContainer.paymentHistoryRepository,
         diContainer.voucherRepository,
         diContainer.voucherSequenceRepository,
-        diContainer.ledgerRepository
+        diContainer.ledgerRepository,
+        diContainer.partyItemPriceRepository
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -878,7 +879,8 @@ export class PurchaseController {
       diContainer.paymentHistoryRepository,
       diContainer.voucherRepository,
       diContainer.voucherSequenceRepository,
-      diContainer.ledgerRepository
+      diContainer.ledgerRepository,
+      diContainer.partyItemPriceRepository
     );
   }
 
@@ -1245,7 +1247,8 @@ export class PurchaseController {
         diContainer.companyModuleRepository,
         PurchaseController.buildAccountingPostingService(),
         diContainer.accountRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        diContainer.partyItemPriceRepository
       );
 
       const pr = await useCase.execute(companyId, id);

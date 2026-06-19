@@ -242,6 +242,7 @@ const PurchaseSettingsPage: React.FC = () => {
         defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? settingsForSave.defaultGRNIAccountId || undefined : undefined,
         allowOverDelivery: settingsForSave.allowOverDelivery,
         allowOverpayment: settingsForSave.allowOverpayment,
+        deriveLinePriceAcrossUom: settingsForSave.deriveLinePriceAcrossUom === true,
         overDeliveryTolerancePct: settingsForSave.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settingsForSave.overInvoiceTolerancePct,
         defaultPaymentTermsDays: settingsForSave.defaultPaymentTermsDays,
@@ -448,6 +449,19 @@ const PurchaseSettingsPage: React.FC = () => {
                     type="checkbox"
                     checked={settings.allowOverpayment === true}
                     onChange={(e) => updateSetting('allowOverpayment', e.target.checked)}
+                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </label>
+
+                <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
+                  <div className="pr-4">
+                    <div className="text-sm font-bold text-gray-900">Derive remembered prices across UOM</div>
+                    <div className="text-xs text-gray-500">When on, same-vendor same-currency price memory can convert between item UOMs. It never converts across currencies.</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.deriveLinePriceAcrossUom === true}
+                    onChange={(e) => updateSetting('deriveLinePriceAcrossUom', e.target.checked)}
                     className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </label>

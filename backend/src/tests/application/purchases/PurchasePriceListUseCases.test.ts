@@ -300,5 +300,97 @@ describe('PurchasePriceList Use Cases', () => {
 
       expect(price).toBeNull();
     });
+
+    it('derives same-currency vendor price across UOM only when the purchase setting is enabled', async () => {
+      const partyRepo = makePartyRepo({
+        getById: jest.fn(async () => makeVendor()) as any,
+      });
+      const partyItemPriceRepo = {
+        get: jest.fn(async () => ({
+          lastPurchaseByCcyUom: {
+            USD__uom_box: {
+              base: 100,
+              ccy: 10,
+              currency: 'USD',
+              fxRateToBase: 10,
+              asOf: '2026-06-19',
+              uomId: 'uom_box',
+            },
+          },
+        })),
+        getMany: jest.fn(),
+        upsertLastPrice: jest.fn(),
+      };
+      const item = {
+        id: 'ITEM-A',
+        companyId: COMPANY_ID,
+        code: 'ITEM-A',
+        baseUomId: 'uom_unit',
+        baseUom: 'UNIT',
+        purchaseUomId: 'uom_unit',
+        purchaseUom: 'UNIT',
+        costCurrency: 'USD',
+      };
+      const itemRepo = { getItem: jest.fn(async () => item) };
+      const inventorySettingsRepo = {
+        getSettings: jest.fn(async () => ({ defaultLinePriceSource: 'LAST_PARTY_PRICE' })),
+      };
+      const uomRepo = {
+        getConversionsForItem: jest.fn(async () => [
+          {
+            id: 'conv-box-unit',
+            companyId: COMPANY_ID,
+            itemId: 'ITEM-A',
+            fromUomId: 'uom_box',
+            fromUom: 'BOX',
+            toUomId: 'uom_unit',
+            toUom: 'UNIT',
+            factor: 4,
+            active: true,
+          },
+        ]),
+      };
+
+      const off = new GetEffectivePurchasePriceUseCase(
+        undefined,
+        partyRepo,
+        partyItemPriceRepo as any,
+        itemRepo as any,
+        inventorySettingsRepo as any,
+        { getSettings: jest.fn(async () => ({ deriveLinePriceAcrossUom: false })) } as any,
+        uomRepo as any
+      );
+      await expect(off.execute({
+        companyId: COMPANY_ID,
+        vendorId: 'vendor-1',
+        itemId: 'ITEM-A',
+        qty: 1,
+        currency: 'USD',
+        uomId: 'uom_unit',
+      })).resolves.toBeNull();
+
+      const on = new GetEffectivePurchasePriceUseCase(
+        undefined,
+        partyRepo,
+        partyItemPriceRepo as any,
+        itemRepo as any,
+        inventorySettingsRepo as any,
+        { getSettings: jest.fn(async () => ({ deriveLinePriceAcrossUom: true })) } as any,
+        uomRepo as any
+      );
+      const result = await on.execute({
+        companyId: COMPANY_ID,
+        vendorId: 'vendor-1',
+        itemId: 'ITEM-A',
+        qty: 1,
+        currency: 'USD',
+        uomId: 'uom_unit',
+      });
+
+      expect(result?.source).toBe('LAST_PARTY_PRICE');
+      expect(result?.derived).toBe(true);
+      expect(result?.unitPrice).toBeCloseTo(2.5, 6);
+      expect(result?.derivedFromUomId).toBe('uom_box');
+    });
   });
 });

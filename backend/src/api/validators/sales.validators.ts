@@ -295,6 +295,7 @@ export const validateInitializeSalesInput = (body: any) => {
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
+  if (body.deriveLinePriceAcrossUom !== undefined) ensureBoolean(body.deriveLinePriceAcrossUom, 'deriveLinePriceAcrossUom');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
@@ -377,6 +378,7 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.restockingFeeAccountId !== undefined) ensureOptionalString(body.restockingFeeAccountId, 'restockingFeeAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
+  if (body.deriveLinePriceAcrossUom !== undefined) ensureBoolean(body.deriveLinePriceAcrossUom, 'deriveLinePriceAcrossUom');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');

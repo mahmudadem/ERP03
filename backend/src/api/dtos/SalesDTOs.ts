@@ -55,6 +55,7 @@ export interface SalesSettingsDTO {
   restockingFeeAccountId?: string;
   allowOverDelivery: boolean;
   allowOverpayment: boolean;
+  deriveLinePriceAcrossUom: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -426,6 +427,7 @@ export class SalesDTOMapper {
       restockingFeeAccountId: settings.restockingFeeAccountId,
       allowOverDelivery: settings.allowOverDelivery,
       allowOverpayment: settings.allowOverpayment,
+      deriveLinePriceAcrossUom: settings.deriveLinePriceAcrossUom,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,

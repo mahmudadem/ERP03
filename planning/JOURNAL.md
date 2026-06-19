@@ -2,6 +2,30 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 241 — party/item price memory per currency and UOM)
+
+- **Goal:** Implement Task 241 from the updated owner-confirmed spec: last-event and last-for-party price memory per `(currency × UOM)`, single base-currency/base-UOM average cost, exact document-currency reads, optional cross-UOM price derivation, and Firestore/SQL parity.
+- **What was done:** Added `PartyItemPrice` domain/repository model, Firestore `party_item_prices` repository, Prisma `PartyItemPrice` SQL model, DI wiring, and item costing-stat extensions `lastSalePriceByCcyUom` / `lastPurchaseCostByCcyUom`. Updated SI/SR/PI/PR posting paths to write item-level and party-level price memory in the posting transaction. Updated sales/purchase effective-price resolvers and frontend line resolvers to pass document currency, exchange rate, and UOM. Added `inventoryFxCostBasis`, `defaultLinePriceSource`, and Sales/Purchase `deriveLinePriceAcrossUom` flags, including Sales/Purchase Settings checkboxes.
+- **Detour fixed:** Real Firestore emulator validation rejected nested `undefined` fields inside item costing stats / price-point source metadata. Fixed Firestore item updates and Firestore/Prisma party-item price writes to strip nested undefined values before persistence.
+- **Accounting/ERP impact:** Observed prices are stored as native facts per currency/UOM and are never derived across currencies. Average cost remains one cost-only source of truth. Optional cross-UOM price derivation is same-party + same-currency only; cost derivation remains mandatory math from average cost. No production migration/backfill needed.
+- **Verification:** `npm --prefix backend run build` passed. Focused price/cost/posting/return suites passed. Full backend suite passed: 164 suites passed, 2 skipped; 1460 tests passed, 18 skipped. Compiled-backend Firestore emulator smoke `node backend/scripts/task241-emulator-smoke.cjs` passed against `127.0.0.1:8080`, verifying SI and PI writes to item and party memory. `npm --prefix frontend run build` passed with existing bundle/browser-data warnings only.
+- **Docs:** Updated [architecture/pricing](../docs/architecture/pricing.md), added [user guide](../docs/user-guide/sales/party-item-price-memory.md), and added [done/241](./done/241-party-item-price-memory.md) with the 10-scenario manual QA script.
+- **Time spent:** ~5.0h.
+- **Next:** Owner should review the diff and request a commit if accepted. Then return to the freeze/ship plan unless another accounting-critical task is explicitly authorized.
+
+### Session: 2026-06-19 (Task 241 spec expansion — per-currency price memory + FX inventory valuation)
+
+- **Goal:** Before handing Task 241 to another agent, expand its spec from "last-for-party only" to the owner's full model (per-currency last prices, single base-currency average cost) and settle the inventory-valuation / selling-profit policy under a volatile base currency.
+- **What was decided (owner-confirmed):**
+  - Three price categories — **last-event** (global, per currency), **last-for-party** (per party, per currency), **average cost** (single base-currency value, cost only — no "average sale price").
+  - **Observed prices stored natively per `(currency × UOM)`**; **average cost is one base-currency/base-UOM source of truth**, converted at the document's rate and UOM factor for foreign-currency/non-base-UOM docs (never a parallel per-currency/per-UOM average).
+  - **Inventory FX cost basis** decided: stock value + COGS + the avg-in-foreign-currency figure all read one setting `inventoryFxCostBasis` = **`REPLACEMENT` (default)** | `HISTORICAL`. REPLACEMENT values stock at the stable-currency-anchored replacement cost and **segregates the currency movement as a holding gain** so reported selling profit reflects the *real* trading margin (the canonical scenario: buy 1 USD @ rate 1,000, rate now 12,000 → stock 12,000 SYP, real margin separated from the 11,000 SYP holding gain).
+  - Edge calls: average = cost only; unseen currency → **blank/manual** (no auto-convert seed); unseen UOM → blank unless the Sales/Purchase cross-UOM derivation flag is enabled.
+- **What was written (planning only — no code):**
+  - New brief [briefs/20260619-inventory-fx-valuation.md](./briefs/20260619-inventory-fx-valuation.md) — the valuation/profit policy, worked scenario, GL skeleton, GAAP caveat.
+  - Expanded [tasks/241-party-item-price-memory.md](./tasks/241-party-item-price-memory.md) — owner-confirmed model section, per `(currency × UOM)` schema (`lastSaleByCcyUom`/`lastPurchaseByCcyUom` + item-level `*ByCcyUom` last-event on `costingStats`), and the owner-confirmed per-currency/FX/UOM QA scenarios.
+- **Next:** hand Task 241 to the implementing agent (brief is the prerequisite read). No build/test run — documentation-only session.
+
 ### Session: 2026-06-19 (Epic 240 Phase 7 — final fresh-tenant Trading re-verification, gate closed)
 
 - **Goal:** Re-run the last blocked Epic 240 gate after commit `aa28f203` on a **brand-new** periodic tenant, prove the live Trading Account endpoint now computes correctly, then close the epic.

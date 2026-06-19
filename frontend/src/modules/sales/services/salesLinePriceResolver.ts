@@ -57,6 +57,10 @@ export interface ResolveLinePriceArgs {
   itemId: string;
   qty?: number;
   asOfDate?: string;
+  currency?: string;
+  exchangeRate?: number;
+  uomId?: string;
+  uom?: string;
 }
 
 /**
@@ -74,6 +78,10 @@ export async function resolveSalesLinePrice(
       itemId: args.itemId,
       qty,
       asOfDate: args.asOfDate,
+      currency: args.currency,
+      exchangeRate: args.exchangeRate,
+      uomId: args.uomId,
+      uom: args.uom,
     });
     if (!result || result.unitPrice == null) return null;
     return result;

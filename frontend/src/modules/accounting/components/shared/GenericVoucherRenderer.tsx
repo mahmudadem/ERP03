@@ -1533,7 +1533,16 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       formData.deliveryDate ||
       formData.returnDate ||
       undefined;
-    void resolveSalesLinePrice({ customerId, itemId, qty, asOfDate }).then((result) => {
+    void resolveSalesLinePrice({
+      customerId,
+      itemId,
+      qty,
+      asOfDate,
+      currency: formData.currency || row.currency,
+      exchangeRate: Number(formData.exchangeRate || row.exchangeRate || 1),
+      uomId: row.uomId || row.uom_id,
+      uom: row.uom,
+    }).then((result) => {
       if (result?.unitPrice != null) {
         applyResolvedLinePrice(rowId, result.unitPrice);
       }
@@ -1553,7 +1562,16 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       formData.receiptDate ||
       formData.returnDate ||
       undefined;
-    void resolvePurchaseLinePrice({ vendorId, itemId, qty, asOfDate }).then((result) => {
+    void resolvePurchaseLinePrice({
+      vendorId,
+      itemId,
+      qty,
+      asOfDate,
+      currency: formData.currency || row.currency,
+      exchangeRate: Number(formData.exchangeRate || row.exchangeRate || 1),
+      uomId: row.uomId || row.uom_id,
+      uom: row.uom,
+    }).then((result) => {
       if (result?.unitPrice != null) {
         applyResolvedLinePrice(rowId, result.unitPrice);
       }

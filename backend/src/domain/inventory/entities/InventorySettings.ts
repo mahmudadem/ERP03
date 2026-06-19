@@ -1,6 +1,8 @@
 export type LegacyInventoryAccountingMethod = 'PERIODIC' | 'PERPETUAL';
 export type InventoryAccountingMode = 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
 export type InventoryPricingPolicy = 'AVERAGE' | 'LAST_PURCHASE' | 'STANDARD' | (string & {});
+export type InventoryFxCostBasis = 'REPLACEMENT' | 'HISTORICAL';
+export type DefaultLinePriceSource = 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'ITEM_DEFAULT';
 /**
  * WAREHOUSE — one moving-average cost per (item, warehouse). Default; precise
  *   per-location valuation; supports valued inter-warehouse transfers.
@@ -16,6 +18,8 @@ export interface InventorySettingsProps {
   accountingMode?: InventoryAccountingMode;
   defaultCostingMethod: InventoryDefaultCostingMethod;
   costingBasis?: InventoryCostingBasis;
+  inventoryFxCostBasis?: InventoryFxCostBasis;
+  defaultLinePriceSource?: DefaultLinePriceSource;
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
@@ -71,6 +75,8 @@ export class InventorySettings {
   accountingMode: InventoryAccountingMode;
   defaultCostingMethod: InventoryDefaultCostingMethod;
   costingBasis: InventoryCostingBasis;
+  inventoryFxCostBasis: InventoryFxCostBasis;
+  defaultLinePriceSource: DefaultLinePriceSource;
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
@@ -112,6 +118,8 @@ export class InventorySettings {
     this.accountingMode = accountingMode;
     this.defaultCostingMethod = props.defaultCostingMethod;
     this.costingBasis = props.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
+    this.inventoryFxCostBasis = props.inventoryFxCostBasis === 'HISTORICAL' ? 'HISTORICAL' : 'REPLACEMENT';
+    this.defaultLinePriceSource = InventorySettings.normalizeDefaultLinePriceSource(props.defaultLinePriceSource);
     this.defaultCostCurrency = props.defaultCostCurrency.toUpperCase().trim();
     this.defaultInventoryAssetAccountId = props.defaultInventoryAssetAccountId?.trim() || undefined;
     this.allowNegativeStock = props.allowNegativeStock;
@@ -142,6 +150,8 @@ export class InventorySettings {
       inventoryAccountingMethod,
       accountingMode: inventoryAccountingMethod,
       defaultCostingMethod: 'MOVING_AVG',
+      inventoryFxCostBasis: 'REPLACEMENT',
+      defaultLinePriceSource: 'PRICE_LIST',
       defaultCostCurrency: baseCurrency.toUpperCase(),
       defaultInventoryAssetAccountId,
       allowNegativeStock: false,
@@ -157,6 +167,8 @@ export class InventorySettings {
       inventoryAccountingMethod: this.inventoryAccountingMethod,
       defaultCostingMethod: this.defaultCostingMethod,
       costingBasis: this.costingBasis,
+      inventoryFxCostBasis: this.inventoryFxCostBasis,
+      defaultLinePriceSource: this.defaultLinePriceSource,
       defaultCostCurrency: this.defaultCostCurrency,
       defaultInventoryAssetAccountId: this.defaultInventoryAssetAccountId,
       allowNegativeStock: this.allowNegativeStock,
@@ -185,6 +197,8 @@ export class InventorySettings {
       ),
       defaultCostingMethod: data.defaultCostingMethod || 'MOVING_AVG',
       costingBasis: data.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+      inventoryFxCostBasis: data.inventoryFxCostBasis === 'HISTORICAL' ? 'HISTORICAL' : 'REPLACEMENT',
+      defaultLinePriceSource: InventorySettings.normalizeDefaultLinePriceSource(data.defaultLinePriceSource),
       defaultCostCurrency: data.defaultCostCurrency,
       defaultInventoryAssetAccountId: data.defaultInventoryAssetAccountId,
       allowNegativeStock: data.allowNegativeStock ?? false,
@@ -225,5 +239,12 @@ export class InventorySettings {
       return inventoryAccountingMethod;
     }
     return accountingMode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC';
+  }
+
+  private static normalizeDefaultLinePriceSource(value?: DefaultLinePriceSource): DefaultLinePriceSource {
+    if (value === 'LAST_PARTY_PRICE' || value === 'ITEM_DEFAULT') {
+      return value;
+    }
+    return 'PRICE_LIST';
   }
 }

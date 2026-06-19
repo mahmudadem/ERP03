@@ -221,6 +221,7 @@ const SalesSettingsPage: React.FC = () => {
         restockingFeeAccountId: settings.restockingFeeAccountId || undefined,
         allowOverDelivery: settings.allowOverDelivery,
         allowOverpayment: settings.allowOverpayment,
+        deriveLinePriceAcrossUom: settings.deriveLinePriceAcrossUom === true,
         overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
         defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
@@ -416,6 +417,26 @@ const SalesSettingsPage: React.FC = () => {
                       </span>
                       <span className="ml-1 text-gray-500">
                         When on, a receipt may exceed the invoice total. The extra becomes a credit on the customer's account (their AR balance goes negative) and offsets their future invoices.
+                      </span>
+                    </span>
+                  </label>
+                  <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      checked={settings.deriveLinePriceAcrossUom === true}
+                      onChange={(e) =>
+                        setSettings((prev) =>
+                          prev ? { ...prev, deriveLinePriceAcrossUom: e.target.checked } : prev
+                        )
+                      }
+                    />
+                    <span className="text-xs">
+                      <span className="font-semibold text-gray-900">
+                        Derive remembered prices across UOM
+                      </span>
+                      <span className="ml-1 text-gray-500">
+                        When on, same-customer same-currency price memory can convert between item UOMs. It never converts across currencies.
                       </span>
                     </span>
                   </label>
