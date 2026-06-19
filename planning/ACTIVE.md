@@ -1,5 +1,17 @@
 # 🎯 Current Focus
 
+## Task 244 NOTE-09 complete - UOM conversions visible in Web + Windows item cards (2026-06-19)
+
+- ✅ **[244 NOTE-09 — Item UOM Conversions section Web/Windows parity](./tasks/244-item-uom-card-bugfix-cluster.md)** is implemented on branch `codex/244-note09-uom-web-windows-parity`.
+- Scope stayed narrow: Windows item-card openings now pass/read the selected item id consistently (`data.itemId`, with a legacy `data.id` fallback). No UOM conversion math, duplicate guards, delete behavior, line-UOM selector behavior, backend posting, inventory valuation, or accounting logic changed.
+- Nearby audit completed: `ItemMasterCard.tsx` has no `isWindow`/Windows conditional hiding the **Managed UOM Defaults**, **Item UOM Conversions**, or other nearby item-card sections. The parity issue was the Windows item-card identity payload, not a separate hidden section branch.
+- Docs updated: [inventory architecture](../docs/architecture/inventory.md), [inventory user guide](../docs/user-guide/inventory/README.md), and completion report [done/244-note09-uom-web-windows-parity.md](./done/244-note09-uom-web-windows-parity.md).
+- Verification completed:
+  - `npm --prefix frontend run typecheck` ✅
+  - `npm --prefix frontend run build` ✅
+- Task 244 status: NOTE-08 and NOTE-14 are merged; NOTE-10/11 are in separate PRs; NOTE-09 is this PR.
+- **Next recommended action:** merge this narrow PR, then rebase/merge NOTE-10 and NOTE-11 independently because they change item-card conversion management behavior.
+
 ## Task 244 NOTE-14 line UOM picker fixed -> PR pending (2026-06-19)
 
 - **Task 244 NOTE-14 only** is implemented on branch `codex/244-note14-line-uom-picker`.

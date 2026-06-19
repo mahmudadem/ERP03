@@ -368,6 +368,22 @@ responses from the frontend client, the selector unwraps the conversion response
 `buildItemUomOptions()`. This prevents document line pickers from showing only the base UOM when an active
 alternate conversion, such as BOX to PCS, exists.
 
+### Item card Web/Windows parity
+
+The item master card is a single shared component for Web page mode and Windows mode. UI mode may change the shell,
+window frame, or navigation chrome, but it must not decide whether an item-card business section exists.
+
+The Inventory tab must expose the same item sections in both modes, including:
+
+- Inventory Tracking
+- Managed UOM Defaults
+- Item UOM Conversions
+
+Windows item-card openings pass the selected item id through `WindowManagerContext` as `data.itemId`. `ItemCardWindow`
+also accepts the older `data.id` payload as a compatibility fallback, but new callers should use `itemId` so the same
+existing item is hydrated in Web and Windows modes. Without the selected item id, Windows mode can render the card as a
+new/empty item and make existing-item UOM conversion maintenance appear unavailable.
+
 GL accounts for adjustments/transfers are configured in **Inventory Settings → Accounting** (`defaultInventoryGainAccountId`,
 `defaultInventoryLossAccountId`, `defaultInventoryTransferClearingAccountId`,
 `defaultInventoryRevaluationAccountId`). These accounts have separate meanings:
