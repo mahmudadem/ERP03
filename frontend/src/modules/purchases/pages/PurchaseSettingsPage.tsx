@@ -76,6 +76,7 @@ const PurchaseSettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<PurchaseSettingsDTO | null>(null);
+  const [apFormatCustom, setApFormatCustom] = useState(false);
   const [invSettings, setInvSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -541,23 +542,30 @@ const PurchaseSettingsPage: React.FC = () => {
                       {t('purchases.settings.partyAccountFormat.label', 'AP Sub-account Code Format')}
                     </label>
                     {(() => {
-                      const current = (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim();
-                      const isPreset = PARTY_ACCOUNT_CODE_PRESETS.some((p) => p.template === current);
+                      const raw = (settings.partyAccountCodeFormat ?? '').trim();
+                      const matched = PARTY_ACCOUNT_CODE_PRESETS.find((p) => p.template === raw);
+                      const showCustom = apFormatCustom || (raw.length > 0 && !matched);
+                      const selectValue = showCustom ? 'CUSTOM' : (matched ? matched.template : PARTY_ACCOUNT_CODE_PRESETS[0].template);
                       return (
                         <>
                           <select
                             className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            value={isPreset ? current : 'CUSTOM'}
-                            onChange={(e) => { if (e.target.value !== 'CUSTOM') updateSetting('partyAccountCodeFormat', e.target.value); }}
+                            value={selectValue}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === 'CUSTOM') { setApFormatCustom(true); }
+                              else { setApFormatCustom(false); updateSetting('partyAccountCodeFormat', val); }
+                            }}
                           >
                             {PARTY_ACCOUNT_CODE_PRESETS.map((p) => (
                               <option key={p.template} value={p.template}>{p.label}</option>
                             ))}
                             <option value="CUSTOM">{t('purchases.settings.partyAccountFormat.custom', 'Custom…')}</option>
                           </select>
-                          {!isPreset && (
+                          {showCustom && (
                             <input
                               type="text"
+                              autoFocus
                               className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               value={settings.partyAccountCodeFormat || ''}
                               onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
