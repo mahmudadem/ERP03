@@ -20,7 +20,7 @@ import {
 import { communicationsApi, CommunicationsSettingsDTO } from '../../../api/communicationsApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { salesMasterDataApi, SalespersonDTO } from '../../../api/salesMasterDataApi';
-import { voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
+import { FormSettingsRecord, voucherFormApi, VoucherFormResponse } from '../../../api/voucherFormApi';
 import { accountingApi, AccountingPolicyConfig, RateDeviationWarning } from '../../../api/accountingApi';
 import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
@@ -192,6 +192,7 @@ interface SalesInvoiceReferenceData {
   salesOrders: SalesOrderDTO[];
   salespersons: SalespersonDTO[];
   invoiceTemplates: VoucherFormResponse[];
+  formSettings: FormSettingsRecord[];
 }
 
 interface SalesInvoiceReferenceCacheEntry {
@@ -642,7 +643,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     );
   };
 
-  const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
+  const createEmptyForm = (salesOrderId = '', customerId = '', linePriceSource: LinePriceSource = 'LAST_PARTY_PRICE'): EditableForm => ({
     salesOrderId,
     customerId,
     invoiceTemplateId: '',
@@ -653,7 +654,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     dueDate: '',
     currency: company?.baseCurrency || 'USD',
     exchangeRate: 1,
-    linePriceSource: 'LAST_PARTY_PRICE',
+    linePriceSource,
     warehouseId: undefined,
     notes: '',
     lines: padLinesToMin([]),
@@ -674,7 +675,9 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
   const [salesOrders, setSalesOrders] = useState<SalesOrderDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [invoiceTemplates, setInvoiceTemplates] = useState<VoucherFormResponse[]>([]);
+  const [formSettings, setFormSettings] = useState<FormSettingsRecord[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialSalesOrderId, initialCustomerId));
+  const [linePriceSourceTouched, setLinePriceSourceTouched] = useState(false);
   const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
   const [attachments, setAttachments] = useState<SalesInvoiceAttachmentDTO[]>([]);
 
@@ -780,7 +783,8 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const openNewInvoiceForm = () => {
     setInvoice(null);
-    setForm(createEmptyForm('', ''));
+    setLinePriceSourceTouched(false);
+    setForm(createEmptyForm('', '', resolveConfiguredLinePriceSource()));
     setAttachments([]);
     setSettlementMode('DEFERRED');
     setArAccountId('');
@@ -890,6 +894,14 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     () => eligibleInvoiceTemplates.find((template) => template.id === form.invoiceTemplateId) || null,
     [eligibleInvoiceTemplates, form.invoiceTemplateId]
   );
+
+  const resolveConfiguredLinePriceSource = (templateId?: string): LinePriceSource => {
+    const templateSetting = templateId
+      ? formSettings.find((record) => record.formId === templateId)?.settings?.pricingBehavior?.linePriceSource
+      : null;
+    const nativeSetting = formSettings.find((record) => record.builtInFormKey === 'native.sales.invoice')?.settings?.pricingBehavior?.linePriceSource;
+    return (templateSetting || nativeSetting || 'LAST_PARTY_PRICE') as LinePriceSource;
+  };
 
   const customerNameById = useMemo(
     () =>
@@ -1399,6 +1411,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         console.error('Failed to load sales invoice templates', templateError);
         return [];
       })).then(unwrap<VoucherFormResponse[]>),
+      trackStartupCall('Form settings', () => voucherFormApi.listSettings('SALES').catch(() => [])).then(unwrap<FormSettingsRecord[]>),
     ]).then(([
       settings,
       customers,
@@ -1410,6 +1423,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       commSettings,
       accountingPolicy,
       invoiceTemplates,
+      formSettings,
     ]) => ({
       settings,
       customers: Array.isArray(customers) ? customers : [],
@@ -1421,6 +1435,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       commSettings,
       accountingPolicy,
       invoiceTemplates: Array.isArray(invoiceTemplates) ? invoiceTemplates : [],
+      formSettings: Array.isArray(formSettings) ? formSettings : [],
     }));
 
     salesInvoiceReferenceCache.set(cacheKey, {
@@ -1454,6 +1469,8 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     setSalesOrders(referenceData.salesOrders);
     setSalespersons(referenceData.salespersons);
     setInvoiceTemplates(referenceData.invoiceTemplates);
+    setFormSettings(referenceData.formSettings);
+    return referenceData;
   };
 
   const ensureItemUomOptions = async (itemId: string) => {
@@ -1556,7 +1573,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const load = async () => {
     try {
-      const totalStartupCalls = isCreateMode ? 10 : 11;
+      const totalStartupCalls = isCreateMode ? 11 : 12;
       const routeKey = resolvedId || 'new';
       startupTimingLoggedRef.current = false;
       startupTimingRef.current = {
@@ -1575,7 +1592,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         activeLabel: t('sales.invoiceDetail.loadingStarting', 'Starting sales invoice form'),
         cacheStatus: 'checking',
       });
-      await loadReferenceData();
+      const referenceData = await loadReferenceData();
       if (startupTimingRef.current?.routeKey === routeKey) {
         startupTimingRef.current.referenceDataFinishedAt = getPerfTime();
       }
@@ -1591,7 +1608,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       } else {
         setInvoice(null);
         setAttachments([]);
-        setForm(createEmptyForm(initialSalesOrderId, initialCustomerId));
+        setLinePriceSourceTouched(false);
+        const nativePriceSource = (
+          referenceData.formSettings.find((record) => record.builtInFormKey === 'native.sales.invoice')?.settings?.pricingBehavior?.linePriceSource
+          || 'LAST_PARTY_PRICE'
+        ) as LinePriceSource;
+        setForm(createEmptyForm(initialSalesOrderId, initialCustomerId, nativePriceSource));
         if (initialSalesOrderId) {
           await loadSalesOrderLines(initialSalesOrderId);
         }
@@ -1687,8 +1709,13 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     const nextTemplateId = nextTemplate?.id || '';
     const nextTemplateFormType = nextTemplate?.formType || currentInvoiceFormType;
     if (nextTemplateId === form.invoiceTemplateId && nextTemplateFormType === form.invoiceTemplateFormType) return;
-    setForm((prev) => ({ ...prev, invoiceTemplateId: nextTemplateId, invoiceTemplateFormType: nextTemplateFormType }));
-  }, [currentInvoiceFormType, customerById, eligibleInvoiceTemplates, form.customerId, form.invoiceTemplateFormType, form.invoiceTemplateId, isCreateMode, templateTouched]);
+    setForm((prev) => ({
+      ...prev,
+      invoiceTemplateId: nextTemplateId,
+      invoiceTemplateFormType: nextTemplateFormType,
+      linePriceSource: linePriceSourceTouched ? prev.linePriceSource : resolveConfiguredLinePriceSource(nextTemplateId),
+    }));
+  }, [currentInvoiceFormType, customerById, eligibleInvoiceTemplates, form.customerId, form.invoiceTemplateFormType, form.invoiceTemplateId, isCreateMode, linePriceSourceTouched, templateTouched]);
 
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
@@ -2766,6 +2793,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                 value={form.linePriceSource}
                 disabled={busy || isReadOnly}
                 onChange={(source) => {
+                  setLinePriceSourceTouched(true);
                   setForm((prev) => ({ ...prev, linePriceSource: source }));
                   void refreshLinePrices(source);
                 }}

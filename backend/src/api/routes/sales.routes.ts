@@ -46,6 +46,9 @@ router.put('/voucher-forms/:id', VoucherFormController.update);
 router.delete('/voucher-forms/:id', VoucherFormController.delete);
 router.post('/voucher-forms', VoucherFormController.create);
 router.post('/voucher-forms/:id/clone', VoucherFormController.clone);
+router.get('/voucher-form-settings', VoucherFormController.listSettings);
+router.get('/voucher-form-settings/one', VoucherFormController.getSettings);
+router.put('/voucher-form-settings', VoucherFormController.saveSettings);
 
 router.post('/orders', SalesController.createSO);
 router.get('/orders', SalesController.listSOs);

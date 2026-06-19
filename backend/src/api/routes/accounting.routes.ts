@@ -174,6 +174,9 @@ router.post('/voucher-forms', permissionGuard('accounting.designer.create'), Vou
 router.put('/voucher-forms/:id', permissionGuard('accounting.designer.modify'), VoucherFormController.update);
 router.delete('/voucher-forms/:id', permissionGuard('accounting.designer.modify'), VoucherFormController.delete);
 router.post('/voucher-forms/:id/clone', permissionGuard('accounting.designer.create'), VoucherFormController.clone);
+router.get('/voucher-form-settings', permissionGuard('accounting.designer.view'), VoucherFormController.listSettings);
+router.get('/voucher-form-settings/one', permissionGuard('accounting.designer.view'), VoucherFormController.getSettings);
+router.put('/voucher-form-settings', permissionGuard('accounting.designer.modify'), VoucherFormController.saveSettings);
 
 // Currencies
 router.get('/currencies', permissionGuard('accounting.accounts.view'), CurrencyCoreController.listCurrencies);

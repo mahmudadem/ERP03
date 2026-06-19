@@ -4016,6 +4016,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Time spent:** ~0.4h.
 - **Next:** Manual QA: turn **Show Floating AI Launcher** off, click **Save Settings**, confirm the floating button disappears without reload; turn it back on and confirm it reappears outside the AI Assistant page.
 
+### Session: 2026-06-19 (Task 243-B — Per-form settings)
+
+- **Goal:** Implement Task 243-B after PR #22 / 243-A landed, using the owner-revised concept that settings belong to each actual form instance rather than only to document type.
+- **What was done:** Created isolated worktree `D:\DEV2026\ERP03-243b-document-settings` on branch `codex/243b-form-settings-plan`. Added a backend per-form settings contract/use case with Firestore and Prisma implementations. Added module routes for listing/getting/saving form settings. Extended Forms Management to list built-in/native forms with designer forms and added a vertical-tabs Form Settings modal with **Account Defaults** first and **Pricing Behavior** second. Wired per-form pricing defaults into native Sales Invoice, native Purchase Invoice, and Form Designer-rendered sales/purchase forms. Designer form clone now copies source form settings.
+- **Accounting/ERP impact:** Defaults only. No ledger posting, voucher approval, period-lock, tax, AR/AP, stock movement, or inventory valuation logic changed. Account defaults are persisted but not silently applied to posting-sensitive fields in this slice.
+- **Verification:** `npm --prefix backend run build` passed. `npm --prefix frontend run typecheck` passed.
+- **Docs:** Added `docs/architecture/form-settings.md`, updated `docs/architecture/pricing.md` and `docs/user-guide/forms-management.md`, and added `planning/done/243b-per-form-settings.md`.
+- **Time spent:** ~3.0h.
+- **Next:** Review/PR Task 243-B, then implement Task 243-C right-click price-column per-document/session override on a separate branch.
+
 ### Session: 2026-06-12 (Shared Selector Contract Hardening)
 
 - **Goal:** Apply one consistent selector contract across shared ERP selectors: unique typed match auto-select, borderless table/grid rendering, keyboard picker control, trapped modal focus, native add-card flows, and clearer financial selector displays.

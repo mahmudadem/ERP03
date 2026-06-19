@@ -24,7 +24,7 @@
  *     Sales Return                                                     [Install]
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronRight, Download, DownloadCloud, Edit3, FileJson, FileText, FolderTree, HelpCircle, Layers, Lock, MoreVertical, PackageCheck, Plus, RefreshCw, X} from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight, Download, DownloadCloud, Edit3, FileJson, FileText, FolderTree, HelpCircle, Layers, Lock, MoreVertical, PackageCheck, Plus, RefreshCw, Settings, SlidersHorizontal, X} from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
 import { InstructionsModal } from '../../../components/instructions/InstructionsModal';
 import type { PageInstructions } from '../../../components/instructions/types';
@@ -53,6 +53,14 @@ import {
   FieldLibraryEntry,
   ResolvedFieldLibrary,
 } from '../../../api/fieldLibraryApi';
+import {
+  FormSettingsIdentity,
+  FormSettingsRecord,
+  FormSettingsValue,
+  LinePriceSource,
+  voucherFormApi,
+} from '../../../api/voucherFormApi';
+import { AccountSelectorSimple, WarehouseSelector } from '../../../components/shared/selectors';
 
 interface VoucherDesignerPageProps {
   module: VoucherTypeModule;
@@ -70,6 +78,21 @@ interface TypeNode {
   forms: DocumentFormConfig[];
   /** System template variants (used to show "Variants: ..." line for available types). */
   catalogVariants: any[];
+}
+
+interface BuiltInNativeForm {
+  id: string;
+  name: string;
+  code: string;
+  typeId: string;
+  module: VoucherTypeModule;
+  voucherType: string;
+  formType: string;
+  documentKind: string;
+  builtInFormKey: string;
+  isBuiltInNative: true;
+  isLocked: true;
+  enabled: true;
 }
 
 interface DesignerFieldCatalog {
@@ -91,6 +114,85 @@ const variantLabel = (item: { persona?: string | null; name?: string }): string 
   return match ? match[1] : null;
 };
 
+const BUILT_IN_FORMS_BY_MODULE: Record<VoucherTypeModule, BuiltInNativeForm[]> = {
+  ACCOUNTING: [
+    {
+      id: 'native.accounting.vouchers',
+      name: 'Native Vouchers',
+      code: 'NATIVE_ACCOUNTING_VOUCHERS',
+      typeId: 'native.accounting.vouchers',
+      module: 'ACCOUNTING',
+      voucherType: 'journal_entry',
+      formType: 'native_accounting_vouchers',
+      documentKind: 'accounting_voucher',
+      builtInFormKey: 'native.accounting.vouchers',
+      isBuiltInNative: true,
+      isLocked: true,
+      enabled: true,
+    },
+  ],
+  SALES: [
+    {
+      id: 'native.sales.invoice',
+      name: 'Native Sales Invoice',
+      code: 'NATIVE_SALES_INVOICE',
+      typeId: 'native.sales.invoice',
+      module: 'SALES',
+      voucherType: 'sales_invoice',
+      formType: 'native_sales_invoice',
+      documentKind: 'sales_invoice',
+      builtInFormKey: 'native.sales.invoice',
+      isBuiltInNative: true,
+      isLocked: true,
+      enabled: true,
+    },
+    {
+      id: 'native.sales.order',
+      name: 'Native Sales Order',
+      code: 'NATIVE_SALES_ORDER',
+      typeId: 'native.sales.order',
+      module: 'SALES',
+      voucherType: 'sales_order',
+      formType: 'native_sales_order',
+      documentKind: 'sales_order',
+      builtInFormKey: 'native.sales.order',
+      isBuiltInNative: true,
+      isLocked: true,
+      enabled: true,
+    },
+  ],
+  PURCHASE: [
+    {
+      id: 'native.purchase.invoice',
+      name: 'Native Purchase Invoice',
+      code: 'NATIVE_PURCHASE_INVOICE',
+      typeId: 'native.purchase.invoice',
+      module: 'PURCHASE',
+      voucherType: 'purchase_invoice',
+      formType: 'native_purchase_invoice',
+      documentKind: 'purchase_invoice',
+      builtInFormKey: 'native.purchase.invoice',
+      isBuiltInNative: true,
+      isLocked: true,
+      enabled: true,
+    },
+    {
+      id: 'native.purchase.order',
+      name: 'Native Purchase Order',
+      code: 'NATIVE_PURCHASE_ORDER',
+      typeId: 'native.purchase.order',
+      module: 'PURCHASE',
+      voucherType: 'purchase_order',
+      formType: 'native_purchase_order',
+      documentKind: 'purchase_order',
+      builtInFormKey: 'native.purchase.order',
+      isBuiltInNative: true,
+      isLocked: true,
+      enabled: true,
+    },
+  ],
+};
+
 const buildTypeTree = (
   forms: DocumentFormConfig[],
   definitions: any[],
@@ -104,7 +206,7 @@ const buildTypeTree = (
 
   for (const form of forms) {
     const def = definitionById.get((form as any).typeId);
-    const typeKey: string = (def?.voucherType || def?.code || (form as any).voucherType || form.code || form.id) as string;
+    const typeKey: string = ((form as any).documentKind || def?.voucherType || def?.code || (form as any).voucherType || form.code || form.id) as string;
     const existing = installedByTypeKey.get(typeKey);
     if (existing) {
       existing.forms.push(form);
@@ -534,6 +636,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   const queryClient = useQueryClient();
 
   const [forms, setForms] = useState<DocumentFormConfig[]>([]);
+  const [formSettings, setFormSettings] = useState<FormSettingsRecord[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]);
   const [fieldCatalog, setFieldCatalog] = useState<DesignerFieldCatalog>(() =>
@@ -544,6 +647,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
   const [expandedTypeKeys, setExpandedTypeKeys] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'designer'>('list');
   const [editingForm, setEditingForm] = useState<DocumentFormConfig | null>(null);
+  const [settingsForm, setSettingsForm] = useState<DocumentFormConfig | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
 
   // Page instructions content — lives next to the page rather than in a
@@ -633,7 +737,12 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
         loadSystemVoucherTemplates(module),
         fieldLibraryPromise,
       ]);
+      const loadedSettings = await voucherFormApi.listSettings(module).catch((settingsError) => {
+        console.warn('[VoucherDesigner] Form settings load failed:', settingsError);
+        return [];
+      });
       setForms(loadedForms);
+      setFormSettings(loadedSettings);
       setDefinitions(loadedDefs);
       setCatalog(loadedCatalog);
       setFieldCatalog(buildDesignerFieldCatalog(module, loadedFieldLibrary, loadedForms, loadedCatalog));
@@ -649,9 +758,23 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     void reload();
   }, [reload]);
 
+  const displayedForms = useMemo(
+    () => [...BUILT_IN_FORMS_BY_MODULE[module], ...forms] as DocumentFormConfig[],
+    [forms, module],
+  );
+
+  const settingsById = useMemo(() => {
+    const map = new Map<string, FormSettingsRecord>();
+    formSettings.forEach((record) => {
+      if (record.formId) map.set(`form:${record.formId}`, record);
+      if (record.builtInFormKey) map.set(`native:${record.builtInFormKey}`, record);
+    });
+    return map;
+  }, [formSettings]);
+
   const { installed, available } = useMemo(
-    () => buildTypeTree(forms, definitions, catalog),
-    [forms, definitions, catalog],
+    () => buildTypeTree(displayedForms, definitions, catalog),
+    [displayedForms, definitions, catalog],
   );
 
   // Distinct sidebarGroups already in use across this company's forms, plus
@@ -721,6 +844,39 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     );
     emitCompanyModulesRefresh({ companyId, moduleCode: module.toLowerCase() });
     await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
+  };
+
+  const identityForForm = (form: DocumentFormConfig): FormSettingsIdentity => {
+    const isBuiltInNative = Boolean((form as any).isBuiltInNative);
+    const documentKind = String((form as any).documentKind || (form as any).voucherType || (form as any).formType || form.code || form.id);
+    return {
+      module,
+      documentKind,
+      formKind: isBuiltInNative
+        ? 'BUILT_IN_NATIVE'
+        : ((form as any).isDefault || (form as any).isSystemGenerated || (form as any).isLocked)
+          ? 'DESIGNER_DEFAULT'
+          : 'DESIGNER_CLONE',
+      formId: isBuiltInNative ? null : form.id,
+      builtInFormKey: isBuiltInNative ? (form as any).builtInFormKey || form.id : null,
+    };
+  };
+
+  const settingsForForm = (form: DocumentFormConfig): FormSettingsRecord | null => {
+    const identity = identityForForm(form);
+    const key = identity.formKind === 'BUILT_IN_NATIVE'
+      ? `native:${identity.builtInFormKey}`
+      : `form:${identity.formId}`;
+    return settingsById.get(key) || null;
+  };
+
+  const handleSaveFormSettings = async (form: DocumentFormConfig, settings: FormSettingsValue) => {
+    const saved = await voucherFormApi.saveSettings(identityForForm(form), settings);
+    setFormSettings((prev) => {
+      const filtered = prev.filter((record) => record.id !== saved.id);
+      return [...filtered, saved];
+    });
+    errorHandler.showInfo('Form settings saved.');
   };
 
   /** Trigger a browser download of the form config as JSON. */
@@ -988,6 +1144,8 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                       onExportJson={handleExportJson}
                       onUpdateSidebarGroup={handleUpdateSidebarGroup}
                       availableSidebarGroups={availableSidebarGroups}
+                      onOpenSettings={setSettingsForm}
+                      getFormSettings={settingsForForm}
                     />
                   ))}
                 </div>
@@ -1029,6 +1187,15 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
         onClose={() => setShowInstructions(false)}
         instructions={instructions}
       />
+
+      {settingsForm && (
+        <FormSettingsModal
+          form={settingsForm}
+          record={settingsForForm(settingsForm)}
+          onClose={() => setSettingsForm(null)}
+          onSave={(settings) => handleSaveFormSettings(settingsForm, settings)}
+        />
+      )}
 
       {viewMode === 'designer' && (
         <div
@@ -1099,6 +1266,8 @@ interface InstalledTypeRowProps {
   onExportJson: (form: DocumentFormConfig) => void;
   onUpdateSidebarGroup: (formId: string, sidebarGroup: string | null) => void;
   availableSidebarGroups: string[];
+  onOpenSettings: (form: DocumentFormConfig) => void;
+  getFormSettings: (form: DocumentFormConfig) => FormSettingsRecord | null;
 }
 
 const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
@@ -1112,6 +1281,8 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
   onExportJson,
   onUpdateSidebarGroup,
   availableSidebarGroups,
+  onOpenSettings,
+  getFormSettings,
 }) => {
   const activeCount = node.forms.filter((f) => f.enabled !== false).length;
   const lockedCount = node.forms.filter((f) => (f as any).isLocked).length;
@@ -1163,6 +1334,8 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
               onExportJson={() => onExportJson(form)}
               onUpdateSidebarGroup={(group) => onUpdateSidebarGroup(form.id, group)}
               availableSidebarGroups={availableSidebarGroups}
+              onOpenSettings={() => onOpenSettings(form)}
+              settingsRecord={getFormSettings(form)}
             />
           ))}
           <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
@@ -1189,6 +1362,8 @@ interface FormRowProps {
   onExportJson: () => void;
   onUpdateSidebarGroup: (sidebarGroup: string | null) => void;
   availableSidebarGroups: string[];
+  onOpenSettings: () => void;
+  settingsRecord: FormSettingsRecord | null;
 }
 
 const FormRow: React.FC<FormRowProps> = ({
@@ -1199,11 +1374,15 @@ const FormRow: React.FC<FormRowProps> = ({
   onExportJson,
   onUpdateSidebarGroup,
   availableSidebarGroups,
+  onOpenSettings,
+  settingsRecord,
 }) => {
   const isLocked = (form as any).isLocked === true;
   const isEnabled = form.enabled !== false;
+  const isBuiltInNative = Boolean((form as any).isBuiltInNative);
   const persona = variantLabel({ persona: (form as any).persona, name: form.name });
   const currentSidebarGroup: string | null = (form as any).sidebarGroup || null;
+  const configuredPriceSource = settingsRecord?.settings?.pricingBehavior?.linePriceSource;
 
   const [showMenu, setShowMenu] = useState(false);
   const [showSidebarEditor, setShowSidebarEditor] = useState(false);
@@ -1241,7 +1420,12 @@ const FormRow: React.FC<FormRowProps> = ({
           )}
           {isLocked && (
             <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 uppercase tracking-wide">
-              <Lock className="h-3 w-3" /> Locked default
+              <Lock className="h-3 w-3" /> {isBuiltInNative ? 'Built-in native' : 'Locked default'}
+            </span>
+          )}
+          {configuredPriceSource && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded uppercase tracking-wide">
+              <SlidersHorizontal className="h-3 w-3" /> {configuredPriceSource}
             </span>
           )}
           {currentSidebarGroup && (
@@ -1273,25 +1457,38 @@ const FormRow: React.FC<FormRowProps> = ({
 
       <button
         type="button"
-        onClick={onClone}
-        className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-        title="Clone (creates editable copy)"
+        onClick={onOpenSettings}
+        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
+        title="Form settings"
       >
-        <Plus className="h-4 w-4" />
+        <Settings className="h-4 w-4" />
       </button>
-      <button
-        type="button"
-        onClick={onEdit}
-        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-        title={isLocked ? 'View / restricted edit' : 'Edit'}
-      >
-        <Edit3 className="h-4 w-4" />
-      </button>
+      {!isBuiltInNative && (
+        <>
+          <button
+            type="button"
+            onClick={onClone}
+            className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+            title="Clone (creates editable copy)"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+            title={isLocked ? 'View / restricted edit' : 'Edit'}
+          >
+            <Edit3 className="h-4 w-4" />
+          </button>
+        </>
+      )}
 
       {/* Kebab menu: per-form secondary actions (Export, Schema, Sidebar Group).
           Sidebar Group is the live action — it routes through the backend
           metadata update so Firestore rules don't block it, then the page
           refreshes the sidebar so the form moves to its new group. */}
+      {!isBuiltInNative && (
       <div className="relative" ref={menuRef}>
         <button
           type="button"
@@ -1391,6 +1588,199 @@ const FormRow: React.FC<FormRowProps> = ({
             </div>
           </div>
         )}
+      </div>
+      )}
+    </div>
+  );
+};
+
+interface FormSettingsModalProps {
+  form: DocumentFormConfig;
+  record: FormSettingsRecord | null;
+  onClose: () => void;
+  onSave: (settings: FormSettingsValue) => Promise<void>;
+}
+
+const PRICE_SOURCE_OPTIONS: Array<{ value: LinePriceSource; label: string; description: string }> = [
+  { value: 'LAST_PARTY_PRICE', label: 'Last party price', description: 'Use this customer/vendor and item memory only.' },
+  { value: 'PRICE_LIST', label: 'Price list', description: 'Use the assigned/default price list only.' },
+  { value: 'LAST_EVENT', label: 'Last event', description: 'Use the last sale/purchase event for the item.' },
+  { value: 'ITEM_DEFAULT', label: 'Item default', description: 'Use the item master default price/cost.' },
+];
+
+const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onClose, onSave }) => {
+  const [activeTab, setActiveTab] = useState<'accountDefaults' | 'pricingBehavior'>('accountDefaults');
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<FormSettingsValue>(() => ({
+    accountDefaults: {
+      defaultWarehouseId: record?.settings?.accountDefaults?.defaultWarehouseId || null,
+      defaultCashAccountId: record?.settings?.accountDefaults?.defaultCashAccountId || null,
+      defaultCostCenterId: record?.settings?.accountDefaults?.defaultCostCenterId || null,
+    },
+    pricingBehavior: {
+      linePriceSource: record?.settings?.pricingBehavior?.linePriceSource || null,
+    },
+  }));
+
+  const tabs = [
+    { id: 'accountDefaults' as const, label: 'Account Defaults' },
+    { id: 'pricingBehavior' as const, label: 'Pricing Behavior' },
+  ];
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave(settings);
+      onClose();
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save form settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="flex h-[620px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Form Settings</h2>
+            <p className="text-xs text-slate-500">{form.name}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            title="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="flex min-h-0 flex-1">
+          <aside className="w-56 shrink-0 border-r border-slate-200 bg-slate-50 p-3">
+            <nav className="space-y-1">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                  {activeTab === tab.id && <ChevronRight className="h-4 w-4" />}
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <main className="min-w-0 flex-1 overflow-auto p-5">
+            {activeTab === 'accountDefaults' ? (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Account Defaults</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Defaults are visible starting values on documents. They do not bypass posting validation.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <AccountSelectorSimple
+                    label="Default cash / bank account"
+                    value={settings.accountDefaults?.defaultCashAccountId || ''}
+                    onChange={(accountId) => setSettings((prev) => ({
+                      ...prev,
+                      accountDefaults: { ...(prev.accountDefaults || {}), defaultCashAccountId: accountId || null },
+                    }))}
+                  />
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium text-slate-700">Default warehouse</span>
+                    <WarehouseSelector
+                      value={settings.accountDefaults?.defaultWarehouseId || ''}
+                      onChange={(warehouse) => setSettings((prev) => ({
+                        ...prev,
+                        accountDefaults: { ...(prev.accountDefaults || {}), defaultWarehouseId: warehouse?.id || null },
+                      }))}
+                    />
+                  </label>
+                </div>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  Cost center and AR/AP defaults are reserved for a follow-up after each target document field and posting validation path is confirmed.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Pricing Behavior</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Choose the default line price source for new documents opened through this form.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 hover:border-emerald-300 hover:bg-emerald-50/40">
+                    <input
+                      type="radio"
+                      name="linePriceSource"
+                      checked={!settings.pricingBehavior?.linePriceSource}
+                      onChange={() => setSettings((prev) => ({
+                        ...prev,
+                        pricingBehavior: { ...(prev.pricingBehavior || {}), linePriceSource: null },
+                      }))}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-900">Use company default</span>
+                      <span className="block text-xs text-slate-500">Falls back to Inventory Settings line price source.</span>
+                    </span>
+                  </label>
+                  {PRICE_SOURCE_OPTIONS.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 hover:border-emerald-300 hover:bg-emerald-50/40"
+                    >
+                      <input
+                        type="radio"
+                        name="linePriceSource"
+                        checked={settings.pricingBehavior?.linePriceSource === option.value}
+                        onChange={() => setSettings((prev) => ({
+                          ...prev,
+                          pricingBehavior: { ...(prev.pricingBehavior || {}), linePriceSource: option.value },
+                        }))}
+                        className="mt-1"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-900">{option.label}</span>
+                        <span className="block text-xs text-slate-500">{option.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </footer>
       </div>
     </div>
   );

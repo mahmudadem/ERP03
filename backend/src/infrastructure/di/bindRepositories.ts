@@ -80,6 +80,7 @@ import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../f
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
 import { FirestoreVoucherFormRepository } from '../firestore/repositories/designer/FirestoreVoucherFormRepository';
+import { FirestoreFormSettingsRepository } from '../firestore/repositories/designer/FirestoreFormSettingsRepository';
 import { FirestoreFieldLibraryRepository } from '../firestore/repositories/designer/FirestoreFieldLibraryRepository';
 import { FirestorePermissionRepository as FirestoreRbacPermissionRepository } from '../firestore/repositories/rbac/FirestorePermissionRepository';
 import { FirestoreSystemRoleTemplateRepository } from '../firestore/repositories/rbac/FirestoreSystemRoleTemplateRepository';
@@ -273,6 +274,7 @@ import { PrismaInventoryTemplateRepository } from '../prisma/repositories/compan
 
 import { PrismaFormDefinitionRepository } from '../prisma/repositories/designer/PrismaFormDefinitionRepository';
 import { PrismaVoucherFormRepository } from '../prisma/repositories/designer/PrismaVoucherFormRepository';
+import { PrismaFormSettingsRepository } from '../prisma/repositories/designer/PrismaFormSettingsRepository';
 import { PrismaVoucherTypeDefinitionRepository } from '../prisma/repositories/designer/PrismaVoucherTypeDefinitionRepository';
 
 import { PrismaAttendanceRepository } from '../prisma/repositories/hr/PrismaAttendanceRepository';
@@ -744,6 +746,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaVoucherFormRepository(getPrismaClient())
       : new FirestoreVoucherFormRepository(getDb());
+  },
+  get formSettingsRepository(): DesRepo.IFormSettingsRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaFormSettingsRepository(getPrismaClient())
+      : new FirestoreFormSettingsRepository(getDb());
   },
   // Phase A of task 135 — Firestore-only for now. Prisma binding will
   // follow when the Phase B super-admin authoring UI lands.

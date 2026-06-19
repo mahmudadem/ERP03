@@ -316,6 +316,7 @@ Controller: `backend/src/api/controllers/sales/SalesMasterDataController.ts`
 - **SalesInvoice line editor** — auto-fetches effective price when item or qty changes (calls `GET /price-lists/effective-price`) and lets users choose the document's line price source.
 - **PurchaseInvoice / PurchaseOrder line editors** — auto-fetch purchase effective price and let users choose the document's line price source.
 - **LinePriceSourceSelector** — shared UI component at `frontend/src/components/shared/pricing/LinePriceSourceSelector.tsx`.
+- **Form Settings** — Forms Management can store a per-form default line price source. Native SI/PI and the Form Designer renderer read this default when opening new drafts. See [`docs/architecture/form-settings.md`](./form-settings.md).
 - **`salesLinePriceResolver`** (`frontend/src/modules/sales/services/salesLinePriceResolver.ts`) — shared resolver used by both the native sales pages and the Forms Designer renderer (`GenericVoucherRenderer`). Exposes:
   - `isSalesDocumentDefinition(definition)` — detects sales documents (invoice, order, quote, return, delivery note) from a Forms Designer config.
   - `resolveSalesLinePrice({ customerId, itemId, qty, asOfDate, priceSource })` — non-throwing wrapper around `getEffectivePrice` that returns `null` on miss/error.
@@ -339,9 +340,13 @@ The data model supports a three-level hierarchy (customer override → group def
 **(d) No cascade protection on delete.**
 Deleting a price list that is still referenced by customer records or groups is currently permitted at the use case layer. A follow-up should add a reference check before allowing deletion.
 
+**(e) Per-form pricing defaults are defaults, not policy locks.**
+Task 243-B stores a default line price source per form. Users can still change the line price source on the draft form. Task 243-C is reserved for explicit per-document/session override controls.
+
 ---
 
 ## See also
 
 - [`docs/architecture/sales.md`](./sales.md) — Sales module overview
 - [`docs/architecture/commissions.md`](./commissions.md) — Salesperson and commission ledger
+- [`docs/architecture/form-settings.md`](./form-settings.md) — Per-form settings model

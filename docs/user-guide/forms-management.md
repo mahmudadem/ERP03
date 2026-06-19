@@ -40,11 +40,29 @@ The system catalog items your company hasn't installed yet. Each row has an **In
 - Active forms appear in that module's sidebar; deactivated ones are hidden but not deleted.
 - This works on locked default forms — activation is a company preference, not a layout change.
 
+### Configure form settings
+Click the **Settings** icon on any form row to open Form Settings.
+
+Form Settings are attached to the exact form, not only to the document type. This means a wholesale invoice form can use price lists while a retail invoice form can use the last customer price, even though both create sales invoices.
+
+The settings window starts with two tabs:
+
+1. **Account Defaults** — stores safe starting values such as default cash/bank account and warehouse. These are convenience defaults; they do not bypass document validation or posting rules.
+2. **Pricing Behavior** — chooses the default line price source for new documents opened through this form:
+   - Last party price
+   - Price list
+   - Last event
+   - Item default
+   - Or use the company default
+
+Built-in native forms also appear in Forms Management and can have settings. They cannot be layout-edited or cloned from this row, but their defaults can be configured.
+
 ### Clone a locked default to customise it
 1. Click the **`+`** (Clone) icon on the form's row.
 2. The form wizard opens at *Basic Info*. The **ID Key** and **Prefix** are pre-filled with suggested values — feel free to override either. Both are checked for uniqueness inside your company.
 3. Walk the wizard's steps (Rules / Fields / Actions / Visual Editor / Review). Save.
 4. Your clone appears in the same type's list, unlocked and ready for further edits.
+5. If the source form had Form Settings, the clone starts with the same settings. You can change the clone without changing the source.
 
 ### Add a custom form from scratch
 1. Expand a type → click **+ Add Custom Form** at the bottom of its list.

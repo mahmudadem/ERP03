@@ -13,6 +13,7 @@ import {
   purchasesApi,
 } from '../../../api/purchasesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
+import { FormSettingsRecord, voucherFormApi } from '../../../api/voucherFormApi';
 import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -159,7 +160,7 @@ const createEmptyLine = (): EditableLine => ({
   description: '',
 });
 
-const createEmptyForm = (purchaseOrderId = '', vendorId = ''): EditableForm => ({
+const createEmptyForm = (purchaseOrderId = '', vendorId = '', linePriceSource: LinePriceSource = 'LAST_PARTY_PRICE'): EditableForm => ({
   purchaseOrderId,
   vendorId,
   vendorInvoiceNumber: '',
@@ -167,7 +168,7 @@ const createEmptyForm = (purchaseOrderId = '', vendorId = ''): EditableForm => (
   dueDate: '',
   currency: 'USD',
   exchangeRate: 1,
-  linePriceSource: 'LAST_PARTY_PRICE',
+  linePriceSource,
   notes: '',
   lines: [createEmptyLine()],
   charges: [],
@@ -193,6 +194,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
+  const [formSettings, setFormSettings] = useState<FormSettingsRecord[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialPurchaseOrderId, initialVendorId));
   const [requestedSourceMode, setRequestedSourceMode] = useState<'direct' | 'po'>(initialPurchaseOrderId ? 'po' : 'direct');
   const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
@@ -265,6 +267,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     () => taxCodes.filter((taxCode) => taxCode.scope === 'PURCHASE' || taxCode.scope === 'BOTH'),
     [taxCodes]
   );
+
+  const resolveConfiguredLinePriceSource = (records = formSettings): LinePriceSource => (
+    records.find((record) => record.builtInFormKey === 'native.purchase.invoice')?.settings?.pricingBehavior?.linePriceSource
+    || 'LAST_PARTY_PRICE'
+  ) as LinePriceSource;
 
   /**
    * Back-solve unit cost from a target Line Total (gross) or Net, mirroring
@@ -391,13 +398,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   };
 
   const loadReferenceData = async () => {
-    const [settingsResult, vendorResult, orderResult, itemResult, taxResult, warehouseResult] = await Promise.all([
+    const [settingsResult, vendorResult, orderResult, itemResult, taxResult, warehouseResult, formSettingsResult] = await Promise.all([
       purchasesApi.getSettings(),
       sharedApi.listParties({ role: 'VENDOR', active: true }),
       purchasesApi.listPOs({ limit: 500 }).catch(() => []),
       inventoryApi.listItems({ active: true, limit: 500 }),
       sharedApi.listTaxCodes({ active: true }),
       inventoryApi.listWarehouses({ active: true }),
+      voucherFormApi.listSettings('PURCHASE').catch(() => []),
     ]);
 
     const currentSettings = unwrap<PurchaseSettingsDTO | null>(settingsResult);
@@ -406,6 +414,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     const itemList = unwrap<InventoryItemDTO[]>(itemResult);
     const taxCodeList = unwrap<TaxCodeDTO[]>(taxResult);
     const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
+    const formSettingsList = unwrap<FormSettingsRecord[]>(formSettingsResult);
 
     setSettings(currentSettings);
     setVendors(Array.isArray(vendorList) ? vendorList : []);
@@ -413,6 +422,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     setItems(Array.isArray(itemList) ? itemList : []);
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
     setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
+    const normalizedFormSettings = Array.isArray(formSettingsList) ? formSettingsList : [];
+    setFormSettings(normalizedFormSettings);
+    return normalizedFormSettings;
   };
 
   const ensureItemUomOptions = async (itemId: string) => {
@@ -470,7 +482,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      await loadReferenceData();
+      const loadedFormSettings = await loadReferenceData();
 
       if (!isCreateMode && params.id) {
         const result = await purchasesApi.getPI(params.id);
@@ -481,7 +493,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         setInvoice(null);
         setAttachments([]);
         setPendingAttachmentFiles([]);
-        setForm(createEmptyForm(initialPurchaseOrderId, initialVendorId));
+        setForm(createEmptyForm(initialPurchaseOrderId, initialVendorId, resolveConfiguredLinePriceSource(loadedFormSettings)));
         if (initialPurchaseOrderId) {
           await loadPurchaseOrderLines(initialPurchaseOrderId);
         }
