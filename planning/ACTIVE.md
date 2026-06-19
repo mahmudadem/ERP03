@@ -1,5 +1,22 @@
 # 🎯 Current Focus
 
+## Task 242 complete - strict pricing-policy resolution ready for PR (2026-06-19)
+
+- ✅ **[242 — Strict pricing-policy resolution](./tasks/242-strict-pricing-policy-resolution.md)** is implemented on branch `codex/242-strict-pricing-policy-resolution`.
+- Sales and purchase effective-price resolvers are now strict to the configured policy:
+  - `LAST_PARTY_PRICE` uses only the same customer/vendor + item memory.
+  - `PRICE_LIST` uses only the relevant price list.
+  - `ITEM_DEFAULT` uses only the item default price.
+  - A miss returns blank/null for manual entry; no cross-source fallback to `LAST_EVENT` or another source.
+- Default line-price policy is now `LAST_PARTY_PRICE` in inventory initialization, domain defaults, legacy fallback normalization, inventory settings update fallback, and the Simple Trading starter.
+- Verification completed:
+  - Focused backend suites green: 4 suites / 51 tests.
+  - `npm --prefix backend run build` green.
+  - Compiled-backend Firestore emulator smoke `backend/scripts/task242-emulator-smoke.cjs` green: returning parties resolved, new parties blank.
+- Docs updated: [pricing architecture](../docs/architecture/pricing.md), [party/item price memory guide](../docs/user-guide/sales/party-item-price-memory.md), sales/purchase price-list guides, and the company starter guide.
+- Completion report: [done/242-strict-pricing-policy-resolution.md](./done/242-strict-pricing-policy-resolution.md).
+- **Next recommended action:** review/merge PR for Task 242, then continue with [243 — Pricing policy management](./tasks/243-pricing-policy-management.md) only after Task 242 is landed.
+
 ## Task 241 implemented + owner-tested → PR #14 open; follow-up tasks 242–245 created (2026-06-19)
 
 - **[241 — Party × Item price memory](./tasks/241-party-item-price-memory.md) is implemented and validated** (164 suites / 1460 tests green; compiled-backend emulator smoke green). Committed to branch `feat/241-party-item-price-memory` and opened as **[PR #14](https://github.com/mahmudadem/ERP03/pull/14)** — **not yet merged.**

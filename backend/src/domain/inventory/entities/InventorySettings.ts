@@ -151,7 +151,7 @@ export class InventorySettings {
       accountingMode: inventoryAccountingMethod,
       defaultCostingMethod: 'MOVING_AVG',
       inventoryFxCostBasis: 'REPLACEMENT',
-      defaultLinePriceSource: 'PRICE_LIST',
+      defaultLinePriceSource: 'LAST_PARTY_PRICE',
       defaultCostCurrency: baseCurrency.toUpperCase(),
       defaultInventoryAssetAccountId,
       allowNegativeStock: false,
@@ -245,6 +245,6 @@ export class InventorySettings {
     if (value === 'LAST_PARTY_PRICE' || value === 'ITEM_DEFAULT') {
       return value;
     }
-    return 'PRICE_LIST';
+    return 'LAST_PARTY_PRICE';
   }
 }

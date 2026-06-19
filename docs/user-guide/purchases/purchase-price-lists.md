@@ -1,6 +1,6 @@
 # Purchase Price Lists
 
-Purchase Price Lists allow you to define currency-specific pricing agreements with your suppliers. When entering purchase documents, the system automatically resolves the correct price based on the selected vendor, item, and order quantity.
+Purchase Price Lists allow you to define currency-specific pricing agreements with your suppliers. When the company's line-price policy is set to **Price List**, purchase documents can automatically resolve the correct price based on the selected vendor, item, and order quantity.
 
 ## What price lists do
 
@@ -13,6 +13,7 @@ Purchase Price Lists allow you to define currency-specific pricing agreements wi
 
 - They do not lock prices permanently; users can manually override the resolved price on a purchase line.
 - They do not automatically post to the General Ledger.
+- They do not fall back to remembered vendor prices or item defaults when the selected policy is Price List. If no list price matches, the line stays blank for manual entry.
 
 ## Create a Purchase Price List
 

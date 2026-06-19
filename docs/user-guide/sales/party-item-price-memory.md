@@ -16,14 +16,15 @@ Prices are remembered separately by currency and UOM. For example, USD per box a
 
 ## How a New Line Gets a Price
 
-When you choose a customer/vendor, item, document currency, and UOM, ERP03 looks for a line price in this order:
+When you choose a customer/vendor, item, document currency, and UOM, ERP03 uses one configured price source. It does not try other sources if the selected source has no price.
 
-1. Contract price, when contract pricing is added later.
-2. Price list.
-3. Last price for this customer/vendor and item.
-4. Last price for this item from anyone.
-5. Item default price.
-6. Blank manual entry.
+The current default is **Last price for this customer/vendor and item**. That means:
+
+- Returning customer/vendor with a remembered price: ERP03 fills the line price.
+- New customer/vendor with no remembered price: ERP03 leaves the line blank.
+- Another customer/vendor used this item before: ERP03 still leaves the line blank, because it does not borrow prices from other parties.
+
+Other policies can use a price list or item default price, but each policy is strict. If the selected source has no matching price, the line stays blank for manual entry.
 
 If there is no remembered price in the document currency, ERP03 leaves the line blank. It does not convert prices between currencies because prices are negotiated facts, not accounting rates.
 

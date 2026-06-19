@@ -5,7 +5,9 @@
  * Forms Designer–rendered forms) so a vendor + item combination yields the
  * same auto-filled unit price everywhere.
  *
- * Sourcing rule mirrors `GetEffectivePurchasePriceUseCase` on the backend.
+ * Sourcing rule mirrors `GetEffectivePurchasePriceUseCase` on the backend:
+ * the company price-source policy is strict. A miss returns null so callers
+ * leave the line price blank for manual entry.
  *
  * Returns null on any error/miss; pricing lookup failures are non-fatal —
  * callers should leave the existing unit price as-is.

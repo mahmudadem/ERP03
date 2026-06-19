@@ -125,6 +125,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Task 200 - Native document table and section parity | 2026-06-09 | ✅ Done |
 | Codex | Epic 240 Phase 5 - report-time valuation and trading | 2026-06-18 | ✅ Done |
 | Codex | Epic 240 Phase 6 - mode lock + wizard/COA | 2026-06-18 | ✅ Done |
+| Codex | Task 242 - Strict pricing-policy resolution | 2026-06-19 | ✅ Done |
 | Antigravity | Exchange Rate Redesign Side-by-Side Verification | 2026-06-12 | ✅ Done |
 | Antigravity | Main-shell module icon update & custom 2gears icon | 2026-06-13 | ✅ Done |
 | Antigravity | AI Settings Page Division & Switch Unification | 2026-06-19 | ✅ Done |

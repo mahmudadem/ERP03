@@ -83,9 +83,9 @@ When the system looks up a price for this customer, it will use their assigned l
 
 ## How the system auto-fills prices on invoices
 
-When you are editing a sales invoice line and you choose an item and enter a quantity, the system automatically looks up the best matching price from the relevant price list and fills it in. You can still change the price manually if needed.
+When the company's line-price policy is set to **Price List**, editing a sales invoice line and choosing an item/quantity makes ERP03 look up the best matching price from the relevant price list and fill it in. You can still change the price manually if needed.
 
-If no price list applies (no customer-specific list and no currency default, or the item is not on any list), the price field will stay empty and you enter it manually.
+If no price list applies (no customer-specific list and no currency default, or the item is not on any list), the price field stays empty and you enter it manually. ERP03 does not fall back to remembered customer prices or item defaults when the policy is Price List.
 
 ---
 

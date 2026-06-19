@@ -325,6 +325,7 @@ export class SimpleTradingCompanyInitializer {
       defaultWarehouseCode: 'MAIN',
       defaultCostCurrency: baseCurrency,
       costingBasis: policy.inventory.costingBasis,
+      defaultLinePriceSource: 'LAST_PARTY_PRICE',
       allowNegativeStock: false,
       autoGenerateItemCode: true,
       itemCodePrefix: 'ITM',
