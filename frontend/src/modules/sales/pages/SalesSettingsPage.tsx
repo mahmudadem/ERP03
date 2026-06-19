@@ -31,6 +31,11 @@ const newClientId = (): string => {
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
+const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; label: string }> = [
+  { template: '{parent}-{partyCode}', label: 'Parent-Party  (10401-C001)' },
+  { template: '{parent}.{partyCode}', label: 'Parent.Party  (10401.C001)' },
+  { template: '{parent}-{seq3}', label: 'Parent-Sequence  (10401-001)' },
+];
 
 const SalesSettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -616,15 +621,35 @@ const SalesSettingsPage: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('sales.settings.partyAccountFormat.label', 'AR Sub-account Code Format')}
                     </label>
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      value={settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
-                      onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
-                      placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
-                    />
+                    {(() => {
+                      const current = (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim();
+                      const isPreset = PARTY_ACCOUNT_CODE_PRESETS.some((p) => p.template === current);
+                      return (
+                        <>
+                          <select
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            value={isPreset ? current : 'CUSTOM'}
+                            onChange={(e) => { if (e.target.value !== 'CUSTOM') updateSetting('partyAccountCodeFormat', e.target.value); }}
+                          >
+                            {PARTY_ACCOUNT_CODE_PRESETS.map((p) => (
+                              <option key={p.template} value={p.template}>{p.label}</option>
+                            ))}
+                            <option value="CUSTOM">{t('sales.settings.partyAccountFormat.custom', 'Custom…')}</option>
+                          </select>
+                          {!isPreset && (
+                            <input
+                              type="text"
+                              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              value={settings.partyAccountCodeFormat || ''}
+                              onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
+                              placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      {t('sales.settings.partyAccountFormat.help', 'Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.')}
+                      {t('sales.settings.partyAccountFormat.help', 'Applied to every new customer AR sub-account. Tokens: {parent}, {partyCode}, {seq3}.')}
                     </p>
                   </div>
 

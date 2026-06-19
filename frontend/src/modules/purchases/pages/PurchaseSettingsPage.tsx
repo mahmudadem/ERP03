@@ -23,6 +23,11 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
+const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; label: string }> = [
+  { template: '{parent}-{partyCode}', label: 'Parent-Party  (20101-V001)' },
+  { template: '{parent}.{partyCode}', label: 'Parent.Party  (20101.V001)' },
+  { template: '{parent}-{seq3}', label: 'Parent-Sequence  (20101-001)' },
+];
 const DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID = 'purchase-direct-invoicing-company-policy';
 
 const isCompanyDirectInvoiceRule = (rule: PurchaseGovernanceRuleDTO): boolean =>
@@ -535,15 +540,35 @@ const PurchaseSettingsPage: React.FC = () => {
                     <label className="mb-1 block text-sm font-medium text-gray-700">
                       {t('purchases.settings.partyAccountFormat.label', 'AP Sub-account Code Format')}
                     </label>
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      value={settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
-                      onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
-                      placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
-                    />
+                    {(() => {
+                      const current = (settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK).trim();
+                      const isPreset = PARTY_ACCOUNT_CODE_PRESETS.some((p) => p.template === current);
+                      return (
+                        <>
+                          <select
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            value={isPreset ? current : 'CUSTOM'}
+                            onChange={(e) => { if (e.target.value !== 'CUSTOM') updateSetting('partyAccountCodeFormat', e.target.value); }}
+                          >
+                            {PARTY_ACCOUNT_CODE_PRESETS.map((p) => (
+                              <option key={p.template} value={p.template}>{p.label}</option>
+                            ))}
+                            <option value="CUSTOM">{t('purchases.settings.partyAccountFormat.custom', 'Custom…')}</option>
+                          </select>
+                          {!isPreset && (
+                            <input
+                              type="text"
+                              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              value={settings.partyAccountCodeFormat || ''}
+                              onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
+                              placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
                     <p className="mt-1.5 text-xs italic text-gray-500">
-                      {t('purchases.settings.partyAccountFormat.help', 'Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.')}
+                      {t('purchases.settings.partyAccountFormat.help', 'Applied to every new vendor AP sub-account. Tokens: {parent}, {partyCode}, {seq3}.')}
                     </p>
                   </div>
 
