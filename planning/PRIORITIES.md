@@ -136,6 +136,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | Antigravity | AI Settings Page Division & Switch Unification | 2026-06-19 | ✅ Done |
 | Codex | Task 245 NOTE-06 - master-data list refresh | 2026-06-19 | ✅ Done |
 | Codex | Task 243-A - selectable pricing policy | 2026-06-19 | ✅ Done |
+| Codex | Task 243-B - per-form settings | 2026-06-19 | ✅ Done |
 
 
 **How to use:**

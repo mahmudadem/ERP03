@@ -24,6 +24,7 @@ import toast from 'react-hot-toast';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
 import { salesApi, SalesOrderDTO } from '../../../../api/salesApi';
+import { voucherFormApi } from '../../../../api/voucherFormApi';
 import {
   isSalesDocumentDefinition,
   resolveSalesLinePrice,
@@ -282,6 +283,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   const isFirstRender = useRef(true);
   const hasUserTouchedHeaderFxRef = useRef(false);
   const [fiscalYears, setFiscalYears] = useState<any[]>([]); // Cache fiscal years for period checking
+  const formSettingsAppliedRef = useRef<string | null>(null);
 
   const getDocumentDateValue = (data: any): string =>
     data?.date ||
@@ -1519,6 +1521,32 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   // rendered sales forms behave the same as `SalesInvoiceDetailPage`.
   const isSalesDoc = useMemo(() => isSalesDocumentDefinition(definition), [definition]);
   const isPurchaseDoc = useMemo(() => isPurchaseDocumentDefinition(definition), [definition]);
+
+  useEffect(() => {
+    if (initialData || readOnly || isPreview) return;
+    if (!isSalesDoc && !isPurchaseDoc) return;
+    const formId = String((definition as any).id || '').trim();
+    if (!formId) return;
+    if (formSettingsAppliedRef.current === formId) return;
+    formSettingsAppliedRef.current = formId;
+    const module = isSalesDoc ? 'SALES' : 'PURCHASE';
+    const documentKind = String((definition as any).voucherType || (definition as any).formType || (definition as any).baseType || definition.code || formId);
+    voucherFormApi.getSettings({
+      module,
+      documentKind,
+      formKind: 'DESIGNER_CLONE',
+      formId,
+    }).then((record) => {
+      const source = record?.settings?.pricingBehavior?.linePriceSource;
+      if (!source) return;
+      setFormData((prev: any) => {
+        if (prev?.linePriceSource) return prev;
+        return { ...prev, linePriceSource: source };
+      });
+    }).catch((settingsError) => {
+      console.warn('[GenericVoucherRenderer] Form pricing settings load failed:', settingsError);
+    });
+  }, [definition, initialData, isPreview, isPurchaseDoc, isSalesDoc, readOnly]);
 
   const rowsRef = useRef<JournalRow[]>([]);
   useEffect(() => { rowsRef.current = rows; }, [rows]);

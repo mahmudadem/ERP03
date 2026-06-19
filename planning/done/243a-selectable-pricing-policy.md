@@ -54,6 +54,6 @@ If the selected source has no matching price, ERP03 leaves the price blank so th
 
 ## Remaining Work
 
-- Task 243-B: document-settings/management page and persisted per-document defaults.
+- Task 243-B: Forms Management per-form settings and persisted per-form defaults.
 - Task 243-C: right-click price-column override for one document.
 - Task 243-D: full parity audit after B/C land.

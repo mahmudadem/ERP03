@@ -15,6 +15,32 @@
 import { Request, Response, NextFunction } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { VoucherFormDefinition } from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { FormSettingsUseCases } from '../../../application/designer/use-cases/FormSettingsUseCases';
+import { FormKind } from '../../../repository/interfaces/designer/IFormSettingsRepository';
+
+const normalizeModule = (value: any): string => {
+  const raw = String(value || '').trim().toUpperCase();
+  if (raw === 'PURCHASES') return 'PURCHASE';
+  if (raw === 'SALES_MODULE') return 'SALES';
+  return raw || 'ACCOUNTING';
+};
+
+const moduleFromRequest = (req: Request): string => {
+  const explicit = (req.query.module || req.body?.module || (req.params as any).module) as string | undefined;
+  if (explicit) return normalizeModule(explicit);
+  const base = (req.baseUrl || req.originalUrl || '').toLowerCase();
+  if (base.includes('/tenant/sales')) return 'SALES';
+  if (base.includes('/tenant/purchase')) return 'PURCHASE';
+  return 'ACCOUNTING';
+};
+
+const normalizeFormKind = (value: any): FormKind => {
+  const raw = String(value || '').trim().toUpperCase();
+  if (raw === 'BUILT_IN_NATIVE' || raw === 'DESIGNER_DEFAULT' || raw === 'DESIGNER_CLONE') return raw as FormKind;
+  return 'DESIGNER_CLONE';
+};
+
+const formSettingsUseCases = () => new FormSettingsUseCases(diContainer.formSettingsRepository);
 
 export class VoucherFormController {
   /**
@@ -264,7 +290,56 @@ export class VoucherFormController {
       };
       
       const created = await diContainer.voucherFormRepository.create(cloned);
+      await formSettingsUseCases().clone(companyId, source.id, created.id, userId);
       res.status(201).json({ success: true, data: created });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async listSettings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const module = moduleFromRequest(req);
+      const settings = await formSettingsUseCases().list(companyId, module);
+      res.json({ success: true, data: settings });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getSettings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const module = moduleFromRequest(req);
+      const identity = {
+        module,
+        documentKind: String(req.query.documentKind || req.body?.documentKind || ''),
+        formKind: normalizeFormKind(req.query.formKind || req.body?.formKind),
+        formId: req.query.formId ? String(req.query.formId) : undefined,
+        builtInFormKey: req.query.builtInFormKey ? String(req.query.builtInFormKey) : undefined,
+      };
+      const settings = await formSettingsUseCases().get(companyId, identity);
+      res.json({ success: true, data: settings });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async saveSettings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const module = moduleFromRequest(req);
+      const body = req.body || {};
+      const saved = await formSettingsUseCases().save(companyId, {
+        module,
+        documentKind: String(body.documentKind || ''),
+        formKind: normalizeFormKind(body.formKind),
+        formId: body.formId || undefined,
+        builtInFormKey: body.builtInFormKey || undefined,
+      }, body.settings || {}, userId);
+      res.json({ success: true, data: saved });
     } catch (err) {
       next(err);
     }

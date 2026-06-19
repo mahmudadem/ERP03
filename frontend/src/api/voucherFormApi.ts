@@ -40,6 +40,42 @@ export interface VoucherFormResponse {
 }
 
 export type VoucherFormModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
+export type FormKind = 'BUILT_IN_NATIVE' | 'DESIGNER_DEFAULT' | 'DESIGNER_CLONE';
+export type LinePriceSource = 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'LAST_EVENT' | 'ITEM_DEFAULT';
+
+export interface FormSettingsValue {
+  accountDefaults?: {
+    defaultWarehouseId?: string | null;
+    defaultCashAccountId?: string | null;
+    defaultCostCenterId?: string | null;
+  };
+  pricingBehavior?: {
+    linePriceSource?: LinePriceSource | null;
+  };
+  [namespace: string]: any;
+}
+
+export interface FormSettingsRecord {
+  id: string;
+  companyId: string;
+  module: VoucherFormModule;
+  documentKind: string;
+  formKind: FormKind;
+  formId?: string | null;
+  builtInFormKey?: string | null;
+  settings: FormSettingsValue;
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string | null;
+}
+
+export interface FormSettingsIdentity {
+  module: VoucherFormModule;
+  documentKind: string;
+  formKind: FormKind;
+  formId?: string | null;
+  builtInFormKey?: string | null;
+}
 
 /**
  * Map the module enum to the URL prefix for its voucher-form routes.
@@ -128,6 +164,29 @@ export const voucherFormApi = {
     const response = await client.post(`${writePrefix(module)}/voucher-forms/${id}/clone`, {
       newName,
       newCode,
+    });
+    return response.data || response;
+  },
+
+  listSettings: async (module: VoucherFormModule): Promise<FormSettingsRecord[]> => {
+    const response = await client.get(`${writePrefix(module)}/voucher-form-settings`);
+    return response.data || response;
+  },
+
+  getSettings: async (identity: FormSettingsIdentity): Promise<FormSettingsRecord | null> => {
+    const response = await client.get(`${writePrefix(identity.module)}/voucher-form-settings/one`, {
+      params: identity,
+    });
+    return response.data || response;
+  },
+
+  saveSettings: async (
+    identity: FormSettingsIdentity,
+    settings: FormSettingsValue,
+  ): Promise<FormSettingsRecord> => {
+    const response = await client.put(`${writePrefix(identity.module)}/voucher-form-settings`, {
+      ...identity,
+      settings,
     });
     return response.data || response;
   },

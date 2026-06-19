@@ -60,6 +60,32 @@ Open a PR for `feat/243cd-price-override-and-parity` against `main`.
   - [docs/user-guide/inventory/inventory-items-page.md](../docs/user-guide/inventory/inventory-items-page.md) (new)
   - [planning/done/245-ux-polish-sweep.md](./done/245-ux-polish-sweep.md)
 
+## Task 243-B implemented - per-form settings (2026-06-19)
+
+- ✅ **Task 243-B only** is implemented on branch `codex/243b-form-settings-plan` in isolated worktree `D:\DEV2026\ERP03-243b-document-settings`.
+- Scope was revised by owner: settings are **per form instance**, not per document type.
+- Forms Management now lists built-in/native forms alongside Form Designer forms and exposes a **Form Settings** action per row.
+- Form Settings modal uses vertical tabs:
+  - **Account Defaults** first.
+  - **Pricing Behavior** second.
+- Backend has a company-scoped per-form settings repository/use-case with Firestore and Prisma implementations:
+  - native forms use `builtInFormKey` such as `native.sales.invoice`;
+  - designer/default/cloned forms use persisted `formId`.
+- Pricing Behavior now applies a per-form default line price source to new native Sales Invoice and Purchase Invoice drafts, and to Form Designer-rendered sales/purchase forms when the renderer has a persisted form settings record.
+- Designer form clone endpoint copies source form settings to the clone.
+- Account Defaults are stored and surfaced but not silently applied to posting-sensitive document fields in this slice.
+- Accounting/ERP impact: defaults only. No ledger posting, tax, AR/AP, inventory valuation, stock movement, approval, period-lock, or voucher mutation rules changed.
+- Verification:
+  - `npm --prefix backend run build` passed.
+  - `npm --prefix frontend run typecheck` passed.
+  - `npm --prefix frontend run build` passed.
+  - `git diff --check` passed with Windows CRLF warnings only.
+- Docs/report:
+  - [docs/architecture/form-settings.md](../docs/architecture/form-settings.md)
+  - [docs/architecture/pricing.md](../docs/architecture/pricing.md)
+  - [docs/user-guide/forms-management.md](../docs/user-guide/forms-management.md)
+  - [planning/done/243b-per-form-settings.md](./done/243b-per-form-settings.md)
+
 ## Task 243-A complete - selectable line price source PR-ready (2026-06-19)
 
 - ✅ **Task 243-A only** is implemented on branch `codex/243a-selectable-pricing-policy`.
