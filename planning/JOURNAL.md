@@ -4124,6 +4124,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Time spent:** ~2.4h.
 - **Next:** Run [240g](./tasks/240g-phase7-golden-path-periodic-qa.md) on fresh tenants for all three modes, with explicit proof that pre-posting switches reseed correctly and post-history switches block.
 
+### Session: 2026-06-19 (Task 244 NOTE-10 — UOM duplicate conversion guard)
+
+- **Goal:** Implement only Task 244 NOTE-10: prevent duplicate item UOM conversion `From -> To` pairs from coexisting with different factors.
+- **What was done:** Created branch `codex/244-note10-uom-duplicate-guard` from `origin/main` in an isolated clone because the shared worktree was actively carrying other NOTE branches and unrelated `.pyc` dirt. Added a backend guard in `ManageUomConversionsUseCase` that resolves UOM ids/codes and rejects a second active conversion for the same item and From/To pair on create/update. Added an Item Master Card pre-check that tells users to update the existing row factor instead of adding a duplicate.
+- **Accounting impact:** Master-data integrity fix only. No posted stock movement, voucher, tax, AR/AP, inventory valuation, or ledger behavior changed. The control prevents ambiguous UOM factors that would otherwise make document quantities, costs, and per-UOM price memory nondeterministic.
+- **Verification:** Focused backend UOM conversion use-case test passed; backend build passed; frontend typecheck passed.
+- **Docs:** Updated `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, `planning/ACTIVE.md`, and added [done/244-note10-uom-duplicate-guard.md](./done/244-note10-uom-duplicate-guard.md).
+- **Time spent:** ~1.6h.
+- **Next:** Review/merge the NOTE-10 PR independently, then continue NOTE-11 on its own branch.
+
 ### Session: 2026-06-19 (Task 244 NOTE-09 — Item UOM Web/Windows Parity)
 
 - **Goal:** Implement only Task 244 NOTE-09: the item card's **Item UOM Conversions** section must be available in both Web mode and Windows mode.

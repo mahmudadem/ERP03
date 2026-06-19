@@ -1,5 +1,19 @@
 # 🎯 Current Focus
 
+## Task 244 NOTE-10 complete - UOM duplicate conversion guard PR-ready (2026-06-19)
+
+- ✅ **[244 NOTE-10 — UOM conversions allow duplicate From→To pairs](./tasks/244-item-uom-card-bugfix-cluster.md)** is implemented on branch `codex/244-note10-uom-duplicate-guard`.
+- Backend `ManageUomConversionsUseCase` now rejects a second active conversion for the same item and `From UOM -> To UOM` pair after resolving UOM ids/codes.
+- Item Master Card now pre-detects a duplicate draft pair and directs users to update the existing row factor instead of creating an ambiguous second factor.
+- Inactive/deleted conversions do not reserve the pair, so a valid pair can be recreated after deletion.
+- Docs/report updated: [inventory architecture](../docs/architecture/inventory.md), [inventory user guide](../docs/user-guide/inventory/README.md), [done/244-note10-uom-duplicate-guard.md](./done/244-note10-uom-duplicate-guard.md).
+- Verification completed:
+  - `npm --prefix backend test -- --runTestsByPath src/tests/application/inventory/UomConversionUseCases.test.ts`
+  - `npm --prefix backend run build`
+  - `npm --prefix frontend run typecheck`
+- Task 244 status: NOTE-08, NOTE-09, and NOTE-14 are merged; NOTE-11 is a separate PR; NOTE-10 is this PR.
+- **Next recommended action:** review/merge this NOTE-10 PR independently, then rebase/merge NOTE-11 because it touches the same UOM conversion management files.
+
 ## Task 244 NOTE-09 complete - UOM conversions visible in Web + Windows item cards (2026-06-19)
 
 - ✅ **[244 NOTE-09 — Item UOM Conversions section Web/Windows parity](./tasks/244-item-uom-card-bugfix-cluster.md)** is implemented on branch `codex/244-note09-uom-web-windows-parity`.

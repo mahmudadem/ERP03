@@ -39,6 +39,8 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
    - Category, brand, tags
    - Min / max stock levels (drives the Low Stock alert)
    - *(Optional)* GL accounts for inventory asset, revenue, and COGS — defaults come from category or company settings
+   - UOM conversions such as `BOX → PCS`. Each From/To pair can appear only once per item; if the pair already exists,
+     update its factor row instead of adding another row.
 6. **Opening Stock:** `Inventory → Opening Stock Documents → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, the offset account is prefilled from Inventory Settings and can be overridden per document. It must be an Opening Balance Equity / retained-earnings style account. Do not use Inventory, COGS, revenue, AP, or AR as the offset.
 
 ---

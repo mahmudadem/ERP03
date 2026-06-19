@@ -28,6 +28,27 @@ const stripUndefined = <T extends Record<string, any>>(value: T): T => {
   return value;
 };
 
+const normalizeUomCode = (value?: string): string => (value || '').trim().toUpperCase();
+
+const isSameUom = (
+  leftId: string | undefined,
+  leftCode: string | undefined,
+  rightId: string | undefined,
+  rightCode: string | undefined
+): boolean => {
+  if (leftId && rightId) return leftId === rightId;
+  return normalizeUomCode(leftCode) === normalizeUomCode(rightCode);
+};
+
+const isSameConversionPair = (
+  conversion: UomConversion,
+  from: { uomId?: string; uom: string },
+  to: { uomId?: string; uom: string }
+): boolean => (
+  isSameUom(conversion.fromUomId, conversion.fromUom, from.uomId, from.uom)
+  && isSameUom(conversion.toUomId, conversion.toUom, to.uomId, to.uom)
+);
+
 const resolveConversionUom = async (
   companyId: string,
   repo: IUomRepository | undefined,
@@ -72,6 +93,7 @@ export class ManageUomConversionsUseCase {
   async create(input: CreateUomConversionInput): Promise<UomConversion> {
     const from = await resolveConversionUom(input.companyId, this.uomRepo, 'from', input.fromUomId, input.fromUom);
     const to = await resolveConversionUom(input.companyId, this.uomRepo, 'to', input.toUomId, input.toUom);
+    await this.assertUniqueActivePair(input.companyId, input.itemId, from, to);
 
     const conversion = new UomConversion({
       id: randomUUID(),
@@ -100,6 +122,10 @@ export class ManageUomConversionsUseCase {
       ? await resolveConversionUom(current.companyId, this.uomRepo, 'to', data.toUomId, data.toUom)
       : { uomId: current.toUomId, uom: current.toUom };
 
+    if (data.active !== false) {
+      await this.assertUniqueActivePair(current.companyId, current.itemId, from, to, current.id);
+    }
+
     await this.repo.updateConversion(id, stripUndefined({
       ...data,
       fromUomId: from.uomId,
@@ -122,5 +148,22 @@ export class ManageUomConversionsUseCase {
 
   async delete(id: string): Promise<void> {
     await this.repo.updateConversion(id, { active: false } as Partial<UomConversion>);
+  }
+
+  private async assertUniqueActivePair(
+    companyId: string,
+    itemId: string,
+    from: { uomId?: string; uom: string },
+    to: { uomId?: string; uom: string },
+    ignoreId?: string
+  ): Promise<void> {
+    const activeConversions = await this.repo.getConversionsForItem(companyId, itemId, { active: true });
+    const duplicate = activeConversions.find((conversion) => (
+      conversion.id !== ignoreId && isSameConversionPair(conversion, from, to)
+    ));
+
+    if (duplicate) {
+      throw new Error(`UOM conversion ${from.uom} -> ${to.uom} already exists for this item. Edit the existing conversion instead.`);
+    }
   }
 }
