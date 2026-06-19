@@ -1575,6 +1575,32 @@
       }
     }
   },
+  "pricing": {
+    "linePriceSource": {
+      "label": "مصدر سعر السطر",
+      "lastPartyPrice": "آخر سعر للطرف",
+      "priceList": "قائمة الأسعار",
+      "lastEvent": "آخر بيع/شراء",
+      "itemDefault": "السعر الافتراضي للصنف"
+    },
+    "override": {
+      "documentTitle": "تجاوز مصدر سعر المستند",
+      "lineTitle": "تجاوز مصدر سعر السطر",
+      "useDocumentSource": "استخدام مصدر المستند",
+      "lockManual": "قفل (يدوي، بدون حل تلقائي)",
+      "resetToCompanyDefault": "إعادة إلى الافتراضي للشركة",
+      "current": "الحالي: {{source}}",
+      "badgeDocument": "تجاوز المستند: {{source}}",
+      "badgeLine": "تجاوز السطر: {{source}}",
+      "badgeLineLocked": "السطر مقفل (يدوي)",
+      "cellMenuTitle": "انقر بزر الفأرة الأيمن على خلية سعر لتجاوز مصدر هذا السطر",
+      "headerMenuTitle": "انقر بزر الفأرة الأيمن على رأس عمود سعر الوحدة لتجاوز مصدر المستند",
+      "toastDocumentOverrideSet": "تم تعيين مصدر سعر المستند إلى {{source}}",
+      "toastLineOverrideSet": "تم تعيين مصدر سعر السطر إلى {{source}}",
+      "toastLineLocked": "تم قفل السطر — لن يتم حل السعر تلقائيًا",
+      "toastOverrideCleared": "تم مسح التجاوز — يتم استخدام مصدر المستند"
+    }
+  },
   "onboarding": {
     "landing": {
       "authFailed": "فشلت المصادقة",
@@ -4319,7 +4345,9 @@
       "export": "تصدير",
       "import": "استيراد",
       "uiSelector": "محدد الواجهة",
-      "tableActions": "إجراءات الجدول"
+      "tableActions": "إجراءات الجدول",
+      "columnActions": "انقر بزر الفأرة الأيمن لإجراءات العمود",
+      "cellActions": "انقر بزر الفأرة الأيمن لإجراءات الخلية"
     },
     "preferences": {
       "title": "محدد واجهة الجدول",

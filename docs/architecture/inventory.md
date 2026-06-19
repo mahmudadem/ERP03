@@ -468,6 +468,19 @@ V2 plans automatic Accounting vouchers from inventory movements (decoupled from 
 | Inventory contracts | `backend/src/application/inventory/contracts/InventoryIntegrationContracts.ts` |
 | Routes | `backend/src/api/routes/inventory.routes.ts` |
 | Frontend module | `frontend/src/modules/inventory/` |
+
+## Units of Measure Page (Task 245 NOTE-07)
+
+`frontend/src/modules/inventory/pages/UomsPage.tsx` was rewritten to label every field, separate Add vs Edit, and surface a clear success/error feedback path:
+
+- Every inline form field has an explicit `<label htmlFor>` (`Code`, `Name`, `Dimension`, `Decimals`).
+- A header above the form switches between **"Add a new UOM"** and **"Edit UOM"** depending on `editingId`. Editing rows are highlighted in the list below.
+- The submit button label switches between **"Add new UOM"** and **"Save changes"**. A separate **"Reset"** / **"Cancel edit"** control is shown when editing.
+- All save / load outcomes emit a `react-hot-toast` (success, error, or info), replacing the previous silent console-only behavior.
+- The empty state is explicit so the user knows how to start.
+- Status column shows `Active` / `Inactive` / `System` with localized labels.
+
+The shared `CreateUom` / `UpdateUom` endpoints and `ManageUomConversionsUseCase` are unchanged; the change is presentation-only.
 | Master Plan | `docs/modules/inventory/MASTER_PLAN.md` |
 | Algorithms | `docs/modules/inventory/ALGORITHMS.md` |
 | Schemas | `docs/modules/inventory/SCHEMAS.md` |

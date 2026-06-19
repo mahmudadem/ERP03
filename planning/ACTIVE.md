@@ -1,5 +1,65 @@
 # 🎯 Current Focus
 
+## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
+
+- ✅ **Task 243 Parts C and D only** are implemented on branch `feat/243cd-price-override-and-parity` (4 commits, ~12 files).
+- Two right-click affordances on the line-items table, identical on the four native pricing pages (SI/PI/PO) and the Form-Designer renderer (Part D parity):
+  - **Right-click the "Unit Price" column header** → pick a document-level source or "Reset to company default". Re-resolves every priced line.
+  - **Right-click a single price cell** → pick a per-line source (4 options) or "🔒 Lock (manual, no auto-resolve)". Re-resolves only that line.
+- Override state model:
+  - Document: existing `form.linePriceSource` is the user-selected source; compared to the new `LINE_PRICE_SOURCE_BASE = 'LAST_PARTY_PRICE'` for the "Override" badge in the column header.
+  - Per-line: new transient `line.priceSourceOverride?: LinePriceSource` and `line.priceLocked?: boolean` on the four `EditableLine` types. Stripped from `buildLinePayload` via the existing white-list mappers (warning comments added).
+- Shared foundation (Subtask 1):
+  - `ClassicLineItemsTable` extended with `columnContextMenus` and `cellContextMenus` props + `ColumnContextMenuItem` type; `ContextMenuState` union extended; `renderContextMenu()` restructured from a catch-all `else` to explicit per-type branches.
+  - `ColumnDef` gained `labelExtras` (inline header element) and `labelTitle` (header tooltip).
+  - New shared `pricing/createPriceOverrideMenuItems.tsx` factory (per-document + per-line menu items).
+  - New shared `pricing/LinePriceOverrideBadge.tsx` (inline pill, `document` / `line` / `lineLocked` variants).
+  - i18n: en/tr/ar `common.json` — `pricing.override.*` (10 keys) + `lineItemsTable.menu.columnActions` / `cellActions`. The `ar/common.json` was MISSING the entire top-level `pricing` namespace (architect review caught this — now added).
+- Verification:
+  - `npm --prefix frontend run typecheck` — passed (clean after every subtask).
+  - `npm --prefix frontend run build` — passed (clean; existing bundle-size / Browserslist / baseline-data warnings unchanged).
+  - No backend changes — the effective-price endpoints already accept `priceSource` from Task 243-A.
+- Docs/report:
+  - [docs/architecture/pricing.md](../docs/architecture/pricing.md) — new "Right-click price-override after Task 243-C+D" section.
+  - [docs/user-guide/sales/price-override-right-click.md](../docs/user-guide/sales/price-override-right-click.md) (new) — end-user walkthrough.
+  - [planning/done/243cd-price-override.md](./done/243cd-price-override.md) — completion report.
+- Deferred (out of scope for this PR):
+  - **SO** and 5 other native pages (Quotation, Sales Return, Delivery Note, Goods Receipt, Purchase Return) do not have the existing pricing infrastructure (`linePriceSource` + `refreshLinePrices`). Adding the right-click override there would first require introducing the document-level source field.
+  - i18n for the menu labels themselves (badge tooltips and toasts are localized; the menu labels are English-only in this version — a future change can accept a `t` function in the factory).
+
+## Next action
+
+Open a PR for `feat/243cd-price-override-and-parity` against `main`.
+
+## Task 245 NOTE-01..05,07,12,13 UX polish sweep PR-ready (2026-06-19)
+
+- ✅ **Task 245 sweep** implemented on branch `codex/245-ux-polish-sweep-2`. Combined 8 independent manual-test findings from `qa/241-manual-test-notes.md` into one PR.
+- Scope stayed front-end heavy with one narrow backend add (NOTE-01 starter-policy overrides):
+  - **NOTE-05:** `MasterCardLayout` gained `saveNewLabel` / `updateLabel` props; `PartyMasterCard` / `ItemMasterCard` / `WarehouseMasterCard` now show entity-specific save labels.
+  - **NOTE-12:** Removed the Quick Add Item inline form from `ItemsListPage`. New Item is the only creation path.
+  - **NOTE-13:** Per-row Activate / Deactivate action on the items list. Uses the shared `useConfirm` dialog, gates on `inventory.items.manage`, persists via `inventoryApi.updateItem`, refreshes the list, and toasts the result. Added a status filter alongside the existing search + type filter.
+  - **NOTE-07:** `UomsPage` rewritten with explicit `<label htmlFor>` on every field, separate Add vs Edit heading, and Add / Save changes button labels.
+  - **NOTE-04:** 4-option Account code format selector inside the Auto-create preview block on `PartyMasterCard`. Three presets (`{parent}-{partyCode}`, `{parent}-{seq3}`, `{parent}.{partyCode}`) + a Custom input. Format is persisted to the company-level Sales/Purchase settings on save.
+  - **NOTE-03:** Account Strategy now defaults to `AUTO_CREATE` for new parties when the parent AR/AP account is already configured.
+  - **NOTE-02:** `CustomersListPage` rebuilt with 4 KPI cards, search + status filter, richer header, richer table (Credit Limit + inline legal name), and a footer count line.
+  - **NOTE-01:** Company Setup wizard gained an **advanced** disclosure with 5 editable policies: Chart of Accounts, Costing basis, Default warehouse code + name, Sales workflow, Purchase workflow. Each field defaults to the mode-recommended value; touched fields survive subsequent mode changes. Backend `SimpleTradingCompanyInitializer.execute` accepts the same overrides as optional fields. Controller validates and rejects unknown enum values with HTTP 400.
+- Accounting/ERP impact: UI + wizard presentation only for NOTE-02/03/04/05/07/12/13. NOTE-01's backend change is additive: missing fields fall back to the existing mode-derived default so the unchanged default behaviour is preserved. No GL posting, valuation, tax, AR/AP, approval, or audit trail mutation changed.
+- Verification:
+  - `npm --prefix frontend run typecheck` passed (the only errors are pre-existing 243-C+D work in `SalesInvoiceDetailPage.tsx` on a parallel worktree; this branch is clean).
+  - `npm --prefix frontend run build` passed (existing bundle-size/Browserslist/baseline-data warnings only).
+  - `SimpleTradingCompanyInitializer` test: 4/4 passed (3 existing + 1 new NOTE-01 override test).
+  - `npm --prefix backend run typecheck` and `npm --prefix backend run build` passed.
+- Docs/report:
+  - [docs/architecture/onboarding.md](../docs/architecture/onboarding.md) (updated)
+  - [docs/architecture/operational-lists.md](../docs/architecture/operational-lists.md) (updated)
+  - [docs/architecture/inventory.md](../docs/architecture/inventory.md) (updated)
+  - [docs/user-guide/sales/customers-page.md](../docs/user-guide/sales/customers-page.md) (new)
+  - [docs/user-guide/settings/uoms-page.md](../docs/user-guide/settings/uoms-page.md) (new)
+  - [docs/user-guide/settings/account-code-format-selector.md](../docs/user-guide/settings/account-code-format-selector.md) (new)
+  - [docs/user-guide/settings/onboarding-customize-starter-policies.md](../docs/user-guide/settings/onboarding-customize-starter-policies.md) (new)
+  - [docs/user-guide/inventory/inventory-items-page.md](../docs/user-guide/inventory/inventory-items-page.md) (new)
+  - [planning/done/245-ux-polish-sweep.md](./done/245-ux-polish-sweep.md)
+
 ## Task 243-A complete - selectable line price source PR-ready (2026-06-19)
 
 - ✅ **Task 243-A only** is implemented on branch `codex/243a-selectable-pricing-policy`.

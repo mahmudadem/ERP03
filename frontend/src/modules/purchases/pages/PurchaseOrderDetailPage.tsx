@@ -21,7 +21,10 @@ import { CurrencyExchangeWidget } from '../../accounting/components/shared/Curre
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { ItemSelector, PartySelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { LinePriceSource, LinePriceSourceSelector } from '../../../components/shared/pricing/LinePriceSourceSelector';
+import { createDocumentPriceOverrideMenuItems, createLinePriceOverrideMenuItems } from '../../../components/shared/pricing/createPriceOverrideMenuItems';
+import { LinePriceOverrideBadge } from '../../../components/shared/pricing/LinePriceOverrideBadge';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
+import toast from 'react-hot-toast';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { FileText } from 'lucide-react';
 import {
@@ -58,6 +61,15 @@ interface EditableLine {
   receivedQty: number;
   invoicedQty: number;
   returnedQty: number;
+  /**
+   * Per-line price-source override (Task 243 Part C). Transient: stripped
+   * from buildLinePayload before posting.
+   */
+  priceSourceOverride?: LinePriceSource | null;
+  /**
+   * Per-line manual lock. Transient: stripped from buildLinePayload.
+   */
+  priceLocked?: boolean;
 }
 
 interface EditableForm {
@@ -363,6 +375,8 @@ const PurchaseOrderDetailPage: React.FC = () => {
   const triggerLinePriceLookup = async (vendorId: string, itemId: string, qty: number, lineIndex: number) => {
     if (!vendorId || !itemId) return;
     const line = form.lines[lineIndex];
+    if (line?.priceLocked) return; // Task 243 Part C — locked lines never auto-resolve
+    const effectiveSource: LinePriceSource = line?.priceSourceOverride ?? form.linePriceSource;
     try {
       const result = await purchasesApi.getEffectivePurchasePrice({
         vendorId,
@@ -373,7 +387,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         exchangeRate: Number(form.exchangeRate || 1),
         uomId: line?.uomId,
         uom: line?.uom,
-        priceSource: form.linePriceSource,
+        priceSource: effectiveSource,
       });
       if (result && result.unitPrice != null) {
         setForm(currentForm => {
@@ -394,6 +408,8 @@ const PurchaseOrderDetailPage: React.FC = () => {
     await Promise.all(
       form.lines.map(async (line, index) => {
         if (!line.itemId) return;
+        if (line.priceLocked) return; // Task 243 Part C — locked lines never auto-resolve
+        const effectiveSource: LinePriceSource = line.priceSourceOverride ?? priceSource;
         try {
           const result = await purchasesApi.getEffectivePurchasePrice({
             vendorId: form.vendorId,
@@ -404,7 +420,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             exchangeRate: Number(form.exchangeRate || 1),
             uomId: line.uomId,
             uom: line.uom,
-            priceSource,
+            priceSource: effectiveSource,
           });
           if (result?.unitPrice != null) {
             setForm((currentForm) => {
@@ -420,6 +436,54 @@ const PurchaseOrderDetailPage: React.FC = () => {
         }
       }),
     );
+  };
+
+  // Task 243 Part C — right-click handlers (PO).
+  const handleDocumentPriceSourceOverride = (source: LinePriceSource) => {
+    if (form.linePriceSource === source) return;
+    setForm((prev) => ({ ...prev, linePriceSource: source }));
+    void refreshLinePrices(source);
+    toast.success(
+      t('pricing.override.toastDocumentOverrideSet', 'Document price source set to {{source}}', {
+        source: source.replace(/_/g, ' '),
+      }),
+    );
+  };
+  const handleResetDocumentPriceSource = () => {
+    if (form.linePriceSource === 'LAST_PARTY_PRICE') return;
+    setForm((prev) => ({ ...prev, linePriceSource: 'LAST_PARTY_PRICE' }));
+    void refreshLinePrices('LAST_PARTY_PRICE');
+    toast.success(
+      t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+    );
+  };
+  const handleLinePriceSourceOverride = (rowIndex: number | undefined, source: LinePriceSource | null) => {
+    if (rowIndex == null) return;
+    setLine(rowIndex, { priceSourceOverride: source, priceLocked: false });
+    if (source) {
+      toast.success(
+        t('pricing.override.toastLineOverrideSet', 'Line price source set to {{source}}', {
+          source: source.replace(/_/g, ' '),
+        }),
+      );
+    } else {
+      toast.success(
+        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+      );
+    }
+  };
+  const handleLinePriceLocked = (rowIndex: number | undefined, locked: boolean) => {
+    if (rowIndex == null) return;
+    setLine(rowIndex, { priceLocked: locked, priceSourceOverride: null });
+    if (locked) {
+      toast.success(
+        t('pricing.override.toastLineLocked', 'Line locked — price will not be auto-resolved'),
+      );
+    } else {
+      toast.success(
+        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+      );
+    }
   };
 
   // Trigger pricing refresh when vendor changes
@@ -884,6 +948,34 @@ const PurchaseOrderDetailPage: React.FC = () => {
         onRowAdd={!isReadOnly ? addLine : undefined}
         addLabel={t('purchases.poDetail.addLine')}
         minTableWidth="1160px"
+        columnContextMenus={!isReadOnly ? {
+          unitPrice: createDocumentPriceOverrideMenuItems({
+            currentDocumentSource: form.linePriceSource,
+            baseSource: 'LAST_PARTY_PRICE',
+            onSelectDocumentSource: handleDocumentPriceSourceOverride,
+            onResetDocumentSource: handleResetDocumentPriceSource,
+          }),
+        } : undefined}
+        cellContextMenus={!isReadOnly ? {
+          unitPrice: createLinePriceOverrideMenuItems({
+            currentLineSource: null,
+            currentLineLocked: false,
+            onSelectLineSource: () => {},
+            onToggleLineLocked: () => {},
+          }).map((item) => ({
+            ...item,
+            onSelect: (rowIndex) => {
+              if (item.key === 'line-manual') {
+                handleLinePriceLocked(rowIndex, true);
+              } else if (item.key === 'line-none') {
+                handleLinePriceSourceOverride(rowIndex, null);
+              } else {
+                const source = item.key.replace(/^line-/, '') as LinePriceSource;
+                handleLinePriceSourceOverride(rowIndex, source);
+              }
+            },
+          })),
+        } : undefined}
         columns={[
           {
             id: 'item',
@@ -951,7 +1043,57 @@ const PurchaseOrderDetailPage: React.FC = () => {
               />
             ),
           },
-          { id: 'unitPrice', label: t('purchases.poDetail.unitPriceColumn'), kind: 'number', width: '115px', accessor: (line) => line.unitPriceDoc, setter: (value) => ({ unitPriceDoc: Number(value) }) },
+          {
+            id: 'unitPrice',
+            label: t('purchases.poDetail.unitPriceColumn'),
+            kind: 'custom',
+            width: '130px',
+            labelExtras:
+              !isReadOnly && form.linePriceSource !== 'LAST_PARTY_PRICE' ? (
+                <LinePriceOverrideBadge variant="document" source={form.linePriceSource} />
+              ) : undefined,
+            labelTitle: !isReadOnly
+              ? t(
+                  'pricing.override.headerMenuTitle',
+                  'Right-click the Unit Price column header to override the document source',
+                )
+              : undefined,
+            render: (line, _index, onChange) => {
+              if (isReadOnly) {
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex-1 text-right text-xs text-slate-800 dark:text-slate-200 tabular-nums">
+                      {line.unitPriceDoc ? Number(line.unitPriceDoc).toFixed(2) : '—'}
+                    </span>
+                    {line.priceLocked ? (
+                      <LinePriceOverrideBadge variant="lineLocked" source={null} compact />
+                    ) : line.priceSourceOverride ? (
+                      <LinePriceOverrideBadge variant="line" source={line.priceSourceOverride} compact />
+                    ) : null}
+                  </div>
+                );
+              }
+              return (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={line.unitPriceDoc ? String(line.unitPriceDoc) : ''}
+                    disabled={saving}
+                    onChange={(e) => onChange({ unitPriceDoc: Number(e.target.value) || 0 })}
+                    onFocus={(event) => { try { event.currentTarget.select(); } catch { /* noop */ } }}
+                    className="h-9 min-w-0 flex-1 bg-transparent px-2 text-right text-xs text-slate-900 outline-none focus:bg-blue-50/40 dark:text-slate-100 dark:focus:bg-blue-950/20 font-mono"
+                    placeholder=""
+                  />
+                  {line.priceLocked ? (
+                    <LinePriceOverrideBadge variant="lineLocked" source={null} compact />
+                  ) : line.priceSourceOverride ? (
+                    <LinePriceOverrideBadge variant="line" source={line.priceSourceOverride} compact />
+                  ) : null}
+                </div>
+              );
+            },
+          },
           {
             id: 'discountType',
             label: t('purchases.poDetail.discountTypeColumn', 'Discount Type'),

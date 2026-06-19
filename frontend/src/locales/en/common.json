@@ -1582,6 +1582,23 @@
       "priceList": "Price list",
       "lastEvent": "Last sale/purchase",
       "itemDefault": "Item default"
+    },
+    "override": {
+      "documentTitle": "Override document price source",
+      "lineTitle": "Override line price source",
+      "useDocumentSource": "Use document source",
+      "lockManual": "Lock (manual, no auto-resolve)",
+      "resetToCompanyDefault": "Reset to company default",
+      "current": "Current: {{source}}",
+      "badgeDocument": "Document override: {{source}}",
+      "badgeLine": "Line override: {{source}}",
+      "badgeLineLocked": "Line locked (manual)",
+      "cellMenuTitle": "Right-click a price cell to override this line's source",
+      "headerMenuTitle": "Right-click the Unit Price column header to override the document source",
+      "toastDocumentOverrideSet": "Document price source set to {{source}}",
+      "toastLineOverrideSet": "Line price source set to {{source}}",
+      "toastLineLocked": "Line locked — price will not be auto-resolved",
+      "toastOverrideCleared": "Override cleared — using document source"
     }
   },
   "onboarding": {
@@ -4253,7 +4270,9 @@
       "export": "Export",
       "import": "Import",
       "uiSelector": "UI selector",
-      "tableActions": "Table actions"
+      "tableActions": "Table actions",
+      "columnActions": "Right-click for column actions",
+      "cellActions": "Right-click for cell actions"
     },
     "preferences": {
       "title": "Table UI selector",

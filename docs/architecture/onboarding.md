@@ -32,6 +32,29 @@ Current mappings:
 | Standard | `INVOICE_DRIVEN` | `standard` | `SIMPLE` / direct invoicing | `GLOBAL` |
 | Advanced | `PERPETUAL` | `standard` | `OPERATIONAL` / linked flow | `WAREHOUSE` |
 
+## Customizable starter policies (Task 245 NOTE-01)
+
+The Company Setup step exposes an **advanced** disclosure that lets the operator override the auto-chosen policies without picking a different mode. The available fields are:
+
+| Field | Default source | Possible values | Backend override field |
+|---|---|---|---|
+| Chart of Accounts | Mode | `periodic_trading` / `standard` | `coaTemplate` |
+| Costing basis | Mode | `GLOBAL` / `WAREHOUSE` | `costingBasis` |
+| Default warehouse code | `"MAIN"` | any short string | `defaultWarehouseCode` |
+| Default warehouse name | `"Main Warehouse"` | any string | `defaultWarehouseName` |
+| Sales workflow | Mode | `SIMPLE` / `OPERATIONAL` | `salesWorkflowMode` |
+| Purchase workflow | Mode | `SIMPLE` / `OPERATIONAL` | `purchaseWorkflowMode` |
+
+Behaviour:
+
+- Each field's `value` in the form tracks the user's explicit choice. The auto-sync to the mode default only happens for fields the user has **not** touched; once a field is touched, subsequent mode changes leave it alone.
+- The frontend posts the overrides through `createCompany({ coaTemplate, costingBasis, defaultWarehouseCode, defaultWarehouseName, salesWorkflowMode, purchaseWorkflowMode })`.
+- `OnboardingController.createCompany` validates each override (HTTP 400 for unknown enum values, empty warehouse code/name).
+- `SimpleTradingCompanyInitializer.execute()` accepts the same fields as optional inputs. Any field left undefined falls back to the existing mode-derived default so behaviour is unchanged for any caller that does not pass them.
+- The policy summary returned by the initializer reflects the chosen values (not the mode defaults) so the post-creation summary is accurate.
+
+This is intentionally an additive, narrow surface. Changing the **mode** still drives inventory accounting mode, costing method, persona, and other coupled settings. The overrides only touch the values the operator can already configure later from Sales Settings / Purchases Settings / Inventory Settings — except for COA template and the first default warehouse, which the wizard seeds at create time.
+
 ## Default Policy
 
 `simple-trading-company` now creates a ready-to-use company according to the selected mode:
