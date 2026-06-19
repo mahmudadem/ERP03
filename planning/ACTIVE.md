@@ -1,13 +1,18 @@
 # 🎯 Current Focus
 
-## Task 241 complete in code — awaiting owner commit/merge decision (2026-06-19)
+## Task 241 implemented + owner-tested → PR #14 open; follow-up tasks 242–245 created (2026-06-19)
 
-- **Task:** [241 — Party × Item price memory](./tasks/241-party-item-price-memory.md), owner-expanded to per `(currency × UOM)` price memory plus single base-currency/base-UOM average cost.
-- **Status:** Implemented and validated, but **not committed/merged** because Codex was not asked to commit.
-- **Docs/report:** [docs/architecture/pricing.md](../docs/architecture/pricing.md), [docs/user-guide/sales/party-item-price-memory.md](../docs/user-guide/sales/party-item-price-memory.md), and [done/241-party-item-price-memory.md](./done/241-party-item-price-memory.md).
-- **Validation:** backend build green; full backend suite green (164 passed, 2 skipped; 1460 tests passed); compiled-backend Firestore emulator smoke green via `backend/scripts/task241-emulator-smoke.cjs`; frontend build green.
-- **Next recommended action:** review the diff, then ask Codex to commit Task 241 if accepted. After that, return to the feature-freeze ship plan/golden-path QA discipline unless the owner explicitly authorizes another accounting-critical slice.
-- **Rabbit hole logged:** `IItemRepository.getItem(id)` remains a global-by-id lookup. The smoke script uses unique run ids to avoid stale emulator-data collisions; a future hardening slice should consider tenant-scoped item reads if item ids ever stop being globally unique.
+- **[241 — Party × Item price memory](./tasks/241-party-item-price-memory.md) is implemented and validated** (164 suites / 1460 tests green; compiled-backend emulator smoke green). Committed to branch `feat/241-party-item-price-memory` and opened as **[PR #14](https://github.com/mahmudadem/ERP03/pull/14)** — **not yet merged.**
+- **Owner manual test (2026-06-19):** core feature **works live** — PASS-01 (remembers last price for a returning customer), PASS-02 (sensible new-customer fallback). Full log + 18 findings in **[qa/241-manual-test-notes.md](./qa/241-manual-test-notes.md)**.
+- **Investigation result:** the blocking bugs hit during the test (item card opens empty; line offers only base UOM) are **PRE-EXISTING — NOT 241 regressions** (those files aren't in the 241 diff; backend item changes are additive-only; the item list returns full data). So **PR #14 is safe to merge on its own merits.**
+- **Owner decision DECISION-A:** pricing resolution must be **strict to the chosen policy — no cross-source fallback** (blank on miss); default policy → `LAST_PARTY_PRICE`. → **[Task 242](./tasks/242-strict-pricing-policy-resolution.md)** (recommended on the branch before merge).
+- **Follow-up tasks created for other agents:**
+  - [242 — Strict pricing-policy resolution](./tasks/242-strict-pricing-policy-resolution.md) (modifies 241; small).
+  - [243 — Pricing policy management](./tasks/243-pricing-policy-management.md) (selectable policy, party assignment, right-click per-doc override, document-settings page, native↔designer parity).
+  - [244 — Item card + UOM bug-fix cluster](./tasks/244-item-uom-card-bugfix-cluster.md) (pre-existing; unblocks 241 cross-UOM verification).
+  - [245 — Master-data & onboarding UX polish backlog](./tasks/245-master-data-ux-polish-backlog.md) (NOTE-01–07, 12, 13).
+- **Open decision for owner:** merge PR #14 now (optionally fold 242 in first?).
+- **Rabbit hole logged:** `IItemRepository.getItem(id)` remains a global-by-id lookup; smoke uses unique run ids to avoid stale emulator-data collisions; future hardening should consider tenant-scoped item reads.
 
 ## AI Settings Page Division & Switch Unification (2026-06-19)
 

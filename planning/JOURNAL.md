@@ -2,6 +2,18 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 241 committed to PR #14, owner manual test, follow-up tasks 242–245)
+
+- **Goal:** Commit the agent-implemented Task 241, run the owner's hands-on test, decide whether it's safe to merge, and turn the owner's findings into actionable plans for other agents.
+- **What was done:**
+  - Reviewed the 241 implementation independently (posting write path is in-transaction + idempotent via keyed merge; Definition of Done satisfied). Committed to branch `feat/241-party-item-price-memory` (excluding the 2 dirty `.pyc` cache files) and opened **[PR #14](https://github.com/mahmudadem/ERP03/pull/14)**. Not merged — left for owner.
+  - **Owner manual test** in the running app (company "Hadir Gida", TRY): **core 241 works live** — PASS-01 (returning customer auto-fills their last price), PASS-02 (new customer falls through to last-event by current design). 18 findings captured in [qa/241-manual-test-notes.md](./qa/241-manual-test-notes.md).
+  - **Investigated the two blocking bugs** (item card opens empty, line offers only base UOM). Verdict: **PRE-EXISTING, not 241 regressions** — neither file is in the 241 diff, 241's backend item changes are additive-only, and the item list returns full data. So **PR #14 is independently safe to merge.**
+  - **Owner decision DECISION-A:** pricing resolution must be **strict to the chosen policy (no cross-source fallback, blank on miss)**, default `LAST_PARTY_PRICE`.
+  - **Created follow-up task plans for other agents:** [242 strict resolution](./tasks/242-strict-pricing-policy-resolution.md), [243 pricing-policy management](./tasks/243-pricing-policy-management.md), [244 item/UOM bug cluster](./tasks/244-item-uom-card-bugfix-cluster.md), [245 master-data UX polish](./tasks/245-master-data-ux-polish-backlog.md).
+- **Verification:** no code changed this session (review/commit/plan only); 241's own validation stands (164 suites / 1460 tests, emulator smoke, frontend build — all green per the agent + completion report).
+- **Next:** owner to merge PR #14 (optionally fold 242 in first); agents pick up 242–245.
+
 ### Session: 2026-06-19 (Task 241 — party/item price memory per currency and UOM)
 
 - **Goal:** Implement Task 241 from the updated owner-confirmed spec: last-event and last-for-party price memory per `(currency × UOM)`, single base-currency/base-UOM average cost, exact document-currency reads, optional cross-UOM price derivation, and Firestore/SQL parity.
