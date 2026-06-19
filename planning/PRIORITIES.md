@@ -129,10 +129,11 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Task 244 NOTE-08 - item card hydration | 2026-06-19 | ✅ Done |
 | Codex | Task 244 NOTE-14 - line UOM picker | 2026-06-19 | ✅ Done |
 | Codex | Task 244 NOTE-09 - Item UOM Web/Windows parity | 2026-06-19 | ✅ Done |
+| Codex | Task 244 NOTE-10 - UOM duplicate conversion guard | 2026-06-19 | ✅ Done |
+| Codex | Task 244 NOTE-11 - UOM delete unused conversion | 2026-06-19 | ✅ Done |
 | Antigravity | Exchange Rate Redesign Side-by-Side Verification | 2026-06-12 | ✅ Done |
 | Antigravity | Main-shell module icon update & custom 2gears icon | 2026-06-13 | ✅ Done |
 | Antigravity | AI Settings Page Division & Switch Unification | 2026-06-19 | ✅ Done |
-| Codex | Task 244 NOTE-10 - UOM duplicate conversion guard | 2026-06-19 | ✅ Done |
 
 
 **How to use:**

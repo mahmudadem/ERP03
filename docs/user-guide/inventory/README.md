@@ -43,6 +43,14 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
      update its factor row instead of adding another row.
 6. **Opening Stock:** `Inventory → Opening Stock Documents → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, the offset account is prefilled from Inventory Settings and can be overridden per document. It must be an Opening Balance Equity / retained-earnings style account. Do not use Inventory, COGS, revenue, AP, or AR as the offset.
 
+### Maintaining item UOM conversions
+
+Use the **Item UOM Conversions** section on the item card for item-specific conversions such as `BOX → PCS`.
+
+- If the conversion has **Usage: 0**, you can delete it. ERP03 confirms the action, removes the row, and refreshes the conversion table.
+- If the conversion was already used by posted stock, sales, or purchase movements, ERP03 refuses deletion. This protects historical quantities and stock valuation from becoming unreadable.
+- To change a used conversion, use the impact analysis/correction workflow shown in the same section, or reverse the related posted documents where appropriate.
+
 ---
 
 ## Daily activities

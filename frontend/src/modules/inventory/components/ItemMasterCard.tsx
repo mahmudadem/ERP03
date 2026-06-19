@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { 
   Package, 
   DollarSign, 
@@ -217,15 +218,39 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     }
   };
 
-  const handleDeleteConversion = async (conversionId: string) => {
+  const handleDeleteConversion = async (conversion: UomConversionDTO) => {
     try {
-      await inventoryApi.deleteUomConversion(conversionId);
+      setError(null);
+      const result = await inventoryApi.getUomConversionImpact(conversion.id);
+      const impact = ((result as any).data || result) as UomConversionImpactReportDTO;
+      setConversionImpactById((current) => ({ ...current, [conversion.id]: impact }));
+
+      if (impact.used) {
+        const message = 'This conversion is already used in posted stock movements and cannot be deleted.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      const ok = await confirm({
+        title: 'Delete unused UOM conversion?',
+        message: `Delete ${conversion.fromUom} -> ${conversion.toUom}? No posted movement uses this conversion yet.`,
+        confirmLabel: 'Delete conversion',
+        cancelLabel: 'Keep conversion',
+        tone: 'danger',
+      });
+      if (!ok) return;
+
+      await inventoryApi.deleteUomConversion(conversion.id);
       const savedItemId = item.id || itemId;
       if (savedItemId) {
         await loadConversions(savedItemId);
       }
+      toast.success('Unused UOM conversion deleted.');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete conversion');
+      const message = err.response?.data?.message || 'Failed to delete conversion';
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -747,7 +772,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                                   <button
                                     type="button"
                                     className="text-slate-300 hover:text-red-500"
-                                    onClick={() => handleDeleteConversion(conversion.id)}
+                                    onClick={() => handleDeleteConversion(conversion)}
                                   >
                                     <Trash2 size={12} />
                                   </button>

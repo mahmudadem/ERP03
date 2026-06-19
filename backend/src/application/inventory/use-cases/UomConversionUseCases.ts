@@ -147,7 +147,7 @@ export class ManageUomConversionsUseCase {
   }
 
   async delete(id: string): Promise<void> {
-    await this.repo.updateConversion(id, { active: false } as Partial<UomConversion>);
+    await this.repo.deleteConversion(id);
   }
 
   private async assertUniqueActivePair(

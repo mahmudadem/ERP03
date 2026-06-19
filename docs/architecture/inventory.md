@@ -73,6 +73,15 @@ keeps document-line quantity conversion, cost conversion, and per-UOM price memo
 Inactive conversions do not reserve the pair. If an unused conversion is deleted/deactivated, the same pair can be
 created again later with a new factor.
 
+### Item UOM conversion governance
+
+Item-specific UOM conversions are master-data rules used by Sales, Purchases, and Inventory to translate document-line quantities into the item's base UOM. Because posted movements store the conversion trace they used, conversion maintenance has two different safety paths:
+
+- **Unused conversions** can be deleted from the item card. The delete route performs an impact check first, then physically removes the conversion row when no posted movement references it.
+- **Used conversions** cannot be deleted or edited directly. The API refuses the action with a conflict message so historical quantities, stock valuation, and audit references stay interpretable. Corrections must use the UOM impact/correction workflow or document reversals.
+
+This rule lives server-side in `InventoryController.deleteUomConversion` / `updateUomConversion`; the frontend item card mirrors it by checking impact before showing the destructive confirmation.
+
 ## Movement Types
 
 | Type | Direction | Triggered by |

@@ -122,4 +122,13 @@ describe('ManageUomConversionsUseCase', () => {
 
     expect(repo.updateConversion).not.toHaveBeenCalled();
   });
+
+  it('deletes an unused conversion instead of only marking it inactive', async () => {
+    const { repo, useCase } = buildUseCase([makeConversion({ id: 'conversion-delete' })]);
+
+    await useCase.delete('conversion-delete');
+
+    expect(repo.deleteConversion).toHaveBeenCalledWith('conversion-delete');
+    expect(repo.updateConversion).not.toHaveBeenCalled();
+  });
 });
