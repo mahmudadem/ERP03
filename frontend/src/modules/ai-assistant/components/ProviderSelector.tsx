@@ -39,7 +39,7 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
       {/* Provider Dropdown */}
       <div className="mb-4">
         <label htmlFor="provider-select" className="block text-sm font-medium text-gray-700 mb-1">
-          <Server className="w-4 h-4 inline mr-1" />
+          <Server className="w-4 h-4 inline ltr:mr-1 rtl:ml-1" />
           {t('settings.selectProvider', 'AI Provider')}
         </label>
         {providersLoading ? (
@@ -86,21 +86,21 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         {selectedProviderOption ? (
           <>
             <span className="font-medium text-gray-700">{selectedProviderOption.name}</span>
-            <span className="ml-2 text-xs text-gray-400">({selectedProviderOption.type})</span>
+            <span className="ltr:ml-2 rtl:mr-2 text-xs text-gray-400">({selectedProviderOption.type})</span>
             {selectedProviderOption.defaultBaseUrl && (
-              <span className="ml-1 text-xs font-mono text-gray-400">({selectedProviderOption.defaultBaseUrl})</span>
+              <span className="ltr:ml-1 rtl:mr-1 text-xs font-mono text-gray-400">({selectedProviderOption.defaultBaseUrl})</span>
             )}
             {selectedProviderOption.byok ? (
-              <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+              <span className="ltr:ml-2 rtl:mr-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
                 {t('settings.apiKeyRequired', 'API key required')}
               </span>
             ) : (
-              <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
+              <span className="ltr:ml-2 rtl:mr-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
                 {t('settings.noApiKeyRequired', 'No API key')}
               </span>
             )}
             {selectedProviderOption.supportsTools && (
-              <span className="ml-1 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded border border-blue-200">
+              <span className="ltr:ml-1 rtl:mr-1 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded border border-blue-200">
                 {t('settings.providerCapTools', 'Tools')}
               </span>
             )}
@@ -108,14 +108,14 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         ) : selectedProviderId === '__mock__' || presetId === 'mock' ? (
           <>
             {t('settings.presetMockDesc', 'Returns simulated responses. Safe for development. No API key needed.')}
-            <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
+            <span className="ltr:ml-2 rtl:mr-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
               {t('settings.noApiKeyRequired', 'No API key')}
             </span>
           </>
         ) : (
           <>
             {t('settings.presetCustomDesc', 'Use any OpenAI-compatible endpoint manually.')}
-            <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+            <span className="ltr:ml-2 rtl:mr-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
               {t('settings.apiKeyRequired', 'API key required')}
             </span>
           </>

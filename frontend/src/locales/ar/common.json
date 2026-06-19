@@ -1653,6 +1653,8 @@
     },
     "companyWizard": {
       "basic": {
+        "title": "أساسيات الشركة",
+        "subtitle": "لنبدأ بالأساسيات.",
         "errors": {
           "invalidImageType": "يُسمح فقط بصور PNG أو JPG أو ICO أو WEBP.",
           "logoSize": "يجب أن يكون الشعار أصغر من 5 ميغابايت.",

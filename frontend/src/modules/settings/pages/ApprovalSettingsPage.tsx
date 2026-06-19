@@ -4,6 +4,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { errorHandler } from '../../../services/errorHandler';
+import { Spinner } from '../../../components/ui/Spinner';
 
 const ApprovalSettingsPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -25,7 +26,14 @@ const ApprovalSettingsPage: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div>{t('settings.approval.loading', { defaultValue: 'Loading settings...' })}</div>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] w-full gap-3">
+        <Spinner size="lg" variant="indigo" />
+        <p className="text-sm text-gray-500">{t('settings.approval.loading', { defaultValue: 'Loading settings...' })}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -21,6 +21,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { ToggleSwitch } from '../../../../components/ui/ToggleSwitch';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 import { useWizard } from '../WizardContext';
@@ -2126,9 +2127,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         </p>
                       </div>
                    </div>
-                   <div className={`w-10 h-5 rounded-full relative transition-colors ${config.isMultiLine ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                     <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${config.isMultiLine ? 'left-6' : 'left-1'}`} />
-                   </div>
+                   <ToggleSwitch
+                      checked={config.isMultiLine}
+                      onChange={() => {}}
+                      className="pointer-events-none"
+                    />
                 </div>
                 
 

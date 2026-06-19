@@ -36,9 +36,9 @@ export const AiAssistantSetupPage: React.FC = () => {
 
   if (modulesLoading) {
     return (
-      <div className="flex items-center justify-center py-16 text-sm text-gray-500">
-        <Spinner variant="indigo" className="mr-2" />
-        {t('settings.loading', 'Loading settings...')}
+      <div className="flex flex-col items-center justify-center h-[70vh] w-full gap-3">
+        <Spinner size="lg" variant="indigo" />
+        <p className="text-sm text-gray-500">{t('settings.loading', 'Loading settings...')}</p>
       </div>
     );
   }

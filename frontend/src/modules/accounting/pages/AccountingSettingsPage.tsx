@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Settings, Shield, Lock, Unlock, Pencil, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Spinner } from '../../../components/ui/Spinner';
+import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
 
 import FXRevaluationTab from './settings/FXRevaluationTab';
 import AccountSelector from '../components/shared/AccountSelector';
@@ -982,21 +983,14 @@ const AccountingSettingsPageContent: React.FC = () => {
                           <span className={`text-xs font-bold uppercase tracking-wider ${config.financialApprovalEnabled ? 'text-indigo-600' : 'text-gray-400'}`}>
                             {config.financialApprovalEnabled ? t('settings.on') : t('settings.off')}
                           </span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={config.financialApprovalEnabled}
-                              onChange={(e) => setConfig({ 
-                                ...config, 
-                                financialApprovalEnabled: e.target.checked,
-                                approvalRequired: e.target.checked  // Legacy sync
-                              })}
-                            />
-                            <div className={`relative w-12 h-6 rounded-full transition-colors ${config.financialApprovalEnabled ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                              <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.financialApprovalEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                            </div>
-                          </label>
+                          <ToggleSwitch
+                            checked={config.financialApprovalEnabled}
+                            onChange={(checked) => setConfig({ 
+                              ...config, 
+                              financialApprovalEnabled: checked,
+                              approvalRequired: checked  // Legacy sync
+                            })}
+                          />
                         </div>
                       </div>
                       
@@ -1051,17 +1045,11 @@ const AccountingSettingsPageContent: React.FC = () => {
                           <span className={`text-xs font-bold uppercase tracking-wider ${config.custodyConfirmationEnabled ? 'text-purple-600' : 'text-gray-400'}`}>
                             {config.custodyConfirmationEnabled ? t('settings.on') : t('settings.off')}
                           </span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={config.custodyConfirmationEnabled}
-                              onChange={(e) => setConfig({ ...config, custodyConfirmationEnabled: e.target.checked })}
-                            />
-                            <div className={`relative w-12 h-6 rounded-full transition-colors ${config.custodyConfirmationEnabled ? 'bg-purple-600' : 'bg-gray-200'}`}>
-                              <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.custodyConfirmationEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                            </div>
-                          </label>
+                          <ToggleSwitch
+                            checked={config.custodyConfirmationEnabled}
+                            onChange={(checked) => setConfig({ ...config, custodyConfirmationEnabled: checked })}
+                            activeColor="bg-purple-600"
+                          />
                         </div>
                       </div>
                       
@@ -1158,17 +1146,11 @@ const AccountingSettingsPageContent: React.FC = () => {
                                  </div>
                                </div>
                                <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/50">
-                                  <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      className="sr-only peer"
-                                      checked={config.ccAllowSelfConfirmation || false}
-                                      onChange={(e) => setConfig({ ...config, ccAllowSelfConfirmation: e.target.checked })}
-                                    />
-                                    <div className="relative w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
-                                      <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.ccAllowSelfConfirmation ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                    </div>
-                                  </label>
+                                  <ToggleSwitch
+                                    checked={config.ccAllowSelfConfirmation || false}
+                                    onChange={(checked) => setConfig({ ...config, ccAllowSelfConfirmation: checked })}
+                                    activeColor="bg-purple-600"
+                                  />
                                   <span className="text-[10px] text-gray-500 leading-tight">{t('settings.policies.selfConfirmHint')}</span>
                                </div>
                              </div>
@@ -1185,17 +1167,11 @@ const AccountingSettingsPageContent: React.FC = () => {
                                  </div>
                                </div>
                                <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/50">
-                                  <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      className="sr-only peer"
-                                      checked={config.ccBlockIfNoCustodian ?? true}
-                                      onChange={(e) => setConfig({ ...config, ccBlockIfNoCustodian: e.target.checked })}
-                                    />
-                                    <div className="relative w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
-                                      <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${(config.ccBlockIfNoCustodian ?? true) ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                    </div>
-                                  </label>
+                                  <ToggleSwitch
+                                    checked={config.ccBlockIfNoCustodian ?? true}
+                                    onChange={(checked) => setConfig({ ...config, ccBlockIfNoCustodian: checked })}
+                                    activeColor="bg-purple-600"
+                                  />
                                   <span className="text-[10px] text-gray-500 leading-tight">{t('settings.policies.blockMissingHint')}</span>
                                </div>
                              </div>
@@ -1221,23 +1197,16 @@ const AccountingSettingsPageContent: React.FC = () => {
                             
                             {/* Toggle Switch */}
                             <div className="flex items-center gap-2">
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={!!config.ccAmountThreshold}
-                                    onChange={(e) => {
-                                       if (e.target.checked) {
-                                          setConfig({ ...config, ccAmountThreshold: 100 });
-                                       } else {
-                                          setConfig({ ...config, ccAmountThreshold: 0 });
-                                       }
-                                    }}
-                                  />
-                                  <div className={`relative w-9 h-5 rounded-full transition-colors ${config.ccAmountThreshold ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
-                                    <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.ccAmountThreshold ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                  </div>
-                                </label>
+                                <ToggleSwitch
+                                  checked={!!config.ccAmountThreshold}
+                                  onChange={(checked) => {
+                                     if (checked) {
+                                        setConfig({ ...config, ccAmountThreshold: 100 });
+                                     } else {
+                                        setConfig({ ...config, ccAmountThreshold: 0 });
+                                     }
+                                  }}
+                                />
                                 <span className={`text-[10px] font-bold uppercase tracking-wider ${config.ccAmountThreshold ? 'text-indigo-600' : 'text-gray-400'}`}>
                                   {config.ccAmountThreshold ? t('settings.on') : t('settings.off')}
                                 </span>
@@ -1322,22 +1291,12 @@ const AccountingSettingsPageContent: React.FC = () => {
                           }`}>
                             {config.autoPostEnabled ? t('settings.on') : t('settings.off')}
                           </span>
-                          <label className={`relative inline-flex items-center ${isModeA ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={config.autoPostEnabled ?? true}
-                              disabled={!isModeA}
-                              onChange={(e) => setConfig({ ...config, autoPostEnabled: e.target.checked })}
-                            />
-                            <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                              config.autoPostEnabled 
-                                ? (isModeA ? 'bg-emerald-500' : 'bg-indigo-600') 
-                                : 'bg-gray-200'
-                            }`}>
-                              <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.autoPostEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                            </div>
-                          </label>
+                          <ToggleSwitch
+                            checked={config.autoPostEnabled ?? true}
+                            onChange={(checked) => setConfig({ ...config, autoPostEnabled: checked })}
+                            disabled={!isModeA}
+                            activeColor={isModeA ? 'bg-emerald-500' : 'bg-indigo-600'}
+                          />
                         </div>
                       </div>
 
@@ -1368,24 +1327,13 @@ const AccountingSettingsPageContent: React.FC = () => {
                             }`}>
                               {config.allowEditDeletePosted ? t('settings.on') : t('settings.off')}
                             </span>
-                            <label className={`relative inline-flex items-center ${isModeA ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
-                              <input
-                                type="checkbox"
-                                className="sr-only peer"
-                                checked={config.allowEditDeletePosted ?? false}
-                                disabled={!isModeA}
-                                onChange={(e) => setConfig({ ...config, allowEditDeletePosted: e.target.checked })}
-                              />
-                              <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                                !isModeA 
-                                  ? 'bg-gray-300 dark:bg-gray-600'
-                                  : config.allowEditDeletePosted 
-                                    ? 'bg-amber-500' 
-                                    : 'bg-gray-200 dark:bg-gray-700'
-                              }`}>
-                                <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.allowEditDeletePosted && isModeA ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                              </div>
-                            </label>
+                            <ToggleSwitch
+                              checked={config.allowEditDeletePosted ?? false}
+                              onChange={(checked) => setConfig({ ...config, allowEditDeletePosted: checked })}
+                              disabled={!isModeA}
+                              activeColor="bg-amber-500"
+                              inactiveColor={!isModeA ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-700'}
+                            />
                           </div>
                         </div>
                     </div>
@@ -1480,21 +1428,16 @@ const AccountingSettingsPageContent: React.FC = () => {
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${pm.isEnabled ? 'text-emerald-600' : 'text-gray-400'}`}>
                                 {pm.isEnabled ? t('settings.paymentMethods.enabled', 'Enabled') : t('settings.paymentMethods.disabled', 'Disabled')}
                               </span>
-                              <label className="relative inline-flex items-center cursor-pointer scale-90">
-                                <input
-                                  type="checkbox"
-                                  className="sr-only peer"
-                                  checked={pm.isEnabled}
-                                  onChange={(e) => {
-                                    const updated = [...(config.paymentMethods || [])];
-                                    updated[index] = { ...pm, isEnabled: e.target.checked };
-                                    setConfig({ ...config, paymentMethods: updated });
-                                  }}
-                                />
-                                <div className={`relative w-10 h-5 rounded-full transition-colors ${pm.isEnabled ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                                  <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${pm.isEnabled ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                                </div>
-                              </label>
+                              <ToggleSwitch
+                                checked={pm.isEnabled}
+                                onChange={(checked) => {
+                                  const updated = [...(config.paymentMethods || [])];
+                                  updated[index] = { ...pm, isEnabled: checked };
+                                  setConfig({ ...config, paymentMethods: updated });
+                                }}
+                                activeColor="bg-emerald-500"
+                                className="scale-90"
+                              />
                             </div>
                             <button 
                               onClick={() => {
@@ -1555,23 +1498,16 @@ const AccountingSettingsPageContent: React.FC = () => {
                 <span className={`text-xs font-bold uppercase tracking-wider ${config.costCenterPolicy.enabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-[var(--color-text-muted)]'}`}>
                   {config.costCenterPolicy.enabled ? t('settings.on') : t('settings.off')}
                 </span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={config.costCenterPolicy.enabled}
-                    onChange={(e) => setConfig({
-                      ...config,
-                      costCenterPolicy: {
-                        ...config.costCenterPolicy,
-                        enabled: e.target.checked
-                      }
-                    })}
-                  />
-                  <div className="relative w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors peer-checked:bg-indigo-600">
-                    <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.costCenterPolicy.enabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                  </div>
-                </label>
+                <ToggleSwitch
+                  checked={config.costCenterPolicy.enabled}
+                  onChange={(checked) => setConfig({
+                    ...config,
+                    costCenterPolicy: {
+                      ...config.costCenterPolicy,
+                      enabled: checked
+                    }
+                  })}
+                />
               </div>
             </div>
             
@@ -1740,25 +1676,18 @@ const AccountingSettingsPageContent: React.FC = () => {
                       }`}>
                         {config.periodLockEnabled ? t('settings.on') : t('settings.off')}
                       </span>
-                      <label className="inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={config.periodLockEnabled ?? false}
-                          onChange={(e) => {
-                            const isEnabled = e.target.checked;
-                            // Auto-set today's date if turning ON and date is empty
-                            const newDate = (isEnabled && !config.lockedThroughDate) 
-                              ? new Date().toISOString().split('T')[0] 
-                              : config.lockedThroughDate;
-                            
-                            setConfig({ ...config, periodLockEnabled: isEnabled, lockedThroughDate: newDate });
-                          }}
-                        />
-                        <div className={`relative w-12 h-6 rounded-full transition-all ${config.periodLockEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                          <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${config.periodLockEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                        </div>
-                      </label>
+                      <ToggleSwitch
+                        checked={config.periodLockEnabled ?? false}
+                        onChange={(checked) => {
+                          const isEnabled = checked;
+                          // Auto-set today's date if turning ON and date is empty
+                          const newDate = (isEnabled && !config.lockedThroughDate) 
+                            ? new Date().toISOString().split('T')[0] 
+                            : config.lockedThroughDate;
+                          
+                          setConfig({ ...config, periodLockEnabled: isEnabled, lockedThroughDate: newDate });
+                        }}
+                      />
                     </div>
                   </div>
 
