@@ -1,14 +1,24 @@
 # 🎯 Current Focus
 
-## Task 244 NOTE-08 item-card hydration fixed → PR pending (2026-06-19)
+## Task 244 NOTE-14 line UOM picker fixed -> PR pending (2026-06-19)
+
+- **Task 244 NOTE-14 only** is implemented on branch `codex/244-note14-line-uom-picker`.
+- Root cause: the shared `UomSelector` called the item-conversions API but treated the response as a raw array; when the frontend client returned a wrapped payload, conversions were discarded and the picker showed only the item base UOM.
+- Fix: `UomSelector` now unwraps item/conversion API responses and fetches item UOMs even when the current option list only contains the base UOM.
+- Expected result: if an item has a BOX to PCS conversion, PCS appears as a selectable UOM on sales and purchase document lines.
+- Accounting/control impact: no posting, ledger, tax, valuation, stock-movement, approval, period-lock, or item-card conversion-management behavior changed. Existing line payload shape remains `uomId` / `uom`.
+- Docs/report updated: `docs/architecture/inventory.md`, `docs/user-guide/inventory/item-uom-selection.md`, and `planning/done/244-note14-line-uom-picker.md`.
+- Verification: `npm --prefix frontend run typecheck` and `npm --prefix frontend run build` passed. Build still reports existing bundle-size/Browserslist/baseline-data warnings.
+- Task 244 status: NOTE-08 is merged; NOTE-09/10/11 are in separate PRs; NOTE-14 is this PR.
+- **Next recommendation:** merge this narrow NOTE-14 fix after review, then rebase/merge the remaining Task 244 PRs because some share docs/planning and conversion-management files.
+
+## Task 244 NOTE-08 item-card hydration fixed -> merged (2026-06-19)
 
 - ✅ **Task 244 NOTE-08 only** is implemented on branch `codex/244-note08-item-card-hydration`.
 - Root cause: Windows-mode item list opened item windows with `data.id`, while `ItemCardWindow` passed only `data.itemId` into `ItemMasterCard`; existing items therefore opened as blank new-item forms.
 - Fix: `ItemCardWindow` now passes `win.data?.itemId ?? win.data?.id`, preserving compatibility with both payload shapes.
 - Docs/report updated: `docs/architecture/inventory.md`, `docs/user-guide/inventory/item-master-card.md`, and `planning/done/244-note08-item-card-hydration.md`.
-- Verification: frontend typecheck/build targeted for this slice.
-- Still open in Task 244: NOTE-09, NOTE-10, NOTE-11, and NOTE-14.
-- **Next recommendation:** merge this narrow NOTE-08 fix after review, then assign a separate worker to NOTE-14 because line-UOM availability still blocks 241 cross-UOM QA.
+- Verification: frontend typecheck/build and PR CI passed.
 
 ## Task 242 complete - strict pricing-policy resolution ready for PR (2026-06-19)
 

@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 244 NOTE-14 - Line UOM Picker)
+
+- **Goal:** Implement only Task 244 NOTE-14 so sales/purchase document line UOM pickers show item-defined conversion UOMs, not only the base UOM.
+- **What was done:** Created branch `codex/244-note14-line-uom-picker` from `origin/main`. Diagnosed the shared line UOM selector response handling: `UomSelector` called `inventoryApi.listUomConversions(itemId)` but treated the result as a raw array, unlike document pages that unwrap API responses before building UOM options. Updated the selector to unwrap item/conversion responses and to fetch item UOMs on focus even when only the base UOM is currently present.
+- **Accounting/ERP impact:** UI/data-entry correctness only. No posting, ledger, tax, inventory valuation, costing, stock movement, approval, period-lock, or backend DTO shape changed. The existing document line payload remains `uomId` / `uom`.
+- **Docs:** Updated `docs/architecture/inventory.md`, added `docs/user-guide/inventory/item-uom-selection.md`, and added `planning/done/244-note14-line-uom-picker.md`.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report/no-confirm/SoD checks; existing bundle-size/Browserslist/baseline-data warnings remain. PR CI passed before rebase.
+- **Time spent:** ~0.8h.
+- **Next:** Merge NOTE-14 after review, then rebase/merge the remaining Task 244 PRs separately because item-card conversion management is outside NOTE-14.
+
 ### Session: 2026-06-19 (Task 244 NOTE-08 — Item Card Hydration)
 
 - **Goal:** Implement only Task 244 NOTE-08: existing item card opens blank when clicking an existing item.
@@ -10,7 +20,7 @@
 - **Docs:** Updated `docs/architecture/inventory.md`, added `docs/user-guide/inventory/item-master-card.md`, and added `planning/done/244-note08-item-card-hydration.md`.
 - **Verification:** `npm --prefix frontend run typecheck` and `npm --prefix frontend run build`.
 - **Time spent:** ~0.4h.
-- **Next:** Merge NOTE-08 after review, then handle Task 244 NOTE-14 in a separate slice because document-line alternate UOM selection still blocks 241 cross-UOM QA.
+- **Next:** NOTE-08 merged; continue NOTE-14 and the remaining Task 244 PRs.
 
 ### Session: 2026-06-19 (Task 242 - Strict Pricing-Policy Resolution)
 
