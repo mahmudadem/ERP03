@@ -20,6 +20,28 @@ import { ArrowDown, ArrowUp, Check, Clipboard, Copy, Download, Eraser, MoreVerti
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
+/**
+ * A context-menu item rendered when the user right-clicks either a column
+ * header (e.g. "Unit Price") or a single cell in a marked column.
+ *
+ * `key` is required so React can reconcile the list when callers re-render
+ * with a different override state. `onSelect` receives the row index for
+ * cell-level menus and `undefined` for column-header menus. `disabled`
+ * (optional) is checked by the table — the button is rendered greyed-out
+ * and click is suppressed.
+ */
+export interface ColumnContextMenuItem {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  onSelect: (rowIndex: number | undefined) => void;
+  disabled?: boolean;
+  /** Optional danger styling for destructive actions (red). */
+  danger?: boolean;
+  /** Optional divider rendered above this item. */
+  dividerBefore?: boolean;
+}
+
 export interface ColumnDef<T> {
   /** Stable column id, used as the React key. */
   id: string;
@@ -118,6 +140,31 @@ export interface ClassicLineItemsTableProps<T> {
   maxBodyHeight?: string;
   /** Optional table min width. Defaults to 600px. */
   minTableWidth?: string;
+
+  /**
+   * Per-column context menu shown when the user right-clicks a column header.
+   * Map: column id → menu items. Menus are suppressed when the table is
+   * `disabled` (read-only / view mode). When the map is empty or undefined
+   * for a given column, the header behaves exactly as before — no right-click
+   * affordance is added.
+   *
+   * Column-header right-click is independent of the existing `#` column
+   * table-actions menu. Both can coexist on different headers.
+   */
+  columnContextMenus?: Record<string, ColumnContextMenuItem[]>;
+
+  /**
+   * Per-column context menu shown when the user right-clicks any cell in a
+   * marked column. Map: column id → menu items. The cell handler calls
+   * `event.stopPropagation()` so the row-level right-click menu does not
+   * also fire. When the map is empty or undefined for a given column, cells
+   * fall through to the row-level handler.
+   *
+   * The handler is wired on the `<td>` element (not on the cell's input
+   * element), so it fires when right-clicking the cell padding as well as
+   * the input itself.
+   */
+  cellContextMenus?: Record<string, ColumnContextMenuItem[]>;
 }
 
 type TableSkin = 'classic' | 'web';
@@ -151,7 +198,9 @@ const defaultPreferences: TablePreferences = {
 
 type ContextMenuState =
   | { type: 'row'; x: number; y: number; rowIndex: number }
-  | { type: 'table'; x: number; y: number };
+  | { type: 'table'; x: number; y: number }
+  | { type: 'columnHeader'; x: number; y: number; columnId: string }
+  | { type: 'cell'; x: number; y: number; columnId: string; rowIndex: number };
 
 type ResizeState = {
   columnId: string;
@@ -310,6 +359,8 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
     headerAction,
     maxBodyHeight = '480px',
     minTableWidth = '600px',
+    columnContextMenus,
+    cellContextMenus,
   } = props;
 
   // The trailing trash column is intentionally hidden; row deletion stays
@@ -725,6 +776,113 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
 
   const renderContextMenu = () => {
     if (!contextMenu) return null;
+    // Explicit per-type branches. We must NOT fall through to a default
+    // `else` here: when a new menu type (e.g. 'columnHeader' / 'cell') is
+    // added, the legacy `else` block silently rendered the table-actions
+    // menu, which is the wrong UX. Each branch returns the correct list
+    // for its type, and the default returns null.
+    let body: React.ReactNode = null;
+    if (contextMenu.type === 'row') {
+      body = (
+        <>
+          <button type="button" onClick={() => copyRow(contextMenu.rowIndex)} className={menuButtonClass}>
+            <Copy className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.copy', 'Copy')}
+          </button>
+          <button type="button" onClick={() => pasteRow(contextMenu.rowIndex)} disabled={!canEditRows} className={menuButtonClass}>
+            <Clipboard className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.paste', 'Paste')}
+          </button>
+          <button type="button" onClick={() => insertRow(contextMenu.rowIndex)} disabled={!canCreateRows} className={menuButtonClass}>
+            <Plus className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.insertRow', 'Insert row')}
+          </button>
+          <button type="button" onClick={() => toggleHighlight(contextMenu.rowIndex)} className={menuButtonClass}>
+            <Palette className="h-3.5 w-3.5" /> {highlightedRows.has(contextMenu.rowIndex) ? t('lineItemsTable.menu.removeHighlight', 'Remove highlight') : t('lineItemsTable.menu.highlight', 'Highlight')}
+          </button>
+          <div className="px-3 py-2">
+            <div className="mb-1.5 text-[10px] font-black uppercase tracking-wide text-slate-400">
+              {t('lineItemsTable.menu.rowColor', 'Row color')}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {rowColorSwatches.map((swatch) => (
+                <button
+                  key={swatch.color}
+                  type="button"
+                  onClick={() => setRowColor(contextMenu.rowIndex, swatch.color)}
+                  className={`h-5 w-5 rounded-sm ring-offset-1 ring-offset-white transition ${swatch.className} ${rowColors[contextMenu.rowIndex] === swatch.color ? 'ring-2' : 'ring-0 hover:ring-1'} dark:ring-offset-slate-900`}
+                  title={t(swatch.labelKey, swatch.fallback)}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() => setRowColor(contextMenu.rowIndex, null)}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                title={t('lineItemsTable.menu.clearRowColor', 'Clear row color')}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+          <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+          <button type="button" onClick={() => deleteRow(contextMenu.rowIndex)} disabled={!canEditRows || !onRowRemove} className={dangerMenuButtonClass}>
+            <Trash2 className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.delete', 'Delete')}
+          </button>
+        </>
+      );
+    } else if (contextMenu.type === 'table') {
+      body = (
+        <>
+          <button type="button" onClick={copyTable} className={menuButtonClass}>
+            <Copy className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.copy', 'Copy')}
+          </button>
+          <button type="button" onClick={pasteTable} disabled={!canReplaceRows} className={menuButtonClass}>
+            <Clipboard className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.paste', 'Paste')}
+          </button>
+          <button type="button" onClick={cleanTable} disabled={!canCreateRows} className={menuButtonClass}>
+            <Eraser className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.clean', 'Clean')}
+          </button>
+          <button type="button" onClick={exportCsv} className={menuButtonClass}>
+            <Download className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.export', 'Export')}
+          </button>
+          <button type="button" onClick={() => importInputRef.current?.click()} disabled={!canReplaceRows} className={menuButtonClass}>
+            <Upload className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.import', 'Import')}
+          </button>
+          <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+          <button type="button" onClick={() => { setShowPreferences(true); closeContextMenu(); }} className={menuButtonClass}>
+            <Settings2 className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.uiSelector', 'UI selector')}
+          </button>
+        </>
+      );
+    } else if (contextMenu.type === 'columnHeader' || contextMenu.type === 'cell') {
+      const menuItems =
+        contextMenu.type === 'columnHeader'
+          ? columnContextMenus?.[contextMenu.columnId]
+          : cellContextMenus?.[contextMenu.columnId];
+      const rowIndex = contextMenu.type === 'cell' ? contextMenu.rowIndex : undefined;
+      if (menuItems && menuItems.length > 0) {
+        body = (
+          <>
+            {menuItems.map((item) => (
+              <React.Fragment key={item.key}>
+                {item.dividerBefore && <div className="my-1 border-t border-slate-100 dark:border-slate-800" />}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (item.disabled) return;
+                    item.onSelect(rowIndex);
+                    closeContextMenu();
+                  }}
+                  disabled={!!item.disabled}
+                  className={item.danger ? dangerMenuButtonClass : menuButtonClass}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              </React.Fragment>
+            ))}
+          </>
+        );
+      }
+    }
+    if (body === null) return null;
     return (
       <>
         <div
@@ -736,75 +894,10 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
           }}
         />
         <div
-          className="fixed z-[91] w-52 rounded-md border border-slate-200 bg-white py-1.5 shadow-md dark:border-slate-800 dark:bg-slate-900"
+          className="fixed z-[91] w-56 rounded-md border border-slate-200 bg-white py-1.5 shadow-md dark:border-slate-800 dark:bg-slate-900"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
-          {contextMenu.type === 'row' ? (
-            <>
-              <button type="button" onClick={() => copyRow(contextMenu.rowIndex)} className={menuButtonClass}>
-                <Copy className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.copy', 'Copy')}
-              </button>
-              <button type="button" onClick={() => pasteRow(contextMenu.rowIndex)} disabled={!canEditRows} className={menuButtonClass}>
-                <Clipboard className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.paste', 'Paste')}
-              </button>
-              <button type="button" onClick={() => insertRow(contextMenu.rowIndex)} disabled={!canCreateRows} className={menuButtonClass}>
-                <Plus className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.insertRow', 'Insert row')}
-              </button>
-              <button type="button" onClick={() => toggleHighlight(contextMenu.rowIndex)} className={menuButtonClass}>
-                <Palette className="h-3.5 w-3.5" /> {highlightedRows.has(contextMenu.rowIndex) ? t('lineItemsTable.menu.removeHighlight', 'Remove highlight') : t('lineItemsTable.menu.highlight', 'Highlight')}
-              </button>
-              <div className="px-3 py-2">
-                <div className="mb-1.5 text-[10px] font-black uppercase tracking-wide text-slate-400">
-                  {t('lineItemsTable.menu.rowColor', 'Row color')}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {rowColorSwatches.map((swatch) => (
-                    <button
-                      key={swatch.color}
-                      type="button"
-                      onClick={() => setRowColor(contextMenu.rowIndex, swatch.color)}
-                      className={`h-5 w-5 rounded-sm ring-offset-1 ring-offset-white transition ${swatch.className} ${rowColors[contextMenu.rowIndex] === swatch.color ? 'ring-2' : 'ring-0 hover:ring-1'} dark:ring-offset-slate-900`}
-                      title={t(swatch.labelKey, swatch.fallback)}
-                    />
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setRowColor(contextMenu.rowIndex, null)}
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                    title={t('lineItemsTable.menu.clearRowColor', 'Clear row color')}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-              <button type="button" onClick={() => deleteRow(contextMenu.rowIndex)} disabled={!canEditRows || !onRowRemove} className={dangerMenuButtonClass}>
-                <Trash2 className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.delete', 'Delete')}
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" onClick={copyTable} className={menuButtonClass}>
-                <Copy className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.copy', 'Copy')}
-              </button>
-              <button type="button" onClick={pasteTable} disabled={!canReplaceRows} className={menuButtonClass}>
-                <Clipboard className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.paste', 'Paste')}
-              </button>
-              <button type="button" onClick={cleanTable} disabled={!canCreateRows} className={menuButtonClass}>
-                <Eraser className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.clean', 'Clean')}
-              </button>
-              <button type="button" onClick={exportCsv} className={menuButtonClass}>
-                <Download className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.export', 'Export')}
-              </button>
-              <button type="button" onClick={() => importInputRef.current?.click()} disabled={!canReplaceRows} className={menuButtonClass}>
-                <Upload className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.import', 'Import')}
-              </button>
-              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-              <button type="button" onClick={() => { setShowPreferences(true); closeContextMenu(); }} className={menuButtonClass}>
-                <Settings2 className="h-3.5 w-3.5" /> {t('lineItemsTable.menu.uiSelector', 'UI selector')}
-              </button>
-            </>
-          )}
+          {body}
         </div>
       </>
     );
@@ -1035,11 +1128,20 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                   #
                 </th>
               )}
-              {orderedColumns.map((col) => (
+              {orderedColumns.map((col) => {
+                const hasColumnMenu = !disabled && !!(columnContextMenus && columnContextMenus[col.id]?.length);
+                return (
                 <th
                   key={col.id}
-                  className={`relative p-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide border-r border-slate-200 dark:border-slate-800 ${alignClass(col.align)}`}
+                  className={`relative p-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide border-r border-slate-200 dark:border-slate-800 ${alignClass(col.align)} ${hasColumnMenu ? 'cursor-context-menu' : ''}`}
                   style={{ width: `${getColumnWidth(col)}px`, minWidth: `${getColumnWidth(col)}px` }}
+                  onContextMenu={hasColumnMenu
+                    ? (event) => {
+                        event.preventDefault();
+                        setContextMenu({ type: 'columnHeader', x: event.clientX, y: event.clientY, columnId: col.id });
+                      }
+                    : undefined}
+                  title={hasColumnMenu ? t('lineItemsTable.menu.columnActions', 'Right-click for column actions') : undefined}
                 >
                   {col.label}
                   <span
@@ -1057,7 +1159,8 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                     }}
                   />
                 </th>
-              ))}
+                );
+              })}
               {showRemove && <th className="p-2 w-10" aria-label="Actions" />}
             </tr>
           </thead>
@@ -1103,15 +1206,34 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                       {displayIndex + 1}
                     </td>
                   )}
-                  {orderedColumns.map((col) => (
+                  {orderedColumns.map((col) => {
+                    const hasCellMenu = !disabled && !!(cellContextMenus && cellContextMenus[col.id]?.length);
+                    return (
                     <td
                       key={col.id}
                       className="p-0 border-r border-slate-100 dark:border-slate-800 align-middle"
                       style={{ width: `${getColumnWidth(col)}px`, minWidth: `${getColumnWidth(col)}px` }}
+                      onContextMenu={hasCellMenu
+                        ? (event) => {
+                            event.preventDefault();
+                            // Stop the bubble so the row-level right-click
+                            // (which would show the row copy/paste menu) does
+                            // not also fire.
+                            event.stopPropagation();
+                            setContextMenu({
+                              type: 'cell',
+                              x: event.clientX,
+                              y: event.clientY,
+                              columnId: col.id,
+                              rowIndex,
+                            });
+                          }
+                        : undefined}
                     >
                       <div className={`p-0.5 ${textSizeClasses[preferences.textSize]}`}>{renderCell(row, rowIndex, col)}</div>
                     </td>
-                  ))}
+                    );
+                  })}
                   {showRemove && (
                     <td className="p-1 align-middle text-center">
                       <button
@@ -1179,16 +1301,34 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-                  {restCols.map((col) => (
+                  {restCols.map((col) => {
+                    const hasCellMenu = !disabled && !!(cellContextMenus && cellContextMenus[col.id]?.length);
+                    return (
                     <div key={col.id} className="flex min-w-0 flex-col gap-0.5">
                       <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         {col.label}
                       </span>
-                      <div className="flex min-h-[2.25rem] items-center overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+                      <div
+                        className={`flex min-h-[2.25rem] items-center overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950 ${hasCellMenu ? 'cursor-context-menu' : ''}`}
+                        onContextMenu={hasCellMenu
+                          ? (event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setContextMenu({
+                                type: 'cell',
+                                x: event.clientX,
+                                y: event.clientY,
+                                columnId: col.id,
+                                rowIndex,
+                              });
+                            }
+                          : undefined}
+                      >
                         {renderCell(row, rowIndex, col)}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );

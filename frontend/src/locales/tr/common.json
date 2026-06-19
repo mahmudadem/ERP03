@@ -1582,6 +1582,23 @@
       "priceList": "Fiyat listesi",
       "lastEvent": "Son satis/satin alma",
       "itemDefault": "Urun varsayilani"
+    },
+    "override": {
+      "documentTitle": "Belge fiyat kaynagini gecersiz kil",
+      "lineTitle": "Satir fiyat kaynagini gecersiz kil",
+      "useDocumentSource": "Belge kaynagini kullan",
+      "lockManual": "Kilitle (manuel, otomatik cozumleme yok)",
+      "resetToCompanyDefault": "Sirket varsayilanina sifirla",
+      "current": "Mevcut: {{source}}",
+      "badgeDocument": "Belge gecersiz kilma: {{source}}",
+      "badgeLine": "Satir gecersiz kilma: {{source}}",
+      "badgeLineLocked": "Satir kilitli (manuel)",
+      "cellMenuTitle": "Bu satirin kaynagini gecersiz kilmak icin bir fiyat hucresine sag tiklayin",
+      "headerMenuTitle": "Belge kaynagini gecersiz kilmak icin Birim Fiyat sutun basligina sag tiklayin",
+      "toastDocumentOverrideSet": "Belge fiyat kaynagi {{source}} olarak ayarlandi",
+      "toastLineOverrideSet": "Satir fiyat kaynagi {{source}} olarak ayarlandi",
+      "toastLineLocked": "Satir kilitlendi — fiyat otomatik cozumlenmeyecek",
+      "toastOverrideCleared": "Gecersiz kilma temizlendi — belge kaynagi kullaniliyor"
     }
   },
   "onboarding": {
@@ -4332,7 +4349,9 @@
       "export": "Dışa aktar",
       "import": "İçe aktar",
       "uiSelector": "UI seçici",
-      "tableActions": "Tablo işlemleri"
+      "tableActions": "Tablo işlemleri",
+      "columnActions": "Sütun işlemleri için sağ tıklayın",
+      "cellActions": "Hücre işlemleri için sağ tıklayın"
     },
     "preferences": {
       "title": "Tablo UI seçici",
