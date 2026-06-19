@@ -35,6 +35,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
 5. **Items:** `Inventory → Items → New Item`. For each product:
    - Code (unique), Name, Type (PRODUCT / RAW_MATERIAL / SERVICE)
    - Base UOM and cost currency *(cost currency is locked once you record movements!)*
+   - Optional item UOM conversions, such as `1 BOX = 12 PCS`, from the item's **Stock Control** tab
    - Category, brand, tags
    - Min / max stock levels (drives the Low Stock alert)
    - *(Optional)* GL accounts for inventory asset, revenue, and COGS — defaults come from category or company settings
@@ -85,6 +86,14 @@ Transfer costing rules:
 `Inventory → Movements`. The full append-only ledger. Filter by item, warehouse, date range, or movement type.
 
 Use this when an auditor asks "show me every transaction that touched item X in May".
+
+### Maintaining item UOM conversions
+
+Open `Inventory → Items`, then open the item card. In both Web mode and Windows mode, go to **Stock Control** and use
+**Item UOM Conversions** to maintain item-specific unit relationships such as boxes to pieces.
+
+The same section is available in both UI modes. Windows mode changes how the card is framed as a desktop-style window;
+it does not remove UOM conversion maintenance.
 
 ### Valuing stock — Inventory Valuation
 

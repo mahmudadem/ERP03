@@ -89,7 +89,7 @@ const ItemsListPage: React.FC = () => {
       openWindow({
         type: 'item',
         title: item.name,
-        data: { id: item.id },
+        data: { itemId: item.id },
         size: { width: 900, height: 700 }
       });
     } else {
@@ -102,7 +102,7 @@ const ItemsListPage: React.FC = () => {
       openWindow({
         type: 'item',
         title: t('inventory.itemsList.newWindowTitle'),
-        data: { id: 'new' },
+        data: { itemId: 'new' },
         size: { width: 900, height: 700 }
       });
     } else {

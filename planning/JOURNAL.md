@@ -4123,3 +4123,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated `docs/architecture/onboarding.md`, `docs/architecture/inventory.md`, and `docs/user-guide/settings/company-starter-template.md`. Added [done/240f-phase6-mode-lock-wizard-coa.md](./done/240f-phase6-mode-lock-wizard-coa.md). Updated `planning/ACTIVE.md`.
 - **Time spent:** ~2.4h.
 - **Next:** Run [240g](./tasks/240g-phase7-golden-path-periodic-qa.md) on fresh tenants for all three modes, with explicit proof that pre-posting switches reseed correctly and post-history switches block.
+
+### Session: 2026-06-19 (Task 244 NOTE-09 — Item UOM Web/Windows Parity)
+
+- **Goal:** Implement only Task 244 NOTE-09: the item card's **Item UOM Conversions** section must be available in both Web mode and Windows mode.
+- **What was done:** Created isolated worktree `D:\DEV2026\ERP03-244-note09` because the shared checkout had other agents' dirty Task 242/244 files. Updated Windows item-card open payloads from `data.id` to `data.itemId`, and kept `ItemCardWindow` backward-compatible with existing `data.id` windows. Audited `ItemMasterCard.tsx`; no `isWindow` conditional hides the UOM conversion section or nearby item-card sections.
+- **Accounting/ERP impact:** UI parity only. No UOM conversion factor math, line-UOM selector behavior, stock movement, inventory valuation, GL posting, audit trail, tax, AP/AR, or tenant data behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+- **Docs:** Updated `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, `planning/ACTIVE.md`, and added [done/244-note09-uom-web-windows-parity.md](./done/244-note09-uom-web-windows-parity.md).
+- **Time spent:** ~0.7h.
+- **Next:** Review/merge the narrow NOTE-09 PR, then handle Task 244 NOTE-08/10/11/14 as separate branches so this parity fix does not broaden into UOM behavior changes.

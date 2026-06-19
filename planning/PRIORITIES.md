@@ -126,7 +126,9 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Epic 240 Phase 5 - report-time valuation and trading | 2026-06-18 | ✅ Done |
 | Codex | Epic 240 Phase 6 - mode lock + wizard/COA | 2026-06-18 | ✅ Done |
 | Codex | Task 242 - Strict pricing-policy resolution | 2026-06-19 | ✅ Done |
-| Codex | Task 244 NOTE-08 - item card hydration | 2026-06-19 | ✅ Done (PR pending) |
+| Codex | Task 244 NOTE-08 - item card hydration | 2026-06-19 | ✅ Done |
+| Codex | Task 244 NOTE-14 - line UOM picker | 2026-06-19 | ✅ Done |
+| Codex | Task 244 NOTE-09 - Item UOM Web/Windows parity | 2026-06-19 | ✅ Done |
 | Antigravity | Exchange Rate Redesign Side-by-Side Verification | 2026-06-12 | ✅ Done |
 | Antigravity | Main-shell module icon update & custom 2gears icon | 2026-06-13 | ✅ Done |
 | Antigravity | AI Settings Page Division & Switch Unification | 2026-06-19 | ✅ Done |
