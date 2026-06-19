@@ -1,5 +1,34 @@
 # 🎯 Current Focus
 
+## Task 245 NOTE-01..05,07,12,13 UX polish sweep PR-ready (2026-06-19)
+
+- ✅ **Task 245 sweep** implemented on branch `codex/245-ux-polish-sweep-2`. Combined 8 independent manual-test findings from `qa/241-manual-test-notes.md` into one PR.
+- Scope stayed front-end heavy with one narrow backend add (NOTE-01 starter-policy overrides):
+  - **NOTE-05:** `MasterCardLayout` gained `saveNewLabel` / `updateLabel` props; `PartyMasterCard` / `ItemMasterCard` / `WarehouseMasterCard` now show entity-specific save labels.
+  - **NOTE-12:** Removed the Quick Add Item inline form from `ItemsListPage`. New Item is the only creation path.
+  - **NOTE-13:** Per-row Activate / Deactivate action on the items list. Uses the shared `useConfirm` dialog, gates on `inventory.items.manage`, persists via `inventoryApi.updateItem`, refreshes the list, and toasts the result. Added a status filter alongside the existing search + type filter.
+  - **NOTE-07:** `UomsPage` rewritten with explicit `<label htmlFor>` on every field, separate Add vs Edit heading, and Add / Save changes button labels.
+  - **NOTE-04:** 4-option Account code format selector inside the Auto-create preview block on `PartyMasterCard`. Three presets (`{parent}-{partyCode}`, `{parent}-{seq3}`, `{parent}.{partyCode}`) + a Custom input. Format is persisted to the company-level Sales/Purchase settings on save.
+  - **NOTE-03:** Account Strategy now defaults to `AUTO_CREATE` for new parties when the parent AR/AP account is already configured.
+  - **NOTE-02:** `CustomersListPage` rebuilt with 4 KPI cards, search + status filter, richer header, richer table (Credit Limit + inline legal name), and a footer count line.
+  - **NOTE-01:** Company Setup wizard gained an **advanced** disclosure with 5 editable policies: Chart of Accounts, Costing basis, Default warehouse code + name, Sales workflow, Purchase workflow. Each field defaults to the mode-recommended value; touched fields survive subsequent mode changes. Backend `SimpleTradingCompanyInitializer.execute` accepts the same overrides as optional fields. Controller validates and rejects unknown enum values with HTTP 400.
+- Accounting/ERP impact: UI + wizard presentation only for NOTE-02/03/04/05/07/12/13. NOTE-01's backend change is additive: missing fields fall back to the existing mode-derived default so the unchanged default behaviour is preserved. No GL posting, valuation, tax, AR/AP, approval, or audit trail mutation changed.
+- Verification:
+  - `npm --prefix frontend run typecheck` passed (the only errors are pre-existing 243-C+D work in `SalesInvoiceDetailPage.tsx` on a parallel worktree; this branch is clean).
+  - `npm --prefix frontend run build` passed (existing bundle-size/Browserslist/baseline-data warnings only).
+  - `SimpleTradingCompanyInitializer` test: 4/4 passed (3 existing + 1 new NOTE-01 override test).
+  - `npm --prefix backend run typecheck` and `npm --prefix backend run build` passed.
+- Docs/report:
+  - [docs/architecture/onboarding.md](../docs/architecture/onboarding.md) (updated)
+  - [docs/architecture/operational-lists.md](../docs/architecture/operational-lists.md) (updated)
+  - [docs/architecture/inventory.md](../docs/architecture/inventory.md) (updated)
+  - [docs/user-guide/sales/customers-page.md](../docs/user-guide/sales/customers-page.md) (new)
+  - [docs/user-guide/settings/uoms-page.md](../docs/user-guide/settings/uoms-page.md) (new)
+  - [docs/user-guide/settings/account-code-format-selector.md](../docs/user-guide/settings/account-code-format-selector.md) (new)
+  - [docs/user-guide/settings/onboarding-customize-starter-policies.md](../docs/user-guide/settings/onboarding-customize-starter-policies.md) (new)
+  - [docs/user-guide/inventory/inventory-items-page.md](../docs/user-guide/inventory/inventory-items-page.md) (new)
+  - [planning/done/245-ux-polish-sweep.md](./done/245-ux-polish-sweep.md)
+
 ## Task 243-A complete - selectable line price source PR-ready (2026-06-19)
 
 - ✅ **Task 243-A only** is implemented on branch `codex/243a-selectable-pricing-policy`.

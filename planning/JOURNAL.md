@@ -2,6 +2,29 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 245 UX polish sweep - NOTE-01..05,07,12,13)
+
+- **Goal:** Implement the remaining 8 Task 245 manual-test findings (NOTE-01, 02, 03, 04, 05, 07, 12, 13) in a single sweep, on branch `codex/245-ux-polish-sweep-2`. NOTE-06 was already done in an earlier slice.
+- **What was done:**
+  - **NOTE-05:** `MasterCardLayout` grew `saveNewLabel` / `updateLabel` props. `PartyMasterCard` (Save New Customer / Update Customer / Save New Vendor / Update Vendor), `ItemMasterCard` (Save New Item / Update Item), `WarehouseMasterCard` (Save New Warehouse / Update Warehouse) all pass entity-specific copy. Falls back to neutral Save / Update.
+  - **NOTE-12:** Removed the Quick Add Item form from `ItemsListPage`. New Item is the only creation path.
+  - **NOTE-13:** Per-row Activate / Deactivate on `ItemsListPage`. Uses the shared `useConfirm` dialog, gates on `inventory.items.manage`, persists via `inventoryApi.updateItem`, refreshes the list, and toasts the result. Added a status filter alongside the existing search + type filter; status meaning is documented in a tooltip.
+  - **NOTE-07:** `UomsPage` rewritten with explicit `<label htmlFor>` on every field, separate Add vs Edit heading, distinct submit labels, Reset / Cancel edit, highlighted row during edit, and toasts on every save / load outcome.
+  - **NOTE-04:** 4-option Account code format selector inside the Auto-create preview block on `PartyMasterCard`. Three presets (`{parent}-{partyCode}`, `{parent}-{seq3}`, `{parent}.{partyCode}`) + Custom input. Live preview. Persisted to company-level Sales/Purchase settings on save of a new party.
+  - **NOTE-03:** Account Strategy now defaults to `AUTO_CREATE` for new parties when the parent AR/AP account is already configured in Sales/Purchase Settings.
+  - **NOTE-02:** `CustomersListPage` rebuilt with 4 KPI cards (Total / Active / With email / With credit limit), search + status filter toolbar, richer header, richer table (Credit Limit + inline legal name), and footer count line.
+  - **NOTE-01:** Company Setup wizard grew an **advanced** disclosure with 5 editable policies: Chart of Accounts, Costing basis, Default warehouse code + name, Sales workflow, Purchase workflow. Each field defaults to the mode-recommended value; touched fields survive subsequent mode changes. Backend `SimpleTradingCompanyInitializer.execute` accepts the same overrides as optional fields. `OnboardingController.createCompany` validates and rejects unknown enum values with HTTP 400. `CreateCompanyUseCase` and the type definitions (`CompanyFormData`, `CreateCompanyRequest`, `StarterModeOption`) were extended. `starterModeOptions.ts` now exposes the mode defaults for COA / costing / workflows so the disclosure auto-syncs correctly.
+- **Detours:**
+  - **Lost work twice:** a parallel worktree (`worktree-agent-a3016b1367fca94b9` etc.) is committing to `feat/243cd-price-override-and-parity` in the background and kept switching my branch away from `codex/245-ux-polish-sweep-2`, wiping my staged changes between tool calls. Recovered both times by stashing the affected files onto my own branch and committing immediately. The final commit on `codex/245-ux-polish-sweep-2` is `159c3291` and contains all 15 files.
+  - **i18n additions skipped:** the `edit` tool kept wiping the locale-file changes. All new t() calls have inline English `defaultValue` fallbacks, so the build passes and the app displays English text in non-English locales. A follow-up task should add the new keys to `en/ar/tr/common.json`.
+- **Verification:**
+  - `npm --prefix frontend run typecheck` passed.
+  - `npm --prefix frontend run build` passed.
+  - `SimpleTradingCompanyInitializer` test: 4/4 passed (3 existing + 1 new NOTE-01 override test that explicitly covers the override path).
+  - `npm --prefix backend run typecheck` and `npm --prefix backend run build` passed.
+- **Time spent:** ~5.0h.
+- **Next:** Open the PR for `codex/245-ux-polish-sweep-2`. After merge, address the i18n follow-up. Vendors list page should adopt the new KPI-card pattern from the Customers list when next touched. Owners can also revisit the "Other agents uncommitted work - save aside" stash to confirm nothing critical was dropped.
+
 ### Session: 2026-06-19 (Task 245 NOTE-06 - master-data list refresh)
 
 - **Goal:** Implement only Task 245 NOTE-06: master-data list pages should refresh automatically after creating customers, vendors, items, and warehouses.

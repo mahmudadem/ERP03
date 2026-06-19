@@ -97,4 +97,42 @@ Current covered pages:
 
 Route mode uses React Router location state key `masterDataRefreshToken` when navigating back to the list. The list page watches that token and reloads its data. Windows mode passes the list reload function through `openWindow(... data.onSaved ...)`; the card window invokes that callback before closing. This keeps refresh behavior local to the list/card pair and avoids a global cache invalidation bus for these simple master-data pages.
 
+## Master Card Save Button Labels (Task 245 NOTE-05)
+
+`MasterCardLayout` accepts two new props that override the generic **"Save"** / **"Update"** labels with entity-specific copy:
+
+- `saveNewLabel` — label on the primary action when `isNew` is true
+- `updateLabel` — label on the primary action when editing an existing record
+
+Callers today: `PartyMasterCard` ("Save New Customer" / "Update Customer" / "Save New Vendor" / "Update Vendor"), `ItemMasterCard` ("Save New Item" / "Update Item"), `WarehouseMasterCard` ("Save New Warehouse" / "Update Warehouse").
+
+When a caller does not pass the labels, the layout falls back to neutral "Save" / "Update". This replaces the old generic "SAVE NEW RECORD" / "UPDATE MASTER RECORD" copy that did not reflect the entity being saved.
+
+## Customer Account Code Format (Task 245 NOTE-04)
+
+`PartyMasterCard` exposes a 4-option **Account code format** selector inside the Auto-create preview block on the **Financial Settings** tab:
+
+- `{parent}-{partyCode}` (default) — e.g. `10401-C001`
+- `{parent}-{seq3}` — e.g. `10401-001` (auto-disambiguating 3-digit sequence)
+- `{parent}.{partyCode}` — e.g. `10401.C001`
+- Custom — any pattern that uses `{parent}`, `{partyCode}`, `{seq3}` tokens
+
+When the user changes the format on a new party, the chosen template is persisted to the company-level Sales / Purchase settings on save, so subsequent parties follow the same pattern. The currently-active format is read from those settings when the card opens; the preset selector is matched against the active template and falls back to **Custom** for any value that does not match a preset.
+
+## Customer Account Strategy Default (Task 245 NOTE-03)
+
+`PartyMasterCard` now defaults the **Account Strategy** to **Auto-create sub-account** for new customers/vendors whenever the parent AR / AP account is already configured in Sales / Purchase Settings. The signal is the presence of `arParentAccountId` (customers) or `apParentAccountId` (vendors) returned by the settings endpoint. When the parent account is missing, the user must still pick a strategy explicitly.
+
+## Customers List Page (Task 245 NOTE-02)
+
+`CustomersListPage` now includes a 4-card KPI strip (Total / Active / With email / With credit limit), a single-row search + status filter bar with `Refresh` and `Clear` actions, a richer header with subtitle + `Add Customer` action button, a richer table including the **Credit Limit** column and inline legal name text, and a footer count line that distinguishes the filtered vs. total customer count. The page is the visual template for the Vendors list page, which still uses the older `OperationalListLayout` pattern and should follow when next touched.
+
+## Inventory Items List Page (Task 245 NOTE-12, NOTE-13)
+
+`ItemsListPage` was simplified:
+
+- The **Quick Add Item** inline form was removed. New Item is the only creation path; the card has parity with the rest of the master-data flow.
+- A **status filter** was added alongside the existing search + type filter (All / Active only / Inactive only). The status column now documents what Active means via the filter's tooltip.
+- Each row exposes a per-row **Activate / Deactivate** button alongside the existing **Open** action. The action uses the shared `useConfirm` dialog, gates on `inventory.items.manage`, persists the change through `inventoryApi.updateItem(id, { active })`, refreshes the list, and emits a success / error toast.
+
 Do not rely on browser back/close alone after creating a master record. The successful save callback is the source of truth for list refresh.
