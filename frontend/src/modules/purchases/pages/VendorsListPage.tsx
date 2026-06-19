@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -8,6 +8,7 @@ import { useUserPreferences } from '../../../hooks/useUserPreferences';
 
 const VendorsListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { openWindow } = useWindowManager();
   const { uiMode } = useUserPreferences();
   const [vendors, setVendors] = useState<PartyDTO[]>([]);
@@ -28,7 +29,7 @@ const VendorsListPage: React.FC = () => {
 
   useEffect(() => {
     loadVendors();
-  }, []);
+  }, [location.state?.masterDataRefreshToken]);
 
   const handleVendorClick = (vendor: PartyDTO) => {
     if (uiMode === 'windows') {
@@ -48,7 +49,7 @@ const VendorsListPage: React.FC = () => {
        openWindow({
          type: 'party',
          title: 'New Vendor',
-         data: { partyId: 'new', role: 'VENDOR' },
+         data: { partyId: 'new', role: 'VENDOR', onSaved: loadVendors },
          size: { width: 950, height: 650 }
        });
     } else {

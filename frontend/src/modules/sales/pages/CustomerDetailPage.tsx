@@ -12,7 +12,7 @@ const CustomerDetailPage: React.FC = () => {
   };
 
   const handleSaved = () => {
-    navigate('/sales/customers');
+    navigate('/sales/customers', { state: { masterDataRefreshToken: Date.now() } });
   };
 
   return (

@@ -18,8 +18,8 @@ export const PartyCardWindow: React.FC<{ win: UIWindow }> = ({ win }) => {
         role={win.data?.role || 'CUSTOMER'}
         isWindow={true}
         onClose={() => closeWindow(win.id)}
-        onSaved={() => {
-          // Standard refresh logic can go here
+        onSaved={(party) => {
+          win.data?.onSaved?.(party);
           closeWindow(win.id);
         }}
       />

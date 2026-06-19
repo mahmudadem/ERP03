@@ -53,7 +53,7 @@ const WarehousesPage: React.FC = () => {
        openWindow({
          type: 'warehouse',
          title: 'New Storage Node',
-         data: { warehouseId: 'new' },
+         data: { warehouseId: 'new', onSaved: load },
          size: { width: 900, height: 600 }
        });
     } else {
