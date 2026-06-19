@@ -196,6 +196,10 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       setError('Conversion requires from UOM, to UOM, and a positive factor.');
       return;
     }
+    if (findActiveConversionPair(conversionDraft.fromUomId, toUomId)) {
+      setError('This From UOM and To UOM conversion already exists. Update the existing row factor instead.');
+      return;
+    }
 
     try {
       setError(null);
@@ -289,6 +293,17 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   };
 
   const findUom = (id?: string) => uoms.find((uom) => uom.id === id);
+  const findActiveConversionPair = (fromUomId?: string, toUomId?: string) => (
+    conversions.find((conversion) => (
+      conversion.active !== false
+      && conversion.fromUomId === fromUomId
+      && conversion.toUomId === toUomId
+    ))
+  );
+  const draftToUomId = conversionDraft.toUomId || item.baseUomId;
+  const duplicateDraftConversion = conversionDraft.fromUomId && draftToUomId
+    ? findActiveConversionPair(conversionDraft.fromUomId, draftToUomId)
+    : undefined;
 
   const updateMetadata = (path: string, value: any) => {
     const parts = path.split('.');
@@ -661,6 +676,11 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                      Add Conversion
                    </button>
                  </div>
+                 {duplicateDraftConversion && (
+                   <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                     This From UOM and To UOM conversion already exists. Update the existing row factor instead.
+                   </div>
+                 )}
 
                 <div className="rounded border font-mono">
                   <table className="w-full text-xs text-left">

@@ -63,6 +63,16 @@ This is an **additive reseed**, not destructive chart cleanup. Existing accounts
 - **Item Category** — hierarchical classification; can inherit GL accounts to items.
 - **UOM (Unit of Measure)** — base UOM per item; conversion rules for alternative UOMs.
 
+### Item UOM conversion uniqueness
+
+Each item can have only one active conversion for a given `From UOM -> To UOM` pair. `ManageUomConversionsUseCase`
+normalizes both sides through the company UOM repository before create/update and rejects a duplicate active pair for
+the same item. This prevents ambiguous factors such as `BOX -> PCS = 12` and `BOX -> PCS = 24` from coexisting and
+keeps document-line quantity conversion, cost conversion, and per-UOM price memory deterministic.
+
+Inactive conversions do not reserve the pair. If an unused conversion is deleted/deactivated, the same pair can be
+created again later with a new factor.
+
 ## Movement Types
 
 | Type | Direction | Triggered by |
