@@ -2,19 +2,19 @@
 
 ## Epic 240 follow-on (owner-authorized 2026-06-18)
 
-- 🔶 **Task 240g executed on `codex/240e-report-time-valuation`, but the final gate is still blocked.**
-- Fresh-periodic QA used tenant `240g Periodic Trading Co Final` (`cmp_mqk28li8_dcor0q`). The current dirty worktree has an unrelated AI-assistant JSX parse error that blocks the browser wizard with a Vite overlay; the owner explicitly said not to touch those files, so the same onboarding/document/report contracts were driven through authenticated REST + Firestore verification instead.
-- Periodic GP01-GP04 are green on that tenant:
-  - GP01 accounting controls pass (TB/BS balanced; period lock + approval flow pass).
-  - GP02 passes with **periodic adaptations**: opening stock still posts Dr `10301` / Cr `303`, but transfer/adjustment are quantity-only; negative-stock rejection is proven; valuation ends at **95 units / 950**.
-  - GP03 periodic proof is green: DN is quantity-only (`cogsVoucherId=null`), linked SI posts AR/Sales without COGS, over-payment works through the **record-payment** path when allowed, direct SI partial payment works, and AR Aging = Customer Statement = control at **-27**.
-  - GP04 periodic proof is green: GRN is quantity-only (`voucherId=null`), linked PI posts **Dr Purchases / Dr Freight / Cr Discount / Cr AP** with no inventory/GRNI lines, purchase return works, and AP Aging = Vendor Statement = control at **-47.5**.
-- GP05 is **partially green**:
-  - Trial Balance balanced: **4649.5 = 4649.5**
-  - Balance Sheet balanced and correctly overrides inventory to the **report-time valuation 1300**
-  - Periodic GP05 step 4 is now **N/A / pass by construction** (no per-transaction inventory GL can drift in periodic mode)
-  - **Remaining blocker — ROOT-CAUSED + FIXED 2026-06-19 (re-verify pending):** the live `Trading Account` returned `hasData=false`/zeroes because `GetTradingAccountUseCase` keys entirely off account `plSubgroup` tags, but `InitializeAccountingUseCase` dropped `plSubgroup`/`equitySubgroup` when creating accounts from the template — so every seeded account was untagged. Fixed by threading both tags onto the account-create input (+ regression test; full backend suite 163 suites / 1456 tests green). The fix only affects accounts created *after* it lands, so `cmp_mqk28li8_dcor0q` stays untagged. **To close: rebuild backend `lib/`, restart emulator, create a FRESH periodic tenant, replay GP03/GP04, confirm Trading Account = `Sales − (Opening + Net Purchases − Closing)`, then flip `golden-paths-green`.**
-- Perpetual comparison pass on fresh tenant `cmp_mqk20i75_09f0tq` is green: Inventory GL Reconciliation shows **stock 1500 / GL 1500 / drift 0**, so the old backlog-223 step-4 drift is not back there.
+- ✅ **Epic 240 final gate is now CLOSED on `codex/240e-report-time-valuation` (`golden-paths-green` = ON).**
+- Rebuilt the backend `lib/`, restarted the emulator, re-seeded system metadata once, and re-ran the final periodic closeout on a **brand-new** tenant because the earlier blocked tenant `cmp_mqk28li8_dcor0q` remained permanently untagged after the Trading fix.
+- Final fresh periodic proof tenant: `240g Periodic Trading Co Final 1781835450954` (`cmp_mqkatlbu_l8bmja`).
+  - Seeded Sales accounts `400/401/402` now carry `plSubgroup=SALES`.
+  - Seeded Trading/Purchases accounts `501/50101/50102/50103/50104` now carry `plSubgroup=COST_OF_SALES`.
+  - The QA-only sales/purchase access patch was re-applied to this disposable tenant because the `trading-basic` bundle still entitles only accounting + inventory while the starter initializes sales + purchase records.
+- Fresh periodic replay is green:
+  - Opening stock dated **2026-06-18** posted Dr `10301` / Cr `303` for **1000**.
+  - On **2026-06-19**, SO→DN→SI for `10 @ 15` and PO→GRN→PI for `50 @ 10` produced the intended periodic postings: DN/GRN quantity-only, SI = Dr AR / Cr Sales only, PI = Dr Purchases / Cr AP only.
+  - Final stock = **140 units @ avg 10**; Inventory Valuation = **1400**; Balance Sheet inventory line `10301` = **1400**.
+  - Trading Account now returns `hasData=true` with **Opening 1000 + Net Purchases 500 − Closing 1400 = Cost of Sales 100**, **Sales 150**, **Gross Profit 50**. P&L matches the same periodic computation.
+  - GP05 remainder also holds on the fresh tenant: Trial Balance balanced **1650 = 1650**, AR Aging = Customer Statement **150**, AP Aging = Vendor Statement **500**, **GRNI = 0**, and no duplicate-voucher regression observed on the single-pass replay.
+- Perpetual comparison tenant `cmp_mqk20i75_09f0tq` remains the prior control proof that GP05 step 4 drift stays at **0** in perpetual mode.
 
 - ✅ **Task 240f complete (current worktree on `codex/240e-report-time-valuation`).**
 - Company creation now asks for the inventory/accounting mode once and uses that single answer to seed the starter policy consistently:
@@ -80,7 +80,7 @@
 - ✅ **Branch consolidation (2026-06-18):** the week-of-work branch (`codex/simple-trading-company-template`, 186 files), the 240 Phase 2 fix, and all the epic-240 plan docs are now merged onto `main` as the single baseline (`main` builds: backend + frontend tsc). Future phases branch fresh from `main`.
 - ✅ **Task 240c (Phase 3 — item costing stats) is now on `main`.** Per-item `costingStats` (avgCost / lastPurchaseCost / lastSalePrice, FX-accurate, extensible), `ItemCostingStatsService`, hooks in all IN paths (engine + inline PI + GRN) and sale paths (SI/DN), Firestore+Prisma parity, Item card UI. **No GL posting change.** Full backend suite **1,436 tests pass**; build clean. Report: [done/240c](./done/240c-phase3-item-costing-stats.md).
   - Integration fixes during landing: stale test mocks (`updateItemInTransaction` ×5, `preFetchLevelsByItem` ×3) and the **pre-existing** `PostingAuthority` guard (week's approval-leak hotfix → `resolveApproved`) updated without weakening it.
-- **Next recommended task:** investigate/fix the live periodic Trading Account report blocker found by [240g](./done/240g-phase7-golden-path-periodic-qa.md), then rerun GP05 on `cmp_mqk28li8_dcor0q`. Only after Trading is green should Epic 240 flip `golden-paths-green`. Task [241](./tasks/241-party-item-price-memory.md) still remains parallel-safe because it depends on Phase 3, not on this report blocker.
+- **Next recommended task:** Epic 240 is green and closed. The next clean follow-on is [241](./tasks/241-party-item-price-memory.md), which is already parallel-safe because it depends on Phase 3 rather than on any remaining Epic 240 blocker.
 
 ---
 

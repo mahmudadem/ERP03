@@ -1,6 +1,6 @@
 # Epic 240 — Simple (Periodic) Inventory Mode + Multi-Method Item Costing + backlog-223 fix
 
-**Status:** Planned (spec complete, not started). Authored 2026-06-18 as the execution plan for other agents.
+**Status:** Complete / green (all phases accepted 2026-06-19). Authored 2026-06-18 as the execution plan for other agents.
 **Author role:** Senior Financial Systems Manager + Senior SWE (planning + audit).
 **Problem brief:** [planning/briefs/20260618-inventory-accounting-mode-periodic-vs-perpetual.md](../briefs/20260618-inventory-accounting-mode-periodic-vs-perpetual.md)
 **Related:** [223 inventory revaluation](./223-inventory-revaluation-value-only-correction.md) · [221 inventory deep stabilization](./221-inventory-deep-stabilization-epic.md) · [241 party×item price memory](./241-party-item-price-memory.md) (extends Phase 3's price-capture hook) · audit `docs/audit/inventory-accounting-model-audit.md`
@@ -207,6 +207,8 @@ A PERIODIC company never gets an Inventory-Asset/COGS/GRNI structure; a perpetua
 ---
 
 ## 9. Acceptance for the epic (definition of "done")
+**2026-06-19 status:** ✅ **Accepted / green.** Phase 7 fresh-tenant closeout passed on periodic tenant `cmp_mqkatlbu_l8bmja`; see [done/240g-phase7-golden-path-periodic-qa.md](../done/240g-phase7-golden-path-periodic-qa.md).
+
 - Three modes selectable at company creation; PERIODIC produces simple books (no inventory/COGS lines) and a **correct, always-available** Balance Sheet via report-time valuation.
 - Per-item avg cost / last purchase / last sale stored, live, FX-accurate, and surfaced in reports + item card; schema is extensible for future methods.
 - GP05 step-4 reconciles in perpetual modes (backlog-223 closed) and is non-applicable in periodic.

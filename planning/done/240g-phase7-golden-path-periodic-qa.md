@@ -2,24 +2,25 @@
 
 ## Status
 
-Phase 7 was executed on fresh periodic and perpetual tenants, but the epic is **not green yet**.
+Phase 7 is now **green** and Epic 240 can be closed.
 
-The periodic model itself held through GP01-GP04 and most of GP05:
-- periodic PI/SI posted to Purchases/AP and AR/Sales with **no** inventory/COGS per-transaction lines
-- DN/GRN/adjustments/transfers moved **quantity only**
-- Balance Sheet inventory used **report-time valuation**
-- periodic GP05 step 4 was **non-applicable by construction**
-- the perpetual comparison tenant still showed **Inventory GL drift = 0**
+The first fresh periodic tenant (`cmp_mqk28li8_dcor0q`) exposed the final live blocker: Trading Account returned `hasData=false` because the seeded accounts were missing `plSubgroup` tags. After commit `aa28f203` fixed the seeding path, the closeout was re-run on a **brand-new** periodic tenant and the gate passed end-to-end.
 
-The final gate is still blocked by one live report defect:
-- the **Trading Account** endpoint returned `hasData=false` / zeroes on the fresh periodic tenant even though GP03 and GP04 activity existed and the periodic P&L + Balance Sheet were already computing the same activity correctly
+Final status:
+- periodic PI/SI post to Purchases/AP and AR/Sales with **no** inventory/COGS per-transaction lines
+- DN/GRN/adjustments/transfers move **quantity only**
+- Balance Sheet inventory uses **report-time valuation**
+- periodic Trading Account now computes live and matches P&L + valuation math
+- periodic GP05 step 4 remains **non-applicable by construction**
+- the perpetual comparison tenant still shows **Inventory GL drift = 0**
 
-`golden-paths-green` remains **OFF**.
+`golden-paths-green` is now **ON**.
 
 ## Environment / Method
 
 - Branch: `codex/240e-report-time-valuation`
-- Periodic tenant used for the main run: `240g Periodic Trading Co Final` (`cmp_mqk28li8_dcor0q`)
+- Original blocked periodic tenant: `240g Periodic Trading Co Final` (`cmp_mqk28li8_dcor0q`) — retained only as the pre-fix evidence because its already-created accounts stayed untagged
+- Final closeout periodic tenant: `240g Periodic Trading Co Final 1781835450954` (`cmp_mqkatlbu_l8bmja`)
 - Perpetual comparison tenant: `240g Perpetual Trading Co` (`cmp_mqk20i75_09f0tq`)
 - Region/profile used: `SYP`, `Asia/Damascus`, `DD-MM-YYYY`
 - Verification method:
@@ -30,6 +31,31 @@ The final gate is still blocked by one live report defect:
   - the current dirty worktree contains an unrelated Vite JSX parse error in the AI-assistant pages
   - the owner explicitly said not to touch those files
   - because of that, browser-driven wizard QA was blocked by the overlay, so the same onboarding contract was driven through the emulator APIs instead
+
+## Fresh-Tenant Re-Verification Addendum (post-`aa28f203`)
+
+### Closeout tenant
+
+- Company: `240g Periodic Trading Co Final 1781835450954`
+- Company id: `cmp_mqkatlbu_l8bmja`
+- Replay window:
+  - opening stock date: **2026-06-18**
+  - trading / GP05 window: **2026-06-19 → 2026-06-19**
+
+### Re-closeout log
+
+| Step | Result | Evidence |
+|---|---|---|
+| Rebuild + emulator restart | Pass | Rebuilt compiled backend with `npm --prefix backend run build`, restarted the Functions emulator, and re-seeded system metadata once so `periodic_trading` was available again |
+| Fresh periodic tenant | Pass | Onboarding API created `cmp_mqkatlbu_l8bmja` with `PERIODIC`, `SYP`, `Asia/Damascus`, `DD-MM-YYYY` |
+| Account subgroup tags | Pass | Sales `400/401/402` resolved with `plSubgroup=SALES`; Trading/Purchases `501/50101/50102/50103/50104` resolved with `plSubgroup=COST_OF_SALES` |
+| QA-only tenant access patch | Pass | Re-applied the known disposable-tenant patch so `sales` and `purchase` are available under the `trading-basic` bundle: updated company `modules[]`, added matching entitlement items, and enabled linked-persona governance in Sales/Purchases settings |
+| Minimal periodic replay | Pass | Opening stock **100 @ 10** posted on **2026-06-18** (voucher `33ad7a35-c0e7-466c-b0b8-79c0b7556283` = Dr `10301` 1000 / Cr `303` 1000). On **2026-06-19**: `SO-00001` → `DN-00001` (`cogsVoucherId=null`) → `SI-00001` (`voucherId=050643a6-62ae-4fa7-b462-2ad2f48f2be5`, `cogsVoucherId=null`) and `PO-00001` → `GRN-00001` (`voucherId=null`) → `PI-00001` (`voucherId=09c3aa3d-5f22-4b1b-a21f-cc4f2e2e9f64`) |
+| Periodic posting proof | Pass | SI ledger = Dr `10401-CUST-849010` 150 / Cr `400` 150 only. PI ledger = Dr `50101` 500 / Cr `20100-VEND-849010` 500 only. No inventory/COGS lines on SI/PI, and no vouchers on DN/GRN |
+| Quantities + valuation | Pass | Final stock = **140 units @ avg 10**. As-of valuation on **2026-06-19** = **1400**. Balance Sheet inventory line `10301` = **1400** |
+| Trading Account | Pass | Live endpoint returned `hasData=true`, `netSales=150`, `costOfSales=100`, `grossProfit=50`, `openingInventory=1000`, `netPurchases=500`, `closingInventory=1400` |
+| P&L tie-out | Pass | Periodic P&L matched the same formula: `grossProfit=50`, `openingInventory=1000`, `netPurchases=500`, `closingInventory=1400` |
+| GP05 remainder | Pass | TB balanced **1650 = 1650**; BS balanced **1550 = 1550**; AR statement/aging **150**; AP statement/aging **500**; GRNI **0**; replay produced exactly three vouchers (opening stock, SI, PI) and no duplicate-voucher regression was observed |
 
 ## Periodic Tenant Log
 
@@ -135,21 +161,18 @@ Target: confirm the old backlog-223 GP05 step-4 drift does **not** reappear on a
 
 ## Findings / Decisions
 
-### Main blocker
+### Resolved blocker
 
-- **Live periodic Trading Account report is still broken.**
-  - Evidence:
-    - periodic tenant had valid GP03/GP04 activity
-    - periodic P&L was populated
-    - periodic Balance Sheet inventory valuation worked
-    - Trading endpoint still returned:
-      - `hasData=false`
-      - `netSales=0`
-      - `costOfSales=0`
-      - `grossProfit=0`
+- **Live periodic Trading Account report is fixed and re-verified.**
+  - Root cause:
+    - the original fresh tenant seeded accounts without `plSubgroup` tags because `InitializeAccountingUseCase` dropped `plSubgroup` / `equitySubgroup` during account creation
+  - Fresh-tenant proof after the fix:
+    - new seeded accounts carry the expected tags
+    - Trading endpoint now returns `hasData=true`
+    - gross profit matches `Sales - (Opening + Net Purchases - Closing)` on the live stack
   - Impact:
-    - Epic 240 cannot be declared fully green
-    - the owner-required proof of `Sales - (Opening + Net Purchases - Closing)` is still missing in the live stack
+    - Epic 240 can now be declared fully green
+    - the owner-required Trading Account proof is now present in the live emulator stack
 
 ### Important product-path note
 
@@ -171,10 +194,10 @@ Target: confirm the old backlog-223 GP05 step-4 drift does **not** reappear on a
   - SI/PI posted only AR/Sales and Purchases/AP
   - Balance Sheet inventory used report-time valuation
   - periodic GP05 step 4 was non-applicable by design
-- The remaining work is now narrow:
-  - investigate why `GET /tenant/accounting/reports/trading-account` returns `hasData=false` on a periodic tenant while `profit-loss` and `balance-sheet` already reflect the same periodic activity correctly
-  - fix it
-  - rerun GP05 on `cmp_mqk28li8_dcor0q`
+- Final closeout note:
+  - the original blocked tenant stayed untagged and was intentionally abandoned
+  - the final proof came from a brand-new tenant created after the subgroup-tag fix landed
+  - the `sales` / `purchase` module exposure tweak was a **QA-only tenant patch**, not product code
 
 ## End-User View
 
@@ -182,7 +205,7 @@ Target: confirm the old backlog-223 GP05 step-4 drift does **not** reappear on a
   - goods quantities stay correct
   - invoices post Sales / Purchases instead of real-time inventory/COGS
   - the Balance Sheet still shows a current stock value from the quantity on hand
-- The only missing owner-facing proof is the dedicated **Trading Account** report, which still shows zero on the live periodic tenant even though the rest of the books are correct.
+- The last owner-facing proof is now present too: the dedicated **Trading Account** report shows the correct gross profit on the live periodic tenant.
 
 ## Files Touched
 
@@ -193,4 +216,4 @@ Target: confirm the old backlog-223 GP05 step-4 drift does **not** reappear on a
 
 ## Time Spent
 
-- Approx. `3.4h`
+- Approx. `5.5h` total across the blocked first run + the fresh-tenant closeout re-verification

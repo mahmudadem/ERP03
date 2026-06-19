@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Epic 240 Phase 7 — final fresh-tenant Trading re-verification, gate closed)
+
+- **Goal:** Re-run the last blocked Epic 240 gate after commit `aa28f203` on a **brand-new** periodic tenant, prove the live Trading Account endpoint now computes correctly, then close the epic.
+- **Environment / method:** Rebuilt the compiled backend (`npm --prefix backend run build`), restarted the Functions emulator, and re-seeded system metadata once because the emulator initially rejected `periodic_trading` as missing. The dirty AI-assistant worktree still broke browser-wizard QA, and the owner explicitly said not to touch it, so I kept the same authenticated REST + Firestore-emulator verification method.
+- **What was done:** Created a fresh periodic tenant `240g Periodic Trading Co Final 1781835450954` (`cmp_mqkatlbu_l8bmja`) with `SYP`, `Asia/Damascus`, `DD-MM-YYYY`, and confirmed the newly seeded accounts now carry the expected `plSubgroup` tags: Sales `400/401/402 = SALES`; Trading/Purchases `501/50101/50102/50103/50104 = COST_OF_SALES`. As in the earlier QA run, the `trading-basic` bundle exposed only accounting + inventory even though the starter initialized sales + purchase module records, so I re-applied the same **QA-only** tenant patch: add `sales`/`purchase` to the company modules array and add matching bundle-entitlement items. After the module-availability cache refreshed, I enabled linked personas in Sales/Purchases settings and ran the clean replay: opening stock **100 @ 10** on **2026-06-18**, then on **2026-06-19** SO→DN→SI for **10 @ 15** and PO→GRN→PI for **50 @ 10**.
+- **Result:** The final gate is green. DN/GRN stayed quantity-only, SI posted only **Dr AR / Cr Sales**, PI posted only **Dr Purchases / Cr AP**, final stock ended **140 @ avg 10**, Inventory Valuation = **1400**, and Balance Sheet inventory `10301` = **1400**. The live Trading Account endpoint now returns `hasData=true` with `openingInventory=1000`, `netPurchases=500`, `closingInventory=1400`, `costOfSales=100`, `netSales=150`, `grossProfit=50`; periodic P&L matches the same computation. GP05 remainder also held on the fresh tenant: TB balanced **1650 = 1650**, AR statement/aging **150**, AP statement/aging **500**, GRNI **0**, and the replay produced exactly three vouchers (opening stock, SI, PI) with no duplicate-voucher regression observed.
+- **Docs / closeout:** Updated `planning/done/240g-phase7-golden-path-periodic-qa.md`, `planning/qa/findings.md`, `planning/ACTIVE.md`, and the Epic 240 plan file so the repo now reflects the green closeout instead of the earlier blocked tenant.
+- **Time spent:** ~2.1h.
+- **Next:** Epic 240 is closed. The next clean follow-on remains [241](./tasks/241-party-item-price-memory.md).
+
 ### Session: 2026-06-19 (Epic 240 Phase 7 — periodic Trading Account blocker root-caused + fixed)
 
 - **Goal:** Investigate and fix the remaining Epic 240 final-gate blocker from the 240g QA run — the live periodic **Trading Account** endpoint returning `hasData=false`/zeroes on `cmp_mqk28li8_dcor0q` despite real GP03/GP04 activity and a populated P&L + Balance Sheet valuation.
