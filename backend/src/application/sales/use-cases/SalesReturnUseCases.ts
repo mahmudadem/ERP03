@@ -22,7 +22,7 @@ import {
 import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
-import { Item } from '../../../domain/inventory/entities/Item';
+import { CostPoint, Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
 import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
@@ -40,6 +40,10 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import {
+  IPartyItemPriceRepository,
+  PartyItemPriceUpsertInput,
+} from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
@@ -47,6 +51,11 @@ import { RecordChangeService } from '../../system/services/RecordChangeService';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
+import {
+  buildAverageCostPoint,
+  buildDocumentPricePoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { roundMoney, updateSOStatus } from './SalesPostingHelpers';
 
@@ -487,7 +496,8 @@ export class PostSalesReturnUseCase {
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
     private readonly recordChangeService?: RecordChangeService,
-    private readonly postingLogRepo?: IPostingLogRepository
+    private readonly postingLogRepo?: IPostingLogRepository,
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
   ) {}
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesReturn> {
@@ -613,12 +623,15 @@ export class PostSalesReturnUseCase {
     const taxDebitBucket = new Map<string, VoucherBucketLine>();
     const cogsBucket = new Map<string, COGSBucketLine>();
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel }>();
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
+    const partyItemPriceUpdates: PartyItemPriceUpsertInput[] = [];
 
     for (const line of salesReturn.lines) {
       const item = itemsMap.get(line.itemId);
       if (!item || item.companyId !== companyId) {
         throw new Error(`Item not found: ${line.itemId}`);
       }
+      let salePricePointForMemory: CostPoint | null = null;
 
       if (isAfterInvoice) {
         const sourceLine = findSILine(salesInvoice as SalesInvoice, line.siLineId, line.itemId);
@@ -719,6 +732,33 @@ export class PostSalesReturnUseCase {
       line.taxAmountBase = line.priceIsInclusive
         ? roundMoney(grossLineTotalBase - lineTotalBase)
         : roundMoney(lineTotalBase * line.taxRate);
+
+      const hasNativeUnitPrice = typeof line.unitPriceDoc === 'number' && Number.isFinite(line.unitPriceDoc);
+      if (hasNativeUnitPrice) {
+        const salePricePoint = buildDocumentPricePoint({
+          unitPriceDoc: line.unitPriceDoc || 0,
+          currency: salesReturn.currency,
+          exchangeRate: salesReturn.exchangeRate,
+          baseCurrency,
+          asOf: salesReturn.returnDate,
+          refType: 'SALES_RETURN',
+          refId: salesReturn.id,
+          qty: line.returnQty,
+          uomId: line.uomId || item.salesUomId || item.baseUomId || line.uom || item.baseUom,
+          docType: 'SALES_RETURN',
+          docId: salesReturn.id,
+          docNo: salesReturn.returnNumber,
+          lineId: line.lineId,
+        });
+        salePricePointForMemory = salePricePoint;
+        partyItemPriceUpdates.push({
+          companyId,
+          partyId: salesReturn.customerId,
+          itemId: item.id,
+          direction: 'SALE',
+          pricePoint: salePricePoint,
+        });
+      }
 
       if (isAfterInvoice || isDirect) {
         if (!line.revenueAccountId) {
@@ -899,6 +939,22 @@ export class PostSalesReturnUseCase {
         }
       }
 
+      if (salePricePointForMemory) {
+        const itemLevels = Array.from(stockLevelMap.entries())
+          .filter(([key]) => key.startsWith(`${item.id}|`))
+          .map(([, level]) => level);
+        const avgCost = buildAverageCostPoint(
+          itemLevels,
+          item,
+          baseCurrency,
+          invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+          item.costingStats?.avgCost
+        );
+        const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastSalePrice: salePricePointForMemory });
+        item.costingStats = costingStats;
+        itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
+      }
+
       if (salesOrder) {
         const soLine = findSOLine(salesOrder, line.soLineId, line.itemId);
         if (soLine) {
@@ -943,6 +999,22 @@ export class PostSalesReturnUseCase {
       for (const [, { movement, updatedLevel }] of inventoryMovements) {
         await this.inventoryService.writeStockMovement(movement, transaction);
         await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+      }
+      for (const [itemId, update] of itemCostingStatsUpdates) {
+        await this.itemRepo.updateItemInTransaction(
+          companyId,
+          itemId,
+          {
+            costingStats: update.costingStats,
+            updatedAt: update.updatedAt,
+          } as Partial<Item>,
+          transaction
+        );
+      }
+      if (this.partyItemPriceRepo) {
+        for (const update of partyItemPriceUpdates) {
+          await this.partyItemPriceRepo.upsertLastPrice(update, transaction);
+        }
       }
 
       const poster = new SubledgerDocumentPoster(this.accountingPostingService);

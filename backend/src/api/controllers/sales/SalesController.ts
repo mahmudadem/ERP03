@@ -266,7 +266,8 @@ export class SalesController {
       diContainer.voucherSequenceRepository,
       diContainer.ledgerRepository,
       diContainer.postingLogRepository,
-      recordChangeService
+      recordChangeService,
+      diContainer.partyItemPriceRepository
     );
   }
 
@@ -1114,7 +1115,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
         diContainer.postingLogRepository,
-        recordChangeService
+        recordChangeService,
+        diContainer.partyItemPriceRepository
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -1357,7 +1359,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.accountRepository,
         diContainer.transactionManager,
         recordChangeService,
-        diContainer.postingLogRepository
+        diContainer.postingLogRepository,
+        diContainer.partyItemPriceRepository
       );
 
       if (periodLockOverride) {

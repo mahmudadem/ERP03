@@ -1490,6 +1490,9 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(itemUpdate.costingStats.lastPurchaseCost.currency).toBe('EUR');
     expect(itemUpdate.costingStats.lastPurchaseCost.fxRateToBase).toBeCloseTo(1.5, 6);
     expect(itemUpdate.costingStats.lastPurchaseCost.asOf).toBe('2026-01-12');
+    expect(itemUpdate.costingStats.lastPurchaseCost.uomId).toBe('EA');
+    expect(itemUpdate.costingStats.lastPurchaseCostByCcyUom.EUR__EA.ccy).toBeCloseTo(10, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCostByCcyUom.EUR__EA.uomId).toBe('EA');
   });
 
   it('10b) PostPI keeps item average cost in item cost currency when invoice is in base currency', async () => {
@@ -1577,6 +1580,9 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(itemUpdate.costingStats.lastPurchaseCost.ccy).toBeCloseTo(100, 2);
     expect(itemUpdate.costingStats.lastPurchaseCost.currency).toBe('SYP');
     expect(itemUpdate.costingStats.lastPurchaseCost.fxRateToBase).toBeCloseTo(1, 6);
+    expect(itemUpdate.costingStats.lastPurchaseCost.uomId).toBe('EA');
+    expect(itemUpdate.costingStats.lastPurchaseCostByCcyUom.SYP__EA.ccy).toBeCloseTo(100, 2);
+    expect(itemUpdate.costingStats.lastPurchaseCostByCcyUom.SYP__EA.uomId).toBe('EA');
   });
 
   it('10a) PostPI re-post attempt does not double-apply inventory or item costing stats', async () => {

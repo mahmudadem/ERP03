@@ -30,6 +30,8 @@ export interface PurchaseSettingsProps {
   /** Governance: when true, a settlement may exceed the invoice outstanding; the excess
    *  drives the party's AP balance negative (a prepayment / credit owed by the vendor). Default false. */
   allowOverpayment?: boolean;
+  /** When true, line price memory may derive same-currency prices across UOMs using fixed item UOM conversion factors. */
+  deriveLinePriceAcrossUom?: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -62,6 +64,7 @@ export class PurchaseSettings {
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   allowOverpayment: boolean;
+  deriveLinePriceAcrossUom: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -95,6 +98,7 @@ export class PurchaseSettings {
     this.defaultGRNIAccountId = props.defaultGRNIAccountId?.trim() || undefined;
     this.allowOverDelivery = props.allowOverDelivery;
     this.allowOverpayment = props.allowOverpayment === true;
+    this.deriveLinePriceAcrossUom = props.deriveLinePriceAcrossUom === true;
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
     this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
     this.defaultPaymentTermsDays = props.defaultPaymentTermsDays;
@@ -122,6 +126,7 @@ export class PurchaseSettings {
       defaultAPAccountId,
       allowOverDelivery: false,
       allowOverpayment: false,
+      deriveLinePriceAcrossUom: false,
       overDeliveryTolerancePct: 0,
       overInvoiceTolerancePct: 0,
       defaultPaymentTermsDays: 30,
@@ -151,6 +156,7 @@ export class PurchaseSettings {
       defaultGRNIAccountId: this.defaultGRNIAccountId,
       allowOverDelivery: this.allowOverDelivery,
       allowOverpayment: this.allowOverpayment,
+      deriveLinePriceAcrossUom: this.deriveLinePriceAcrossUom,
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
       overInvoiceTolerancePct: this.overInvoiceTolerancePct,
       defaultPaymentTermsDays: this.defaultPaymentTermsDays,
@@ -185,6 +191,7 @@ export class PurchaseSettings {
       defaultGRNIAccountId: data.defaultGRNIAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,
       allowOverpayment: data.allowOverpayment ?? false,
+      deriveLinePriceAcrossUom: data.deriveLinePriceAcrossUom === true,
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: data.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: data.defaultPaymentTermsDays ?? 30,

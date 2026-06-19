@@ -211,7 +211,12 @@ export class PurchaseMasterDataController {
       }
       const useCase = new GetEffectivePurchasePriceUseCase(
         diContainer.purchasePriceListRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        diContainer.partyItemPriceRepository,
+        diContainer.itemRepository,
+        diContainer.inventorySettingsRepository,
+        diContainer.purchaseSettingsRepository,
+        diContainer.uomConversionRepository
       );
       const result = await useCase.execute({
         companyId,
@@ -219,6 +224,10 @@ export class PurchaseMasterDataController {
         itemId: q.itemId as string,
         qty: q.qty ? Number(q.qty) : 1,
         asOfDate: q.asOfDate ? new Date(q.asOfDate as string) : undefined,
+        currency: q.currency as string | undefined,
+        exchangeRate: q.exchangeRate ? Number(q.exchangeRate) : undefined,
+        uomId: q.uomId as string | undefined,
+        uom: q.uom as string | undefined,
       });
       (res as any).json({ success: true, data: result });
     } catch (error) {

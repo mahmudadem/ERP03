@@ -83,6 +83,20 @@ const ensureAccountingMode = (value: any, fieldName: string) => {
   }
 };
 
+const ensureInventoryFxCostBasis = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  if (value !== 'REPLACEMENT' && value !== 'HISTORICAL') {
+    throw ApiError.badRequest(`${fieldName} must be REPLACEMENT or HISTORICAL`);
+  }
+};
+
+const ensureDefaultLinePriceSource = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  if (value !== 'PRICE_LIST' && value !== 'LAST_PARTY_PRICE' && value !== 'ITEM_DEFAULT') {
+    throw ApiError.badRequest(`${fieldName} must be PRICE_LIST, LAST_PARTY_PRICE or ITEM_DEFAULT`);
+  }
+};
+
 export const validateInitializeInventoryInput = (body: any) => {
   if (body.accountingMode !== undefined) {
     ensureAccountingMode(body.accountingMode, 'accountingMode');
@@ -125,6 +139,12 @@ export const validateInitializeInventoryInput = (body: any) => {
 
   if (body.defaultCostCurrency !== undefined && typeof body.defaultCostCurrency !== 'string') {
     throw ApiError.badRequest('defaultCostCurrency must be a string');
+  }
+  if (body.inventoryFxCostBasis !== undefined) {
+    ensureInventoryFxCostBasis(body.inventoryFxCostBasis, 'inventoryFxCostBasis');
+  }
+  if (body.defaultLinePriceSource !== undefined) {
+    ensureDefaultLinePriceSource(body.defaultLinePriceSource, 'defaultLinePriceSource');
   }
 
   if (body.allowNegativeStock !== undefined) ensureBoolean(body.allowNegativeStock, 'allowNegativeStock');
@@ -421,6 +441,12 @@ export const validateUpdateSettingsInput = (body: any) => {
   }
   if (body.costingBasis !== undefined && body.costingBasis !== 'WAREHOUSE' && body.costingBasis !== 'GLOBAL') {
     throw ApiError.badRequest('costingBasis must be WAREHOUSE or GLOBAL');
+  }
+  if (body.inventoryFxCostBasis !== undefined) {
+    ensureInventoryFxCostBasis(body.inventoryFxCostBasis, 'inventoryFxCostBasis');
+  }
+  if (body.defaultLinePriceSource !== undefined) {
+    ensureDefaultLinePriceSource(body.defaultLinePriceSource, 'defaultLinePriceSource');
   }
 };
 

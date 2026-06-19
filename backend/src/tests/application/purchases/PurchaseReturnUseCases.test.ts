@@ -83,6 +83,13 @@ const makeItem = (overrides: Partial<Item> = {}): Item =>
     ...(overrides as any),
   });
 
+const makeItemRepo = (item: Item) => ({
+  getItem: jest.fn(async () => item),
+  updateItemInTransaction: jest.fn(async (_companyId: string, _id: string, data: Partial<Item>) => {
+    Object.assign(item as any, data);
+  }),
+});
+
 const makeTaxCode = (): TaxCode =>
   new TaxCode({
     id: 'tax-1',
@@ -432,7 +439,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -498,7 +505,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -542,7 +549,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -590,7 +597,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => makeTaxCode()) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -636,7 +643,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => po), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -702,7 +709,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => makePO()), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => makeTaxCode()) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -763,7 +770,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => makePO()), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
@@ -847,7 +854,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
-      { getItem: jest.fn(async () => item) } as any,
+      makeItemRepo(item) as any,
       { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,

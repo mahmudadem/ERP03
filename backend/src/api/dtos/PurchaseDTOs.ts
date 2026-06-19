@@ -27,6 +27,7 @@ export interface PurchaseSettingsDTO {
   defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   allowOverpayment: boolean;
+  deriveLinePriceAcrossUom: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
@@ -331,6 +332,7 @@ export class PurchaseDTOMapper {
       defaultGRNIAccountId: settings.defaultGRNIAccountId,
       allowOverDelivery: settings.allowOverDelivery,
       allowOverpayment: settings.allowOverpayment,
+      deriveLinePriceAcrossUom: settings.deriveLinePriceAcrossUom,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,

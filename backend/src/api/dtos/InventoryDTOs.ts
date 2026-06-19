@@ -15,6 +15,25 @@ import { Uom } from '../../domain/inventory/entities/Uom';
 import { UomConversion } from '../../domain/inventory/entities/UomConversion';
 import { Warehouse } from '../../domain/inventory/entities/Warehouse';
 
+interface CostPointDTO {
+  base: number;
+  ccy: number;
+  currency: string;
+  fxRateToBase: number;
+  asOf: string;
+    source?: {
+      movementId?: string;
+      refType?: string;
+      refId?: string;
+      docType?: string;
+      docId?: string;
+      docNo?: string;
+      lineId?: string;
+    };
+    qty?: number;
+    uomId?: string;
+  }
+
 export interface ItemDTO {
   id: string;
   companyId: string;
@@ -46,38 +65,12 @@ export interface ItemDTO {
   salePrice?: number;
   purchasePrice?: number;
   costingStats?: {
-    avgCost: {
-      base: number;
-      ccy: number;
-      currency: string;
-      fxRateToBase: number;
-      asOf: string;
-      source?: { movementId?: string; refType?: string; refId?: string };
-    };
-    lastPurchaseCost?: {
-      base: number;
-      ccy: number;
-      currency: string;
-      fxRateToBase: number;
-      asOf: string;
-      source?: { movementId?: string; refType?: string; refId?: string };
-    };
-    lastSalePrice?: {
-      base: number;
-      ccy: number;
-      currency: string;
-      fxRateToBase: number;
-      asOf: string;
-      source?: { movementId?: string; refType?: string; refId?: string };
-    };
-    extra?: Record<string, {
-      base: number;
-      ccy: number;
-      currency: string;
-      fxRateToBase: number;
-      asOf: string;
-      source?: { movementId?: string; refType?: string; refId?: string };
-    }>;
+    avgCost: CostPointDTO;
+    lastPurchaseCost?: CostPointDTO;
+    lastSalePrice?: CostPointDTO;
+    lastPurchaseCostByCcyUom?: Record<string, CostPointDTO>;
+    lastSalePriceByCcyUom?: Record<string, CostPointDTO>;
+    extra?: Record<string, CostPointDTO>;
   };
   metadata?: Record<string, any>;
   active: boolean;
@@ -145,6 +138,8 @@ export interface InventorySettingsDTO {
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: InventorySettings['defaultCostingMethod'];
   costingBasis: 'WAREHOUSE' | 'GLOBAL';
+  inventoryFxCostBasis: 'REPLACEMENT' | 'HISTORICAL';
+  defaultLinePriceSource: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'ITEM_DEFAULT';
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
@@ -436,6 +431,8 @@ export class InventoryDTOMapper {
       inventoryAccountingMethod: settings.inventoryAccountingMethod,
       defaultCostingMethod: settings.defaultCostingMethod,
       costingBasis: settings.costingBasis,
+      inventoryFxCostBasis: settings.inventoryFxCostBasis,
+      defaultLinePriceSource: settings.defaultLinePriceSource,
       defaultCostCurrency: settings.defaultCostCurrency,
       defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId,
       allowNegativeStock: settings.allowNegativeStock,

@@ -43,6 +43,10 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
+import {
+  IPartyItemPriceRepository,
+  PartyItemPriceUpsertInput,
+} from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { PaymentHistory, PaymentMethod } from '../../../domain/shared/entities/PaymentHistory';
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
@@ -947,7 +951,8 @@ export class PostSalesInvoiceUseCase {
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly postingLogRepo?: IPostingLogRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly recordChangeService?: RecordChangeService,
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
   ) {
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
@@ -1084,6 +1089,7 @@ export class PostSalesInvoiceUseCase {
     // which are needed for COGS account resolution below.
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel; qtyInBaseUom: number }>();
     const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
+    const partyItemPriceUpdates: PartyItemPriceUpsertInput[] = [];
     for (const line of si.lines) {
       line.trackInventory = itemsMap.get(line.itemId)?.trackInventory ?? false;
       const item = itemsMap.get(line.itemId);
@@ -1097,6 +1103,19 @@ export class PostSalesInvoiceUseCase {
         asOf: si.invoiceDate,
         refType: 'SALES_INVOICE',
         refId: si.id,
+        qty: line.invoicedQty,
+        uomId: line.uomId || item.salesUomId || item.baseUomId || line.uom || item.baseUom,
+        docType: 'SALES_INVOICE',
+        docId: si.id,
+        docNo: si.invoiceNumber,
+        lineId: line.lineId,
+      });
+      partyItemPriceUpdates.push({
+        companyId,
+        partyId: si.customerId,
+        itemId: item.id,
+        direction: 'SALE',
+        pricePoint: salePricePoint,
       });
 
       const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
@@ -1403,6 +1422,11 @@ export class PostSalesInvoiceUseCase {
           } as Partial<Item>,
           transaction
         );
+      }
+      if (this.partyItemPriceRepo) {
+        for (const update of partyItemPriceUpdates) {
+          await this.partyItemPriceRepo.upsertLastPrice(update, transaction);
+        }
       }
 
       // --- Accumulate voucher lines using pre-resolved accounts ---

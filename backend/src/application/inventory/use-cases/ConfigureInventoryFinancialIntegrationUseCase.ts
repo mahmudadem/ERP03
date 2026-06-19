@@ -64,6 +64,8 @@ export class ConfigureInventoryFinancialIntegrationUseCase {
       inventoryAccountingMethod: input.accountingMethod,
       defaultCostingMethod: settings.defaultCostingMethod,
       costingBasis: settings.costingBasis,
+      inventoryFxCostBasis: settings.inventoryFxCostBasis,
+      defaultLinePriceSource: settings.defaultLinePriceSource,
       defaultCostCurrency: settings.defaultCostCurrency,
       defaultInventoryAssetAccountId: input.defaultInventoryAssetAccountId,
       allowNegativeStock: settings.allowNegativeStock,
@@ -76,6 +78,9 @@ export class ConfigureInventoryFinancialIntegrationUseCase {
       defaultInventoryGainAccountId: settings.defaultInventoryGainAccountId,
       defaultInventoryLossAccountId: settings.defaultInventoryLossAccountId,
       defaultInventoryTransferClearingAccountId: settings.defaultInventoryTransferClearingAccountId,
+      defaultInventoryRevaluationAccountId: settings.defaultInventoryRevaluationAccountId,
+      defaultOpeningBalanceAccountId: settings.defaultOpeningBalanceAccountId,
+      allowNegativeInventoryValue: settings.allowNegativeInventoryValue,
     });
 
     await this.settingsRepo.saveSettings(updatedSettings);

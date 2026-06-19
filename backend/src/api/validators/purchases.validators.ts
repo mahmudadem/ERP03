@@ -227,6 +227,7 @@ export const validateInitializePurchasesInput = (body: any) => {
   if (body.requirePOForStockItems !== undefined) ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
+  if (body.deriveLinePriceAcrossUom !== undefined) ensureBoolean(body.deriveLinePriceAcrossUom, 'deriveLinePriceAcrossUom');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
@@ -271,6 +272,7 @@ export const validateUpdatePurchaseSettingsInput = (body: any) => {
   if (body.defaultGRNIAccountId !== undefined) ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.allowOverpayment !== undefined) ensureBoolean(body.allowOverpayment, 'allowOverpayment');
+  if (body.deriveLinePriceAcrossUom !== undefined) ensureBoolean(body.deriveLinePriceAcrossUom, 'deriveLinePriceAcrossUom');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');

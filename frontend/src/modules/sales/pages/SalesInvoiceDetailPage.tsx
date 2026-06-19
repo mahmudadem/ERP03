@@ -1656,9 +1656,20 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       const closureLine = form.lines[index];
       const resolvedItemId = patch.itemId !== undefined ? patch.itemId : closureLine?.itemId;
       const resolvedQty = patch.invoicedQty !== undefined ? patch.invoicedQty : closureLine?.invoicedQty ?? 1;
+      const resolvedUomId = patch.uomId !== undefined ? patch.uomId : closureLine?.uomId;
+      const resolvedUom = patch.uom !== undefined ? patch.uom : closureLine?.uom;
       if (form.customerId && resolvedItemId) {
         salesMasterDataApi
-          .getEffectivePrice({ customerId: form.customerId, itemId: resolvedItemId, qty: resolvedQty })
+          .getEffectivePrice({
+            customerId: form.customerId,
+            itemId: resolvedItemId,
+            qty: resolvedQty,
+            asOfDate: form.invoiceDate || undefined,
+            currency: form.currency,
+            exchangeRate: Number(form.exchangeRate || 1),
+            uomId: resolvedUomId,
+            uom: resolvedUom,
+          })
           .then((result) => {
             if (result?.unitPrice != null) {
               setForm((latest) => {

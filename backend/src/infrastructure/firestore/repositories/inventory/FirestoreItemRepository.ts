@@ -4,6 +4,25 @@ import { IItemRepository, ItemListOptions } from '../../../../repository/interfa
 import { ItemMapper } from '../../mappers/InventoryMappers';
 import { getInventoryCollection } from './InventoryFirestorePaths';
 
+const stripUndefinedDeep = (value: any): any => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stripUndefinedDeep(item))
+      .filter((item) => item !== undefined);
+  }
+  if (value instanceof Date) return value;
+  if (typeof value !== 'object') return value;
+
+  const output: Record<string, any> = {};
+  Object.entries(value).forEach(([key, entry]) => {
+    const normalized = stripUndefinedDeep(entry);
+    if (normalized !== undefined) output[key] = normalized;
+  });
+  return output;
+};
+
 export class FirestoreItemRepository implements IItemRepository {
   constructor(private readonly db: Firestore) {}
 
@@ -36,7 +55,7 @@ export class FirestoreItemRepository implements IItemRepository {
   async updateItem(id: string, data: Partial<Item>): Promise<void> {
     const ref = await this.resolveRefById(id);
     if (!ref) return;
-    await ref.update(data as any);
+    await ref.update(stripUndefinedDeep(data) as any);
   }
 
   async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void> {
@@ -46,7 +65,7 @@ export class FirestoreItemRepository implements IItemRepository {
       return;
     }
 
-    txn.set(this.collection(companyId).doc(id), data as any, { merge: true });
+    txn.set(this.collection(companyId).doc(id), stripUndefinedDeep(data) as any, { merge: true });
   }
 
   async setItemActive(id: string, active: boolean): Promise<void> {

@@ -130,14 +130,23 @@ export class SalesMasterDataController {
       const q = (req as any).query;
       const useCase = new GetEffectivePriceUseCase(
         diContainer.priceListRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        diContainer.partyItemPriceRepository,
+        diContainer.itemRepository,
+        diContainer.inventorySettingsRepository,
+        diContainer.salesSettingsRepository,
+        diContainer.uomConversionRepository
       );
       const result = await useCase.execute({
         companyId,
         customerId: q.customerId as string,
         itemId: q.itemId as string,
-        qty: Number(q.qty),
+        qty: q.qty ? Number(q.qty) : 1,
         asOfDate: q.asOfDate ? new Date(q.asOfDate as string) : undefined,
+        currency: q.currency as string | undefined,
+        exchangeRate: q.exchangeRate ? Number(q.exchangeRate) : undefined,
+        uomId: q.uomId as string | undefined,
+        uom: q.uom as string | undefined,
       });
       (res as any).json({ success: true, data: result });
     } catch (error) {

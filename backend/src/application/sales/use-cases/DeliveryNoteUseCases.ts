@@ -478,6 +478,8 @@ export class PostDeliveryNoteUseCase {
             asOf: dn.deliveryDate,
             refType: 'DELIVERY_NOTE',
             refId: dn.id,
+            qty: line.deliveredQty,
+            uomId: line.uomId || item.salesUomId || item.baseUomId || line.uom || item.baseUom,
           })
         : undefined;
       const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastSalePrice: salePricePoint });

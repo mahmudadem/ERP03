@@ -33,6 +33,10 @@ import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCo
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
+import {
+  IPartyItemPriceRepository,
+  PartyItemPriceUpsertInput,
+} from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
@@ -48,6 +52,7 @@ import {
 } from '../../inventory/services/UomResolutionService';
 import {
   buildAverageCostPoint,
+  buildDocumentPricePoint,
   buildPurchaseCostPoint,
   buildUpdatedItemCostingStats,
 } from '../../inventory/services/ItemCostingStatsService';
@@ -520,7 +525,8 @@ export class PostPurchaseInvoiceUseCase {
     private readonly paymentHistoryRepo?: IPaymentHistoryRepository,
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
-    private readonly ledgerRepo?: ILedgerRepository
+    private readonly ledgerRepo?: ILedgerRepository,
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
   ) {
     this.accountRepo = accountRepo;
   }
@@ -632,8 +638,36 @@ export class PostPurchaseInvoiceUseCase {
     // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel; qtyInBaseUom: number }>();
     const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
+    const partyItemPriceUpdates: PartyItemPriceUpsertInput[] = [];
     for (const line of pi.lines) {
       line.trackInventory = itemsMap.get(line.itemId)?.trackInventory ?? false;
+      const itemForMemory = itemsMap.get(line.itemId);
+      const purchasePricePoint = itemForMemory
+        ? buildDocumentPricePoint({
+          unitPriceDoc: line.unitPriceDoc,
+          currency: pi.currency,
+          exchangeRate: pi.exchangeRate,
+          baseCurrency,
+          asOf: pi.invoiceDate,
+          refType: 'PURCHASE_INVOICE',
+          refId: pi.id,
+          qty: line.invoicedQty,
+          uomId: line.uomId || itemForMemory.purchaseUomId || itemForMemory.baseUomId || line.uom || itemForMemory.baseUom,
+          docType: 'PURCHASE_INVOICE',
+          docId: pi.id,
+          docNo: pi.invoiceNumber,
+          lineId: line.lineId,
+        })
+        : null;
+      if (purchasePricePoint && itemForMemory) {
+        partyItemPriceUpdates.push({
+          companyId,
+          partyId: pi.vendorId,
+          itemId: itemForMemory.id,
+          direction: 'PURCHASE',
+          pricePoint: purchasePricePoint,
+        });
+      }
 
       const poLine = po ? findPOLine(po, line.poLineId, line.itemId) : null;
       this.validatePostingQuantity(line, poLine, settings.allowDirectInvoicing, settings.overInvoiceTolerancePct, isPOLinked);
@@ -782,19 +816,33 @@ export class PostPurchaseInvoiceUseCase {
         line.warehouseId = warehouseId;
 
         const itemLevels = levelsByItemMap.get(item.id) || [level];
-        const lastPurchaseCost = buildPurchaseCostPoint(movement);
+        const movementCostPoint = buildPurchaseCostPoint(movement);
+        const lastPurchaseCost = purchasePricePoint ?? movementCostPoint;
         const avgCost = buildAverageCostPoint(
           itemLevels,
           item,
           baseCurrency,
           invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
-          lastPurchaseCost
+          movementCostPoint
         );
         const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastPurchaseCost });
         item.costingStats = costingStats;
         itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
 
         inventoryMovements.set(line.lineId, { movement, updatedLevel: level, qtyInBaseUom });
+      }
+
+      if (purchasePricePoint && itemForMemory && !itemCostingStatsUpdates.has(itemForMemory.id)) {
+        const avgCost = buildAverageCostPoint(
+          levelsByItemMap.get(itemForMemory.id) || [],
+          itemForMemory,
+          baseCurrency,
+          invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE',
+          itemForMemory.costingStats?.avgCost
+        );
+        const costingStats = buildUpdatedItemCostingStats(itemForMemory, avgCost, { lastPurchaseCost: purchasePricePoint });
+        itemForMemory.costingStats = costingStats;
+        itemCostingStatsUpdates.set(itemForMemory.id, { costingStats, updatedAt: new Date() });
       }
 
       if (poLine) poLine.invoicedQty = roundMoney(poLine.invoicedQty + line.invoicedQty);
@@ -872,6 +920,11 @@ export class PostPurchaseInvoiceUseCase {
             } as Partial<Item>,
             transaction
           );
+        }
+        if (this.partyItemPriceRepo) {
+          for (const update of partyItemPriceUpdates) {
+            await this.partyItemPriceRepo.upsertLastPrice(update, transaction);
+          }
         }
 
         // Build the posting plan — one debit entry per source line (+ its tax),

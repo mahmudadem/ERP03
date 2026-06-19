@@ -7,6 +7,10 @@ export interface CostPointSource {
   movementId?: string;
   refType?: string;
   refId?: string;
+  docType?: string;
+  docId?: string;
+  docNo?: string;
+  lineId?: string;
 }
 
 export interface CostPoint {
@@ -15,6 +19,8 @@ export interface CostPoint {
   currency: string;
   fxRateToBase: number;
   asOf: string;
+  qty?: number;
+  uomId?: string;
   source?: CostPointSource;
 }
 
@@ -22,6 +28,8 @@ export interface ItemCostingStats {
   avgCost: CostPoint;
   lastPurchaseCost?: CostPoint;
   lastSalePrice?: CostPoint;
+  lastPurchaseCostByCcyUom?: Record<string, CostPoint>;
+  lastSalePriceByCcyUom?: Record<string, CostPoint>;
   extra?: Record<string, CostPoint>;
 }
 
@@ -287,6 +295,8 @@ export class Item {
       currency: point.currency,
       fxRateToBase: point.fxRateToBase,
       asOf: point.asOf,
+      qty: point.qty,
+      uomId: point.uomId,
       source: point.source ? { ...point.source } : undefined,
     };
   }
@@ -296,6 +306,22 @@ export class Item {
       avgCost: Item.cloneCostPoint(stats.avgCost),
       lastPurchaseCost: stats.lastPurchaseCost ? Item.cloneCostPoint(stats.lastPurchaseCost) : undefined,
       lastSalePrice: stats.lastSalePrice ? Item.cloneCostPoint(stats.lastSalePrice) : undefined,
+      lastPurchaseCostByCcyUom: stats.lastPurchaseCostByCcyUom
+        ? Object.fromEntries(
+            Object.entries(stats.lastPurchaseCostByCcyUom).map(([key, value]) => [
+              Item.normalizeCcyUomKey(key),
+              Item.cloneCostPoint(value),
+            ])
+          )
+        : undefined,
+      lastSalePriceByCcyUom: stats.lastSalePriceByCcyUom
+        ? Object.fromEntries(
+            Object.entries(stats.lastSalePriceByCcyUom).map(([key, value]) => [
+              Item.normalizeCcyUomKey(key),
+              Item.cloneCostPoint(value),
+            ])
+          )
+        : undefined,
       extra: stats.extra
         ? Object.fromEntries(
             Object.entries(stats.extra).map(([key, value]) => [key, Item.cloneCostPoint(value)])
@@ -331,6 +357,8 @@ export class Item {
       currency: String(point.currency).toUpperCase().trim(),
       fxRateToBase,
       asOf: String(point.asOf),
+      qty: point.qty === undefined || point.qty === null ? undefined : Number(point.qty),
+      uomId: point.uomId ? String(point.uomId) : undefined,
       source: point.source ? { ...point.source } : undefined,
     };
   }
@@ -342,11 +370,32 @@ export class Item {
       avgCost: Item.normalizeCostPoint(stats.avgCost),
       lastPurchaseCost: stats.lastPurchaseCost ? Item.normalizeCostPoint(stats.lastPurchaseCost) : undefined,
       lastSalePrice: stats.lastSalePrice ? Item.normalizeCostPoint(stats.lastSalePrice) : undefined,
+      lastPurchaseCostByCcyUom: stats.lastPurchaseCostByCcyUom
+        ? Object.fromEntries(
+            Object.entries(stats.lastPurchaseCostByCcyUom).map(([key, value]) => [
+              Item.normalizeCcyUomKey(key),
+              Item.normalizeCostPoint(value),
+            ])
+          )
+        : undefined,
+      lastSalePriceByCcyUom: stats.lastSalePriceByCcyUom
+        ? Object.fromEntries(
+            Object.entries(stats.lastSalePriceByCcyUom).map(([key, value]) => [
+              Item.normalizeCcyUomKey(key),
+              Item.normalizeCostPoint(value),
+            ])
+          )
+        : undefined,
       extra: stats.extra
         ? Object.fromEntries(
             Object.entries(stats.extra).map(([key, value]) => [key, Item.normalizeCostPoint(value)])
           )
         : undefined,
     };
+  }
+
+  private static normalizeCcyUomKey(key: string): string {
+    const [currency, ...rest] = String(key || '').split('__');
+    return `${currency.toUpperCase()}__${rest.join('__')}`;
   }
 }

@@ -239,6 +239,8 @@ export class InventoryController {
         defaultInventoryTransferClearingAccountId: (req as any).body.defaultInventoryTransferClearingAccountId,
         defaultInventoryRevaluationAccountId: (req as any).body.defaultInventoryRevaluationAccountId,
         defaultOpeningBalanceAccountId: (req as any).body.defaultOpeningBalanceAccountId,
+        inventoryFxCostBasis: (req as any).body.inventoryFxCostBasis,
+        defaultLinePriceSource: (req as any).body.defaultLinePriceSource,
         allowNegativeInventoryValue: (req as any).body.allowNegativeInventoryValue,
         selectedVoucherTypes: (req as any).body.selectedVoucherTypes,
       });
@@ -324,6 +326,12 @@ export class InventoryController {
         costingBasis: modeChanged
           ? current?.costingBasis ?? 'WAREHOUSE'
           : ((req as any).body.costingBasis ?? current?.costingBasis ?? 'WAREHOUSE'),
+        inventoryFxCostBasis: (req as any).body.inventoryFxCostBasis
+          ?? current?.inventoryFxCostBasis
+          ?? 'REPLACEMENT',
+        defaultLinePriceSource: (req as any).body.defaultLinePriceSource
+          ?? current?.defaultLinePriceSource
+          ?? 'PRICE_LIST',
         defaultCostCurrency: (req as any).body.defaultCostCurrency || current?.defaultCostCurrency || company.baseCurrency,
         defaultInventoryAssetAccountId: modeChanged
           ? current?.defaultInventoryAssetAccountId
